@@ -37,6 +37,10 @@ export const createOrganizationSchema = yup.object().shape({
     .required('organization_name_required')
     .min(3, 'name_min_length')
     .max(100, 'name_max_length'),
+  organizationType: yup
+    .string()
+    .oneOf(['Residential', 'Commercial', 'Mixed'], 'invalid_org_type')
+    .optional(),
   timezone: yup.string().default('Asia/Kolkata'),
 });
 

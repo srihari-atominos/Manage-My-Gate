@@ -23,7 +23,7 @@ const initialState: UserManagementState = {
   users: [],
   searchQuery: '',
   selectedRoles: [],
-  statusFilter: ['Active', 'Inactive', 'Pending'],
+  statusFilter: ['Active', 'Inactive', 'Pending', 'Rejected'],
   currentPage: 1,
   rowsPerPage: 10,
   totalRecords: 0,

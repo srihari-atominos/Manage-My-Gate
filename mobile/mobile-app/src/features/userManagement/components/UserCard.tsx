@@ -131,7 +131,7 @@ export const UserCard: React.FC<UserCardProps> = ({
 
         {/* Compact Card Action Row */}
         <View className="flex-row items-center justify-end mt-1 pt-1 border-t border-border/40 gap-1.5">
-          {isPending ? (
+          {isPending || isRejected ? (
             <TouchableOpacity
               onPress={() => onResendInvite(user)}
               className="flex-row items-center bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 active:opacity-70"

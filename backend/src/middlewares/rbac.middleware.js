@@ -5,10 +5,11 @@ import { mapPermission } from '../utils/permissionMapper.js';
 /**
  * Helper to dynamically resolve user permissions from the cache or database.
  */
-export const getPermissionsForUser = async (user) => {
+export const getPermissionsForUser = async (user, targetOrgId = null) => {
   if (!user) return [];
-  
+  const orgId = targetOrgId || user.orgId;
   const roleIds = [];
+  
   if (user.roleId) {
     roleIds.push(user.roleId.toString());
   }
@@ -20,30 +21,30 @@ export const getPermissionsForUser = async (user) => {
     });
   }
   
-  // Fallback: Query database OrgMembership if roleIds is empty
-  if (roleIds.length === 0 && user.id) {
+  // Fallback: Query database OrgMembership for the target organization
+  if (roleIds.length === 0 && (user.id || user._id) && orgId) {
     try {
       const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
-      const memberships = await OrgMembership.find({ userId: user.id, status: 'Active' }).lean();
-      memberships.forEach((m) => {
-        if (m.roleIds && m.roleIds.length > 0) {
-          m.roleIds.forEach((rid) => {
+      const membership = await OrgMembership.findOne({ userId: user.id || user._id, orgId, status: 'Active' }).lean();
+      if (membership) {
+        if (membership.roleIds && membership.roleIds.length > 0) {
+          membership.roleIds.forEach((rid) => {
             if (rid && !roleIds.includes(rid.toString())) roleIds.push(rid.toString());
           });
-        } else if (m.roleId) {
-          if (!roleIds.includes(m.roleId.toString())) roleIds.push(m.roleId.toString());
+        } else if (membership.roleId) {
+          if (!roleIds.includes(membership.roleId.toString())) roleIds.push(membership.roleId.toString());
         }
-      });
+      }
     } catch (err) {
       console.error('[RBAC MIDDLEWARE] Graceful OrgMembership role lookup failed:', err.message);
     }
   }
 
   // Secondary Fallback: Query roleId by role name if still empty
-  if (roleIds.length === 0 && user.role && user.orgId) {
+  if (roleIds.length === 0 && user.role && orgId) {
     try {
       const roleService = (await import('../features/role/role.services.js')).default;
-      const role = await roleService.getRoleByName(user.role, user.orgId);
+      const role = await roleService.getRoleByName(user.role, orgId);
       if (role) {
         roleIds.push(role._id.toString());
       }
@@ -77,8 +78,9 @@ export const authorizeRoles = (...allowedRoles) => {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
 
-      if (!allowedRoles.includes(req.user.role)) {
-        throw new HttpError(403, `Forbidden. Role '${req.user.role}' is not authorized to access this resource.`);
+      const activeRole = req.tenantRole || req.user.role;
+      if (!allowedRoles.includes(activeRole)) {
+        throw new HttpError(403, `Forbidden. Role '${activeRole}' is not authorized to access this resource.`);
       }
 
       next();
@@ -101,11 +103,10 @@ export const authorizePermission = (feature, action) => {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
-      // Check if this feature is a dynamic module in the workspace and if it is disabled
-      const orgId = req.headers['x-organization-id'] || req.user?.orgId;
-      if (orgId && mongoose.isValidObjectId(orgId)) {
+      const targetOrgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user?.orgId;
+      if (targetOrgId && mongoose.isValidObjectId(targetOrgId)) {
         const Workspace = mongoose.model('Workspace');
-        const workspace = await Workspace.findOne({ organizationId: orgId });
+        const workspace = await Workspace.findOne({ organizationId: targetOrgId });
         if (workspace && workspace.modules) {
           const targetModule = workspace.modules.find(m => m.moduleKey === feature);
           if (targetModule && targetModule.enabled === false) {
@@ -113,16 +114,18 @@ export const authorizePermission = (feature, action) => {
           }
         }
       }
-      // Super Admin, Community Admin, and Admin roles bypass all permission checks
-      const roleUpper = (req.user.role || '').toUpperCase();
-      const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role) ||
-        roleUpper.includes('ADMIN') || roleUpper.includes('SUPER') || req.user.isPlatform;
+      
+      const activeRole = req.tenantRole || req.user.role || '';
+      const roleUpper = activeRole.toUpperCase();
+      const isPlatformAdmin = req.user.isPlatform === true || ['Super Admin', 'Platform Super Admin'].includes(req.user.role);
+      const isTenantAdmin = ['Community Admin', 'Admin', 'SuperAdmin'].includes(activeRole) || roleUpper.includes('ADMIN') || roleUpper.includes('SUPER');
+      const isFullAdmin = isPlatformAdmin || isTenantAdmin;
       if (isFullAdmin) {
         return next();
       }
 
       // Normalise all user permissions through the mapper before comparing
-      const permissions = await getPermissionsForUser(req.user);
+      const permissions = req.tenantPermissions || await getPermissionsForUser(req.user, targetOrgId);
       const userPermissions = permissions.map(mapPermission);
 
       const actions = Array.isArray(action) ? action : [action];

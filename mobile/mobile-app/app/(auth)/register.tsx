@@ -145,9 +145,14 @@ export default function RegisterScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Create Account', headerBackVisible: true }} />
-      <KeyboardAvoidingShell className="bg-background">
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1, justifyContent: 'center' }}>
-          <View className="gap-5 flex-1 justify-center max-w-sm sm:max-w-md mx-auto w-full py-2 sm:py-4">
+      <KeyboardAvoidingShell
+        className="bg-background"
+        scrollViewProps={{
+          contentContainerStyle: { paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1, paddingBottom: 80 },
+          automaticallyAdjustKeyboardInsets: Platform.OS === 'ios',
+        }}
+      >
+        <View className="gap-5 flex-1 justify-center max-w-sm sm:max-w-md mx-auto w-full py-2 sm:py-4">
             {/* Brand Header */}
             <View className="items-center mb-1">
               <View className="bg-primary/10 p-3.5 rounded-2xl mb-2.5 items-center justify-center">
@@ -348,7 +353,6 @@ export default function RegisterScreen() {
               </View>
             </View>
           </View>
-        </ScrollView>
       </KeyboardAvoidingShell>
     </>
   );

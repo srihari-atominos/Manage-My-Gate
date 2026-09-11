@@ -58,7 +58,7 @@ export const useAppSocket = () => {
       console.log(`[Socket] Initializing shared connection to: ${socketUrl}`);
 
       sharedSocket = io(socketUrl, {
-        transports: ['polling', 'websocket'],
+        transports: ['websocket', 'polling'],
         timeout: 10000,
         reconnectionAttempts: 5,
         reconnectionDelay: 5000,

@@ -293,7 +293,7 @@ export function ScreenShell({
 
       {/* Main content area */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         className="flex-1 bg-background"
       >
@@ -306,6 +306,7 @@ export function ScreenShell({
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             alwaysBounceVertical={true}
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
             {...scrollHandlerProps}
             contentContainerStyle={{
               flexGrow: 1,

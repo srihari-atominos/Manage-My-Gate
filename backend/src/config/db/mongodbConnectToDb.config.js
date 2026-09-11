@@ -67,6 +67,10 @@ export const connectToDb = async (retries = 5, delayMs = 3000) => {
           return originalInsertMany.apply(this, arguments);
         };
       }
+
+      // Self-heal legacy user documents where phone is null to prevent sparse unique index collisions
+      await mongoose.connection.collection('users').updateMany({ phone: null }, { $unset: { phone: 1 } }).catch(() => null);
+
       return;
     } catch (error) {
       logger.error(`MongoDB connection attempt ${attempt}/${retries} FAILED: ${error.message}`);

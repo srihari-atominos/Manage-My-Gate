@@ -26,16 +26,21 @@ export const KeyboardAvoidingShell = ({
   contentContainerClassName,
   ...props
 }: KeyboardAvoidingShellProps) => {
-  const behavior = Platform.OS === 'ios' ? 'padding' : undefined;
+  const defaultBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
+  const activeBehavior = props.behavior ?? defaultBehavior;
 
   const content = scrollable ? (
     <ScrollView
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ flexGrow: 1 }}
-      className={contentContainerClassName}
+      automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       {...scrollViewProps}
+      contentContainerStyle={[
+        { flexGrow: 1, paddingBottom: 60 },
+        scrollViewProps?.contentContainerStyle,
+      ]}
+      className={contentContainerClassName}
     >
       {children}
     </ScrollView>
@@ -49,7 +54,7 @@ export const KeyboardAvoidingShell = ({
 
   return (
     <KeyboardAvoidingView
-      behavior={behavior}
+      behavior={activeBehavior}
       className={cn('flex-1 bg-background', className)}
       {...props}
     >

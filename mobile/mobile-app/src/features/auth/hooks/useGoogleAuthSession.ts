@@ -5,7 +5,7 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
 import { useAuth } from './useAuth';
 import { router } from 'expo-router';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -15,63 +15,141 @@ const DEFAULT_GOOGLE_ANDROID_CLIENT_ID = '610778456829-6g1bvqtplfrgva93sbdsvgbuq
 export function useGoogleAuthSession() {
   const { loginWithGoogle, loading } = useAuth();
   const [authInProgress, setAuthInProgress] = React.useState(false);
+  const processedRef = React.useRef<Set<string>>(new Set());
 
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
   const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || DEFAULT_GOOGLE_ANDROID_CLIENT_ID;
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || googleClientId;
+
+  const redirectUri = AuthSession.makeRedirectUri({
+    native: 'com.atominosconsulting.nahom:/oauthredirect',
+    preferLocalhost: true,
+  });
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: googleClientId,
     webClientId: googleClientId,
     iosClientId,
     androidClientId,
+    redirectUri,
   });
 
-  React.useEffect(() => {
-    if (response?.type === 'success') {
-      const idToken = response.params?.id_token || response.authentication?.idToken;
-      if (idToken) {
-        setAuthInProgress(true);
-        loginWithGoogle(idToken)
-          .then((res: any) => {
-            if (res?.meta?.requestStatus === 'rejected' || res?.error) {
-              const errMsg = (res?.payload as string) || res?.error?.message || 'Google sign in failed';
-              Alert.alert('Google Sign-In Failed', errMsg);
-              return;
-            }
-            if (res?.payload?.isNewUser) {
-              const googleData = res.payload.googleData || {};
-              router.push({
-                pathname: '/(auth)/register',
-                params: {
-                  email: googleData.email || '',
-                  name: googleData.name || '',
-                  isGoogleSso: 'true',
-                },
-              });
-            }
-          })
-          .catch((err: any) => {
-            console.error('[GoogleSignIn] Backend login error:', err);
-            Alert.alert(
-              'Google Sign-In Failed',
-              typeof err === 'string' ? err : err?.message || 'Login failed'
-            );
-          })
-          .finally(() => {
-            setAuthInProgress(false);
+  const activeClientId = Platform.select({
+    ios: iosClientId,
+    android: androidClientId,
+    default: googleClientId,
+  });
+
+  const handleAuthPayload = React.useCallback(
+    async (payload: any) => {
+      setAuthInProgress(true);
+      try {
+        const res: any = await loginWithGoogle(payload);
+        if (res?.meta?.requestStatus === 'rejected' || res?.error) {
+          const errMsg = (res?.payload as string) || res?.error?.message || 'Google sign in failed';
+          Alert.alert('Google Sign-In Failed', errMsg);
+          return;
+        }
+        if (res?.payload?.isNewUser) {
+          const googleData = res.payload.googleData || {};
+          router.push({
+            pathname: '/(auth)/register',
+            params: {
+              email: googleData.email || '',
+              name: googleData.name || '',
+              isGoogleSso: 'true',
+            },
           });
-      } else {
-        console.warn('[GoogleSignIn] Success response received but ID Token missing:', response);
+        }
+      } catch (err: any) {
+        console.error('[GoogleSignIn] Backend login error:', err);
+        Alert.alert(
+          'Google Sign-In Failed',
+          typeof err === 'string' ? err : err?.message || 'Login failed'
+        );
+      } finally {
+        setAuthInProgress(false);
       }
-    } else if (response?.type === 'error') {
-      console.error('[GoogleSignIn] Auth Session Error:', response.error);
-      Alert.alert(
-        'Google Sign-In Error',
-        response.error?.message || 'Authentication session failed.'
-      );
+    },
+    [loginWithGoogle]
+  );
+
+  const processAuthResult = React.useCallback(
+    async (authResult: AuthSession.AuthSessionResult | null) => {
+      if (!authResult || authResult.type !== 'success') {
+        if (authResult?.type === 'error') {
+          console.error('[GoogleSignIn] Auth Session Error:', authResult.error);
+          Alert.alert(
+            'Google Sign-In Error',
+            authResult.error?.message || 'Authentication session failed.'
+          );
+        }
+        return;
+      }
+
+      // 1. Check for directly available ID token
+      const idToken = authResult.params?.id_token || (authResult as any).authentication?.idToken;
+      if (idToken) {
+        if (processedRef.current.has(idToken)) return;
+        processedRef.current.add(idToken);
+        await handleAuthPayload({ token: idToken });
+        return;
+      }
+
+      // 2. Handle Authorization Code from Native Android/iOS
+      const code = authResult.params?.code;
+      if (code) {
+        if (processedRef.current.has(code)) return;
+        processedRef.current.add(code);
+
+        setAuthInProgress(true);
+
+        // Attempt client-side code exchange via PKCE
+        let resolvedIdToken: string | null = null;
+        if (request?.codeVerifier) {
+          try {
+            const tokenResponse = await AuthSession.exchangeCodeAsync(
+              {
+                clientId: activeClientId,
+                code,
+                redirectUri: request.redirectUri,
+                extraParams: {
+                  code_verifier: request.codeVerifier,
+                },
+              },
+              {
+                tokenEndpoint: 'https://oauth2.googleapis.com/token',
+              }
+            );
+            if (tokenResponse?.idToken) {
+              resolvedIdToken = tokenResponse.idToken;
+            }
+          } catch (exchangeErr: any) {
+            console.warn('[GoogleSignIn] Client code exchange failed, falling back to server exchange:', exchangeErr?.message);
+          }
+        }
+
+        if (resolvedIdToken) {
+          await handleAuthPayload({ token: resolvedIdToken });
+        } else {
+          // Fallback to server-side code exchange
+          await handleAuthPayload({
+            code,
+            codeVerifier: request?.codeVerifier,
+            redirectUri: request?.redirectUri,
+            clientId: activeClientId,
+          });
+        }
+      }
+    },
+    [request, activeClientId, handleAuthPayload]
+  );
+
+  React.useEffect(() => {
+    if (response) {
+      processAuthResult(response);
     }
-  }, [response, loginWithGoogle]);
+  }, [response, processAuthResult]);
 
   const handleGoogleSignIn = React.useCallback(async () => {
     try {
@@ -82,12 +160,15 @@ export function useGoogleAuthSession() {
         );
         return;
       }
-      await promptAsync();
+      const result = await promptAsync();
+      if (result) {
+        await processAuthResult(result);
+      }
     } catch (err: any) {
       console.error('[GoogleSignIn] Prompt error:', err);
       Alert.alert('Google Sign-In Error', err?.message || 'Could not start Google Sign-In.');
     }
-  }, [request, promptAsync]);
+  }, [request, promptAsync, processAuthResult]);
 
   return {
     handleGoogleSignIn,

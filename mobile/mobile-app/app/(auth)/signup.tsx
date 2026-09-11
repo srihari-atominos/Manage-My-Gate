@@ -189,13 +189,13 @@ export default function SignupScreen() {
 
   const hasNavigatedRef = React.useRef(false);
   React.useEffect(() => {
-    if (isAuthenticated && !hasNavigatedRef.current && userType === 'existing') {
+    if (isAuthenticated && !hasNavigatedRef.current) {
       hasNavigatedRef.current = true;
       router.replace('/(resident)/dashboard');
     } else if (!isAuthenticated) {
       hasNavigatedRef.current = false;
     }
-  }, [isAuthenticated, userType]);
+  }, [isAuthenticated]);
 
   const onSubmit = async (data: SignupFormValues) => {
     try {
@@ -238,8 +238,8 @@ export default function SignupScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ImageBackground source={require('../../assets/images/auth-bg.jpg')} style={{ flex: 1 }} blurRadius={Platform.OS === 'ios' ? 3 : 2} resizeMode="cover">
         <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" className="px-5 py-6">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'} className="px-5 py-6">
             <View className="max-w-sm mx-auto w-full gap-3.5">
 
               {/* Brand Header */}

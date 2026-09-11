@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import * as userApi from '../services/userApi'
 
 export const ROLES = ['Super Admin', 'Branch Manager', 'System Auditor']
-export const STATUS_OPTIONS = ['Active', 'Inactive', 'Pending']
+export const STATUS_OPTIONS = ['Active', 'Inactive', 'Pending', 'Rejected']
 
 // Async Thunks
 export const fetchUsersAsync = createAsyncThunk(
@@ -125,7 +125,7 @@ const initialState = {
   users: [],
   searchQuery: '',
   selectedRoles: [],
-  statusFilter: ['Active', 'Inactive', 'Pending'],
+  statusFilter: ['Active', 'Inactive', 'Pending', 'Rejected'],
   currentPage: 1,
   rowsPerPage: 10,
   totalRecords: 0,

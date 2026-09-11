@@ -46,39 +46,55 @@ export const tenantContext = (optionsOrReq, res, next) => {
           throw new HttpError(400, 'Workspace context is required.');
         }
 
-        const userOrgIdStr = req.user?.orgId ? String(req.user.orgId) : '';
-        const requestedOrgIdStr = orgIdHeader ? String(orgIdHeader) : '';
+        const requestedOrgIdStr = String(orgIdHeader);
+        let targetRoleName = req.user.role;
+        let targetPermissions = req.user.permissions || [];
+        let targetMembership = null;
 
-        // If target tenant context orgId does not match user's active token orgId, verify membership
-        if (userOrgIdStr && requestedOrgIdStr && userOrgIdStr !== requestedOrgIdStr) {
-          if (userIsPlatform) {
-            console.log(`[TENANT DEBUG] Platform Admin operating across workspace. Header: ${requestedOrgIdStr}, Token: ${userOrgIdStr}`);
-          } else {
-            const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
-            const userId = req.user.id || req.user._id;
-            const membership = await OrgMembership.findOne({
-              userId,
-              orgId: requestedOrgIdStr,
-            }).lean();
+        if (!userIsPlatform) {
+          const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+          const userId = req.user.id || req.user._id;
+          targetMembership = await OrgMembership.findOne({
+            userId,
+            orgId: requestedOrgIdStr,
+          }).lean();
 
-            if (!membership || (membership.status && membership.status !== 'Active')) {
-              console.error(`[TENANT DEBUG] 403 Forbidden. User ${userId} has no valid membership in ${requestedOrgIdStr}. Token orgId: ${userOrgIdStr}`);
-              throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+          if (!targetMembership || (targetMembership.status && targetMembership.status !== 'Active')) {
+            console.error(`[TENANT DEBUG] 403 Forbidden. User ${userId} has no active membership in ${requestedOrgIdStr}.`);
+            throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+          }
+
+          // Resolve target organization role name and permissions
+          const targetRoleIds = [];
+          if (targetMembership.roleIds && targetMembership.roleIds.length > 0) {
+            targetMembership.roleIds.forEach((rid) => { if (rid) targetRoleIds.push(rid.toString()); });
+          } else if (targetMembership.roleId) {
+            targetRoleIds.push(targetMembership.roleId.toString());
+          }
+
+          if (targetRoleIds.length > 0) {
+            const Role = (await import('../features/role/role.model.js')).default;
+            const roles = await Role.find({ _id: { $in: targetRoleIds } }).lean();
+            if (roles.length > 0) {
+              targetRoleName = roles[0].name;
             }
+
+            const { getPermissionsForUser } = await import('./rbac.middleware.js');
+            targetPermissions = await getPermissionsForUser(
+              { id: userId, roleId: targetMembership.roleId, roleIds: targetRoleIds },
+              requestedOrgIdStr
+            );
           }
         }
 
         // Phase 6 Expiry Lockout
         const PlatformSubscription = (await import('../features/platformSubscription/platformSubscription.model.js')).default;
         
-        // Optimize with lean(), index is already on organisationId
-        // Caching Note: Can be cached in Redis in the future for high performance
-        const subscription = await PlatformSubscription.findOne({ organisationId: req.user.orgId })
+        const subscription = await PlatformSubscription.findOne({ organisationId: requestedOrgIdStr })
           .select('status')
           .lean();
 
         if (subscription && subscription.status === 'EXPIRED') {
-          // Exempt billing/payment routes so users can pay
           const isExempt = req.originalUrl.match(/\/(platform-invoices|platform-payments|platform-quotes|billing)/i);
           if (!isExempt) {
             throw new HttpError(403, 'SUBSCRIPTION_EXPIRED');
@@ -86,13 +102,24 @@ export const tenantContext = (optionsOrReq, res, next) => {
         }
 
         // Attach validated context to request
-        const activeTenantOrgId = orgIdHeader || req.user.orgId;
+        req.tenantMembership = targetMembership;
+        req.tenantRole = targetRoleName;
+        req.tenantPermissions = targetPermissions;
+        req.organization = requestedOrgIdStr;
+        req.orgId = requestedOrgIdStr;
         req.tenant = {
-          orgId: activeTenantOrgId,
-          role: req.user.role,
-          permissions: req.user.permissions,
+          orgId: requestedOrgIdStr,
+          role: targetRoleName,
+          permissions: targetPermissions,
           isPlatform: userIsPlatform,
         };
+
+        // Synchronize request-scoped user context for downstream handlers expecting req.user
+        if (!userIsPlatform) {
+          req.user.orgId = requestedOrgIdStr;
+          req.user.role = targetRoleName;
+          req.user.permissions = targetPermissions;
+        }
 
         next();
       } catch (error) {

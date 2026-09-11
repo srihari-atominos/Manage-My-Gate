@@ -3,11 +3,10 @@ import * as React from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { Button } from '@/components/ui/button';
-import { Text, View, Alert } from 'react-native';
+import { Text, View, Alert, Platform } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../hooks/useAuth';
 import { router } from 'expo-router';
-
 import * as AuthSession from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -24,87 +23,184 @@ export interface GoogleSignInButtonProps {
 export function GoogleSignInButton({ inviteToken, onSuccess, onError }: GoogleSignInButtonProps = {}) {
   const { loginWithGoogle, acceptSsoInvite, loading } = useAuth();
   const [submitting, setSubmitting] = React.useState(false);
+  const processedRef = React.useRef<Set<string>>(new Set());
+
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
+  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || DEFAULT_GOOGLE_ANDROID_CLIENT_ID;
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || googleClientId;
+
+  const redirectUri = AuthSession.makeRedirectUri({
+    native: 'com.atominosconsulting.nahom:/oauthredirect',
+    preferLocalhost: true,
+  });
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: googleClientId,
     webClientId: googleClientId,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || googleClientId,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || DEFAULT_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId,
+    androidClientId,
+    redirectUri,
   });
 
-  React.useEffect(() => {
-    if (response?.type === 'success') {
-      const idToken = response.params?.id_token || response.authentication?.idToken;
-      if (idToken) {
-        setSubmitting(true);
+  const activeClientId = Platform.select({
+    ios: iosClientId,
+    android: androidClientId,
+    default: googleClientId,
+  });
+
+  const handlePayload = React.useCallback(
+    async (payload: any) => {
+      setSubmitting(true);
+      try {
         if (inviteToken) {
-          acceptSsoInvite({
+          const invitePayload = {
             inviteToken,
-            ssoCredential: idToken,
-            provider: 'google',
-          })
-            .then((res: any) => {
-              if (res?.meta?.requestStatus === 'rejected' || res?.error) {
-                const errMsg = (res.payload as string) || res.error?.message || 'Failed to accept invitation via Google';
-                if (onError) onError(errMsg);
-                else Alert.alert('Google Sign-In Failed', errMsg);
-                return;
-              }
-              if (onSuccess) {
-                onSuccess(res?.payload || res);
-              } else {
-                router.replace('/(resident)/dashboard');
-              }
-            })
-            .catch((err: any) => {
-              const errMsg = err?.response?.data?.message || err?.message || 'Failed to accept invitation via Google';
-              if (onError) onError(errMsg);
-              else Alert.alert('Google Sign-In Failed', errMsg);
-            })
-            .finally(() => setSubmitting(false));
+            provider: 'google' as const,
+            ...(payload.token ? { ssoCredential: payload.token } : payload),
+          };
+          const res: any = await acceptSsoInvite(invitePayload);
+          if (res?.meta?.requestStatus === 'rejected' || res?.error) {
+            const errMsg = (res.payload as string) || res.error?.message || 'Failed to accept invitation via Google';
+            if (onError) onError(errMsg);
+            else Alert.alert('Google Sign-In Failed', errMsg);
+            return;
+          }
+          if (onSuccess) {
+            onSuccess(res?.payload || res);
+          } else {
+            router.replace('/(resident)/dashboard');
+          }
         } else {
-          loginWithGoogle(idToken)
-            .then((res: any) => {
-              if (res?.meta?.requestStatus === 'rejected' || res?.error) {
-                const errMsg = (res.payload as string) || res.error?.message || 'Google sign in failed';
-                if (onError) onError(errMsg);
-                else Alert.alert('Google Sign-In Failed', errMsg);
-                return;
-              }
-              if (res?.payload?.isNewUser) {
-                const googleData = res.payload.googleData || {};
-                router.push({
-                  pathname: '/(auth)/register',
-                  params: {
-                    email: googleData.email || '',
-                    name: googleData.name || '',
-                    isGoogleSso: 'true',
-                  },
-                });
-              } else {
-                if (onSuccess) {
-                  onSuccess(res?.payload || res);
-                } else {
-                  router.replace('/(resident)/dashboard');
-                }
-              }
-            })
-            .catch((err: any) => {
-              if (onError) onError(err);
-            })
-            .finally(() => setSubmitting(false));
+          const res: any = await loginWithGoogle(payload);
+          if (res?.meta?.requestStatus === 'rejected' || res?.error) {
+            const errMsg = (res.payload as string) || res.error?.message || 'Google sign in failed';
+            if (onError) onError(errMsg);
+            else Alert.alert('Google Sign-In Failed', errMsg);
+            return;
+          }
+          if (res?.payload?.isNewUser) {
+            const googleData = res.payload.googleData || {};
+            router.push({
+              pathname: '/(auth)/register',
+              params: {
+                email: googleData.email || '',
+                name: googleData.name || '',
+                isGoogleSso: 'true',
+              },
+            });
+          } else {
+            if (onSuccess) {
+              onSuccess(res?.payload || res);
+            } else {
+              router.replace('/(resident)/dashboard');
+            }
+          }
         }
-      } else {
-        console.warn('[GoogleSignIn] Success response received but ID Token missing:', response);
+      } catch (err: any) {
+        const errMsg = err?.response?.data?.message || err?.message || 'Failed to complete Google Sign-In';
+        if (onError) onError(errMsg);
+        else Alert.alert('Google Sign-In Failed', errMsg);
+      } finally {
+        setSubmitting(false);
       }
-    } else if (response?.type === 'error') {
-      console.error('[GoogleSignIn] Auth Session Error:', response.error);
-      const errMsg = response.error?.message || 'Google authentication failed';
+    },
+    [inviteToken, acceptSsoInvite, loginWithGoogle, onSuccess, onError]
+  );
+
+  const processAuthResult = React.useCallback(
+    async (authResult: AuthSession.AuthSessionResult | null) => {
+      if (!authResult || authResult.type !== 'success') {
+        if (authResult?.type === 'error') {
+          console.error('[GoogleSignInButton] Auth Session Error:', authResult.error);
+          const errMsg = authResult.error?.message || 'Google authentication failed';
+          if (onError) onError(errMsg);
+          else Alert.alert('Google Sign-In Error', errMsg);
+        }
+        return;
+      }
+
+      // 1. Check for directly available ID token
+      const idToken = authResult.params?.id_token || (authResult as any).authentication?.idToken;
+      if (idToken) {
+        if (processedRef.current.has(idToken)) return;
+        processedRef.current.add(idToken);
+        await handlePayload({ token: idToken });
+        return;
+      }
+
+      // 2. Handle Authorization Code from Native Android/iOS
+      const code = authResult.params?.code;
+      if (code) {
+        if (processedRef.current.has(code)) return;
+        processedRef.current.add(code);
+
+        setSubmitting(true);
+
+        let resolvedIdToken: string | null = null;
+        if (request?.codeVerifier) {
+          try {
+            const tokenResponse = await AuthSession.exchangeCodeAsync(
+              {
+                clientId: activeClientId,
+                code,
+                redirectUri: request.redirectUri,
+                extraParams: {
+                  code_verifier: request.codeVerifier,
+                },
+              },
+              {
+                tokenEndpoint: 'https://oauth2.googleapis.com/token',
+              }
+            );
+            if (tokenResponse?.idToken) {
+              resolvedIdToken = tokenResponse.idToken;
+            }
+          } catch (exchangeErr: any) {
+            console.warn('[GoogleSignInButton] Client code exchange failed, falling back to server exchange:', exchangeErr?.message);
+          }
+        }
+
+        if (resolvedIdToken) {
+          await handlePayload({ token: resolvedIdToken });
+        } else {
+          await handlePayload({
+            code,
+            codeVerifier: request?.codeVerifier,
+            redirectUri: request?.redirectUri,
+            clientId: activeClientId,
+          });
+        }
+      }
+    },
+    [request, activeClientId, handlePayload, onError]
+  );
+
+  React.useEffect(() => {
+    if (response) {
+      processAuthResult(response);
+    }
+  }, [response, processAuthResult]);
+
+  const handlePress = React.useCallback(async () => {
+    try {
+      if (!request) {
+        Alert.alert(
+          'Google Sign-In',
+          'Google Sign-In is initializing. Please try again in a moment.'
+        );
+        return;
+      }
+      const result = await promptAsync();
+      if (result) {
+        await processAuthResult(result);
+      }
+    } catch (err: any) {
+      console.error('[GoogleSignInButton] Prompt error:', err);
+      const errMsg = err?.message || 'Could not start Google Sign-In.';
       if (onError) onError(errMsg);
       else Alert.alert('Google Sign-In Error', errMsg);
     }
-  }, [response, inviteToken, acceptSsoInvite, loginWithGoogle, onSuccess, onError]);
+  }, [request, promptAsync, processAuthResult, onError]);
 
   const isLoading = loading || submitting;
 
@@ -112,7 +208,7 @@ export function GoogleSignInButton({ inviteToken, onSuccess, onError }: GoogleSi
     <Button
       variant="outline"
       className="h-12 w-full rounded-xl flex-row items-center justify-center bg-card border border-border px-3"
-      onPress={() => promptAsync()}
+      onPress={handlePress}
       disabled={!request || isLoading}
       loading={isLoading}
     >
@@ -129,3 +225,5 @@ export function GoogleSignInButton({ inviteToken, onSuccess, onError }: GoogleSi
     </Button>
   );
 }
+
+export default GoogleSignInButton;
