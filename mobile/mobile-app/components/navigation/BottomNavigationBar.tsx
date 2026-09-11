@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   LayoutChangeEvent,
+  Keyboard,
 } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -215,14 +216,33 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   }, [activeTab]);
 
   const isNavigatingRef = useRef(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   const navTranslateY = useSharedValue(0);
 
   useEffect(() => {
-    navTranslateY.value = withTiming(isCompact ? (isIOS ? 120 : 90) : 0, {
-      duration: 260,
+    const shouldHide = isCompact || isKeyboardVisible;
+    navTranslateY.value = withTiming(shouldHide ? (isIOS ? 140 : 120) : 0, {
+      duration: 240,
       easing: Easing.out(Easing.cubic),
     });
-  }, [isCompact, isIOS]);
+  }, [isCompact, isKeyboardVisible, isIOS]);
+
+  const androidBarAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: navTranslateY.value }],
+  }));
 
   const barAnimatedStyle = useAnimatedStyle(() => {
     const baseStyle: any = {
@@ -403,15 +423,15 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
       <Animated.View
         style={[
           {
-            pointerEvents: 'box-none',
+            pointerEvents: isKeyboardVisible ? 'none' : 'box-none',
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
             width: '100%',
             zIndex: 50,
-            transform: [{ translateY: navTranslateY.value }],
           },
+          androidBarAnimatedStyle,
         ]}
       >
         <View
@@ -509,7 +529,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
       style={{
         bottom: bottomInset,
         width: '100%',
-        pointerEvents: 'box-none',
+        pointerEvents: isKeyboardVisible ? 'none' : 'box-none',
       }}
       className="absolute left-0 right-0 items-center justify-center px-4 z-50"
     >

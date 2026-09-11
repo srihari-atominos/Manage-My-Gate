@@ -21,6 +21,7 @@ import {
   Platform,
   ImageBackground,
   Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
@@ -181,12 +182,18 @@ export default function ForgotPasswordScreen() {
         resizeMode="cover"
       >
         <View className="absolute inset-0 bg-white/45 dark:bg-[#0B0E14]/60" />
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          className="px-5 py-8"
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 80 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            className="px-5 py-8"
+          >
           <View className="max-w-sm mx-auto w-full gap-4">
             {/* Brand Emblem */}
             <View className="items-center justify-center mb-1">
@@ -466,6 +473,7 @@ export default function ForgotPasswordScreen() {
             </View>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </ImageBackground>
     </>
   );

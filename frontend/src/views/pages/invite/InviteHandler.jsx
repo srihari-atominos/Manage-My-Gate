@@ -101,18 +101,34 @@ const InviteHandlerContent = () => {
     setSubmissionError('')
   }
 
-  // Helper: Process mobile handoff or redirect to web dashboard
+  // Helper: Process mobile handoff or redirect to web dashboard based on user device
   const processSuccessfulAcceptance = async () => {
     if (isMobileDevice()) {
       const handoffRes = await handleCreateInviteHandoff()
       if (handoffRes.success && handoffRes.data) {
         setHandoffData(handoffRes.data)
-        if (handoffRes.data.deepLink) {
-          window.location.href = handoffRes.data.deepLink
+        const { deepLink, playStoreUrl, appStoreUrl } = handoffRes.data || {}
+        const isAndroid = /android/i.test(navigator.userAgent || '')
+        const storeUrl = isAndroid ? playStoreUrl : (appStoreUrl || playStoreUrl)
+
+        // Step 1: Attempt deep-link launch of installed native mobile app
+        if (deepLink) {
+          window.location.href = deepLink
         }
-        return
+
+        // Step 2: Automatic fallback to Play Store / App Store if app is not installed
+        // (if window is still focused after 1.8 seconds, deep-link did not launch an app)
+        const fallbackTimer = setTimeout(() => {
+          if (storeUrl && typeof document !== 'undefined' && document.hasFocus && document.hasFocus()) {
+            window.location.href = storeUrl
+          }
+        }, 1800)
+
+        return () => clearTimeout(fallbackTimer)
       }
     }
+
+    // PC / Desktop Browser: navigate to Web Frontend Dashboard
     navigate('/dashboard', { replace: true })
   }
 

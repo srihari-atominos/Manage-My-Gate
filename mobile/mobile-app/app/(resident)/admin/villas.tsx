@@ -210,7 +210,7 @@ export default function VillaManagementScreen() {
         <SearchFilterBar
           searchValue={filters.search}
           onSearchChange={handleSearchChange}
-          searchPlaceholder="Search unit number..."
+          searchPlaceholder={t('search_unit_number', 'Search unit number...')}
           onFilterPress={handleClearFilters}
           activeFilterCount={activeFilterCount}
         />

@@ -45,8 +45,9 @@ export const useAuth = () => {
   );
 
   const handleLoginWithGoogle = useCallback(
-    (token: string) => {
-      return dispatch ? dispatch(loginWithGoogleThunk({ token })) : Promise.resolve();
+    (tokenOrPayload: string | any) => {
+      const payload = typeof tokenOrPayload === 'string' ? { token: tokenOrPayload } : tokenOrPayload;
+      return dispatch ? dispatch(loginWithGoogleThunk(payload)) : Promise.resolve();
     },
     [dispatch]
   );
@@ -73,14 +74,22 @@ export const useAuth = () => {
   );
 
   const handleAcceptInvite = useCallback(
-    (token: string, password: string) => {
-      return dispatch ? dispatch(acceptInviteThunk({ token, password })) : Promise.resolve();
+    (token: string, password?: string, email?: string) => {
+      return dispatch ? dispatch(acceptInviteThunk({ token, password, email })) : Promise.resolve();
     },
     [dispatch]
   );
 
   const handleAcceptSsoInvite = useCallback(
-    (payload: { inviteToken: string; ssoCredential: string; provider: 'google' | 'microsoft' }) => {
+    (payload: {
+      inviteToken: string;
+      ssoCredential?: string;
+      code?: string;
+      codeVerifier?: string;
+      redirectUri?: string;
+      clientId?: string;
+      provider: 'google' | 'microsoft';
+    }) => {
       return dispatch ? dispatch(acceptSsoInviteThunk(payload)) : Promise.resolve();
     },
     [dispatch]

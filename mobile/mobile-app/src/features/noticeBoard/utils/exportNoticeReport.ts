@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
-import * as XLSX from 'xlsx';
 
 let LegacyFileSystem: any = null;
 try {
@@ -15,6 +14,7 @@ try {
 
 export const exportNoticeReport = async (dashboardStats: any): Promise<void> => {
   try {
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
 
     // Summary Sheet

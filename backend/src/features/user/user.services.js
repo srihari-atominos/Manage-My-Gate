@@ -356,15 +356,17 @@ export class UserService {
 
       let membership = null;
       if (existingMembership) {
-        // Update the existing membership with new role, villa, and resident type details (explicitly Pending status until accepted)
         if (roleIds.length > 0) {
           existingMembership.roleIds = roleIds;
           existingMembership.roleId = roleIds[0] || null;
         }
-        existingMembership.villaId = rootVillaId;
-        existingMembership.residentType = rootResidentType;
-        existingMembership.units = membershipUnits;
-        existingMembership.status = 'Pending';
+        // Preserve Active status if user is already an active member of this organization
+        if (existingMembership.status !== 'Active') {
+          existingMembership.villaId = rootVillaId;
+          existingMembership.residentType = rootResidentType;
+          existingMembership.units = membershipUnits;
+          existingMembership.status = 'Pending';
+        }
         membership = await existingMembership.save({ session });
       } else {
         // Create membership with villa association and roles (explicitly Pending status)

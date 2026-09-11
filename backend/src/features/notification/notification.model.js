@@ -39,6 +39,10 @@ const notificationSchema = new mongoose.Schema(
       enum: ['INFO', 'WARNING', 'SUCCESS', 'ERROR', 'INVITATION'],
       default: 'INFO',
     },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
     isRead: {
       type: Boolean,
       default: false,

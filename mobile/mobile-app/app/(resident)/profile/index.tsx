@@ -426,7 +426,7 @@ export default function ProfileScreen() {
             <TextInput
               label={t('full_name', 'Full Name')}
               required
-              placeholder="e.g. Naveen"
+              placeholder={t('full_name_placeholder', 'e.g. Jane Doe')}
               value={name}
               onChangeText={(val) => {
                 setName(val);
@@ -449,7 +449,7 @@ export default function ProfileScreen() {
 
             <TextInput
               label={t('email_address', 'Email Address')}
-              placeholder="e.g. user@example.com"
+              placeholder={t('email_placeholder', 'e.g. user@example.com')}
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
@@ -486,7 +486,7 @@ export default function ProfileScreen() {
 
             <TextInput
               label={t('phone_number', 'Phone Number')}
-              placeholder="e.g. +91 9876543210"
+              placeholder={t('phone_placeholder', 'e.g. +91 9876543210')}
               keyboardType="phone-pad"
               value={phone}
               onChangeText={(val) => {

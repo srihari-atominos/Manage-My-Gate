@@ -22,6 +22,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
       "buildNumber": "10",
+      "associatedDomains": [
+        "applinks:managemygate.e3esg.com",
+        "applinks:app.managemygate.com",
+        "applinks:managemygate.com"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
@@ -39,7 +44,7 @@
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
-      "versionCode": 12,
+      "versionCode": 13,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -54,6 +59,16 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
+            {
+              "scheme": "https",
+              "host": "app.managemygate.com",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite"
+            },
             {
               "scheme": "https",
               "host": "app.managemygate.com",
@@ -78,6 +93,10 @@
         {
           "action": "VIEW",
           "data": [
+            {
+              "scheme": "managemygate",
+              "host": "invite"
+            },
             {
               "scheme": "managemygate",
               "host": "invite",

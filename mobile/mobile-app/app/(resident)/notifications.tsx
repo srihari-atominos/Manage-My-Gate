@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, TouchableOpacity, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
+import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   Bell,
   CheckCheck,
@@ -15,19 +17,42 @@ import {
   Info,
   ChevronRight,
   RotateCcw,
+  Building2,
+  Check,
+  X,
 } from 'lucide-react-native';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
 import { NotificationItemData } from '@/src/features/notification/services/notificationService';
 import { mapActionUrlToMobileRoute } from '@/src/features/notification/utils/notificationNavigation';
+import {
+  InvitationDetailModal,
+  extractInvitationToken,
+} from '@/src/features/notification/components/InvitationDetailModal';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/src/store/store';
+import {
+  acceptInviteThunk,
+  rejectInviteThunk,
+  switchWorkspaceContextThunk,
+} from '@/src/features/auth/store/authSlice';
 import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/src/utils/i18n';
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
+  const { user } = useAuth();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Invitation Modal State
+  const [selectedInviteNotification, setSelectedInviteNotification] = useState<NotificationItemData | null>(null);
+  const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
+  const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
+  const [inviteStatusMap, setInviteStatusMap] = useState<Record<string, 'ACCEPTED' | 'REJECTED'>>({});
 
   const {
     items,
@@ -39,6 +64,21 @@ export default function NotificationsScreen() {
     markAllAsRead,
     deleteNotification,
   } = useNotifications();
+
+  // Helper to determine if a notification represents an invitation
+  const isInvitationNotification = useCallback((notification?: NotificationItemData | null): boolean => {
+    if (!notification) return false;
+    if (notification.type === 'INVITATION') return true;
+    const title = (notification.title || '').toLowerCase();
+    const body = (notification.body || '').toLowerCase();
+    const url = (notification.actionUrl || '').toLowerCase();
+    return (
+      title.includes('invitation') ||
+      body.includes('invited') ||
+      url.includes('/invite/') ||
+      url.includes('accept-invite')
+    );
+  }, []);
 
   // Filter items based on active tab
   const filteredItems = React.useMemo(() => {
@@ -67,11 +107,172 @@ export default function NotificationsScreen() {
     }
   };
 
+  // Full acceptance workflow with automatic workspace context switch and navigation
+  const handleAcceptInvitation = useCallback(
+    async (token: string, orgId?: string, orgName?: string) => {
+      try {
+        const actionResult: any = await dispatch(
+          acceptInviteThunk({ token, email: user?.email })
+        ).unwrap();
+
+        const targetOrg = orgId || actionResult?.orgId || actionResult?.user?.orgId;
+        if (targetOrg) {
+          try {
+            await dispatch(switchWorkspaceContextThunk({ targetOrgId: targetOrg })).unwrap();
+          } catch (_) {}
+        }
+
+        const notifId = selectedInviteNotification?.id || selectedInviteNotification?._id;
+        if (notifId) {
+          markAsRead(notifId);
+          setInviteStatusMap((prev) => ({ ...prev, [notifId]: 'ACCEPTED' }));
+        }
+
+        setIsInviteModalVisible(false);
+        setSelectedInviteNotification(null);
+
+        // Seamlessly navigate to the community page
+        router.replace('/(resident)/dashboard');
+      } catch (err: any) {
+        const msg = err?.message || err || 'Failed to accept invitation';
+        Alert.alert(t('invitation_error', 'Invitation Error'), msg);
+        throw err;
+      }
+    },
+    [dispatch, user?.email, selectedInviteNotification, markAsRead, router, t]
+  );
+
+  // Full rejection workflow matching email rejection logic
+  const handleRejectInvitation = useCallback(
+    async (token: string, orgName?: string) => {
+      try {
+        await dispatch(rejectInviteThunk({ token, email: user?.email })).unwrap();
+
+        const notifId = selectedInviteNotification?.id || selectedInviteNotification?._id;
+        if (notifId) {
+          markAsRead(notifId);
+          setInviteStatusMap((prev) => ({ ...prev, [notifId]: 'REJECTED' }));
+        }
+
+        setIsInviteModalVisible(false);
+        setSelectedInviteNotification(null);
+
+        await fetchNotifications(1, 15);
+        Alert.alert(
+          t('invitation_declined', 'Invitation Declined'),
+          `${t('declined_success', 'You have declined the invitation to join')} ${orgName || 'the workspace'}.`
+        );
+      } catch (err: any) {
+        const msg = err?.message || err || 'Failed to reject invitation';
+        Alert.alert(t('error', 'Error'), msg);
+        throw err;
+      }
+    },
+    [dispatch, user?.email, selectedInviteNotification, markAsRead, fetchNotifications, t]
+  );
+
+  // Quick card accept button handler
+  const handleCardQuickAccept = useCallback(
+    async (notification: NotificationItemData) => {
+      const token = extractInvitationToken(notification);
+      if (!token) {
+        // Fallback to opening details modal
+        setSelectedInviteNotification(notification);
+        setIsInviteModalVisible(true);
+        return;
+      }
+      const notifId = notification.id || notification._id || '';
+      setActionInProgressId(notifId);
+      try {
+        const actionResult: any = await dispatch(
+          acceptInviteThunk({ token, email: user?.email })
+        ).unwrap();
+
+        const targetOrg =
+          notification.metadata?.orgId || actionResult?.orgId || actionResult?.user?.orgId;
+        if (targetOrg) {
+          try {
+            await dispatch(switchWorkspaceContextThunk({ targetOrgId: targetOrg })).unwrap();
+          } catch (_) {}
+        }
+
+        if (notifId) {
+          markAsRead(notifId);
+          setInviteStatusMap((prev) => ({ ...prev, [notifId]: 'ACCEPTED' }));
+        }
+
+        router.replace('/(resident)/dashboard');
+      } catch (err: any) {
+        const msg = err?.message || err || 'Failed to accept invitation';
+        Alert.alert(t('invitation_error', 'Invitation Error'), msg);
+      } finally {
+        setActionInProgressId(null);
+      }
+    },
+    [dispatch, user?.email, markAsRead, router, t]
+  );
+
+  // Quick card reject button handler
+  const handleCardQuickReject = useCallback(
+    async (notification: NotificationItemData) => {
+      const token = extractInvitationToken(notification);
+      if (!token) {
+        setSelectedInviteNotification(notification);
+        setIsInviteModalVisible(true);
+        return;
+      }
+      const notifId = notification.id || notification._id || '';
+      const orgName =
+        notification.metadata?.communityName || notification.title || 'the community';
+
+      Alert.alert(
+        t('decline_invitation', 'Decline Invitation'),
+        `${t('confirm_decline', 'Are you sure you want to decline the invitation to join')} ${orgName}?`,
+        [
+          { text: t('cancel', 'Cancel'), style: 'cancel' },
+          {
+            text: t('decline', 'Decline'),
+            style: 'destructive',
+            onPress: async () => {
+              setActionInProgressId(notifId);
+              try {
+                await dispatch(rejectInviteThunk({ token, email: user?.email })).unwrap();
+                if (notifId) {
+                  markAsRead(notifId);
+                  setInviteStatusMap((prev) => ({ ...prev, [notifId]: 'REJECTED' }));
+                }
+                await fetchNotifications(1, 15);
+                Alert.alert(
+                  t('invitation_declined', 'Invitation Declined'),
+                  `${t('declined_success', 'You have declined the invitation to join')} ${orgName}.`
+                );
+              } catch (err: any) {
+                const msg = err?.message || err || 'Failed to reject invitation';
+                Alert.alert(t('error', 'Error'), msg);
+              } finally {
+                setActionInProgressId(null);
+              }
+            },
+          },
+        ]
+      );
+    },
+    [dispatch, user?.email, markAsRead, fetchNotifications, t]
+  );
+
   const handleNotificationPress = (notification: NotificationItemData) => {
     const id = notification.id || notification._id;
     if (id && !notification.isRead) {
       markAsRead(id);
     }
+
+    // Intercept invitation notifications to show community details and accept/reject modal
+    if (isInvitationNotification(notification)) {
+      setSelectedInviteNotification(notification);
+      setIsInviteModalVisible(true);
+      return;
+    }
+
     if (notification.actionUrl) {
       const route = mapActionUrlToMobileRoute(
         notification.actionUrl,
@@ -125,6 +326,22 @@ export default function NotificationsScreen() {
     const notifId =
       notification.id || notification._id || Math.random().toString();
     const isUnread = !notification.isRead;
+    const isInvite = isInvitationNotification(notification);
+    const isActionLoading = actionInProgressId === notifId;
+
+    const trackedStatus: string =
+      (inviteStatusMap[notifId] as string) ||
+      (notification.metadata?.invitationStatus as string) ||
+      (notification.metadata?.membershipStatus as string) ||
+      '';
+    const isInviteAccepted =
+      trackedStatus === 'ACCEPTED' ||
+      trackedStatus === 'Active' ||
+      trackedStatus === 'ACCEPTED_MEMBER';
+    const isInviteRejected =
+      trackedStatus === 'REJECTED' ||
+      trackedStatus === 'Declined' ||
+      trackedStatus === 'Rejected';
 
     return (
       <TouchableOpacity
@@ -144,11 +361,15 @@ export default function NotificationsScreen() {
 
         {/* Notification Type Icon Wrapper */}
         <View className="p-3 rounded-2xl bg-secondary border border-border/60 shrink-0 mt-0.5">
-          {getNotificationIcon(notification.type)}
+          {isInvite ? (
+            <Building2 size={20} color="#FF6A00" />
+          ) : (
+            getNotificationIcon(notification.type)
+          )}
         </View>
 
         {/* Content Section */}
-        <View className="flex-1 pe-3 justify-center">
+        <View className="flex-1 pe-2 justify-center">
           <View className="flex-row items-center justify-between">
             <Text
               className={`text-[13px] tracking-tight ${
@@ -165,6 +386,18 @@ export default function NotificationsScreen() {
             </Text>
           </View>
 
+          {/* Invitation Badge */}
+          {isInvite ? (
+            <View className="flex-row items-center mt-1">
+              <StatusBadge
+                variant="info"
+                label={t('workspace_invitation', 'Workspace Invitation')}
+                size="sm"
+                dot={true}
+              />
+            </View>
+          ) : null}
+
           <Text
             className="text-[12px] text-muted-foreground mt-1 leading-[17px]"
             numberOfLines={3}
@@ -172,15 +405,87 @@ export default function NotificationsScreen() {
             {notification.body || ''}
           </Text>
 
-          {/* Action Link Tag */}
-          {notification.actionUrl && (
+          {/* Invitation Action Buttons & View Details */}
+          {isInvite ? (
+            <View className="flex-col gap-2 mt-3 pt-2.5 border-t border-border/50">
+              {isInviteAccepted ? (
+                <View className="flex-row items-center gap-2">
+                  <StatusBadge
+                    variant="success"
+                    label={t('accepted', 'Accepted')}
+                    size="sm"
+                    dot={true}
+                  />
+                </View>
+              ) : isInviteRejected ? (
+                <View className="flex-row items-center gap-2">
+                  <StatusBadge
+                    variant="danger"
+                    label={t('declined', 'Declined')}
+                    size="sm"
+                    dot={true}
+                  />
+                </View>
+              ) : (
+                <View className="flex-row items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleCardQuickAccept(notification);
+                    }}
+                    loading={isActionLoading}
+                    disabled={isActionLoading}
+                    className="h-8 px-3 rounded-lg flex-1"
+                  >
+                    <View className="flex-row items-center justify-center gap-1">
+                      <Check size={13} color="#FFFFFF" />
+                      <Text className="text-white text-xs font-bold font-sans">
+                        {t('accept', 'Accept')}
+                      </Text>
+                    </View>
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleCardQuickReject(notification);
+                    }}
+                    loading={isActionLoading}
+                    disabled={isActionLoading}
+                    className="h-8 px-3 rounded-lg border-destructive/40 flex-1"
+                  >
+                    <View className="flex-row items-center justify-center gap-1">
+                      <X size={13} className="text-destructive" />
+                      <Text className="text-destructive text-xs font-semibold font-sans">
+                        {t('decline', 'Decline')}
+                      </Text>
+                    </View>
+                  </Button>
+                </View>
+              )}
+
+              <TouchableOpacity
+                onPress={() => handleNotificationPress(notification)}
+                className="flex-row items-center gap-1 py-1 self-start"
+              >
+                <Text className="text-[11px] font-bold text-primary">
+                  {t('view_details', 'View details')}
+                </Text>
+                <ChevronRight size={12} color="#FF6A00" />
+              </TouchableOpacity>
+            </View>
+          ) : notification.actionUrl ? (
             <View className="flex-row items-center gap-1 mt-2.5">
               <Text className="text-[11px] font-bold text-primary">
                 {t('view_details', 'View details')}
               </Text>
               <ChevronRight size={12} color="#FF6A00" />
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Delete Action Button */}
@@ -201,93 +506,107 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <ScreenShell
-      title={t('notifications', 'Notifications')}
-      subtitle={
-        unreadCount > 0
-          ? `${unreadCount} ${t('unread_notifications', 'unread alerts')}`
-          : t('all_caught_up', 'All notifications and activity logs')
-      }
-      iconName="Bell"
-      showBackButton={true}
-      headerRight={
-        unreadCount > 0 ? (
-          <TouchableOpacity
-            onPress={markAllAsRead}
-            activeOpacity={0.7}
-            className="flex-row items-center gap-1 bg-primary/10 border border-primary/25 px-2.5 py-1.5 rounded-full shadow-xs"
-          >
-            <CheckCheck size={13} color="#FF6A00" />
-            <Text className="text-[11px] font-bold text-primary font-sans">
-              {t('mark_all_read', 'Read all')}
-            </Text>
-          </TouchableOpacity>
-        ) : null
-      }
-    >
-      <View className="flex-1 bg-background">
-        {/* Full-Page Paginated List with Infinity Scroll & Pull to Refresh */}
-        <PaginatedList<NotificationItemData>
-          data={filteredItems}
-          renderItem={(item) => renderNotificationCard(item)}
-          pagination={{
-            currentPage: pagination.currentPage,
-            totalPages: pagination.totalPages,
-            totalRecords: pagination.totalRecords,
-            limit: 15,
-          }}
-          onLoadMore={handleLoadMore}
-          onRefresh={handleRefresh}
-          loading={loading}
-          refreshing={refreshing}
-          ListHeaderComponent={
-            <View className="flex-row items-center gap-2 pt-3 mb-3 pb-1">
-              <TouchableOpacity
-                onPress={() => setActiveTab('all')}
-                className={`px-4 py-1.5 rounded-full border ${
-                  getStatusTabStyle('all', activeTab === 'all').containerClass
-                }`}
-              >
-                <Text
-                  className={`text-xs font-bold ${
-                    getStatusTabStyle('all', activeTab === 'all').textClass
+    <>
+      <ScreenShell
+        title={t('notifications', 'Notifications')}
+        subtitle={
+          unreadCount > 0
+            ? `${unreadCount} ${t('unread_notifications', 'unread alerts')}`
+            : t('all_caught_up', 'All notifications and activity logs')
+        }
+        iconName="Bell"
+        showBackButton={true}
+        headerRight={
+          unreadCount > 0 ? (
+            <TouchableOpacity
+              onPress={markAllAsRead}
+              activeOpacity={0.7}
+              className="flex-row items-center gap-1 bg-primary/10 border border-primary/25 px-2.5 py-1.5 rounded-full shadow-xs"
+            >
+              <CheckCheck size={13} color="#FF6A00" />
+              <Text className="text-[11px] font-bold text-primary font-sans">
+                {t('mark_all_read', 'Read all')}
+              </Text>
+            </TouchableOpacity>
+          ) : null
+        }
+      >
+        <View className="flex-1 bg-background">
+          {/* Full-Page Paginated List with Infinity Scroll & Pull to Refresh */}
+          <PaginatedList<NotificationItemData>
+            data={filteredItems}
+            renderItem={(item) => renderNotificationCard(item)}
+            pagination={{
+              currentPage: pagination.currentPage,
+              totalPages: pagination.totalPages,
+              totalRecords: pagination.totalRecords,
+              limit: 15,
+            }}
+            onLoadMore={handleLoadMore}
+            onRefresh={handleRefresh}
+            loading={loading}
+            refreshing={refreshing}
+            ListHeaderComponent={
+              <View className="flex-row items-center gap-2 pt-3 mb-3 pb-1">
+                <TouchableOpacity
+                  onPress={() => setActiveTab('all')}
+                  className={`px-4 py-1.5 rounded-full border ${
+                    getStatusTabStyle('all', activeTab === 'all').containerClass
                   }`}
                 >
-                  {t('all', 'All')} ({items.length})
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    className={`text-xs font-bold ${
+                      getStatusTabStyle('all', activeTab === 'all').textClass
+                    }`}
+                  >
+                    {t('all', 'All')} ({items.length})
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => setActiveTab('unread')}
-                className={`px-4 py-1.5 rounded-full border ${
-                  getStatusTabStyle('warning', activeTab === 'unread').containerClass
-                }`}
-              >
-                <Text
-                  className={`text-xs font-bold ${
-                    getStatusTabStyle('warning', activeTab === 'unread').textClass
+                <TouchableOpacity
+                  onPress={() => setActiveTab('unread')}
+                  className={`px-4 py-1.5 rounded-full border ${
+                    getStatusTabStyle('warning', activeTab === 'unread').containerClass
                   }`}
                 >
-                  {t('unread', 'Unread')} ({unreadCount})
-                </Text>
-              </TouchableOpacity>
-            </View>
-          }
-          contentContainerClassName="px-4 pb-28"
-          contentContainerStyle={{ paddingBottom: 110 }}
-          emptyIcon="Bell"
-          emptyTitle={
-            activeTab === 'unread'
-              ? t('no_unread_notifications', 'No Unread Notifications')
-              : t('no_notifications', 'No Notifications')
-          }
-          emptySubtitle={
-            activeTab === 'unread'
-              ? t('caught_up_subtitle', 'You have caught up with all unread notifications!')
-              : t('no_notifications_desc', 'Gate alerts, booking updates and broadcasts will appear here.')
-          }
-        />
-      </View>
-    </ScreenShell>
+                  <Text
+                    className={`text-xs font-bold ${
+                      getStatusTabStyle('warning', activeTab === 'unread').textClass
+                    }`}
+                  >
+                    {t('unread', 'Unread')} ({unreadCount})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            }
+            contentContainerClassName="px-4 pb-28"
+            contentContainerStyle={{ paddingBottom: 110 }}
+            emptyIcon="Bell"
+            emptyTitle={
+              activeTab === 'unread'
+                ? t('no_unread_notifications', 'No Unread Notifications')
+                : t('no_notifications', 'No Notifications')
+            }
+            emptySubtitle={
+              activeTab === 'unread'
+                ? t('caught_up_subtitle', 'You have caught up with all unread notifications!')
+                : t('no_notifications_desc', 'Gate alerts, booking updates and broadcasts will appear here.')
+            }
+          />
+        </View>
+      </ScreenShell>
+
+      {/* Community Invitation Details Modal with Accept & Reject Actions */}
+      <InvitationDetailModal
+        visible={isInviteModalVisible}
+        onClose={() => {
+          setIsInviteModalVisible(false);
+          setSelectedInviteNotification(null);
+        }}
+        notification={selectedInviteNotification}
+        onAccept={handleAcceptInvitation}
+        onReject={handleRejectInvitation}
+      />
+    </>
   );
 }

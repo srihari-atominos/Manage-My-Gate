@@ -47,6 +47,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       unique: true,
       sparse: true,
+      set: (v) => (v === null || v === '' ? undefined : v),
     },
     phoneVerified: {
       type: Boolean,
@@ -61,6 +62,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // --- LEGACY BACKWARD-COMPATIBILITY FIELDS ---
+    // NOTE (GAP-04): The canonical source of truth for multi-tenant gated community data is OrgMembership
+    // (OrgMembership.roleIds, OrgMembership.units, OrgMembership.residentType, OrgMembership.status).
+    // The root fields below are maintained strictly as backward-compatible caches for legacy single-tenant
+    // consumers, directory queries, and older clients. They MUST NOT be used for multi-tenant authorization.
     villaId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Villa',

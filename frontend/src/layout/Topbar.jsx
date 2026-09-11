@@ -1,6 +1,8 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const Topbar = ({ toggleSidebar }) => {
+  const { t } = useTranslation();
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-6 shadow-sm">
       {/* Mobile Hamburger Menu */}
@@ -35,7 +37,7 @@ const Topbar = ({ toggleSidebar }) => {
           <input
             type="text"
             className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md leading-5 bg-slate-50/80 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
-            placeholder="Search across platform..."
+            placeholder={t('common.search', 'Search across platform...')}
           />
         </div>
       </div>

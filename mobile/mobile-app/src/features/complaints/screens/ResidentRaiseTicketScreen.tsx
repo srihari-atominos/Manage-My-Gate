@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
 import { Card } from '@/components/common/Card';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
@@ -542,7 +541,7 @@ export function ResidentRaiseTicketScreen() {
       subtitle="Report plumbing, electrical, carpentry or common area issues"
       iconName="PlusCircle"
     >
-      <KeyboardAvoidingShell scrollable={false} className="bg-background">
+      <View className="flex-1 bg-background">
         {/* TOP SUB-HEADER BAR WITH ALIGNED BACK, BADGE & CLOSE */}
         <View className="flex-row items-center justify-between px-4 py-3 bg-card border-b border-border/60">
           <TouchableOpacity
@@ -583,7 +582,13 @@ export function ResidentRaiseTicketScreen() {
         </View>
 
         {/* MAIN FORM SCROLL AREA */}
-        <ScrollView className="flex-1 px-4 py-4" contentContainerStyle={{ paddingBottom: 130 }}>
+        <ScrollView
+          className="flex-1 px-4 py-4"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          contentContainerStyle={{ paddingBottom: 130 }}
+        >
           {error ? (
             <View className="mb-3">
               <ErrorBanner message={error} onDismiss={clearErrors} />
@@ -991,7 +996,7 @@ export function ResidentRaiseTicketScreen() {
             </View>
           </View>
         )}
-      </KeyboardAvoidingShell>
+      </View>
     </ScreenShell>
   );
 }

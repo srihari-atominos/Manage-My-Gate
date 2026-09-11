@@ -78,6 +78,14 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
           body: `You have been invited to join ${communityName}${descStr}. Tap to Accept or Reject this invitation.`,
           actionUrl: inviteLink,
           type: 'INVITATION',
+          metadata: {
+            token: invitationToken,
+            invitationToken,
+            orgId: orgId ? orgId.toString() : null,
+            communityName,
+            roleName: roleName || '',
+            villaLabel: villaLabel || '',
+          },
         });
       }
     } catch (notifErr) {

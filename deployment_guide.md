@@ -106,6 +106,7 @@ SUPER_ADMIN_PASSWORD=your_secure_superadmin_password_here
 
 # Enterprise SSO Credentials (Google & Microsoft)
 GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_ANDROID_CLIENT_ID=your_google_android_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 MICROSOFT_CLIENT_ID=your_microsoft_client_id_here
 MICROSOFT_TENANT_ID=your_microsoft_tenant_id_here

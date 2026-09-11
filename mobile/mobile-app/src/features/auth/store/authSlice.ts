@@ -362,9 +362,12 @@ export const loginWithMicrosoftThunk = createAsyncThunk(
 
 export const acceptInviteThunk = createAsyncThunk(
   'auth/acceptInvite',
-  async ({ token, password }: { token: string; password: string }, { rejectWithValue }) => {
+  async (
+    { token, email, password }: { token: string; email?: string; password?: string },
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await authService.acceptInvite({ token, password });
+      const response = await authService.acceptInvite({ token, email, password });
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       if (body && body.success === false) {
         return rejectWithValue(body.message || 'Failed to accept invitation');
@@ -374,13 +377,17 @@ export const acceptInviteThunk = createAsyncThunk(
       const authToken = innerData?.token;
       const refreshToken = innerData?.refreshToken;
       const rawUser = innerData?.user;
-      const user = normalizeUser(rawUser);
+      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+      const user = normalizeUser(rawUser ? { ...rawUser, availableWorkspaces } : rawUser);
 
       if (authToken) await storage.setItem('token', authToken);
       if (refreshToken) await storage.setItem('refreshToken', refreshToken);
       if (user) await storage.setItem('user', JSON.stringify(user));
+      if (availableWorkspaces && availableWorkspaces.length > 0) {
+        await storage.setItem('availableWorkspaces', JSON.stringify(availableWorkspaces));
+      }
 
-      return { ...innerData, user } as any;
+      return { ...innerData, user, availableWorkspaces } as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation');
     }
@@ -390,19 +397,19 @@ export const acceptInviteThunk = createAsyncThunk(
 export const acceptSsoInviteThunk = createAsyncThunk(
   'auth/acceptSsoInvite',
   async (
-    {
-      inviteToken,
-      ssoCredential,
-      provider,
-    }: {
+    payload: {
       inviteToken: string;
-      ssoCredential: string;
+      ssoCredential?: string;
+      code?: string;
+      codeVerifier?: string;
+      redirectUri?: string;
+      clientId?: string;
       provider: 'google' | 'microsoft';
     },
     { rejectWithValue }
   ) => {
     try {
-      const response = await authService.acceptSsoInvite({ inviteToken, ssoCredential, provider });
+      const response = await authService.acceptSsoInvite(payload);
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       if (body && body.success === false) {
         return rejectWithValue(body.message || 'Failed to accept invitation via SSO');
@@ -960,7 +967,8 @@ const authSlice = createSlice({
         state.token = action.payload?.token || action.payload?.data?.token || null;
         state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
         const rawUser = action.payload?.user || action.payload?.data?.user || null;
-        state.user = normalizeUser(rawUser);
+        const availableWorkspaces = action.payload?.availableWorkspaces || action.payload?.data?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+        state.user = normalizeUser(rawUser ? { ...rawUser, availableWorkspaces } : rawUser);
         state.isAuthenticated = !!(state.token && state.user?.id);
         state.successMsg = action.payload?.message || 'Invitation accepted and account activated successfully!';
       })

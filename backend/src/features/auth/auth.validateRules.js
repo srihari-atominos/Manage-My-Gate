@@ -128,15 +128,34 @@ export const ssoVerifyRules = [
   body()
     .custom((value, { req }) => {
       const ssoToken = req.body.token || req.body.credential;
-      if (!ssoToken || (typeof ssoToken === 'string' && !ssoToken.trim())) {
-        throw new Error('SSO provider token is required');
+      const ssoCode = req.body.code;
+      if ((!ssoToken || (typeof ssoToken === 'string' && !ssoToken.trim())) && (!ssoCode || (typeof ssoCode === 'string' && !ssoCode.trim()))) {
+        throw new Error('SSO provider token or authorization code is required');
       }
-      if (typeof ssoToken !== 'string') {
-        throw new Error('Token must be a string');
+      if (ssoToken) {
+        if (typeof ssoToken !== 'string') {
+          throw new Error('Token must be a string');
+        }
+        req.body.token = ssoToken.trim();
       }
-      req.body.token = ssoToken.trim();
+      if (ssoCode) {
+        if (typeof ssoCode !== 'string') {
+          throw new Error('Code must be a string');
+        }
+        req.body.code = ssoCode.trim();
+      }
       return true;
     }),
+  body('codeVerifier')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('codeVerifier must be a string')
+    .trim(),
+  body('redirectUri')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('redirectUri must be a string')
+    .trim(),
 ];
 
 /**
@@ -357,15 +376,42 @@ export const acceptInviteSsoRules = [
     .notEmpty()
     .withMessage('Invitation token is required')
     .trim(),
-  body('ssoCredential')
-    .notEmpty()
-    .withMessage('SSO credential is required')
-    .trim(),
+  body()
+    .custom((value, { req }) => {
+      const ssoCredential = req.body.ssoCredential || req.body.token || req.body.credential;
+      const ssoCode = req.body.code;
+      if ((!ssoCredential || (typeof ssoCredential === 'string' && !ssoCredential.trim())) && (!ssoCode || (typeof ssoCode === 'string' && !ssoCode.trim()))) {
+        throw new Error('SSO credential or authorization code is required');
+      }
+      if (ssoCredential) {
+        if (typeof ssoCredential !== 'string') {
+          throw new Error('SSO credential must be a string');
+        }
+        req.body.ssoCredential = ssoCredential.trim();
+      }
+      if (ssoCode) {
+        if (typeof ssoCode !== 'string') {
+          throw new Error('Code must be a string');
+        }
+        req.body.code = ssoCode.trim();
+      }
+      return true;
+    }),
   body('provider')
     .notEmpty()
     .withMessage('Provider is required')
     .isIn(['google', 'microsoft'])
     .withMessage('Provider must be google or microsoft')
+    .trim(),
+  body('codeVerifier')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('codeVerifier must be a string')
+    .trim(),
+  body('redirectUri')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('redirectUri must be a string')
     .trim(),
 ];
 

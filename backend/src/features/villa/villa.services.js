@@ -880,33 +880,54 @@ export class VillaService {
     const query = { _id: villaId };
     if (orgId) query.orgId = orgId;
     const villa = await Villa.findOne(query).session(session);
-    if (villa) {
-      const alreadyAssigned = villa.residents.some(r => String(r.userId) === String(userId));
-      if (!alreadyAssigned) {
-        villa.residents.push({
+    if (!villa) {
+      throw new HttpError(404, 'Villa or unit not found.');
+    }
+
+    const alreadyAssigned = villa.residents.some(r => String(r.userId) === String(userId));
+    const isDifferentPrimaryOccupant = villa.primaryResidentId && String(villa.primaryResidentId) !== String(userId);
+
+    // If another primary resident already occupies the villa, reject conflicting primary assignment
+    if (isDifferentPrimaryOccupant && !alreadyAssigned && (residencyType.includes('Owner') || residencyType.includes('Tenant') || residencyType === 'Resident')) {
+      throw new HttpError(409, 'Villa is already assigned to another primary resident.');
+    }
+
+    // Atomic conditional update to prevent double-booking race condition
+    const updateFilter = {
+      _id: villaId,
+      $or: [
+        { primaryResidentId: null },
+        { primaryResidentId: { $exists: false } },
+        { primaryResidentId: userId },
+        { 'residents.userId': userId }
+      ]
+    };
+    if (orgId) updateFilter.orgId = orgId;
+
+    const updateOps = {
+      $set: { status: 'Occupied' }
+    };
+
+    if (!alreadyAssigned) {
+      updateOps.$push = {
+        residents: {
           userId,
           residencyType,
           isPrimary: !villa.primaryResidentId,
           assignedAt: new Date()
-        });
-      }
+        }
+      };
+    }
+    if (!villa.primaryResidentId) {
+      updateOps.$set.primaryResidentId = userId;
+    }
+    if (!villa.ownerId && residencyType.includes('Owner')) {
+      updateOps.$set.ownerId = userId;
+    }
 
-      // Update primary and owner IDs if they are empty
-      if (!villa.primaryResidentId) {
-        villa.primaryResidentId = userId;
-      }
-      if (!villa.ownerId && residencyType.includes('Owner')) {
-        villa.ownerId = userId;
-      }
-
-      // Update occupancy status
-      if (residencyType.includes('Owner') || residencyType.includes('Tenant') || residencyType.includes('Family')) {
-        villa.status = 'Occupied';
-      } else if (villa.status === 'Vacant') {
-        villa.status = 'Occupied';
-      }
-
-      await villa.save({ session });
+    const updatedVilla = await Villa.findOneAndUpdate(updateFilter, updateOps, { new: true, session });
+    if (!updatedVilla && !alreadyAssigned) {
+      throw new HttpError(409, 'Villa assignment conflict. The unit is already occupied.');
     }
   }
 }

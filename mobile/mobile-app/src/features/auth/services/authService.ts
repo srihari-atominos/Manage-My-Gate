@@ -14,7 +14,11 @@ export const acceptInvite = async ({ token, email, password }: any) => {
 
 export const acceptSsoInvite = async (payload: {
   inviteToken: string;
-  ssoCredential: string;
+  ssoCredential?: string;
+  code?: string;
+  codeVerifier?: string;
+  redirectUri?: string;
+  clientId?: string;
   provider: 'google' | 'microsoft';
 }) => {
   return await apiClient.post('/auth/accept-invite/sso', payload);
@@ -22,6 +26,13 @@ export const acceptSsoInvite = async (payload: {
 
 export const rejectInvite = async ({ token, email }: { token: string; email?: string }) => {
   return await apiClient.post('/auth/reject-invite', { token, email });
+};
+
+export const validateInvite = async (token: string, email?: string) => {
+  const query = new URLSearchParams();
+  if (token) query.append('token', token);
+  if (email) query.append('email', email);
+  return await apiClient.get(`/auth/validate-invite?${query.toString()}`);
 };
 
 export const verifyRegistration = async (email: string, code: string) => {
@@ -124,6 +135,7 @@ export default {
   acceptInvite,
   acceptSsoInvite,
   rejectInvite,
+  validateInvite,
   loginWithGoogle,
   loginWithMicrosoft,
   initiatePhoneLogin,

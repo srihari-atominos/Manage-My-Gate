@@ -26,12 +26,14 @@ import InviteUserButton from './components/InviteUserButton'
 import ManageRolesModal from './components/ManageRolesModal'
 import TemplateEditorCanvasModal from '../messageTemplate/components/TemplateEditorCanvasModal'
 import { useUserList } from './hooks/useUserList'
+import { useTranslation } from 'react-i18next'
 import { parseBackendError } from '../../utils/validation'
 import './styles/_userManagement.scss'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const UserList = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   // ── Controller Hook ──
   const {
@@ -148,12 +150,12 @@ const UserList = () => {
     () => [
       {
         key: 'name',
-        label: 'Name',
+        label: t('userManagement.table.user', 'User'),
         render: (val) => <span className="fw-semibold">{val}</span>,
       },
       {
         key: 'email',
-        label: 'Contact Info',
+        label: t('auth.invite.emailLabel', 'Contact Info'),
         render: (val, row) => (
           <div className="d-flex flex-column gap-1">
             <span className="text-body-secondary">{val}</span>
@@ -168,7 +170,7 @@ const UserList = () => {
       },
       {
         key: 'assignedUnits',
-        label: 'Villa / Unit',
+        label: t('auth.invite.unit', 'Villa / Unit'),
         render: (val, row) => {
           if (!val || val.length === 0) return <span className="text-muted small">—</span>
           return (
@@ -181,7 +183,7 @@ const UserList = () => {
                   </div>
                   {unit.residentType && unit.residentType !== 'None' && (
                     <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                      Residency: <span className="fw-semibold">{unit.residentType}</span>
+                      {t('userManagement.table.residency', 'Residency')}: <span className="fw-semibold">{unit.residentType}</span>
                     </div>
                   )}
                 </div>
@@ -192,13 +194,13 @@ const UserList = () => {
       },
       {
         key: 'role',
-        label: 'Role',
+        label: t('userManagement.table.role', 'Role'),
         render: (val, row) => {
           const renderRoleBadges = (roleStr) => {
             if (!roleStr || roleStr === '' || (Array.isArray(roleStr) && roleStr.length === 0)) {
               return (
                 <CBadge color="light" className="text-body small px-2 py-1 border">
-                  Unassigned
+                  {t('userManagement.unassigned', 'Unassigned')}
                 </CBadge>
               )
             }
@@ -242,16 +244,24 @@ const UserList = () => {
       },
       {
         key: 'status',
-        label: 'Status',
+        label: t('common.status', 'Status'),
         render: (val, row) => {
           const renderStatusBadge = (statusStr) => {
             let badgeColor = 'secondary'
-            if (statusStr === 'Active') badgeColor = 'success'
-            else if (statusStr === 'Pending') badgeColor = 'warning'
-            else if (statusStr === 'Inactive') badgeColor = 'danger'
+            let statusLabel = statusStr
+            if (statusStr === 'Active') {
+              badgeColor = 'success'
+              statusLabel = t('superAdmin.orgManager.statusActive', 'Active')
+            } else if (statusStr === 'Pending') {
+              badgeColor = 'warning'
+              statusLabel = t('invitations.status.pending', 'Pending')
+            } else if (statusStr === 'Inactive' || statusStr === 'Rejected') {
+              badgeColor = 'danger'
+              statusLabel = statusStr === 'Rejected' ? t('invitations.status.rejected', 'Rejected') : statusStr
+            }
             return (
               <CBadge color={badgeColor} className="small px-2 py-1">
-                {statusStr}
+                {statusLabel}
               </CBadge>
             )
           }
@@ -278,7 +288,7 @@ const UserList = () => {
         },
       },
     ],
-    [],
+    [t],
   )
 
   const handleManageRoles = (user, unit = null) => {
@@ -289,11 +299,12 @@ const UserList = () => {
   const renderRowActions = (user) => {
     const isSelf = user.id === currentUserId
     const isPending = user.status === 'Pending'
+    const isRejected = user.status === 'Rejected'
 
     const ActionButtons = ({ unit }) => (
       <div className="d-flex gap-2">
-        {/* Resend Invite — mail icon (only for pending users) */}
-        {isPending && (
+        {/* Resend Invite — mail icon (for pending or rejected users) */}
+        {(isPending || isRejected) && (
           <ActionIconButton
             id={`resend-invite-${user.id}`}
             color="success"
@@ -413,8 +424,8 @@ const UserList = () => {
     <div className="p-4" style={{ maxWidth: '1100px', margin: '0 auto' }}>
       {/* Page Header */}
       <PageHeader
-        title="User Management"
-        subtitle="Manage organization users and allocate access roles."
+        title={t('userManagement.title', 'User Management')}
+        subtitle={t('userManagement.subtitle', 'Manage organization users and allocate access roles.')}
         actionButtons={
           <div className="d-flex gap-2">
             <CButton
@@ -425,7 +436,7 @@ const UserList = () => {
               className="fw-semibold d-flex align-items-center gap-1"
               onClick={() => navigate('/users/invitations')}
             >
-              📋 Invitations
+              📋 {t('invitations.pageTitle', 'Invitations')}
             </CButton>
             <CButton
               id="configure-invitation-tmpl-btn"
@@ -435,7 +446,7 @@ const UserList = () => {
               className="fw-semibold d-flex align-items-center gap-1"
               onClick={() => setShowTemplateModal(true)}
             >
-              ✉️ Configure Invitation Mail
+              ✉️ {t('userManagement.configureMail', 'Configure Invitation Mail')}
             </CButton>
             <CButton
               id="bulk-invite-users-btn"
@@ -445,7 +456,7 @@ const UserList = () => {
               className="fw-semibold d-flex align-items-center gap-1"
               onClick={() => setShowBulkInviteModal(true)}
             >
-              👥 Bulk Invite
+              👥 {t('userManagement.bulkInvite', 'Bulk Invite')}
             </CButton>
             <InviteUserButton onClick={() => setShowInviteModal(true)} />
           </div>
