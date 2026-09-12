@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { cn } from '../../lib/utils';
 import { LucideIcon, CheckCircle2, AlertCircle, XCircle, X } from 'lucide-react-native';
@@ -85,15 +86,21 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
     const renderIcon = (icon: any, isLeft: boolean) => {
       if (!icon) return null;
       if (isValidElement(icon)) {
-        return <View className={isLeft ? 'me-2.5 mt-0.5' : 'ms-2 mt-0.5'}>{icon}</View>;
+        return (
+          <View style={isLeft ? { marginRight: 12, alignItems: 'center', justifyContent: 'center' } : { marginLeft: 10, alignItems: 'center', justifyContent: 'center' }}>
+            {icon}
+          </View>
+        );
       }
       const IconComponent = icon;
       return (
-        <IconComponent
-          size={18}
-          className={cn(isLeft ? 'me-2.5' : 'ms-2', 'text-muted-foreground mt-0.5')}
-          onPress={!isLeft ? onRightIconPress : undefined}
-        />
+        <View style={isLeft ? { marginRight: 12, alignItems: 'center', justifyContent: 'center' } : { marginLeft: 10, alignItems: 'center', justifyContent: 'center' }}>
+          <IconComponent
+            size={18}
+            className="text-muted-foreground"
+            onPress={!isLeft ? onRightIconPress : undefined}
+          />
+        </View>
       );
     };
 
@@ -172,6 +179,8 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             style={[
               {
                 outlineStyle: 'none',
+                paddingHorizontal: 4,
+                paddingVertical: Platform.OS === 'ios' ? 4 : 2,
                 ...(props.multiline ? { textAlignVertical: 'top' } : {}),
               } as any,
               props.style,

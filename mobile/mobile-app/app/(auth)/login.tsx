@@ -47,6 +47,7 @@ import { storage, sessionStore } from '@/src/utils/storage';
 import { useSelector, useDispatch } from 'react-redux';
 import { clearPendingRoute } from '../../src/features/notification/store/notificationSlice';
 import { useTranslation } from '@/src/utils/i18n';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -81,6 +82,7 @@ interface PhoneFormValues {
 }
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
@@ -384,12 +386,16 @@ export default function LoginScreen() {
           style={{ flex: 1 }}
         >
           <ScrollView
-            contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingTop: Math.max(insets.top, 24) + 16,
+              paddingBottom: Math.max(insets.bottom, 20) + 40,
+            }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-            className="px-5 py-6"
+            className="px-5"
           >
             <View className="max-w-sm mx-auto w-full gap-3.5">
             {/* Step 1, 2, 3: Top Brand Identity Section (Logo → App Name → Nexus Around Home → Slogan) */}
@@ -412,7 +418,7 @@ export default function LoginScreen() {
                   justifyContent: 'center',
                 }}
               >
-                <NahomEmblem size={118} />
+                <NahomEmblem size={112} />
               </Animated.View>
 
               {/* Step 2 & 3: NoHome App Name + "Nexus Around Home" + Slogan with proper spacing */}
@@ -426,6 +432,7 @@ export default function LoginScreen() {
                   width: '100%',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  marginTop: 6,
                 }}
               >
                 <NahomWordmark />
@@ -440,25 +447,35 @@ export default function LoginScreen() {
               }}
               className="gap-3.5 w-full"
             >
-              {/* Step 4: Login Method Selection (Email/Password vs Phone OTP) */}
-              <View className="bg-muted/40 p-1.5 rounded-2xl flex-row border border-border/80">
+              {/* Step 4: Login Method Selection (Segmented Pill Buttons) */}
+              <View className="bg-[#F5F5F4]/95 dark:bg-[#292524]/70 p-1.5 rounded-2xl flex-row border border-[#E7E5E4] dark:border-[#44403C]">
                 <TouchableOpacity
                   onPress={() => setAuthMode('basic')}
                   activeOpacity={0.85}
-                  className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2 ${
+                  style={
                     authMode === 'basic'
-                      ? 'bg-card border border-border/60 shadow-xs'
-                      : ''
-                  }`}
+                      ? {
+                          backgroundColor: '#FFFFFF',
+                          shadowColor: '#000000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.06,
+                          shadowRadius: 6,
+                          elevation: 2,
+                        }
+                      : {
+                          backgroundColor: 'transparent',
+                        }
+                  }
+                  className="flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2"
                 >
                   <Lock
                     size={15}
-                    color={authMode === 'basic' ? '#FF5E00' : '#64748B'}
+                    color={authMode === 'basic' ? '#EA580C' : '#57534E'}
+                    strokeWidth={authMode === 'basic' ? 2.4 : 2}
                   />
                   <Text
-                    className={`text-xs font-bold ${
-                      authMode === 'basic' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
-                    }`}
+                    style={{ color: authMode === 'basic' ? '#EA580C' : '#57534E' }}
+                    className={`text-xs ${authMode === 'basic' ? 'font-bold' : 'font-medium'}`}
                   >
                     Email / Password
                   </Text>
@@ -467,38 +484,57 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   onPress={() => setAuthMode('phone')}
                   activeOpacity={0.85}
-                  className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2 ${
+                  style={
                     authMode === 'phone'
-                      ? 'bg-card border border-border/60 shadow-xs'
-                      : ''
-                  }`}
+                      ? {
+                          backgroundColor: '#FFFFFF',
+                          shadowColor: '#000000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.06,
+                          shadowRadius: 6,
+                          elevation: 2,
+                        }
+                      : {
+                          backgroundColor: 'transparent',
+                        }
+                  }
+                  className="flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2"
                 >
                   <Smartphone
                     size={15}
-                    color={authMode === 'phone' ? '#FF5E00' : '#64748B'}
+                    color={authMode === 'phone' ? '#EA580C' : '#57534E'}
+                    strokeWidth={authMode === 'phone' ? 2.4 : 2}
                   />
                   <Text
-                    className={`text-xs font-bold ${
-                      authMode === 'phone' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
-                    }`}
+                    style={{ color: authMode === 'phone' ? '#EA580C' : '#57534E' }}
+                    className={`text-xs ${authMode === 'phone' ? 'font-bold' : 'font-medium'}`}
                   >
-                    Phone OTP
+                    Sign in with OTP
                   </Text>
                 </TouchableOpacity>
               </View>
 
               {/* Form Card Container */}
-              <View className="bg-card border border-border/80 rounded-3xl p-5 gap-3.5 shadow-xs">
+              <View
+                style={{
+                  shadowColor: '#1C1917',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.04,
+                  shadowRadius: 12,
+                  elevation: 2,
+                }}
+                className="bg-white dark:bg-[#1C1917] border border-[#F5F5F4] dark:border-[#292524] rounded-3xl p-5 gap-3.5"
+              >
                 {/* Context Switch Auth Requirement Banner */}
                 {params.switchType && params.targetName && !switchDismissed && (
-                  <View className="bg-orange-50/90 dark:bg-[#1E232E] border border-[#FF6A00]/30 rounded-2xl p-3.5 gap-2.5 shadow-2xs">
+                  <View className="bg-[#FFF7ED] dark:bg-[#7C2D12]/20 border border-[#FED7AA] dark:border-[#EA580C]/30 rounded-2xl p-3.5 gap-2.5 shadow-2xs">
                     {/* Header Row: Lock Icon, Title & Close Button */}
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center gap-2">
-                        <View className="w-7 h-7 rounded-lg bg-[#FF6A00]/15 dark:bg-[#FF6A00]/25 items-center justify-center">
-                          <Lock size={14} color="#FF6A00" strokeWidth={2.4} />
+                        <View className="w-7 h-7 rounded-lg bg-[#EA580C]/15 items-center justify-center">
+                          <Lock size={14} color="#EA580C" strokeWidth={2.4} />
                         </View>
-                        <Text className="text-[13px] font-extrabold text-foreground font-sans tracking-tight">
+                        <Text className="text-[13px] font-bold text-[#C2410C] dark:text-[#FDBA74] tracking-tight">
                           Authentication Required
                         </Text>
                       </View>
@@ -507,25 +543,25 @@ export default function LoginScreen() {
                         onPress={() => setSwitchDismissed(true)}
                         activeOpacity={0.7}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 items-center justify-center"
+                        className="w-6 h-6 rounded-full bg-[#EA580C]/10 items-center justify-center"
                         accessibilityRole="button"
                         accessibilityLabel="Dismiss notice"
                       >
-                        <X size={12} color="#64748B" />
+                        <X size={12} color="#C2410C" />
                       </TouchableOpacity>
                     </View>
 
                     {/* Target Context Capsule Pill */}
-                    <View className="flex-row items-center bg-white dark:bg-card border border-border/80 rounded-xl px-3 py-2 gap-2 shadow-2xs">
-                      <View className="bg-[#FF6A00]/15 dark:bg-[#FF6A00]/25 px-2 py-0.5 rounded-md shrink-0">
-                        <Text className="text-[9.5px] font-extrabold text-[#FF6A00] font-sans uppercase">
+                    <View className="flex-row items-center bg-white dark:bg-[#1C1917] border border-[#FED7AA]/60 rounded-xl px-3 py-2 gap-2 shadow-2xs">
+                      <View className="bg-[#EA580C]/15 px-2 py-0.5 rounded-md shrink-0">
+                        <Text className="text-[9.5px] font-bold text-[#EA580C] uppercase">
                           {params.switchType === 'villa' ? 'Unit' : params.switchType === 'community' ? 'Community' : 'Role'}
                         </Text>
                       </View>
                       <Text
                         numberOfLines={1}
                         ellipsizeMode="tail"
-                        className="text-xs font-bold text-foreground font-sans flex-1"
+                        className="text-xs font-bold text-[#1C1917] dark:text-white flex-1"
                       >
                         {params.targetName}
                       </Text>
@@ -543,6 +579,7 @@ export default function LoginScreen() {
                       render={({ field: { onChange, onBlur, value } }) => (
                         <TextInput
                           label={t('email_or_username', 'Email or Username')}
+                          labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
                           required
                           value={value}
                           onChangeText={onChange}
@@ -563,15 +600,15 @@ export default function LoginScreen() {
                     {/* Step 6: Password Input */}
                     <View>
                       <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-sm font-medium text-foreground">
-                          {t('password', 'Password')} <Text className="text-destructive font-bold">*</Text>
+                        <Text className="text-sm font-bold text-[#1C1917] dark:text-white">
+                          {t('password', 'Password')} <Text className="text-[#EA580C] font-bold">*</Text>
                         </Text>
                         <TouchableOpacity
                           onPress={() => router.push('/(auth)/forgot-password')}
                           activeOpacity={0.8}
                           hitSlop={8}
                         >
-                          <Text className="text-xs font-bold text-[#FF5E00] dark:text-[#FF7A00]">
+                          <Text className="text-xs font-bold text-[#EA580C]">
                             {t('forgot_password', 'Forgot?')}
                           </Text>
                         </TouchableOpacity>
@@ -601,7 +638,7 @@ export default function LoginScreen() {
                         checked={keepSignedIn}
                         onCheckedChange={setKeepSignedIn}
                         label={t('stay_signed_in', 'Stay signed in')}
-                        labelClassName="text-xs text-muted-foreground font-medium"
+                        labelClassName="text-xs text-[#78716C] dark:text-[#A8A29E] font-medium"
                         className="items-center"
                       />
                     </View>
@@ -615,24 +652,31 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Step 7: Sign In CTA Button */}
+                    {/* Step 7: Sign In CTA Button (Logo mixed UI color) */}
                     <TouchableOpacity
                       onPress={basicForm.handleSubmit(onBasicSubmit)}
                       disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
                       activeOpacity={0.88}
-                      className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
+                      style={{
+                        shadowColor: '#EA580C',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.28,
+                        shadowRadius: 14,
+                        elevation: 4,
+                      }}
+                      className="mt-1 h-12 rounded-xl flex-row items-center justify-center gap-2 overflow-hidden relative"
                     >
                       <View className="absolute inset-0">
                         <Svg width="100%" height="100%" preserveAspectRatio="none">
                           <Defs>
                             <LinearGradient id="signInGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                               <Stop offset="0%" stopColor="#1E232E" />
-                              <Stop offset="45%" stopColor="#2A3342" />
-                              <Stop offset="82%" stopColor="#FF5E00" />
+                              <Stop offset="42%" stopColor="#2A3342" />
+                              <Stop offset="80%" stopColor="#EA580C" />
                               <Stop offset="100%" stopColor="#FF7A00" />
                             </LinearGradient>
                           </Defs>
-                          <Rect width="100%" height="100%" rx="16" fill="url(#signInGrad)" />
+                          <Rect width="100%" height="100%" rx="12" fill="url(#signInGrad)" />
                         </Svg>
                       </View>
                       {isSubmittingBasic ? (
@@ -675,7 +719,7 @@ export default function LoginScreen() {
                         checked={keepSignedIn}
                         onCheckedChange={setKeepSignedIn}
                         label="Stay signed in"
-                        labelClassName="text-xs text-muted-foreground font-medium"
+                        labelClassName="text-xs text-[#78716C] dark:text-[#A8A29E] font-medium"
                         className="items-center"
                       />
                     </View>
@@ -689,24 +733,31 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Get OTP Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
+                    {/* Sign in with OTP Button (Logo mixed UI color) */}
                     <TouchableOpacity
                       onPress={phoneForm.handleSubmit(onPhoneSubmit)}
                       disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
                       activeOpacity={0.88}
-                      className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
+                      style={{
+                        shadowColor: '#EA580C',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.28,
+                        shadowRadius: 14,
+                        elevation: 4,
+                      }}
+                      className="mt-1 h-12 rounded-xl flex-row items-center justify-center gap-2 overflow-hidden relative"
                     >
                       <View className="absolute inset-0">
                         <Svg width="100%" height="100%" preserveAspectRatio="none">
                           <Defs>
                             <LinearGradient id="otpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                               <Stop offset="0%" stopColor="#1E232E" />
-                              <Stop offset="45%" stopColor="#2A3342" />
-                              <Stop offset="82%" stopColor="#FF5E00" />
+                              <Stop offset="42%" stopColor="#2A3342" />
+                              <Stop offset="80%" stopColor="#EA580C" />
                               <Stop offset="100%" stopColor="#FF7A00" />
                             </LinearGradient>
                           </Defs>
-                          <Rect width="100%" height="100%" rx="16" fill="url(#otpGrad)" />
+                          <Rect width="100%" height="100%" rx="12" fill="url(#otpGrad)" />
                         </Svg>
                       </View>
                       {isSubmittingPhone ? (
@@ -719,7 +770,7 @@ export default function LoginScreen() {
                       ) : (
                         <View className="flex-row items-center justify-center gap-2 z-10">
                           <Text className="font-bold text-white text-base font-sans">
-                            Get OTP Code
+                            Sign in with OTP
                           </Text>
                           <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
                         </View>
@@ -729,13 +780,15 @@ export default function LoginScreen() {
                 )}
               </View>
 
-              {/* OR CONTINUE WITH Divider */}
-              <View className="flex-row items-center my-1 gap-3">
-                <View className="flex-1 h-px bg-border/80" />
-                <Text className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase font-sans">
-                  Or Continue With
-                </Text>
-                <View className="flex-1 h-px bg-border/80" />
+              {/* OR CONTINUE WITH Divider (High-visibility frosted pill) */}
+              <View className="flex-row items-center my-2 gap-2.5">
+                <View className="flex-1 h-[1.5px] bg-white/70 dark:bg-white/20" />
+                <View className="bg-white/95 dark:bg-[#1C1917]/95 px-3.5 py-1 rounded-full border border-white/60 dark:border-white/10 shadow-xs">
+                  <Text className="text-[10px] font-bold text-[#1C1917] dark:text-white tracking-widest uppercase font-sans">
+                    Or Continue With
+                  </Text>
+                </View>
+                <View className="flex-1 h-[1.5px] bg-white/70 dark:bg-white/20" />
               </View>
 
               {/* Social Authentication: Google ID & Apple ID */}
@@ -752,19 +805,21 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Create Account Prompt */}
-              <View className="flex-row items-center justify-center pt-2 pb-1">
-                <Text className="text-xs text-slate-900 dark:text-white font-bold">
-                  Don't have an account?{' '}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => router.push('/(auth)/signup')}
-                  activeOpacity={0.8}
-                >
-                  <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
-                    Create Account
+              {/* Create Account Prompt (High-visibility elevated pill container) */}
+              <View className="items-center justify-center pt-2.5 pb-2">
+                <View className="bg-white/95 dark:bg-[#1C1917]/95 border border-white/80 dark:border-white/10 px-4 py-2 rounded-full shadow-sm flex-row items-center justify-center">
+                  <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
+                    Don't have an account?{' '}
                   </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => router.push('/(auth)/signup')}
+                    activeOpacity={0.8}
+                  >
+                    <Text className="text-xs font-bold text-[#EA580C] underline">
+                      Create Account
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
 

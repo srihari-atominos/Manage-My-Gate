@@ -36,6 +36,9 @@ import { TextInput } from '@/components/forms/TextInput';
 import { PasswordInput } from '@/components/forms/PasswordInput';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { parseBackendError } from '@/src/utils/validation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+
 // Sign-Up Schema
 const signupSchema = yup.object().shape({
   name: yup.string().required('Full name is required').min(2, 'Must be at least 2 characters'),
@@ -60,56 +63,62 @@ const signupSchema = yup.object().shape({
   confirmPassword: yup.string().oneOf([yup.ref('password')], 'Passwords must match').required('Confirm password is required'),
 });
 
-// Sign-In Schema
+// Sign-In Schema (for existing user tab)
 const signInSchema = yup.object().shape({
-  login: yup.string().required('Email or Username is required').min(3, 'Must be at least 3 characters'),
-  password: yup.string().required('Password is required').min(4, 'Password must be at least 4 characters'),
+  login: yup.string().required('Email or Username is required'),
+  password: yup.string().required('Password is required'),
 });
 
 interface SignupFormValues { name: string; email: string; phone: string; unitNumber?: string; password: string; confirmPassword: string; }
 interface SignInFormValues { login: string; password: string; }
 
-// CTA Button — inline styles so the background & text are ALWAYS visible
-interface CTAButtonProps { onPress: () => void; disabled: boolean; loading: boolean; label: string; loadingLabel?: string; }
-
-function CTAButton({ onPress, disabled, loading, label, loadingLabel }: CTAButtonProps) {
+function CTAButton({
+  onPress,
+  loading,
+  label,
+  loadingLabel,
+  disabled,
+}: {
+  onPress: () => void;
+  loading: boolean;
+  label: string;
+  loadingLabel?: string;
+  disabled?: boolean;
+}) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || loading}
       activeOpacity={0.88}
-      accessibilityRole="button"
-      accessibilityLabel={label}
       style={{
         marginTop: 4,
         height: 48,
-        borderRadius: 16,
+        borderRadius: 12,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: disabled ? '#94A3B8' : '#FF5E00',
-        shadowColor: '#000',
-        shadowOpacity: 0.18,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 3 },
+        shadowColor: '#EA580C',
+        shadowOpacity: 0.28,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 4 },
         elevation: 4,
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
-      {/* Charcoal overlay on left for dark→orange brand split */}
-      {!disabled && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0, bottom: 0, left: 0,
-            width: '45%',
-            backgroundColor: '#1E232E',
-            borderTopLeftRadius: 16,
-            borderBottomLeftRadius: 16,
-          }}
-          pointerEvents="none"
-        />
-      )}
+      <View className="absolute inset-0">
+        <Svg width="100%" height="100%" preserveAspectRatio="none">
+          <Defs>
+            <LinearGradient id="ctaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <Stop offset="0%" stopColor="#1E232E" />
+              <Stop offset="42%" stopColor="#2A3342" />
+              <Stop offset="80%" stopColor="#EA580C" />
+              <Stop offset="100%" stopColor="#FF7A00" />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100%" height="100%" rx="12" fill="url(#ctaGrad)" />
+        </Svg>
+      </View>
       {loading ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 10 }}>
           <ActivityIndicator color="#FFFFFF" size="small" />
@@ -126,6 +135,7 @@ function CTAButton({ onPress, disabled, loading, label, loadingLabel }: CTAButto
 }
 
 export default function SignupScreen() {
+  const insets = useSafeAreaInsets();
   const { register: performRegister, login: performLogin, loading, error, clearStatus, isAuthenticated } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
 
@@ -239,30 +249,112 @@ export default function SignupScreen() {
       <ImageBackground source={require('../../assets/images/auth-bg.jpg')} style={{ flex: 1 }} blurRadius={Platform.OS === 'ios' ? 3 : 2} resizeMode="cover">
         <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'} className="px-5 py-6">
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingTop: Math.max(insets.top, 24) + 16,
+              paddingBottom: Math.max(insets.bottom, 20) + 40,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            className="px-5"
+          >
             <View className="max-w-sm mx-auto w-full gap-3.5">
 
               {/* Brand Header */}
               <Animated.View style={{ opacity: emblemOpacity, transform: [{ scale: emblemScale }, { translateY: emblemFloat }], alignItems: 'center', justifyContent: 'center' }}>
-                <NahomEmblem size={102} />
-                <NahomWordmark />
+                <NahomEmblem size={110} />
+                <View style={{ marginTop: 6, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <NahomWordmark />
+                </View>
               </Animated.View>
 
               {/* Animated Content */}
               <Animated.View style={{ opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }} className="gap-3.5 w-full">
 
                 {/* Form Card */}
-                <View className="bg-card border border-border/80 rounded-3xl p-5 gap-3.5 shadow-xs">
+                <View
+                  style={{
+                    shadowColor: '#1C1917',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 12,
+                    elevation: 2,
+                  }}
+                  className="bg-white dark:bg-[#1C1917] border border-[#F5F5F4] dark:border-[#292524] rounded-3xl p-5 gap-3.5"
+                >
 
                   {/* Tab Switcher */}
-                  <View className="bg-muted/40 p-1 rounded-2xl flex-row border border-border/60">
-                    <TouchableOpacity onPress={() => handleTabSwitch('new')} activeOpacity={0.85} accessibilityRole="tab" accessibilityLabel="New User Sign Up" accessibilityState={{ selected: userType === 'new' }} className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5 ${userType === 'new' ? 'bg-card border border-border/60 shadow-xs' : ''}`}>
-                      <UserPlus size={14} color={userType === 'new' ? '#FF5E00' : '#64748B'} strokeWidth={2.2} />
-                      <Text className={`text-xs font-bold ${userType === 'new' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'}`}>New User</Text>
+                  <View className="bg-[#F5F5F4]/95 dark:bg-[#292524]/70 p-1.5 rounded-2xl flex-row border border-[#E7E5E4] dark:border-[#44403C]">
+                    <TouchableOpacity
+                      onPress={() => handleTabSwitch('new')}
+                      activeOpacity={0.85}
+                      accessibilityRole="tab"
+                      accessibilityLabel="New User Sign Up"
+                      accessibilityState={{ selected: userType === 'new' }}
+                      style={
+                        userType === 'new'
+                          ? {
+                              backgroundColor: '#FFFFFF',
+                              shadowColor: '#000000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.06,
+                              shadowRadius: 6,
+                              elevation: 2,
+                            }
+                          : {
+                              backgroundColor: 'transparent',
+                            }
+                      }
+                      className="flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5"
+                    >
+                      <UserPlus
+                        size={14}
+                        color={userType === 'new' ? '#EA580C' : '#57534E'}
+                        strokeWidth={userType === 'new' ? 2.4 : 2}
+                      />
+                      <Text
+                        style={{ color: userType === 'new' ? '#EA580C' : '#57534E' }}
+                        className={`text-xs ${userType === 'new' ? 'font-bold' : 'font-medium'}`}
+                      >
+                        New User
+                      </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleTabSwitch('existing')} activeOpacity={0.85} accessibilityRole="tab" accessibilityLabel="Existing User Sign In" accessibilityState={{ selected: userType === 'existing' }} className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5 ${userType === 'existing' ? 'bg-card border border-border/60 shadow-xs' : ''}`}>
-                      <LogIn size={14} color={userType === 'existing' ? '#FF5E00' : '#64748B'} strokeWidth={2.2} />
-                      <Text className={`text-xs font-bold ${userType === 'existing' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'}`}>Existing User</Text>
+                    <TouchableOpacity
+                      onPress={() => handleTabSwitch('existing')}
+                      activeOpacity={0.85}
+                      accessibilityRole="tab"
+                      accessibilityLabel="Existing User Sign In"
+                      accessibilityState={{ selected: userType === 'existing' }}
+                      style={
+                        userType === 'existing'
+                          ? {
+                              backgroundColor: '#FFFFFF',
+                              shadowColor: '#000000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.06,
+                              shadowRadius: 6,
+                              elevation: 2,
+                            }
+                          : {
+                              backgroundColor: 'transparent',
+                            }
+                      }
+                      className="flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5"
+                    >
+                      <LogIn
+                        size={14}
+                        color={userType === 'existing' ? '#EA580C' : '#57534E'}
+                        strokeWidth={userType === 'existing' ? 2.4 : 2}
+                      />
+                      <Text
+                        style={{ color: userType === 'existing' ? '#EA580C' : '#57534E' }}
+                        className={`text-xs ${userType === 'existing' ? 'font-bold' : 'font-medium'}`}
+                      >
+                        Existing User
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
@@ -270,11 +362,11 @@ export default function SignupScreen() {
                   {userType === 'new' ? (
                     /* NEW USER: Sign-Up Form */
                     <View className="gap-3.5">
-                      <Text className="text-base font-bold text-foreground text-center">Create Resident Account</Text>
-                      <Controller control={control} name="name" render={({ field: { onChange, onBlur, value } }) => (<TextInput label="Full Name" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="e.g. John Doe" autoCapitalize="words" leftIcon={User} error={errors.name?.message} returnKeyType="next" onSubmitEditing={() => emailInputRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <Controller control={control} name="email" render={({ field: { onChange, onBlur, value } }) => (<TextInput ref={emailInputRef} label="Email Address" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="john@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} leftIcon={Mail} error={errors.email?.message} returnKeyType="next" onSubmitEditing={() => unitInputRef.current?.focus()} blurOnSubmit={false} />)} />
+                      <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center">Create Resident Account</Text>
+                      <Controller control={control} name="name" render={({ field: { onChange, onBlur, value } }) => (<TextInput label="Full Name" labelClassName="text-sm font-bold text-[#1C1917] dark:text-white" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="e.g. John Doe" autoCapitalize="words" leftIcon={User} error={errors.name?.message} returnKeyType="next" onSubmitEditing={() => emailInputRef.current?.focus()} blurOnSubmit={false} />)} />
+                      <Controller control={control} name="email" render={({ field: { onChange, onBlur, value } }) => (<TextInput ref={emailInputRef} label="Email Address" labelClassName="text-sm font-bold text-[#1C1917] dark:text-white" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="john@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} leftIcon={Mail} error={errors.email?.message} returnKeyType="next" onSubmitEditing={() => unitInputRef.current?.focus()} blurOnSubmit={false} />)} />
                       <Controller control={control} name="phone" render={({ field: { onChange, value } }) => (<PhoneInput label="Phone Number" required placeholder="98765 43210" value={value} onChangeText={onChange} error={errors.phone?.message} />)} />
-                      <Controller control={control} name="unitNumber" render={({ field: { onChange, onBlur, value } }) => (<TextInput ref={unitInputRef} label="Villa / Unit No. (Optional)" value={value} onChangeText={onChange} onBlur={onBlur} placeholder="e.g. Villa 104, Block B" leftIcon={Home} returnKeyType="next" onSubmitEditing={() => passwordInputRef.current?.focus()} blurOnSubmit={false} />)} />
+                      <Controller control={control} name="unitNumber" render={({ field: { onChange, onBlur, value } }) => (<TextInput ref={unitInputRef} label="Villa / Unit No. (Optional)" labelClassName="text-sm font-bold text-[#1C1917] dark:text-white" value={value} onChangeText={onChange} onBlur={onBlur} placeholder="e.g. Villa 104, Block B" leftIcon={Home} returnKeyType="next" onSubmitEditing={() => passwordInputRef.current?.focus()} blurOnSubmit={false} />)} />
                       <Controller control={control} name="password" render={({ field: { onChange, onBlur, value } }) => (<PasswordInput ref={passwordInputRef} label="Password" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Create a password" leftIcon={Lock} showRequirements error={errors.password?.message} returnKeyType="next" onSubmitEditing={() => confirmPasswordInputRef.current?.focus()} blurOnSubmit={false} />)} />
                       <Controller control={control} name="confirmPassword" render={({ field: { onChange, onBlur, value } }) => (<PasswordInput ref={confirmPasswordInputRef} label="Confirm Password" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Re-enter password" leftIcon={Lock} confirmValue={watch('password')} error={errors.confirmPassword?.message} returnKeyType="go" onSubmitEditing={handleSubmit(onSubmit)} />)} />
                       {(localError || error) ? (<View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5"><Text className="text-rose-500 text-xs text-center font-medium">{localError || error}</Text></View>) : null}
@@ -283,13 +375,13 @@ export default function SignupScreen() {
                   ) : (
                     /* EXISTING USER: Sign-In Form */
                     <View className="gap-3.5">
-                      <Text className="text-base font-bold text-foreground text-center">Welcome Back</Text>
-                      <Controller control={signInForm.control} name="login" render={({ field: { onChange, onBlur, value } }) => (<TextInput label="Email or Username" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Enter your email or username" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" leftIcon={Mail} error={signInForm.formState.errors.login?.message} returnKeyType="next" onSubmitEditing={() => signInPasswordRef.current?.focus()} blurOnSubmit={false} />)} />
+                      <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center">Welcome Back</Text>
+                      <Controller control={signInForm.control} name="login" render={({ field: { onChange, onBlur, value } }) => (<TextInput label="Email or Username" labelClassName="text-sm font-bold text-[#1C1917] dark:text-white" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Enter your email or username" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" leftIcon={Mail} error={signInForm.formState.errors.login?.message} returnKeyType="next" onSubmitEditing={() => signInPasswordRef.current?.focus()} blurOnSubmit={false} />)} />
                       <View>
                         <View className="flex-row items-center justify-between mb-1.5">
-                          <Text className="text-sm font-medium text-foreground">Password <Text className="text-destructive font-bold">*</Text></Text>
+                          <Text className="text-sm font-bold text-[#1C1917] dark:text-white">Password <Text className="text-[#EA580C] font-bold">*</Text></Text>
                           <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')} activeOpacity={0.8} hitSlop={8} accessibilityRole="button" accessibilityLabel="Forgot password">
-                            <Text className="text-xs font-bold text-[#FF5E00] dark:text-[#FF7A00]">Forgot?</Text>
+                            <Text className="text-xs font-bold text-[#EA580C]">Forgot?</Text>
                           </TouchableOpacity>
                         </View>
                         <Controller control={signInForm.control} name="password" render={({ field: { onChange, onBlur, value } }) => (<PasswordInput ref={signInPasswordRef} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Enter your password" leftIcon={Lock} error={signInForm.formState.errors.password?.message} returnKeyType="go" onSubmitEditing={signInForm.handleSubmit(onSignInSubmit)} />)} />
@@ -300,11 +392,15 @@ export default function SignupScreen() {
                   )}
                 </View>
 
-                {/* OR CONTINUE WITH */}
-                <View className="flex-row items-center my-1 gap-3">
-                  <View className="flex-1 h-px bg-border/80" />
-                  <Text className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase font-sans">Or Continue With</Text>
-                  <View className="flex-1 h-px bg-border/80" />
+                {/* OR CONTINUE WITH Divider (High-visibility frosted pill) */}
+                <View className="flex-row items-center my-2 gap-2.5">
+                  <View className="flex-1 h-[1.5px] bg-white/70 dark:bg-white/20" />
+                  <View className="bg-white/95 dark:bg-[#1C1917]/95 px-3.5 py-1 rounded-full border border-white/60 dark:border-white/10 shadow-xs">
+                    <Text className="text-[10px] font-bold text-[#1C1917] dark:text-white tracking-widest uppercase font-sans">
+                      Or Continue With
+                    </Text>
+                  </View>
+                  <View className="flex-1 h-[1.5px] bg-white/70 dark:bg-white/20" />
                 </View>
 
                 {/* Social Authentication: Google ID & Apple ID */}
@@ -317,23 +413,43 @@ export default function SignupScreen() {
                   <SocialAuthButton provider="apple" />
                 </View>
 
-                {/* Bottom Hint */}
-                <View className="flex-row items-center justify-center pt-2 pb-1">
-                  {userType === 'new' ? (
-                    <>
-                      <Text className="text-xs text-slate-900 dark:text-white font-bold">Already have an account?{' '}</Text>
-                      <TouchableOpacity onPress={() => handleTabSwitch('existing')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Switch to sign in">
-                        <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">Sign In</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <>
-                      <Text className="text-xs text-slate-900 dark:text-white font-bold">Don't have an account?{' '}</Text>
-                      <TouchableOpacity onPress={() => handleTabSwitch('new')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Switch to create account">
-                        <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">Create Account</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
+                {/* Bottom Hint (High-visibility elevated pill container) */}
+                <View className="items-center justify-center pt-2.5 pb-2">
+                  <View className="bg-white/95 dark:bg-[#1C1917]/95 border border-white/80 dark:border-white/10 px-4 py-2 rounded-full shadow-sm flex-row items-center justify-center">
+                    {userType === 'new' ? (
+                      <>
+                        <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
+                          Already have an account?{' '}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => handleTabSwitch('existing')}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel="Switch to sign in"
+                        >
+                          <Text className="text-xs font-bold text-[#EA580C] underline">
+                            Sign In
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <>
+                        <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
+                          Don't have an account?{' '}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => handleTabSwitch('new')}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel="Switch to create account"
+                        >
+                          <Text className="text-xs font-bold text-[#EA580C] underline">
+                            Create Account
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
                 </View>
               </Animated.View>
             </View>

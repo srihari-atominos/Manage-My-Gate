@@ -83,20 +83,20 @@ export const SocialAuthButton = ({
         onPress={handlePress}
         disabled={disabled || loading}
         activeOpacity={0.82}
-        className={`flex-1 h-11 bg-white dark:bg-[#1E232E] border border-border/90 rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-muted/40 ${disabled || loading ? 'opacity-60' : ''} ${className}`}
+        className={`flex-1 h-12 bg-white dark:bg-[#1C1917] border border-[#E7E5E4] dark:border-[#292524] rounded-xl flex-row items-center justify-center gap-2 shadow-2xs active:bg-stone-50 dark:active:bg-[#292524] ${disabled || loading ? 'opacity-60' : ''} ${className}`}
       >
         {loading ? (
-          <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : isApple ? '#888888' : '#00a4ef'} />
+          <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : isApple ? '#1C1917' : '#00a4ef'} />
         ) : (
           <>
             {isGoogle ? (
               <GoogleIcon size={18} />
             ) : isApple ? (
-              <AppleIcon size={18} />
+              <AppleIcon size={18} color="#1C1917" />
             ) : (
               <MicrosoftIcon size={18} />
             )}
-            <Text className="text-xs font-bold text-slate-800 dark:text-white font-sans">
+            <Text className="text-xs font-bold text-[#1C1917] dark:text-white font-sans">
               {variant === 'full' ? `Sign in with ${providerName}` : providerName}
             </Text>
           </>
