@@ -40,7 +40,7 @@ export const createOrganizationSchema = yup.object().shape({
   organizationType: yup
     .string()
     .oneOf(['Residential', 'Commercial', 'Mixed'], 'invalid_org_type')
-    .optional(),
+    .default('Residential'),
   timezone: yup.string().default('Asia/Kolkata'),
 });
 
@@ -136,8 +136,10 @@ export const useCreateOrganization = (options?: UseCreateOrganizationOptions) =>
 
       try {
         const response = await organizationApi.checkOrganizationName(trimmed);
-        // response is the backend envelope: { success, message, data: { available } }
-        const available = response?.data?.available ?? response?.available ?? false;
+        // response is the Axios response wrapping backend envelope: response.data = { success, data: { available } }
+        const available = Boolean(
+          (response.data as any)?.data?.available ?? (response.data as any)?.available ?? false
+        );
 
         // Cache the result at module level so remounts don't re-request
         _nameAvailabilityCache.set(trimmed, available);
