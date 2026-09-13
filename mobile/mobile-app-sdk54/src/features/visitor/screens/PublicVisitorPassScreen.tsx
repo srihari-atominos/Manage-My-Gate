@@ -109,9 +109,20 @@ export function PublicVisitorPassScreen() {
         }
       }
 
-      const data = response?.data || response?.success !== undefined ? (response.data || response) : response;
-      if (data) {
-        setPassData(data);
+      const body = response?.data || response;
+      const rawPass = body?.data || body;
+      if (rawPass && (rawPass._id || rawPass.visitorDetails || rawPass.visitorName)) {
+        const normalizedPass: PublicVisitorPassData = {
+          ...rawPass,
+          visitorName: rawPass.visitorDetails?.name || rawPass.visitorName || 'Visitor',
+          phone: rawPass.visitorDetails?.phone || rawPass.phone,
+          vehicleNumber: rawPass.vehicleDetails?.number || rawPass.vehicleNumber,
+          validFrom: rawPass.validity?.startDate || rawPass.validFrom,
+          validUntil: rawPass.validity?.endDate || rawPass.validUntil,
+          unitNumber: rawPass.villaId?.name || rawPass.villaId?.number || rawPass.unitNumber,
+          hostName: rawPass.createdById?.name || rawPass.hostName,
+        };
+        setPassData(normalizedPass);
       } else {
         setPassData(null);
         setError('Visitor pass not found. Please check your passcode.');
@@ -185,7 +196,7 @@ export function PublicVisitorPassScreen() {
 
   const handleSharePass = async () => {
     const shareMessage =
-      `*Official Manage-My-Gate Visitor Pass*\n\n` +
+      `*Official Nahom Visitor Pass*\n\n` +
       `Host Unit: ${unitString}\n` +
       `Host: ${hostString}\n` +
       `Visitor Name: ${passData?.visitorName || 'Guest'}\n` +
@@ -275,7 +286,7 @@ export function PublicVisitorPassScreen() {
                   </View>
                   <View>
                     <Text className="text-foreground font-bold text-sm">
-                      {passData.organizationName || 'ManageMyGate'}
+                      {passData.organizationName || 'Nahom'}
                     </Text>
                     <Text className="text-muted-foreground text-[11px]">
                       Official Verified Guest Pass
