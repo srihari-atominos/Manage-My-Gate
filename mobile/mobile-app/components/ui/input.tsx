@@ -27,16 +27,16 @@ export const Input = React.forwardRef<TextInput, InputProps>(
         )}
 
         <View className={cn(
-          "relative flex-row items-center border border-border bg-card rounded-xl px-3.5 focus:border-primary",
+          "relative flex-row items-center border border-border bg-card rounded-xl px-3.5 min-h-[48px] focus:border-primary",
           error ? "border-destructive bg-destructive/5" : ""
         )}>
-          {leftIcon && <View className="me-2.5">{leftIcon}</View>}
+          {leftIcon && <View className="me-2.5" pointerEvents="none">{leftIcon}</View>}
 
           <TextInput
             ref={ref}
             secureTextEntry={isPassword ? secureTextEntry : props.secureTextEntry}
             placeholderTextColor={props.placeholderTextColor || (isDark ? '#737c88' : '#9ca3af')}
-            className={cn(`flex-1 text-foreground py-3 text-[15px] font-sans`, className)}
+            className={cn(`flex-1 text-foreground py-3 min-h-[44px] self-stretch text-[15px] font-sans`, className)}
             {...props}
           />
 

@@ -26,7 +26,7 @@ export const KeyboardAvoidingShell = ({
   contentContainerClassName,
   ...props
 }: KeyboardAvoidingShellProps) => {
-  const defaultBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
+  const defaultBehavior = Platform.OS === 'ios' ? 'padding' : undefined;
   const activeBehavior = props.behavior ?? defaultBehavior;
 
   const content = scrollable ? (
@@ -45,11 +45,9 @@ export const KeyboardAvoidingShell = ({
       {children}
     </ScrollView>
   ) : (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View className={cn('flex-1', contentContainerClassName)}>
-        {children}
-      </View>
-    </TouchableWithoutFeedback>
+    <View className={cn('flex-1', contentContainerClassName)}>
+      {children}
+    </View>
   );
 
   return (

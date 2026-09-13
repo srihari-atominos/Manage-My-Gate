@@ -293,7 +293,7 @@ export function ScreenShell({
 
       {/* Main content area */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         className="flex-1 bg-background"
       >

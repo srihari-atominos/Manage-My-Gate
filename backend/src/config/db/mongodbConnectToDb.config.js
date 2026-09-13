@@ -68,8 +68,41 @@ export const connectToDb = async (retries = 5, delayMs = 3000) => {
         };
       }
 
-      // Self-heal legacy user documents where phone is null to prevent sparse unique index collisions
-      await mongoose.connection.collection('users').updateMany({ phone: null }, { $unset: { phone: 1 } }).catch(() => null);
+      // Self-heal legacy user documents and phone index to prevent unique index collisions on null/missing phone
+      try {
+        const usersColl = mongoose.connection.collection('users');
+        // 1. Unset legacy null or empty string phone values
+        await usersColl.updateMany(
+          { $or: [{ phone: null }, { phone: '' }] },
+          { $unset: { phone: 1 } }
+        ).catch(() => null);
+
+        // 2. Inspect existing indexes on users collection
+        const indexes = await usersColl.indexes().catch(() => []);
+        const phoneIdx = indexes.find(i => i.name === 'phone_1' || (i.key && i.key.phone === 1));
+
+        // If phone index exists without partialFilterExpression, drop it so it can be recreated cleanly
+        if (phoneIdx && !phoneIdx.partialFilterExpression) {
+          logger.info(`Migrating users phone index: dropping legacy index '${phoneIdx.name}'...`);
+          await usersColl.dropIndex(phoneIdx.name).catch(() => null);
+          logger.info(`Dropped legacy phone index '${phoneIdx.name}'.`);
+        }
+
+        // 3. Ensure the partial unique index exists
+        await usersColl.createIndex(
+          { phone: 1 },
+          {
+            name: 'phone_1',
+            unique: true,
+            partialFilterExpression: { phone: { $type: 'string', $gt: '' } },
+            background: true,
+          }
+        ).catch((err) => {
+          logger.warn('Failed to ensure partial phone_1 index on users collection:', err.message);
+        });
+      } catch (selfHealErr) {
+        logger.warn('Users phone index migration notice:', selfHealErr.message);
+      }
 
       return;
     } catch (error) {

@@ -5,6 +5,7 @@
   "scripts": {
     "start": "expo start --go -c",
     "dev": "expo start --go -c",
+    "tunnel": "expo start --go --tunnel -c",
     "android": "expo start --go -c --android",
     "ios": "expo start --go -c --ios",
     "web": "expo start -c --web",

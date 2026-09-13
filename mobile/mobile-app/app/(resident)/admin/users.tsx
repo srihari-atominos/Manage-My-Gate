@@ -414,7 +414,7 @@ export default function UserManagementScreen() {
       {/* Quick Jump To Page Modal */}
       <Modal visible={showPageJumpModal} transparent statusBarTranslucent={true} animationType="fade" onRequestClose={() => setShowPageJumpModal(false)}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
         >
           <View className="flex-1 justify-center items-center bg-black/50 p-4">

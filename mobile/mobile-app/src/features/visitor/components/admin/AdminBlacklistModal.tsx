@@ -58,7 +58,7 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
   return (
     <Modal visible={visible} animationType="fade" transparent statusBarTranslucent={true} onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <View className="flex-1 bg-black/60 items-center justify-center p-4">

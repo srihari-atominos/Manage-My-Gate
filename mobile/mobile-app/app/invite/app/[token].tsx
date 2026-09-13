@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Linking } from 'react-native';
 
 export default function AppInviteTokenRedirectScreen() {
   const router = useRouter();
@@ -9,15 +9,10 @@ export default function AppInviteTokenRedirectScreen() {
   useEffect(() => {
     const inviteToken = params.token;
     if (inviteToken) {
-      router.replace({
-        pathname: '/(auth)/accept-invite',
-        params: { ...params, token: inviteToken },
-      });
+      Linking.openURL(`https://managemygate.e3esg.com/invite/${inviteToken}`).catch(() => {});
+      router.replace('/(auth)/login');
     } else {
-      router.replace({
-        pathname: '/(auth)/accept-invite',
-        params: params,
-      });
+      router.replace('/(auth)/login');
     }
   }, [params, router]);
 

@@ -46,14 +46,16 @@ export const SearchBar = ({
   return (
     <View
       className={cn(
-        'flex-row items-center rounded-2xl bg-card border px-3.5 py-2.5 transition-colors',
+        'flex-row items-center rounded-2xl bg-card border px-3.5 min-h-[44px] py-0 shadow-xs',
         'border-border/80',
         isFocused && 'border-primary ring-2 ring-primary/20',
         containerClassName,
         className
       )}
     >
-      <Search size={18} className="me-2.5 text-muted-foreground shrink-0" />
+      <View pointerEvents="none">
+        <Search size={18} className="me-2.5 text-muted-foreground shrink-0" />
+      </View>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -61,7 +63,7 @@ export const SearchBar = ({
         placeholderTextColor="#737c88"
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        className="flex-1 text-[15px] font-sans text-foreground p-0 min-h-[24px]"
+        className="flex-1 text-[15px] font-sans text-foreground self-stretch min-h-[42px] py-2"
         style={{ outlineStyle: 'none' } as any}
         returnKeyType="search"
         onSubmitEditing={onSubmitEditing}

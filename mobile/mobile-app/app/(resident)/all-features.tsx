@@ -134,19 +134,23 @@ export default function AllFeaturesScreen() {
       <ScrollView
         className="flex-1 px-4 pt-3"
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         {...scrollHandlerProps}
         contentContainerStyle={{ paddingBottom: 110 }}
       >
         <View className="gap-4 pb-8 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}
-          <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 py-3 shadow-xs">
-            <Search size={18} color="#172B70" className="me-2.5 shrink-0" />
+          <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 min-h-[46px] py-0 shadow-xs">
+            <View pointerEvents="none">
+              <Search size={18} color="#172B70" className="me-2.5 shrink-0" />
+            </View>
             <TextInput
               placeholder={t('search', 'Search all features...')}
               placeholderTextColor="#64748B"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 text-[13px] font-sans text-foreground py-0"
+              className="flex-1 text-[13px] font-sans text-foreground self-stretch min-h-[42px] py-2"
             />
             {searchQuery ? (
               <TouchableOpacity onPress={() => setSearchQuery('')} className="p-0.5">

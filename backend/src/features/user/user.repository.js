@@ -8,13 +8,13 @@ export class UserRepository {
   async findByEmail(email, session) {
     if (!email) return null;
     const normalized = String(email).trim().toLowerCase();
-    return await User.findOne({ email: normalized }).session(session || null);
+    return await User.findOne({ email: normalized, status: { $ne: 'Deleted' } }).session(session || null);
   }
 
   async findByUsername(username, session) {
     if (!username) return null;
     const normalized = String(username).trim();
-    return await User.findOne({ username: { $regex: new RegExp(`^${normalized}$`, 'i') } }).session(session || null);
+    return await User.findOne({ username: { $regex: new RegExp(`^${normalized}$`, 'i') }, status: { $ne: 'Deleted' } }).session(session || null);
   }
 
   /**
@@ -96,7 +96,10 @@ export class UserRepository {
       orConditions.push({ phone: new RegExp(`${last10}$`) });
     }
 
-    return await User.findOne({ $or: orConditions }).session(session || null);
+    return await User.findOne({
+      $or: orConditions,
+      status: { $ne: 'Deleted' },
+    }).session(session || null);
   }
 
   /**

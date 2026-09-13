@@ -45,8 +45,6 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
-      unique: true,
-      sparse: true,
       set: (v) => (v === null || v === '' ? undefined : v),
     },
     phoneVerified: {
@@ -108,6 +106,14 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+  }
+);
+
+userSchema.index(
+  { phone: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { phone: { $type: 'string', $gt: '' } },
   }
 );
 

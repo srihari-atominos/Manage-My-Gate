@@ -49,7 +49,11 @@ export const errorHandler = (err, req, res, next) => {
         const field = keys[0];
         const value = err.keyValue[field];
         const formattedField = field.charAt(0).toUpperCase() + field.slice(1);
-        message = `${formattedField} '${value}' is already registered or in use.`;
+        if (value !== null && value !== undefined && value !== 'null' && value !== '') {
+          message = `${formattedField} '${value}' is already registered or in use.`;
+        } else {
+          message = `A record with a duplicate or unassigned ${formattedField.toLowerCase()} already exists.`;
+        }
       } else {
         const fieldDetails = keys
           .filter(k => k !== 'orgId')

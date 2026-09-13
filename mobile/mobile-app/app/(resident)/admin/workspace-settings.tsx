@@ -28,7 +28,13 @@ export default function WorkspaceSettingsScreen() {
           variant="underline"
         />
       </View>
-      <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+      <ScrollView
+        className="flex-1 px-4 py-4"
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingBottom: 60 }}
+      >
         {activeTab === 'modules' ? <WorkspaceModulesForm /> : <WorkspaceSettingsForm />}
       </ScrollView>
     </ScreenShell>

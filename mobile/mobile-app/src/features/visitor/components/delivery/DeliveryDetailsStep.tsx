@@ -21,7 +21,12 @@ export const DeliveryDetailsStep: React.FC<DeliveryDetailsStepProps> = ({
   onChange,
 }) => {
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 gap-4">
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerClassName="p-4 gap-4"
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+    >
       <View className="gap-1">
         <Text variant="large" className="font-bold text-foreground">
           Delivery Order Details

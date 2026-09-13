@@ -18,7 +18,6 @@
     "updates": {
       "enabled": false
     },
-    "runtimeVersion": "1.0.0",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
@@ -63,27 +62,12 @@
             {
               "scheme": "https",
               "host": "app.managemygate.com",
-              "pathPrefix": "/invite"
-            },
-            {
-              "scheme": "https",
-              "host": "managemygate.e3esg.com",
-              "pathPrefix": "/invite"
-            },
-            {
-              "scheme": "https",
-              "host": "app.managemygate.com",
               "pathPrefix": "/invite/handoff"
             },
             {
               "scheme": "https",
               "host": "managemygate.e3esg.com",
               "pathPrefix": "/invite/handoff"
-            },
-            {
-              "scheme": "https",
-              "host": "managemygate.e3esg.com",
-              "pathPrefix": "/invite/app"
             }
           ],
           "category": [
@@ -96,21 +80,8 @@
           "data": [
             {
               "scheme": "managemygate",
-              "host": "invite"
-            },
-            {
-              "scheme": "managemygate",
               "host": "invite",
               "pathPrefix": "/handoff"
-            },
-            {
-              "scheme": "managemygate",
-              "host": "invite",
-              "pathPrefix": "/app"
-            },
-            {
-              "scheme": "managemygate",
-              "host": "accept-invite"
             }
           ],
           "category": [

@@ -172,7 +172,7 @@ export class UserService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const user = await this.getUserById(id, session); // Throws if user doesn't exist
+      const user = await userRepository.findById(id, session);
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.deleteMembership(id, orgId, session);
 
@@ -183,12 +183,19 @@ export class UserService {
       // Delete technician records linked to this user or email in this org
       const Technician = (await import('../technician/technician.model.js')).default;
       const techOrConditions = [{ userId: id }];
-      if (user.email) techOrConditions.push({ email: user.email });
+      if (user && user.email) techOrConditions.push({ email: user.email });
       await Technician.deleteMany({ orgId, $or: techOrConditions }).session(session);
 
       // Clean up invitation tokens for this user in this organization
       const tokenService = (await import('../token/token.services.js')).default;
       await tokenService.deleteTokens({ userId: id, orgId }, session);
+
+      if (!user) {
+        await orgMembershipService.deleteMembershipsByUserId(id, session);
+        await tokenService.deleteTokens({ userId: id }, session);
+        await session.commitTransaction();
+        return;
+      }
 
       // Check if user has any OTHER community memberships left across the platform
       const remainingMemberships = await orgMembershipService.getUserMemberships(id, session);
@@ -668,10 +675,10 @@ export class UserService {
       if (name !== undefined) payload.$set.name = name;
       
       if (phone !== undefined) {
-        if (phone.trim() === '') {
+        if (phone === null || (typeof phone === 'string' && phone.trim() === '')) {
           payload.$unset.phone = 1;
         } else {
-          const trimmedPhone = phone.trim();
+          const trimmedPhone = String(phone).trim();
           const existingPhoneUser = await userRepository.findByPhone(trimmedPhone, session);
           if (existingPhoneUser && existingPhoneUser._id.toString() !== id.toString()) {
             throw new HttpError(400, `User with phone number '${phone}' already exists.`);

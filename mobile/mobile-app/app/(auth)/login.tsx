@@ -143,10 +143,10 @@ export default function LoginScreen() {
   const wordmarkScale = React.useRef(new Animated.Value(0.5)).current;
   const wordmarkOpacity = React.useRef(new Animated.Value(0)).current;
   const wordmarkTranslateY = React.useRef(new Animated.Value(20)).current;
-  const contentOpacity = React.useRef(new Animated.Value(0)).current;
-  const contentTranslateY = React.useRef(new Animated.Value(24)).current;
+  const contentOpacity = React.useRef(new Animated.Value(1)).current;
+  const contentTranslateY = React.useRef(new Animated.Value(0)).current;
 
-  // Run smooth, relaxed cinematic opening sequence on mount
+  // Run smooth opening sequence for emblem & wordmark on mount
   React.useEffect(() => {
     Animated.parallel([
       // Stage 1: Logo Emblem Dramatic Elastic Blast, Rotation & Bounce
@@ -169,9 +169,9 @@ export default function LoginScreen() {
         useNativeDriver: true,
       }),
 
-      // Stage 2: App Name & Taglines Unfurl gracefully after logo (200ms - 650ms)
+      // Stage 2: App Name & Taglines Unfurl gracefully after logo (150ms - 400ms)
       Animated.sequence([
-        Animated.delay(200),
+        Animated.delay(150),
         Animated.parallel([
           Animated.spring(wordmarkScale, {
             toValue: 1,
@@ -181,32 +181,13 @@ export default function LoginScreen() {
           }),
           Animated.timing(wordmarkOpacity, {
             toValue: 1,
-            duration: 400,
+            duration: 300,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(wordmarkTranslateY, {
             toValue: 0,
-            duration: 400,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-
-      // Stage 3: Form Cards, Tabs, Badges glide up smoothly (450ms - 900ms)
-      Animated.sequence([
-        Animated.delay(450),
-        Animated.parallel([
-          Animated.timing(contentOpacity, {
-            toValue: 1,
-            duration: 450,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(contentTranslateY, {
-            toValue: 0,
-            duration: 450,
+            duration: 300,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
@@ -380,7 +361,7 @@ export default function LoginScreen() {
       >
         <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
         >
           <ScrollView

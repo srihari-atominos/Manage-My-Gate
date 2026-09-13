@@ -85,15 +85,21 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
     const renderIcon = (icon: any, isLeft: boolean) => {
       if (!icon) return null;
       if (isValidElement(icon)) {
-        return <View className={isLeft ? 'me-2.5 mt-0.5' : 'ms-2 mt-0.5'}>{icon}</View>;
+        return (
+          <View pointerEvents={isLeft ? 'none' : undefined} className={isLeft ? 'me-2.5 mt-0.5' : 'ms-2 mt-0.5'}>
+            {icon}
+          </View>
+        );
       }
       const IconComponent = icon;
       return (
-        <IconComponent
-          size={18}
-          className={cn(isLeft ? 'me-2.5' : 'ms-2', 'text-muted-foreground mt-0.5')}
-          onPress={!isLeft ? onRightIconPress : undefined}
-        />
+        <View pointerEvents={isLeft ? 'none' : (!isLeft && onRightIconPress ? 'auto' : 'none')}>
+          <IconComponent
+            size={18}
+            className={cn(isLeft ? 'me-2.5' : 'ms-2', 'text-muted-foreground mt-0.5')}
+            onPress={!isLeft ? onRightIconPress : undefined}
+          />
+        </View>
       );
     };
 
@@ -141,8 +147,8 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
 
         <View
           className={cn(
-            'flex-row rounded-2xl border bg-card px-3.5 py-3 shadow-xs transition-colors',
-            props.multiline ? 'items-start' : 'items-center',
+            'flex-row rounded-2xl border bg-card px-3.5 min-h-[48px] shadow-xs',
+            props.multiline ? 'items-start py-2.5' : 'items-center py-0',
             // Default border
             'border-border/80',
             // Focused state
@@ -166,7 +172,8 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             onFocus={handleFocus}
             onBlur={handleBlur}
             className={cn(
-              'flex-1 text-[15px] font-sans text-foreground py-0 min-h-[24px]',
+              'flex-1 text-[15px] font-sans text-foreground self-stretch',
+              props.multiline ? 'py-0 min-h-[60px]' : 'py-3 min-h-[44px]',
               inputClassName
             )}
             style={[

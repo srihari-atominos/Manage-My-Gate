@@ -169,7 +169,7 @@ export const DropdownSelect = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
         >
           <View className="flex-1 justify-end bg-black/60">

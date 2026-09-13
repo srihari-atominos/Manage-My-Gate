@@ -425,6 +425,8 @@ export default function GateConsoleScreen() {
             className="flex-1"
             contentContainerClassName="px-4 gap-4 pb-28 pt-2"
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}
           >
             {statusMessage && (
