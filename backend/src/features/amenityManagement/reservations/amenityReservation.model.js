@@ -144,6 +144,7 @@ const amenityReservationSchema = new mongoose.Schema(
       enum: {
         values: [
           'NOT_REQUIRED',
+          'NOT_APPLICABLE',
           'PENDING',
           'HELD_AUTHORIZED',
           'PAID',

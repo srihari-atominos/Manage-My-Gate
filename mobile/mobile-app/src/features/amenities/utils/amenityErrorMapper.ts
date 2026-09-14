@@ -107,14 +107,34 @@ export const mapAmenityApiError = (error: any): AmenityErrorDetails => {
 
     const detailsObj = responseData?.details;
     const requiresBookingAction = Boolean(
-      detailsObj?.requiresBookingAction || lower.includes('requiresbookingaction') || lower.includes('bookingaction')
+      responseData?.requiresBookingAction ||
+      detailsObj?.requiresBookingAction ||
+      lower.includes('requiresbookingaction') ||
+      lower.includes('bookingaction')
     );
-    const upcomingBookingsCount = detailsObj?.upcomingBookingsCount || detailsObj?.activeBookingsCount || 0;
+    let upcomingBookingsCount =
+      responseData?.upcomingBookingsCount ||
+      detailsObj?.upcomingBookingsCount ||
+      detailsObj?.activeBookingsCount ||
+      0;
+
+    if (!upcomingBookingsCount && typeof baseMessage === 'string') {
+      const match = baseMessage.match(/(\d+)\s+upcoming/i);
+      if (match && match[1]) {
+        upcomingBookingsCount = parseInt(match[1], 10);
+      }
+    }
+
     const requiresConflictAction = Boolean(
-      detailsObj?.requiresConflictAction || lower.includes('requiresconflictaction') || lower.includes('conflictaction')
+      responseData?.requiresConflictAction ||
+      detailsObj?.requiresConflictAction ||
+      lower.includes('requiresconflictaction') ||
+      lower.includes('conflictaction')
     );
     const requiresResolution = Boolean(
-      detailsObj?.requiresResolution || lower.includes('future confirmed bookings exist')
+      responseData?.requiresResolution ||
+      detailsObj?.requiresResolution ||
+      lower.includes('future confirmed bookings exist')
     );
 
     return {
