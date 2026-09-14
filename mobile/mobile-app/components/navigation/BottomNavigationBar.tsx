@@ -84,6 +84,81 @@ export interface BottomNavigationBarProps {
   isMinimized?: boolean;
 }
 
+interface AndroidTabButtonProps {
+  item: TabItem;
+  isActive: boolean;
+  onPress?: () => void;
+  isDark: boolean;
+}
+
+const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
+  item,
+  isActive,
+  onPress,
+  isDark,
+}) => {
+  const IconComponent = item.icon;
+  const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
+  const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
+  const activePillBg = isDark ? 'rgba(255, 106, 0, 0.22)' : 'rgba(255, 106, 0, 0.12)';
+
+  return (
+    <Pressable
+      onPress={onPress}
+      android_ripple={{
+        color: isDark ? 'rgba(255, 106, 0, 0.2)' : 'rgba(0, 0, 0, 0.08)',
+        borderless: true,
+        radius: 30,
+      }}
+      style={{
+        flex: 1,
+        minWidth: 0,
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 4,
+      }}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isActive }}
+      accessibilityLabel={item.label}
+    >
+      {/* Material 3 Active Indicator Pill */}
+      <View
+        style={{
+          height: 30,
+          width: 54,
+          borderRadius: 15,
+          backgroundColor: isActive ? activePillBg : 'transparent',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 3,
+        }}
+      >
+        <IconComponent
+          size={22}
+          color={iconColor}
+          strokeWidth={isActive ? 2.3 : 1.9}
+        />
+      </View>
+
+      {/* Tab Label */}
+      <Text
+        style={{
+          color: labelColor,
+          fontSize: 11,
+          lineHeight: 13,
+          fontWeight: isActive ? '700' : '500',
+          textAlign: 'center',
+        }}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {item.label}
+      </Text>
+    </Pressable>
+  );
+};
+
 interface InsetTabButtonProps {
   item: TabItem;
   isActive: boolean;
@@ -151,9 +226,9 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
     }
   }, [isActive, pressScale, pressBlur]);
 
-  // Rule: Icons & active labels use Nahom Orange; inactive labels use readable neutral
-  const iconColor = NAHOM_ORANGE;
-  const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#475569');
+  // Icons & labels: Active uses Nahom Orange; inactive uses clear readable neutral
+  const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
+  const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
 
   return (
     <Pressable
@@ -275,12 +350,12 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
 
   const barAnimatedStyle = useAnimatedStyle(() => {
     const baseStyle: any = {
-      height: containerHeight.value,
+      height: isIOS ? containerHeight.value : undefined,
     };
 
     const transforms: any[] = [{ translateY: navTranslateY.value }];
 
-    if (scrollY) {
+    if (isIOS && scrollY) {
       const scale = interpolate(
         scrollY.value,
         [0, 60, 150],
@@ -439,19 +514,76 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   const bottomInset = Math.max(insets.bottom, isIOS ? 14 : 10) + 6;
 
   // Theme-aware styles:
-  // Dark mode: much darker velvety black-charcoal (#101114)
-  // Light mode: 100% transparent container (only icons and switching option display)
-  const containerBg = isDark ? 'rgba(16, 17, 20, 0.98)' : 'transparent';
-  const containerBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'transparent';
-  const containerBorderTop = isDark ? 'rgba(255, 255, 255, 0.14)' : 'transparent';
-  const containerBorderBottom = isDark ? 'rgba(255, 255, 255, 0.04)' : 'transparent';
+  // Dark mode: velvety black-charcoal (#101114)
+  // Light mode: solid / frosted crisp white (#FFFFFF) with high visibility and contrast
+  const containerBg = isDark ? 'rgba(16, 17, 20, 0.98)' : '#FFFFFF';
+  const containerBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
+  const containerBorderTop = isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.90)';
+  const containerBorderBottom = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.08)';
 
   // Active capsule (switching option):
   // Dark mode: contrasting dark charcoal capsule (#303238)
-  // Light mode: subtle contrasting soft grey/glass capsule for switching indicator
-  const activeCapsuleBg = isDark ? 'rgba(48, 50, 56, 0.92)' : 'rgba(0, 0, 0, 0.06)';
-  const activeCapsuleBorder = isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.08)';
+  // Light mode: soft brand orange tint capsule
+  const activeCapsuleBg = isDark ? 'rgba(48, 50, 56, 0.92)' : 'rgba(255, 106, 0, 0.12)';
+  const activeCapsuleBorder = isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 106, 0, 0.22)';
 
+  // Native Android Navigation Bar (Material 3 dock)
+  // Space below for Android phone default nav buttons (3-button navigation: Back, Home, Recent Apps or gesture bar)
+  // Fits all Android devices (Vivo, Oppo, Samsung, Xiaomi, Motorola, etc.)
+  if (!isIOS) {
+    const androidNavButtonSpace = Math.max(insets.bottom, 12) + (insets.bottom > 0 ? 4 : 2);
+    const androidBarBg = isDark ? '#121316' : '#FFFFFF';
+    const androidBorderTop = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
+
+    return (
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            width: '100%',
+            backgroundColor: androidBarBg,
+            borderTopWidth: 1,
+            borderTopColor: androidBorderTop,
+            paddingBottom: androidNavButtonSpace,
+            elevation: 12,
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: isDark ? 0.35 : 0.06,
+            shadowRadius: 6,
+            zIndex: 50,
+            pointerEvents: isKeyboardVisible ? 'none' : 'auto',
+          },
+          barAnimatedStyle,
+        ]}
+      >
+        <View
+          style={{
+            height: 58,
+            width: '100%',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-around',
+            paddingHorizontal: 4,
+          }}
+        >
+          {TAB_ITEMS.map((item) => (
+            <AndroidTabButton
+              key={item.key}
+              item={item}
+              isActive={selectedTabKey === item.key}
+              onPress={() => handleTabPress(item)}
+              isDark={isDark}
+            />
+          ))}
+        </View>
+      </Animated.View>
+    );
+  }
+
+  // iOS UI: Preserved untouched floating pill design
   return (
     <View
       style={{
@@ -461,83 +593,85 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
       }}
       className="absolute left-0 right-0 items-center justify-center px-4 z-50"
     >
-      <GestureDetector gesture={panGesture}>
-        <Animated.View
-          onLayout={handleLayout}
-          style={[
-            barAnimatedStyle,
-            {
-              width: '100%',
-              maxWidth: 410,
-              backgroundColor: containerBg,
-              borderColor: containerBorder,
-              borderTopColor: containerBorderTop,
-              borderBottomColor: containerBorderBottom,
-              borderWidth: isDark ? 1.2 : 0,
-              borderRadius: 36,
-              elevation: isDark ? 12 : 0,
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: isDark ? 0.50 : 0,
-              shadowRadius: isDark ? 22 : 0,
-            },
-          ]}
-          className="h-[64px] px-1.5 flex-row items-center justify-between relative overflow-hidden"
-        >
-          {/* Subtle Specular Top Highlight Line (Dark mode only) */}
-          {isDark && (
-            <View
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 20,
-                right: 20,
-                height: 1.2,
-                backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                borderRadius: 1,
-                pointerEvents: 'none',
-              }}
-            />
-          )}
-
-          {/* Active Tab: Switching Capsule */}
-          {tabWidth > 0 && (
-            <Animated.View
-              style={[
-                slidingPillStyle,
-                {
+      <View style={{ width: '100%', maxWidth: 410, alignItems: 'center' }}>
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            onLayout={handleLayout}
+            style={[
+              barAnimatedStyle,
+              {
+                width: '100%',
+                maxWidth: 410,
+                backgroundColor: containerBg,
+                borderColor: containerBorder,
+                borderTopColor: containerBorderTop,
+                borderBottomColor: containerBorderBottom,
+                borderWidth: 1.2,
+                borderRadius: 36,
+                elevation: isDark ? 12 : 8,
+                shadowColor: '#000000',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: isDark ? 0.50 : 0.12,
+                shadowRadius: isDark ? 22 : 16,
+              },
+            ]}
+            className="h-[64px] px-1.5 flex-row items-center justify-between relative overflow-hidden"
+          >
+            {/* Subtle Specular Top Highlight Line (Dark mode only) */}
+            {isDark && (
+              <View
+                style={{
                   position: 'absolute',
-                  left: horizontalPadding,
-                  top: isCompact ? 3 : 5,
-                  bottom: isCompact ? 3 : 5,
-                  borderRadius: 24,
-                  backgroundColor: activeCapsuleBg,
-                  borderWidth: isDark ? 1 : 1,
-                  borderColor: activeCapsuleBorder,
-                  shadowColor: '#000000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: isDark ? 0.25 : 0.04,
-                  shadowRadius: 4,
-                  elevation: isDark ? 2 : 1,
+                  top: 0,
+                  left: 20,
+                  right: 20,
+                  height: 1.2,
+                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                  borderRadius: 1,
                   pointerEvents: 'none',
-                },
-              ]}
-            />
-          )}
+                }}
+              />
+            )}
 
-          {/* Tab Navigation Items */}
-          {TAB_ITEMS.map((item) => (
-            <InsetTabButton
-              key={item.key}
-              item={item}
-              isActive={selectedTabKey === item.key}
-              onPress={() => handleTabPress(item)}
-              isDark={isDark}
-              isCompact={isCompact}
-            />
-          ))}
-        </Animated.View>
-      </GestureDetector>
+            {/* Active Tab: Switching Capsule */}
+            {tabWidth > 0 && (
+              <Animated.View
+                style={[
+                  slidingPillStyle,
+                  {
+                    position: 'absolute',
+                    left: horizontalPadding,
+                    top: isCompact ? 3 : 5,
+                    bottom: isCompact ? 3 : 5,
+                    borderRadius: 24,
+                    backgroundColor: activeCapsuleBg,
+                    borderWidth: isDark ? 1 : 1,
+                    borderColor: activeCapsuleBorder,
+                    shadowColor: '#000000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDark ? 0.25 : 0.04,
+                    shadowRadius: 4,
+                    elevation: isDark ? 2 : 1,
+                    pointerEvents: 'none',
+                  },
+                ]}
+              />
+            )}
+
+            {/* Tab Navigation Items */}
+            {TAB_ITEMS.map((item) => (
+              <InsetTabButton
+                key={item.key}
+                item={item}
+                isActive={selectedTabKey === item.key}
+                onPress={() => handleTabPress(item)}
+                isDark={isDark}
+                isCompact={isCompact}
+              />
+            ))}
+          </Animated.View>
+        </GestureDetector>
+      </View>
     </View>
   );
 };

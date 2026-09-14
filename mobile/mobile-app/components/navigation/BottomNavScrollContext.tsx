@@ -102,9 +102,16 @@ export const useBottomNavScroll = () => {
   const localLastY = useRef(0);
 
   React.useEffect(() => {
-    return subscribeGlobalBottomNavCompact((val) => {
-      setCompact(val);
+    let isMounted = true;
+    const unsub = subscribeGlobalBottomNavCompact((val) => {
+      if (isMounted) {
+        setCompact(val);
+      }
     });
+    return () => {
+      isMounted = false;
+      unsub();
+    };
   }, []);
 
   const handleLocalScroll = useCallback((event: any) => {

@@ -316,7 +316,7 @@ export function ScreenShell({
           <View
             className="flex-1 bg-background"
             style={{
-              paddingBottom: shouldShowBottomNav ? (Platform.OS === 'ios' ? 84 : 68) : 0,
+              paddingBottom: shouldShowBottomNav ? (Platform.OS === 'ios' ? 84 : Math.max(insets.bottom + 68, 76)) : 0,
             }}
           >
             {children}

@@ -23,7 +23,7 @@ export interface CustomiseDeckZoneProps {
 
 export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
   activeItems,
-  maxCapacity = 5,
+  maxCapacity = 6,
   onRemoveItem,
   onReorderItem,
   isDropTargetActive = false,

@@ -93,7 +93,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
               containerClassName="w-[31%]"
               iconBgColor={colorBg}
               iconShapeClass={iconShapeClass}
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={20} />}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={26} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
