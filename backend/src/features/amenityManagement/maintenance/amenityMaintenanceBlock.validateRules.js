@@ -29,3 +29,9 @@ export const overlappingMaintenanceRules = [
   query('startDateTime').notEmpty().withMessage('startDateTime is required').isISO8601().withMessage('startDateTime must be valid ISO8601'),
   query('endDateTime').notEmpty().withMessage('endDateTime is required').isISO8601().withMessage('endDateTime must be valid ISO8601'),
 ];
+
+export const extendMaintenanceRules = [
+  param('blockId').notEmpty().withMessage('blockId parameter is required').isMongoId().withMessage('Invalid blockId'),
+  body('newEndDateTime').notEmpty().withMessage('newEndDateTime is required').isISO8601().withMessage('newEndDateTime must be valid ISO8601'),
+  body('conflictAction').optional().isIn(['CANCEL_AND_PROCEED']).withMessage('Invalid conflictAction'),
+];

@@ -64,9 +64,30 @@ export class AmenityMaintenanceBlockRepository {
   async updateStatus(blockId, orgId, status, session) {
     const filter = { _id: blockId };
     if (orgId) filter.orgId = orgId;
+    const update = { status };
+    if (status === 'COMPLETED') {
+      update.completedAt = new Date();
+    }
     return AmenityMaintenanceBlock.findOneAndUpdate(
       filter,
-      { $set: { status } },
+      { $set: update },
+      { session: getValidSession(session), returnDocument: 'after', runValidators: true }
+    );
+  }
+
+  /**
+   * Extends maintenance block end datetime.
+   * @param {string|mongoose.Types.ObjectId} blockId
+   * @param {string|mongoose.Types.ObjectId} [orgId]
+   * @param {Date} newEndDateTime
+   * @param {mongoose.ClientSession} [session]
+   */
+  async extend(blockId, orgId, newEndDateTime, session) {
+    const filter = { _id: blockId };
+    if (orgId) filter.orgId = orgId;
+    return AmenityMaintenanceBlock.findOneAndUpdate(
+      filter,
+      { $set: { endDateTime: newEndDateTime } },
       { session: getValidSession(session), returnDocument: 'after', runValidators: true }
     );
   }

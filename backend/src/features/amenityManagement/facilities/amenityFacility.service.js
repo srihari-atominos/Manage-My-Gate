@@ -51,7 +51,7 @@ export class AmenityFacilityService {
           {
             name: cleanName,
             totalBulkStock: room.capacity || 1,
-            isActive: !facility.isDraft,
+            isActive: room.isActive !== undefined ? room.isActive : matched.isActive,
           },
           session
         );
@@ -63,7 +63,7 @@ export class AmenityFacilityService {
             name: cleanName,
             identifier,
             totalBulkStock: room.capacity || 1,
-            isActive: !facility.isDraft,
+            isActive: room.isActive !== undefined ? room.isActive : !facility.isDraft,
           },
           session
         );
