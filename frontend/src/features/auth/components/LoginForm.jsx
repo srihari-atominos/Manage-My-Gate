@@ -9,6 +9,7 @@ import { loginWithGoogle, acceptInvitation } from '../store/authSlice.js'
 import ForgotPasswordModal from './ForgotPasswordModal.jsx'
 import { GoogleLogin } from '@react-oauth/google'
 import { useMsal } from '@azure/msal-react'
+import nahomLogo from '../../../assets/images/nahom_full_logo.png'
 
 const MemoizedGoogleLogin = React.memo(({ onSuccess, onError }) => (
   <GoogleLogin
@@ -354,12 +355,11 @@ export const LoginForm = () => {
 
         <CForm onSubmit={handleSubmit(onSubmit)}>
           <div style={styles.logoContainer}>
-            <div style={styles.logoBox}>
-              M
-            </div>
-            <h2 style={styles.logoText}>
-              Manage My Gate
-            </h2>
+            <img
+              src={nahomLogo}
+              alt="NAHOM"
+              style={styles.brandLogo}
+            />
           </div>
 
           <h1 style={styles.title}>{t('auth.login.title', 'Welcome Back')}</h1>
@@ -781,29 +781,18 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: '28px',
-    marginTop: '12px',
+    marginBottom: '20px',
+    marginTop: '6px',
+    background: 'transparent',
   },
-  logoBox: {
-    width: '44px',
-    height: '44px',
-    backgroundColor: '#2563eb',
-    borderRadius: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: '22px',
-    marginRight: '14px',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  },
-  logoText: {
-    fontSize: '28px',
-    fontWeight: '700',
-    color: '#0f172a',
-    margin: 0,
-    letterSpacing: '-0.025em',
+  brandLogo: {
+    height: '92px',
+    width: 'auto',
+    maxWidth: '220px',
+    objectFit: 'contain',
+    display: 'block',
+    margin: '0 auto',
+    filter: 'drop-shadow(0 4px 10px rgba(0, 0, 0, 0.05))',
   },
   msButton: {
     background: '#2f2f2f',

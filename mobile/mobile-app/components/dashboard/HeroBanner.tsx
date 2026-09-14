@@ -90,8 +90,11 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
   const { t } = useTranslation();
 
   useEffect(() => {
+    let isMounted = true;
     const timer = setInterval(() => {
+      if (!isMounted) return;
       setActiveIndex((prev) => {
+        if (!isMounted) return prev;
         const nextIndex = (prev + 1) % BANNERS.length;
         scrollViewRef.current?.scrollTo({
           x: nextIndex * BANNER_WIDTH,
@@ -101,7 +104,10 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
       });
     }, 5000);
 
-    return () => clearInterval(timer);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
   }, []);
 
   const handleScrollEnd = (event: any) => {

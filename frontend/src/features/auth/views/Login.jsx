@@ -31,12 +31,11 @@ const Login = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center items-center">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl mr-3 shadow-md">
-            M
-          </div>
-          <h2 className="text-3xl font-bold text-slate-900 text-center tracking-tight">
-            Manage My Gate
-          </h2>
+          <img
+            src="/nahom_full_logo.png"
+            alt="NAHOM"
+            className="h-24 w-auto max-w-[220px] object-contain drop-shadow-sm"
+          />
         </div>
         <h2 className="mt-6 text-center text-xl font-semibold text-slate-800">
           Sign in to your account

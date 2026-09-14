@@ -5,13 +5,23 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export interface NahomBrandLogoProps {
   size?: number;
+  enableSweep?: boolean;
 }
 
-// 1. Top Gated Community Network Emblem Illustration (100% Transparent Background)
-export const NahomEmblem: React.FC<NahomBrandLogoProps> = ({ size = 120 }) => {
-  const height = size * 0.615; // 557 / 905 aspect ratio
+// 1. Top 3D Modern Emblem (Clean Luxury Presentation with Zero UI Bleeding)
+export const NahomEmblem: React.FC<NahomBrandLogoProps> = ({
+  size = 104,
+}) => {
+  const height = Math.round(size * (573 / 545)); // exact 573 / 545 aspect ratio
+
   return (
-    <View className="items-center justify-center self-center bg-transparent">
+    <View
+      style={{
+        width: size,
+        height: height,
+      }}
+      className="items-center justify-center self-center bg-transparent"
+    >
       <Image
         source={require('../../assets/images/nahom_emblem.png')}
         style={{
@@ -24,10 +34,10 @@ export const NahomEmblem: React.FC<NahomBrandLogoProps> = ({ size = 120 }) => {
   );
 };
 
-// 2. NAHOM App Name Graphic (100% Transparent Background - Charcoal & Vibrant Orange Brand)
+// 2. NAHOM App Name Graphic (Original Typography - 100% Transparent Background)
 export const NahomTitle: React.FC<{ width?: number }> = ({ width }) => {
-  const TITLE_WIDTH = width || Math.min(SCREEN_WIDTH - 80, 220);
-  const TITLE_HEIGHT = TITLE_WIDTH * 0.165; // 123 / 745 aspect ratio
+  const TITLE_WIDTH = width || Math.min(SCREEN_WIDTH - 80, 215);
+  const TITLE_HEIGHT = Math.round(TITLE_WIDTH * (117 / 703)); // exact 117 / 703 aspect ratio
 
   return (
     <View className="items-center justify-center self-center bg-transparent">
@@ -82,22 +92,23 @@ export const NahomSlogan: React.FC<{ width?: number }> = ({ width }) => {
 };
 
 // 5. Unified Wordmark with Balanced Vertical Spacing
-export const NahomWordmark: React.FC<{ width?: number; showSubtext?: boolean }> = ({
+export const NahomWordmark: React.FC<{ width?: number; showSubtext?: boolean; marginTop?: number }> = ({
   width,
   showSubtext = false,
+  marginTop = 0,
 }) => {
   return (
-    <View className="items-center justify-center self-center mt-2 bg-transparent">
+    <View style={{ marginTop }} className="items-center justify-center self-center bg-transparent">
       {/* App Name & Graphic Lockup */}
       <NahomTitle width={width} />
 
       {/* Optional subtext */}
       {showSubtext && (
         <>
-          <View className="mt-1.5">
+          <View className="mt-1">
             <NahomAbbreviation />
           </View>
-          <View className="mt-2">
+          <View className="mt-1.5">
             <NahomSlogan />
           </View>
         </>

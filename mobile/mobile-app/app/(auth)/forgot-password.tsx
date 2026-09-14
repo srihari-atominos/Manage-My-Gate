@@ -202,7 +202,16 @@ export default function ForgotPasswordScreen() {
             </View>
 
             {/* Form Card */}
-            <View className="bg-card border border-border/80 rounded-3xl p-5 gap-4 shadow-xs">
+            <View
+              style={{
+                shadowColor: '#1C1917',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.08,
+                shadowRadius: 16,
+                elevation: 4,
+              }}
+              className="bg-white/75 dark:bg-[#1C1917]/75 backdrop-blur-xl border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-4 shadow-xl shadow-black/5"
+            >
               {/* Step Indicator & Header */}
               <View className="items-center gap-1">
                 <View className="size-11 rounded-2xl bg-primary/10 items-center justify-center mb-1">
@@ -244,19 +253,32 @@ export default function ForgotPasswordScreen() {
               {step === 0 && (
                 <View className="gap-3.5">
                   {/* Method Selector */}
-                  <View className="bg-muted/40 p-1 rounded-xl flex-row border border-border/80">
+                  <View className="bg-white/40 dark:bg-black/30 backdrop-blur-md p-1.5 rounded-2xl flex-row border border-white/60 dark:border-white/15 shadow-2xs">
                     <TouchableOpacity
                       onPress={() => setMethod('email')}
-                      activeOpacity={0.8}
-                      className={`flex-1 py-2 rounded-lg flex-row items-center justify-center gap-1.5 ${
-                        method === 'email' ? 'bg-card border border-border/60 shadow-xs' : ''
-                      }`}
+                      activeOpacity={0.85}
+                      style={
+                        method === 'email'
+                          ? {
+                              backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                              borderColor: 'rgba(255, 255, 255, 0.7)',
+                              borderWidth: 1,
+                              shadowColor: '#000000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.08,
+                              shadowRadius: 8,
+                              elevation: 2,
+                            }
+                          : {
+                              backgroundColor: 'transparent',
+                            }
+                      }
+                      className="flex-1 py-2 rounded-xl flex-row items-center justify-center gap-1.5"
                     >
-                      <Mail size={14} color={method === 'email' ? '#FF5E00' : '#64748B'} />
+                      <Mail size={14} color={method === 'email' ? '#EA580C' : '#57534E'} strokeWidth={method === 'email' ? 2.4 : 2} />
                       <Text
-                        className={`text-xs font-bold ${
-                          method === 'email' ? 'text-foreground' : 'text-muted-foreground'
-                        }`}
+                        style={{ color: method === 'email' ? '#EA580C' : '#57534E' }}
+                        className={`text-xs ${method === 'email' ? 'font-bold' : 'font-medium'}`}
                       >
                         Email
                       </Text>
@@ -264,16 +286,29 @@ export default function ForgotPasswordScreen() {
 
                     <TouchableOpacity
                       onPress={() => setMethod('phone')}
-                      activeOpacity={0.8}
-                      className={`flex-1 py-2 rounded-lg flex-row items-center justify-center gap-1.5 ${
-                        method === 'phone' ? 'bg-card border border-border/60 shadow-xs' : ''
-                      }`}
+                      activeOpacity={0.85}
+                      style={
+                        method === 'phone'
+                          ? {
+                              backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                              borderColor: 'rgba(255, 255, 255, 0.7)',
+                              borderWidth: 1,
+                              shadowColor: '#000000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.08,
+                              shadowRadius: 8,
+                              elevation: 2,
+                            }
+                          : {
+                              backgroundColor: 'transparent',
+                            }
+                      }
+                      className="flex-1 py-2 rounded-xl flex-row items-center justify-center gap-1.5"
                     >
-                      <Smartphone size={14} color={method === 'phone' ? '#FF5E00' : '#64748B'} />
+                      <Smartphone size={14} color={method === 'phone' ? '#EA580C' : '#57534E'} strokeWidth={method === 'phone' ? 2.4 : 2} />
                       <Text
-                        className={`text-xs font-bold ${
-                          method === 'phone' ? 'text-foreground' : 'text-muted-foreground'
-                        }`}
+                        style={{ color: method === 'phone' ? '#EA580C' : '#57534E' }}
+                        className={`text-xs ${method === 'phone' ? 'font-bold' : 'font-medium'}`}
                       >
                         Phone Number
                       </Text>
@@ -464,7 +499,7 @@ export default function ForgotPasswordScreen() {
                     onPress={() => router.replace('/(auth)/login')}
                     activeOpacity={0.8}
                   >
-                    <Text className="text-xs font-bold text-primary underline">
+                    <Text className="text-xs font-bold text-[#EA580C]">
                       Back to Sign In
                     </Text>
                   </TouchableOpacity>

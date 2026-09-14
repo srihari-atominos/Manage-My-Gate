@@ -8,6 +8,7 @@ import {
   Home,
   UserPlus,
   LogIn,
+  Smartphone,
 } from 'lucide-react-native';
 import * as React from 'react';
 import {
@@ -18,6 +19,7 @@ import {
   TextInput as RNTextInput,
   Platform,
   KeyboardAvoidingView,
+  Image,
   ImageBackground,
   Animated,
   Easing,
@@ -36,6 +38,9 @@ import { TextInput } from '@/components/forms/TextInput';
 import { PasswordInput } from '@/components/forms/PasswordInput';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { parseBackendError } from '@/src/utils/validation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+
 // Sign-Up Schema
 const signupSchema = yup.object().shape({
   name: yup.string().required('Full name is required').min(2, 'Must be at least 2 characters'),
@@ -60,56 +65,74 @@ const signupSchema = yup.object().shape({
   confirmPassword: yup.string().oneOf([yup.ref('password')], 'Passwords must match').required('Confirm password is required'),
 });
 
-// Sign-In Schema
+// Sign-In Schema (for existing user tab)
 const signInSchema = yup.object().shape({
-  login: yup.string().required('Email or Username is required').min(3, 'Must be at least 3 characters'),
-  password: yup.string().required('Password is required').min(4, 'Password must be at least 4 characters'),
+  login: yup.string().required('Email or Username is required'),
+  password: yup.string().required('Password is required'),
+});
+
+// Phone OTP Schema (for existing user tab)
+const phoneSignInSchema = yup.object().shape({
+  phone: yup
+    .string()
+    .required('Phone number is required')
+    .test('valid-phone', 'Please enter a valid phone number with country code', (value) => {
+      if (!value) return false;
+      return /^\+[1-9]\d{7,14}$/.test(value.trim());
+    }),
 });
 
 interface SignupFormValues { name: string; email: string; phone: string; unitNumber?: string; password: string; confirmPassword: string; }
 interface SignInFormValues { login: string; password: string; }
+interface PhoneSignInFormValues { phone: string; }
 
-// CTA Button — inline styles so the background & text are ALWAYS visible
-interface CTAButtonProps { onPress: () => void; disabled: boolean; loading: boolean; label: string; loadingLabel?: string; }
-
-function CTAButton({ onPress, disabled, loading, label, loadingLabel }: CTAButtonProps) {
+function CTAButton({
+  onPress,
+  loading,
+  label,
+  loadingLabel,
+  disabled,
+}: {
+  onPress: () => void;
+  loading: boolean;
+  label: string;
+  loadingLabel?: string;
+  disabled?: boolean;
+}) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || loading}
       activeOpacity={0.88}
-      accessibilityRole="button"
-      accessibilityLabel={label}
       style={{
         marginTop: 4,
         height: 48,
-        borderRadius: 16,
+        borderRadius: 12,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: disabled ? '#94A3B8' : '#FF5E00',
-        shadowColor: '#000',
-        shadowOpacity: 0.18,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 3 },
+        shadowColor: '#EA580C',
+        shadowOpacity: 0.28,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 4 },
         elevation: 4,
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
-      {/* Charcoal overlay on left for dark→orange brand split */}
-      {!disabled && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0, bottom: 0, left: 0,
-            width: '45%',
-            backgroundColor: '#1E232E',
-            borderTopLeftRadius: 16,
-            borderBottomLeftRadius: 16,
-          }}
-          pointerEvents="none"
-        />
-      )}
+      <View className="absolute inset-0">
+        <Svg width="100%" height="100%" preserveAspectRatio="none">
+          <Defs>
+            <LinearGradient id="ctaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <Stop offset="0%" stopColor="#1E232E" />
+              <Stop offset="42%" stopColor="#2A3342" />
+              <Stop offset="80%" stopColor="#EA580C" />
+              <Stop offset="100%" stopColor="#FF7A00" />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100%" height="100%" rx="12" fill="url(#ctaGrad)" />
+        </Svg>
+      </View>
       {loading ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 10 }}>
           <ActivityIndicator color="#FFFFFF" size="small" />
@@ -126,14 +149,18 @@ function CTAButton({ onPress, disabled, loading, label, loadingLabel }: CTAButto
 }
 
 export default function SignupScreen() {
-  const { register: performRegister, login: performLogin, loading, error, clearStatus, isAuthenticated } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { register: performRegister, login: performLogin, requestOtp, otpSent, loading, error, clearStatus, isAuthenticated } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
 
   const [userType, setUserType] = React.useState<'new' | 'existing'>('new');
+  const [existingAuthMode, setExistingAuthMode] = React.useState<'basic' | 'phone'>('basic');
   const [localLoading, setLocalLoading] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
   const [signInLoading, setSignInLoading] = React.useState(false);
   const [signInError, setSignInError] = React.useState<string | null>(null);
+  const [submittedPhone, setSubmittedPhone] = React.useState<string | null>(null);
+  const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
 
   const emailInputRef = React.useRef<RNTextInput>(null);
   const unitInputRef = React.useRef<RNTextInput>(null);
@@ -157,6 +184,12 @@ export default function SignupScreen() {
     resolver: yupResolver(signInSchema),
     mode: 'onTouched',
     defaultValues: { login: '', password: '' },
+  });
+
+  const phoneForm = useForm<PhoneSignInFormValues>({
+    resolver: yupResolver(phoneSignInSchema),
+    mode: 'onTouched',
+    defaultValues: { phone: '' },
   });
 
   React.useEffect(() => {
@@ -189,6 +222,16 @@ export default function SignupScreen() {
       hasNavigatedRef.current = false;
     }
   }, [isAuthenticated]);
+
+  // Reactively route to OTP screen if Phone OTP sent
+  React.useEffect(() => {
+    if (otpSent && submittedPhone) {
+      router.push({
+        pathname: '/(auth)/otp',
+        params: { phone: submittedPhone },
+      });
+    }
+  }, [otpSent, submittedPhone]);
 
   const onSubmit = async (data: SignupFormValues) => {
     try {
@@ -226,36 +269,136 @@ export default function SignupScreen() {
     }
   };
 
+  const onPhoneSignInSubmit = async (data: PhoneSignInFormValues) => {
+    try {
+      setIsSubmittingPhone(true);
+      setSignInError(null);
+      setSubmittedPhone(data.phone.trim());
+      await requestOtp(data.phone.trim(), false);
+    } catch (err: any) {
+      const parsed = parseBackendError(err, 'Failed to send verification code. Please try again.');
+      setSignInError(parsed.userMessage);
+    } finally {
+      setIsSubmittingPhone(false);
+    }
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <ImageBackground source={require('../../assets/images/auth-bg.jpg')} style={{ flex: 1 }} blurRadius={Platform.OS === 'ios' ? 3 : 2} resizeMode="cover">
         <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'} className="px-5 py-6">
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingTop: Math.max(insets.top, 24) + 16,
+              paddingBottom: Math.max(insets.bottom, 20) + 100,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            className="px-5"
+          >
             <View className="max-w-sm mx-auto w-full gap-3.5">
 
               {/* Brand Header */}
               <Animated.View style={{ opacity: emblemOpacity, transform: [{ scale: emblemScale }, { translateY: emblemFloat }], alignItems: 'center', justifyContent: 'center' }}>
-                <NahomEmblem size={102} />
-                <NahomWordmark />
+                <NahomEmblem size={106} />
+                <View style={{ marginTop: -2, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <NahomWordmark />
+                </View>
               </Animated.View>
 
               {/* Animated Content */}
               <Animated.View style={{ opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }} className="gap-3.5 w-full">
 
                 {/* Form Card */}
-                <View className="bg-card border border-border/80 rounded-3xl p-5 gap-3.5 shadow-xs">
+                <View
+                  style={{
+                    shadowColor: '#1C1917',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 16,
+                    elevation: 4,
+                  }}
+                  className="bg-white/75 dark:bg-[#1C1917]/75 backdrop-blur-xl border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-3.5 shadow-xl shadow-black/5"
+                >
 
-                  {/* Tab Switcher */}
-                  <View className="bg-muted/40 p-1 rounded-2xl flex-row border border-border/60">
-                    <TouchableOpacity onPress={() => handleTabSwitch('new')} activeOpacity={0.85} accessibilityRole="tab" accessibilityLabel="New User Sign Up" accessibilityState={{ selected: userType === 'new' }} className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5 ${userType === 'new' ? 'bg-card border border-border/60 shadow-xs' : ''}`}>
-                      <UserPlus size={14} color={userType === 'new' ? '#FF5E00' : '#64748B'} strokeWidth={2.2} />
-                      <Text className={`text-xs font-bold ${userType === 'new' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'}`}>New User</Text>
+                  {/* Tab Switcher (New User vs Existing User) */}
+                  <View className="bg-white/40 dark:bg-black/30 backdrop-blur-md p-1.5 rounded-2xl flex-row border border-white/60 dark:border-white/15 shadow-2xs">
+                    <TouchableOpacity
+                      onPress={() => handleTabSwitch('new')}
+                      activeOpacity={0.85}
+                      accessibilityRole="tab"
+                      accessibilityLabel="New User Sign Up"
+                      accessibilityState={{ selected: userType === 'new' }}
+                      style={
+                        userType === 'new'
+                          ? {
+                              backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                              borderColor: 'rgba(255, 255, 255, 0.7)',
+                              borderWidth: 1,
+                              shadowColor: '#000000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.08,
+                              shadowRadius: 8,
+                              elevation: 2,
+                            }
+                          : {
+                              backgroundColor: 'transparent',
+                            }
+                      }
+                      className="flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5"
+                    >
+                      <UserPlus
+                        size={14}
+                        color={userType === 'new' ? '#EA580C' : '#57534E'}
+                        strokeWidth={userType === 'new' ? 2.4 : 2}
+                      />
+                      <Text
+                        style={{ color: userType === 'new' ? '#EA580C' : '#57534E' }}
+                        className={`text-xs ${userType === 'new' ? 'font-bold' : 'font-medium'}`}
+                      >
+                        New User
+                      </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleTabSwitch('existing')} activeOpacity={0.85} accessibilityRole="tab" accessibilityLabel="Existing User Sign In" accessibilityState={{ selected: userType === 'existing' }} className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5 ${userType === 'existing' ? 'bg-card border border-border/60 shadow-xs' : ''}`}>
-                      <LogIn size={14} color={userType === 'existing' ? '#FF5E00' : '#64748B'} strokeWidth={2.2} />
-                      <Text className={`text-xs font-bold ${userType === 'existing' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'}`}>Existing User</Text>
+                    <TouchableOpacity
+                      onPress={() => handleTabSwitch('existing')}
+                      activeOpacity={0.85}
+                      accessibilityRole="tab"
+                      accessibilityLabel="Existing User Sign In"
+                      accessibilityState={{ selected: userType === 'existing' }}
+                      style={
+                        userType === 'existing'
+                          ? {
+                              backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                              borderColor: 'rgba(255, 255, 255, 0.7)',
+                              borderWidth: 1,
+                              shadowColor: '#000000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.08,
+                              shadowRadius: 8,
+                              elevation: 2,
+                            }
+                          : {
+                              backgroundColor: 'transparent',
+                            }
+                      }
+                      className="flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5"
+                    >
+                      <LogIn
+                        size={14}
+                        color={userType === 'existing' ? '#EA580C' : '#57534E'}
+                        strokeWidth={userType === 'existing' ? 2.4 : 2}
+                      />
+                      <Text
+                        style={{ color: userType === 'existing' ? '#EA580C' : '#57534E' }}
+                        className={`text-xs ${userType === 'existing' ? 'font-bold' : 'font-medium'}`}
+                      >
+                        Existing User
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
@@ -263,41 +406,339 @@ export default function SignupScreen() {
                   {userType === 'new' ? (
                     /* NEW USER: Sign-Up Form */
                     <View className="gap-3.5">
-                      <Text className="text-base font-bold text-foreground text-center">Create Resident Account</Text>
-                      <Controller control={control} name="name" render={({ field: { onChange, onBlur, value } }) => (<TextInput label="Full Name" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="e.g. John Doe" autoCapitalize="words" leftIcon={User} error={errors.name?.message} returnKeyType="next" onSubmitEditing={() => emailInputRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <Controller control={control} name="email" render={({ field: { onChange, onBlur, value } }) => (<TextInput ref={emailInputRef} label="Email Address" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="john@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} leftIcon={Mail} error={errors.email?.message} returnKeyType="next" onSubmitEditing={() => unitInputRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <Controller control={control} name="phone" render={({ field: { onChange, value } }) => (<PhoneInput label="Phone Number" required placeholder="98765 43210" value={value} onChangeText={onChange} error={errors.phone?.message} />)} />
-                      <Controller control={control} name="unitNumber" render={({ field: { onChange, onBlur, value } }) => (<TextInput ref={unitInputRef} label="Villa / Unit No. (Optional)" value={value} onChangeText={onChange} onBlur={onBlur} placeholder="e.g. Villa 104, Block B" leftIcon={Home} returnKeyType="next" onSubmitEditing={() => passwordInputRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <Controller control={control} name="password" render={({ field: { onChange, onBlur, value } }) => (<PasswordInput ref={passwordInputRef} label="Password" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Create a password" leftIcon={Lock} showRequirements error={errors.password?.message} returnKeyType="next" onSubmitEditing={() => confirmPasswordInputRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <Controller control={control} name="confirmPassword" render={({ field: { onChange, onBlur, value } }) => (<PasswordInput ref={confirmPasswordInputRef} label="Confirm Password" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Re-enter password" leftIcon={Lock} confirmValue={watch('password')} error={errors.confirmPassword?.message} returnKeyType="go" onSubmitEditing={handleSubmit(onSubmit)} />)} />
-                      {(localError || error) ? (<View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5"><Text className="text-rose-500 text-xs text-center font-medium">{localError || error}</Text></View>) : null}
-                      <CTAButton onPress={handleSubmit(onSubmit)} disabled={loading || localLoading} loading={loading || localLoading} label="Create Account" loadingLabel="Creating..." />
+                      <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center font-sans">
+                        Create Resident Account
+                      </Text>
+                      <Controller
+                        control={control}
+                        name="name"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <TextInput
+                            label="Full Name"
+                            labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
+                            required
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="e.g. John Doe"
+                            autoCapitalize="words"
+                            leftIcon={User}
+                            error={errors.name?.message}
+                            returnKeyType="next"
+                            onSubmitEditing={() => emailInputRef.current?.focus()}
+                            blurOnSubmit={false}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="email"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <TextInput
+                            ref={emailInputRef}
+                            label="Email Address"
+                            labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
+                            required
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="john@example.com"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            leftIcon={Mail}
+                            error={errors.email?.message}
+                            returnKeyType="next"
+                            onSubmitEditing={() => unitInputRef.current?.focus()}
+                            blurOnSubmit={false}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="phone"
+                        render={({ field: { onChange, value } }) => (
+                          <PhoneInput
+                            label="Phone Number"
+                            required
+                            placeholder="98765 43210"
+                            value={value}
+                            onChangeText={onChange}
+                            error={errors.phone?.message}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="unitNumber"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <TextInput
+                            ref={unitInputRef}
+                            label="Villa / Unit No. (Optional)"
+                            labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="e.g. Villa 104, Block B"
+                            leftIcon={Home}
+                            returnKeyType="next"
+                            onSubmitEditing={() => passwordInputRef.current?.focus()}
+                            blurOnSubmit={false}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="password"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <PasswordInput
+                            ref={passwordInputRef}
+                            label="Password"
+                            required
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="Create a password"
+                            leftIcon={Lock}
+                            showRequirements
+                            error={errors.password?.message}
+                            returnKeyType="next"
+                            onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                            blurOnSubmit={false}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="confirmPassword"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <PasswordInput
+                            ref={confirmPasswordInputRef}
+                            label="Confirm Password"
+                            required
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="Re-enter password"
+                            leftIcon={Lock}
+                            confirmValue={watch('password')}
+                            error={errors.confirmPassword?.message}
+                            returnKeyType="go"
+                            onSubmitEditing={handleSubmit(onSubmit)}
+                          />
+                        )}
+                      />
+                      {(localError || error) ? (
+                        <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                          <Text className="text-rose-500 text-xs text-center font-medium">
+                            {localError || error}
+                          </Text>
+                        </View>
+                      ) : null}
+                      <CTAButton
+                        onPress={handleSubmit(onSubmit)}
+                        disabled={loading || localLoading}
+                        loading={loading || localLoading}
+                        label="Create Account"
+                        loadingLabel="Creating..."
+                      />
                     </View>
                   ) : (
                     /* EXISTING USER: Sign-In Form */
                     <View className="gap-3.5">
-                      <Text className="text-base font-bold text-foreground text-center">Welcome Back</Text>
-                      <Controller control={signInForm.control} name="login" render={({ field: { onChange, onBlur, value } }) => (<TextInput label="Email or Username" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Enter your email or username" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" leftIcon={Mail} error={signInForm.formState.errors.login?.message} returnKeyType="next" onSubmitEditing={() => signInPasswordRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <View>
-                        <View className="flex-row items-center justify-between mb-1.5">
-                          <Text className="text-sm font-medium text-foreground">Password <Text className="text-destructive font-bold">*</Text></Text>
-                          <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')} activeOpacity={0.8} hitSlop={8} accessibilityRole="button" accessibilityLabel="Forgot password">
-                            <Text className="text-xs font-bold text-[#FF5E00] dark:text-[#FF7A00]">Forgot?</Text>
-                          </TouchableOpacity>
-                        </View>
-                        <Controller control={signInForm.control} name="password" render={({ field: { onChange, onBlur, value } }) => (<PasswordInput ref={signInPasswordRef} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Enter your password" leftIcon={Lock} error={signInForm.formState.errors.password?.message} returnKeyType="go" onSubmitEditing={signInForm.handleSubmit(onSignInSubmit)} />)} />
+                      <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center font-sans">
+                        Welcome Back
+                      </Text>
+
+                      {/* Sub-tabs: Email/Password vs Phone OTP */}
+                      <View className="bg-white/40 dark:bg-black/30 backdrop-blur-md p-1.5 rounded-2xl flex-row border border-white/60 dark:border-white/15 shadow-2xs">
+                        <TouchableOpacity
+                          onPress={() => setExistingAuthMode('basic')}
+                          activeOpacity={0.85}
+                          style={
+                            existingAuthMode === 'basic'
+                              ? {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                                  borderColor: 'rgba(255, 255, 255, 0.7)',
+                                  borderWidth: 1,
+                                  shadowColor: '#000000',
+                                  shadowOffset: { width: 0, height: 2 },
+                                  shadowOpacity: 0.08,
+                                  shadowRadius: 8,
+                                  elevation: 2,
+                                }
+                              : {
+                                  backgroundColor: 'transparent',
+                                }
+                          }
+                          className="flex-1 py-2 rounded-xl flex-row items-center justify-center gap-1.5"
+                        >
+                          <Lock
+                            size={14}
+                            color={existingAuthMode === 'basic' ? '#EA580C' : '#57534E'}
+                            strokeWidth={existingAuthMode === 'basic' ? 2.4 : 2}
+                          />
+                          <Text
+                            style={{ color: existingAuthMode === 'basic' ? '#EA580C' : '#57534E' }}
+                            className={`text-xs ${existingAuthMode === 'basic' ? 'font-bold' : 'font-medium'}`}
+                          >
+                            Email / Password
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          onPress={() => setExistingAuthMode('phone')}
+                          activeOpacity={0.85}
+                          style={
+                            existingAuthMode === 'phone'
+                              ? {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                                  borderColor: 'rgba(255, 255, 255, 0.7)',
+                                  borderWidth: 1,
+                                  shadowColor: '#000000',
+                                  shadowOffset: { width: 0, height: 2 },
+                                  shadowOpacity: 0.08,
+                                  shadowRadius: 8,
+                                  elevation: 2,
+                                }
+                              : {
+                                  backgroundColor: 'transparent',
+                                }
+                          }
+                          className="flex-1 py-2 rounded-xl flex-row items-center justify-center gap-1.5"
+                        >
+                          <Smartphone
+                            size={14}
+                            color={existingAuthMode === 'phone' ? '#EA580C' : '#57534E'}
+                            strokeWidth={existingAuthMode === 'phone' ? 2.4 : 2}
+                          />
+                          <Text
+                            style={{ color: existingAuthMode === 'phone' ? '#EA580C' : '#57534E' }}
+                            className={`text-xs ${existingAuthMode === 'phone' ? 'font-bold' : 'font-medium'}`}
+                          >
+                            Sign in with OTP
+                          </Text>
+                        </TouchableOpacity>
                       </View>
-                      {(signInError || error) ? (<View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5"><Text className="text-rose-500 text-xs text-center font-medium">{signInError || error}</Text></View>) : null}
-                      <CTAButton onPress={signInForm.handleSubmit(onSignInSubmit)} disabled={signInLoading || googleLoading} loading={signInLoading} label="Sign In" loadingLabel="Signing In..." />
+
+                      {existingAuthMode === 'basic' ? (
+                        <>
+                          <Controller
+                            control={signInForm.control}
+                            name="login"
+                            render={({ field: { onChange, onBlur, value } }) => (
+                              <TextInput
+                                label="Email or Username"
+                                labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
+                                required
+                                value={value}
+                                onChangeText={onChange}
+                                onBlur={onBlur}
+                                placeholder="Enter your email or username"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                keyboardType="email-address"
+                                leftIcon={Mail}
+                                error={signInForm.formState.errors.login?.message}
+                                returnKeyType="next"
+                                onSubmitEditing={() => signInPasswordRef.current?.focus()}
+                                blurOnSubmit={false}
+                              />
+                            )}
+                          />
+                          <View>
+                            <View className="flex-row items-center justify-between mb-1.5">
+                              <Text className="text-sm font-bold text-[#1C1917] dark:text-white">
+                                Password <Text className="text-[#EA580C] font-bold">*</Text>
+                              </Text>
+                              <TouchableOpacity
+                                onPress={() => router.push('/(auth)/forgot-password')}
+                                activeOpacity={0.8}
+                                hitSlop={8}
+                                accessibilityRole="button"
+                                accessibilityLabel="Forgot password"
+                              >
+                                <Text className="text-xs font-bold text-[#EA580C]">Forgot?</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <Controller
+                              control={signInForm.control}
+                              name="password"
+                              render={({ field: { onChange, onBlur, value } }) => (
+                                <PasswordInput
+                                  ref={signInPasswordRef}
+                                  value={value}
+                                  onChangeText={onChange}
+                                  onBlur={onBlur}
+                                  placeholder="Enter your password"
+                                  leftIcon={Lock}
+                                  error={signInForm.formState.errors.password?.message}
+                                  returnKeyType="go"
+                                  onSubmitEditing={signInForm.handleSubmit(onSignInSubmit)}
+                                />
+                              )}
+                            />
+                          </View>
+                          {(signInError || error) ? (
+                            <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                              <Text className="text-rose-500 text-xs text-center font-medium">
+                                {signInError || error}
+                              </Text>
+                            </View>
+                          ) : null}
+                          <CTAButton
+                            onPress={signInForm.handleSubmit(onSignInSubmit)}
+                            disabled={signInLoading || googleLoading}
+                            loading={signInLoading}
+                            label="Sign In"
+                            loadingLabel="Signing In..."
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Controller
+                            control={phoneForm.control}
+                            name="phone"
+                            render={({ field: { onChange, value } }) => (
+                              <PhoneInput
+                                label="Mobile Number"
+                                required
+                                placeholder="98765 43210"
+                                value={value}
+                                onChangeText={onChange}
+                                error={phoneForm.formState.errors.phone?.message}
+                              />
+                            )}
+                          />
+                          {(signInError || error) ? (
+                            <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                              <Text className="text-rose-500 text-xs text-center font-medium">
+                                {signInError || error}
+                              </Text>
+                            </View>
+                          ) : null}
+                          <CTAButton
+                            onPress={phoneForm.handleSubmit(onPhoneSignInSubmit)}
+                            disabled={isSubmittingPhone || googleLoading}
+                            loading={isSubmittingPhone}
+                            label="Sign in with OTP"
+                            loadingLabel="Sending Code..."
+                          />
+                        </>
+                      )}
                     </View>
                   )}
                 </View>
 
-                {/* OR CONTINUE WITH */}
-                <View className="flex-row items-center my-1 gap-3">
-                  <View className="flex-1 h-px bg-border/80" />
-                  <Text className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase font-sans">Or Continue With</Text>
-                  <View className="flex-1 h-px bg-border/80" />
+                {/* OR CONTINUE WITH Divider (High-visibility frosted pill) */}
+                <View className="flex-row items-center my-2 gap-2.5">
+                  <View className="flex-1 h-[1.5px] bg-white/70 dark:bg-white/20" />
+                  <View className="bg-white/75 dark:bg-[#1C1917]/75 px-3.5 py-1 rounded-full border border-white/70 dark:border-white/15 shadow-2xs backdrop-blur-md">
+                    <Text className="text-[10px] font-bold text-[#1C1917] dark:text-white tracking-widest uppercase font-sans">
+                      Or Continue With
+                    </Text>
+                  </View>
+                  <View className="flex-1 h-[1.5px] bg-white/70 dark:bg-white/20" />
                 </View>
 
                 {/* Social Authentication: Google ID & Apple ID */}
@@ -310,23 +751,43 @@ export default function SignupScreen() {
                   <SocialAuthButton provider="apple" />
                 </View>
 
-                {/* Bottom Hint */}
-                <View className="flex-row items-center justify-center pt-2 pb-1">
-                  {userType === 'new' ? (
-                    <>
-                      <Text className="text-xs text-slate-900 dark:text-white font-bold">Already have an account?{' '}</Text>
-                      <TouchableOpacity onPress={() => handleTabSwitch('existing')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Switch to sign in">
-                        <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">Sign In</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <>
-                      <Text className="text-xs text-slate-900 dark:text-white font-bold">Don't have an account?{' '}</Text>
-                      <TouchableOpacity onPress={() => handleTabSwitch('new')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Switch to create account">
-                        <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">Create Account</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
+                {/* Bottom Hint (Transparent container without underline) */}
+                <View className="items-center justify-center pt-2.5 pb-2">
+                  <View className="bg-transparent flex-row items-center justify-center">
+                    {userType === 'new' ? (
+                      <>
+                        <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
+                          Already have an account?{' '}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => router.replace('/(auth)/login')}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel="Switch to sign in"
+                        >
+                          <Text className="text-xs font-bold text-[#EA580C]">
+                            Sign In
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <>
+                        <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
+                          Don't have an account?{' '}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => handleTabSwitch('new')}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel="Switch to create account"
+                        >
+                          <Text className="text-xs font-bold text-[#EA580C]">
+                            Create Account
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
                 </View>
               </Animated.View>
             </View>

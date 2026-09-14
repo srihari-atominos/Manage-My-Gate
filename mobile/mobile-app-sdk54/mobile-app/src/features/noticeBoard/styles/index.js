@@ -1,2 +1,0 @@
-// Boilerplate styles entry
-export {};

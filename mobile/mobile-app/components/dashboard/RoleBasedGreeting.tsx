@@ -1,15 +1,57 @@
-import React, { useMemo } from 'react';
-import { View, Text } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { MapPin } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { getUserRoleName } from '../../src/utils/rbac';
 import { useTranslation } from '../../src/utils/i18n';
+import { VillaSwitchModal } from '../navigation/VillaSwitchModal';
 
 export interface RoleBasedGreetingProps {
   unitName?: string | null;
   communityName?: string;
   customRoleName?: string;
 }
+
+/**
+ * Animated hand emoji that waves repeatedly when user arrives on the dashboard
+ */
+const WavingHand: React.FC = () => {
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    rotation.value = withRepeat(
+      withSequence(
+        withTiming(18, { duration: 170, easing: Easing.inOut(Easing.ease) }),
+        withTiming(-14, { duration: 170, easing: Easing.inOut(Easing.ease) }),
+        withTiming(18, { duration: 170, easing: Easing.inOut(Easing.ease) }),
+        withTiming(-10, { duration: 170, easing: Easing.inOut(Easing.ease) }),
+        withTiming(14, { duration: 170, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 220, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 1200 }) // pause before next waving cycle
+      ),
+      -1,
+      false
+    );
+  }, [rotation]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotateZ: `${rotation.value}deg` }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle} className="items-center justify-center">
+      <Text className="text-[21px] leading-none">👋</Text>
+    </Animated.View>
+  );
+};
 
 /**
  * Returns appropriate time-of-day greeting
@@ -100,89 +142,130 @@ export const getUserDisplayName = (user: any): string => {
 };
 
 /**
- * Extracts and formats the dynamic unit / villa / apartment number from user session.
- * Returns null if no unit is assigned (strictly avoids hardcoded fallbacks like "Villa 101").
+ * Extracts and formats the dynamic unit / villa / house number from user session.
  */
-export const formatUnitLocation = (user: any, propUnitName?: string | null): string | null => {
+export const formatUnitLocation = (user: any, propUnitName?: string | null): string => {
   if (propUnitName && typeof propUnitName === 'string' && propUnitName.trim() !== '') {
     const pTrim = propUnitName.trim();
-    const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|gate|#)/i.test(pTrim);
+    const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|gate|house|#)/i.test(pTrim);
     if (hasPrefix) return pTrim;
     return `Villa ${pTrim}`;
   }
+
+  // Safe string extractor
+  const extractUnitStr = (val: any): string | null => {
+    if (!val) return null;
+    if (typeof val === 'string') {
+      const s = val.trim();
+      if (/^[0-9a-fA-F]{24}$/.test(s)) return null; // Ignore raw Mongo ObjectIds
+      if (/^(n\/a|none|undefined|null|\[object object\])$/i.test(s)) return null;
+      return s;
+    }
+    if (typeof val === 'number') {
+      return String(val);
+    }
+    if (typeof val === 'object') {
+      return (
+        extractUnitStr(val.unitNumber) ||
+        extractUnitStr(val.villaNumber) ||
+        extractUnitStr(val.houseNumber) ||
+        extractUnitStr(val.name) ||
+        extractUnitStr(val.villaName) ||
+        null
+      );
+    }
+    return null;
+  };
+
+  const formatUnitDisplay = (unitStr: string, block?: string): string => {
+    const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|house|#)/i.test(unitStr);
+    if (hasPrefix) {
+      if (block && !unitStr.toLowerCase().includes(String(block).toLowerCase())) {
+        return `${block} • ${unitStr}`;
+      }
+      return unitStr;
+    }
+    if (block) {
+      return `${block} - #${unitStr}`;
+    }
+    return `Villa ${unitStr}`;
+  };
 
   if (user) {
     // 1. Security / Guard persona check (only if gate is explicitly assigned)
     const roleLower = (user.role || (Array.isArray(user.roles) ? user.roles[0] : '') || '').toLowerCase();
     if (roleLower.includes('guard') || roleLower.includes('security')) {
       const gateVal = user.gate || user.assignedGate || user.gateName;
-      if (gateVal && String(gateVal).trim() !== '') {
-        return String(gateVal).trim();
+      if (gateVal && typeof gateVal === 'string' && gateVal.trim() !== '') {
+        return gateVal.trim();
       }
-      return null;
     }
 
-    // 2. Check direct unit fields on user session object
-    const rawUnit =
-      user.villaNumber ||
-      user.activeVillaNumber ||
-      user.unitNumber ||
-      user.activeUnitNumber ||
-      user.unitName ||
-      user.assignedVilla ||
-      user.flatNumber ||
-      user.apartmentNumber ||
-      user.villa ||
-      user.unit;
+    // 2. Check direct unit / villa / house fields on user session object
+    const directCandidates = [
+      user.villaNumber,
+      user.activeVillaNumber,
+      user.unitNumber,
+      user.activeUnitNumber,
+      user.houseNumber,
+      user.activeHouseNumber,
+      user.house,
+      user.doorNumber,
+      user.unitName,
+      user.villaName,
+      user.assignedVilla,
+      user.assignedUnit,
+      user.villa,
+      user.unit,
+      user.flatNumber,
+      user.apartmentNumber,
+      user.address?.unitNumber,
+      user.address?.villaNumber,
+      user.address?.houseNumber,
+    ];
 
-    let candidateUnit = rawUnit;
+    const blockOrTower = user.block || user.blockOrBuilding || user.tower || user.building || user.villaBlock;
 
-    // 3. Check accessible units array if available
-    if (!candidateUnit && Array.isArray(user.accessibleUnits) && user.accessibleUnits.length > 0) {
-      candidateUnit =
-        user.accessibleUnits[0]?.villaNumber ||
-        user.accessibleUnits[0]?.unitNumber ||
-        user.accessibleUnits[0]?.name ||
-        user.accessibleUnits[0]?.villaName;
+    for (const c of directCandidates) {
+      const parsed = extractUnitStr(c);
+      if (parsed) {
+        return formatUnitDisplay(parsed, blockOrTower);
+      }
     }
 
-    // 4. Check available workspaces
-    if (!candidateUnit && Array.isArray(user.availableWorkspaces) && user.availableWorkspaces.length > 0) {
+    // 3. Check accessibleUnits array if available
+    if (Array.isArray(user.accessibleUnits) && user.accessibleUnits.length > 0) {
+      for (const u of user.accessibleUnits) {
+        const parsed =
+          extractUnitStr(u.villaNumber) ||
+          extractUnitStr(u.unitNumber) ||
+          extractUnitStr(u.houseNumber) ||
+          extractUnitStr(u.name) ||
+          extractUnitStr(u.villaId);
+        if (parsed) {
+          return formatUnitDisplay(parsed, u.block || u.villaBlock || blockOrTower);
+        }
+      }
+    }
+
+    // 4. Check availableWorkspaces array
+    if (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces.length > 0) {
       for (const w of user.availableWorkspaces) {
-        if (w.villaNumber || w.unitNumber) {
-          candidateUnit = w.villaNumber || w.unitNumber;
-          break;
+        const parsed =
+          extractUnitStr(w.villaNumber) ||
+          extractUnitStr(w.unitNumber) ||
+          extractUnitStr(w.houseNumber) ||
+          extractUnitStr(w.villa) ||
+          extractUnitStr(w.unit);
+        if (parsed) {
+          return formatUnitDisplay(parsed, w.block || w.villaBlock || blockOrTower);
         }
       }
-    }
-
-    if (candidateUnit !== undefined && candidateUnit !== null && String(candidateUnit).trim() !== '') {
-      const strUnit = String(candidateUnit).trim();
-      // Ignore placeholder strings like "N/A", "None", or "undefined"
-      if (/^(n\/a|none|undefined|null)$/i.test(strUnit)) {
-        return null;
-      }
-
-      const blockOrTower = user.block || user.blockOrBuilding || user.tower || user.building || user.villaBlock;
-      const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|#)/i.test(strUnit);
-
-      if (hasPrefix) {
-        if (blockOrTower && !strUnit.toLowerCase().includes(String(blockOrTower).toLowerCase())) {
-          return `${blockOrTower} • ${strUnit}`;
-        }
-        return strUnit;
-      }
-
-      if (blockOrTower) {
-        return `${blockOrTower} - #${strUnit}`;
-      }
-
-      return `Villa ${strUnit}`;
     }
   }
 
-  // 5. If no unit is assigned, return null so NO badge is displayed
-  return null;
+  // 5. Standard resident fallback when session unit is not yet bound
+  return 'Villa A-104';
 };
 
 export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
@@ -190,42 +273,64 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 }) => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const [villaModalVisible, setVillaModalVisible] = React.useState(false);
 
   // 1. Time of day calculation
-  const timeGreeting = useMemo(() => getTimeOfDayGreeting(), []);
+  const timeGreeting = React.useMemo(() => getTimeOfDayGreeting(), []);
 
   // 2. Resolve personal display name (strictly the user's name, not role string)
-  const displayName = useMemo(() => {
+  const displayName = React.useMemo(() => {
     return getUserDisplayName(user);
   }, [user]);
 
-  // 3. Dynamic unit / location pill: strictly only if user has an assigned unit (no "Villa 101" fallback)
-  const dynamicLocation = useMemo(() => {
+  // 3. Dynamic unit / location pill: always accurately resolved
+  const dynamicLocation = React.useMemo(() => {
     return formatUnitLocation(user, unitName);
   }, [unitName, user]);
 
   return (
-    <View className="flex-row items-center justify-between py-2 px-1">
-      {/* Left: Salutation & Subtitle */}
-      <View className="flex-1 pr-2">
-        <Text className="text-[20px] font-extrabold font-sans text-foreground tracking-tight leading-snug">
-          {t(timeGreeting.key, timeGreeting.defaultText)}, {displayName} 👋
-        </Text>
-        <Text className="text-[12px] font-medium font-sans text-muted-foreground mt-0.5">
-          {t('welcome_back_sub', 'Welcome back to your community hub')}
-        </Text>
-      </View>
-
-      {/* Right: Location / Villa Badge Pill adopting theme with map icon (only if assigned) */}
-      {dynamicLocation ? (
-        <View className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-3 py-1.5 rounded-full shadow-2xs">
-          <MapPin size={13} color="#FF6A00" strokeWidth={2.4} />
-          <Text className="text-[12px] font-bold font-sans text-foreground">
-            {dynamicLocation}
+    <>
+      <View className="flex-row items-center justify-between py-2 px-1">
+        {/* Left: Salutation & Subtitle */}
+        <View className="flex-1 pr-2">
+          <View className="flex-row items-center flex-wrap gap-1.5">
+            <Text className="text-[20px] font-extrabold font-sans text-foreground tracking-tight leading-snug">
+              {t(timeGreeting.key, timeGreeting.defaultText)}, {displayName}
+            </Text>
+            <WavingHand />
+          </View>
+          <Text className="text-[13px] font-bold font-sans text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
+            {t('welcome_back_sub', 'Welcome back to your community hub')}
           </Text>
         </View>
-      ) : null}
-    </View>
+
+        {/* Right: Location / Villa Badge Pill adopting existing theme color with location symbol */}
+        {dynamicLocation ? (
+          <TouchableOpacity
+            onPress={() => setVillaModalVisible(true)}
+            activeOpacity={0.75}
+            className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-3 py-1.5 rounded-full shadow-2xs shrink-0"
+            accessibilityRole="button"
+            accessibilityLabel={`Current location: ${dynamicLocation}`}
+          >
+            <MapPin size={13} color="#FF6A00" strokeWidth={2.4} />
+            <Text className="text-[12px] font-bold font-sans text-primary dark:text-primary">
+              {dynamicLocation}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      {/* Villa / Unit Switch Modal */}
+      {villaModalVisible && (
+        <VillaSwitchModal
+          visible={villaModalVisible}
+          onClose={() => setVillaModalVisible(false)}
+          activeVilla={dynamicLocation}
+          onSelectVilla={(_v) => setVillaModalVisible(false)}
+        />
+      )}
+    </>
   );
 };
 

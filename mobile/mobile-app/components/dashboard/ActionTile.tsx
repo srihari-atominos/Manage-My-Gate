@@ -83,8 +83,10 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             borderWidth: 1.2,
             borderRadius: 18,
             height: 126,
-            padding: 9.5,
-            justifyContent: 'space-between',
+            paddingHorizontal: 6,
+            paddingVertical: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
             ...(isAndroid
               ? {
                   elevation: 2.5,
@@ -98,61 +100,56 @@ export const ActionTile: React.FC<ActionTileProps> = ({
                 }),
           },
         ]}
-        className="w-full relative overflow-hidden active:bg-secondary/70"
+        className="w-full relative overflow-hidden active:bg-secondary/70 items-center justify-center"
         accessibilityRole="button"
         accessibilityLabel={`${translatedLabel} ${translatedSubtitle}`}
       >
-        {/* Top Row: Tailored Feature Icon Container + Optional Badge / Arrow */}
-        <View className="flex-row items-center justify-between w-full">
+        {/* Optional Badge / Arrow placed in top-right corner */}
+        {badge ? (
           <View
-            className={`w-9 h-9 items-center justify-center ${
-              iconShapeClass || 'rounded-xl'
-            } ${
-              iconBgColor || 'bg-secondary'
-            }`}
+            style={badgeColor ? { backgroundColor: badgeColor } : undefined}
+            className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-full ${
+              !badgeColor ? 'bg-primary' : ''
+            } items-center justify-center z-10`}
           >
-            {icon}
+            <Text className="text-[8px] font-extrabold font-sans text-white tracking-wide uppercase">
+              {badge}
+            </Text>
           </View>
+        ) : showArrow ? (
+          <View className="absolute top-2 right-2 w-4 h-4 rounded-full bg-secondary items-center justify-center border border-border/40 z-10">
+            <ArrowUpRight size={9} className="text-muted-foreground" />
+          </View>
+        ) : null}
 
-          {badge ? (
-            <View
-              style={badgeColor ? { backgroundColor: badgeColor } : undefined}
-              className={`px-1.5 py-0.5 rounded-full ${
-                !badgeColor ? 'bg-primary' : ''
-              } items-center justify-center`}
-            >
-              <Text className="text-[8px] font-extrabold font-sans text-white tracking-wide uppercase">
-                {badge}
-              </Text>
-            </View>
-          ) : showArrow ? (
-            <View className="w-5 h-5 rounded-full bg-secondary items-center justify-center border border-border/40 shrink-0">
-              <ArrowUpRight size={10} className="text-muted-foreground" />
-            </View>
-          ) : null}
+        {/* Center: Prominent Enlarged Feature Icon Container */}
+        <View
+          className={`w-12 h-12 items-center justify-center mb-2 ${
+            iconShapeClass || 'rounded-2xl'
+          } ${
+            iconBgColor || 'bg-secondary'
+          }`}
+        >
+          {icon}
         </View>
 
-        {/* Bottom Block: Balanced Label, Subtitle, and Subtle Chevron */}
-        <View className="w-full">
+        {/* Center: Balanced Label and Subtitle */}
+        <View className="w-full items-center justify-center px-0.5">
           <Text
             numberOfLines={2}
-            className="text-[12px] font-bold font-sans text-foreground leading-[15px] tracking-tight"
+            className="text-[11.5px] font-bold font-sans text-foreground text-center leading-[14px] tracking-tight"
           >
             {translatedLabel}
           </Text>
 
-          <View className="flex-row items-center justify-between mt-0.5">
-            {translatedSubtitle ? (
-              <Text
-                numberOfLines={1}
-                className="text-[9.5px] font-medium font-sans text-muted-foreground leading-[12px] flex-1 mr-0.5"
-              >
-                {translatedSubtitle}
-              </Text>
-            ) : <View className="flex-1" />}
-
-            <ChevronRight size={10} color="#94A3B8" className="shrink-0 -mr-0.5" />
-          </View>
+          {translatedSubtitle ? (
+            <Text
+              numberOfLines={1}
+              className="text-[9.5px] font-medium font-sans text-muted-foreground text-center leading-[12px] mt-0.5"
+            >
+              {translatedSubtitle}
+            </Text>
+          ) : null}
         </View>
       </AnimatedPressable>
     </View>

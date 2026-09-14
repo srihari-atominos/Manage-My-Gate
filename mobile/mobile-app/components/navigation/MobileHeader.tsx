@@ -15,12 +15,14 @@ import { ProfileModal } from './ProfileModal';
 import { NotificationSheetModal } from './NotificationSheetModal';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
 import { useTranslation } from '@/src/utils/i18n';
+import { cn } from '../../lib/utils';
 
 interface MobileHeaderProps {
   unitName?: string | null;
   communityName?: string;
   unreadNotificationCount?: number;
   onNotificationPress?: () => void;
+  transparent?: boolean;
 }
 
 const EMPTY_ARRAY: any[] = [];
@@ -30,6 +32,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   communityName,
   unreadNotificationCount,
   onNotificationPress,
+  transparent,
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -166,7 +169,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     <>
       <View 
         style={{ paddingTop: Math.max(insets.top, 16) }}
-        className="bg-card border-b border-border px-4 pb-3 flex-row items-center justify-between shadow-xs"
+        className={cn(
+          transparent
+            ? 'bg-card/75 dark:bg-card/75 border-b border-border/40'
+            : 'bg-card border-b border-border',
+          'px-4 pb-3 flex-row items-center justify-between shadow-xs'
+        )}
       >
         {/* Left Section: Community / Villa Context Pill */}
         <TouchableOpacity

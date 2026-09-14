@@ -232,7 +232,7 @@ export default function AllFeaturesScreen() {
                             containerClassName="w-[31%]"
                             iconBgColor={colorBg}
                             iconShapeClass={iconShapeClass}
-                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={20} />}
+                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={26} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}

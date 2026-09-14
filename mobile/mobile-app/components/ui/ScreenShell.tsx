@@ -82,8 +82,6 @@ export function ScreenShell({
     setIsCompact(false);
   }, [pathname, setIsCompact]);
 
-  // Automated detection of sub-flows, creation wizards, scanners, checkouts, and detail action pages
-  const isProfileScreen = pathname.includes('/profile');
   const isAuthScreen = pathname.includes('/(auth)') || pathname.includes('/login') || pathname.includes('/signup');
   const isSubFlowOrCreationScreen =
     pathname.includes('/create') ||
@@ -99,7 +97,6 @@ export function ScreenShell({
   const shouldShowBottomNav =
     showBottomNav &&
     !hideBottomNav &&
-    !isProfileScreen &&
     !isAuthScreen &&
     !isSubFlowOrCreationScreen;
 
@@ -319,7 +316,7 @@ export function ScreenShell({
           <View
             className="flex-1 bg-background"
             style={{
-              paddingBottom: shouldShowBottomNav ? (Platform.OS === 'ios' ? 84 : 68) : 0,
+              paddingBottom: shouldShowBottomNav ? (Platform.OS === 'ios' ? 84 : Math.max(insets.bottom + 68, 76)) : 0,
             }}
           >
             {children}

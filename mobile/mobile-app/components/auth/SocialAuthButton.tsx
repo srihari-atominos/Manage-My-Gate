@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ActivityIndicator, Animated } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useColorScheme } from 'nativewind';
 
@@ -64,6 +64,23 @@ export const SocialAuthButton = ({
   disabled = false,
 }: SocialAuthButtonProps) => {
   const [modalVisible, setModalVisible] = React.useState(false);
+  const pressScale = React.useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.timing(pressScale, {
+      toValue: 0.98,
+      duration: 80,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(pressScale, {
+      toValue: 1,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const handlePress = () => {
     if (onPress) {
@@ -79,29 +96,33 @@ export const SocialAuthButton = ({
 
   return (
     <>
-      <TouchableOpacity
-        onPress={handlePress}
-        disabled={disabled || loading}
-        activeOpacity={0.82}
-        className={`flex-1 h-11 bg-white dark:bg-[#1E232E] border border-border/90 rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-muted/40 ${disabled || loading ? 'opacity-60' : ''} ${className}`}
-      >
+      <Animated.View style={{ flex: 1, transform: [{ scale: pressScale }] }}>
+        <TouchableOpacity
+          onPress={handlePress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          disabled={disabled || loading}
+          activeOpacity={0.82}
+          className={`h-12 bg-white/75 dark:bg-[#1C1917]/75 border border-white/80 dark:border-white/20 rounded-xl flex-row items-center justify-center gap-2 shadow-2xs backdrop-blur-sm active:bg-white/90 dark:active:bg-[#292524] ${disabled || loading ? 'opacity-60' : ''} ${className}`}
+        >
         {loading ? (
-          <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : isApple ? '#888888' : '#00a4ef'} />
+          <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : isApple ? '#1C1917' : '#00a4ef'} />
         ) : (
           <>
             {isGoogle ? (
               <GoogleIcon size={18} />
             ) : isApple ? (
-              <AppleIcon size={18} />
+              <AppleIcon size={18} color="#1C1917" />
             ) : (
               <MicrosoftIcon size={18} />
             )}
-            <Text className="text-xs font-bold text-slate-800 dark:text-white font-sans">
+            <Text className="text-xs font-bold text-[#1C1917] dark:text-white font-sans">
               {variant === 'full' ? `Sign in with ${providerName}` : providerName}
             </Text>
           </>
         )}
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Themed Notice Popup Modal */}
       <Modal

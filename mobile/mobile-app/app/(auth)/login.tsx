@@ -23,9 +23,10 @@ import {
   Animated,
   Easing,
   KeyboardAvoidingView,
-  ImageBackground,
+  Image,
   Keyboard,
   TouchableWithoutFeedback,
+  AccessibilityInfo,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
@@ -47,6 +48,7 @@ import { storage, sessionStore } from '@/src/utils/storage';
 import { useSelector, useDispatch } from 'react-redux';
 import { clearPendingRoute } from '../../src/features/notification/store/notificationSlice';
 import { useTranslation } from '@/src/utils/i18n';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -81,6 +83,7 @@ interface PhoneFormValues {
 }
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
@@ -135,84 +138,326 @@ export default function LoginScreen() {
     loadSavedPreferences();
   }, []);
 
-  // Staged Entrance Animation Drivers
-  const emblemScale = React.useRef(new Animated.Value(0)).current;
-  const emblemOpacity = React.useRef(new Animated.Value(0)).current;
-  const emblemRotate = React.useRef(new Animated.Value(-1)).current;
-  const emblemFloat = React.useRef(new Animated.Value(0)).current;
-  const wordmarkScale = React.useRef(new Animated.Value(0.5)).current;
-  const wordmarkOpacity = React.useRef(new Animated.Value(0)).current;
-  const wordmarkTranslateY = React.useRef(new Animated.Value(20)).current;
-  const contentOpacity = React.useRef(new Animated.Value(1)).current;
-  const contentTranslateY = React.useRef(new Animated.Value(0)).current;
-
-  // Run smooth opening sequence for emblem & wordmark on mount
+  // Accessibility: Reduced Motion Support
+  const [reduceMotion, setReduceMotion] = React.useState(false);
   React.useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => sub?.remove?.();
+  }, []);
+
+  // 1. Background Cinematic Parallax Drivers (Subtle slow breathing drift)
+  const bgTranslateX = React.useRef(new Animated.Value(0)).current;
+  const bgScale = React.useRef(new Animated.Value(1.04)).current;
+
+  // 2. Nahom Logo Luxury Entrance Drivers (Initial: opacity 0, scale 0.95, translateY 8)
+  const logoOpacity = React.useRef(new Animated.Value(0)).current;
+  const logoScale = React.useRef(new Animated.Value(0.95)).current;
+  const logoTranslateY = React.useRef(new Animated.Value(8)).current;
+
+  // 3. NAHOM Wordmark Entrance Drivers
+  const wordmarkOpacity = React.useRef(new Animated.Value(0)).current;
+  const wordmarkTranslateY = React.useRef(new Animated.Value(6)).current;
+
+  // 4. Emblem Weightless Float Driver (0 -> -4px -> 0, calm 3800ms cycle)
+  const emblemFloat = React.useRef(new Animated.Value(0)).current;
+
+  // 5. Logo Light Sweep Active State (revealed after entrance)
+  const [enableLogoSweep, setEnableLogoSweep] = React.useState(false);
+
+  // 6. Login Card Floating Entrance Drivers (Initial: opacity 0, scale 0.97, translateY 20)
+  const cardOpacity = React.useRef(new Animated.Value(0)).current;
+  const cardScale = React.useRef(new Animated.Value(0.97)).current;
+  const cardTranslateY = React.useRef(new Animated.Value(20)).current;
+
+  // 7. Sign In Button Reflection Sweep Drivers (4.8s cycle)
+  const buttonSweepX = React.useRef(new Animated.Value(-120)).current;
+  const buttonSweepOpacity = React.useRef(new Animated.Value(0)).current;
+
+  // 8. Tactile Micro-Interaction Drivers
+  const buttonPressScale = React.useRef(new Animated.Value(1)).current;
+  const arrowShiftX = React.useRef(new Animated.Value(0)).current;
+  const createAccountPressScale = React.useRef(new Animated.Value(1)).current;
+
+  // 9. Input Focus Micro-Interaction Drivers
+  const [isLoginFocused, setIsLoginFocused] = React.useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = React.useState(false);
+  const loginIconScale = React.useRef(new Animated.Value(1)).current;
+  const passwordIconScale = React.useRef(new Animated.Value(1)).current;
+
+  // Coordinated Luxury Entrance & Ambient Sequence
+  React.useEffect(() => {
+    if (reduceMotion) {
+      // Immediate calm static state for accessibility
+      logoOpacity.setValue(1);
+      logoScale.setValue(1);
+      logoTranslateY.setValue(0);
+      wordmarkOpacity.setValue(1);
+      wordmarkTranslateY.setValue(0);
+      cardOpacity.setValue(1);
+      cardScale.setValue(1);
+      cardTranslateY.setValue(0);
+      return;
+    }
+
+    let isMounted = true;
+    let bgDriftLoop: Animated.CompositeAnimation | null = null;
+    let emblemFloatLoop: Animated.CompositeAnimation | null = null;
+    let buttonSweepLoop: Animated.CompositeAnimation | null = null;
+
+    // Background slow cinematic breathing drift (16s cycle)
+    bgDriftLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgTranslateX, {
+          toValue: 5,
+          duration: 8000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgTranslateX, {
+          toValue: -5,
+          duration: 8000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    bgDriftLoop.start();
+
+    // Coordinated Staged Entrance Sequence:
+    // 0.1s - 1.1s: Nahom logo gently revealed (900-1200ms duration, cubic ease-out)
+    // 0.35s - 0.95s: Wordmark unfurls gracefully
+    // 0.55s - 1.25s: Login card floats into position (650ms duration, cubic ease-out)
     Animated.parallel([
-      // Stage 1: Logo Emblem Dramatic Elastic Blast, Rotation & Bounce
-      Animated.spring(emblemScale, {
+      // Logo Entrance
+      Animated.timing(logoOpacity, {
         toValue: 1,
-        friction: 5,
-        tension: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(emblemOpacity, {
-        toValue: 1,
-        duration: 350,
+        duration: 1050,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-      Animated.spring(emblemRotate, {
+      Animated.timing(logoScale, {
+        toValue: 1,
+        duration: 1050,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(logoTranslateY, {
         toValue: 0,
-        friction: 6,
-        tension: 45,
+        duration: 1050,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
 
-      // Stage 2: App Name & Taglines Unfurl gracefully after logo (150ms - 400ms)
+      // Stage 2: Wordmark Reveal
       Animated.sequence([
-        Animated.delay(150),
+        Animated.delay(250),
         Animated.parallel([
-          Animated.spring(wordmarkScale, {
-            toValue: 1,
-            friction: 6.5,
-            tension: 40,
-            useNativeDriver: true,
-          }),
           Animated.timing(wordmarkOpacity, {
             toValue: 1,
-            duration: 300,
+            duration: 450,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(wordmarkTranslateY, {
             toValue: 0,
-            duration: 300,
+            duration: 450,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+
+      // Login Card Floating Entrance
+      Animated.sequence([
+        Animated.delay(550),
+        Animated.parallel([
+          Animated.timing(cardOpacity, {
+            toValue: 1,
+            duration: 680,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(cardScale, {
+            toValue: 1,
+            duration: 680,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(cardTranslateY, {
+            toValue: 0,
+            duration: 680,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
         ]),
       ]),
     ]).start(() => {
-      // Gentle continuous floating breath loop
-      Animated.loop(
+      if (!isMounted) return;
+
+      // 1.5s+: Ambient subtle animations begin
+      setEnableLogoSweep(true);
+
+      // Section 3: Orange orb / emblem subtle floating effect (3800ms cycle, 0 -> -4px -> 0, weightless)
+      emblemFloatLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(emblemFloat, {
-            toValue: -5,
-            duration: 2000,
+            toValue: -4,
+            duration: 1900,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(emblemFloat, {
-            toValue: 5,
-            duration: 2000,
+            toValue: 0,
+            duration: 1900,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      emblemFloatLoop.start();
+
+      // Section 9: Sign In button subtle light sweep (repeats every ~4.8 seconds)
+      buttonSweepLoop = Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(buttonSweepX, {
+              toValue: 360,
+              duration: 950,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.timing(buttonSweepOpacity, {
+                toValue: 0.22,
+                duration: 250,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true,
+              }),
+              Animated.delay(450),
+              Animated.timing(buttonSweepOpacity, {
+                toValue: 0,
+                duration: 250,
+                easing: Easing.in(Easing.quad),
+                useNativeDriver: true,
+              }),
+            ]),
+          ]),
+          Animated.timing(buttonSweepX, {
+            toValue: -120,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+          Animated.delay(3800),
+        ])
+      );
+      buttonSweepLoop.start();
     });
-  }, []);
+
+    return () => {
+      isMounted = false;
+      bgDriftLoop?.stop();
+      emblemFloatLoop?.stop();
+      buttonSweepLoop?.stop();
+    };
+  }, [reduceMotion]);
+
+  // Tactile Micro-Interactions: Sign In CTA
+  const handleBasicSignIn = () => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(buttonPressScale, {
+          toValue: 0.98,
+          duration: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrowShiftX, {
+          toValue: 4,
+          duration: 80,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(buttonPressScale, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrowShiftX, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+
+    basicForm.handleSubmit(onBasicSubmit)();
+  };
+
+  const handlePhoneSignIn = () => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(buttonPressScale, {
+          toValue: 0.98,
+          duration: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrowShiftX, {
+          toValue: 4,
+          duration: 80,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(buttonPressScale, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrowShiftX, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+
+    phoneForm.handleSubmit(onPhoneSubmit)();
+  };
+
+  // Tactile Micro-Interactions: Input Focus
+  const handleLoginFieldFocus = () => {
+    setIsLoginFocused(true);
+    Animated.sequence([
+      Animated.timing(loginIconScale, { toValue: 1.08, duration: 90, useNativeDriver: true }),
+      Animated.timing(loginIconScale, { toValue: 1, duration: 90, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handlePasswordFieldFocus = () => {
+    setIsPasswordFocused(true);
+    Animated.sequence([
+      Animated.timing(passwordIconScale, { toValue: 1.08, duration: 90, useNativeDriver: true }),
+      Animated.timing(passwordIconScale, { toValue: 1, duration: 90, useNativeDriver: true }),
+    ]).start();
+  };
+
+  // Tactile Micro-Interactions: Create Account Button
+  const handleCreateAccountPressIn = () => {
+    Animated.timing(createAccountPressScale, {
+      toValue: 0.98,
+      duration: 80,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleCreateAccountPressOut = () => {
+    Animated.timing(createAccountPressScale, {
+      toValue: 1,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
 
   // Basic Auth Form Hook
   const basicForm = useForm<BasicAuthFormValues>({
@@ -353,93 +598,124 @@ export default function LoginScreen() {
 
   return (
     <>
-      <ImageBackground
-        source={require('../../assets/images/auth-bg.jpg')}
-        style={{ flex: 1 }}
-        blurRadius={Platform.OS === 'ios' ? 3 : 2}
-        resizeMode="cover"
-      >
-        <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
+      <View className="flex-1 bg-background overflow-hidden relative">
+        {/* Section 7: Cinematic Parallax Background Depth Layer */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: -12,
+            bottom: -12,
+            left: -24,
+            right: -24,
+            transform: [
+              { scale: bgScale },
+              { translateX: bgTranslateX },
+            ],
+          }}
+          pointerEvents="none"
+        >
+          <Image
+            source={require('../../assets/images/auth-bg.jpg')}
+            style={{ width: '100%', height: '100%' }}
+            blurRadius={Platform.OS === 'ios' ? 3 : 2}
+            resizeMode="cover"
+          />
+        </Animated.View>
+        <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" pointerEvents="none" />
+
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
         >
           <ScrollView
-            contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingTop: Math.max(insets.top, 24) + 16,
+              paddingBottom: Math.max(insets.bottom, 20) + 40,
+            }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-            className="px-5 py-6"
+            className="px-5"
           >
             <View className="max-w-sm mx-auto w-full gap-3.5">
             {/* Step 1, 2, 3: Top Brand Identity Section (Logo → App Name → Nexus Around Home → Slogan) */}
             <View className="items-center justify-center">
-              {/* Step 1: Logo Emblem */}
+              {/* Step 1: Logo Emblem with Luxury Reveal & Weightless Float */}
               <Animated.View
                 style={{
-                  opacity: emblemOpacity,
+                  opacity: logoOpacity,
                   transform: [
-                    { scale: emblemScale },
-                    { translateY: emblemFloat },
-                    {
-                      rotate: emblemRotate.interpolate({
-                        inputRange: [-1, 0, 1],
-                        outputRange: ['-12deg', '0deg', '12deg'],
-                      }),
-                    },
+                    { scale: logoScale },
+                    { translateY: Animated.add(logoTranslateY, emblemFloat) },
                   ],
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <NahomEmblem size={118} />
+                <NahomEmblem size={106} />
               </Animated.View>
 
-              {/* Step 2 & 3: NoHome App Name + "Nexus Around Home" + Slogan with proper spacing */}
+              {/* Step 2 & 3: NAHOM Wordmark Reveal */}
               <Animated.View
                 style={{
                   opacity: wordmarkOpacity,
                   transform: [
                     { translateY: wordmarkTranslateY },
-                    { scale: wordmarkScale },
                   ],
                   width: '100%',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  marginTop: -2,
                 }}
               >
                 <NahomWordmark />
               </Animated.View>
             </View>
 
-            {/* Staged Animated Content Section */}
+            {/* Section 6: Luxury Floating Login Card Entrance */}
             <Animated.View
               style={{
-                opacity: contentOpacity,
-                transform: [{ translateY: contentTranslateY }],
+                opacity: cardOpacity,
+                transform: [
+                  { scale: cardScale },
+                  { translateY: cardTranslateY },
+                ],
               }}
               className="gap-3.5 w-full"
             >
-              {/* Step 4: Login Method Selection (Email/Password vs Phone OTP) */}
-              <View className="bg-muted/40 p-1.5 rounded-2xl flex-row border border-border/80">
+              {/* Step 4: Login Method Selection (Frosted Glass Segmented Pill Buttons) */}
+              <View className="bg-white/40 dark:bg-black/30 backdrop-blur-md p-1.5 rounded-2xl flex-row border border-white/60 dark:border-white/15 shadow-2xs">
                 <TouchableOpacity
                   onPress={() => setAuthMode('basic')}
                   activeOpacity={0.85}
-                  className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2 ${
+                  style={
                     authMode === 'basic'
-                      ? 'bg-card border border-border/60 shadow-xs'
-                      : ''
-                  }`}
+                      ? {
+                          backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                          borderColor: 'rgba(255, 255, 255, 0.7)',
+                          borderWidth: 1,
+                          shadowColor: '#000000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.08,
+                          shadowRadius: 8,
+                          elevation: 2,
+                        }
+                      : {
+                          backgroundColor: 'transparent',
+                        }
+                  }
+                  className="flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2"
                 >
                   <Lock
                     size={15}
-                    color={authMode === 'basic' ? '#FF5E00' : '#64748B'}
+                    color={authMode === 'basic' ? '#EA580C' : '#57534E'}
+                    strokeWidth={authMode === 'basic' ? 2.4 : 2}
                   />
                   <Text
-                    className={`text-xs font-bold ${
-                      authMode === 'basic' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
-                    }`}
+                    style={{ color: authMode === 'basic' ? '#EA580C' : '#57534E' }}
+                    className={`text-xs ${authMode === 'basic' ? 'font-bold' : 'font-medium'}`}
                   >
                     Email / Password
                   </Text>
@@ -448,38 +724,63 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   onPress={() => setAuthMode('phone')}
                   activeOpacity={0.85}
-                  className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2 ${
+                  style={
                     authMode === 'phone'
-                      ? 'bg-card border border-border/60 shadow-xs'
-                      : ''
-                  }`}
+                      ? {
+                          backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                          borderColor: 'rgba(255, 255, 255, 0.7)',
+                          borderWidth: 1,
+                          shadowColor: '#000000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.08,
+                          shadowRadius: 8,
+                          elevation: 2,
+                        }
+                      : {
+                          backgroundColor: 'transparent',
+                        }
+                  }
+                  className="flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2"
                 >
                   <Smartphone
                     size={15}
-                    color={authMode === 'phone' ? '#FF5E00' : '#64748B'}
+                    color={authMode === 'phone' ? '#EA580C' : '#57534E'}
+                    strokeWidth={authMode === 'phone' ? 2.4 : 2}
                   />
                   <Text
-                    className={`text-xs font-bold ${
-                      authMode === 'phone' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
-                    }`}
+                    style={{ color: authMode === 'phone' ? '#EA580C' : '#57534E' }}
+                    className={`text-xs ${authMode === 'phone' ? 'font-bold' : 'font-medium'}`}
                   >
-                    Phone OTP
+                    Sign in with OTP
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Form Card Container */}
-              <View className="bg-card border border-border/80 rounded-3xl p-5 gap-3.5 shadow-xs">
+              {/* Form Card Container (Frosted Glass Card with Welcome Back Header) */}
+              <View
+                style={{
+                  shadowColor: '#1C1917',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 16,
+                  elevation: 4,
+                }}
+                className="bg-white/75 dark:bg-[#1C1917]/75 backdrop-blur-xl border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-3.5 shadow-xl shadow-black/5"
+              >
+                {/* Welcome Back Header Section */}
+                <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center pb-0.5 font-sans">
+                  {t('welcome_back', 'Welcome Back')}
+                </Text>
                 {/* Context Switch Auth Requirement Banner */}
                 {params.switchType && params.targetName && !switchDismissed && (
-                  <View className="bg-orange-50/90 dark:bg-[#1E232E] border border-[#FF6A00]/30 rounded-2xl p-3.5 gap-2.5 shadow-2xs">
+                  <View className="bg-[#FFF7ED] dark:bg-[#7C2D12]/20 border border-[#FED7AA] dark:border-[#EA580C]/30 rounded-2xl p-3.5 gap-2.5 shadow-2xs">
                     {/* Header Row: Lock Icon, Title & Close Button */}
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center gap-2">
-                        <View className="w-7 h-7 rounded-lg bg-[#FF6A00]/15 dark:bg-[#FF6A00]/25 items-center justify-center">
-                          <Lock size={14} color="#FF6A00" strokeWidth={2.4} />
+                        <View className="w-7 h-7 rounded-lg bg-[#EA580C]/15 items-center justify-center">
+                          <Lock size={14} color="#EA580C" strokeWidth={2.4} />
                         </View>
-                        <Text className="text-[13px] font-extrabold text-foreground font-sans tracking-tight">
+                        <Text className="text-[13px] font-bold text-[#C2410C] dark:text-[#FDBA74] tracking-tight">
                           Authentication Required
                         </Text>
                       </View>
@@ -488,25 +789,25 @@ export default function LoginScreen() {
                         onPress={() => setSwitchDismissed(true)}
                         activeOpacity={0.7}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 items-center justify-center"
+                        className="w-6 h-6 rounded-full bg-[#EA580C]/10 items-center justify-center"
                         accessibilityRole="button"
                         accessibilityLabel="Dismiss notice"
                       >
-                        <X size={12} color="#64748B" />
+                        <X size={12} color="#C2410C" />
                       </TouchableOpacity>
                     </View>
 
                     {/* Target Context Capsule Pill */}
-                    <View className="flex-row items-center bg-white dark:bg-card border border-border/80 rounded-xl px-3 py-2 gap-2 shadow-2xs">
-                      <View className="bg-[#FF6A00]/15 dark:bg-[#FF6A00]/25 px-2 py-0.5 rounded-md shrink-0">
-                        <Text className="text-[9.5px] font-extrabold text-[#FF6A00] font-sans uppercase">
+                    <View className="flex-row items-center bg-white dark:bg-[#1C1917] border border-[#FED7AA]/60 rounded-xl px-3 py-2 gap-2 shadow-2xs">
+                      <View className="bg-[#EA580C]/15 px-2 py-0.5 rounded-md shrink-0">
+                        <Text className="text-[9.5px] font-bold text-[#EA580C] uppercase">
                           {params.switchType === 'villa' ? 'Unit' : params.switchType === 'community' ? 'Community' : 'Role'}
                         </Text>
                       </View>
                       <Text
                         numberOfLines={1}
                         ellipsizeMode="tail"
-                        className="text-xs font-bold text-foreground font-sans flex-1"
+                        className="text-xs font-bold text-[#1C1917] dark:text-white flex-1"
                       >
                         {params.targetName}
                       </Text>
@@ -524,15 +825,24 @@ export default function LoginScreen() {
                       render={({ field: { onChange, onBlur, value } }) => (
                         <TextInput
                           label={t('email_or_username', 'Email or Username')}
+                          labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
                           required
                           value={value}
                           onChangeText={onChange}
-                          onBlur={onBlur}
+                          onFocus={handleLoginFieldFocus}
+                          onBlur={() => {
+                            setIsLoginFocused(false);
+                            onBlur();
+                          }}
                           placeholder={t('enter_email_or_username', 'Enter your email or username')}
                           autoCapitalize="none"
                           autoCorrect={false}
                           keyboardType="email-address"
-                          leftIcon={Mail}
+                          leftIcon={
+                            <Animated.View style={{ transform: [{ scale: loginIconScale }] }}>
+                              <Mail size={18} color={isLoginFocused ? '#EA580C' : '#78716C'} />
+                            </Animated.View>
+                          }
                           error={basicForm.formState.errors.login?.message}
                           returnKeyType="next"
                           onSubmitEditing={() => passwordInputRef.current?.focus()}
@@ -544,15 +854,15 @@ export default function LoginScreen() {
                     {/* Step 6: Password Input */}
                     <View>
                       <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-sm font-medium text-foreground">
-                          {t('password', 'Password')} <Text className="text-destructive font-bold">*</Text>
+                        <Text className="text-sm font-bold text-[#1C1917] dark:text-white">
+                          {t('password', 'Password')} <Text className="text-[#EA580C] font-bold">*</Text>
                         </Text>
                         <TouchableOpacity
                           onPress={() => router.push('/(auth)/forgot-password')}
                           activeOpacity={0.8}
                           hitSlop={8}
                         >
-                          <Text className="text-xs font-bold text-[#FF5E00] dark:text-[#FF7A00]">
+                          <Text className="text-xs font-bold text-[#EA580C]">
                             {t('forgot_password', 'Forgot?')}
                           </Text>
                         </TouchableOpacity>
@@ -565,12 +875,20 @@ export default function LoginScreen() {
                             ref={passwordInputRef}
                             value={value}
                             onChangeText={onChange}
-                            onBlur={onBlur}
+                            onFocus={handlePasswordFieldFocus}
+                            onBlur={() => {
+                              setIsPasswordFocused(false);
+                              onBlur();
+                            }}
                             placeholder={t('enter_password', 'Enter your password')}
-                            leftIcon={Lock}
+                            leftIcon={
+                              <Animated.View style={{ transform: [{ scale: passwordIconScale }] }}>
+                                <Lock size={18} color={isPasswordFocused ? '#EA580C' : '#78716C'} />
+                              </Animated.View>
+                            }
                             error={basicForm.formState.errors.password?.message}
                             returnKeyType="go"
-                            onSubmitEditing={basicForm.handleSubmit(onBasicSubmit)}
+                            onSubmitEditing={handleBasicSignIn}
                           />
                         )}
                       />
@@ -582,7 +900,7 @@ export default function LoginScreen() {
                         checked={keepSignedIn}
                         onCheckedChange={setKeepSignedIn}
                         label={t('stay_signed_in', 'Stay signed in')}
-                        labelClassName="text-xs text-muted-foreground font-medium"
+                        labelClassName="text-xs text-[#78716C] dark:text-[#A8A29E] font-medium"
                         className="items-center"
                       />
                     </View>
@@ -596,42 +914,68 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Step 7: Sign In CTA Button */}
-                    <TouchableOpacity
-                      onPress={basicForm.handleSubmit(onBasicSubmit)}
-                      disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
-                      activeOpacity={0.88}
-                      className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
-                    >
-                      <View className="absolute inset-0">
-                        <Svg width="100%" height="100%" preserveAspectRatio="none">
-                          <Defs>
-                            <LinearGradient id="signInGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <Stop offset="0%" stopColor="#1E232E" />
-                              <Stop offset="45%" stopColor="#2A3342" />
-                              <Stop offset="82%" stopColor="#FF5E00" />
-                              <Stop offset="100%" stopColor="#FF7A00" />
-                            </LinearGradient>
-                          </Defs>
-                          <Rect width="100%" height="100%" rx="16" fill="url(#signInGrad)" />
-                        </Svg>
-                      </View>
-                      {isSubmittingBasic ? (
-                        <View className="flex-row items-center gap-2 z-10">
-                          <ActivityIndicator color="#FFFFFF" size="small" />
-                          <Text className="font-bold text-white text-sm font-sans">
-                            {t('signing_in', 'Signing In...')}
-                          </Text>
+                    {/* Step 7: Sign In CTA Button (Luxury Sweep & Tactile Micro-Interaction) */}
+                    <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
+                      <TouchableOpacity
+                        onPress={handleBasicSignIn}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                        activeOpacity={0.9}
+                        style={{
+                          shadowColor: '#EA580C',
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.28,
+                          shadowRadius: 14,
+                          elevation: 4,
+                        }}
+                        className="mt-1 h-12 rounded-xl flex-row items-center justify-center gap-2 overflow-hidden relative"
+                      >
+                        <View className="absolute inset-0">
+                          <Svg width="100%" height="100%" preserveAspectRatio="none">
+                            <Defs>
+                              <LinearGradient id="signInGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <Stop offset="0%" stopColor="#1E232E" />
+                                <Stop offset="42%" stopColor="#2A3342" />
+                                <Stop offset="80%" stopColor="#EA580C" />
+                                <Stop offset="100%" stopColor="#FF7A00" />
+                              </LinearGradient>
+                            </Defs>
+                            <Rect width="100%" height="100%" rx="12" fill="url(#signInGrad)" />
+                          </Svg>
                         </View>
-                      ) : (
-                        <View className="flex-row items-center justify-center gap-2 z-10">
-                          <Text className="font-bold text-white text-base font-sans">
-                            {t('sign_in', 'Sign In')}
-                          </Text>
-                          <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
-                        </View>
-                      )}
-                    </TouchableOpacity>
+
+                        {/* Section 9: Subtle Light Reflection Sweep */}
+                        <Animated.View
+                          style={{
+                            position: 'absolute',
+                            top: -10,
+                            bottom: -10,
+                            width: 55,
+                            transform: [{ translateX: buttonSweepX }, { skewX: '-24deg' }],
+                            opacity: buttonSweepOpacity,
+                            backgroundColor: 'rgba(255, 255, 255, 0.28)',
+                          }}
+                          pointerEvents="none"
+                        />
+
+                        {isSubmittingBasic ? (
+                          <View className="flex-row items-center gap-2 z-10">
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                            <Text className="font-bold text-white text-sm font-sans">
+                              {t('signing_in', 'Signing In...')}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View className="flex-row items-center justify-center gap-2 z-10">
+                            <Text className="font-bold text-white text-base font-sans">
+                              {t('sign_in', 'Sign In')}
+                            </Text>
+                            <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
+                              <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
+                            </Animated.View>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    </Animated.View>
                   </View>
                 ) : (
                   /* Phone OTP Form */
@@ -656,7 +1000,7 @@ export default function LoginScreen() {
                         checked={keepSignedIn}
                         onCheckedChange={setKeepSignedIn}
                         label="Stay signed in"
-                        labelClassName="text-xs text-muted-foreground font-medium"
+                        labelClassName="text-xs text-[#78716C] dark:text-[#A8A29E] font-medium"
                         className="items-center"
                       />
                     </View>
@@ -670,53 +1014,81 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Get OTP Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
-                    <TouchableOpacity
-                      onPress={phoneForm.handleSubmit(onPhoneSubmit)}
-                      disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
-                      activeOpacity={0.88}
-                      className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
-                    >
-                      <View className="absolute inset-0">
-                        <Svg width="100%" height="100%" preserveAspectRatio="none">
-                          <Defs>
-                            <LinearGradient id="otpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <Stop offset="0%" stopColor="#1E232E" />
-                              <Stop offset="45%" stopColor="#2A3342" />
-                              <Stop offset="82%" stopColor="#FF5E00" />
-                              <Stop offset="100%" stopColor="#FF7A00" />
-                            </LinearGradient>
-                          </Defs>
-                          <Rect width="100%" height="100%" rx="16" fill="url(#otpGrad)" />
-                        </Svg>
-                      </View>
-                      {isSubmittingPhone ? (
-                        <View className="flex-row items-center gap-2 z-10">
-                          <ActivityIndicator color="#FFFFFF" size="small" />
-                          <Text className="font-bold text-white text-sm font-sans">
-                            Sending OTP Code...
-                          </Text>
+                    {/* Sign in with OTP Button (Luxury Sweep & Tactile Micro-Interaction) */}
+                    <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
+                      <TouchableOpacity
+                        onPress={handlePhoneSignIn}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                        activeOpacity={0.9}
+                        style={{
+                          shadowColor: '#EA580C',
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.28,
+                          shadowRadius: 14,
+                          elevation: 4,
+                        }}
+                        className="mt-1 h-12 rounded-xl flex-row items-center justify-center gap-2 overflow-hidden relative"
+                      >
+                        <View className="absolute inset-0">
+                          <Svg width="100%" height="100%" preserveAspectRatio="none">
+                            <Defs>
+                              <LinearGradient id="otpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <Stop offset="0%" stopColor="#1E232E" />
+                                <Stop offset="42%" stopColor="#2A3342" />
+                                <Stop offset="80%" stopColor="#EA580C" />
+                                <Stop offset="100%" stopColor="#FF7A00" />
+                              </LinearGradient>
+                            </Defs>
+                            <Rect width="100%" height="100%" rx="12" fill="url(#otpGrad)" />
+                          </Svg>
                         </View>
-                      ) : (
-                        <View className="flex-row items-center justify-center gap-2 z-10">
-                          <Text className="font-bold text-white text-base font-sans">
-                            Get OTP Code
-                          </Text>
-                          <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
-                        </View>
-                      )}
-                    </TouchableOpacity>
+
+                        {/* Subtle Light Reflection Sweep */}
+                        <Animated.View
+                          style={{
+                            position: 'absolute',
+                            top: -10,
+                            bottom: -10,
+                            width: 55,
+                            transform: [{ translateX: buttonSweepX }, { skewX: '-24deg' }],
+                            opacity: buttonSweepOpacity,
+                            backgroundColor: 'rgba(255, 255, 255, 0.28)',
+                          }}
+                          pointerEvents="none"
+                        />
+
+                        {isSubmittingPhone ? (
+                          <View className="flex-row items-center gap-2 z-10">
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                            <Text className="font-bold text-white text-sm font-sans">
+                              Sending OTP Code...
+                            </Text>
+                          </View>
+                        ) : (
+                          <View className="flex-row items-center justify-center gap-2 z-10">
+                            <Text className="font-bold text-white text-base font-sans">
+                              Sign in with OTP
+                            </Text>
+                            <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
+                              <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
+                            </Animated.View>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    </Animated.View>
                   </View>
                 )}
               </View>
 
-              {/* OR CONTINUE WITH Divider */}
-              <View className="flex-row items-center my-1 gap-3">
-                <View className="flex-1 h-px bg-border/80" />
-                <Text className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase font-sans">
-                  Or Continue With
-                </Text>
-                <View className="flex-1 h-px bg-border/80" />
+              {/* OR CONTINUE WITH Divider (Frosted Glass Pill) */}
+              <View className="flex-row items-center my-2 gap-2.5">
+                <View className="flex-1 h-[1.5px] bg-white/50 dark:bg-white/20" />
+                <View className="bg-white/75 dark:bg-[#1C1917]/75 px-3.5 py-1 rounded-full border border-white/70 dark:border-white/15 shadow-2xs backdrop-blur-md">
+                  <Text className="text-[10px] font-bold text-[#1C1917] dark:text-white tracking-widest uppercase font-sans">
+                    Or Continue With
+                  </Text>
+                </View>
+                <View className="flex-1 h-[1.5px] bg-white/50 dark:bg-white/20" />
               </View>
 
               {/* Social Authentication: Google ID & Apple ID */}
@@ -733,27 +1105,32 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Create Account Prompt */}
-              <View className="flex-row items-center justify-center pt-2 pb-1">
-                <Text className="text-xs text-slate-900 dark:text-white font-bold">
-                  Don't have an account?{' '}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => router.push('/(auth)/signup')}
-                  activeOpacity={0.8}
-                >
-                  <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
-                    Create Account
-                  </Text>
-                </TouchableOpacity>
+              {/* Create Account Prompt (Transparent container without underline) */}
+              <View className="items-center justify-center pt-2.5 pb-2">
+                <Animated.View style={{ transform: [{ scale: createAccountPressScale }] }}>
+                  <View className="bg-transparent flex-row items-center justify-center">
+                    <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
+                      Don't have an account?{' '}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => router.push('/(auth)/signup')}
+                      onPressIn={handleCreateAccountPressIn}
+                      onPressOut={handleCreateAccountPressOut}
+                      activeOpacity={0.8}
+                    >
+                      <Text className="text-xs font-bold text-[#EA580C]">
+                        Create Account
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
               </View>
-
 
             </Animated.View>
           </View>
         </ScrollView>
     </KeyboardAvoidingView>
-    </ImageBackground>
+    </View>
     </>
   );
 }
