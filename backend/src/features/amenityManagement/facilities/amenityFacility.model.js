@@ -100,6 +100,15 @@ const cancellationPolicySchema = new mongoose.Schema(
   { _id: false }
 );
 
+const subRoomSchema = new mongoose.Schema(
+  {
+    id: { type: String, default: null },
+    name: { type: String, required: true, trim: true },
+    capacity: { type: Number, default: 1, min: 1 },
+  },
+  { _id: false }
+);
+
 const amenityFacilitySchema = new mongoose.Schema(
   {
     orgId: {
@@ -143,6 +152,20 @@ const amenityFacilitySchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    category: {
+      type: String,
+      trim: true,
+      default: 'General',
+    },
+    images: {
+      type: [String],
+      default: [],
+    },
+    imageUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     timezone: {
       type: String,
       required: [true, 'Timezone is required'],
@@ -174,6 +197,52 @@ const amenityFacilitySchema = new mongoose.Schema(
       default: 1,
       min: [1, 'Maximum capacity must be at least 1'],
     },
+    maxHeadcountPerReservation: {
+      type: Number,
+      default: 2,
+      min: [1, 'Maximum headcount per reservation must be at least 1'],
+    },
+    setupBufferMinutes: {
+      type: Number,
+      default: 0,
+      min: [0, 'Setup buffer minutes cannot be negative'],
+    },
+    advanceBookingDays: {
+      type: Number,
+      default: 7,
+      min: [1, 'Advance booking days must be at least 1 day'],
+    },
+    minNoticeHours: {
+      type: Number,
+      default: 0,
+      min: [0, 'Minimum notice hours cannot be negative'],
+    },
+    isMultiResourceFacility: {
+      type: Boolean,
+      default: false,
+    },
+    subRooms: {
+      type: [subRoomSchema],
+      default: [],
+    },
+    roomAmenities: {
+      type: [String],
+      default: [],
+    },
+    availableStock: {
+      type: Number,
+      default: 1,
+      min: [0, 'Available stock cannot be negative'],
+    },
+    maxLoanHours: {
+      type: Number,
+      default: 24,
+      min: [1, 'Maximum loan hours must be at least 1'],
+    },
+    requiresInspection: {
+      type: Boolean,
+      default: true,
+    },
     pricingConfig: {
       type: pricingConfigSchema,
       default: () => ({}),
@@ -185,6 +254,17 @@ const amenityFacilitySchema = new mongoose.Schema(
     cancellationPolicy: {
       type: cancellationPolicySchema,
       default: () => ({}),
+    },
+    status: {
+      type: String,
+      enum: ['DRAFT', 'ACTIVE', 'INACTIVE', 'MAINTENANCE'],
+      default: 'ACTIVE',
+      index: true,
+    },
+    isDraft: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     isActive: {
       type: Boolean,
@@ -221,6 +301,10 @@ amenityFacilitySchema.index(
 amenityFacilitySchema.index(
   { orgId: 1, archetype: 1, isActive: 1, isDeleted: 1 },
   { name: 'idx_amenity_facility_org_archetype_active' }
+);
+amenityFacilitySchema.index(
+  { orgId: 1, isDraft: 1, isActive: 1, isDeleted: 1 },
+  { name: 'idx_amenity_facility_org_draft_active' }
 );
 
 export const AmenityFacility =

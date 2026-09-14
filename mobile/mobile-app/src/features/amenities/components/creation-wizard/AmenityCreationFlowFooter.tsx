@@ -2,14 +2,16 @@ import React from 'react';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react-native';
+import { ArrowRight, ArrowLeft, CheckCircle2, Bookmark } from 'lucide-react-native';
 
 export interface AmenityCreationFlowFooterProps {
   onBack: () => void;
   onNext: () => void;
+  onSaveDraft?: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
   loading?: boolean;
+  savingDraft?: boolean;
   disabled?: boolean;
   isEditing?: boolean;
 }
@@ -17,21 +19,23 @@ export interface AmenityCreationFlowFooterProps {
 export const AmenityCreationFlowFooter: React.FC<AmenityCreationFlowFooterProps> = ({
   onBack,
   onNext,
+  onSaveDraft,
   isFirstStep,
   isLastStep,
   loading = false,
+  savingDraft = false,
   disabled = false,
   isEditing = false,
 }) => {
   return (
-    <View className="bg-card border-t border-border px-4 py-3 pb-6 flex-row items-center gap-3">
+    <View className="bg-card border-t border-border px-4 py-3 pb-6 flex-row items-center gap-2.5">
       {/* Previous / Back CTA */}
       {!isFirstStep && (
         <Button
           variant="outline"
           onPress={onBack}
-          disabled={loading}
-          className="flex-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 border-border"
+          disabled={loading || savingDraft}
+          className="flex-1 h-12 rounded-2xl flex-row items-center justify-center gap-1.5 border-border"
           accessibilityRole="button"
           accessibilityLabel="Back to previous step"
         >
@@ -40,11 +44,28 @@ export const AmenityCreationFlowFooter: React.FC<AmenityCreationFlowFooterProps>
         </Button>
       )}
 
+      {/* Save Draft CTA */}
+      {onSaveDraft && !isEditing && (
+        <Button
+          variant="secondary"
+          onPress={onSaveDraft}
+          disabled={loading || savingDraft || disabled}
+          className="h-12 px-3.5 rounded-2xl flex-row items-center justify-center gap-1.5 border border-border"
+          accessibilityRole="button"
+          accessibilityLabel="Save Facility as Draft"
+        >
+          <Bookmark size={15} className="text-foreground" />
+          <Text className="font-bold text-foreground text-xs">
+            {savingDraft ? 'Saving...' : 'Save Draft'}
+          </Text>
+        </Button>
+      )}
+
       {/* Next / Submit CTA */}
       <Button
         variant="default"
         onPress={onNext}
-        disabled={loading || disabled}
+        disabled={loading || savingDraft || disabled}
         className="flex-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-sm"
         accessibilityRole="button"
         accessibilityLabel={

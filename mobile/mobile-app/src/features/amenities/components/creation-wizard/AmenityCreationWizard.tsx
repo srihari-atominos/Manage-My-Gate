@@ -34,8 +34,10 @@ export interface AmenityCreationWizardProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (payload: any) => Promise<any> | void;
+  onSaveDraft?: (payload: any) => Promise<any> | void;
   amenity?: any;
   loading?: boolean;
+  savingDraft?: boolean;
   initialArchetype?: AmenityArchetype;
 }
 
@@ -43,8 +45,10 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
   visible,
   onClose,
   onSubmit,
+  onSaveDraft,
   amenity,
   loading = false,
+  savingDraft = false,
   initialArchetype = 'SHARED_CAPACITY',
 }) => {
   const isEditing = Boolean(amenity && (amenity._id || amenity.id));
@@ -296,10 +300,27 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
 
   const handleFinalSubmit = async () => {
     try {
-      const payload = mapAmenityCreationPayloadStrategy(form);
+      const payload = mapAmenityCreationPayloadStrategy(form, false);
       await onSubmit(payload);
     } catch (err: any) {
       console.error('Wizard submission failed', err);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!form.name.trim()) {
+      Alert.alert('Facility Name Required', 'Please enter a facility name before saving as draft.');
+      return;
+    }
+    try {
+      const payload = mapAmenityCreationPayloadStrategy(form, true);
+      if (onSaveDraft) {
+        await onSaveDraft(payload);
+      } else {
+        await onSubmit(payload);
+      }
+    } catch (err: any) {
+      console.error('Wizard draft save failed', err);
     }
   };
 
@@ -445,9 +466,11 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
         <AmenityCreationFlowFooter
           onBack={handleBack}
           onNext={handleNext}
+          onSaveDraft={handleSaveDraft}
           isFirstStep={isFirstStep}
           isLastStep={isLastStep}
           loading={loading}
+          savingDraft={savingDraft}
           isEditing={isEditing}
         />
       </SafeAreaView>

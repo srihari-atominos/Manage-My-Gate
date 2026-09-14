@@ -42,7 +42,25 @@ export class AmenityFacilityController {
       const orgId = req.tenant.orgId;
       const page = Number(req.query.page) || 1;
       const limit = Math.min(100, Number(req.query.limit) || 10);
-      const { search, archetype, isActive } = req.query;
+      const { search, archetype, isActive, status, isDraft } = req.query;
+      const userRole = req.user?.role || '';
+      const userRoles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+      const isAdmin =
+        ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(userRole) ||
+        userRoles.some(r => ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(r));
+
+      // Non-admins (residents, guests) can ONLY view published, active facilities
+      const queryIsDraft = isAdmin
+        ? (isDraft !== undefined ? isDraft === 'true' : undefined)
+        : false;
+
+      const queryIsActive = isAdmin
+        ? (isActive !== undefined ? isActive === 'true' : undefined)
+        : (isActive !== undefined ? isActive === 'true' : true);
+
+      const queryStatus = isAdmin
+        ? status
+        : (status && status !== 'DRAFT' ? status : 'ACTIVE');
 
       const result = await amenityFacilityService.listFacilities({
         orgId,
@@ -50,7 +68,9 @@ export class AmenityFacilityController {
         limit,
         search,
         archetype,
-        isActive: isActive !== undefined ? isActive === 'true' : undefined,
+        status: queryStatus,
+        isDraft: queryIsDraft,
+        isActive: queryIsActive,
       });
 
       console.log(`[amenityFacility.getAll] tenant.orgId: "${orgId}", header.orgId: "${req.headers['x-organization-id']}", found: ${result?.data?.length}, total: ${result?.total}`);

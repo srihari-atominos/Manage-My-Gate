@@ -97,7 +97,7 @@ export class AmenityFacilityRepository {
    * @param {number} [params.page=1]
    * @param {number} [params.limit=10]
    */
-  async findWithPagination({ orgId, archetype, isActive, search, page = 1, limit = 10 }) {
+  async findWithPagination({ orgId, archetype, isActive, status, isDraft, search, page = 1, limit = 10 }) {
     const match = {
       orgId: new mongoose.Types.ObjectId(orgId),
       isDeleted: false,
@@ -105,6 +105,13 @@ export class AmenityFacilityRepository {
 
     if (archetype) match.archetype = archetype;
     if (typeof isActive === 'boolean') match.isActive = isActive;
+    if (isDraft === true) {
+      match.isDraft = true;
+    } else if (isDraft === false) {
+      match.isDraft = { $ne: true };
+      match.status = { $ne: 'DRAFT' };
+    }
+    if (status && status !== 'ALL') match.status = status;
     if (search && search.trim()) {
       match.$or = [
         { name: { $regex: search.trim(), $options: 'i' } },

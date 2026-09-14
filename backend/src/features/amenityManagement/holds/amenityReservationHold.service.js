@@ -103,6 +103,9 @@ export class AmenityReservationHoldService {
     if (!facility) {
       throw new HttpError(404, 'Amenity facility not found');
     }
+    if (!facility.isActive || facility.isDraft || facility.status === 'DRAFT') {
+      throw new HttpError(400, 'Amenity facility is a draft or not active for reservations');
+    }
 
     // 4. Reserve Household Quota
     const requestedUnits = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60));

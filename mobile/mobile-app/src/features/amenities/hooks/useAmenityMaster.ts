@@ -13,7 +13,7 @@ import { mapAmenityApiError } from '../utils/amenityErrorMapper';
 import { upsertAmenity, removeAmenity } from '../store/amenitySlice';
 
 export type ArchetypeFilterOption = 'All' | AmenityArchetype;
-export type AmenityStatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
+export type AmenityStatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'DRAFT';
 
 export interface AmenityFilterValues {
   archetypes: AmenityArchetype[];
@@ -57,18 +57,28 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
   const [deactivateTarget, setDeactivateTarget] = useState<AmenityFacility | null>(null);
 
   const [saving, setSaving] = useState<boolean>(false);
+  const [savingDraft, setSavingDraft] = useState<boolean>(false);
 
   // Live status counts for filter pills (matching Billing Ledger pattern)
   const statusCounts = useMemo(() => {
     const total = facilities.length;
     const active = facilities.filter(
-      (f) => (f.status === 'ACTIVE' || (f as any).isActive === true) && f.status !== 'MAINTENANCE'
+      (f) =>
+        (f.status === 'ACTIVE' || (f as any).isActive === true) &&
+        f.status !== 'MAINTENANCE' &&
+        f.status !== 'DRAFT' &&
+        !(f as any).isDraft
     ).length;
     const inactive = facilities.filter(
-      (f) => (f.status === 'INACTIVE' || (f as any).isActive === false) && f.status !== 'MAINTENANCE'
+      (f) =>
+        (f.status === 'INACTIVE' || (f as any).isActive === false) &&
+        f.status !== 'MAINTENANCE' &&
+        f.status !== 'DRAFT' &&
+        !(f as any).isDraft
     ).length;
     const maintenance = facilities.filter((f) => f.status === 'MAINTENANCE').length;
-    return { total, active, inactive, maintenance };
+    const draft = facilities.filter((f) => f.status === 'DRAFT' || (f as any).isDraft === true).length;
+    return { total, active, inactive, maintenance, draft };
   }, [facilities]);
 
   // Dynamically extract distinct categories from facilities catalog
@@ -152,13 +162,19 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
       if (statusFilter === 'ACTIVE') {
         matchesStatus =
           (facility.status === 'ACTIVE' || (facility as any).isActive === true) &&
-          facility.status !== 'MAINTENANCE';
+          facility.status !== 'MAINTENANCE' &&
+          facility.status !== 'DRAFT' &&
+          !(facility as any).isDraft;
       } else if (statusFilter === 'INACTIVE') {
         matchesStatus =
           (facility.status === 'INACTIVE' || (facility as any).isActive === false) &&
-          facility.status !== 'MAINTENANCE';
+          facility.status !== 'MAINTENANCE' &&
+          facility.status !== 'DRAFT' &&
+          !(facility as any).isDraft;
       } else if (statusFilter === 'MAINTENANCE') {
         matchesStatus = facility.status === 'MAINTENANCE';
+      } else if (statusFilter === 'DRAFT') {
+        matchesStatus = facility.status === 'DRAFT' || (facility as any).isDraft === true;
       }
 
       // Archetype filter (multi-select takes priority if selected, fallback to selectedArchetype)
@@ -270,6 +286,41 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     }
   };
 
+  const handleSaveDraft = async (payload: any) => {
+    setSavingDraft(true);
+    try {
+      if (editingAmenity) {
+        const facilityId = editingAmenity._id || (editingAmenity as any).id;
+        await amenityManagementService.updateFacility(facilityId, {
+          ...payload,
+          isDraft: true,
+          status: 'DRAFT',
+          isActive: false,
+        });
+        Alert.alert('Draft Saved', 'Facility draft updated successfully');
+      } else {
+        await amenityManagementService.createFacility({
+          ...payload,
+          isDraft: true,
+          status: 'DRAFT',
+          isActive: false,
+        });
+        Alert.alert('Draft Saved', 'Facility draft saved successfully');
+      }
+      handleCloseFormModal();
+      await loadData();
+    } catch (err: any) {
+      console.error('Failed to save amenity draft', err);
+      const mapped = mapAmenityApiError(err);
+      Alert.alert(
+        'Save Draft Failed',
+        mapped.message || 'Failed to save facility draft. Please verify fields.'
+      );
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
   const handleToggleStatus = (amenity: AmenityFacility) => {
     setDeactivateTarget(amenity);
   };
@@ -354,6 +405,7 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     deactivateTarget,
     setDeactivateTarget,
     saving,
+    savingDraft,
     loadData,
     handleOpenCreateModal,
     handleSelectArchetypeForCreation,
@@ -361,6 +413,7 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     handleOpenEditModal,
     handleCloseFormModal,
     handleFormSubmit,
+    handleSaveDraft,
     handleToggleStatus,
     handleConfirmDeactivate,
     handleConfirmDelete,

@@ -45,7 +45,10 @@ export interface AmenityCreationFormState {
  * Maps and sanitizes the Creation Wizard form state into a strictly conforming
  * payload for backend amenityFacility.model.js, eliminating schema pollution.
  */
-export function mapAmenityCreationPayloadStrategy(form: AmenityCreationFormState) {
+export function mapAmenityCreationPayloadStrategy(
+  form: AmenityCreationFormState,
+  isDraft = false
+) {
   // Format HH:MM safely
   const formatTime = (t?: string, defaultVal = '06:00') => {
     if (!t) return defaultVal;
@@ -88,6 +91,13 @@ export function mapAmenityCreationPayloadStrategy(form: AmenityCreationFormState
     ),
   };
 
+  const status = isDraft
+    ? 'DRAFT'
+    : form.status === 'inactive'
+    ? 'INACTIVE'
+    : 'ACTIVE';
+  const isActive = isDraft ? false : form.status !== 'inactive';
+
   // Base facility object
   const basePayload: any = {
     name: form.name.trim(),
@@ -100,8 +110,9 @@ export function mapAmenityCreationPayloadStrategy(form: AmenityCreationFormState
     operatingHours,
     pricingConfig,
     cancellationPolicy,
-    isActive: form.status !== 'inactive',
-    status: (form.status || 'active').toUpperCase(),
+    isActive,
+    status,
+    isDraft,
     images: form.imageUrl ? [form.imageUrl] : [],
     imageUrl: form.imageUrl || '',
   };

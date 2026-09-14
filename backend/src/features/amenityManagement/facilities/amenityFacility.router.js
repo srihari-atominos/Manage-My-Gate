@@ -57,6 +57,14 @@ router.patch(
   amenityFacilityController.update
 );
 
+// PUT /:facilityId - Update facility (idempotent full/partial update alias)
+router.put(
+  '/:facilityId',
+  authorizePermission('amenities', 'amenities'),
+  validate([...facilityIdParamRules, ...updateFacilityRules]),
+  amenityFacilityController.update
+);
+
 // DELETE /:facilityId - Soft delete facility
 router.delete(
   '/:facilityId',

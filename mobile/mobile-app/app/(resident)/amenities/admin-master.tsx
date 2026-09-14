@@ -51,6 +51,7 @@ export default function AdminAmenityMasterScreen() {
     deactivateTarget,
     setDeactivateTarget,
     saving,
+    savingDraft,
     loadData,
     handleOpenCreateModal,
     handleSelectArchetypeForCreation,
@@ -58,6 +59,7 @@ export default function AdminAmenityMasterScreen() {
     handleOpenEditModal,
     handleCloseFormModal,
     handleFormSubmit,
+    handleSaveDraft,
     handleToggleStatus,
     handleConfirmDeactivate,
     handleConfirmDelete,
@@ -67,6 +69,7 @@ export default function AdminAmenityMasterScreen() {
   const statusSortOptions = useMemo(() => [
     { label: `All (${statusCounts.total})`, value: 'ALL' },
     { label: `Active (${statusCounts.active})`, value: 'ACTIVE' },
+    { label: `Draft (${statusCounts.draft})`, value: 'DRAFT' },
     { label: `Inactive (${statusCounts.inactive})`, value: 'INACTIVE' },
     { label: `Maintenance (${statusCounts.maintenance})`, value: 'MAINTENANCE' },
   ], [statusCounts]);
@@ -171,8 +174,10 @@ export default function AdminAmenityMasterScreen() {
         visible={isFormModalOpen}
         onClose={handleCloseFormModal}
         onSubmit={handleFormSubmit as any}
+        onSaveDraft={handleSaveDraft as any}
         amenity={editingAmenity}
         loading={saving}
+        savingDraft={savingDraft}
         initialArchetype={creationArchetype}
       />
 
