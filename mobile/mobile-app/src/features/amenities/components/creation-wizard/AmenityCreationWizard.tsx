@@ -202,13 +202,40 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
 
       setSelectedArchetype(initialArchetype);
       setCurrentStepIndex(0);
-      setForm((prev) => ({
-        ...prev,
+      setStepErrors({});
+      setForm({
+        name: '',
+        code: generateFacilityCode(initialArchetype.split('_')[0] || 'FACILITY'),
         archetype: initialArchetype,
-        pricingType: defaultPricing,
+        category: DEFAULT_ARCHETYPE_CATEGORIES[initialArchetype] || 'General',
+        location: '',
+        status: 'active',
+        imageUrl: '',
+        description: '',
+        openTime: '06:00',
+        closeTime: '22:00',
+        openDays: [0, 1, 2, 3, 4, 5, 6],
+        maxCapacity: initialArchetype === 'SHARED_CAPACITY' ? 50 : initialArchetype === 'EVENT_SPACE' ? 100 : 1,
+        maxHeadcountPerReservation: 2,
+        slotDurationMinutes: initialArchetype === 'EVENT_SPACE' ? 720 : 60,
+        bufferTimeMinutes: 0,
+        advanceBookingDays: initialArchetype === 'EVENT_SPACE' ? 30 : 7,
+        advanceNoticeHours: 72,
         requiresApproval: initialArchetype === 'EVENT_SPACE',
-        code: generateFacilityCode('FACILITY'),
-      }));
+        isMultiResourceFacility: initialArchetype === 'ROOM_RESOURCE',
+        subRooms: [{ id: 'room-1', name: 'Conference Suite A', capacity: 10 }],
+        roomAmenities: ['wifi', 'projector'],
+        availableStock: 5,
+        maxLoanHours: 24,
+        requiresInspection: true,
+        pricingType: defaultPricing,
+        baseRate: 0,
+        securityDeposit: 0,
+        securityDepositDescription: '',
+        isCancellationAllowed: true,
+        refundCutoffHours: 24,
+        refundPercentage: 100,
+      });
     }
   }, [amenity, initialArchetype, visible]);
 
@@ -468,6 +495,7 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
           onBack={handleBack}
           onNext={handleNext}
           onSaveDraft={handleSaveDraft}
+          allowSaveDraft={!isEditing || amenity?.status === 'DRAFT' || Boolean((amenity as any)?.isDraft)}
           isFirstStep={isFirstStep}
           isLastStep={isLastStep}
           loading={loading}

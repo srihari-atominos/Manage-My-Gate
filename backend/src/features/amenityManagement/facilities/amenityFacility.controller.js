@@ -1,6 +1,8 @@
 import HttpError from '../../../utils/httpError.utils.js';
 import amenityFacilityService from './amenityFacility.service.js';
 import amenityIdempotencyService from '../idempotency/amenityIdempotencyRecord.service.js';
+import { getPermissionsForUser } from '../../../middlewares/rbac.middleware.js';
+import { mapPermission } from '../../../utils/permissionMapper.js';
 
 const isAdminUser = (user) => {
   if (!user) return false;
@@ -59,7 +61,24 @@ export class AmenityFacilityController {
       const page = Number(req.query.page) || 1;
       const limit = Math.min(100, Number(req.query.limit) || 10);
       const { search, archetype, isActive, status, isDraft } = req.query;
-      const isAdmin = isAdminUser(req.user);
+      let isAdmin = isAdminUser(req.user);
+
+      if (!isAdmin && req.user) {
+        try {
+          const permissions = await getPermissionsForUser(req.user);
+          const userPermissions = permissions.map(mapPermission);
+          if (
+            userPermissions.includes('amenities:amenities') ||
+            userPermissions.includes('amenities:create') ||
+            userPermissions.includes('amenities:update') ||
+            userPermissions.includes('amenities:manage_bookings')
+          ) {
+            isAdmin = true;
+          }
+        } catch (rbacErr) {
+          // Gracefully fallback
+        }
+      }
 
       // Non-admins (residents, guests) can ONLY view published, active facilities
       const queryIsDraft = isAdmin

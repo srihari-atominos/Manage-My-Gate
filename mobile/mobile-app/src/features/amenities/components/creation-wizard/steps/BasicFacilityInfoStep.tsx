@@ -42,7 +42,12 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
     const isAutoCode =
       !data.code ||
       data.code.startsWith('FAC-') ||
-      data.code === generateFacilityCode(data.name || 'FACILITY');
+      data.code.startsWith('FACILITY-') ||
+      data.code.startsWith('SHARED-') ||
+      data.code.startsWith('EXCLUSIVE-') ||
+      data.code.startsWith('EVENT-') ||
+      data.code.startsWith('ROOM-') ||
+      data.code.startsWith('INVENTORY-');
     onChange({
       ...data,
       name: nameText,

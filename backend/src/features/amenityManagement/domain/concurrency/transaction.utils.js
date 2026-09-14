@@ -31,34 +31,38 @@ export function getValidSession(session) {
  * @returns {Promise<T>}
  */
 export async function withTransaction(fn) {
-  let session = null;
+  const clientTopology = mongoose.connection.client?.topology?.description?.type || mongoose.connection.topology?.description?.type;
+  const isReplicaSet = clientTopology && clientTopology !== 'Single' && clientTopology !== 'Unknown';
+
+  if (!isReplicaSet) {
+    return await fn(undefined);
+  }
+
+  let session;
   try {
     session = await mongoose.startSession();
   } catch (err) {
-    logger.warn('Failed to start mongoose session; continuing without session:', {
+    logger.warn('Mongoose startSession failed; executing fallback without transaction session:', {
       error: err.message,
     });
-    return fn(undefined);
+    return await fn(undefined);
   }
 
-  const isMock = Boolean(!session || session._isMockSession || typeof session.inTransaction !== 'function');
   let isTransactionActive = false;
 
-  if (!isMock) {
-    try {
-      session.startTransaction();
-      isTransactionActive = true;
-    } catch (err) {
-      logger.warn('Mongoose transaction not supported in environment; continuing with fallback session:', {
-        error: err.message,
-      });
-    }
+  try {
+    session.startTransaction();
+    isTransactionActive = true;
+  } catch (err) {
+    logger.warn('Mongoose transaction not supported in environment; continuing with fallback session:', {
+      error: err.message,
+    });
+    try { await session.endSession(); } catch {}
+    return await fn(undefined);
   }
 
-  const activeSession = isTransactionActive ? session : undefined;
-
   try {
-    const result = await fn(activeSession);
+    const result = await fn(session);
     if (isTransactionActive) {
       await session.commitTransaction();
     }
@@ -70,6 +74,10 @@ export async function withTransaction(fn) {
       } catch (abortErr) {
         logger.error('Failed to abort transaction:', { error: abortErr.message });
       }
+    }
+    if (error.message && error.message.includes('Transaction numbers are only allowed on a replica set member')) {
+      logger.warn('Transactions not supported on standalone MongoDB; executing without transaction session.');
+      return await fn(undefined);
     }
     throw error;
   } finally {
