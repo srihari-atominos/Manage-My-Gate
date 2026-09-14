@@ -21,7 +21,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "11",
+      "buildNumber": "12",
       "associatedDomains": [
         "applinks:managemygate.e3esg.com",
         "applinks:app.managemygate.com",
@@ -47,7 +47,7 @@
       "versionCode": 15,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0D1015"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
