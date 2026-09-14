@@ -147,9 +147,17 @@ export const amenityManagementService = {
     return extractEnvelope(response);
   },
 
-  async updateFacilityStatus(id: string, isActive: boolean): Promise<ApiResponse<ApiAmenityFacility>> {
+  async updateFacilityStatus(
+    id: string,
+    isActive: boolean,
+    bookingAction?: 'HONOR_EXISTING' | 'CANCEL_AND_REFUND'
+  ): Promise<ApiResponse<ApiAmenityFacility>> {
     const url = getAmenityV2Url(`/facilities/${id}`);
-    const response = await apiClient.patch<ApiResponse<ApiAmenityFacility>>(url, { isActive });
+    const body: Record<string, any> = { isActive };
+    if (bookingAction) {
+      body.bookingAction = bookingAction;
+    }
+    const response = await apiClient.patch<ApiResponse<ApiAmenityFacility>>(url, body);
     return extractEnvelope(response);
   },
 

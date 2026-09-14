@@ -1,6 +1,17 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import amenityApi from '../services/amenityApi.js'
 
+const extractErrorMessage = (error, fallback) => {
+  const data = error.response?.data
+  if (data?.details && Array.isArray(data.details)) {
+    const fieldDetails = data.details
+      .map((d) => (d.field && d.message ? `${d.field}: ${d.message}` : d.message || d))
+      .join(', ')
+    return `${data.message || fallback}: ${fieldDetails}`
+  }
+  return data?.message || error.message || fallback
+}
+
 export const getAmenities = createAsyncThunk(
   'amenities/getAmenities',
   async (params, { rejectWithValue }) => {
@@ -8,7 +19,7 @@ export const getAmenities = createAsyncThunk(
       const response = await amenityApi.fetchAmenities(params || {})
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to fetch amenities')
+      return rejectWithValue(extractErrorMessage(error, 'Failed to fetch amenities'))
     }
   },
 )
@@ -20,9 +31,7 @@ export const addAmenity = createAsyncThunk(
       const response = await amenityApi.createAmenity(data)
       return response.data
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to create amenity',
-      )
+      return rejectWithValue(extractErrorMessage(error, 'Failed to create amenity'))
     }
   },
 )
@@ -34,19 +43,19 @@ export const editAmenity = createAsyncThunk(
       const response = await amenityApi.updateAmenity(id, data)
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to update amenity')
+      return rejectWithValue(extractErrorMessage(error, 'Failed to update amenity'))
     }
   },
 )
 
 export const changeAmenityStatus = createAsyncThunk(
   'amenities/changeStatus',
-  async ({ id, status }, { rejectWithValue }) => {
+  async ({ id, status, bookingAction }, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.updateAmenityStatus(id, status)
+      const response = await amenityApi.updateAmenityStatus(id, status, bookingAction)
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to update amenity status')
+      return rejectWithValue(extractErrorMessage(error, 'Failed to update amenity status'))
     }
   },
 )
@@ -58,7 +67,7 @@ export const removeAmenity = createAsyncThunk(
       await amenityApi.deleteAmenity(id)
       return id
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to delete amenity')
+      return rejectWithValue(extractErrorMessage(error, 'Failed to delete amenity'))
     }
   },
 )
@@ -70,7 +79,7 @@ export const fetchAmenitySlots = createAsyncThunk(
       const response = await amenityApi.fetchSlots(id, date)
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to fetch slots')
+      return rejectWithValue(extractErrorMessage(error, 'Failed to fetch slots'))
     }
   },
 )
@@ -82,7 +91,7 @@ export const fetchAllAmenitySlots = createAsyncThunk(
       const response = await amenityApi.fetchAllSlots(id, date)
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to fetch all slots')
+      return rejectWithValue(extractErrorMessage(error, 'Failed to fetch all slots'))
     }
   },
 )
@@ -94,7 +103,7 @@ export const fetchMaintenanceList = createAsyncThunk(
       const response = await amenityApi.fetchMaintenanceList()
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to fetch maintenance schedules')
+      return rejectWithValue(extractErrorMessage(error, 'Failed to fetch maintenance schedules'))
     }
   },
 )
@@ -106,9 +115,7 @@ export const scheduleAmenityMaintenance = createAsyncThunk(
       const response = await amenityApi.scheduleMaintenance(amenityId, data)
       return response.data
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to schedule maintenance',
-      )
+      return rejectWithValue(extractErrorMessage(error, 'Failed to schedule maintenance'))
     }
   },
 )
@@ -120,9 +127,7 @@ export const editMaintenance = createAsyncThunk(
       const response = await amenityApi.updateMaintenance(amenityId, maintenanceId, data)
       return response.data
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to update maintenance',
-      )
+      return rejectWithValue(extractErrorMessage(error, 'Failed to update maintenance'))
     }
   },
 )
@@ -134,9 +139,7 @@ export const removeMaintenance = createAsyncThunk(
       await amenityApi.deleteMaintenance(amenityId, maintenanceId)
       return maintenanceId
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to delete maintenance',
-      )
+      return rejectWithValue(extractErrorMessage(error, 'Failed to delete maintenance'))
     }
   },
 )

@@ -33,18 +33,33 @@ export const mapAmenityApiError = (error: any): AmenityErrorDetails => {
   // 1. HTTP 400 - Bad Request / Validation Failure (Express-Validator)
   if (status === 400) {
     const fieldErrors: Record<string, string> = {};
+    const detailList: string[] = [];
+
     if (Array.isArray(responseData?.details)) {
       responseData.details.forEach((item: any) => {
-        if (typeof item === 'object' && item !== null && item.field && item.message) {
-          fieldErrors[item.field] = item.message;
+        if (typeof item === 'object' && item !== null) {
+          if (item.field && item.message) {
+            fieldErrors[item.field] = item.message;
+            detailList.push(`${item.field}: ${item.message}`);
+          } else if (item.message) {
+            detailList.push(item.message);
+          }
+        } else if (typeof item === 'string') {
+          detailList.push(item);
         }
       });
     }
 
+    let detailedMessage = baseMessage;
+    if (detailList.length > 0) {
+      detailedMessage = `${baseMessage}\n\n• ${detailList.join('\n• ')}`;
+    }
+
     return {
       statusCode: 400,
-      message: baseMessage || 'Validation failed. Please check the entered details.',
+      message: detailedMessage || 'Validation failed. Please check the entered details.',
       fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
+      details: responseData?.details,
     };
   }
 
@@ -75,7 +90,7 @@ export const mapAmenityApiError = (error: any): AmenityErrorDetails => {
     };
   }
 
-  // 5. HTTP 409 - Conflict (Concurrency, Idempotency, Slot collision)
+  // 5. HTTP 409 - Conflict (Concurrency, Idempotency, Slot collision, Policy T1/T2/T3)
   if (status === 409) {
     const lower = String(baseMessage).toLowerCase();
     let conflictType: 'SLOT_CAPACITY' | 'IDEMPOTENCY_MISMATCH' | 'OPERATION_IN_PROGRESS' | 'CONCURRENCY_VERSION' | 'GENERIC' = 'GENERIC';
@@ -90,11 +105,28 @@ export const mapAmenityApiError = (error: any): AmenityErrorDetails => {
       conflictType = 'SLOT_CAPACITY';
     }
 
+    const detailsObj = responseData?.details;
+    const requiresBookingAction = Boolean(
+      detailsObj?.requiresBookingAction || lower.includes('requiresbookingaction') || lower.includes('bookingaction')
+    );
+    const upcomingBookingsCount = detailsObj?.upcomingBookingsCount || detailsObj?.activeBookingsCount || 0;
+    const requiresConflictAction = Boolean(
+      detailsObj?.requiresConflictAction || lower.includes('requiresconflictaction') || lower.includes('conflictaction')
+    );
+    const requiresResolution = Boolean(
+      detailsObj?.requiresResolution || lower.includes('future confirmed bookings exist')
+    );
+
     return {
       statusCode: 409,
       isConflict: true,
       conflictType,
       message: baseMessage || 'A scheduling or inventory conflict occurred.',
+      details: detailsObj,
+      requiresBookingAction,
+      upcomingBookingsCount,
+      requiresConflictAction,
+      requiresResolution,
     };
   }
 

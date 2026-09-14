@@ -262,4 +262,9 @@ export interface AmenityErrorDetails {
   isHoldExpired?: boolean;
   isNetworkError?: boolean;
   isTimeout?: boolean;
+  details?: any;
+  requiresBookingAction?: boolean;
+  upcomingBookingsCount?: number;
+  requiresConflictAction?: boolean;
+  requiresResolution?: boolean;
 }

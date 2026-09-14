@@ -352,12 +352,12 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
   const handleConfirmDeactivate = async () => {
     if (!deactivateTarget) return;
     setSaving(true);
-    try {
-      const facilityId = deactivateTarget._id || (deactivateTarget as any).id;
-      const currentIsActive =
-        deactivateTarget.status === 'ACTIVE' || (deactivateTarget as any).isActive === true;
-      const nextIsActive = !currentIsActive;
+    const facilityId = deactivateTarget._id || (deactivateTarget as any).id;
+    const currentIsActive =
+      deactivateTarget.status === 'ACTIVE' || (deactivateTarget as any).isActive === true;
+    const nextIsActive = !currentIsActive;
 
+    try {
       await amenityManagementService.updateFacilityStatus(facilityId, nextIsActive);
       Alert.alert(
         'Success',
@@ -368,6 +368,57 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     } catch (err: any) {
       console.error('Failed to change status', err);
       const mapped = mapAmenityApiError(err);
+
+      // Policy T1: Interactive Conflict Resolution Dialog for Upcoming Bookings
+      if (mapped.requiresBookingAction) {
+        Alert.alert(
+          'Active Bookings Conflict',
+          mapped.message || 'This facility has upcoming confirmed bookings. How would you like to handle them?',
+          [
+            {
+              text: 'Honor Existing',
+              onPress: async () => {
+                setSaving(true);
+                try {
+                  await amenityManagementService.updateFacilityStatus(facilityId, false, 'HONOR_EXISTING');
+                  Alert.alert('Success', 'Facility deactivated; existing bookings will be honored.');
+                  setDeactivateTarget(null);
+                  await loadData();
+                } catch (subErr: any) {
+                  const subMapped = mapAmenityApiError(subErr);
+                  Alert.alert('Error', subMapped.message);
+                } finally {
+                  setSaving(false);
+                }
+              },
+            },
+            {
+              text: 'Cancel & Refund',
+              style: 'destructive',
+              onPress: async () => {
+                setSaving(true);
+                try {
+                  await amenityManagementService.updateFacilityStatus(facilityId, false, 'CANCEL_AND_REFUND');
+                  Alert.alert('Success', 'Facility deactivated; existing bookings cancelled with 100% refund.');
+                  setDeactivateTarget(null);
+                  await loadData();
+                } catch (subErr: any) {
+                  const subMapped = mapAmenityApiError(subErr);
+                  Alert.alert('Error', subMapped.message);
+                } finally {
+                  setSaving(false);
+                }
+              },
+            },
+            {
+              text: 'Keep Active',
+              style: 'cancel',
+            },
+          ]
+        );
+        return;
+      }
+
       Alert.alert('Status Update Error', mapped.message || 'Failed to update facility status');
     } finally {
       setSaving(false);
