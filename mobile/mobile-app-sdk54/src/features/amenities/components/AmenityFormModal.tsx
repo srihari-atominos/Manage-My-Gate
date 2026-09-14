@@ -413,12 +413,14 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
           <Controller
             control={control}
             name="location"
+            rules={{ required: 'Location / Zone is required' }}
             render={({ field: { onChange, value } }) => (
               <TextInput
                 label="Location / Zone *"
                 value={value}
                 onChangeText={onChange}
                 placeholder="e.g. Clubhouse West Wing, Block B Ground"
+                error={errors.location?.message}
               />
             )}
           />

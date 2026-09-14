@@ -100,6 +100,13 @@ export class AmenityFacilityService {
     // If published upon creation, validate minimum required configuration
     if (!isDraft) {
       if (
+        !facilityData.location ||
+        typeof facilityData.location !== 'string' ||
+        !facilityData.location.trim()
+      ) {
+        throw new HttpError(400, 'Cannot publish facility: location is required');
+      }
+      if (
         !facilityData.operatingHours ||
         !facilityData.operatingHours.length ||
         !facilityData.slotDurationMinutes
@@ -294,13 +301,23 @@ export class AmenityFacilityService {
           const name = updateData.name || existing.name;
           const code = updateData.code || existing.code;
           const archetype = updateData.archetype || existing.archetype;
+          const location = updateData.location !== undefined ? updateData.location : existing.location;
           const operatingHours = updateData.operatingHours || existing.operatingHours;
           const slotDurationMinutes = updateData.slotDurationMinutes || existing.slotDurationMinutes;
 
-          if (!name || !code || !archetype || !operatingHours?.length || !slotDurationMinutes) {
+          if (
+            !name ||
+            !code ||
+            !archetype ||
+            !location ||
+            typeof location !== 'string' ||
+            !location.trim() ||
+            !operatingHours?.length ||
+            !slotDurationMinutes
+          ) {
             throw new HttpError(
               400,
-              'Cannot publish incomplete facility: name, code, archetype, operatingHours, and slotDurationMinutes are required'
+              'Cannot publish incomplete facility: name, code, archetype, location, operatingHours, and slotDurationMinutes are required'
             );
           }
           transitionEvent = 'FACILITY_PUBLISHED';

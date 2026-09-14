@@ -9,7 +9,17 @@ export const createFacilityRules = [
     .isIn(['SHARED_CAPACITY', 'EXCLUSIVE_HOURLY', 'EVENT_SPACE', 'ROOM_RESOURCE', 'INVENTORY_TOOLS'])
     .withMessage('Invalid facility archetype'),
   body('description').optional().isString().trim(),
-  body('location').optional().isString().trim(),
+  body('location').custom((val, { req }) => {
+    const isDraft = Boolean(req.body.isDraft === true || req.body.status === 'DRAFT');
+    if (!isDraft) {
+      if (!val || typeof val !== 'string' || !val.trim()) {
+        throw new Error('Location / Zone is required when publishing a facility');
+      }
+    } else if (val !== undefined && typeof val !== 'string') {
+      throw new Error('Location must be a string');
+    }
+    return true;
+  }),
   body('category').optional().isString().trim(),
   body('images').optional().isArray().withMessage('Images must be an array of strings'),
   body('images.*').optional().isString().withMessage('Image item must be a string'),
@@ -160,7 +170,20 @@ export const updateFacilityRules = [
     .isIn(['SHARED_CAPACITY', 'EXCLUSIVE_HOURLY', 'EVENT_SPACE', 'ROOM_RESOURCE', 'INVENTORY_TOOLS'])
     .withMessage('Invalid facility archetype'),
   body('description').optional().isString().trim(),
-  body('location').optional().isString().trim(),
+  body('location')
+    .optional()
+    .custom((val, { req }) => {
+      if (val !== undefined) {
+        if (typeof val !== 'string') {
+          throw new Error('Location must be a string');
+        }
+        const isPublishing = req.body.status === 'ACTIVE' || (req.body.isDraft === false && req.body.status !== 'DRAFT');
+        if (isPublishing && !val.trim()) {
+          throw new Error('Location / Zone cannot be empty when publishing a facility');
+        }
+      }
+      return true;
+    }),
   body('category').optional().isString().trim(),
   body('images').optional().isArray().withMessage('Images must be an array of strings'),
   body('images.*').optional().isString().withMessage('Image item must be a string'),

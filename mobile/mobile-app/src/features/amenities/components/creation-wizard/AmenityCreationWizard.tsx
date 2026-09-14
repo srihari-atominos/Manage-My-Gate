@@ -259,13 +259,37 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
     if (currentStep.key === 'info') {
       if (!form.name.trim()) errors.name = 'Facility name is required';
       if (!form.code.trim()) errors.code = 'Facility code is required';
-      if (!form.location.trim()) errors.location = 'Location/Zone is required';
+      if (!form.location.trim()) errors.location = 'Location / Zone is required to publish';
     }
 
     // 2. Schedule
     if (currentStep.key === 'schedule') {
-      if (!form.openTime.trim()) errors.openTime = 'Open time is required';
-      if (!form.closeTime.trim()) errors.closeTime = 'Close time is required';
+      if (!form.openTime.trim()) {
+        errors.openTime = 'Open time is required';
+      } else if (!/^([01]\d|2[0-3]):?([0-5]\d)$/.test(form.openTime)) {
+        errors.openTime = 'Invalid time format (HH:MM)';
+      }
+
+      if (!form.closeTime.trim()) {
+        errors.closeTime = 'Close time is required';
+      } else if (!/^([01]\d|2[0-3]):?([0-5]\d)$/.test(form.closeTime)) {
+        errors.closeTime = 'Invalid time format (HH:MM)';
+      }
+
+      if (
+        form.openTime &&
+        form.closeTime &&
+        /^([01]\d|2[0-3]):?([0-5]\d)$/.test(form.openTime) &&
+        /^([01]\d|2[0-3]):?([0-5]\d)$/.test(form.closeTime)
+      ) {
+        const [oh, om] = form.openTime.split(':').map(Number);
+        const [ch, cm] = form.closeTime.split(':').map(Number);
+        if (oh * 60 + om >= ch * 60 + cm) {
+          errors.closeTime = 'Closing time must be after opening time';
+          Alert.alert('Invalid Schedule', 'Closing time must be strictly after opening time.');
+        }
+      }
+
       if (form.openDays.length === 0) {
         errors.openDays = 'Please select at least 1 active day';
         Alert.alert('Validation Error', 'Please select at least one active day of the week.');
@@ -277,28 +301,66 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
       if (!form.maxCapacity || Number(form.maxCapacity) < 1) {
         errors.maxCapacity = 'Capacity must be at least 1';
       }
+      if (
+        form.maxHeadcountPerReservation &&
+        Number(form.maxHeadcountPerReservation) > Number(form.maxCapacity || 50)
+      ) {
+        errors.maxHeadcountPerReservation = 'Quota cannot exceed total capacity';
+      }
+      if (
+        form.maxHeadcountPerReservation &&
+        Number(form.maxHeadcountPerReservation) < 1
+      ) {
+        errors.maxHeadcountPerReservation = 'Quota must be at least 1';
+      }
     }
     if (currentStep.key === 'court-slots') {
       if (!form.slotDurationMinutes || Number(form.slotDurationMinutes) < 15) {
         errors.slotDurationMinutes = 'Slot duration must be at least 15 minutes';
+      }
+      if (!form.advanceBookingDays || Number(form.advanceBookingDays) < 1) {
+        errors.advanceBookingDays = 'Advance booking window must be at least 1 day';
       }
     }
     if (currentStep.key === 'event-rules') {
       if (!form.maxCapacity || Number(form.maxCapacity) < 1) {
         errors.maxCapacity = 'Hall capacity must be at least 1';
       }
+      if (
+        form.advanceNoticeHours !== undefined &&
+        form.advanceNoticeHours !== '' &&
+        Number(form.advanceNoticeHours) < 0
+      ) {
+        errors.advanceNoticeHours = 'Advance notice cannot be negative';
+      }
+    }
+    if (currentStep.key === 'room-setup') {
+      if (!form.slotDurationMinutes || Number(form.slotDurationMinutes) < 15) {
+        errors.slotDurationMinutes = 'Slot duration must be at least 15 minutes';
+      }
+      if (form.isMultiResourceFacility && (!form.subRooms || form.subRooms.length === 0)) {
+        errors.subRooms = 'At least one sub-room must be configured';
+      }
     }
     if (currentStep.key === 'inventory-stock') {
       if (!form.availableStock || Number(form.availableStock) < 1) {
         errors.availableStock = 'Stock units must be at least 1';
+      }
+      if (!form.maxLoanHours || Number(form.maxLoanHours) < 1) {
+        errors.maxLoanHours = 'Loan duration must be at least 1 hour';
       }
     }
 
     // 4. Pricing
     if (currentStep.key === 'pricing') {
       if (form.pricingType !== 'FREE') {
-        if (!form.baseRate || Number(form.baseRate) < 0) {
-          errors.baseRate = 'Please provide a valid rate';
+        if (
+          form.baseRate === undefined ||
+          form.baseRate === '' ||
+          isNaN(Number(form.baseRate)) ||
+          Number(form.baseRate) < 0
+        ) {
+          errors.baseRate = 'Please provide a valid non-negative rate';
         }
       }
     }
@@ -307,10 +369,184 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
     return Object.keys(errors).length === 0;
   };
 
+  // Whole-Form Validation Guard (executed before final publish across all steps)
+  const validateWholeForm = (): {
+    isValid: boolean;
+    errorStepIndex: number;
+    message: string;
+    errors: Record<string, string>;
+  } => {
+    // 1. Basic Info Check
+    if (!form.name.trim()) {
+      return {
+        isValid: false,
+        errorStepIndex: 0,
+        message: 'Facility name is required before publishing',
+        errors: { name: 'Facility name is required' },
+      };
+    }
+    if (!form.code.trim()) {
+      return {
+        isValid: false,
+        errorStepIndex: 0,
+        message: 'Facility code is required before publishing',
+        errors: { code: 'Facility code is required' },
+      };
+    }
+    if (!form.location.trim()) {
+      return {
+        isValid: false,
+        errorStepIndex: 0,
+        message: 'Location / Zone is required to publish this facility',
+        errors: { location: 'Location / Zone is required' },
+      };
+    }
+
+    // 2. Schedule Check
+    const schedIdx = steps.findIndex((s) => s.key === 'schedule');
+    if (schedIdx !== -1) {
+      if (!form.openTime.trim() || !/^([01]\d|2[0-3]):?([0-5]\d)$/.test(form.openTime)) {
+        return {
+          isValid: false,
+          errorStepIndex: schedIdx,
+          message: 'Valid opening time (HH:MM) is required',
+          errors: { openTime: 'Invalid open time format' },
+        };
+      }
+      if (!form.closeTime.trim() || !/^([01]\d|2[0-3]):?([0-5]\d)$/.test(form.closeTime)) {
+        return {
+          isValid: false,
+          errorStepIndex: schedIdx,
+          message: 'Valid closing time (HH:MM) is required',
+          errors: { closeTime: 'Invalid close time format' },
+        };
+      }
+      const [oh, om] = form.openTime.split(':').map(Number);
+      const [ch, cm] = form.closeTime.split(':').map(Number);
+      if (oh * 60 + om >= ch * 60 + cm) {
+        return {
+          isValid: false,
+          errorStepIndex: schedIdx,
+          message: 'Closing time must be after opening time',
+          errors: { closeTime: 'Closing time must be after opening time' },
+        };
+      }
+      if (!form.openDays || form.openDays.length === 0) {
+        return {
+          isValid: false,
+          errorStepIndex: schedIdx,
+          message: 'Please select at least 1 active operating day',
+          errors: { openDays: 'Active day required' },
+        };
+      }
+    }
+
+    // 3. Archetype Specs Check
+    const specStep = steps.find((s) =>
+      ['capacity-rules', 'court-slots', 'event-rules', 'room-setup', 'inventory-stock'].includes(
+        s.key
+      )
+    );
+    if (specStep) {
+      const specIdx = steps.indexOf(specStep);
+      if (specStep.key === 'capacity-rules') {
+        if (!form.maxCapacity || Number(form.maxCapacity) < 1) {
+          return {
+            isValid: false,
+            errorStepIndex: specIdx,
+            message: 'Facility capacity must be at least 1',
+            errors: { maxCapacity: 'Capacity must be at least 1' },
+          };
+        }
+        if (Number(form.maxHeadcountPerReservation) > Number(form.maxCapacity)) {
+          return {
+            isValid: false,
+            errorStepIndex: specIdx,
+            message: 'Guest quota cannot exceed total capacity',
+            errors: { maxHeadcountPerReservation: 'Quota cannot exceed capacity' },
+          };
+        }
+      } else if (specStep.key === 'court-slots') {
+        if (!form.slotDurationMinutes || Number(form.slotDurationMinutes) < 15) {
+          return {
+            isValid: false,
+            errorStepIndex: specIdx,
+            message: 'Slot duration must be at least 15 minutes',
+            errors: { slotDurationMinutes: 'Min 15 minutes' },
+          };
+        }
+      } else if (specStep.key === 'event-rules') {
+        if (!form.maxCapacity || Number(form.maxCapacity) < 1) {
+          return {
+            isValid: false,
+            errorStepIndex: specIdx,
+            message: 'Event hall capacity must be at least 1',
+            errors: { maxCapacity: 'Capacity must be at least 1' },
+          };
+        }
+      } else if (specStep.key === 'room-setup') {
+        if (!form.slotDurationMinutes || Number(form.slotDurationMinutes) < 15) {
+          return {
+            isValid: false,
+            errorStepIndex: specIdx,
+            message: 'Slot duration must be at least 15 minutes',
+            errors: { slotDurationMinutes: 'Min 15 minutes' },
+          };
+        }
+        if (form.isMultiResourceFacility && (!form.subRooms || form.subRooms.length === 0)) {
+          return {
+            isValid: false,
+            errorStepIndex: specIdx,
+            message: 'At least one sub-room must be configured',
+            errors: { subRooms: 'At least one sub-room required' },
+          };
+        }
+      } else if (specStep.key === 'inventory-stock') {
+        if (!form.availableStock || Number(form.availableStock) < 1) {
+          return {
+            isValid: false,
+            errorStepIndex: specIdx,
+            message: 'Available stock units must be at least 1',
+            errors: { availableStock: 'Stock must be at least 1' },
+          };
+        }
+      }
+    }
+
+    // 4. Pricing Check
+    const pricingIdx = steps.findIndex((s) => s.key === 'pricing');
+    if (pricingIdx !== -1) {
+      if (form.pricingType !== 'FREE') {
+        if (
+          form.baseRate === undefined ||
+          form.baseRate === '' ||
+          isNaN(Number(form.baseRate)) ||
+          Number(form.baseRate) < 0
+        ) {
+          return {
+            isValid: false,
+            errorStepIndex: pricingIdx,
+            message: 'Please provide a valid non-negative base rate',
+            errors: { baseRate: 'Valid rate required' },
+          };
+        }
+      }
+    }
+
+    return { isValid: true, errorStepIndex: -1, message: '', errors: {} };
+  };
+
   const handleNext = () => {
     if (!validateCurrentStep()) return;
 
     if (isLastStep) {
+      const wholeFormCheck = validateWholeForm();
+      if (!wholeFormCheck.isValid) {
+        setCurrentStepIndex(wholeFormCheck.errorStepIndex);
+        setStepErrors(wholeFormCheck.errors);
+        Alert.alert('Required Field Missing', wholeFormCheck.message);
+        return;
+      }
       handleFinalSubmit();
     } else {
       setCurrentStepIndex((prev) => prev + 1);
