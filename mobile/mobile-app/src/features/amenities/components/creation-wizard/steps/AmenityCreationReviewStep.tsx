@@ -10,7 +10,9 @@ import {
   Tag,
   MapPin,
   Check,
+  AlertCircle,
 } from 'lucide-react-native';
+import { cn } from '@/lib/utils';
 import { AmenityCreationFormState } from '../../../utils/mapAmenityCreationPayloadStrategy';
 import { ARCHETYPE_CATALOG_OPTIONS, DAYS_NAMES } from '../../../constants/amenityCatalogPresets';
 
@@ -46,6 +48,16 @@ export const AmenityCreationReviewStep: React.FC<AmenityCreationReviewStepProps>
           Verify all facility settings and policies before activating for residents.
         </Text>
       </View>
+
+      {/* Warning Banner if Location is missing */}
+      {!form.location?.trim() && (
+        <View className="bg-destructive/10 border border-destructive/30 rounded-2xl p-3.5 flex-row items-center gap-2.5">
+          <AlertCircle size={18} className="text-destructive shrink-0" />
+          <Text className="text-xs text-destructive font-semibold flex-1">
+            Location / Zone is required to publish this facility. Return to Basic Information to enter location.
+          </Text>
+        </View>
+      )}
 
       {/* Main Review Card */}
       <View className="bg-card rounded-3xl border border-border overflow-hidden shadow-xs">
@@ -106,9 +118,17 @@ export const AmenityCreationReviewStep: React.FC<AmenityCreationReviewStepProps>
           {/* Location & Status Row */}
           <View className="flex-row items-center justify-between py-2 border-b border-border/60">
             <View className="flex-row items-center gap-2">
-              <MapPin size={16} className="text-muted-foreground" />
-              <Text className="text-xs text-foreground font-semibold">
-                {form.location || 'Location Not Specified'}
+              <MapPin
+                size={16}
+                className={form.location?.trim() ? 'text-muted-foreground' : 'text-destructive'}
+              />
+              <Text
+                className={cn(
+                  'text-xs font-semibold',
+                  form.location?.trim() ? 'text-foreground' : 'text-destructive font-bold'
+                )}
+              >
+                {form.location?.trim() || 'Location / Zone Required *'}
               </Text>
             </View>
 
