@@ -59,7 +59,7 @@ export const generateUUID = (): string => {
  */
 export const getAmenityV2Url = (endpointPath: string): string => {
   const rawBase = (typeof getApiBaseUrl === 'function' ? getApiBaseUrl() : '') || apiClient.defaults.baseURL || '';
-  const cleanHost = rawBase.replace(/\/api\/v1\/?$/, '').replace(/\/+$/, '');
+  const cleanHost = rawBase.replace(/\/api(\/v1)?\/?$/, '').replace(/\/+$/, '');
   const cleanPath = endpointPath.startsWith('/') ? endpointPath : `/${endpointPath}`;
   return `${cleanHost}/api/v2/amenity-management${cleanPath}`;
 };

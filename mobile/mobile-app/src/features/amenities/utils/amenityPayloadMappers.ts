@@ -148,6 +148,8 @@ export const normalizeFacilityFromApi = (raw: ApiAmenityFacility | any): Amenity
     description: raw.description,
     location: raw.location,
     archetype: raw.archetype,
+    category: raw.category || raw.type || undefined,
+    type: raw.type || raw.category || undefined,
     status: derivedStatus,
     isActive: raw.isActive !== undefined ? raw.isActive : derivedStatus === 'ACTIVE',
     maxCapacity: raw.maxCapacity ?? raw.capacity ?? 1,

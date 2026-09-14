@@ -72,6 +72,8 @@ export interface AmenityFacility {
   description?: string;
   location?: string;
   archetype: AmenityArchetype;
+  category?: string;
+  type?: string;
   status: AmenityFacilityStatus;
   isActive?: boolean;
   maxCapacity: number;

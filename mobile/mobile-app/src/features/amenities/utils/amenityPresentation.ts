@@ -170,7 +170,7 @@ export const formatFacilityPricing = (
   }
 
   const typeMap: Record<string, string> = {
-    HOURLY: 'hr',
+    HOURLY: 'hour',
     DAILY: 'day',
     FIXED_EVENT: 'event',
     TIERED: 'session',

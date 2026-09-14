@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../../store/store';
+import { selectActiveOrgId } from '../../auth/store/authSelectors';
 import amenityManagementService from '../services/amenityManagementService';
 import {
   AmenityFacility,
@@ -22,6 +23,12 @@ export interface AmenityFilterValues {
 
 export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All') => {
   const dispatch = useDispatch<AppDispatch>();
+
+  const activeOrgId = useSelector((state: RootState) =>
+    (state as any)?.workspace?.activeOrganizationId ||
+    selectActiveOrgId(state)
+  );
+  const isAuthInitialized = useSelector((state: RootState) => (state as any)?.auth?.isInitialized);
 
   const [facilities, setFacilities] = useState<AmenityFacility[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -127,7 +134,7 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, activeOrgId, isAuthInitialized]);
 
   const filteredAmenities = useMemo(() => {
     return facilities.filter((facility) => {
