@@ -103,7 +103,7 @@ export class AmenityReservationHoldService {
     if (!facility) {
       throw new HttpError(404, 'Amenity facility not found');
     }
-    if (!facility.isActive || facility.isDraft || facility.status === 'DRAFT') {
+    if (!facility.isActive || facility.isDraft || facility.status === 'DRAFT' || facility.status === 'INACTIVE') {
       throw new HttpError(400, 'Amenity facility is a draft or not active for reservations');
     }
 
@@ -159,7 +159,7 @@ export class AmenityReservationHoldService {
     switch (facility.archetype) {
       case 'EXCLUSIVE_HOURLY': {
         const slotStartUTC = start.toISOString();
-        const slotId = `SLOT:${orgId}:${resourceId}:${slotStartUTC}`;
+        const slotId = `SLOT:${orgId}:${facilityId}:${resourceId || 'ALL'}:${slotStartUTC}`;
 
         await amenitySlotAllocationRepository.createDiscreteSlot(
           {
@@ -335,11 +335,9 @@ export class AmenityReservationHoldService {
     }
 
     // Release discrete slot if held
-    if (updatedHold.resourceId) {
-      const slotStartUTC = updatedHold.requestedStartDateTime.toISOString();
-      const slotId = `SLOT:${updatedHold.orgId}:${updatedHold.resourceId}:${slotStartUTC}`;
-      await amenitySlotAllocationRepository.releaseDiscreteSlot(slotId, session);
-    }
+    const slotStartUTC = updatedHold.requestedStartDateTime.toISOString();
+    const slotId = `SLOT:${updatedHold.orgId}:${updatedHold.facilityId}:${updatedHold.resourceId || 'ALL'}:${slotStartUTC}`;
+    await amenitySlotAllocationRepository.releaseDiscreteSlot(slotId, session);
 
     // 3. Release Reserved Quota
     const requestedUnits = Math.ceil(

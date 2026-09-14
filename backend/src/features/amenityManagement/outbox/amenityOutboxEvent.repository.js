@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityOutboxEvent from './amenityOutboxEvent.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityOutboxEventRepository {
   /**
@@ -9,7 +10,9 @@ export class AmenityOutboxEventRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async createEvent(eventData, session) {
-    const [doc] = await AmenityOutboxEvent.create([eventData], { session });
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    const [doc] = await AmenityOutboxEvent.create([eventData], options);
     return doc;
   }
 
@@ -36,7 +39,7 @@ export class AmenityOutboxEventRepository {
     return AmenityOutboxEvent.findByIdAndUpdate(
       eventId,
       { $set: updateData },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -62,7 +65,7 @@ export class AmenityOutboxEventRepository {
       orgId,
       eventType: 'REFUND_DISPATCH_REQUIRED',
       $or: conditions,
-    }).session(session || null);
+    }).session(getValidSession(session));
   }
 
   /**
@@ -111,7 +114,7 @@ export class AmenityOutboxEventRepository {
         },
       },
       {
-        session: session || null,
+        session: getValidSession(session),
         returnDocument: 'after',
       }
     );
@@ -145,7 +148,7 @@ export class AmenityOutboxEventRepository {
         },
       },
       {
-        session: session || null,
+        session: getValidSession(session),
         returnDocument: 'after',
       }
     );

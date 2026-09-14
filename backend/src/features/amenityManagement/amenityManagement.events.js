@@ -10,6 +10,11 @@ export const AMENITY_EVENTS = {
   APPROVAL_REQUESTED: 'amenity:approval:requested',
   MAINTENANCE_SCHEDULED: 'amenity:maintenance:scheduled',
   REFUND_DISPATCH_REQUIRED: 'amenity:refund:required',
+  FACILITY_CREATED: 'amenity:facility:created',
+  FACILITY_PUBLISHED: 'amenity:facility:published',
+  FACILITY_DEACTIVATED: 'amenity:facility:deactivated',
+  RESERVATION_CANCELLED_BY_ADMIN: 'amenity:reservation:cancelled_by_admin',
+  REFUND_REQUESTED: 'amenity:refund:requested',
 };
 
 class AmenityManagementEvents extends EventEmitter {}

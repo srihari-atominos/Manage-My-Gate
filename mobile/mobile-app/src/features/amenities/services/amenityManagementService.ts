@@ -398,6 +398,24 @@ export const amenityManagementService = {
     return extractEnvelope(response);
   },
 
+  async listMaintenanceBlocks(params: {
+    facilityId?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  } = {}): Promise<ApiResponse<ApiPaginatedResponse<ApiAmenityMaintenanceBlock>>> {
+    const query = new URLSearchParams();
+    if (params.facilityId) query.append('facilityId', params.facilityId);
+    if (params.status) query.append('status', params.status);
+    if (params.page) query.append('page', String(params.page));
+    if (params.limit) query.append('limit', String(params.limit));
+
+    const queryString = query.toString();
+    const url = getAmenityV2Url(`/maintenance${queryString ? `?${queryString}` : ''}`);
+    const response = await apiClient.get<ApiResponse<ApiPaginatedResponse<ApiAmenityMaintenanceBlock>>>(url);
+    return extractEnvelope(response);
+  },
+
   async updateMaintenanceStatus(
     blockId: string,
     status: string

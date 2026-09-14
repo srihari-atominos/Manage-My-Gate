@@ -158,9 +158,9 @@ export class AmenityReservationService {
       session
     );
 
-    if (hold.resourceId && facility.archetype === 'EXCLUSIVE_HOURLY') {
+    if (facility.archetype === 'EXCLUSIVE_HOURLY') {
       const slotStartUTC = hold.requestedStartDateTime.toISOString();
-      const slotId = `SLOT:${orgId}:${hold.resourceId}:${slotStartUTC}`;
+      const slotId = `SLOT:${orgId}:${hold.facilityId}:${hold.resourceId || 'ALL'}:${slotStartUTC}`;
       await amenitySlotAllocationRepository.promoteDiscreteSlot(slotId, reservation._id, session);
     }
 
@@ -263,6 +263,7 @@ export class AmenityReservationService {
    * @param {string|mongoose.Types.ObjectId} params.residentId
    * @param {string} [params.cancellationReason]
    * @param {string|mongoose.Types.ObjectId} [params.cancelledBy]
+   * @param {boolean} [params.isManagementCancellation]
    * @param {mongoose.ClientSession} [session]
    */
   async cancelReservation(params, session) {
@@ -275,11 +276,22 @@ export class AmenityReservationService {
   }
 
   /**
+   * Retrieves all future active/confirmed reservations for a facility without date limit.
+   * @param {Object} params
+   * @param {string|mongoose.Types.ObjectId} params.orgId
+   * @param {string|mongoose.Types.ObjectId} params.facilityId
+   * @param {mongoose.ClientSession} [session]
+   */
+  async getFutureActiveReservations({ orgId, facilityId }, session) {
+    return amenityReservationRepository.findFutureActiveReservations({ orgId, facilityId }, session);
+  }
+
+  /**
    * Internal implementation of reservation cancellation.
    * @private
    */
   async _executeCancelReservation(
-    { reservationId, orgId, residentId, cancellationReason, cancelledBy },
+    { reservationId, orgId, residentId, cancellationReason, cancelledBy, isManagementCancellation = false },
     session
   ) {
     // 1. Fetch Reservation
@@ -311,7 +323,7 @@ export class AmenityReservationService {
         paymentStatus: newPaymentStatus,
         accessStatus: 'ACCESS_REVOKED',
         cancelledAt: new Date(),
-        cancellationReason: cancellationReason || 'Cancelled by user',
+        cancellationReason: cancellationReason || (isManagementCancellation ? 'Cancelled by administration' : 'Cancelled by user'),
         cancelledBy: cancelledBy || residentId,
       },
       session
@@ -350,11 +362,9 @@ export class AmenityReservationService {
       }
     }
 
-    if (reservation.resourceId) {
-      const slotStartUTC = reservation.requestedStartDateTime.toISOString();
-      const slotId = `SLOT:${reservation.orgId}:${reservation.resourceId}:${slotStartUTC}`;
-      await amenitySlotAllocationRepository.releaseDiscreteSlot(slotId, session);
-    }
+    const slotStartUTC = reservation.requestedStartDateTime.toISOString();
+    const slotId = `SLOT:${reservation.orgId}:${reservation.facilityId}:${reservation.resourceId || 'ALL'}:${slotStartUTC}`;
+    await amenitySlotAllocationRepository.releaseDiscreteSlot(slotId, session);
 
     // 5. Refund Consumed Quota
     const requestedUnits = Math.ceil(
@@ -418,6 +428,12 @@ export class AmenityReservationService {
 
     // 8. Emit Domain Events
     amenityManagementEvents.emit(AMENITY_EVENTS.RESERVATION_CANCELLED, updatedReservation);
+    if (isManagementCancellation) {
+      amenityManagementEvents.emit(
+        AMENITY_EVENTS.RESERVATION_CANCELLED_BY_ADMIN || 'amenity:reservation:cancelled_by_admin',
+        updatedReservation
+      );
+    }
     if (newPaymentStatus === 'REFUND_PENDING') {
       amenityManagementEvents.emit(AMENITY_EVENTS.REFUND_DISPATCH_REQUIRED, {
         reservationId: updatedReservation._id,
@@ -615,11 +631,9 @@ export class AmenityReservationService {
         }
       }
 
-      if (reservation.resourceId) {
-        const slotStartUTC = reservation.requestedStartDateTime.toISOString();
-        const slotId = `SLOT:${reservation.orgId}:${reservation.resourceId}:${slotStartUTC}`;
-        await amenitySlotAllocationRepository.releaseDiscreteSlot(slotId, session);
-      }
+      const slotStartUTC = reservation.requestedStartDateTime.toISOString();
+      const slotId = `SLOT:${reservation.orgId}:${reservation.facilityId}:${reservation.resourceId || 'ALL'}:${slotStartUTC}`;
+      await amenitySlotAllocationRepository.releaseDiscreteSlot(slotId, session);
 
       // Refund Quota
       const requestedUnits = Math.ceil(

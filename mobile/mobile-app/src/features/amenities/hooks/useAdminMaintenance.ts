@@ -107,9 +107,6 @@ export function useAdminMaintenance() {
             payload,
           })
         ).unwrap();
-        await dispatch(
-          updateAmenityStatusThunk({ id: finalAmenityId, status: 'MAINTENANCE' })
-        ).unwrap();
       }
 
       setScheduling(false);

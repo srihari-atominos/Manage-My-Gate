@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityAccessPass from './amenityAccessPass.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityAccessPassRepository {
   /**
@@ -8,7 +9,9 @@ export class AmenityAccessPassRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async create(passData, session) {
-    const [doc] = await AmenityAccessPass.create([passData], { session });
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    const [doc] = await AmenityAccessPass.create([passData], options);
     return doc;
   }
 
@@ -18,7 +21,7 @@ export class AmenityAccessPassRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(passId, session) {
-    return AmenityAccessPass.findById(passId).session(session || null);
+    return AmenityAccessPass.findById(passId).session(getValidSession(session));
   }
 
   /**
@@ -28,7 +31,7 @@ export class AmenityAccessPassRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findByTokenHash(orgId, passTokenHash, session) {
-    return AmenityAccessPass.findOne({ orgId, passTokenHash }).session(session || null);
+    return AmenityAccessPass.findOne({ orgId, passTokenHash }).session(getValidSession(session));
   }
 
   /**
@@ -37,7 +40,7 @@ export class AmenityAccessPassRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findByReservationId(reservationId, session) {
-    return AmenityAccessPass.find({ reservationId }).session(session || null);
+    return AmenityAccessPass.find({ reservationId }).session(getValidSession(session));
   }
 
   /**
@@ -66,7 +69,7 @@ export class AmenityAccessPassRepository {
           gateId: gateId || null,
         },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -96,7 +99,7 @@ export class AmenityAccessPassRepository {
         checkOutTimestamp: null,
       },
       update,
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -117,7 +120,7 @@ export class AmenityAccessPassRepository {
           revokedReason: reason,
         },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -138,7 +141,7 @@ export class AmenityAccessPassRepository {
           revokedReason: reason,
         },
       },
-      { session: session || null }
+      { session: getValidSession(session) }
     );
   }
 }

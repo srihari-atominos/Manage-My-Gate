@@ -27,10 +27,13 @@ export const connectToDb = async (retries = 5, delayMs = 3000) => {
         mongoose.startSession = async function() {
           return {
             _isMockSession: true,
+            hasEnded: false,
+            inTransaction: () => false,
             startTransaction: () => {},
             commitTransaction: async () => {},
             abortTransaction: async () => {},
-            endSession: async () => {}
+            endSession: async () => {},
+            withTransaction: async (fn) => fn(),
           };
         };
 
@@ -57,6 +60,28 @@ export const connectToDb = async (retries = 5, delayMs = 3000) => {
             delete options.session;
           }
           return originalSave.call(this, options, fn);
+        };
+
+        const originalDollarSave = mongoose.Model.prototype.$save;
+        if (originalDollarSave) {
+          mongoose.Model.prototype.$save = function(options, fn) {
+            if (options && options.session && options.session._isMockSession) {
+              delete options.session;
+            }
+            if (this.$__ && this.$__.session && this.$__.session._isMockSession) {
+              this.$__.session = null;
+            }
+            return originalDollarSave.call(this, options, fn);
+          };
+        }
+
+        const originalCreate = mongoose.Model.create;
+        mongoose.Model.create = function() {
+          const lastArg = arguments[arguments.length - 1];
+          if (lastArg && typeof lastArg === 'object' && lastArg.session && lastArg.session._isMockSession) {
+            delete lastArg.session;
+          }
+          return originalCreate.apply(this, arguments);
         };
         
         const originalInsertMany = mongoose.Model.insertMany;

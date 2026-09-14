@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityCounter from './amenityCounter.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityCounterRepository {
   /**
@@ -26,7 +27,7 @@ export class AmenityCounterRepository {
       {
         upsert: true,
         returnDocument: 'after',
-        session: session || null,
+        session: getValidSession(session),
         setDefaultsOnInsert: true,
       }
     );

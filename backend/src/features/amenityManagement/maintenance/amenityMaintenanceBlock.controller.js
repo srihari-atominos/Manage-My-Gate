@@ -15,6 +15,7 @@ export class AmenityMaintenanceBlockController {
         isCompleteClosure,
         degradedCapacity,
         reason,
+        conflictAction,
       } = req.body;
 
       const result = await amenityMaintenanceBlockService.scheduleMaintenanceBlock({
@@ -26,6 +27,8 @@ export class AmenityMaintenanceBlockController {
         isCompleteClosure: isCompleteClosure !== undefined ? isCompleteClosure : true,
         degradedCapacity: degradedCapacity || 0,
         reason,
+        conflictAction,
+        cancelledBy: req.user?._id || req.user?.id,
       });
 
       return res.success(result, 'Maintenance block scheduled successfully', 201);
@@ -81,6 +84,28 @@ export class AmenityMaintenanceBlockController {
 
       const updated = await amenityMaintenanceBlockService.updateMaintenanceStatus(blockId, orgId, status);
       return res.success(updated, 'Maintenance block status updated successfully');
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * Retrieves paginated list of maintenance blocks for the organization.
+   */
+  async getAll(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const { facilityId, status, page, limit } = req.query;
+
+      const result = await amenityMaintenanceBlockService.listMaintenanceBlocks({
+        orgId,
+        facilityId,
+        status,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 50,
+      });
+
+      return res.success(result, 'Maintenance blocks retrieved successfully');
     } catch (error) {
       return next(error);
     }

@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityFacility from './amenityFacility.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityFacilityRepository {
   /**
@@ -8,7 +9,9 @@ export class AmenityFacilityRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async create(facilityData, session) {
-    const [doc] = await AmenityFacility.create([facilityData], { session });
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    const [doc] = await AmenityFacility.create([facilityData], options);
     return doc;
   }
 
@@ -27,7 +30,7 @@ export class AmenityFacilityRepository {
     }
     const filter = { _id: facilityId, isDeleted: false };
     if (actualOrgId) filter.orgId = actualOrgId;
-    return AmenityFacility.findOne(filter).session(actualSession || null);
+    return AmenityFacility.findOne(filter).session(getValidSession(actualSession));
   }
 
   /**
@@ -41,7 +44,7 @@ export class AmenityFacilityRepository {
       orgId,
       code: code.trim().toUpperCase(),
       isDeleted: false,
-    }).session(session || null);
+    }).session(getValidSession(session));
   }
 
   /**
@@ -54,7 +57,7 @@ export class AmenityFacilityRepository {
     return AmenityFacility.findOneAndUpdate(
       { _id: facilityId, orgId, isDeleted: false, isActive: true },
       { $inc: { concurrencyVersion: 1 } },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -69,7 +72,7 @@ export class AmenityFacilityRepository {
     return AmenityFacility.findOneAndUpdate(
       { _id: facilityId, orgId, isDeleted: false },
       { $set: updateData },
-      { session: session || null, returnDocument: 'after', runValidators: true }
+      { session: getValidSession(session), returnDocument: 'after', runValidators: true }
     );
   }
 
@@ -83,7 +86,7 @@ export class AmenityFacilityRepository {
     return AmenityFacility.findOneAndUpdate(
       { _id: facilityId, orgId, isDeleted: false },
       { $set: { isDeleted: true, deletedAt: new Date(), isActive: false } },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 

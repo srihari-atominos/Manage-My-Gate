@@ -2,27 +2,60 @@ import mongoose from 'mongoose';
 import logger from '../../../../utils/logger.utils.js';
 
 /**
+ * Validates whether a provided session is a genuine MongoDB ClientSession capable
+ * of running transactions (i.e. not mock, not ended, has inTransaction function).
+ * Returns the session if valid, or null.
+ *
+ * @param {any} session
+ * @returns {mongoose.ClientSession|null}
+ */
+export function getValidSession(session) {
+  if (
+    session &&
+    typeof session === 'object' &&
+    typeof session.inTransaction === 'function' &&
+    !session._isMockSession &&
+    !session.hasEnded
+  ) {
+    return session;
+  }
+  return null;
+}
+
+/**
  * Executes a callback within a MongoDB multi-document transaction session.
  * Gracefully handles standalone fallback sessions in development environments.
  *
  * @template T
- * @param {(session: mongoose.ClientSession) => Promise<T>} fn - Transaction callback
+ * @param {(session: mongoose.ClientSession|undefined) => Promise<T>} fn - Transaction callback
  * @returns {Promise<T>}
  */
 export async function withTransaction(fn) {
-  const session = await mongoose.startSession();
-  let isTransactionActive = false;
-
+  let session = null;
   try {
-    session.startTransaction();
-    isTransactionActive = true;
+    session = await mongoose.startSession();
   } catch (err) {
-    logger.warn('Mongoose transaction not supported in environment; continuing with fallback session:', {
+    logger.warn('Failed to start mongoose session; continuing without session:', {
       error: err.message,
     });
+    return fn(undefined);
   }
 
-  const activeSession = isTransactionActive ? session : (session._isMockSession ? session : undefined);
+  const isMock = Boolean(!session || session._isMockSession || typeof session.inTransaction !== 'function');
+  let isTransactionActive = false;
+
+  if (!isMock) {
+    try {
+      session.startTransaction();
+      isTransactionActive = true;
+    } catch (err) {
+      logger.warn('Mongoose transaction not supported in environment; continuing with fallback session:', {
+        error: err.message,
+      });
+    }
+  }
+
+  const activeSession = isTransactionActive ? session : undefined;
 
   try {
     const result = await fn(activeSession);
@@ -40,7 +73,11 @@ export async function withTransaction(fn) {
     }
     throw error;
   } finally {
-    session.endSession();
+    if (session && typeof session.endSession === 'function') {
+      try {
+        await session.endSession();
+      } catch (_) {}
+    }
   }
 }
 
@@ -79,6 +116,7 @@ export async function withTransactionRetry(fn, maxRetries = 3) {
 }
 
 export default {
+  getValidSession,
   withTransaction,
   withTransactionRetry,
 };

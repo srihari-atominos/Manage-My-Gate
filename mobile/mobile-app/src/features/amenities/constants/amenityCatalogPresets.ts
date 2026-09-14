@@ -87,7 +87,8 @@ export const PRICING_CHIP_OPTIONS: { value: AmenityPricingType; label: string }[
 
 export const STATUS_OPTIONS = [
   { label: 'Active (Open for Booking)', value: 'active' },
-  { label: 'Inactive (Draft / Hidden)', value: 'inactive' },
+  { label: 'Draft (Work in Progress / Unpublished)', value: 'draft' },
+  { label: 'Inactive (Temporarily Closed)', value: 'inactive' },
 ];
 
 export const DAYS_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

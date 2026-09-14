@@ -75,6 +75,7 @@ export interface AmenityFacility {
   category?: string;
   type?: string;
   status: AmenityFacilityStatus;
+  isDraft?: boolean;
   isActive?: boolean;
   maxCapacity: number;
   maxHeadcountPerReservation: number;

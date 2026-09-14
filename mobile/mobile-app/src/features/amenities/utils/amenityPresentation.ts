@@ -80,6 +80,13 @@ const ARCHETYPE_PRESENTATION_MAP: Record<AmenityArchetype, ArchetypePresentation
 };
 
 const STATUS_PRESENTATION_MAP: Record<AmenityFacilityStatus, FacilityStatusPresentationMeta> = {
+  DRAFT: {
+    status: 'DRAFT',
+    label: 'Draft',
+    variant: 'neutral',
+    isBookable: false,
+    pulseDot: false,
+  },
   ACTIVE: {
     status: 'ACTIVE',
     label: 'Available',
@@ -97,13 +104,6 @@ const STATUS_PRESENTATION_MAP: Record<AmenityFacilityStatus, FacilityStatusPrese
   INACTIVE: {
     status: 'INACTIVE',
     label: 'Inactive',
-    variant: 'neutral',
-    isBookable: false,
-    pulseDot: false,
-  },
-  DECOMMISSIONED: {
-    status: 'DECOMMISSIONED',
-    label: 'Decommissioned',
     variant: 'neutral',
     isBookable: false,
     pulseDot: false,

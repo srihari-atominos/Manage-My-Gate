@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityResource from './amenityResource.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityResourceRepository {
   /**
@@ -8,7 +9,9 @@ export class AmenityResourceRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async create(resourceData, session) {
-    const [doc] = await AmenityResource.create([resourceData], { session });
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    const [doc] = await AmenityResource.create([resourceData], options);
     return doc;
   }
 
@@ -21,7 +24,7 @@ export class AmenityResourceRepository {
   async findById(resourceId, orgId, session) {
     const filter = { _id: resourceId, isDeleted: false };
     if (orgId) filter.orgId = orgId;
-    return AmenityResource.findOne(filter).session(session || null);
+    return AmenityResource.findOne(filter).session(getValidSession(session));
   }
 
   /**
@@ -36,7 +39,7 @@ export class AmenityResourceRepository {
       orgId,
       isActive: true,
       isDeleted: false,
-    }).session(session || null);
+    }).session(getValidSession(session));
   }
 
   /**
@@ -49,7 +52,7 @@ export class AmenityResourceRepository {
     return AmenityResource.findOneAndUpdate(
       { _id: resourceId, orgId, isDeleted: false, isActive: true },
       { $inc: { concurrencyVersion: 1 } },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -64,7 +67,7 @@ export class AmenityResourceRepository {
     return AmenityResource.findOneAndUpdate(
       { _id: resourceId, orgId, isDeleted: false },
       { $set: updateData },
-      { session: session || null, returnDocument: 'after', runValidators: true }
+      { session: getValidSession(session), returnDocument: 'after', runValidators: true }
     );
   }
 
@@ -78,7 +81,7 @@ export class AmenityResourceRepository {
     return AmenityResource.findOneAndUpdate(
       { _id: resourceId, orgId, isDeleted: false },
       { $set: { isDeleted: true, deletedAt: new Date(), isActive: false } },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 

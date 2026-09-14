@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityReservationHold from './amenityReservationHold.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityReservationHoldRepository {
   /**
@@ -8,7 +9,9 @@ export class AmenityReservationHoldRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async create(holdData, session) {
-    const [doc] = await AmenityReservationHold.create([holdData], { session });
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    const [doc] = await AmenityReservationHold.create([holdData], options);
     return doc;
   }
 
@@ -18,7 +21,7 @@ export class AmenityReservationHoldRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(holdId, session) {
-    return AmenityReservationHold.findById(holdId).session(session || null);
+    return AmenityReservationHold.findById(holdId).session(getValidSession(session));
   }
 
   /**
@@ -32,7 +35,7 @@ export class AmenityReservationHoldRepository {
       _id: holdId,
       status: 'ACTIVE',
       expiresAt: { $gt: new Date() },
-    }).session(session || null);
+    }).session(getValidSession(session));
   }
 
   /**
@@ -48,7 +51,7 @@ export class AmenityReservationHoldRepository {
     return AmenityReservationHold.findOneAndUpdate(
       { _id: holdId, status: fromStatus },
       { $set: { status: toStatus } },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -70,7 +73,7 @@ export class AmenityReservationHoldRepository {
     };
     if (resourceId) filter.resourceId = resourceId;
 
-    return AmenityReservationHold.find(filter).session(session || null);
+    return AmenityReservationHold.find(filter).session(getValidSession(session));
   }
 
   /**

@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityIdempotencyRecord from './amenityIdempotencyRecord.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityIdempotencyRecordRepository {
   /**
@@ -8,7 +9,7 @@ export class AmenityIdempotencyRecordRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(recordId, session) {
-    return AmenityIdempotencyRecord.findById(recordId).session(session || null);
+    return AmenityIdempotencyRecord.findById(recordId).session(getValidSession(session));
   }
 
   /**
@@ -19,7 +20,9 @@ export class AmenityIdempotencyRecordRepository {
    */
   async createProcessingRecord(data, session) {
     try {
-      const [doc] = await AmenityIdempotencyRecord.create([data], { session });
+      const validSession = getValidSession(session);
+      const options = validSession ? { session: validSession } : {};
+      const [doc] = await AmenityIdempotencyRecord.create([data], options);
       return doc;
     } catch (err) {
       if (err.code === 11000) {
@@ -52,7 +55,7 @@ export class AmenityIdempotencyRecordRepository {
           requestHash,
         },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -74,7 +77,7 @@ export class AmenityIdempotencyRecordRepository {
           responseBody,
         },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -96,7 +99,7 @@ export class AmenityIdempotencyRecordRepository {
           responseBody,
         },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 }

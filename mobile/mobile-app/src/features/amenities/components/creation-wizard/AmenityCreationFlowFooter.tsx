@@ -45,7 +45,7 @@ export const AmenityCreationFlowFooter: React.FC<AmenityCreationFlowFooterProps>
       )}
 
       {/* Save Draft CTA */}
-      {onSaveDraft && !isEditing && (
+      {onSaveDraft && (
         <Button
           variant="secondary"
           onPress={onSaveDraft}

@@ -1,5 +1,21 @@
+import HttpError from '../../../utils/httpError.utils.js';
 import amenityFacilityService from './amenityFacility.service.js';
 import amenityIdempotencyService from '../idempotency/amenityIdempotencyRecord.service.js';
+
+const isAdminUser = (user) => {
+  if (!user) return false;
+  const adminRoles = [
+    'super admin',
+    'platform super admin',
+    'community admin',
+    'admin',
+    'superadmin',
+    'facility manager',
+  ];
+  const userRole = (user.role || '').toLowerCase();
+  const userRoles = Array.isArray(user.roles) ? user.roles.map((r) => (r || '').toLowerCase()) : [];
+  return adminRoles.includes(userRole) || userRoles.some((r) => adminRoles.includes(r));
+};
 
 export class AmenityFacilityController {
   /**
@@ -43,11 +59,7 @@ export class AmenityFacilityController {
       const page = Number(req.query.page) || 1;
       const limit = Math.min(100, Number(req.query.limit) || 10);
       const { search, archetype, isActive, status, isDraft } = req.query;
-      const userRole = req.user?.role || '';
-      const userRoles = Array.isArray(req.user?.roles) ? req.user.roles : [];
-      const isAdmin =
-        ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(userRole) ||
-        userRoles.some(r => ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(r));
+      const isAdmin = isAdminUser(req.user);
 
       // Non-admins (residents, guests) can ONLY view published, active facilities
       const queryIsDraft = isAdmin
@@ -82,12 +94,18 @@ export class AmenityFacilityController {
 
   /**
    * Retrieves single facility by ID.
+   * Draft facilities return 404 to non-admins (P0-2).
    */
   async getById(req, res, next) {
     try {
       const { facilityId } = req.params;
       const orgId = req.tenant.orgId;
       const facility = await amenityFacilityService.getFacilityById(facilityId, orgId);
+
+      if (facility.isDraft && !isAdminUser(req.user)) {
+        throw new HttpError(404, 'Facility not found');
+      }
+
       return res.success(facility, 'Facility retrieved successfully');
     } catch (error) {
       return next(error);
@@ -96,12 +114,18 @@ export class AmenityFacilityController {
 
   /**
    * Retrieves single facility by code.
+   * Draft facilities return 404 to non-admins (P0-2).
    */
   async getByCode(req, res, next) {
     try {
       const { code } = req.params;
       const orgId = req.tenant.orgId;
       const facility = await amenityFacilityService.getFacilityByCode(orgId, code);
+
+      if (facility.isDraft && !isAdminUser(req.user)) {
+        throw new HttpError(404, 'Facility not found');
+      }
+
       return res.success(facility, 'Facility retrieved successfully');
     } catch (error) {
       return next(error);
@@ -110,13 +134,18 @@ export class AmenityFacilityController {
 
   /**
    * Updates an existing facility.
+   * Forwards bookingAction and audit metadata.
    */
   async update(req, res, next) {
     try {
       const { facilityId } = req.params;
       const orgId = req.tenant.orgId;
       const { _id, orgId: bodyOrgId, concurrencyVersion, isDeleted, deletedAt, ...cleanBody } = req.body;
-      const updated = await amenityFacilityService.updateFacility(facilityId, orgId, cleanBody);
+      const updateData = {
+        ...cleanBody,
+        cancelledBy: req.user?._id || req.user?.id,
+      };
+      const updated = await amenityFacilityService.updateFacility(facilityId, orgId, updateData);
       return res.success(updated, 'Facility updated successfully');
     } catch (error) {
       return next(error);

@@ -41,7 +41,14 @@ export class AvailabilityService {
 
     // 1. Fetch Facility
     const facility = await amenityFacilityRepository.findById(facilityId, orgId, session);
-    if (!facility || !facility.isActive || facility.isDeleted) {
+    if (
+      !facility ||
+      !facility.isActive ||
+      facility.isDraft ||
+      facility.isDeleted ||
+      facility.status === 'DRAFT' ||
+      facility.status === 'INACTIVE'
+    ) {
       return {
         isAvailable: false,
         reason: 'Facility is not active or does not exist',
@@ -132,7 +139,7 @@ export class AvailabilityService {
       case 'EXCLUSIVE_HOURLY': {
         // Discrete slot check
         const overlappingSlots = await amenitySlotAllocationRepository.findOverlappingExclusiveSlots(
-          { orgId, resourceId, startDateTime: effectiveStart, endDateTime: effectiveEnd },
+          { orgId, facilityId, resourceId, startDateTime: effectiveStart, endDateTime: effectiveEnd },
           session
         );
         if (overlappingSlots.length > 0) {

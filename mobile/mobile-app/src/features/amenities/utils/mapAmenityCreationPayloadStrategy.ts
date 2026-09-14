@@ -91,12 +91,13 @@ export function mapAmenityCreationPayloadStrategy(
     ),
   };
 
-  const status = isDraft
+  const effectiveIsDraft = Boolean(isDraft || form.status === 'draft');
+  const status = effectiveIsDraft
     ? 'DRAFT'
     : form.status === 'inactive'
     ? 'INACTIVE'
     : 'ACTIVE';
-  const isActive = isDraft ? false : form.status !== 'inactive';
+  const isActive = effectiveIsDraft ? false : form.status !== 'inactive';
 
   // Base facility object
   const basePayload: any = {
@@ -112,7 +113,7 @@ export function mapAmenityCreationPayloadStrategy(
     cancellationPolicy,
     isActive,
     status,
-    isDraft,
+    isDraft: effectiveIsDraft,
     images: form.imageUrl ? [form.imageUrl] : [],
     imageUrl: form.imageUrl || '',
   };

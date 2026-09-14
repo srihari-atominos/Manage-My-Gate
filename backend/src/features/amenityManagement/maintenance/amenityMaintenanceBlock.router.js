@@ -16,6 +16,13 @@ const router = Router();
 // Protect all maintenance routes with Authentication and Tenant Context
 router.use(isAuthenticated, tenantContext);
 
+// GET / - List maintenance blocks
+router.get(
+  '/',
+  authorizePermission('amenities', ['maintenance', 'amenities']),
+  amenityMaintenanceBlockController.getAll
+);
+
 // POST / - Schedule maintenance block
 router.post(
   '/',

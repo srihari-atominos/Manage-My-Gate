@@ -1,6 +1,9 @@
 import HttpError from '../../../utils/httpError.utils.js';
 import amenityFacilityRepository from './amenityFacility.repository.js';
 import amenityResourceService from '../resources/amenityResource.service.js';
+import amenityReservationService from '../reservations/amenityReservation.service.js';
+import amenityManagementEvents, { AMENITY_EVENTS } from '../amenityManagement.events.js';
+import amenityOutboxEventRepository from '../outbox/amenityOutboxEvent.repository.js';
 import { withTransactionRetry } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityFacilityService {
@@ -94,6 +97,20 @@ export class AmenityFacilityService {
     const status = isDraft ? 'DRAFT' : (facilityData.status || 'ACTIVE');
     const isActive = isDraft ? false : (facilityData.isActive !== false);
 
+    // If published upon creation, validate minimum required configuration
+    if (!isDraft) {
+      if (
+        !facilityData.operatingHours ||
+        !facilityData.operatingHours.length ||
+        !facilityData.slotDurationMinutes
+      ) {
+        throw new HttpError(
+          400,
+          'Cannot publish facility: operatingHours and slotDurationMinutes are required'
+        );
+      }
+    }
+
     const payload = {
       ...facilityData,
       code: normalizedCode,
@@ -117,6 +134,31 @@ export class AmenityFacilityService {
 
       if (payload.archetype === 'ROOM_RESOURCE' && Array.isArray(payload.subRooms) && payload.subRooms.length > 0) {
         await this._syncSubRooms(facility, payload.subRooms, trxSession);
+      }
+
+      // Record Transactional Outbox Event
+      await amenityOutboxEventRepository.createEvent(
+        {
+          orgId: facility.orgId,
+          eventType: isDraft ? 'FACILITY_CREATED' : 'FACILITY_PUBLISHED',
+          aggregateId: facility._id,
+          aggregateType: 'AmenityFacility',
+          payload: {
+            facilityId: facility._id,
+            code: facility.code,
+            name: facility.name,
+            isDraft: facility.isDraft,
+            isActive: facility.isActive,
+            status: facility.status,
+          },
+        },
+        trxSession
+      );
+
+      // Emit Domain Events
+      amenityManagementEvents.emit(AMENITY_EVENTS.FACILITY_CREATED, facility);
+      if (!isDraft) {
+        amenityManagementEvents.emit(AMENITY_EVENTS.FACILITY_PUBLISHED, facility);
       }
 
       return facility;
@@ -159,6 +201,7 @@ export class AmenityFacilityService {
   /**
    * Updates an existing facility.
    * Atomically synchronizes child sub-room resources for ROOM_RESOURCE archetype.
+   * Enforces dual-field state invariants and policies T1 & T2.
    *
    * @param {string|import('mongoose').Types.ObjectId} facilityId
    * @param {string|import('mongoose').Types.ObjectId} orgId
@@ -167,33 +210,142 @@ export class AmenityFacilityService {
    */
   async updateFacility(facilityId, orgId, updateData, session) {
     const executeUpdate = async (trxSession) => {
+      const existing = await amenityFacilityRepository.findById(facilityId, orgId, trxSession);
+      if (!existing) {
+        throw new HttpError(404, 'Facility not found');
+      }
+
       if (updateData.code) {
         const normalizedCode = updateData.code.trim().toUpperCase();
-        const existing = await amenityFacilityRepository.findByCode(orgId, normalizedCode, trxSession);
-        if (existing && existing._id.toString() !== facilityId.toString()) {
+        const codeConflict = await amenityFacilityRepository.findByCode(orgId, normalizedCode, trxSession);
+        if (codeConflict && codeConflict._id.toString() !== facilityId.toString()) {
           throw new HttpError(409, `Facility with code '${normalizedCode}' already exists`);
         }
         updateData.code = normalizedCode;
       }
 
-      // Handle draft status transitions
-      if (updateData.status === 'ACTIVE' || updateData.isDraft === false) {
-        updateData.isDraft = false;
-        updateData.status = 'ACTIVE';
-        updateData.isActive = true;
-      } else if (updateData.status === 'DRAFT' || updateData.isDraft === true) {
+      let transitionEvent = null;
+
+      // 1. Moving to Draft (ACTIVE or INACTIVE -> DRAFT)
+      if (updateData.isDraft === true || updateData.status === 'DRAFT') {
+        // Policy T2: Check for ANY future active/confirmed reservations (no arbitrary date cap)
+        const futureBookings = await amenityReservationService.getFutureActiveReservations(
+          { orgId, facilityId },
+          trxSession
+        );
+        if (futureBookings && futureBookings.length > 0) {
+          throw new HttpError(
+            409,
+            `Cannot move facility to Draft while future confirmed bookings exist. Resolve existing bookings first.`
+          );
+        }
         updateData.isDraft = true;
         updateData.status = 'DRAFT';
         updateData.isActive = false;
       }
+      // 2. Moving to Inactive (ACTIVE -> INACTIVE)
+      else if (updateData.isActive === false || updateData.status === 'INACTIVE') {
+        // Policy T1: Detect future confirmed bookings
+        const futureBookings = await amenityReservationService.getFutureActiveReservations(
+          { orgId, facilityId },
+          trxSession
+        );
 
-      const updated = await amenityFacilityRepository.update(facilityId, orgId, updateData, trxSession);
+        if (futureBookings && futureBookings.length > 0) {
+          if (updateData.bookingAction === 'CANCEL_AND_REFUND') {
+            for (const booking of futureBookings) {
+              await amenityReservationService.cancelReservation(
+                {
+                  reservationId: booking._id,
+                  orgId,
+                  residentId: booking.residentId,
+                  cancellationReason: 'Facility deactivated by administration',
+                  cancelledBy: updateData.cancelledBy,
+                  isManagementCancellation: true,
+                },
+                trxSession
+              );
+            }
+          } else if (updateData.bookingAction !== 'HONOR_EXISTING') {
+            throw new HttpError(
+              409,
+              `Facility has ${futureBookings.length} upcoming confirmed booking(s). Please specify bookingAction: 'HONOR_EXISTING' or 'CANCEL_AND_REFUND'.`,
+              {
+                requiresBookingAction: true,
+                upcomingBookingsCount: futureBookings.length,
+              }
+            );
+          }
+        }
+
+        updateData.isDraft = false;
+        updateData.isActive = false;
+        updateData.status = 'INACTIVE';
+        transitionEvent = 'FACILITY_DEACTIVATED';
+      }
+      // 3. Moving to Active (INACTIVE -> ACTIVE or DRAFT -> ACTIVE / Publishing)
+      else if (
+        updateData.isActive === true ||
+        updateData.status === 'ACTIVE' ||
+        (updateData.isDraft === false && existing.isDraft)
+      ) {
+        if (existing.isDraft) {
+          // Validate required minimum configuration
+          const name = updateData.name || existing.name;
+          const code = updateData.code || existing.code;
+          const archetype = updateData.archetype || existing.archetype;
+          const operatingHours = updateData.operatingHours || existing.operatingHours;
+          const slotDurationMinutes = updateData.slotDurationMinutes || existing.slotDurationMinutes;
+
+          if (!name || !code || !archetype || !operatingHours?.length || !slotDurationMinutes) {
+            throw new HttpError(
+              400,
+              'Cannot publish incomplete facility: name, code, archetype, operatingHours, and slotDurationMinutes are required'
+            );
+          }
+          transitionEvent = 'FACILITY_PUBLISHED';
+        }
+        updateData.isDraft = false;
+        updateData.isActive = true;
+        updateData.status = 'ACTIVE';
+      }
+
+      // Clean non-schema metadata
+      const { bookingAction, cancelledBy, ...cleanUpdate } = updateData;
+
+      const updated = await amenityFacilityRepository.update(facilityId, orgId, cleanUpdate, trxSession);
       if (!updated) {
         throw new HttpError(404, 'Facility not found');
       }
 
       if (updated.archetype === 'ROOM_RESOURCE' && Array.isArray(updateData.subRooms)) {
         await this._syncSubRooms(updated, updateData.subRooms, trxSession);
+      }
+
+      if (transitionEvent) {
+        await amenityOutboxEventRepository.createEvent(
+          {
+            orgId: updated.orgId,
+            eventType: transitionEvent,
+            aggregateId: updated._id,
+            aggregateType: 'AmenityFacility',
+            payload: {
+              facilityId: updated._id,
+              code: updated.code,
+              name: updated.name,
+              isDraft: updated.isDraft,
+              isActive: updated.isActive,
+              status: updated.status,
+            },
+          },
+          trxSession
+        );
+
+        if (transitionEvent === 'FACILITY_PUBLISHED') {
+          amenityManagementEvents.emit(AMENITY_EVENTS.FACILITY_PUBLISHED, updated);
+        } else if (transitionEvent === 'FACILITY_DEACTIVATED') {
+          amenityManagementEvents.emit(AMENITY_EVENTS.FACILITY_DEACTIVATED, updated);
+        }
       }
 
       return updated;

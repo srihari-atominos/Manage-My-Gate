@@ -9,7 +9,7 @@ export type AmenityArchetype =
 
 export type AmenityPricingType = 'FREE' | 'HOURLY' | 'DAILY' | 'FIXED_EVENT' | 'TIERED';
 
-export type AmenityFacilityStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'DECOMMISSIONED';
+export type AmenityFacilityStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
 
 export type AmenityAssetState = 'AVAILABLE' | 'CHECKED_OUT' | 'INSPECTION_PENDING' | 'MAINTENANCE';
 

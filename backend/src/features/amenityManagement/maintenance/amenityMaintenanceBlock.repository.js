@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityMaintenanceBlock from './amenityMaintenanceBlock.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityMaintenanceBlockRepository {
   /**
@@ -8,7 +9,9 @@ export class AmenityMaintenanceBlockRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async create(blockData, session) {
-    const [doc] = await AmenityMaintenanceBlock.create([blockData], { session });
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    const [doc] = await AmenityMaintenanceBlock.create([blockData], options);
     return doc;
   }
 
@@ -20,7 +23,7 @@ export class AmenityMaintenanceBlockRepository {
   async findById(blockId, orgId, session) {
     const filter = { _id: blockId };
     if (orgId) filter.orgId = orgId;
-    return AmenityMaintenanceBlock.findOne(filter).session(session || null);
+    return AmenityMaintenanceBlock.findOne(filter).session(getValidSession(session));
   }
 
   /**
@@ -48,7 +51,7 @@ export class AmenityMaintenanceBlockRepository {
       filter.facilityId = facilityId;
     }
 
-    return AmenityMaintenanceBlock.find(filter).session(session || null);
+    return AmenityMaintenanceBlock.find(filter).session(getValidSession(session));
   }
 
   /**
@@ -64,8 +67,30 @@ export class AmenityMaintenanceBlockRepository {
     return AmenityMaintenanceBlock.findOneAndUpdate(
       filter,
       { $set: { status } },
-      { session: session || null, returnDocument: 'after', runValidators: true }
+      { session: getValidSession(session), returnDocument: 'after', runValidators: true }
     );
+  }
+
+  /**
+   * Lists maintenance blocks for an organization with optional filtering.
+   * @param {Object} params
+   * @param {mongoose.ClientSession} [session]
+   */
+  async list({ orgId, facilityId, status, page = 1, limit = 50 }, session) {
+    const filter = { orgId };
+    if (facilityId) filter.facilityId = facilityId;
+    if (status) filter.status = status;
+    const skip = (page - 1) * limit;
+    const validSession = getValidSession(session);
+    const [records, total] = await Promise.all([
+      AmenityMaintenanceBlock.find(filter)
+        .sort({ startDateTime: -1 })
+        .skip(skip)
+        .limit(limit)
+        .session(validSession),
+      AmenityMaintenanceBlock.countDocuments(filter).session(validSession),
+    ]);
+    return { records, total, page, limit, pages: Math.ceil(total / limit) };
   }
 }
 

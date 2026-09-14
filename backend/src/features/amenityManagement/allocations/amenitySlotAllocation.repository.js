@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenitySlotAllocation from './amenitySlotAllocation.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenitySlotAllocationRepository {
   /**
@@ -9,7 +10,9 @@ export class AmenitySlotAllocationRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async createDiscreteSlot(slotData, session) {
-    const [doc] = await AmenitySlotAllocation.create([slotData], { session });
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    const [doc] = await AmenitySlotAllocation.create([slotData], options);
     return doc;
   }
 
@@ -19,22 +22,24 @@ export class AmenitySlotAllocationRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(slotId, session) {
-    return AmenitySlotAllocation.findById(slotId).session(session || null);
+    return AmenitySlotAllocation.findById(slotId).session(getValidSession(session));
   }
 
   /**
    * Finds active (HELD or CONFIRMED) exclusive slots overlapping a range.
    * @param {Object} params
    */
-  async findOverlappingExclusiveSlots({ orgId, resourceId, startDateTime, endDateTime }, session) {
-    return AmenitySlotAllocation.find({
+  async findOverlappingExclusiveSlots({ orgId, facilityId, resourceId, startDateTime, endDateTime }, session) {
+    const filter = {
       orgId,
-      resourceId,
       allocationType: 'EXCLUSIVE_DISCRETE',
       status: { $in: ['HELD', 'CONFIRMED'] },
       slotStartDateTime: { $lt: endDateTime },
       slotEndDateTime: { $gt: startDateTime },
-    }).session(session || null);
+    };
+    if (facilityId) filter.facilityId = facilityId;
+    if (resourceId !== undefined) filter.resourceId = resourceId;
+    return AmenitySlotAllocation.find(filter).session(getValidSession(session));
   }
 
   /**
@@ -48,6 +53,8 @@ export class AmenitySlotAllocationRepository {
     { bucketId, orgId, facilityId, slotStartDateTime, slotEndDateTime, requestedHeadcount, maxCapacity },
     session
   ) {
+    const validSession = getValidSession(session);
+
     // 1. Try atomic update if bucket already exists
     let bucket = await AmenitySlotAllocation.findOneAndUpdate(
       {
@@ -59,13 +66,13 @@ export class AmenitySlotAllocationRepository {
       {
         $inc: { allocatedHeadcount: requestedHeadcount, version: 1 },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: validSession, returnDocument: 'after' }
     );
 
     if (bucket) return bucket;
 
     // 2. If not matched, check if bucket exists (capacity exceeded) or needs initial creation
-    const existing = await AmenitySlotAllocation.findById(bucketId).session(session || null);
+    const existing = await AmenitySlotAllocation.findById(bucketId).session(validSession);
     if (existing) {
       // Bucket exists but condition failed -> capacity full!
       return null;
@@ -77,6 +84,7 @@ export class AmenitySlotAllocationRepository {
     }
 
     try {
+      const options = validSession ? { session: validSession } : {};
       const [created] = await AmenitySlotAllocation.create(
         [
           {
@@ -91,7 +99,7 @@ export class AmenitySlotAllocationRepository {
             version: 1,
           },
         ],
-        { session }
+        options
       );
       return created;
     } catch (err) {
@@ -107,7 +115,7 @@ export class AmenitySlotAllocationRepository {
           {
             $inc: { allocatedHeadcount: requestedHeadcount, version: 1 },
           },
-          { session: session || null, returnDocument: 'after' }
+          { session: validSession, returnDocument: 'after' }
         );
       }
       throw err;
@@ -124,7 +132,7 @@ export class AmenitySlotAllocationRepository {
     return AmenitySlotAllocation.findOneAndUpdate(
       { _id: bucketId },
       { $inc: { allocatedHeadcount: -headcount, version: 1 } },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -138,6 +146,8 @@ export class AmenitySlotAllocationRepository {
     { bucketId, orgId, facilityId, resourceId, dateToken, requestedQty, totalStock },
     session
   ) {
+    const validSession = getValidSession(session);
+
     let bucket = await AmenitySlotAllocation.findOneAndUpdate(
       {
         _id: bucketId,
@@ -148,12 +158,12 @@ export class AmenitySlotAllocationRepository {
       {
         $inc: { allocatedQuantity: requestedQty, version: 1 },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: validSession, returnDocument: 'after' }
     );
 
     if (bucket) return bucket;
 
-    const existing = await AmenitySlotAllocation.findById(bucketId).session(session || null);
+    const existing = await AmenitySlotAllocation.findById(bucketId).session(validSession);
     if (existing) {
       return null; // Stock exceeded
     }
@@ -163,6 +173,7 @@ export class AmenitySlotAllocationRepository {
     }
 
     try {
+      const options = validSession ? { session: validSession } : {};
       const [created] = await AmenitySlotAllocation.create(
         [
           {
@@ -177,7 +188,7 @@ export class AmenitySlotAllocationRepository {
             version: 1,
           },
         ],
-        { session }
+        options
       );
       return created;
     } catch (err) {
@@ -192,7 +203,7 @@ export class AmenitySlotAllocationRepository {
           {
             $inc: { allocatedQuantity: requestedQty, version: 1 },
           },
-          { session: session || null, returnDocument: 'after' }
+          { session: validSession, returnDocument: 'after' }
         );
       }
       throw err;
@@ -209,7 +220,7 @@ export class AmenitySlotAllocationRepository {
     return AmenitySlotAllocation.findOneAndUpdate(
       { _id: bucketId },
       { $inc: { allocatedQuantity: -quantity, version: 1 } },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -228,7 +239,7 @@ export class AmenitySlotAllocationRepository {
         $unset: { expiresAt: 1, holdId: 1 },
         $inc: { version: 1 },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -245,7 +256,7 @@ export class AmenitySlotAllocationRepository {
         $unset: { expiresAt: 1 },
         $inc: { version: 1 },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 }

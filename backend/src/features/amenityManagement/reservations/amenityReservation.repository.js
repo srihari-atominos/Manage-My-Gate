@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityReservation from './amenityReservation.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityReservationRepository {
   /**
@@ -8,7 +9,9 @@ export class AmenityReservationRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async create(reservationData, session) {
-    const [doc] = await AmenityReservation.create([reservationData], { session });
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    const [doc] = await AmenityReservation.create([reservationData], options);
     return doc;
   }
 
@@ -18,7 +21,7 @@ export class AmenityReservationRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(reservationId, session) {
-    return AmenityReservation.findById(reservationId).session(session || null);
+    return AmenityReservation.findById(reservationId).session(getValidSession(session));
   }
 
   /**
@@ -28,7 +31,7 @@ export class AmenityReservationRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findByReservationNumber(orgId, reservationNumber, session) {
-    return AmenityReservation.findOne({ orgId, reservationNumber }).session(session || null);
+    return AmenityReservation.findOne({ orgId, reservationNumber }).session(getValidSession(session));
   }
 
   /**
@@ -49,7 +52,25 @@ export class AmenityReservationRepository {
     };
     if (resourceId) filter.resourceId = resourceId;
 
-    return AmenityReservation.find(filter).session(session || null);
+    return AmenityReservation.find(filter).session(getValidSession(session));
+  }
+
+  /**
+   * Finds all future active/confirmed reservations for a facility without an arbitrary date cap.
+   * @param {Object} params
+   * @param {string|mongoose.Types.ObjectId} params.orgId
+   * @param {string|mongoose.Types.ObjectId} params.facilityId
+   * @param {mongoose.ClientSession} [session]
+   */
+  async findFutureActiveReservations({ orgId, facilityId }, session) {
+    const now = new Date();
+    const filter = {
+      orgId,
+      facilityId,
+      bookingStatus: { $in: ['PENDING_APPROVAL', 'CONFIRMED'] },
+      effectiveEndDateTime: { $gte: now },
+    };
+    return AmenityReservation.find(filter).session(getValidSession(session));
   }
 
   /**
@@ -65,7 +86,7 @@ export class AmenityReservationRepository {
         $set: updateFields,
         $inc: { version: 1 },
       },
-      { session: session || null, returnDocument: 'after', runValidators: true }
+      { session: getValidSession(session), returnDocument: 'after', runValidators: true }
     );
   }
 
@@ -82,7 +103,7 @@ export class AmenityReservationRepository {
         $push: { approvalHistory: historyEntry },
         $inc: { version: 1 },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 

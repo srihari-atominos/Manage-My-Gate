@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityQuotaAllocation from './amenityQuotaAllocation.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityQuotaAllocationRepository {
   /**
@@ -8,7 +9,7 @@ export class AmenityQuotaAllocationRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(quotaId, session) {
-    return AmenityQuotaAllocation.findById(quotaId).session(session || null);
+    return AmenityQuotaAllocation.findById(quotaId).session(getValidSession(session));
   }
 
   /**
@@ -30,6 +31,8 @@ export class AmenityQuotaAllocationRepository {
     { quotaId, orgId, unitId, facilityId, quotaPeriod, periodToken, quotaLimit, requestedUnits },
     session
   ) {
+    const validSession = getValidSession(session);
+
     // 1. Try atomic conditional increment if document exists
     let quota = await AmenityQuotaAllocation.findOneAndUpdate(
       {
@@ -41,13 +44,13 @@ export class AmenityQuotaAllocationRepository {
       {
         $inc: { reservedAmount: requestedUnits, version: 1 },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: validSession, returnDocument: 'after' }
     );
 
     if (quota) return quota;
 
     // 2. Document does not match condition; check if it exists (meaning limit exceeded) or is new
-    const existing = await AmenityQuotaAllocation.findById(quotaId).session(session || null);
+    const existing = await AmenityQuotaAllocation.findById(quotaId).session(validSession);
     if (existing) {
       // Document exists but exceeded quotaLimit
       return null;
@@ -59,6 +62,7 @@ export class AmenityQuotaAllocationRepository {
     }
 
     try {
+      const options = validSession ? { session: validSession } : {};
       const [created] = await AmenityQuotaAllocation.create(
         [
           {
@@ -74,7 +78,7 @@ export class AmenityQuotaAllocationRepository {
             version: 1,
           },
         ],
-        { session }
+        options
       );
       return created;
     } catch (err) {
@@ -90,7 +94,7 @@ export class AmenityQuotaAllocationRepository {
           {
             $inc: { reservedAmount: requestedUnits, version: 1 },
           },
-          { session: session || null, returnDocument: 'after' }
+          { session: validSession, returnDocument: 'after' }
         );
       }
       throw err;
@@ -113,7 +117,7 @@ export class AmenityQuotaAllocationRepository {
           version: 1,
         },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -132,7 +136,7 @@ export class AmenityQuotaAllocationRepository {
           version: 1,
         },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 
@@ -151,7 +155,7 @@ export class AmenityQuotaAllocationRepository {
           version: 1,
         },
       },
-      { session: session || null, returnDocument: 'after' }
+      { session: getValidSession(session), returnDocument: 'after' }
     );
   }
 }

@@ -115,9 +115,10 @@ export const mapPricingFormToApiPayload = (params: {
 // ==========================================
 
 export const normalizeFacilityFromApi = (raw: ApiAmenityFacility | any): AmenityFacility => {
-  const derivedStatus: AmenityFacilityStatus =
-    raw.status ||
-    (raw.isActive === false ? 'INACTIVE' : 'ACTIVE');
+  const isDraft = Boolean(raw.isDraft === true || raw.status === 'DRAFT');
+  const derivedStatus: AmenityFacilityStatus = isDraft
+    ? 'DRAFT'
+    : raw.status || (raw.isActive === false ? 'INACTIVE' : 'ACTIVE');
 
   const rawPricing = raw.pricingConfig || {};
   const pricingType = (rawPricing.type || rawPricing.pricingType || (raw.bookingFee ? 'HOURLY' : 'FREE')) as AmenityPricingType;
@@ -151,7 +152,8 @@ export const normalizeFacilityFromApi = (raw: ApiAmenityFacility | any): Amenity
     category: raw.category || raw.type || undefined,
     type: raw.type || raw.category || undefined,
     status: derivedStatus,
-    isActive: raw.isActive !== undefined ? raw.isActive : derivedStatus === 'ACTIVE',
+    isDraft,
+    isActive: isDraft ? false : (raw.isActive !== undefined ? raw.isActive : derivedStatus === 'ACTIVE'),
     maxCapacity: raw.maxCapacity ?? raw.capacity ?? 1,
     maxHeadcountPerReservation: raw.maxHeadcountPerReservation ?? raw.maxBookingsPerUserPerSlot ?? 1,
     slotDurationMinutes: raw.slotDurationMinutes ?? rawBookingRules.slotDurationMinutes ?? 60,

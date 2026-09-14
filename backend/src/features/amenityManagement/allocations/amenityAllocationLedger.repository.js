@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import AmenityAllocationLedger from './amenityAllocationLedger.model.js';
+import { getValidSession } from '../domain/concurrency/transaction.utils.js';
 
 export class AmenityAllocationLedgerRepository {
   /**
@@ -8,7 +9,9 @@ export class AmenityAllocationLedgerRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async createEntry(entryData, session) {
-    const [doc] = await AmenityAllocationLedger.create([entryData], { session });
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    const [doc] = await AmenityAllocationLedger.create([entryData], options);
     return doc;
   }
 
@@ -42,7 +45,7 @@ export class AmenityAllocationLedgerRepository {
     }
 
     return AmenityAllocationLedger.findOneAndUpdate(filter, update, {
-      session: session || null,
+      session: getValidSession(session),
       returnDocument: 'after',
     });
   }
@@ -53,7 +56,7 @@ export class AmenityAllocationLedgerRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findByHoldId(holdId, session) {
-    return AmenityAllocationLedger.find({ holdId }).session(session || null);
+    return AmenityAllocationLedger.find({ holdId }).session(getValidSession(session));
   }
 
   /**
@@ -62,7 +65,7 @@ export class AmenityAllocationLedgerRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findByReservationId(reservationId, session) {
-    return AmenityAllocationLedger.find({ reservationId }).session(session || null);
+    return AmenityAllocationLedger.find({ reservationId }).session(getValidSession(session));
   }
 
   /**
@@ -74,7 +77,7 @@ export class AmenityAllocationLedgerRepository {
     return AmenityAllocationLedger.find({
       bucketId,
       status: { $in: ['HELD', 'CONFIRMED'] },
-    }).session(session || null);
+    }).session(getValidSession(session));
   }
 }
 
