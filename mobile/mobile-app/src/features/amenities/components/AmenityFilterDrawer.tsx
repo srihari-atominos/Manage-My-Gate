@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import { AmenityArchetype } from '../types/amenityDomain.types';
 import { AmenityFilterValues } from '../hooks/useAmenityMaster';
+import { SECONDARY_CATEGORIES } from '../constants/amenityCatalogPresets';
 
 interface AmenityFilterDrawerProps {
   visible: boolean;
@@ -90,6 +91,26 @@ export const AmenityFilterDrawer: React.FC<AmenityFilterDrawerProps> = ({
     );
   };
 
+  const categoryOptions = React.useMemo(() => {
+    const rawList =
+      availableCategories && availableCategories.length > 0
+        ? availableCategories
+        : SECONDARY_CATEGORIES.map((c) => c.value);
+
+    return rawList.map((item) => {
+      const val = typeof item === 'string' ? item : (item as any)?.value || String(item);
+      const meta = SECONDARY_CATEGORIES.find(
+        (c) =>
+          c.value.toLowerCase() === val.toLowerCase() ||
+          c.label.toLowerCase() === val.toLowerCase()
+      );
+      return {
+        value: meta ? meta.value : val,
+        label: meta ? meta.label : val,
+      };
+    });
+  }, [availableCategories]);
+
   const handleApplyInternal = () => {
     onApply({
       archetypes: selectedArchetypes,
@@ -141,7 +162,7 @@ export const AmenityFilterDrawer: React.FC<AmenityFilterDrawerProps> = ({
         </View>
 
         {/* Section 2: Categories (Multi-Select) */}
-        {availableCategories.length > 0 && (
+        {categoryOptions.length > 0 && (
           <View className="gap-2.5">
             <View className="flex-row items-center gap-2">
               <Tag size={16} className="text-primary" />
@@ -150,14 +171,14 @@ export const AmenityFilterDrawer: React.FC<AmenityFilterDrawerProps> = ({
               </Text>
             </View>
             <View className="flex-row flex-wrap gap-2">
-              {availableCategories.map((cat) => {
-                const isSelected = selectedCategories.includes(cat);
+              {categoryOptions.map((opt) => {
+                const isSelected = selectedCategories.includes(opt.value);
                 return (
                   <Chip
-                    key={cat}
-                    label={cat}
+                    key={opt.value}
+                    label={opt.label}
                     selected={isSelected}
-                    onPress={() => toggleCategory(cat)}
+                    onPress={() => toggleCategory(opt.value)}
                     className="h-8 px-3"
                   />
                 );

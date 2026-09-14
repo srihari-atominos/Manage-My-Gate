@@ -70,6 +70,14 @@ export const SECONDARY_CATEGORIES = [
   { label: 'General Facilities', value: 'General' },
 ];
 
+export const DEFAULT_ARCHETYPE_CATEGORIES: Record<AmenityArchetype, string> = {
+  SHARED_CAPACITY: 'Pool & Spa',
+  EXCLUSIVE_HOURLY: 'Sports',
+  EVENT_SPACE: 'Event Space',
+  ROOM_RESOURCE: 'Workspace',
+  INVENTORY_TOOLS: 'General',
+};
+
 export const PRICING_CHIP_OPTIONS: { value: AmenityPricingType; label: string }[] = [
   { value: 'FREE', label: 'Free Access' },
   { value: 'HOURLY', label: 'Hourly Rate' },

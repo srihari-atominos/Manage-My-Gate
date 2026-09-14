@@ -11,6 +11,7 @@ import {
 import { normalizeFacilityFromApi } from '../utils/amenityPayloadMappers';
 import { mapAmenityApiError } from '../utils/amenityErrorMapper';
 import { upsertAmenity, removeAmenity } from '../store/amenitySlice';
+import { SECONDARY_CATEGORIES } from '../constants/amenityCatalogPresets';
 
 export type ArchetypeFilterOption = 'All' | AmenityArchetype;
 export type AmenityStatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'DRAFT';
@@ -81,19 +82,23 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     return { total, active, inactive, maintenance, draft };
   }, [facilities]);
 
-  // Dynamically extract distinct categories from facilities catalog
+  // Extract distinct categories from catalog merged with standard creation presets
   const availableCategories = useMemo(() => {
-    const set = new Set<string>();
+    const list: string[] = SECONDARY_CATEGORIES.map((c) => c.value);
+    const known = new Set(list.map((v) => v.toLowerCase()));
+
     facilities.forEach((f) => {
       const cat = (f as any).category || (f as any).type;
       if (cat && typeof cat === 'string') {
-        set.add(cat);
+        const clean = cat.trim();
+        if (clean && !known.has(clean.toLowerCase())) {
+          list.push(clean);
+          known.add(clean.toLowerCase());
+        }
       }
     });
-    if (set.size === 0) {
-      ['Sports', 'Fitness', 'Clubhouse', 'Events', 'Leisure', 'Utility'].forEach((c) => set.add(c));
-    }
-    return Array.from(set);
+
+    return list;
   }, [facilities]);
 
   // Active filter badge count for the filter icon in SearchFilterBar
@@ -191,8 +196,27 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
       // Category filter (multi-select)
       let matchesCategory = true;
       if (activeFilters.categories.length > 0) {
-        const facCat = (facility as any).category || (facility as any).type;
-        matchesCategory = activeFilters.categories.includes(facCat);
+        const facCat = String((facility as any).category || (facility as any).type || '').trim().toLowerCase();
+        matchesCategory = activeFilters.categories.some((selCat) => {
+          const cleanSel = selCat.trim().toLowerCase();
+          if (facCat === cleanSel) return true;
+          // Match by label or value in SECONDARY_CATEGORIES
+          const meta = SECONDARY_CATEGORIES.find(
+            (c) => c.value.toLowerCase() === cleanSel || c.label.toLowerCase() === cleanSel
+          );
+          if (meta) {
+            return (
+              facCat === meta.value.toLowerCase() ||
+              facCat === meta.label.toLowerCase()
+            );
+          }
+          // Match legacy aliases
+          if (cleanSel === 'event space' && (facCat === 'events' || facCat === 'event & banquets')) return true;
+          if (cleanSel === 'wellness' && (facCat === 'leisure' || facCat === 'wellness & leisure')) return true;
+          if (cleanSel === 'general' && (facCat === 'utility' || facCat === 'general facilities')) return true;
+          if (cleanSel === 'pool & spa' && (facCat === 'aquatics' || facCat === 'pool & aquatic' || facCat === 'swimming')) return true;
+          return false;
+        });
       }
 
       // Pricing model filter

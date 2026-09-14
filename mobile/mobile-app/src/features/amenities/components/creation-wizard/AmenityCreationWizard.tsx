@@ -5,6 +5,7 @@ import { AmenityArchetype } from '../../types/amenityDomain.types';
 import {
   CREATION_STEP_DEFINITIONS,
   CreationStepMeta,
+  DEFAULT_ARCHETYPE_CATEGORIES,
 } from '../../constants/amenityCatalogPresets';
 import {
   AmenityCreationFormState,
@@ -65,7 +66,7 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
     name: '',
     code: generateFacilityCode('FACILITY'),
     archetype: initialArchetype,
-    category: 'General',
+    category: DEFAULT_ARCHETYPE_CATEGORIES[initialArchetype] || 'General',
     location: '',
     status: 'active',
     imageUrl: '',

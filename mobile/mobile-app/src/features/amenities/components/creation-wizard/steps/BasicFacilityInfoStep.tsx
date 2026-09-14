@@ -5,7 +5,7 @@ import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { UploadCloud, X, Sparkles } from 'lucide-react-native';
+import { UploadCloud, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SECONDARY_CATEGORIES, STATUS_OPTIONS } from '../../../constants/amenityCatalogPresets';
 import { generateFacilityCode } from '../../../services/amenityManagementService';
@@ -110,14 +110,6 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
             onChangeText={handleNameChange}
             error={errors.name}
           />
-          {data.name.trim().length > 0 && (
-            <View className="flex-row items-center gap-1.5 ps-1 pt-0.5">
-              <Sparkles size={12} className="text-muted-foreground" />
-              <Text className="text-[11px] text-muted-foreground font-medium">
-                System Code: <Text className="font-bold text-foreground">{data.code}</Text>
-              </Text>
-            </View>
-          )}
         </View>
 
         <View className="flex-row gap-3">
