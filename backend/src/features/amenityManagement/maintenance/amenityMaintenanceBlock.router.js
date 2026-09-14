@@ -3,6 +3,7 @@ import amenityMaintenanceBlockController from './amenityMaintenanceBlock.control
 import {
   scheduleMaintenanceRules,
   updateMaintenanceStatusRules,
+  extendMaintenanceRules,
   blockIdParamRules,
   overlappingMaintenanceRules,
 } from './amenityMaintenanceBlock.validateRules.js';
@@ -53,6 +54,14 @@ router.patch(
   authorizePermission('amenities', 'maintenance'),
   validate(updateMaintenanceStatusRules),
   amenityMaintenanceBlockController.updateStatus
+);
+
+// PATCH /:blockId/extend - Extend maintenance block with conflict check
+router.patch(
+  '/:blockId/extend',
+  authorizePermission('amenities', 'maintenance'),
+  validate(extendMaintenanceRules),
+  amenityMaintenanceBlockController.extend
 );
 
 export default router;

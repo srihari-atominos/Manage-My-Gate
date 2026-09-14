@@ -41,8 +41,8 @@ export const useAmenityMaster = () => {
     return await dispatch(editAmenity({ id, data })).unwrap()
   }
 
-  const updateAmenityStatus = async (id, status) => {
-    return await dispatch(changeAmenityStatus({ id, status })).unwrap()
+  const updateAmenityStatus = async (id, status, bookingAction) => {
+    return await dispatch(changeAmenityStatus({ id, status, bookingAction })).unwrap()
   }
 
   const deleteAmenity = async (id) => {

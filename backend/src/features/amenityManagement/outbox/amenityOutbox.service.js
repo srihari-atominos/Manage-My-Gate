@@ -115,8 +115,11 @@ export class AmenityOutboxService {
         break;
 
       case 'MAINTENANCE_SCHEDULED':
+      case 'MAINTENANCE_EXTENDED':
+      case 'MAINTENANCE_COMPLETED':
+      case 'MAINTENANCE_CANCELLED':
         // Facility-level maintenance window recording
-        logger.info(`[AmenityOutbox] MAINTENANCE_SCHEDULED announcement recorded for block ${aggregateId}`, {
+        logger.info(`[AmenityOutbox] ${eventType} announcement recorded for block ${aggregateId}`, {
           orgId,
           maintenanceBlockId: aggregateId,
           facilityId: payload?.facilityId,

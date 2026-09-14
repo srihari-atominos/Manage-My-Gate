@@ -56,6 +56,11 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
 
   const [deleteTarget, setDeleteTarget] = useState<AmenityFacility | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<AmenityFacility | null>(null);
+  const [deactivationConflict, setDeactivationConflict] = useState<{
+    facility: AmenityFacility;
+    count: number;
+    message?: string;
+  } | null>(null);
 
   const [saving, setSaving] = useState<boolean>(false);
   const [savingDraft, setSavingDraft] = useState<boolean>(false);
@@ -351,38 +356,82 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
 
   const handleConfirmDeactivate = async () => {
     if (!deactivateTarget) return;
-    setSaving(true);
-    try {
-      const facilityId = deactivateTarget._id || (deactivateTarget as any).id;
-      const currentIsActive =
-        deactivateTarget.status === 'ACTIVE' || (deactivateTarget as any).isActive === true;
-      const nextIsActive = !currentIsActive;
+    const target = deactivateTarget;
+    const facilityId = target._id || (target as any).id;
+    const currentIsActive =
+      target.status === 'ACTIVE' || (target as any).isActive === true;
+    const nextIsActive = !currentIsActive;
 
+    // Immediately dismiss initial confirmation dialog so it never gets stuck
+    setDeactivateTarget(null);
+    setSaving(true);
+
+    try {
       await amenityManagementService.updateFacilityStatus(facilityId, nextIsActive);
       Alert.alert(
         'Success',
         `Facility ${nextIsActive ? 'activated' : 'deactivated'} successfully`
       );
-      setDeactivateTarget(null);
       await loadData();
     } catch (err: any) {
       console.error('Failed to change status', err);
       const mapped = mapAmenityApiError(err);
+
+      // Policy T1: Interactive Conflict Resolution Dialog for Upcoming Bookings
+      if (mapped.requiresBookingAction) {
+        setDeactivationConflict({
+          facility: target,
+          count: mapped.upcomingBookingsCount || 1,
+          message: mapped.message,
+        });
+        return;
+      }
+
       Alert.alert('Status Update Error', mapped.message || 'Failed to update facility status');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleResolveDeactivationConflict = async (
+    bookingAction: 'HONOR_EXISTING' | 'CANCEL_AND_REFUND'
+  ) => {
+    if (!deactivationConflict?.facility) return;
+    const target = deactivationConflict.facility;
+    const facilityId = target._id || (target as any).id;
+
+    setSaving(true);
+    try {
+      await amenityManagementService.updateFacilityStatus(facilityId, false, bookingAction);
+      const msg =
+        bookingAction === 'HONOR_EXISTING'
+          ? `Facility "${target.name}" deactivated. Existing confirmed bookings will be honored.`
+          : `Facility "${target.name}" deactivated. Existing bookings cancelled with full refunds.`;
+      setDeactivationConflict(null);
+      Alert.alert('Success', msg);
+      await loadData();
+    } catch (err: any) {
+      console.error('Failed to resolve deactivation conflict', err);
+      const mapped = mapAmenityApiError(err);
+      Alert.alert('Resolution Failed', mapped.message || 'Failed to update facility with chosen action');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCloseDeactivationConflict = () => {
+    setDeactivationConflict(null);
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     const facilityId = String(deleteTarget._id || (deleteTarget as any).id || '');
+    setDeleteTarget(null);
     setSaving(true);
     try {
       await amenityManagementService.deleteFacility(facilityId);
       dispatch(removeAmenity(facilityId));
       Alert.alert('Success', 'Facility removed from master catalog');
-      setDeleteTarget(null);
       await loadData();
     } catch (err: any) {
       console.error('Failed to delete amenity', err);
@@ -428,6 +477,9 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     setDeleteTarget,
     deactivateTarget,
     setDeactivateTarget,
+    deactivationConflict,
+    handleResolveDeactivationConflict,
+    handleCloseDeactivationConflict,
     saving,
     savingDraft,
     loadData,

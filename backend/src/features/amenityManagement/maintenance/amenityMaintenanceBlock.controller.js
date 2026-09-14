@@ -90,6 +90,29 @@ export class AmenityMaintenanceBlockController {
   }
 
   /**
+   * Extends maintenance block window and re-checks for conflicting reservations.
+   */
+  async extend(req, res, next) {
+    try {
+      const { blockId } = req.params;
+      const orgId = req.tenant.orgId;
+      const { newEndDateTime, conflictAction } = req.body;
+
+      const result = await amenityMaintenanceBlockService.extendMaintenanceBlock({
+        blockId,
+        orgId,
+        newEndDateTime,
+        conflictAction,
+        cancelledBy: req.user?._id || req.user?.id,
+      });
+
+      return res.success(result, 'Maintenance block extended successfully');
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
    * Retrieves paginated list of maintenance blocks for the organization.
    */
   async getAll(req, res, next) {

@@ -206,7 +206,147 @@ export class AmenityMaintenanceBlockService {
       throw new HttpError(404, 'Maintenance block not found');
     }
 
+    if (targetStatus === 'COMPLETED' || targetStatus === 'CANCELLED') {
+      await amenityOutboxEventRepository.createEvent(
+        {
+          orgId: updated.orgId,
+          eventType: targetStatus === 'COMPLETED' ? 'MAINTENANCE_COMPLETED' : 'MAINTENANCE_CANCELLED',
+          aggregateId: updated._id,
+          aggregateType: 'AmenityMaintenanceBlock',
+          payload: {
+            blockId: updated._id,
+            facilityId: updated.facilityId,
+            resourceId: updated.resourceId,
+            status: targetStatus,
+          },
+        },
+        targetSession
+      );
+
+      amenityManagementEvents.emit(
+        targetStatus === 'COMPLETED' ? 'amenity:maintenance:completed' : 'amenity:maintenance:cancelled',
+        updated
+      );
+    }
+
     return updated;
+  }
+
+  /**
+   * Extends an active maintenance block to a later endDateTime.
+   * Re-checks for overlapping active reservations in the extended window [originalEnd, newEnd].
+   * Requires conflictAction: 'CANCEL_AND_PROCEED' if new conflicts are found.
+   *
+   * @param {Object} params
+   * @param {string|import('mongoose').Types.ObjectId} params.blockId
+   * @param {string|import('mongoose').Types.ObjectId} params.orgId
+   * @param {Date|string} params.newEndDateTime
+   * @param {string} [params.conflictAction]
+   * @param {string|import('mongoose').Types.ObjectId} [params.cancelledBy]
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async extendMaintenanceBlock(
+    { blockId, orgId, newEndDateTime, conflictAction = null, cancelledBy = null },
+    session
+  ) {
+    const newEnd = new Date(newEndDateTime);
+    if (isNaN(newEnd.getTime())) {
+      throw new HttpError(400, 'Invalid newEndDateTime');
+    }
+
+    const executeExtend = async (trxSession) => {
+      const block = await amenityMaintenanceBlockRepository.findById(blockId, orgId, trxSession);
+      if (!block) {
+        throw new HttpError(404, 'Maintenance block not found');
+      }
+
+      if (block.status === 'COMPLETED' || block.status === 'CANCELLED') {
+        throw new HttpError(400, `Cannot extend a ${block.status.toLowerCase()} maintenance block`);
+      }
+
+      if (newEnd <= block.endDateTime) {
+        throw new HttpError(400, 'newEndDateTime must be strictly later than current endDateTime');
+      }
+
+      // Check conflicts in the extended window [block.endDateTime, newEnd]
+      const overlappingReservations = await amenityReservationRepository.findOverlappingActiveReservations(
+        {
+          orgId,
+          facilityId: block.facilityId,
+          resourceId: block.resourceId,
+          effectiveStartDateTime: block.endDateTime,
+          effectiveEndDateTime: newEnd,
+        },
+        trxSession
+      );
+
+      if (overlappingReservations && overlappingReservations.length > 0) {
+        if (conflictAction === 'CANCEL_AND_PROCEED') {
+          for (const booking of overlappingReservations) {
+            await amenityReservationService.cancelReservation(
+              {
+                reservationId: booking._id,
+                orgId,
+                residentId: booking.residentId,
+                cancellationReason: `Facility maintenance extension: ${block.reason}`,
+                cancelledBy,
+                isManagementCancellation: true,
+              },
+              trxSession
+            );
+          }
+        } else {
+          throw new HttpError(
+            409,
+            `Maintenance extension conflicts with ${overlappingReservations.length} booking(s). Confirmation required to cancel and proceed.`,
+            {
+              requiresConflictAction: true,
+              impactedReservationsCount: overlappingReservations.length,
+              impactedReservationIds: overlappingReservations.map((r) => r._id),
+            }
+          );
+        }
+      }
+
+      const updated = await amenityMaintenanceBlockRepository.extend(blockId, orgId, newEnd, trxSession);
+
+      await amenityOutboxEventRepository.createEvent(
+        {
+          orgId,
+          eventType: 'MAINTENANCE_EXTENDED',
+          aggregateId: updated._id,
+          aggregateType: 'AmenityMaintenanceBlock',
+          payload: {
+            blockId: updated._id,
+            facilityId: updated.facilityId,
+            resourceId: updated.resourceId,
+            previousEndDateTime: block.endDateTime,
+            newEndDateTime: updated.endDateTime,
+            impactedReservationsCount: overlappingReservations.length,
+          },
+        },
+        trxSession
+      );
+
+      amenityManagementEvents.emit('amenity:maintenance:extended', {
+        blockId: updated._id,
+        orgId,
+        facilityId: updated.facilityId,
+        resourceId: updated.resourceId,
+        newEndDateTime: updated.endDateTime,
+      });
+
+      return {
+        block: updated,
+        impactedReservationsCount: overlappingReservations.length,
+        impactedReservationIds: overlappingReservations.map((r) => r._id),
+      };
+    };
+
+    if (session) {
+      return executeExtend(session);
+    }
+    return withTransactionRetry(executeExtend);
   }
 
   /**

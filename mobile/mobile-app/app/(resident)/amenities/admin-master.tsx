@@ -10,6 +10,7 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 import { AmenityMasterCard } from '@/src/features/amenities/components/AmenityMasterCard';
 import { AmenityFilterDrawer } from '@/src/features/amenities/components/AmenityFilterDrawer';
+import { AmenityDeactivationConflictModal } from '@/src/features/amenities/components/AmenityDeactivationConflictModal';
 import { useAmenityMaster, ArchetypeFilterOption, AmenityStatusFilter } from '@/src/features/amenities/hooks/useAmenityMaster';
 import {
   AmenityCreationWizard,
@@ -50,6 +51,9 @@ export default function AdminAmenityMasterScreen() {
     setDeleteTarget,
     deactivateTarget,
     setDeactivateTarget,
+    deactivationConflict,
+    handleResolveDeactivationConflict,
+    handleCloseDeactivationConflict,
     saving,
     savingDraft,
     loadData,
@@ -220,6 +224,17 @@ export default function AdminAmenityMasterScreen() {
         }
         onConfirm={handleConfirmDeactivate}
         onCancel={() => setDeactivateTarget(null)}
+      />
+
+      {/* Interactive Deactivation Conflict Resolution Modal (Policy T1) */}
+      <AmenityDeactivationConflictModal
+        visible={!!deactivationConflict}
+        facility={deactivationConflict?.facility || null}
+        bookingsCount={deactivationConflict?.count || 0}
+        loading={saving}
+        onHonorExisting={() => handleResolveDeactivationConflict('HONOR_EXISTING')}
+        onCancelAndRefund={() => handleResolveDeactivationConflict('CANCEL_AND_REFUND')}
+        onDismiss={handleCloseDeactivationConflict}
       />
 
       {/* Delete Confirmation Modal */}

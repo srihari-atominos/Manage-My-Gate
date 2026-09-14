@@ -313,6 +313,8 @@ export class AmenityReservationService {
     let newPaymentStatus = reservation.paymentStatus;
     if (reservation.paymentStatus === 'PAID') {
       newPaymentStatus = 'REFUND_PENDING';
+    } else if (reservation.paymentStatus === 'NOT_APPLICABLE') {
+      newPaymentStatus = 'NOT_REQUIRED';
     }
 
     // 3. Update Reservation Dimensions

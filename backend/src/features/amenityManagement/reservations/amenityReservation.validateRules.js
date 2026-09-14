@@ -42,7 +42,7 @@ export const listReservationsRules = [
     .withMessage('Invalid bookingStatus filter'),
   query('paymentStatus')
     .optional()
-    .isIn(['NOT_REQUIRED', 'PENDING', 'HELD_AUTHORIZED', 'PAID', 'REFUND_PENDING', 'REFUNDED', 'FAILED'])
+    .isIn(['NOT_REQUIRED', 'NOT_APPLICABLE', 'PENDING', 'HELD_AUTHORIZED', 'PAID', 'REFUND_PENDING', 'REFUNDED', 'FAILED'])
     .withMessage('Invalid paymentStatus filter'),
   query('approvalStatus')
     .optional()
