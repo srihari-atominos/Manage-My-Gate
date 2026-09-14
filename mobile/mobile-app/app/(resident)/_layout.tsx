@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 
 export default function ResidentLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="showcase" />
@@ -14,10 +14,10 @@ export default function ResidentLayout() {
       <Stack.Screen name="visitor" />
       <Stack.Screen name="profile/index" />
       <Stack.Screen name="directory/index" />
-      <Stack.Screen name="directory/conversation/[id]" />
+      <Stack.Screen name="directory/conversation/[id]" options={{ animation: 'default' }} />
       <Stack.Screen name="notes/index" />
       <Stack.Screen name="settings/index" />
-      <Stack.Screen name="notifications" />
+      <Stack.Screen name="notifications" options={{ animation: 'default' }} />
     </Stack>
   );
 }

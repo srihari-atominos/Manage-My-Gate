@@ -105,9 +105,18 @@ export default function OtpScreen() {
             </View>
 
             {/* Form Card */}
-            <View className="bg-card border border-border rounded-2xl p-5 gap-4">
+            <View
+              style={{
+                shadowColor: '#1C1917',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.08,
+                shadowRadius: 16,
+                elevation: 4,
+              }}
+              className="bg-white/75 dark:bg-[#1C1917]/75 backdrop-blur-xl border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-4 shadow-xl shadow-black/5"
+            >
               <View className="gap-2">
-                <Text className="text-foreground font-semibold text-sm">Security Code</Text>
+                <Text className="text-[#1C1917] dark:text-white font-semibold text-sm">Security Code</Text>
                 
                 <Controller
                   control={control}
@@ -115,13 +124,13 @@ export default function OtpScreen() {
                   render={({ field: { onChange, onBlur, value } }) => (
                     <TextInput
                       placeholder="123456"
-                      placeholderTextColor="#777"
+                      placeholderTextColor="#78716C"
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
                       keyboardType="number-pad"
                       maxLength={8}
-                      className="bg-muted/50 text-foreground border border-border rounded-xl px-4 py-3.5 text-center text-lg font-bold tracking-[6px]"
+                      className="bg-white/75 dark:bg-[#292524]/75 text-[#1C1917] dark:text-white border border-white/80 dark:border-white/20 rounded-xl px-4 py-3.5 text-center text-lg font-bold tracking-[6px] shadow-2xs"
                     />
                   )}
                 />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ActivityIndicator, Animated } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useColorScheme } from 'nativewind';
 
@@ -64,6 +64,23 @@ export const SocialAuthButton = ({
   disabled = false,
 }: SocialAuthButtonProps) => {
   const [modalVisible, setModalVisible] = React.useState(false);
+  const pressScale = React.useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.timing(pressScale, {
+      toValue: 0.98,
+      duration: 80,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(pressScale, {
+      toValue: 1,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const handlePress = () => {
     if (onPress) {
@@ -79,12 +96,15 @@ export const SocialAuthButton = ({
 
   return (
     <>
-      <TouchableOpacity
-        onPress={handlePress}
-        disabled={disabled || loading}
-        activeOpacity={0.82}
-        className={`flex-1 h-12 bg-white dark:bg-[#1C1917] border border-[#E7E5E4] dark:border-[#292524] rounded-xl flex-row items-center justify-center gap-2 shadow-2xs active:bg-stone-50 dark:active:bg-[#292524] ${disabled || loading ? 'opacity-60' : ''} ${className}`}
-      >
+      <Animated.View style={{ flex: 1, transform: [{ scale: pressScale }] }}>
+        <TouchableOpacity
+          onPress={handlePress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          disabled={disabled || loading}
+          activeOpacity={0.82}
+          className={`h-12 bg-white/75 dark:bg-[#1C1917]/75 border border-white/80 dark:border-white/20 rounded-xl flex-row items-center justify-center gap-2 shadow-2xs backdrop-blur-sm active:bg-white/90 dark:active:bg-[#292524] ${disabled || loading ? 'opacity-60' : ''} ${className}`}
+        >
         {loading ? (
           <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : isApple ? '#1C1917' : '#00a4ef'} />
         ) : (
@@ -101,7 +121,8 @@ export const SocialAuthButton = ({
             </Text>
           </>
         )}
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Themed Notice Popup Modal */}
       <Modal

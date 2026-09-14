@@ -148,10 +148,10 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
 
         <View
           className={cn(
-            'flex-row rounded-2xl border bg-card px-3.5 py-3 shadow-xs transition-colors',
+            'flex-row rounded-2xl border bg-white/75 dark:bg-[#292524]/75 px-3.5 py-3 shadow-2xs transition-colors backdrop-blur-sm',
             props.multiline ? 'items-start' : 'items-center',
             // Default border
-            'border-border/80',
+            'border-white/80 dark:border-white/20',
             // Focused state
             isFocused && !error && 'border-primary ring-2 ring-primary/20',
             // Incomplete status

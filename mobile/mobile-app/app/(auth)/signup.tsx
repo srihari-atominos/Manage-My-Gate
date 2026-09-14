@@ -8,6 +8,7 @@ import {
   Home,
   UserPlus,
   LogIn,
+  Smartphone,
 } from 'lucide-react-native';
 import * as React from 'react';
 import {
@@ -18,6 +19,7 @@ import {
   TextInput as RNTextInput,
   Platform,
   KeyboardAvoidingView,
+  Image,
   ImageBackground,
   Animated,
   Easing,
@@ -69,8 +71,20 @@ const signInSchema = yup.object().shape({
   password: yup.string().required('Password is required'),
 });
 
+// Phone OTP Schema (for existing user tab)
+const phoneSignInSchema = yup.object().shape({
+  phone: yup
+    .string()
+    .required('Phone number is required')
+    .test('valid-phone', 'Please enter a valid phone number with country code', (value) => {
+      if (!value) return false;
+      return /^\+[1-9]\d{7,14}$/.test(value.trim());
+    }),
+});
+
 interface SignupFormValues { name: string; email: string; phone: string; unitNumber?: string; password: string; confirmPassword: string; }
 interface SignInFormValues { login: string; password: string; }
+interface PhoneSignInFormValues { phone: string; }
 
 function CTAButton({
   onPress,
@@ -136,14 +150,17 @@ function CTAButton({
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
-  const { register: performRegister, login: performLogin, loading, error, clearStatus, isAuthenticated } = useAuth();
+  const { register: performRegister, login: performLogin, requestOtp, otpSent, loading, error, clearStatus, isAuthenticated } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
 
   const [userType, setUserType] = React.useState<'new' | 'existing'>('new');
+  const [existingAuthMode, setExistingAuthMode] = React.useState<'basic' | 'phone'>('basic');
   const [localLoading, setLocalLoading] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
   const [signInLoading, setSignInLoading] = React.useState(false);
   const [signInError, setSignInError] = React.useState<string | null>(null);
+  const [submittedPhone, setSubmittedPhone] = React.useState<string | null>(null);
+  const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
 
   const emailInputRef = React.useRef<RNTextInput>(null);
   const unitInputRef = React.useRef<RNTextInput>(null);
@@ -167,6 +184,12 @@ export default function SignupScreen() {
     resolver: yupResolver(signInSchema),
     mode: 'onTouched',
     defaultValues: { login: '', password: '' },
+  });
+
+  const phoneForm = useForm<PhoneSignInFormValues>({
+    resolver: yupResolver(phoneSignInSchema),
+    mode: 'onTouched',
+    defaultValues: { phone: '' },
   });
 
   React.useEffect(() => {
@@ -207,6 +230,16 @@ export default function SignupScreen() {
     }
   }, [isAuthenticated]);
 
+  // Reactively route to OTP screen if Phone OTP sent
+  React.useEffect(() => {
+    if (otpSent && submittedPhone) {
+      router.push({
+        pathname: '/(auth)/otp',
+        params: { phone: submittedPhone },
+      });
+    }
+  }, [otpSent, submittedPhone]);
+
   const onSubmit = async (data: SignupFormValues) => {
     try {
       setLocalLoading(true);
@@ -243,6 +276,20 @@ export default function SignupScreen() {
     }
   };
 
+  const onPhoneSignInSubmit = async (data: PhoneSignInFormValues) => {
+    try {
+      setIsSubmittingPhone(true);
+      setSignInError(null);
+      setSubmittedPhone(data.phone.trim());
+      await requestOtp(data.phone.trim(), false);
+    } catch (err: any) {
+      const parsed = parseBackendError(err, 'Failed to send verification code. Please try again.');
+      setSignInError(parsed.userMessage);
+    } finally {
+      setIsSubmittingPhone(false);
+    }
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -265,8 +312,8 @@ export default function SignupScreen() {
 
               {/* Brand Header */}
               <Animated.View style={{ opacity: emblemOpacity, transform: [{ scale: emblemScale }, { translateY: emblemFloat }], alignItems: 'center', justifyContent: 'center' }}>
-                <NahomEmblem size={110} />
-                <View style={{ marginTop: 6, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                <NahomEmblem size={106} />
+                <View style={{ marginTop: -2, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
                   <NahomWordmark />
                 </View>
               </Animated.View>
@@ -278,16 +325,16 @@ export default function SignupScreen() {
                 <View
                   style={{
                     shadowColor: '#1C1917',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.04,
-                    shadowRadius: 12,
-                    elevation: 2,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 16,
+                    elevation: 4,
                   }}
-                  className="bg-white dark:bg-[#1C1917] border border-[#F5F5F4] dark:border-[#292524] rounded-3xl p-5 gap-3.5"
+                  className="bg-white/75 dark:bg-[#1C1917]/75 backdrop-blur-xl border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-3.5 shadow-xl shadow-black/5"
                 >
 
-                  {/* Tab Switcher */}
-                  <View className="bg-[#F5F5F4]/95 dark:bg-[#292524]/70 p-1.5 rounded-2xl flex-row border border-[#E7E5E4] dark:border-[#44403C]">
+                  {/* Tab Switcher (New User vs Existing User) */}
+                  <View className="bg-white/40 dark:bg-black/30 backdrop-blur-md p-1.5 rounded-2xl flex-row border border-white/60 dark:border-white/15 shadow-2xs">
                     <TouchableOpacity
                       onPress={() => handleTabSwitch('new')}
                       activeOpacity={0.85}
@@ -297,11 +344,13 @@ export default function SignupScreen() {
                       style={
                         userType === 'new'
                           ? {
-                              backgroundColor: '#FFFFFF',
+                              backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                              borderColor: 'rgba(255, 255, 255, 0.7)',
+                              borderWidth: 1,
                               shadowColor: '#000000',
                               shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.06,
-                              shadowRadius: 6,
+                              shadowOpacity: 0.08,
+                              shadowRadius: 8,
                               elevation: 2,
                             }
                           : {
@@ -331,11 +380,13 @@ export default function SignupScreen() {
                       style={
                         userType === 'existing'
                           ? {
-                              backgroundColor: '#FFFFFF',
+                              backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                              borderColor: 'rgba(255, 255, 255, 0.7)',
+                              borderWidth: 1,
                               shadowColor: '#000000',
                               shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.06,
-                              shadowRadius: 6,
+                              shadowOpacity: 0.08,
+                              shadowRadius: 8,
                               elevation: 2,
                             }
                           : {
@@ -362,32 +413,326 @@ export default function SignupScreen() {
                   {userType === 'new' ? (
                     /* NEW USER: Sign-Up Form */
                     <View className="gap-3.5">
-                      <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center">Create Resident Account</Text>
-                      <Controller control={control} name="name" render={({ field: { onChange, onBlur, value } }) => (<TextInput label="Full Name" labelClassName="text-sm font-bold text-[#1C1917] dark:text-white" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="e.g. John Doe" autoCapitalize="words" leftIcon={User} error={errors.name?.message} returnKeyType="next" onSubmitEditing={() => emailInputRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <Controller control={control} name="email" render={({ field: { onChange, onBlur, value } }) => (<TextInput ref={emailInputRef} label="Email Address" labelClassName="text-sm font-bold text-[#1C1917] dark:text-white" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="john@example.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} leftIcon={Mail} error={errors.email?.message} returnKeyType="next" onSubmitEditing={() => unitInputRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <Controller control={control} name="phone" render={({ field: { onChange, value } }) => (<PhoneInput label="Phone Number" required placeholder="98765 43210" value={value} onChangeText={onChange} error={errors.phone?.message} />)} />
-                      <Controller control={control} name="unitNumber" render={({ field: { onChange, onBlur, value } }) => (<TextInput ref={unitInputRef} label="Villa / Unit No. (Optional)" labelClassName="text-sm font-bold text-[#1C1917] dark:text-white" value={value} onChangeText={onChange} onBlur={onBlur} placeholder="e.g. Villa 104, Block B" leftIcon={Home} returnKeyType="next" onSubmitEditing={() => passwordInputRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <Controller control={control} name="password" render={({ field: { onChange, onBlur, value } }) => (<PasswordInput ref={passwordInputRef} label="Password" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Create a password" leftIcon={Lock} showRequirements error={errors.password?.message} returnKeyType="next" onSubmitEditing={() => confirmPasswordInputRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <Controller control={control} name="confirmPassword" render={({ field: { onChange, onBlur, value } }) => (<PasswordInput ref={confirmPasswordInputRef} label="Confirm Password" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Re-enter password" leftIcon={Lock} confirmValue={watch('password')} error={errors.confirmPassword?.message} returnKeyType="go" onSubmitEditing={handleSubmit(onSubmit)} />)} />
-                      {(localError || error) ? (<View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5"><Text className="text-rose-500 text-xs text-center font-medium">{localError || error}</Text></View>) : null}
-                      <CTAButton onPress={handleSubmit(onSubmit)} disabled={loading || localLoading} loading={loading || localLoading} label="Create Account" loadingLabel="Creating..." />
+                      <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center font-sans">
+                        Create Resident Account
+                      </Text>
+                      <Controller
+                        control={control}
+                        name="name"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <TextInput
+                            label="Full Name"
+                            labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
+                            required
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="e.g. John Doe"
+                            autoCapitalize="words"
+                            leftIcon={User}
+                            error={errors.name?.message}
+                            returnKeyType="next"
+                            onSubmitEditing={() => emailInputRef.current?.focus()}
+                            blurOnSubmit={false}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="email"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <TextInput
+                            ref={emailInputRef}
+                            label="Email Address"
+                            labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
+                            required
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="john@example.com"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            leftIcon={Mail}
+                            error={errors.email?.message}
+                            returnKeyType="next"
+                            onSubmitEditing={() => unitInputRef.current?.focus()}
+                            blurOnSubmit={false}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="phone"
+                        render={({ field: { onChange, value } }) => (
+                          <PhoneInput
+                            label="Phone Number"
+                            required
+                            placeholder="98765 43210"
+                            value={value}
+                            onChangeText={onChange}
+                            error={errors.phone?.message}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="unitNumber"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <TextInput
+                            ref={unitInputRef}
+                            label="Villa / Unit No. (Optional)"
+                            labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="e.g. Villa 104, Block B"
+                            leftIcon={Home}
+                            returnKeyType="next"
+                            onSubmitEditing={() => passwordInputRef.current?.focus()}
+                            blurOnSubmit={false}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="password"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <PasswordInput
+                            ref={passwordInputRef}
+                            label="Password"
+                            required
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="Create a password"
+                            leftIcon={Lock}
+                            showRequirements
+                            error={errors.password?.message}
+                            returnKeyType="next"
+                            onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                            blurOnSubmit={false}
+                          />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="confirmPassword"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <PasswordInput
+                            ref={confirmPasswordInputRef}
+                            label="Confirm Password"
+                            required
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="Re-enter password"
+                            leftIcon={Lock}
+                            confirmValue={watch('password')}
+                            error={errors.confirmPassword?.message}
+                            returnKeyType="go"
+                            onSubmitEditing={handleSubmit(onSubmit)}
+                          />
+                        )}
+                      />
+                      {(localError || error) ? (
+                        <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                          <Text className="text-rose-500 text-xs text-center font-medium">
+                            {localError || error}
+                          </Text>
+                        </View>
+                      ) : null}
+                      <CTAButton
+                        onPress={handleSubmit(onSubmit)}
+                        disabled={loading || localLoading}
+                        loading={loading || localLoading}
+                        label="Create Account"
+                        loadingLabel="Creating..."
+                      />
                     </View>
                   ) : (
                     /* EXISTING USER: Sign-In Form */
                     <View className="gap-3.5">
-                      <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center">Welcome Back</Text>
-                      <Controller control={signInForm.control} name="login" render={({ field: { onChange, onBlur, value } }) => (<TextInput label="Email or Username" labelClassName="text-sm font-bold text-[#1C1917] dark:text-white" required value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Enter your email or username" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" leftIcon={Mail} error={signInForm.formState.errors.login?.message} returnKeyType="next" onSubmitEditing={() => signInPasswordRef.current?.focus()} blurOnSubmit={false} />)} />
-                      <View>
-                        <View className="flex-row items-center justify-between mb-1.5">
-                          <Text className="text-sm font-bold text-[#1C1917] dark:text-white">Password <Text className="text-[#EA580C] font-bold">*</Text></Text>
-                          <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')} activeOpacity={0.8} hitSlop={8} accessibilityRole="button" accessibilityLabel="Forgot password">
-                            <Text className="text-xs font-bold text-[#EA580C]">Forgot?</Text>
-                          </TouchableOpacity>
-                        </View>
-                        <Controller control={signInForm.control} name="password" render={({ field: { onChange, onBlur, value } }) => (<PasswordInput ref={signInPasswordRef} value={value} onChangeText={onChange} onBlur={onBlur} placeholder="Enter your password" leftIcon={Lock} error={signInForm.formState.errors.password?.message} returnKeyType="go" onSubmitEditing={signInForm.handleSubmit(onSignInSubmit)} />)} />
+                      <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center font-sans">
+                        Welcome Back
+                      </Text>
+
+                      {/* Sub-tabs: Email/Password vs Phone OTP */}
+                      <View className="bg-white/40 dark:bg-black/30 backdrop-blur-md p-1.5 rounded-2xl flex-row border border-white/60 dark:border-white/15 shadow-2xs">
+                        <TouchableOpacity
+                          onPress={() => setExistingAuthMode('basic')}
+                          activeOpacity={0.85}
+                          style={
+                            existingAuthMode === 'basic'
+                              ? {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                                  borderColor: 'rgba(255, 255, 255, 0.7)',
+                                  borderWidth: 1,
+                                  shadowColor: '#000000',
+                                  shadowOffset: { width: 0, height: 2 },
+                                  shadowOpacity: 0.08,
+                                  shadowRadius: 8,
+                                  elevation: 2,
+                                }
+                              : {
+                                  backgroundColor: 'transparent',
+                                }
+                          }
+                          className="flex-1 py-2 rounded-xl flex-row items-center justify-center gap-1.5"
+                        >
+                          <Lock
+                            size={14}
+                            color={existingAuthMode === 'basic' ? '#EA580C' : '#57534E'}
+                            strokeWidth={existingAuthMode === 'basic' ? 2.4 : 2}
+                          />
+                          <Text
+                            style={{ color: existingAuthMode === 'basic' ? '#EA580C' : '#57534E' }}
+                            className={`text-xs ${existingAuthMode === 'basic' ? 'font-bold' : 'font-medium'}`}
+                          >
+                            Email / Password
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          onPress={() => setExistingAuthMode('phone')}
+                          activeOpacity={0.85}
+                          style={
+                            existingAuthMode === 'phone'
+                              ? {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.88)',
+                                  borderColor: 'rgba(255, 255, 255, 0.7)',
+                                  borderWidth: 1,
+                                  shadowColor: '#000000',
+                                  shadowOffset: { width: 0, height: 2 },
+                                  shadowOpacity: 0.08,
+                                  shadowRadius: 8,
+                                  elevation: 2,
+                                }
+                              : {
+                                  backgroundColor: 'transparent',
+                                }
+                          }
+                          className="flex-1 py-2 rounded-xl flex-row items-center justify-center gap-1.5"
+                        >
+                          <Smartphone
+                            size={14}
+                            color={existingAuthMode === 'phone' ? '#EA580C' : '#57534E'}
+                            strokeWidth={existingAuthMode === 'phone' ? 2.4 : 2}
+                          />
+                          <Text
+                            style={{ color: existingAuthMode === 'phone' ? '#EA580C' : '#57534E' }}
+                            className={`text-xs ${existingAuthMode === 'phone' ? 'font-bold' : 'font-medium'}`}
+                          >
+                            Sign in with OTP
+                          </Text>
+                        </TouchableOpacity>
                       </View>
-                      {(signInError || error) ? (<View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5"><Text className="text-rose-500 text-xs text-center font-medium">{signInError || error}</Text></View>) : null}
-                      <CTAButton onPress={signInForm.handleSubmit(onSignInSubmit)} disabled={signInLoading || googleLoading} loading={signInLoading} label="Sign In" loadingLabel="Signing In..." />
+
+                      {existingAuthMode === 'basic' ? (
+                        <>
+                          <Controller
+                            control={signInForm.control}
+                            name="login"
+                            render={({ field: { onChange, onBlur, value } }) => (
+                              <TextInput
+                                label="Email or Username"
+                                labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
+                                required
+                                value={value}
+                                onChangeText={onChange}
+                                onBlur={onBlur}
+                                placeholder="Enter your email or username"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                keyboardType="email-address"
+                                leftIcon={Mail}
+                                error={signInForm.formState.errors.login?.message}
+                                returnKeyType="next"
+                                onSubmitEditing={() => signInPasswordRef.current?.focus()}
+                                blurOnSubmit={false}
+                              />
+                            )}
+                          />
+                          <View>
+                            <View className="flex-row items-center justify-between mb-1.5">
+                              <Text className="text-sm font-bold text-[#1C1917] dark:text-white">
+                                Password <Text className="text-[#EA580C] font-bold">*</Text>
+                              </Text>
+                              <TouchableOpacity
+                                onPress={() => router.push('/(auth)/forgot-password')}
+                                activeOpacity={0.8}
+                                hitSlop={8}
+                                accessibilityRole="button"
+                                accessibilityLabel="Forgot password"
+                              >
+                                <Text className="text-xs font-bold text-[#EA580C]">Forgot?</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <Controller
+                              control={signInForm.control}
+                              name="password"
+                              render={({ field: { onChange, onBlur, value } }) => (
+                                <PasswordInput
+                                  ref={signInPasswordRef}
+                                  value={value}
+                                  onChangeText={onChange}
+                                  onBlur={onBlur}
+                                  placeholder="Enter your password"
+                                  leftIcon={Lock}
+                                  error={signInForm.formState.errors.password?.message}
+                                  returnKeyType="go"
+                                  onSubmitEditing={signInForm.handleSubmit(onSignInSubmit)}
+                                />
+                              )}
+                            />
+                          </View>
+                          {(signInError || error) ? (
+                            <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                              <Text className="text-rose-500 text-xs text-center font-medium">
+                                {signInError || error}
+                              </Text>
+                            </View>
+                          ) : null}
+                          <CTAButton
+                            onPress={signInForm.handleSubmit(onSignInSubmit)}
+                            disabled={signInLoading || googleLoading}
+                            loading={signInLoading}
+                            label="Sign In"
+                            loadingLabel="Signing In..."
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Controller
+                            control={phoneForm.control}
+                            name="phone"
+                            render={({ field: { onChange, value } }) => (
+                              <PhoneInput
+                                label="Mobile Number"
+                                required
+                                placeholder="98765 43210"
+                                value={value}
+                                onChangeText={onChange}
+                                error={phoneForm.formState.errors.phone?.message}
+                              />
+                            )}
+                          />
+                          {(signInError || error) ? (
+                            <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                              <Text className="text-rose-500 text-xs text-center font-medium">
+                                {signInError || error}
+                              </Text>
+                            </View>
+                          ) : null}
+                          <CTAButton
+                            onPress={phoneForm.handleSubmit(onPhoneSignInSubmit)}
+                            disabled={isSubmittingPhone || googleLoading}
+                            loading={isSubmittingPhone}
+                            label="Sign in with OTP"
+                            loadingLabel="Sending Code..."
+                          />
+                        </>
+                      )}
                     </View>
                   )}
                 </View>
@@ -395,7 +740,7 @@ export default function SignupScreen() {
                 {/* OR CONTINUE WITH Divider (High-visibility frosted pill) */}
                 <View className="flex-row items-center my-2 gap-2.5">
                   <View className="flex-1 h-[1.5px] bg-white/70 dark:bg-white/20" />
-                  <View className="bg-white/95 dark:bg-[#1C1917]/95 px-3.5 py-1 rounded-full border border-white/60 dark:border-white/10 shadow-xs">
+                  <View className="bg-white/75 dark:bg-[#1C1917]/75 px-3.5 py-1 rounded-full border border-white/70 dark:border-white/15 shadow-2xs backdrop-blur-md">
                     <Text className="text-[10px] font-bold text-[#1C1917] dark:text-white tracking-widest uppercase font-sans">
                       Or Continue With
                     </Text>
@@ -413,21 +758,21 @@ export default function SignupScreen() {
                   <SocialAuthButton provider="apple" />
                 </View>
 
-                {/* Bottom Hint (High-visibility elevated pill container) */}
+                {/* Bottom Hint (Transparent container without underline) */}
                 <View className="items-center justify-center pt-2.5 pb-2">
-                  <View className="bg-white/95 dark:bg-[#1C1917]/95 border border-white/80 dark:border-white/10 px-4 py-2 rounded-full shadow-sm flex-row items-center justify-center">
+                  <View className="bg-transparent flex-row items-center justify-center">
                     {userType === 'new' ? (
                       <>
                         <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
                           Already have an account?{' '}
                         </Text>
                         <TouchableOpacity
-                          onPress={() => handleTabSwitch('existing')}
+                          onPress={() => router.replace('/(auth)/login')}
                           activeOpacity={0.8}
                           accessibilityRole="button"
                           accessibilityLabel="Switch to sign in"
                         >
-                          <Text className="text-xs font-bold text-[#EA580C] underline">
+                          <Text className="text-xs font-bold text-[#EA580C]">
                             Sign In
                           </Text>
                         </TouchableOpacity>
@@ -443,7 +788,7 @@ export default function SignupScreen() {
                           accessibilityRole="button"
                           accessibilityLabel="Switch to create account"
                         >
-                          <Text className="text-xs font-bold text-[#EA580C] underline">
+                          <Text className="text-xs font-bold text-[#EA580C]">
                             Create Account
                           </Text>
                         </TouchableOpacity>
