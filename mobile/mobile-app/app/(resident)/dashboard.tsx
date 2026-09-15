@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, BackHandler, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, BackHandler } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -13,21 +13,18 @@ import RoleBasedGreeting from '@/components/dashboard/RoleBasedGreeting';
 import HeroBanner from '@/components/dashboard/HeroBanner';
 import QuickActionsGrid from '@/components/dashboard/QuickActionsGrid';
 import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
+import DashboardBackground from '@/components/dashboard/DashboardBackground';
 import BottomNavigationBar from '@/components/navigation/BottomNavigationBar';
 import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
 import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useTranslation } from '@/src/utils/i18n';
 
-const bgLight = require('@/assets/images/dashboard-bg-light.jpg');
-const bgDark = require('@/assets/images/dashboard-bg-dark.jpg');
-
 export default function DashboardScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const bgSource = isDark ? bgDark : bgLight;
   const [customiseOpen, setCustomiseOpen] = React.useState(false);
   const { handleScroll, scrollHandlerProps } = useBottomNavScroll();
 
@@ -138,23 +135,8 @@ export default function DashboardScreen() {
     <View className="flex-1 bg-background relative">
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Subtle, premium gated community background image for light and dark mode */}
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        <Image
-          source={bgSource}
-          style={{ width: '100%', height: '100%', position: 'absolute' }}
-          resizeMode="cover"
-        />
-        {/* Subtle theme overlay maintaining contrast and readability */}
-        <View
-          style={{
-            ...StyleSheet.absoluteFillObject,
-            backgroundColor: isDark
-              ? 'rgba(14, 16, 20, 0.58)'
-              : 'rgba(250, 248, 246, 0.48)',
-          }}
-        />
-      </View>
+      {/* NAHOM Connected Community / Architectural Abstract background system */}
+      <DashboardBackground />
 
       {/* Top Navigation Header */}
       <MobileHeader transparent />

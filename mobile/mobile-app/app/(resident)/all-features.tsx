@@ -22,9 +22,11 @@ import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalo
 import { isFeatureAllowedForUser, checkIsAdmin } from '@/src/utils/rbac';
 import { useTranslation } from '@/src/utils/i18n';
 import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AllFeaturesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ category?: string }>();
   const { t, tCategoryName, tFeatureName, tFeatureSubtitle } = useTranslation();
   const { scrollHandlerProps } = useBottomNavScroll();
@@ -135,7 +137,7 @@ export default function AllFeaturesScreen() {
         className="flex-1 px-4 pt-3"
         showsVerticalScrollIndicator={false}
         {...scrollHandlerProps}
-        contentContainerStyle={{ paddingBottom: 110 }}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 95, 130) }}
       >
         <View className="gap-4 pb-8 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}

@@ -313,12 +313,7 @@ export function ScreenShell({
             {children}
           </ScrollView>
         ) : (
-          <View
-            className="flex-1 bg-background"
-            style={{
-              paddingBottom: shouldShowBottomNav ? (Platform.OS === 'ios' ? 84 : Math.max(insets.bottom + 68, 76)) : 0,
-            }}
-          >
+          <View className="flex-1 bg-background">
             {children}
           </View>
         )}
