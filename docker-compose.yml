@@ -87,6 +87,12 @@ services:
       - CLIENT_URL=${CLIENT_URL}
       - APP_CLIENT_URL=${APP_CLIENT_URL:-https://managemygate.e3esg.com}
       - WEB_CLIENT_URL=${WEB_CLIENT_URL:-https://managemygate.e3esg.com}
+      - WEB_APP_URL=${WEB_APP_URL:-https://managemygate.e3esg.com}
+      - ANDROID_PACKAGE_NAME=${ANDROID_PACKAGE_NAME:-com.atominosconsulting.nahom}
+      - ANDROID_PLAY_SIGNING_SHA256=${ANDROID_PLAY_SIGNING_SHA256:-}
+      - IOS_BUNDLE_ID=${IOS_BUNDLE_ID:-com.atominosconsulting.nahom}
+      - IOS_APPLE_TEAM_ID=${IOS_APPLE_TEAM_ID:-}
+      - IOS_APP_STORE_ID=${IOS_APP_STORE_ID:-}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - REDIS_URL=${REDIS_URL}
       - NODE_ENV=${NODE_ENV:-production}

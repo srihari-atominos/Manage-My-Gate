@@ -19,12 +19,12 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
   const [redirectingToStore, setRedirectingToStore] = useState(false)
 
   const playStoreFallback = 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom'
-  const appStoreFallback = 'https://apps.apple.com/app/manage-my-gate/id6470000000'
 
   const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent || '')
+  // Dynamic store URL: Android uses playStoreUrl or fallback; iOS strictly uses supplied appStoreUrl (null when unconfigured)
   const storeUrl = isAndroid
     ? (handoffData?.playStoreUrl || playStoreFallback)
-    : (handoffData?.appStoreUrl || appStoreFallback)
+    : (handoffData?.appStoreUrl || null)
   const deepLink = handoffData?.deepLink
 
   useEffect(() => {
@@ -34,17 +34,17 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
     }
 
     // 2. Automatic fallback: If browser window remains active/focused after 1.8s,
-    // the native app is not installed. Transition state and redirect to store.
-    const fallbackTimer = setTimeout(() => {
-      if (typeof document !== 'undefined' && document.hasFocus && document.hasFocus()) {
-        setRedirectingToStore(true)
-        if (storeUrl) {
+    // and a valid storeUrl is configured, redirect to the store.
+    if (storeUrl) {
+      const fallbackTimer = setTimeout(() => {
+        if (typeof document !== 'undefined' && document.hasFocus && document.hasFocus()) {
+          setRedirectingToStore(true)
           window.location.href = storeUrl
         }
-      }
-    }, 1800)
+      }, 1800)
 
-    return () => clearTimeout(fallbackTimer)
+      return () => clearTimeout(fallbackTimer)
+    }
   }, [deepLink, storeUrl])
 
   const storeName = isAndroid ? 'Google Play Store' : 'Apple App Store'
@@ -81,17 +81,26 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
           </p>
         </div>
 
-        {/* Fallback direct link in case browser pop-up/redirect blocker prevents auto-navigation */}
+        {/* Store link or user-friendly manual guidance if store ID is unconfigured */}
         <div className="pt-2 text-center">
-          <small className="text-muted" style={{ fontSize: '0.78rem' }}>
-            {t('auth.handoff.troubleRedirecting', 'If the app or store does not open automatically,')}{' '}
-            <a
-              href={storeUrl}
-              className="text-primary fw-semibold text-decoration-none"
-            >
-              {t('auth.handoff.tapToContinue', 'tap here to continue.')}
-            </a>
-          </small>
+          {storeUrl ? (
+            <small className="text-muted" style={{ fontSize: '0.78rem' }}>
+              {t('auth.handoff.troubleRedirecting', 'If the app or store does not open automatically,')}{' '}
+              <a
+                href={storeUrl}
+                className="text-primary fw-semibold text-decoration-none"
+              >
+                {t('auth.handoff.tapToContinue', 'tap here to continue.')}
+              </a>
+            </small>
+          ) : (
+            <small className="text-muted" style={{ fontSize: '0.78rem' }}>
+              {t(
+                'auth.handoff.iosAppStoreNotice',
+                'The Manage-My-Gate iOS app is not yet available through a direct App Store link. If not already installed, please search for "Manage-My-Gate" in the Apple App Store or contact your administrator.'
+              )}
+            </small>
+          )}
         </div>
       </CCardBody>
     </CCard>

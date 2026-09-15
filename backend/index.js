@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import config from './src/config/config.js';
 import swaggerRouter from './src/routes/swagger.routes.js';
 import apiRouter from './src/routes/api.routes.js';
+import wellKnownRouter from './src/routes/wellKnown.routes.js';
 import { pageNotFound, errorHandler } from './src/middlewares/error.middleware.js';
 import responseHandler from './src/middlewares/responseHandler.middleware.js';
 import correlationIdMiddleware from './src/middlewares/correlationId.middleware.js';
@@ -103,6 +104,9 @@ app.use(cookieParser());
 
 // Attach standard response helper
 app.use(responseHandler);
+
+// Public infrastructure routes (.well-known for Universal Links and Android App Links)
+app.use('/.well-known', wellKnownRouter);
 
 // Static public folder
 app.use('/.well-known', express.static(path.join(__dirname, 'public', '.well-known')));

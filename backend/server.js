@@ -18,6 +18,7 @@ import complaintCron from './src/features/complaint/complaint.cron.js';
 import assessmentCron from './src/features/assessment/utils/assessmentCron.js';
 import userCron from './src/features/user/user.cron.js';
 import outboxWorker from './src/workers/outbox.worker.js';
+import { validateMobileDeepLinkConfig } from './src/utils/configValidator.util.js';
 
 const initCronJobs = () => {
   if (config.nodeEnv !== 'test') {
@@ -30,6 +31,9 @@ const initCronJobs = () => {
 
 const startServer = async () => {
   try {
+    // 0. Audit mobile deep-link and Universal Link configurations
+    validateMobileDeepLinkConfig();
+
     initCronJobs();
     outboxWorker.init();
     // 1. Connect the database FIRST

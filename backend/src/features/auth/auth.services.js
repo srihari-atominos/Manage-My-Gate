@@ -2268,7 +2268,10 @@ export class AuthService {
     const scheme = config.mobile?.scheme || 'managemygate';
     const universalDomain = config.mobile?.universalLinkDomain || 'app.managemygate.com';
     const androidPackage = config.mobile?.androidPackageName || 'com.atominosconsulting.nahom';
-    const iosAppStoreId = config.mobile?.iosAppStoreId || '6470000000';
+    const rawAppStoreId = config.mobile?.iosAppStoreId;
+    const isPlaceholder = !rawAppStoreId || 
+      /^(6470000000|<.*>|__CONFIGURE_PRODUCTION_VALUE__|your_.*_here)$/i.test(String(rawAppStoreId).trim());
+    const validAppStoreId = isPlaceholder ? null : String(rawAppStoreId).trim();
 
     return {
       handoffId: handoffResult.handoffId,
@@ -2276,7 +2279,7 @@ export class AuthService {
       deepLink: `${scheme}://invite/handoff/${handoffResult.handoffId}`,
       universalLink: `https://${universalDomain}/invite/handoff/${handoffResult.handoffId}`,
       playStoreUrl: `https://play.google.com/store/apps/details?id=${androidPackage}&referrer=${encodeURIComponent(`handoffId=${handoffResult.handoffId}`)}`,
-      appStoreUrl: `https://apps.apple.com/app/manage-my-gate/id${iosAppStoreId}`,
+      appStoreUrl: validAppStoreId ? `https://apps.apple.com/app/manage-my-gate/id${validAppStoreId}` : null,
     };
   }
 

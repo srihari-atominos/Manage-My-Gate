@@ -84,11 +84,15 @@ export const config = {
     microsoftClientId: process.env.MICROSOFT_CLIENT_ID || '',
     microsoftTenantId: process.env.MICROSOFT_TENANT_ID || '',
   },
+  webAppUrl: process.env.WEB_APP_URL || process.env.WEB_CLIENT_URL || process.env.CLIENT_URL || (process.env.NODE_ENV === 'production' ? 'https://managemygate.e3esg.com' : 'http://localhost:3004'),
   mobile: {
     scheme: process.env.MOBILE_APP_SCHEME || 'managemygate',
     universalLinkDomain: process.env.MOBILE_UNIVERSAL_LINK_DOMAIN || 'app.managemygate.com',
-    androidPackageName: process.env.MOBILE_ANDROID_PACKAGE_NAME || 'com.atominosconsulting.nahom',
-    iosAppStoreId: process.env.MOBILE_IOS_APP_STORE_ID || '6470000000',
+    androidPackageName: process.env.ANDROID_PACKAGE_NAME || process.env.MOBILE_ANDROID_PACKAGE_NAME || 'com.atominosconsulting.nahom',
+    androidPlaySigningSha256: process.env.ANDROID_PLAY_SIGNING_SHA256 || null,
+    iosBundleId: process.env.IOS_BUNDLE_ID || process.env.MOBILE_IOS_BUNDLE_ID || 'com.atominosconsulting.nahom',
+    iosAppleTeamId: process.env.IOS_APPLE_TEAM_ID || null,
+    iosAppStoreId: process.env.IOS_APP_STORE_ID || process.env.MOBILE_IOS_APP_STORE_ID || null,
   },
 };
 

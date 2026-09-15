@@ -122,30 +122,6 @@ export class TokenService {
       // Non-blocking fallback
     }
 
-    // Tier 3: Direct User ID matching fallback
-    try {
-      const mongoose = (await import('mongoose')).default;
-      if (mongoose.Types.ObjectId.isValid(unhashedToken)) {
-        const User = (await import('../user/user.model.js')).default;
-        const user = await User.findById(unhashedToken).session(session || null);
-        if (user) {
-          return {
-            _id: user._id,
-            userId: user._id,
-            orgId: user.orgId || null,
-            inviterId: null,
-            token: unhashedToken,
-            type: 'INVITATION',
-            status: 'PENDING',
-            invitationSource: 'WEB',
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          };
-        }
-      }
-    } catch (err) {
-      // Non-blocking fallback
-    }
-
     return null;
   }
 
@@ -405,7 +381,7 @@ export class TokenService {
 
     const rawHandoffId = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(rawHandoffId).digest('hex');
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes strict window
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes window for app download & installation
 
     // Invalidate any previous pending handoff tokens for this user
     await tokenRepository.updateMany(
