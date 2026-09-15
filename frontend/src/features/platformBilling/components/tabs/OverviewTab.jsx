@@ -32,7 +32,7 @@ const OverviewTab = ({ lead }) => {
 
       <div className="grid2">
         <div className="panel shadow-none">
-          <div className="panel-head"><h2>User & Organization</h2></div>
+          <div className="panel-head"><h2>User & Community</h2></div>
           <div className="panel-body">
             <div className="field-grid">
               <div className="field">
@@ -40,8 +40,8 @@ const OverviewTab = ({ lead }) => {
                 <div className="field-value">{lead?.contactName || 'No Name Provided'}</div>
               </div>
               <div className="field">
-                <label>Organization</label>
-                <div className="field-value">{lead?.organizationName || 'No Organization'}</div>
+                <label>Community</label>
+                <div className="field-value">{lead?.organizationName || 'No Community'}</div>
               </div>
               <div className="field">
                 <label>Email</label>
@@ -73,7 +73,7 @@ const OverviewTab = ({ lead }) => {
           </div>
           <div className="panel-body">
             <div className="mini-note">
-              • Organization size is suitable for Tier 2 pricing.<br/><br/>
+              • Community size is suitable for Tier 2 pricing.<br/><br/>
               • Customer requested a 15-Day Free Trial before full commitment.<br/><br/>
               • Estimated annual contract value is above the average new lead.<br/><br/>
               • Recommend activating 15-Day Free Trial and scheduling a demo.

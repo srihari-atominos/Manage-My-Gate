@@ -111,12 +111,12 @@ export const createOrganization = createAsyncThunk(
         error.message;
 
       if (status === 409) {
-        return rejectWithValue('An organization with this name already exists.');
+        return rejectWithValue('A community with this name already exists.');
       }
       if (status === 429) {
         return rejectWithValue('Too many requests. Please try again later.');
       }
-      return rejectWithValue(apiMessage || 'Failed to create organization');
+      return rejectWithValue(apiMessage || 'Failed to create community');
     }
   }
 );

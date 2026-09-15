@@ -101,7 +101,7 @@ export const useCreateOrganization = (options?: UseCreateOrganizationOptions) =>
       setAvailabilityMessage(
         cached
           ? t('name_available', 'Name is available')
-          : t('name_unavailable', 'Organization name is already taken')
+          : t('name_unavailable', 'Community name is already taken')
       );
       return;
     }
@@ -124,7 +124,7 @@ export const useCreateOrganization = (options?: UseCreateOrganizationOptions) =>
         setAvailabilityMessage(
           cached
             ? t('name_available', 'Name is available')
-            : t('name_unavailable', 'Organization name is already taken')
+            : t('name_unavailable', 'Community name is already taken')
         );
         return;
       }
@@ -149,7 +149,7 @@ export const useCreateOrganization = (options?: UseCreateOrganizationOptions) =>
           setAvailabilityMessage(t('name_available', 'Name is available'));
         } else {
           setAvailability('taken');
-          setAvailabilityMessage(t('name_unavailable', 'Organization name is already taken'));
+          setAvailabilityMessage(t('name_unavailable', 'Community name is already taken'));
         }
       } catch (err: any) {
         const status = err.response?.status;
@@ -162,7 +162,7 @@ export const useCreateOrganization = (options?: UseCreateOrganizationOptions) =>
           setAvailabilityMessage(t('too_many_requests', 'Too many requests. Please wait a moment.'));
         } else if (status === 400) {
           setAvailability('error');
-          setAvailabilityMessage(err.response?.data?.message || t('invalid_name', 'Invalid organization name'));
+          setAvailabilityMessage(err.response?.data?.message || t('invalid_name', 'Invalid community name'));
         } else {
           // Network error, timeout, or any other failure — clear silently
           setAvailability('idle');

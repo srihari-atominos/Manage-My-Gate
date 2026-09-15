@@ -103,9 +103,9 @@ export const UserDetailDrawer = ({ visible, onClose, user, loading, organization
 
               <div className="drawer-field">
                 <div className="drawer-field-label">
-                  {t('superAdmin.orgDetails.community', { defaultValue: 'Community / Organization' })}
+                  {t('superAdmin.orgDetails.community', { defaultValue: 'Community' })}
                 </div>
-                <div className="drawer-field-value">{organizationName || 'Current Organization'}</div>
+                <div className="drawer-field-value">{organizationName || 'Current Community'}</div>
               </div>
 
               <div className="drawer-field">

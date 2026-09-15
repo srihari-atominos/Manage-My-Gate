@@ -189,13 +189,13 @@ export const routes = [
   { path: '/workspace/settings', name: 'Workspace Settings', element: WorkspaceDetailsView },
   {
     path: '/super-admin/organizations',
-    name: 'Organization Manager',
+    name: 'Community Manager',
     element: OrganizationManager,
     requirePlatform: true,
   },
   {
     path: '/super-admin/organizations/:organizationId',
-    name: 'Organization Details',
+    name: 'Community Details',
     element: OrganizationDetails,
     requirePlatform: true,
   },

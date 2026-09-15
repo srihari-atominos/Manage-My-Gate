@@ -39,7 +39,7 @@ const PaymentTab = ({ lead, postTrialTotal, currentStatus, trialExpiryDate, paym
         email: targetEmail,
         amount: postTrialTotal || lead?.postTrialTotal || 0,
         paymentLink: calculatedLink,
-        organizationName: lead?.organizationName || 'Your Organization',
+        organizationName: lead?.organizationName || 'Your Community',
         customerName: lead?.contactName || lead?.username || 'Valued Customer'
       });
 

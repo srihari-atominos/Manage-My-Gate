@@ -202,7 +202,7 @@ export default function UserManagementScreen() {
   return (
     <ScreenShell
       title={t('feature_admin_users_name', 'User Management')}
-      subtitle={t('feature_admin_users_sub', 'Manage organization users & role access')}
+      subtitle={t('feature_admin_users_sub', 'Manage community users & role access')}
       iconName="Users"
       domainName="Administration & Security"
       sharedSlice="userSlice.ts"

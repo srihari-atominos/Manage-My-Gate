@@ -7,7 +7,7 @@ export default function OrganizationManagerScreen() {
 
   return (
     <FeatureDetailScreen
-      title={t('feature_admin_organizations_name', 'Org Manager')}
+      title={t('feature_admin_organizations_name', 'Community Manager')}
       categoryName={t('category_administration_security', 'Administration & Security')}
       sharedSlice="organizationSlice.js"
       permission="platform:super_admin"

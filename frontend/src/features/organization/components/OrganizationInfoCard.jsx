@@ -35,7 +35,7 @@ export const OrganizationInfoCard = ({ organization }) => {
     <div className="section-card">
       <div className="section-card-header">
         <h4 className="section-title">
-          {t('superAdmin.orgDetails.infoTitle', { defaultValue: 'Organization Information' })}
+          {t('superAdmin.orgDetails.infoTitle', { defaultValue: 'Community Information' })}
         </h4>
         <span className={`status-pill ${getStatusClass(organization.status)}`}>
           {organization.status || 'Unknown'}
@@ -45,14 +45,14 @@ export const OrganizationInfoCard = ({ organization }) => {
         <div className="info-grid">
           <div className="info-item">
             <div className="info-label">
-              {t('superAdmin.orgDetails.name', { defaultValue: 'Organization Name' })}
+              {t('superAdmin.orgDetails.name', { defaultValue: 'Community Name' })}
             </div>
             <div className="info-value">{organization.name}</div>
           </div>
 
           <div className="info-item">
             <div className="info-label">
-              {t('superAdmin.orgDetails.id', { defaultValue: 'Organization ID' })}
+              {t('superAdmin.orgDetails.id', { defaultValue: 'Community ID' })}
             </div>
             <div className="info-value">
               <code>{organization._id}</code>
@@ -61,7 +61,7 @@ export const OrganizationInfoCard = ({ organization }) => {
 
           <div className="info-item">
             <div className="info-label">
-              {t('superAdmin.orgDetails.type', { defaultValue: 'Organization Type' })}
+              {t('superAdmin.orgDetails.type', { defaultValue: 'Community Type' })}
             </div>
             <div className="info-value">{organization.organizationType || 'Residential'}</div>
           </div>

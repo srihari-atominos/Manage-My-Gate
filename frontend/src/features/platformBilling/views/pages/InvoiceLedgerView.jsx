@@ -45,7 +45,7 @@ const InvoiceLedgerView = () => {
             <tr>
               <th>Invoice #</th>
               <th>Order Ref</th>
-              <th>Organization</th>
+              <th>Community</th>
               <th>Trial Status</th>
               <th>Status</th>
               <th>Actions</th>
@@ -56,7 +56,7 @@ const InvoiceLedgerView = () => {
               <tr key={item._id || item.id}>
                 <td>{item.invoiceNumber || item._id}</td>
                 <td>{item.orderId?.orderNumber || item.orderId || item.order}</td>
-                <td>{item.organizationId?.name || item.organizationName || item.commercialSnapshot?.organizationName || item.customerSnapshot?.customerName || 'Your Organization'}</td>
+                <td>{item.organizationId?.name || item.organizationName || item.commercialSnapshot?.organizationName || item.customerSnapshot?.customerName || 'Your Community'}</td>
                 <td>{item.trialStatus || (item.invoiceSnapshot?.trialDays > 0 ? `${item.invoiceSnapshot.trialDays} Days Trial` : 'No Trial')}</td>
                 <td>
                   <span className={`badge ${item.status === 'PAID' ? 'green' : item.status === 'OVERDUE' ? 'red' : 'orange'}`}>

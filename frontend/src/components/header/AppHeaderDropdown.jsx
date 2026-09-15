@@ -150,7 +150,7 @@ const AppHeaderDropdown = () => {
 
         <CDropdownHeader className="fw-semibold text-uppercase py-1 px-3 header-dropdown-org-header">
           {isPlatform 
-            ? t('header.dropdown.switchOrg', { defaultValue: 'Switch Organization' })
+            ? t('header.dropdown.switchOrg', { defaultValue: 'Switch Community' })
             : t('header.dropdown.switchHouse', { defaultValue: 'Switch House' })
           }
         </CDropdownHeader>
@@ -204,7 +204,7 @@ const AppHeaderDropdown = () => {
           className="text-primary fw-semibold py-1 px-3 w-100 text-start"
           id="header-dropdown-create-org-btn"
         >
-          + {t('workspace.createNewOrg', { defaultValue: 'Create New Organization' })}
+          + {t('workspace.createNewOrg', { defaultValue: 'Create New Community' })}
         </CDropdownItem>
 
         <CDropdownDivider />

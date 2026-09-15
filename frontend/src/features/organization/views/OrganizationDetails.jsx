@@ -85,7 +85,7 @@ export const OrganizationDetails = () => {
         {/* Back Navigation */}
         <button className="back-nav" onClick={handleBack}>
           <CIcon icon={cilArrowLeft} size="sm" />
-          <span>{t('superAdmin.orgDetails.backBtn', { defaultValue: 'Back to Organizations' })}</span>
+          <span>{t('superAdmin.orgDetails.backBtn', { defaultValue: 'Back to Communities' })}</span>
         </button>
 
         {/* Page Header */}
@@ -93,7 +93,7 @@ export const OrganizationDetails = () => {
           <div>
             <h2 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span>
-                {organization?.name || t('superAdmin.orgDetails.title', { defaultValue: 'Organization Details' })}
+                {organization?.name || t('superAdmin.orgDetails.title', { defaultValue: 'Community Details' })}
               </span>
               {organization?.status && (
                 <span className={`status-pill ${getStatusClass(organization.status)}`}>
@@ -126,7 +126,7 @@ export const OrganizationDetails = () => {
         {detailsLoading && !organization ? (
           <div className="loading-center">
             <CSpinner color="primary" />
-            <span>{t('superAdmin.orgDetails.loadingDetails', { defaultValue: 'Loading organization details...' })}</span>
+            <span>{t('superAdmin.orgDetails.loadingDetails', { defaultValue: 'Loading community details...' })}</span>
           </div>
         ) : (
           <>
@@ -145,7 +145,7 @@ export const OrganizationDetails = () => {
                   </h4>
                   <p className="section-subtitle">
                     {t('superAdmin.orgDetails.userDirectorySub', {
-                      defaultValue: 'Browse, search, filter, and inspect member details belonging to this organization.',
+                      defaultValue: 'Browse, search, filter, and inspect member details belonging to this community.',
                     })}
                   </p>
                 </div>

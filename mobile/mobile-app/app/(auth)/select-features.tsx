@@ -172,7 +172,7 @@ export default function SelectFeaturesScreen() {
                 <Sparkles className="size-9 text-primary" size={34} color="#03A9F4" />
               </View>
               <Text className="text-2xl font-extrabold text-foreground tracking-tight text-center">
-                Select Organization Features
+                Select Community Features
               </Text>
               <Text className="text-muted-foreground text-sm text-center mt-1 px-2">
                 Choose the modules you want active for your enterprise workspace

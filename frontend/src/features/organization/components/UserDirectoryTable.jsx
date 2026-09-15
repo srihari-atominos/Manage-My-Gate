@@ -67,7 +67,7 @@ export const UserDirectoryTable = ({
                 <td colSpan={8}>
                   <div className="loading-center" style={{ padding: '40px' }}>
                     <CSpinner color="primary" />
-                    <span>{t('superAdmin.orgDetails.loadingUsers', { defaultValue: 'Loading organization users...' })}</span>
+                    <span>{t('superAdmin.orgDetails.loadingUsers', { defaultValue: 'Loading community users...' })}</span>
                   </div>
                 </td>
               </tr>

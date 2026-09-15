@@ -234,7 +234,7 @@ export const RegisterForm = () => {
           <p className="mb-0">
             {t('auth.register.alertText', {
               defaultValue:
-                'Create an account to access the platform and set up your secure organization workspace.',
+                'Create an account to access the platform and set up your secure community workspace.',
             })}
           </p>
         </CAlert>
@@ -262,7 +262,7 @@ export const RegisterForm = () => {
                 >
                   {t('auth.register.userExistsSignInPrompt', {
                     defaultValue:
-                      'Already have an account? Sign in to create another organisation under your account',
+                      'Already have an account? Sign in to create another community under your account',
                   })}
                 </CButton>
               </div>

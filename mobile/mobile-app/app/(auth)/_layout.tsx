@@ -22,7 +22,7 @@ export default function AuthLayout() {
       <Stack.Screen name="register-otp" options={{ title: 'Verify Registration' }} />
       <Stack.Screen name="forgot-password" options={{ title: 'Reset Password', headerShown: false }} />
       <Stack.Screen name="accept-invite" options={{ title: 'Accept Workspace Invitation', headerBackVisible: true }} />
-      <Stack.Screen name="setup-organization" options={{ title: 'Organization Setup', headerBackVisible: false }} />
+      <Stack.Screen name="setup-organization" options={{ title: 'Community Setup', headerBackVisible: false }} />
       <Stack.Screen name="select-features" options={{ title: 'Configure Features', headerBackVisible: false }} />
     </Stack>
   );

@@ -114,12 +114,12 @@ describe('Mobile Organization Feature Test Suite', () => {
         { ...baseInitialState, createLoading: true },
         {
           type: createOrganization.rejected.type,
-          payload: 'An organization with this name already exists.',
+          payload: 'A community with this name already exists.',
         }
       );
 
       expect(state.createLoading).toBe(false);
-      expect(state.createError).toBe('An organization with this name already exists.');
+      expect(state.createError).toBe('A community with this name already exists.');
     });
 
     it('resets state when clearCreateOrganizationState is dispatched', () => {
@@ -209,7 +209,7 @@ describe('Mobile Organization Feature Test Suite', () => {
       const result: any = await thunk(dispatch, getState, undefined);
 
       expect(result.type).toBe('organization/createOrganization/rejected');
-      expect(result.payload).toBe('An organization with this name already exists.');
+      expect(result.payload).toBe('A community with this name already exists.');
     });
 
     it('translates HTTP 429 into rate limit error message', async () => {

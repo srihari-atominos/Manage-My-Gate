@@ -22,7 +22,7 @@ const PlatformQuotesView = () => {
           <thead>
             <tr>
               <th>Quote #</th>
-              <th>Organization</th>
+              <th>Community</th>
               <th>Trial Duration</th>
               <th>Post-Trial Amount</th>
               <th>Status</th>
@@ -31,7 +31,7 @@ const PlatformQuotesView = () => {
           </thead>
           <tbody>
             {quotes.map((item) => {
-              const orgName = item.organizationId?.name || item.organizationName || item.communitySnapshot?.organizationName || item.customerSnapshot?.organizationName || item.inquiryId?.organizationName || 'Your Organization';
+              const orgName = item.organizationId?.name || item.organizationName || item.communitySnapshot?.organizationName || item.customerSnapshot?.organizationName || item.inquiryId?.organizationName || 'Your Community';
               const total = item.totalAmount || item.grandTotal || 0;
               return (
                 <tr key={item._id || item.id}>
@@ -67,7 +67,7 @@ const PlatformQuotesView = () => {
               <button className="close-btn" onClick={() => setSelectedQuote(null)}>✕</button>
             </div>
             <div className="modal-body">
-              <div><strong>Organization Name:</strong> {selectedQuote.organizationId?.name || selectedQuote.organizationName || selectedQuote.communitySnapshot?.organizationName || selectedQuote.customerSnapshot?.organizationName || selectedQuote.inquiryId?.organizationName || 'Your Organization'}</div>
+              <div><strong>Community Name:</strong> {selectedQuote.organizationId?.name || selectedQuote.organizationName || selectedQuote.communitySnapshot?.organizationName || selectedQuote.customerSnapshot?.organizationName || selectedQuote.inquiryId?.organizationName || 'Your Community'}</div>
               <div><strong>Plan &amp; Tier:</strong> {selectedQuote.pricingSnapshot?.planName || selectedQuote.pricingSnapshot?.tier || selectedQuote.planName || 'COMMUNITY_STARTER'}</div>
               <div><strong>Unit / Villa Count:</strong> {selectedQuote.communitySnapshot?.villaCount || selectedQuote.unitCount || 100} Units</div>
               <div><strong>Free Trial Duration:</strong> {selectedQuote.trialDays || 14} Days</div>

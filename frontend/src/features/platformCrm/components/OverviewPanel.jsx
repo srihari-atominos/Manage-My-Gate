@@ -11,10 +11,10 @@ export const OverviewPanel = ({ activeEnquiry, insights, activities }) => {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
       {/* Organization Summary */}
       <div className="bg-white p-5 rounded-lg border shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Organization Summary</h3>
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Community Summary</h3>
         <div className="space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-500 text-sm">Organization</span>
+            <span className="text-gray-500 text-sm">Community</span>
             <span className="font-medium text-gray-900 text-sm text-right">{activeEnquiry.organizationName}</span>
           </div>
           <div className="flex justify-between">

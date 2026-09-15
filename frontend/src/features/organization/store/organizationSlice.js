@@ -33,7 +33,7 @@ export const createOrganization = createAsyncThunk(
       return response.data
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to create organization',
+        error.response?.data?.message || error.message || 'Failed to create community',
       )
     }
   },
@@ -46,7 +46,7 @@ export const loadOrganizations = createAsyncThunk(
       const response = await organizationApi.fetchOrganizations(page, limit)
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to fetch organizations')
+      return rejectWithValue(error.message || 'Failed to fetch communities')
     }
   },
 )
@@ -59,7 +59,7 @@ export const toggleOrgStatus = createAsyncThunk(
       const response = await organizationApi.updateOrganizationStatus(orgId, nextStatus)
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to toggle organization status')
+      return rejectWithValue(error.message || 'Failed to toggle community status')
     }
   },
 )
@@ -71,7 +71,7 @@ export const loadOrganizationDetails = createAsyncThunk(
       const response = await organizationApi.fetchOrganizationDetails(orgId)
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to fetch organization details')
+      return rejectWithValue(error.message || 'Failed to fetch community details')
     }
   },
 )
@@ -89,7 +89,7 @@ export const loadOrganizationUsers = createAsyncThunk(
       })
       return response.data
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to fetch organization users')
+      return rejectWithValue(error.message || 'Failed to fetch community users')
     }
   },
 )
@@ -198,7 +198,7 @@ export const organizationSlice = createSlice({
       })
       .addCase(loadOrganizations.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload || 'Failed to load organizations'
+        state.error = action.payload || 'Failed to load communities'
       })
       // toggleOrgStatus
       .addCase(toggleOrgStatus.pending, (state) => {
@@ -217,7 +217,7 @@ export const organizationSlice = createSlice({
       })
       .addCase(toggleOrgStatus.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload || 'Failed to update organization status'
+        state.error = action.payload || 'Failed to update community status'
       })
       // loadOrganizationDetails
       .addCase(loadOrganizationDetails.pending, (state) => {
@@ -230,7 +230,7 @@ export const organizationSlice = createSlice({
       })
       .addCase(loadOrganizationDetails.rejected, (state, action) => {
         state.detailsLoading = false
-        state.detailsError = action.payload || 'Failed to load organization details'
+        state.detailsError = action.payload || 'Failed to load community details'
       })
       // loadOrganizationUsers
       .addCase(loadOrganizationUsers.pending, (state) => {
@@ -247,7 +247,7 @@ export const organizationSlice = createSlice({
       })
       .addCase(loadOrganizationUsers.rejected, (state, action) => {
         state.users.loading = false
-        state.users.error = action.payload || 'Failed to load organization users'
+        state.users.error = action.payload || 'Failed to load community users'
       })
       // loadOrganizationUserDetails
       .addCase(loadOrganizationUserDetails.pending, (state) => {
@@ -280,7 +280,7 @@ export const organizationSlice = createSlice({
       })
       .addCase(createOrganization.rejected, (state, action) => {
         state.createLoading = false
-        state.createError = action.payload || 'Failed to create organization'
+        state.createError = action.payload || 'Failed to create community'
       })
   },
 })

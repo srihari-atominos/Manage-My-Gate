@@ -415,7 +415,7 @@ const PublicCheckoutPage = () => {
                         Payment Completed & Workspace Active! ✓
                       </h3>
                       <p style={{ margin: '4px 0 0 0', color: '#047857', fontSize: '14px' }}>
-                        Thank you! Payment of <strong>₹{(checkoutData?.amount || 0).toLocaleString('en-IN')} INR</strong> for organization <strong>{checkoutData?.organizationName}</strong> has been received and verified.
+                        Thank you! Payment of <strong>₹{(checkoutData?.amount || 0).toLocaleString('en-IN')} INR</strong> for community <strong>{checkoutData?.organizationName}</strong> has been received and verified.
                       </p>
                     </div>
                   </div>
@@ -518,7 +518,7 @@ const PublicCheckoutPage = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px', backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px' }}>
                   <div>
-                    <span style={{ color: '#64748b', fontSize: '12px', display: 'block' }}>Registered Organization</span>
+                    <span style={{ color: '#64748b', fontSize: '12px', display: 'block' }}>Registered Community</span>
                     <strong style={{ color: '#0f172a', fontSize: '16px' }}>{checkoutData?.organizationName}</strong>
                   </div>
                   <div>
@@ -628,9 +628,9 @@ const PublicCheckoutPage = () => {
                 </div>
               </div>
 
-              {/* CUSTOMER & ORGANIZATION DETAILS */}
+              {/* CUSTOMER & COMMUNITY DETAILS */}
               <div style={{ backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '16px', padding: '24px', marginBottom: '28px' }}>
-                <h4 style={{ margin: '0 0 16px 0', fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>Customer & Organization Details</h4>
+                <h4 style={{ margin: '0 0 16px 0', fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>Customer & Community Details</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
                   <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '13px' }}>
                     <div style={{ fontWeight: 700, color: '#1e3a8a', marginBottom: '8px' }}>👤 Customer Profile</div>
@@ -640,8 +640,8 @@ const PublicCheckoutPage = () => {
                     <p style={{ margin: '4px 0' }}><strong>Account Status:</strong> <span style={{ color: '#059669', fontWeight: 700 }}>ACTIVE</span></p>
                   </div>
                   <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '13px' }}>
-                    <div style={{ fontWeight: 700, color: '#1e3a8a', marginBottom: '8px' }}>🏢 Organization Profile</div>
-                    <p style={{ margin: '4px 0' }}><strong>Organization:</strong> {checkoutData?.organizationName}</p>
+                    <div style={{ fontWeight: 700, color: '#1e3a8a', marginBottom: '8px' }}>🏢 Community Profile</div>
+                    <p style={{ margin: '4px 0' }}><strong>Community:</strong> {checkoutData?.organizationName}</p>
                     <p style={{ margin: '4px 0' }}><strong>Type:</strong> {org?.organizationType || 'Residential Gated Community'}</p>
                     <p style={{ margin: '4px 0' }}><strong>Villas / Units:</strong> {bd?.unitCount || 250} Units</p>
                     <p style={{ margin: '4px 0' }}><strong>Location:</strong> India</p>
@@ -750,7 +750,7 @@ const PublicCheckoutPage = () => {
                             width: '100%'
                           }}
                         >
-                          Go to Registered Organization Login Page ➔
+                          Go to Registered Community Login Page ➔
                         </button>
                       </>
                     )}

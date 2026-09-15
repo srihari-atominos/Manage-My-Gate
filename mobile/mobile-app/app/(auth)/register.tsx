@@ -278,7 +278,7 @@ export default function RegisterScreen() {
                         }}
                       >
                         <Text className="text-primary font-bold text-xs text-center underline">
-                          Already have an account? Sign in to create another organization under your account
+                          Already have an account? Sign in to create another community under your account
                         </Text>
                       </Button>
                     ) : null}

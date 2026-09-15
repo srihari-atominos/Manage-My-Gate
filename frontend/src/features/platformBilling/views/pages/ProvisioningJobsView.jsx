@@ -22,7 +22,7 @@ const ProvisioningJobsView = () => {
           <thead>
             <tr>
               <th>Workflow / Job ID</th>
-              <th>Target Organization</th>
+              <th>Target Community</th>
               <th>Trigger Source</th>
               <th>Status</th>
               <th>Actions</th>
@@ -30,7 +30,7 @@ const ProvisioningJobsView = () => {
           </thead>
           <tbody>
             {jobs.map((item) => {
-              const orgName = item.organizationId?.name || item.organizationName || item.customerSnapshot?.organizationName || item.targetOrganizationId?.name || item.inquiryId?.organizationName || 'Your Organization';
+              const orgName = item.organizationId?.name || item.organizationName || item.customerSnapshot?.organizationName || item.targetOrganizationId?.name || item.inquiryId?.organizationName || 'Your Community';
               return (
                 <tr key={item._id || item.id}>
                   <td><strong>{item.workflowNumber || item.jobId || item._id}</strong></td>
@@ -64,12 +64,12 @@ const ProvisioningJobsView = () => {
               <button className="close-btn" onClick={() => setSelectedJob(null)}>✕</button>
             </div>
             <div className="modal-body">
-              <div><strong>Target Organization:</strong> {selectedJob.organizationId?.name || selectedJob.organizationName || selectedJob.customerSnapshot?.organizationName || selectedJob.targetOrganizationId?.name || 'Your Organization'}</div>
+              <div><strong>Target Community:</strong> {selectedJob.organizationId?.name || selectedJob.organizationName || selectedJob.customerSnapshot?.organizationName || selectedJob.targetOrganizationId?.name || 'Your Community'}</div>
               <div><strong>Workflow Status:</strong> <span className="badge green">{selectedJob.status || 'COMPLETED'}</span></div>
               <div style={{ marginTop: '14px', fontWeight: '700', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>Automated Checkpoint Steps Executed</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
                 {[
-                  '1. Organization MongoDB Record Creation',
+                  '1. Community Record Creation',
                   '2. Admin Role & Entitlements Linkage',
                   '3. Workspace Modules Provisioning',
                   '4. Free Trial Access Activation',

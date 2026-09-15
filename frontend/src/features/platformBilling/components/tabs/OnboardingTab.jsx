@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 const steps = [
-  { label: 'Organization workspace created', icon: '1' },
+  { label: 'Community workspace created', icon: '1' },
   { label: 'Import sample community data', icon: '2' },
   { label: 'Configure trial modules', icon: '3' },
   { label: 'Go Live', icon: '4' }

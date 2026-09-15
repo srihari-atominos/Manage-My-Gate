@@ -166,8 +166,8 @@ const DefaultLayout = () => {
 
                 <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', marginBottom: '28px', textAlign: 'left' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ color: '#64748b', fontSize: '13px' }}>Organization:</span>
-                    <strong style={{ color: '#0f172a' }}>{organizationName || 'Your Organization'}</strong>
+                    <span style={{ color: '#64748b', fontSize: '13px' }}>Community:</span>
+                    <strong style={{ color: '#0f172a' }}>{organizationName || 'Your Community'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span style={{ color: '#64748b', fontSize: '13px' }}>Current Status:</span>

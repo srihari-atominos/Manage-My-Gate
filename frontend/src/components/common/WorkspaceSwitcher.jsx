@@ -80,7 +80,7 @@ export const WorkspaceSwitcher = () => {
           id="workspace-switcher-create-org-btn"
         >
           <CIcon icon={cilPlus} className="me-2" />
-          {t('workspace.createNewOrg', { defaultValue: 'Create New Organization' })}
+          {t('workspace.createNewOrg', { defaultValue: 'Create New Community' })}
         </CDropdownItem>
       </CDropdownMenu>
     </CDropdown>

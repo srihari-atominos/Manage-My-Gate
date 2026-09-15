@@ -48,10 +48,10 @@ export const UserOrganizationPanel = ({ activeEnquiry }) => {
 
         {/* Organization Details */}
         <div className="border border-gray-100 p-4 rounded-lg bg-gray-50">
-          <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 border-b border-gray-200 pb-2">Organization Details</h4>
+          <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 border-b border-gray-200 pb-2">Community Details</h4>
           <div className="space-y-3">
             <div>
-              <p className="text-xs text-gray-500">Organization Name</p>
+              <p className="text-xs text-gray-500">Community Name</p>
               <p className="font-medium text-gray-900">{activeEnquiry.organizationName}</p>
             </div>
             <div>

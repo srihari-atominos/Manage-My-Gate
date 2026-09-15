@@ -143,7 +143,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
           </View>
 
           <Text className="text-xs text-muted-foreground">
-            {t('select_community_org_sub', 'Select a community organization to switch your workspace context:')}
+            {t('select_community_org_sub', 'Select a community to switch your workspace context:')}
           </Text>
 
           {/* Workspaces List */}
@@ -215,7 +215,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
             </View>
           </ScrollView>
 
-          {/* Create New Organization CTA */}
+          {/* Create New Community CTA */}
           <TouchableOpacity
             onPress={() => {
               onClose();
@@ -227,11 +227,11 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
             activeOpacity={0.8}
             className="flex-row items-center justify-center p-3 rounded-2xl border border-dashed border-primary/50 bg-primary/5 active:bg-primary/10 mt-1 gap-2"
             accessibilityRole="button"
-            accessibilityLabel={t('create_new_organization', '+ Create New Organization')}
+            accessibilityLabel={t('create_new_organization', '+ Create New Community')}
           >
             <Plus size={16} color="#03A9F4" />
             <Text className="text-xs font-bold text-primary">
-              {t('create_new_organization', '+ Create New Organization')}
+              {t('create_new_organization', '+ Create New Community')}
             </Text>
           </TouchableOpacity>
 

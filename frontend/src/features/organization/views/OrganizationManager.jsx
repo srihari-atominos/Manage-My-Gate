@@ -48,11 +48,11 @@ export const OrganizationManager = () => {
         <div className="page-header">
           <div>
             <h2 className="page-title">
-              {t('superAdmin.orgManager.title', { defaultValue: 'Organization Manager' })}
+              {t('superAdmin.orgManager.title', { defaultValue: 'Community Manager' })}
             </h2>
             <p className="page-subtitle">
               {t('superAdmin.orgManager.subtitle', {
-                defaultValue: 'Manage all system organizations, view status, and block/unblock access.',
+                defaultValue: 'Manage all system communities, view status, and block/unblock access.',
               })}
             </p>
           </div>
@@ -67,16 +67,16 @@ export const OrganizationManager = () => {
         {loading && organizations.length === 0 ? (
           <div className="loading-center">
             <CSpinner color="primary" />
-            <span>{t('superAdmin.orgManager.loading', { defaultValue: 'Loading organizations...' })}</span>
+            <span>{t('superAdmin.orgManager.loading', { defaultValue: 'Loading communities...' })}</span>
           </div>
         ) : organizations.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">🏢</div>
             <div className="empty-title">
-              {t('superAdmin.orgManager.noData', { defaultValue: 'No organizations found.' })}
+              {t('superAdmin.orgManager.noData', { defaultValue: 'No communities found.' })}
             </div>
             <div className="empty-desc">
-              {t('superAdmin.orgManager.noDataDesc', { defaultValue: 'Organizations will appear here once created.' })}
+              {t('superAdmin.orgManager.noDataDesc', { defaultValue: 'Communities will appear here once created.' })}
             </div>
           </div>
         ) : (
@@ -86,7 +86,7 @@ export const OrganizationManager = () => {
               <table className="ent-table">
                 <thead>
                   <tr>
-                    <th>{t('superAdmin.orgManager.tableName', { defaultValue: 'Organization' })}</th>
+                    <th>{t('superAdmin.orgManager.tableName', { defaultValue: 'Community' })}</th>
                     <th>{t('superAdmin.orgManager.tableVillas', { defaultValue: 'Villas' })}</th>
                     <th>{t('superAdmin.orgManager.tableUsers', { defaultValue: 'Users' })}</th>
                     <th>{t('superAdmin.orgManager.tableStatus', { defaultValue: 'Status' })}</th>
@@ -159,7 +159,7 @@ export const OrganizationManager = () => {
                     defaultValue: `Page ${page} of ${totalPages}`,
                   })}
                 </div>
-                <CPagination aria-label="Organization pagination">
+                <CPagination aria-label="Community pagination">
                   <CPaginationItem
                     disabled={page === 1}
                     onClick={() => handlePageChange(page - 1)}

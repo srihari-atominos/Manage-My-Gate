@@ -144,7 +144,7 @@ const SubscriptionManagerView = () => {
           <thead>
             <tr>
               <th>Subscription #</th>
-              <th>Organization</th>
+              <th>Community</th>
               <th>Plan Type</th>
               <th>Free Trial</th>
               <th>Start Date</th>
@@ -155,7 +155,7 @@ const SubscriptionManagerView = () => {
           </thead>
           <tbody>
             {subscriptions.map((item, idx) => {
-              const orgName = item.organizationId?.name || item.organizationName || item.communitySnapshot?.organizationName || item.customerSnapshot?.organizationName || item.inquiryId?.organizationName || 'Your Organization';
+              const orgName = item.organizationId?.name || item.organizationName || item.communitySnapshot?.organizationName || item.customerSnapshot?.organizationName || item.inquiryId?.organizationName || 'Your Community';
               const isTrial = item.status === 'TRIALING' || item.isTrial;
               const trialText = isTrial ? '14 Days Free Trial (Active)' : 'Trial Completed';
 
@@ -217,7 +217,7 @@ const SubscriptionManagerView = () => {
               <button onClick={() => setSelectedSub(null)} style={{ border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}>✕</button>
             </div>
             <div style={{ fontSize: '14px', lineHeight: '1.8', color: '#334155' }}>
-              <div><strong>Organization Name:</strong> {selectedSub.organizationId?.name || selectedSub.organizationName || selectedSub.communitySnapshot?.organizationName || selectedSub.customerSnapshot?.organizationName || 'Your Organization'}</div>
+              <div><strong>Community Name:</strong> {selectedSub.organizationId?.name || selectedSub.organizationName || selectedSub.communitySnapshot?.organizationName || selectedSub.customerSnapshot?.organizationName || 'Your Community'}</div>
               <div><strong>Active Plan:</strong> {selectedSub.planName || selectedSub.tier || 'COMMUNITY_STARTER'}</div>
               <div><strong>Billing Frequency:</strong> {selectedSub.billingFrequency || 'YEARLY'}</div>
               <div><strong>Subscription Status:</strong> <span className={`badge ${selectedSub.status === 'TRIALING' ? 'blue' : 'green'}`}>{selectedSub.status || 'ACTIVE'}</span></div>
@@ -254,7 +254,7 @@ const SubscriptionManagerView = () => {
             {/* Organization Meta Banner */}
             <div style={{ backgroundColor: '#f8fafc', padding: '16px 20px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
               <div style={{ fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
-                Organization: <strong style={{ color: '#0f172a' }}>{renewSub.organizationId?.name || renewSub.organizationName || renewSub.communitySnapshot?.organizationName || 'Your Organization'}</strong>
+                Community: <strong style={{ color: '#0f172a' }}>{renewSub.organizationId?.name || renewSub.organizationName || renewSub.communitySnapshot?.organizationName || 'Your Community'}</strong>
               </div>
               <div style={{ fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
                 Current Subscription #: <strong style={{ fontFamily: 'monospace' }}>{renewSub.subscriptionNumber || renewSub._id}</strong>

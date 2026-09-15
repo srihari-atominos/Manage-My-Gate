@@ -129,7 +129,7 @@ const UserList = () => {
   }
 
   const handleDeleteClick = async (user) => {
-    const confirmMessage = `Delete user "${user.name}" from the organization? This action cannot be undone.`;
+    const confirmMessage = `Delete user "${user.name}" from the community? This action cannot be undone.`;
       
     if (window.confirm(confirmMessage)) {
       try {
@@ -425,7 +425,7 @@ const UserList = () => {
       {/* Page Header */}
       <PageHeader
         title={t('userManagement.title', 'User Management')}
-        subtitle={t('userManagement.subtitle', 'Manage organization users and allocate access roles.')}
+        subtitle={t('userManagement.subtitle', 'Manage community users and allocate access roles.')}
         actionButtons={
           <div className="d-flex gap-2">
             <CButton

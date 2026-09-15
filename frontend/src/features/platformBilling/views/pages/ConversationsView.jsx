@@ -173,7 +173,7 @@ const ConversationsView = () => {
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <div style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>{inq.organizationName || 'Organization'}</div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>{inq.organizationName || 'Community'}</div>
                   <div style={{ fontSize: '13px', color: '#475569', marginTop: '2px' }}>👤 {inq.contactName || 'Contact'}</div>
                   <div style={{ fontSize: '12px', color: '#2563eb', marginTop: '2px', wordBreak: 'break-all' }}>✉️ {inq.email || 'N/A'}</div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>📱 {inq.phone || 'N/A'}</div>
@@ -194,7 +194,7 @@ const ConversationsView = () => {
               <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-                    {selectedInquiry.organizationName || 'Organization'} — {selectedInquiry.contactName}
+                    {selectedInquiry.organizationName || 'Community'} — {selectedInquiry.contactName}
                   </h2>
                   <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
                     Email: <strong>{selectedInquiry.email || 'naveenpv5886@gmail.com'}</strong> &bull; Phone: <strong>{selectedInquiry.phone || '+91 9876543210'}</strong>

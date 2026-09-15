@@ -131,7 +131,7 @@ const _nav = [
   },
   {
     component: CNavItem,
-    name: 'Organization Manager',
+    name: 'Community Manager',
     to: '/super-admin/organizations',
     icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
   },

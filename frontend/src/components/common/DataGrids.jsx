@@ -30,7 +30,7 @@ const TableLayout = ({ title, subtitle, headers, children }) => (
 );
 
 export const QuotesList = () => (
-  <TableLayout title="Quotes" subtitle="Manage generated price quotes." headers={['Quote ID', 'Organization', 'Total Value', 'Status', 'Actions']}>
+  <TableLayout title="Quotes" subtitle="Manage generated price quotes." headers={['Quote ID', 'Community', 'Total Value', 'Status', 'Actions']}>
     <tr className="hover:bg-slate-50 transition-colors">
       <td className="px-4 py-3 border-b border-slate-100 text-sm font-medium text-slate-900">QT-2026-081</td>
       <td className="px-4 py-3 border-b border-slate-100 text-sm text-slate-700">Atominos Consulting</td>
@@ -44,7 +44,7 @@ export const QuotesList = () => (
 );
 
 export const OrdersList = () => (
-  <TableLayout title="Orders" subtitle="Confirmed orders awaiting provisioning." headers={['Order ID', 'Organization', 'Date', 'Status', 'Actions']}>
+  <TableLayout title="Orders" subtitle="Confirmed orders awaiting provisioning." headers={['Order ID', 'Community', 'Date', 'Status', 'Actions']}>
     <tr className="hover:bg-slate-50 transition-colors">
       <td className="px-4 py-3 border-b border-slate-100 text-sm font-medium text-slate-900">ORD-9921</td>
       <td className="px-4 py-3 border-b border-slate-100 text-sm text-slate-700">Sunrise Valley Estates</td>
@@ -58,7 +58,7 @@ export const OrdersList = () => (
 );
 
 export const InvoicesList = () => (
-  <TableLayout title="Invoices" subtitle="Billing invoices and receipts." headers={['Invoice ID', 'Organization', 'Amount', 'Status', 'Actions']}>
+  <TableLayout title="Invoices" subtitle="Billing invoices and receipts." headers={['Invoice ID', 'Community', 'Amount', 'Status', 'Actions']}>
     <tr className="hover:bg-slate-50 transition-colors">
       <td className="px-4 py-3 border-b border-slate-100 text-sm font-medium text-slate-900">INV-4402</td>
       <td className="px-4 py-3 border-b border-slate-100 text-sm text-slate-700">Oceanview Towers</td>
@@ -72,7 +72,7 @@ export const InvoicesList = () => (
 );
 
 export const SubscriptionsList = () => (
-  <TableLayout title="Subscriptions" subtitle="Active tenant subscriptions." headers={['Sub ID', 'Organization', 'Plan', 'Status', 'Actions']}>
+  <TableLayout title="Subscriptions" subtitle="Active tenant subscriptions." headers={['Sub ID', 'Community', 'Plan', 'Status', 'Actions']}>
     <tr className="hover:bg-slate-50 transition-colors">
       <td className="px-4 py-3 border-b border-slate-100 text-sm font-medium text-slate-900">SUB-112</td>
       <td className="px-4 py-3 border-b border-slate-100 text-sm text-slate-700">Atominos Consulting</td>
@@ -86,7 +86,7 @@ export const SubscriptionsList = () => (
 );
 
 export const ProvisioningJobsList = () => (
-  <TableLayout title="Provisioning Jobs" subtitle="Background workers and setup tasks." headers={['Job ID', 'Organization', 'Progress', 'Status', 'Actions']}>
+  <TableLayout title="Provisioning Jobs" subtitle="Background workers and setup tasks." headers={['Job ID', 'Community', 'Progress', 'Status', 'Actions']}>
     <tr className="hover:bg-slate-50 transition-colors">
       <td className="px-4 py-3 border-b border-slate-100 text-sm font-medium text-slate-900">JOB-883</td>
       <td className="px-4 py-3 border-b border-slate-100 text-sm text-slate-700">Sunset Villas</td>
