@@ -26,6 +26,11 @@ export const getApiBaseUrl = () => {
     return url;
   }
 
+  // In development, if an explicit remote URL (e.g. production/staging) is configured, prioritize it
+  if (url && !/^(https?:\/\/)?(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i.test(url)) {
+    return url;
+  }
+
   // 1. Web browser development: align with the browser's hostname (e.g. localhost:5002 or 192.168.x.x:5002)
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
     const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
@@ -64,6 +69,11 @@ export const getSocketBaseUrl = () => {
     if (!socketUrl || /^(https?:\/\/)?(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i.test(socketUrl)) {
       return PRODUCTION_SOCKET_URL;
     }
+    return socketUrl;
+  }
+
+  // In development, if an explicit remote socket URL is configured, prioritize it
+  if (socketUrl && !/^(https?:\/\/)?(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i.test(socketUrl)) {
     return socketUrl;
   }
 
