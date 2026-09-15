@@ -3,8 +3,8 @@ services:
     image: mongo:latest
     container_name: mmg-mongodb
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER:-manageadmin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-ManageAdminPwd@123}
       - TZ=${TZ:-Asia/Kolkata}
     ports:
       - "${DB_PORT_EXTERNAL:-27019}:27017"
@@ -43,8 +43,8 @@ services:
       - /bin/sh
       - -c
       - |
-        until mongosh --host mongodb:27017 -u "${MONGO_ROOT_USER}" -p "${MONGO_ROOT_PASSWORD}" --authenticationDatabase admin --eval 'print("ready")' > /dev/null 2>&1 || mongosh --host mongodb:27017 --eval 'print("ready")' > /dev/null 2>&1; do sleep 1; done
-        mongosh --host mongodb:27017 -u "${MONGO_ROOT_USER}" -p "${MONGO_ROOT_PASSWORD}" --authenticationDatabase admin --eval "try { rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'mongodb:27017' } ] }) } catch (e) { print(e.message) }" || mongosh --host mongodb:27017 --eval "try { rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'mongodb:27017' } ] }) } catch (e) { print(e.message) }"
+        until mongosh --host mongodb:27017 -u "${MONGO_ROOT_USER:-manageadmin}" -p "${MONGO_ROOT_PASSWORD:-ManageAdminPwd@123}" --authenticationDatabase admin --eval 'print("ready")' > /dev/null 2>&1 || mongosh --host mongodb:27017 --eval 'print("ready")' > /dev/null 2>&1; do sleep 1; done
+        mongosh --host mongodb:27017 -u "${MONGO_ROOT_USER:-manageadmin}" -p "${MONGO_ROOT_PASSWORD:-ManageAdminPwd@123}" --authenticationDatabase admin --eval "try { rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'mongodb:27017' } ] }) } catch (e) { print(e.message) }" || mongosh --host mongodb:27017 --eval "try { rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'mongodb:27017' } ] }) } catch (e) { print(e.message) }"
     networks:
       - mmg-network
 
@@ -72,29 +72,29 @@ services:
     environment:
       - PORT=5000
       - HOST=0.0.0.0
-      - MONGODB_URI=${MONGODB_URI}
-      - JWT_SECRET=${JWT_SECRET}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
-      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL}
-      - SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME}
-      - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://manageadmin:ManageAdminPwd%40123@mongodb:27017/manage_my_gate_prod?replicaSet=rs0&authSource=admin}
+      - JWT_SECRET=${JWT_SECRET:-f6dd9f23c0dec5698e7f0fc7e0d2f4dbaba4dcd5e58e9935d6ef5ff5d8fc9f9c}
+      - SESSION_SECRET=${SESSION_SECRET:-HSGEtCoNdLyEuHCrFOrzFGmyxbkHYLtBbO8QmCYQPxI=}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-ysgGTR13/fkLIqmJKRuGmmpzYg2vrzUnqYMg8zIol1g=}
+      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL:-srihari@atominosconsulting.com}
+      - SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME:-superadmin}
+      - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD:-2@TestPassword}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com}
       - GOOGLE_ANDROID_CLIENT_ID=${GOOGLE_ANDROID_CLIENT_ID:-610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
-      - MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID}
-      - CLIENT_URL=${CLIENT_URL}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-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}
+      - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID:-20c2e0b1-683b-446e-a5f4-aa30876357f7}
+      - MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID:-fd65b6d3-b789-4884-a69a-4ccf71e38700}
+      - CLIENT_URL=${CLIENT_URL:-https://managemygate.e3esg.com}
       - APP_CLIENT_URL=${APP_CLIENT_URL:-https://managemygate.e3esg.com}
       - WEB_CLIENT_URL=${WEB_CLIENT_URL:-https://managemygate.e3esg.com}
       - WEB_APP_URL=${WEB_APP_URL:-https://managemygate.e3esg.com}
       - ANDROID_PACKAGE_NAME=${ANDROID_PACKAGE_NAME:-com.atominosconsulting.nahom}
-      - ANDROID_PLAY_SIGNING_SHA256=${ANDROID_PLAY_SIGNING_SHA256:-}
+      - ANDROID_PLAY_SIGNING_SHA256=${ANDROID_PLAY_SIGNING_SHA256:-30:FE:72:8E:25:35:FF:E4:EF:82:13:24:46:5E:C5:0C:01:D2:5F:CF:D2:A2:E6:42:1E:4F:E5:33:DB:89:0E:58}
       - IOS_BUNDLE_ID=${IOS_BUNDLE_ID:-com.atominosconsulting.nahom}
-      - IOS_APPLE_TEAM_ID=${IOS_APPLE_TEAM_ID:-}
-      - IOS_APP_STORE_ID=${IOS_APP_STORE_ID:-}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-      - REDIS_URL=${REDIS_URL}
+      - IOS_APPLE_TEAM_ID=${IOS_APPLE_TEAM_ID:-28C65U752S}
+      - IOS_APP_STORE_ID=${IOS_APP_STORE_ID:-6809765747}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://managemygate.e3esg.com,http://localhost:3004,http://localhost:3000,http://127.0.0.1:3004,http://127.0.0.1:3000}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - NODE_ENV=${NODE_ENV:-production}
       - TZ=${TZ:-Asia/Kolkata}
     depends_on:
@@ -113,9 +113,9 @@ services:
       args:
         - VITE_API_URL=${VITE_API_URL:-/api}
         - VITE_SOCKET_URL=${VITE_SOCKET_URL:-}
-        - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-your_google_client_id_here}
-        - VITE_MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID:-your_microsoft_client_id_here}
-        - VITE_MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID:-your_microsoft_tenant_id_here}
+        - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com}
+        - VITE_MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID:-20c2e0b1-683b-446e-a5f4-aa30876357f7}
+        - VITE_MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID:-fd65b6d3-b789-4884-a69a-4ccf71e38700}
     container_name: mmg-frontend
     ports:
       - "${CLIENT_PORT:-3004}:80"
@@ -137,10 +137,10 @@ services:
       - ME_CONFIG_MONGODB_PORT=27017
       - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
       - ME_CONFIG_MONGODB_AUTH_DATABASE=admin
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_ROOT_USER}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_ROOT_PASSWORD}
-      - ME_CONFIG_BASICAUTH_USERNAME=${ME_BASICAUTH_USER}
-      - ME_CONFIG_BASICAUTH_PASSWORD=${ME_BASICAUTH_PASS}
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_ROOT_USER:-manageadmin}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_ROOT_PASSWORD:-ManageAdminPwd@123}
+      - ME_CONFIG_BASICAUTH_USERNAME=${ME_BASICAUTH_USER:-admin}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${ME_BASICAUTH_PASS:-ManageAdminPwd@123}
       - ME_CONFIG_SITE_BASEURL=${ME_CONFIG_SITE_BASEURL:-}
       - TZ=${TZ:-Asia/Kolkata}
     depends_on:
