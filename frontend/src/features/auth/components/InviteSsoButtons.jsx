@@ -11,11 +11,18 @@ import { CButton } from '@coreui/react'
  * Provides single-click Google and Microsoft SSO invitation acceptance.
  * Reuses existing provider token flows and delegates to backend accept-invite/sso.
  */
-export const InviteSsoButtons = ({ onSsoSuccess, disabled }) => {
+export const InviteSsoButtons = ({ onSsoSuccess, onSsoError, disabled }) => {
   const { t } = useTranslation()
   const { instance: msalInstance } = useMsal()
 
   const handleMicrosoftClick = async () => {
+    if (!msalInstance) {
+      if (onSsoError) {
+        onSsoError(t('auth.invite.msalUnavailable', 'Microsoft sign-in is not configured or unavailable.'))
+      }
+      return
+    }
+
     try {
       const response = await msalInstance.loginPopup({
         scopes: ['openid', 'profile', 'user.read', 'email'],
@@ -25,6 +32,13 @@ export const InviteSsoButtons = ({ onSsoSuccess, disabled }) => {
       }
     } catch (err) {
       console.error('Microsoft SSO login error:', err)
+      const errorMsg =
+        err?.errorMessage ||
+        err?.message ||
+        t('auth.invite.ssoError', 'Microsoft sign-in failed. Please try again.')
+      if (onSsoError) {
+        onSsoError(errorMsg)
+      }
     }
   }
 
@@ -49,6 +63,9 @@ export const InviteSsoButtons = ({ onSsoSuccess, disabled }) => {
             }}
             onError={() => {
               console.error('Google SSO Error')
+              if (onSsoError) {
+                onSsoError(t('auth.invite.googleSsoError', 'Google sign-in was cancelled or encountered an error.'))
+              }
             }}
             type="standard"
             theme="outline"
@@ -82,6 +99,7 @@ export const InviteSsoButtons = ({ onSsoSuccess, disabled }) => {
 
 InviteSsoButtons.propTypes = {
   onSsoSuccess: PropTypes.func.isRequired,
+  onSsoError: PropTypes.func,
   disabled: PropTypes.bool,
 }
 

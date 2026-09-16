@@ -241,9 +241,9 @@ const InviteHandlerContent = () => {
         // Existing user SSO authentication
         let loginResult
         if (provider === 'google') {
-          loginResult = await loginGoogle(ssoCredential, token)
+          loginResult = await loginGoogle(ssoCredential, token, { skipNavigate: true })
         } else if (provider === 'microsoft') {
-          loginResult = await loginMicrosoft(ssoCredential, token)
+          loginResult = await loginMicrosoft(ssoCredential, token, { skipNavigate: true })
         }
         if (!loginResult?.success) {
           setSubmissionError(loginResult?.error || t('auth.invite.ssoError', 'SSO sign-in failed. Please try again.'))
@@ -252,11 +252,12 @@ const InviteHandlerContent = () => {
         await processSuccessfulAcceptance()
       } else {
         // New user SSO invitation acceptance
-        const result = await handleAcceptSsoInvitation({
+        const result = await handleAcceptSsoInvitation(
           token,
           ssoCredential,
           provider,
-        })
+          { skipNavigate: true }
+        )
 
         if (!result.success) {
           setSubmissionError(result.error || t('auth.invite.error', 'Failed to accept invitation via SSO.'))
@@ -421,6 +422,7 @@ const InviteHandlerContent = () => {
                       {/* SSO Providers */}
                       <InviteSsoButtons
                         onSsoSuccess={handleSsoSuccess}
+                        onSsoError={(errMsg) => setSubmissionError(errMsg)}
                         disabled={submitting}
                       />
 
@@ -458,6 +460,7 @@ const InviteHandlerContent = () => {
                       {/* SSO Providers for Existing Users */}
                       <InviteSsoButtons
                         onSsoSuccess={handleSsoSuccess}
+                        onSsoError={(errMsg) => setSubmissionError(errMsg)}
                         disabled={submitting}
                       />
 

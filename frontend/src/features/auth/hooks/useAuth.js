@@ -167,7 +167,7 @@ export const useAuth = () => {
     return { success: false, error: resultAction.payload }
   }
 
-  const loginGoogle = async (credential, inviteToken) => {
+  const loginGoogle = async (credential, inviteToken, options = {}) => {
     const payload = typeof credential === 'object' ? credential : { token: credential, inviteToken }
     const resultAction = await dispatch(loginWithGoogle(payload))
     if (loginWithGoogle.fulfilled.match(resultAction)) {
@@ -179,36 +179,53 @@ export const useAuth = () => {
 
       const workspaces = data?.workspaces || data?.availableWorkspaces || []
       const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
-      navigate(navigateTo)
+      if (!options.skipNavigate) {
+        navigate(navigateTo)
+      }
       return { success: true, navigateTo }
     }
     return { success: false, error: resultAction.payload }
   }
 
-  const loginMicrosoft = async (idToken, inviteToken) => {
+  const loginMicrosoft = async (idToken, inviteToken, options = {}) => {
     const payload = typeof idToken === 'object' ? idToken : { token: idToken, inviteToken }
     const resultAction = await dispatch(loginWithMicrosoft(payload))
     if (loginWithMicrosoft.fulfilled.match(resultAction)) {
       const data = resultAction.payload?.data
       const workspaces = data?.workspaces || data?.availableWorkspaces || []
       const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
-      navigate(navigateTo)
+      if (!options.skipNavigate) {
+        navigate(navigateTo)
+      }
       return { success: true, navigateTo }
     }
     return { success: false, error: resultAction.payload }
   }
 
-  const handleAcceptSsoInvitation = async (inviteToken, ssoCredential, provider, options = {}) => {
+  const handleAcceptSsoInvitation = async (inviteTokenOrObj, ssoCredential, provider, options = {}) => {
     try {
+      let inviteToken = inviteTokenOrObj
+      let finalCredential = ssoCredential
+      let finalProvider = provider
+      let finalOptions = options
+
+      // Defensive argument normalization: support both positional and single-object argument styles
+      if (typeof inviteTokenOrObj === 'object' && inviteTokenOrObj !== null && !ssoCredential) {
+        inviteToken = inviteTokenOrObj.inviteToken || inviteTokenOrObj.token
+        finalCredential = inviteTokenOrObj.ssoCredential || inviteTokenOrObj.credential
+        finalProvider = inviteTokenOrObj.provider
+        finalOptions = inviteTokenOrObj.options || options
+      }
+
       const resultAction = await dispatch(
-        acceptSsoInvitation({ inviteToken, ssoCredential, provider }),
+        acceptSsoInvitation({ inviteToken, ssoCredential: finalCredential, provider: finalProvider }),
       )
       if (acceptSsoInvitation.fulfilled.match(resultAction)) {
         const data = resultAction.payload?.data
         const workspaces = data?.workspaces || data?.availableWorkspaces || []
         const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
         toast.success(t('auth.invite.success'))
-        if (!options.skipNavigate) {
+        if (!finalOptions?.skipNavigate) {
           navigate(navigateTo)
         }
         return { success: true, navigateTo, payload: resultAction.payload }
