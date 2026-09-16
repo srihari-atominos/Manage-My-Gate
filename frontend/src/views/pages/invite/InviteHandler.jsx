@@ -369,6 +369,24 @@ const InviteHandlerContent = () => {
                     </CAlert>
                   )}
 
+                  {/* Mobile App Shortcut Banner */}
+                  {isMobileDevice() && (
+                    <div className="d-flex align-items-center justify-content-between p-2.5 mb-3 rounded-3 bg-primary-subtle text-primary border border-primary-subtle">
+                      <div className="d-flex align-items-center gap-2">
+                        <span style={{ fontSize: '1.2rem' }}>📱</span>
+                        <span className="small fw-semibold">
+                          {t('auth.invite.haveMobileApp', 'Have the mobile app installed?')}
+                        </span>
+                      </div>
+                      <a
+                        href={`managemygate://accept-invite?token=${token}`}
+                        className="btn btn-sm btn-primary fw-semibold px-3 py-1 text-white text-decoration-none shadow-xs"
+                      >
+                        {t('auth.invite.openInApp', 'Open App')}
+                      </a>
+                    </div>
+                  )}
+
                   {/* Segmented Tab Controls: New User vs Existing User */}
                   <div className="invite-tabs-container">
                     <button

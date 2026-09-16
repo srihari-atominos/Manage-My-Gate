@@ -79,10 +79,10 @@ export const generateInviteLink = (invitationToken, invitationSource = 'WEB') =>
   }
 
   const baseUrl = rawUrl.trim().replace(/\/+$/, '');
-  // The frontend uses HashRouter — React Router reads only the fragment after #.
-  // Format: https://domain.com/#/invite?token=<token>
-  // The InviteHandler at route path="/invite" reads the token via useSearchParams().
-  return `${baseUrl}/#/invite?token=${invitationToken}`;
+  // Canonical universal invitation link: /invite/:token
+  // Matches Android App Links and iOS Universal Links configured with pathPrefix "/invite",
+  // allowing installed mobile apps to open directly, while BrowserRouter on web routes to InviteHandler.
+  return `${baseUrl}/invite/${invitationToken}`;
 };
 
 /**
