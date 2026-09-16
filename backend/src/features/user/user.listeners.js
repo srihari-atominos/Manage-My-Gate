@@ -225,9 +225,8 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
       .replace(/{{invite_link}}/g, inviteLink)
       .replace(/{{reject_link}}/g, rejectInviteLink);
     const compiledBody = bodyTemplate
-      // Rewrite legacy hash-router style: /#/invite?token=<token>
-      .replace(/https?:\/\/[^\s"'>]+\/#\/invite\?token=[^\s"'>]*/gi, inviteLink)
-      // Rewrite legacy sub-path style: /invite/app/<token> or /invite/web/<token>
+      // Rewrite ONLY legacy sub-path style: /invite/app/<token> or /invite/web/<token>
+      // Do NOT rewrite /#/invite?token=<token> — that is the correct format for this HashRouter app
       .replace(/https?:\/\/[^\s"'>]+\/invite\/(?:app|web)\/[^\s"'>]*/gi, inviteLink)
       .replace(/https?:\/\/[^\s"']+\/(?:#\/)?invite(?:\/(?:web|app))?(?:\?token=|\/)[^\s"']*/gi, inviteLink)
       .replace(/{{invite_link}}/g, inviteLink)

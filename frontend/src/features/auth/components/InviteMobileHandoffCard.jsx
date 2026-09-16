@@ -19,7 +19,7 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
   const [redirectingToStore, setRedirectingToStore] = useState(false)
 
   const playStoreFallback = 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom'
-  const appStoreFallback = 'https://apps.apple.com/app/manage-my-gate/id6470000000'
+  const appStoreFallback = 'https://apps.apple.com/app/manage-my-gate/id6746501635'
 
   const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent || '')
   const storeUrl = isAndroid
