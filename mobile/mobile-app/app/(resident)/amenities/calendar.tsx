@@ -21,7 +21,7 @@ import { Calendar } from '@/components/common/Calendar';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
+import { SkeletonLoader } from '@/components/feedback/SkeletonLoader';
 import { ScheduleDateNavigator } from '../../../src/features/amenities/components/ScheduleDateNavigator';
 import { useResidentCalendar } from '../../../src/features/amenities/hooks/useResidentCalendar';
 import { AmenitySlot } from '../../../src/features/amenities/store/amenitySlice';
@@ -171,7 +171,7 @@ export default function ResidentAmenityCalendarScreen() {
       iconName="CalendarDays"
       loading={loading && (!slots || slots.length === 0) && !selectedAmenityId}
       error={error}
-      onRefresh={handleRefresh}
+      onRetry={handleRefresh}
     >
       <ScrollView
         className="flex-1"
@@ -237,9 +237,9 @@ export default function ResidentAmenityCalendarScreen() {
             </View>
           ) : slots.length === 0 ? (
             <EmptyState
-              icon="Clock"
+              icon={Clock}
               title="No Slots Available"
-              subtitle={
+              description={
                 selectedAmenityId
                   ? 'No scheduled time slots found for the selected date. Try another day or facility.'
                   : 'Select a facility above to view available booking slots.'

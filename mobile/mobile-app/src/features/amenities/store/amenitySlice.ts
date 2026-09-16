@@ -354,10 +354,10 @@ export const scheduleMaintenanceThunk = createAsyncThunk(
 
 export const fetchMaintenanceListThunk = createAsyncThunk(
   'amenities/fetchMaintenanceList',
-  async (params: { facilityId?: string; status?: string; page?: number; limit?: number } = {}, { rejectWithValue }) => {
+  async (params: { facilityId?: string; status?: string; page?: number; limit?: number } | void, { rejectWithValue }) => {
     try {
       const amenityManagementService = (await import('../services/amenityManagementService')).default;
-      const response = await amenityManagementService.listMaintenanceBlocks(params);
+      const response = await amenityManagementService.listMaintenanceBlocks(params || {});
       const resData: any = response?.data || response;
       const list = resData?.records || resData?.docs || (Array.isArray(resData) ? resData : []);
       return list;
