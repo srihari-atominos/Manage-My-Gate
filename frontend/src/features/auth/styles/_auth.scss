@@ -408,3 +408,101 @@
   flex-shrink: 0;
 }
 
+// ─── Invite Handler Page ─────────────────────────────────────────────────────
+
+.invite-handler-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  background: var(--cui-body-bg, #f8f9fa);
+}
+
+.invite-handler-loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.invite-handler-hero {
+  .invite-handler-emoji {
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  .invite-handler-title {
+    font-size: 1.75rem;
+    color: var(--cui-body-color, #333);
+  }
+
+  .invite-handler-subtitle {
+    font-size: 0.95rem;
+  }
+}
+
+.invite-handler-context-strip {
+  .invite-handler-email-badge {
+    display: inline-block;
+    padding: 0.4rem 1.2rem;
+    border-radius: 2rem;
+    background: var(--cui-primary-bg-subtle, #ede9fe);
+    color: var(--cui-primary, #4f46e5);
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+}
+
+.invite-handler-card {
+  border-radius: 1rem;
+  background: var(--cui-body-bg, #fff);
+}
+
+.invite-handler-tabs {
+  border-bottom: 2px solid var(--cui-border-color, #dee2e6);
+
+  .invite-handler-tab-link {
+    font-weight: 600;
+    color: var(--cui-body-color);
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    padding: 0.6rem 1.25rem;
+    transition: color 0.15s, border-color 0.15s;
+
+    &.active {
+      color: var(--cui-primary, #4f46e5);
+      border-bottom-color: var(--cui-primary, #4f46e5);
+      background: transparent;
+    }
+
+    &:hover:not(.active) {
+      color: var(--cui-primary, #4f46e5);
+    }
+  }
+}
+
+.invite-handler-eye-btn {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--cui-secondary-color, #6c757d);
+  opacity: 0.75;
+  padding-inline-end: 0.75rem;
+  z-index: 10;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.invite-handler-error-icon {
+  font-size: 3rem;
+}
