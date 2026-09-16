@@ -733,17 +733,19 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Create Account Prompt */}
+              {/* Create Organisation Prompt */}
               <View className="flex-row items-center justify-center pt-2 pb-1">
                 <Text className="text-xs text-slate-900 dark:text-white font-bold">
-                  Don't have an account?{' '}
+                  Don't have an Organisation?{' '}
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push('/(auth)/signup')}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Create Organisation"
                 >
                   <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
-                    Create Account
+                    Create Organisation
                   </Text>
                 </TouchableOpacity>
               </View>
