@@ -105,7 +105,7 @@ export function DateTimeStep({
           Select Date & Time Window
         </Text>
         <Text variant="muted" className="text-xs text-muted-foreground mt-0.5">
-          Schedule your reservation in facility local time ({facility.timezone || 'Asia/Riyadh'}).
+          Schedule your reservation in facility local time ({facility.timezone || 'UTC'}).
         </Text>
       </View>
 

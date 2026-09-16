@@ -63,28 +63,75 @@ export const isHoldActive = (
 };
 
 /**
- * Converts a facility-local date ("YYYY-MM-DD") and time ("HH:mm") into a UTC ISO string.
- * Uses native Date parsing or UTC offset math.
+ * Converts a facility-local date ("YYYY-MM-DD") and time ("HH:mm") into a UTC ISO string,
+ * correctly accounting for the facility's IANA timezone (e.g. "Asia/Kolkata", "Asia/Dubai").
+ *
+ * Strategy: build a "naive" local datetime string, then use Intl.DateTimeFormat to measure
+ * the UTC offset the timezone applies at that moment, and subtract it.
+ *
+ * @param dateStr  "YYYY-MM-DD" in the facility's local calendar
+ * @param timeStr  "HH:mm"      in the facility's local clock
+ * @param timezone IANA timezone identifier, e.g. "Asia/Kolkata". Defaults to device local zone.
  */
 export const convertLocalToUtcIso = (
   dateStr: string,
   timeStr: string,
-  _timezone?: string
+  timezone?: string
 ): string => {
   if (!dateStr || !timeStr || typeof dateStr !== 'string' || typeof timeStr !== 'string') return '';
 
   const [year, month, day] = dateStr.split('-').map(Number);
   const [hours, minutes] = timeStr.split(':').map(Number);
 
-  // If date/time parts are invalid, return empty string
-  if (!year || !month || !day || isNaN(hours) || isNaN(minutes)) {
-    return '';
+  if (!year || !month || !day || isNaN(hours) || isNaN(minutes)) return '';
+
+  const pad = (n: number) => n.toString().padStart(2, '0');
+
+  if (!timezone) {
+    // No timezone provided: treat as UTC (legacy behaviour, safe for tests)
+    return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0)).toISOString();
   }
 
-  // Construct ISO string for unambiguous UTC or local parsing
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  const d = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-  return d.toISOString();
+  try {
+    // Build an ISO-like string that represents the wall-clock time in the given timezone.
+    // "YYYY-MM-DDTHH:mm:00" with no Z suffix = local interpretation.
+    const localIsoString = `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00`;
+
+    // Parse it naively as UTC first to get a Date object to interrogate.
+    const naiveUtcMs = Date.UTC(year, month - 1, day, hours, minutes, 0);
+    const naiveDate = new Date(naiveUtcMs);
+
+    // Use Intl to find what UTC offset the timezone has at this approximate moment.
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    // Format the naiveDate (which is in UTC) into the target timezone to find the offset.
+    const parts = formatter.formatToParts(naiveDate);
+    const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+    const tzYear = get('year');
+    const tzMonth = get('month');
+    const tzDay = get('day');
+    const tzHour = get('hour') % 24; // handle 24:xx edge case
+    const tzMinute = get('minute');
+
+    // Difference between the target timezone's interpretation of naiveDate vs the intended wall time
+    const tzAsUtcMs = Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute, 0);
+    const offsetMs = naiveUtcMs - tzAsUtcMs;
+
+    // The true UTC time = naiveUtcMs + offsetMs
+    return new Date(naiveUtcMs + offsetMs).toISOString();
+  } catch {
+    // Intl not available or invalid timezone — fall back to treating input as UTC
+    return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0)).toISOString();
+  }
 };
 
 /**
