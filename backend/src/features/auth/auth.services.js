@@ -1377,7 +1377,9 @@ export class AuthService {
       // --- TRANSACTION BOUNDARY END ---
 
       // Resolve scoped token and workspaces (outside transaction)
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(activatedUser);
+      // Pass orgId explicitly so the JWT is scoped to the newly-accepted community,
+      // not the user's prior/default active community (fixes multi-org SSO invite bug).
+      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(activatedUser, orgId);
       const token = signToken(tokenPayload);
 
       // Emit events for successful login/auth write operations

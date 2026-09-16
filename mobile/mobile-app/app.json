@@ -1,23 +1,76 @@
 {
   "expo": {
-    "name": "mobile-app",
+    "name": "Nahom",
     "slug": "mobile-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile-app",
+    "scheme": ["mobile-app", "managemygate", "com.atominosconsulting.nahom"],
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.atominosconsulting.nahom",
+      "buildNumber": "13",
+      "associatedDomains": [
+        "applinks:managemygate.e3esg.com",
+        "applinks:app.managemygate.com",
+        "applinks:managemygate.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.atominosconsulting.nahom",
+      "versionCode": 13,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite/handoff"
+            },
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "app.managemygate.com",
+              "pathPrefix": "/invite/handoff"
+            },
+            {
+              "scheme": "https",
+              "host": "app.managemygate.com",
+              "pathPrefix": "/invite"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "managemygate",
+              "host": "invite",
+              "pathPrefix": "/handoff"
+            },
+            {
+              "scheme": "managemygate",
+              "host": "accept-invite"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

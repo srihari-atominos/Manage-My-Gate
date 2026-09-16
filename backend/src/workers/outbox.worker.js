@@ -69,9 +69,20 @@ async function handleUserInvited(payload) {
   const subject = template?.subject || 'You are invited to join the Workspace';
   const bodyTemplate = template?.body || DEFAULT_INVITE_BODY;
 
-  // 3. Compile variables
-  const compiledSubject = subject.replace(/{{invite_link}}/g, inviteLink);
-  const compiledBody = bodyTemplate.replace(/{{invite_link}}/g, inviteLink);
+  const rejectInviteLink = `${inviteLink}${inviteLink.includes('?') ? '&' : '?'}action=reject`;
+
+  // 3. Compile variables — also rewrite any legacy URL formats that may be
+  //    stored in custom MongoDB email templates (hash-router, /invite/app/, /invite/web/)
+  const compiledSubject = subject
+    .replace(/{{invite_link}}/g, inviteLink)
+    .replace(/{{reject_link}}/g, rejectInviteLink);
+  const compiledBody = bodyTemplate
+    // Rewrite legacy hash-router style: /#/invite?token=<token>
+    .replace(/https?:\/\/[^\s"'>]+\/#\/invite\?token=[^\s"'>]*/gi, inviteLink)
+    // Rewrite legacy sub-path style: /invite/app/<token> or /invite/web/<token>
+    .replace(/https?:\/\/[^\s"'>]+\/invite\/(?:app|web)\/[^\s"'>]*/gi, inviteLink)
+    .replace(/{{invite_link}}/g, inviteLink)
+    .replace(/{{reject_link}}/g, rejectInviteLink);
 
   // 4. Decrypt SMTP credentials
   const credentials = await integrationHubService.getDecryptedCredentialsById(smtpConnection._id);

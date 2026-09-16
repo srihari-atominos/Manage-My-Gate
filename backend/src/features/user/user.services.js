@@ -195,7 +195,7 @@ export class UserService {
     }
   }
 
-  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '') {
+  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '', invitationSource = 'WEB') {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -359,7 +359,7 @@ export class UserService {
       const OutboxEvent = (await import('../outbox/outboxEvent.model.js')).default;
       const outboxEvent = new OutboxEvent({
         eventType: 'USER_INVITED',
-        payload: { email: trimmedEmail, orgId, invitationToken },
+        payload: { email: trimmedEmail, orgId, invitationToken, invitationSource },
         status: 'PENDING',
       });
       await outboxEvent.save({ session });
