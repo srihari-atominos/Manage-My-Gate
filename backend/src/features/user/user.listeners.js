@@ -219,9 +219,16 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
 
     const bodyTemplate = template?.body || customInviteBody;
 
-    // Compile variables
-    const compiledSubject = subject.replace(/{{invite_link}}/g, inviteLink);
+    // Compile variables — also rewrite any legacy URL formats that may be
+    // stored in custom MongoDB email templates (hash-router, /invite/app/, /invite/web/)
+    const compiledSubject = subject
+      .replace(/{{invite_link}}/g, inviteLink)
+      .replace(/{{reject_link}}/g, rejectInviteLink);
     const compiledBody = bodyTemplate
+      // Rewrite legacy hash-router style: /#/invite?token=<token>
+      .replace(/https?:\/\/[^\s"'>]+\/#\/invite\?token=[^\s"'>]*/gi, inviteLink)
+      // Rewrite legacy sub-path style: /invite/app/<token> or /invite/web/<token>
+      .replace(/https?:\/\/[^\s"'>]+\/invite\/(?:app|web)\/[^\s"'>]*/gi, inviteLink)
       .replace(/https?:\/\/[^\s"']+\/(?:#\/)?invite(?:\/(?:web|app))?(?:\?token=|\/)[^\s"']*/gi, inviteLink)
       .replace(/{{invite_link}}/g, inviteLink)
       .replace(/{{reject_link}}/g, rejectInviteLink)
