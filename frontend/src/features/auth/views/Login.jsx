@@ -32,10 +32,10 @@ const Login = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center items-center">
           <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl mr-3 shadow-md">
-            M
+            N
           </div>
           <h2 className="text-3xl font-bold text-slate-900 text-center tracking-tight">
-            Manage My Gate
+            Nahom
           </h2>
         </div>
         <h2 className="mt-6 text-center text-xl font-semibold text-slate-800">

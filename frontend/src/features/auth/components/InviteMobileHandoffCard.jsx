@@ -73,8 +73,8 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
           <CSpinner color="primary" size="sm" className="me-2 mb-1" />
           <span className="fw-semibold text-dark small">
             {redirectingToStore
-              ? t('auth.handoff.redirectingStore', 'Opening {{storeName}} to install Manage-My-Gate...', { storeName })
-              : t('auth.handoff.connectingApp', 'Launching the Manage-My-Gate mobile app...')}
+              ? t('auth.handoff.redirectingStore', 'Opening {{storeName}} to install Nahom...', { storeName })
+              : t('auth.handoff.connectingApp', 'Launching the Nahom mobile app...')}
           </span>
           <p className="text-muted small mt-2 mb-0" style={{ fontSize: '0.82rem' }}>
             {t('auth.handoff.autoHandoffDesc', 'Your authenticated session is being securely synced to your device.')}

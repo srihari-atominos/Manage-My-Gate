@@ -99,6 +99,18 @@ export async function setupAndroidNotificationChannels() {
       enableVibrate: true,
     });
 
+    // 7. Community & Workspace Invitations (MAX importance for urgent access decisions)
+    await Notifications.setNotificationChannelAsync('invitations', {
+      name: 'Invitations & Access Approvals',
+      description: 'Community invitations requiring acceptance or decline',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 300, 200, 300],
+      lightColor: '#2563EB',
+      sound: 'default',
+      enableLights: true,
+      enableVibrate: true,
+    });
+
     channelsInitialized = true;
     console.log('[PushNotificationService] Android notification channels successfully configured');
   } catch (error) {

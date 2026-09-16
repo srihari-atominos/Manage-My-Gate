@@ -29,7 +29,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
     const rejectInviteLink = `${inviteLink}${inviteLink.includes('?') ? '&' : '?'}action=reject`;
 
     // 1. Fetch organization name for branded invite presentation
-    let communityName = 'ManageMyGate';
+    let communityName = 'Nahom';
     if (orgId) {
       try {
         const Organization = (await import('../organization/organization.model.js')).default;
@@ -61,10 +61,8 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
         targetUser = await User.findOne({ email: email.toLowerCase() });
       }
 
-      // Existing user has an active account (status Active or password set)
-      const isExistingAccount = isExisting !== undefined
-        ? isExisting
-        : (targetUser && (targetUser.status === 'Active' || !!(targetUser.password && targetUser.password.length > 0)));
+      // Existing user has an account record in the system
+      const isExistingAccount = isExisting !== undefined ? isExisting : !!targetUser;
 
       if (targetUser && isExistingAccount) {
         const notificationService = (await import('../notification/notification.service.js')).default;

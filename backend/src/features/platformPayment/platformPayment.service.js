@@ -244,25 +244,25 @@ export class PlatformPaymentService {
           });
 
           await transporter.sendMail({
-            from: `"${smtpIntegration.accountLabel || 'Manage My Gate'}" <${authUsername}>`,
+            from: `"${smtpIntegration.accountLabel || 'Nahom'}" <${authUsername}>`,
             to: email,
             subject: `Organization Access & Order Confirmation — ${name}`,
             html: `
               <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
                 <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #3b82f6;">
-                  <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Manage My Gate</h2>
+                  <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Nahom</h2>
                   <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Gated Community & Property Management Platform</p>
                 </div>
                 
                 <h3 style="color: #0f172a; margin-top: 20px;">🎉 Your Organization Account is Ready!</h3>
                 <p style="color: #334155; font-size: 15px; line-height: 1.5;">Dear Admin,</p>
-                <p style="color: #334155; font-size: 15px; line-height: 1.5;">Your organization <strong>${name}</strong> has been successfully registered and provisioned on Manage My Gate platform.</p>
+                <p style="color: #334155; font-size: 15px; line-height: 1.5;">Your organization <strong>${name}</strong> has been successfully registered and provisioned on Nahom platform.</p>
                 
                 <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; margin: 20px 0;">
                   <h4 style="margin: 0 0 10px 0; color: #1e293b;">🔑 Organization Account Login Credentials:</h4>
                   <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Organization Name:</strong> ${name}</p>
                   <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>User Name (Email):</strong> ${email}</p>
-                  <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Default Password:</strong> <code style="background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px;">ManageMyGate@2026</code></p>
+                  <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Default Password:</strong> <code style="background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px;">Nahom@2026</code></p>
                 </div>
 
                 <div style="text-align: center; margin: 25px 0;">
@@ -346,13 +346,13 @@ export class PlatformPaymentService {
           auth: { user: authUsername, pass: authPassword },
         });
         await transporter.sendMail({
-          from: `"${smtpIntegration?.accountLabel || 'Manage My Gate'}" <${authUsername}>`,
+          from: `"${smtpIntegration?.accountLabel || 'Nahom'}" <${authUsername}>`,
           to: recipientEmail,
           subject: `Payment Reminder: Pending Invoice for ${orgName}`,
           html: `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
               <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #3b82f6;">
-                <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Manage My Gate</h2>
+                <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Nahom</h2>
                 <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Gated Community & Property Management Platform</p>
               </div>
               
@@ -400,13 +400,13 @@ export class PlatformPaymentService {
               'Authorization': `Bearer ${resendApiKey}`,
             },
             body: JSON.stringify({
-              from: 'ManageMyGate <onboarding@resend.dev>',
+              from: 'Nahom <onboarding@resend.dev>',
               to: [recipientEmail],
               subject: `Payment Reminder: Pending Invoice for ${orgName}`,
               html: `
                 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
                   <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #3b82f6;">
-                    <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Manage My Gate</h2>
+                    <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Nahom</h2>
                     <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Gated Community & Property Management Platform</p>
                   </div>
                   
@@ -911,13 +911,13 @@ export class PlatformPaymentService {
         });
 
         await transporter.sendMail({
-          from: `"${smtpIntegration?.accountLabel || 'Manage My Gate'}" <${authUsername}>`,
+          from: `"${smtpIntegration?.accountLabel || 'Nahom'}" <${authUsername}>`,
           to: recipientEmail,
-          subject: `Welcome to Manage My Gate - Workspace Activated (${orgName})`,
+          subject: `Welcome to Nahom - Workspace Activated (${orgName})`,
           html: `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; max-width: 640px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
               <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #3b82f6;">
-                <h2 style="color: #1e3a8a; margin: 0; font-size: 26px;">Manage My Gate</h2>
+                <h2 style="color: #1e3a8a; margin: 0; font-size: 26px;">Nahom</h2>
                 <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Gated Community & Property Management Platform</p>
               </div>
               

@@ -6,7 +6,7 @@ const AppFooter = () => {
   return (
     <CFooter className="px-4 py-2 flex-wrap gap-2">
       <div>
-        <span className="fw-semibold text-primary">Manage My Gate</span>
+        <span className="fw-semibold text-primary">Nahom</span>
         <span className="ms-1">
           &copy; {new Date().getFullYear()} Atominos Consulting Private Limited.
         </span>

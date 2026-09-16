@@ -11,6 +11,7 @@ import {
   BellRing,
   Search,
   Info,
+  UserPlus,
 } from 'lucide-react-native';
 import { NotificationItemData } from '@/src/features/notification/services/notificationService';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,9 @@ export const RealtimeNotificationToast: React.FC<RealtimeNotificationToastProps>
 
   const getIcon = (type?: string) => {
     switch (type?.toUpperCase()) {
+      case 'INVITATION':
+      case 'INVITE':
+        return <UserPlus size={18} color="#2563EB" />;
       case 'VISITOR':
         return <QrCode size={18} color="#03A9F4" />;
       case 'BILLING':

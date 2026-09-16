@@ -355,10 +355,10 @@ export const LoginForm = () => {
         <CForm onSubmit={handleSubmit(onSubmit)}>
           <div style={styles.logoContainer}>
             <div style={styles.logoBox}>
-              M
+              N
             </div>
             <h2 style={styles.logoText}>
-              Manage My Gate
+              Nahom
             </h2>
           </div>
 

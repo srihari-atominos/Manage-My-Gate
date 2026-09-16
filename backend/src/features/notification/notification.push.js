@@ -28,6 +28,9 @@ export const resolveAndroidChannel = (payload) => {
   if (str.includes('visitor') || str.includes('gate approval') || str.includes('walk-in') || str.includes('walkin')) {
     return 'visitors';
   }
+  if (str.includes('invit')) {
+    return 'invitations';
+  }
   if (str.includes('billing') || str.includes('invoice') || str.includes('payment') || str.includes('assessment') || str.includes('due')) {
     return 'billing';
   }
@@ -120,7 +123,7 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
       messages.push({
         to: token,
         sound,
-        title: title || 'ManageMyGate Alert',
+        title: title || 'Nahom Alert',
         body: body || '',
         data: {
           notificationId: data.notificationId || null,

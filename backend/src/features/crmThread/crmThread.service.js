@@ -85,12 +85,12 @@ export class CrmThreadService {
       const recipientEmail = (inquiry?.email || recipientContact).trim();
       try {
         const { sendEmail } = await import('../../utils/email.utils.js');
-        const subject = `[Manage My Gate] Message regarding ${inquiry?.organizationName || inquiry?.contactName || 'your inquiry'}`;
+        const subject = `[Nahom] Message regarding ${inquiry?.organizationName || inquiry?.contactName || 'your inquiry'}`;
         const html = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-                 <h3 style="color: #2563eb; margin-top: 0;">Message from Manage My Gate SuperAdmin</h3>
+                 <h3 style="color: #2563eb; margin-top: 0;">Message from Nahom SuperAdmin</h3>
                  <p style="font-size: 15px; color: #334155; line-height: 1.6;">${String(messagePayload.content).replace(/\n/g, '<br/>')}</p>
                  <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                 <p style="font-size: 12px; color: #64748b;">This email was sent via Gmail by Manage My Gate SuperAdmin Support.</p>
+                 <p style="font-size: 12px; color: #64748b;">This email was sent via Gmail by Nahom SuperAdmin Support.</p>
                </div>`;
         const success = await sendEmail(inquiry?.orgId || null, recipientEmail, subject, html);
         console.log(`[crmThread.service] Gmail message sendEmail to ${recipientEmail} result: ${success}`);
