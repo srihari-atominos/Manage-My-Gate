@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
+import { useDispatch } from 'react-redux'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { toast } from 'react-hot-toast'
@@ -28,9 +29,11 @@ import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser, cilPhone } from '@coreui/icons'
 import { GoogleLogin } from '@react-oauth/google'
 import { useMsal } from '@azure/msal-react'
+import { acceptInvitation, acceptSsoInvitation } from '../../../features/auth/store/authSlice'
 import apiClient from '../../../services/apiClient.js'
 import useAuth from '../../../features/auth/hooks/useAuth.js'
 import '../../../features/auth/styles/_auth.scss'
+
 
 // ─── Inline icon helpers (same pattern as AcceptInviteForm) ─────────────────
 const EyeIcon = () => (
@@ -71,7 +74,61 @@ const createSignInSchema = (t) =>
     password: yup.string().required(t('auth.invite.passwordRequired', 'Password is required')),
   })
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Mobile detection & smart redirect helpers ───────────────────────────────
+
+/** Returns 'ios' | 'android' | 'desktop' */
+const getPlatform = () => {
+  const ua = navigator.userAgent || ''
+  if (/iphone|ipad|ipod/i.test(ua)) return 'ios'
+  if (/android/i.test(ua)) return 'android'
+  return 'desktop'
+}
+
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom'
+const APP_STORE_URL  = 'https://apps.apple.com/app/manage-my-gate/id6746501635'
+
+/**
+ * After successful invite acceptance, redirect the user to the right destination:
+ *  - Desktop  → web /dashboard
+ *  - Android  → try universal/deep link; fallback to Play Store after 1.5 s
+ *  - iOS      → try universal/deep link; fallback to App Store after 1.5 s
+ *
+ * Uses the canonical universal link path `/invite/handoff/<token>` which
+ * Android App Links and iOS Universal Links intercept to open the native app.
+ * If the app is NOT installed the OS ignores the universal link and falls through
+ * to the website; the 1.5 s timer then kicks in and sends the user to the store.
+ */
+const processSuccessfulAcceptance = (navigate, inviteToken) => {
+  const platform = getPlatform()
+
+  if (platform === 'desktop') {
+    navigate('/dashboard')
+    return
+  }
+
+  // Mobile: try universal link — the OS will intercept if the app is installed
+  const universalLink = `${window.location.origin}/invite/handoff/${inviteToken}`
+
+  // Start store fallback timer — cancelled if the app opens (page becomes hidden)
+  const storeUrl = platform === 'ios' ? APP_STORE_URL : PLAY_STORE_URL
+  const storeTimer = setTimeout(() => {
+    window.location.href = storeUrl
+  }, 1500)
+
+  // Cancel store redirect if the app opened (tab becomes hidden/background)
+  const cancelOnHide = () => {
+    if (document.hidden) {
+      clearTimeout(storeTimer)
+      document.removeEventListener('visibilitychange', cancelOnHide)
+    }
+  }
+  document.addEventListener('visibilitychange', cancelOnHide)
+
+  // Trigger the universal link attempt
+  window.location.href = universalLink
+}
+
+
 /**
  * InviteHandler — Unified smart invite landing page.
  *
@@ -88,7 +145,8 @@ const InviteHandler = () => {
   const navigate = useNavigate()
   const token = searchParams.get('token')
 
-  const { login, loginGoogle, loginMicrosoft, handleAcceptInvitation, handleAcceptSsoInvitation, loading: authLoading, error: authError } = useAuth()
+  const dispatch = useDispatch()
+  const { login, loginGoogle, loginMicrosoft, loading: authLoading, error: authError } = useAuth()
   const { instance: msalInstance } = useMsal()
 
   // ── Invite metadata state ──────────────────────────────────────────────────
@@ -102,6 +160,7 @@ const InviteHandler = () => {
   const [showSignUpConfirm, setShowSignUpConfirm] = useState(false)
   const [showSignInPwd, setShowSignInPwd] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
 
   // ── Forms ──────────────────────────────────────────────────────────────────
   const signUpForm = useForm({ resolver: yupResolver(createSignUpSchema(t)), defaultValues: { name: '', phone: '', password: '', confirmPassword: '' } })
@@ -114,9 +173,7 @@ const InviteHandler = () => {
       setValidating(false)
       return
     }
-
     let cancelled = false
-
     const validate = async () => {
       try {
         const res = await apiClient.get('/auth/validate-invite', { params: { token } })
@@ -134,7 +191,6 @@ const InviteHandler = () => {
         if (!cancelled) setValidating(false)
       }
     }
-
     validate()
     return () => { cancelled = true }
   }, [token, t])
@@ -142,66 +198,101 @@ const InviteHandler = () => {
   // ── 2. Sign Up (new user) ──────────────────────────────────────────────────
   const handleSignUp = useCallback(async (formData) => {
     setSubmitError(null)
-    const result = await handleAcceptInvitation(token, formData.password)
-    if (!result?.success) {
-      setSubmitError(result?.error || t('auth.invite.error', 'Something went wrong. Please try again.'))
+    setSubmitting(true)
+    try {
+      const resultAction = await dispatch(acceptInvitation({ token, password: formData.password }))
+      if (acceptInvitation.fulfilled.match(resultAction)) {
+        toast.success(t('auth.invite.success', 'Welcome! You have joined the community.'))
+        processSuccessfulAcceptance(navigate, token)
+      } else {
+        setSubmitError(resultAction.payload || t('auth.invite.error', 'Something went wrong. Please try again.'))
+      }
+    } finally {
+      setSubmitting(false)
     }
-    // On success: useAuth navigates to /dashboard automatically
-  }, [token, handleAcceptInvitation, t])
+  }, [dispatch, token, navigate, t])
 
-  // ── 3. Sign In (existing user) — backend accepts inviteToken in login ──────
+  // ── 3. Sign In (existing user) ─────────────────────────────────────────────
   const handleSignIn = useCallback(async (formData) => {
     setSubmitError(null)
-    const result = await login({ login: inviteData.email, password: formData.password, inviteToken: token })
-    if (result?.success) {
-      toast.success(t('auth.invite.success', 'Welcome! You have joined the community.'))
-      const workspaces = result.payload?.data?.availableWorkspaces || []
-      navigate(workspaces.length === 0 ? '/workspace-setup' : '/dashboard')
-    } else {
-      setSubmitError(result?.error || t('auth.login.error', 'Invalid credentials. Please try again.'))
+    setSubmitting(true)
+    try {
+      const result = await login({ login: inviteData.email, password: formData.password, inviteToken: token })
+      if (result?.success) {
+        toast.success(t('auth.invite.success', 'Welcome! You have joined the community.'))
+        processSuccessfulAcceptance(navigate, token)
+      } else {
+        setSubmitError(result?.error || t('auth.login.error', 'Invalid credentials. Please try again.'))
+      }
+    } finally {
+      setSubmitting(false)
     }
   }, [login, inviteData, token, navigate, t])
 
-  // ── 4. SSO handlers — behaviour differs by user type ──────────────────────
-  //    New users  → POST /auth/accept-invite/sso  (handleAcceptSsoInvitation)
-  //    Existing   → POST /auth/login/google|microsoft (loginGoogle/loginMicrosoft)
-  //    The acceptInviteWithSSO backend method throws 400 if user.status !== 'Pending Verification'
+  // ── 4. SSO — route to correct endpoint based on user type ─────────────────
   const handleGoogleSSO = useCallback(async (credentialResponse) => {
     setSubmitError(null)
     if (!credentialResponse?.credential) return
-    if (inviteData?.isExisting) {
-      // Existing user — use standard Google login with inviteToken for auto-acceptance
-      const result = await loginGoogle(credentialResponse.credential, token)
-      if (!result?.success) {
-        setSubmitError(result?.error || t('auth.invite.ssoError', 'Google sign-in failed. Please try again.'))
+    setSubmitting(true)
+    try {
+      if (inviteData?.isExisting) {
+        const result = await loginGoogle(credentialResponse.credential, token)
+        if (result?.success) {
+          toast.success(t('auth.invite.success', 'Welcome! You have joined the community.'))
+          processSuccessfulAcceptance(navigate, token)
+        } else {
+          setSubmitError(result?.error || t('auth.invite.ssoError', 'Google sign-in failed. Please try again.'))
+        }
+      } else {
+        const resultAction = await dispatch(acceptSsoInvitation({ inviteToken: token, ssoCredential: credentialResponse.credential, provider: 'google' }))
+        if (acceptSsoInvitation.fulfilled.match(resultAction)) {
+          toast.success(t('auth.invite.success', 'Welcome! You have joined the community.'))
+          processSuccessfulAcceptance(navigate, token)
+        } else {
+          setSubmitError(resultAction.payload || t('auth.invite.ssoError', 'Google sign-in failed. Please try again.'))
+        }
       }
-    } else {
-      // New user — use dedicated SSO invite acceptance endpoint
-      await handleAcceptSsoInvitation(token, credentialResponse.credential, 'google')
+    } finally {
+      setSubmitting(false)
     }
-  }, [token, inviteData, loginGoogle, handleAcceptSsoInvitation, t])
+  }, [dispatch, token, inviteData, loginGoogle, navigate, t])
 
   const handleMicrosoftSSO = useCallback(() => {
     setSubmitError(null)
     msalInstance.loginPopup({ scopes: ['openid', 'profile', 'user.read'] })
       .then(async (response) => {
         if (!response?.idToken) return
-        if (inviteData?.isExisting) {
-          // Existing user — use standard Microsoft login with inviteToken
-          const result = await loginMicrosoft(response.idToken, token)
-          if (!result?.success) {
-            setSubmitError(result?.error || t('auth.invite.ssoError', 'Microsoft sign-in failed. Please try again.'))
+        setSubmitting(true)
+        try {
+          if (inviteData?.isExisting) {
+            const result = await loginMicrosoft(response.idToken, token)
+            if (result?.success) {
+              toast.success(t('auth.invite.success', 'Welcome! You have joined the community.'))
+              processSuccessfulAcceptance(navigate, token)
+            } else {
+              setSubmitError(result?.error || t('auth.invite.ssoError', 'Microsoft sign-in failed.'))
+            }
+          } else {
+            const resultAction = await dispatch(acceptSsoInvitation({ inviteToken: token, ssoCredential: response.idToken, provider: 'microsoft' }))
+            if (acceptSsoInvitation.fulfilled.match(resultAction)) {
+              toast.success(t('auth.invite.success', 'Welcome! You have joined the community.'))
+              processSuccessfulAcceptance(navigate, token)
+            } else {
+              setSubmitError(resultAction.payload || t('auth.invite.ssoError', 'Microsoft sign-in failed.'))
+            }
           }
-        } else {
-          // New user — use dedicated SSO invite acceptance endpoint
-          await handleAcceptSsoInvitation(token, response.idToken, 'microsoft')
+        } finally {
+          setSubmitting(false)
         }
       })
       .catch((err) => {
         console.error('Microsoft SSO failed:', err)
         setSubmitError(t('auth.invite.ssoError', 'Microsoft sign-in failed. Please try again.'))
       })
-  }, [token, inviteData, loginMicrosoft, handleAcceptSsoInvitation, msalInstance, t])
+  }, [dispatch, token, inviteData, loginMicrosoft, msalInstance, navigate, t])
+
+  const isLoading = authLoading || submitting
+
 
 
   // ── Loading state ──────────────────────────────────────────────────────────
@@ -310,7 +401,7 @@ const InviteHandler = () => {
                         <CFormInput
                           className="accept-invite-input border-0"
                           placeholder={t('auth.invite.namePlaceholder', 'Full Name')}
-                          disabled={authLoading}
+                          disabled={isLoading}
                           invalid={!!signUpForm.formState.errors.name}
                           {...signUpForm.register('name')}
                         />
@@ -327,7 +418,7 @@ const InviteHandler = () => {
                         <CFormInput
                           className="accept-invite-input border-0"
                           placeholder={t('auth.invite.phonePlaceholder', 'Phone Number (optional)')}
-                          disabled={authLoading}
+                          disabled={isLoading}
                           {...signUpForm.register('phone')}
                         />
                       </CInputGroup>
@@ -342,7 +433,7 @@ const InviteHandler = () => {
                           className="accept-invite-input border-0 pe-5"
                           placeholder={t('auth.invite.password', 'Password')}
                           autoComplete="new-password"
-                          disabled={authLoading}
+                          disabled={isLoading}
                           invalid={!!signUpForm.formState.errors.password}
                           {...signUpForm.register('password')}
                         />
@@ -364,7 +455,7 @@ const InviteHandler = () => {
                           className="accept-invite-input border-0 pe-5"
                           placeholder={t('auth.invite.confirmPassword', 'Confirm Password')}
                           autoComplete="new-password"
-                          disabled={authLoading}
+                          disabled={isLoading}
                           invalid={!!signUpForm.formState.errors.confirmPassword}
                           {...signUpForm.register('confirmPassword')}
                         />
@@ -376,7 +467,7 @@ const InviteHandler = () => {
                         )}
                       </CInputGroup>
 
-                      <CButton type="submit" className="accept-invite-btn border-0 py-2 w-100 mb-3" disabled={authLoading}>
+                      <CButton type="submit" className="accept-invite-btn border-0 py-2 w-100 mb-3" disabled={isLoading}>
                         {authLoading
                           ? <CSpinner size="sm" variant="grow" />
                           : t('auth.invite.submitSignUp', 'Activate & Join Community')
@@ -425,7 +516,7 @@ const InviteHandler = () => {
                           className="accept-invite-input border-0 pe-5"
                           placeholder={t('auth.invite.existingPassword', 'Your existing password')}
                           autoComplete="current-password"
-                          disabled={authLoading}
+                          disabled={isLoading}
                           invalid={!!signInForm.formState.errors.password}
                           {...signInForm.register('password')}
                         />
@@ -437,7 +528,7 @@ const InviteHandler = () => {
                         )}
                       </CInputGroup>
 
-                      <CButton type="submit" className="accept-invite-btn border-0 py-2 w-100 mb-3" disabled={authLoading}>
+                      <CButton type="submit" className="accept-invite-btn border-0 py-2 w-100 mb-3" disabled={isLoading}>
                         {authLoading
                           ? <CSpinner size="sm" variant="grow" />
                           : t('auth.invite.submitSignIn', 'Sign In & Join Community')
