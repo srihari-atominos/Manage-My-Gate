@@ -329,7 +329,10 @@ export interface ScheduleMaintenanceApiPayload {
   startDateTime: string;
   endDateTime: string;
   reason: string;
-  blockType: string;
+  blockType?: string;
+  isCompleteClosure?: boolean;
+  degradedCapacity?: number;
+  conflictAction?: 'CANCEL_AND_PROCEED';
 }
 
 export interface CheckInPassApiPayload {

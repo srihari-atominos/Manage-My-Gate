@@ -87,18 +87,18 @@ export interface PaginationMeta {
 
 export interface MaintenanceTask {
   _id: string;
-  amenityId: string;
-  amenityName?: string;
-  title: string;
-  description?: string;
-  startDate: string;
-  endDate: string;
-  startTime?: string;
-  endTime?: string;
-  assignedStaff?: string;
-  status?: string;
-  autoCancelBookings?: boolean;
+  facilityId: string;
+  resourceId?: string;
+  amenityId?: string;        // kept for backward compat with UI lookups
+  amenityName?: string;      // populated via virtual/aggregate in API responses
+  startDateTime: string;     // ISO8601 UTC
+  endDateTime: string;       // ISO8601 UTC
+  reason: string;
+  isCompleteClosure?: boolean;
+  degradedCapacity?: number;
+  status?: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AmenityState {
@@ -320,47 +320,65 @@ export const updateAmenityStatusThunk = createAsyncThunk(
 export const scheduleMaintenanceThunk = createAsyncThunk(
   'amenities/scheduleMaintenance',
   async (
-    {
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: any;
+    payload: {
+      facilityId: string;
+      resourceId?: string;
+      startDateTime: string;
+      endDateTime: string;
+      reason: string;
+      isCompleteClosure?: boolean;
+      degradedCapacity?: number;
+      conflictAction?: 'CANCEL_AND_PROCEED';
     },
     { rejectWithValue }
   ) => {
     try {
-      const response = await amenityApi.scheduleMaintenance(id, payload);
-      return { id, response };
+      const amenityManagementService = (await import('../services/amenityManagementService')).default;
+      const response = await amenityManagementService.scheduleMaintenance({
+        facilityId: payload.facilityId,
+        resourceId: payload.resourceId,
+        startDateTime: payload.startDateTime,
+        endDateTime: payload.endDateTime,
+        reason: payload.reason,
+        blockType: payload.isCompleteClosure === false ? 'PARTIAL' : 'FULL_CLOSURE',
+        isCompleteClosure: payload.isCompleteClosure,
+        degradedCapacity: payload.degradedCapacity,
+        conflictAction: payload.conflictAction,
+      });
+      return response?.data || response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to schedule maintenance window');
+      return rejectWithValue(error?.response?.data?.message || error.message || 'Failed to schedule maintenance window');
     }
   }
 );
 
 export const fetchMaintenanceListThunk = createAsyncThunk(
   'amenities/fetchMaintenanceList',
-  async (_, { rejectWithValue }) => {
+  async (params: { facilityId?: string; status?: string; page?: number; limit?: number } = {}, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.getMaintenanceList();
-      return response;
+      const amenityManagementService = (await import('../services/amenityManagementService')).default;
+      const response = await amenityManagementService.listMaintenanceBlocks(params);
+      const resData: any = response?.data || response;
+      const list = resData?.records || resData?.docs || (Array.isArray(resData) ? resData : []);
+      return list;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch maintenance schedules');
+      return rejectWithValue(error?.response?.data?.message || error.message || 'Failed to fetch maintenance schedules');
     }
   }
 );
 
-export const updateMaintenanceTaskThunk = createAsyncThunk(
-  'amenities/updateMaintenanceTask',
+export const cancelMaintenanceTaskThunk = createAsyncThunk(
+  'amenities/cancelMaintenanceTask',
   async (
-    { amenityId, maintenanceId, payload }: { amenityId: string; maintenanceId: string; payload: any },
+    { blockId }: { blockId: string },
     { rejectWithValue }
   ) => {
     try {
-      const response = await amenityApi.updateMaintenanceTask(amenityId, maintenanceId, payload);
-      return response;
+      const amenityManagementService = (await import('../services/amenityManagementService')).default;
+      const response = await amenityManagementService.updateMaintenanceStatus(blockId, 'CANCELLED');
+      return { blockId, response: response?.data || response };
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to update maintenance task');
+      return rejectWithValue(error?.response?.data?.message || error.message || 'Failed to cancel maintenance task');
     }
   }
 );
@@ -368,14 +386,17 @@ export const updateMaintenanceTaskThunk = createAsyncThunk(
 export const deleteMaintenanceTaskThunk = createAsyncThunk(
   'amenities/deleteMaintenanceTask',
   async (
-    { amenityId, maintenanceId }: { amenityId: string; maintenanceId: string },
+    payload: { blockId?: string; amenityId?: string; maintenanceId?: string },
     { rejectWithValue }
   ) => {
+    const id = payload.blockId || payload.maintenanceId;
+    if (!id) return rejectWithValue('Missing blockId');
     try {
-      const response = await amenityApi.deleteMaintenanceTask(amenityId, maintenanceId);
-      return { amenityId, maintenanceId, response };
+      const amenityManagementService = (await import('../services/amenityManagementService')).default;
+      const response = await amenityManagementService.updateMaintenanceStatus(id, 'CANCELLED');
+      return { blockId: id, maintenanceId: id, response: response?.data || response };
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to delete maintenance task');
+      return rejectWithValue(error?.response?.data?.message || error.message || 'Failed to cancel maintenance task');
     }
   }
 );
@@ -582,6 +603,13 @@ const amenitySlice = createSlice({
           state.currentAmenity.status = normalizedStatus as any;
         }
       })
+      // Schedule Maintenance Task
+      .addCase(scheduleMaintenanceThunk.fulfilled, (state, action: any) => {
+        const payload = action.payload?.data || action.payload;
+        if (payload && payload._id) {
+          state.maintenanceList.unshift(payload);
+        }
+      })
       // Fetch Maintenance List
       .addCase(fetchMaintenanceListThunk.pending, (state) => {
         state.loading = true;
@@ -591,17 +619,24 @@ const amenitySlice = createSlice({
         state.loading = false;
         state.error = null;
         const payload = action.payload?.data || action.payload || [];
-        state.maintenanceList = Array.isArray(payload) ? payload : payload.maintenanceList || [];
+        const list = Array.isArray(payload) ? payload : payload.records || payload.docs || [];
+        state.maintenanceList = list;
       })
       .addCase(fetchMaintenanceListThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to fetch maintenance tasks';
       })
-      // Delete maintenance task
+      // Cancel / Delete maintenance task
+      .addCase(cancelMaintenanceTaskThunk.fulfilled, (state, action: any) => {
+        const blockId = action.payload?.blockId;
+        if (blockId) {
+          state.maintenanceList = state.maintenanceList.filter((m) => m._id !== blockId);
+        }
+      })
       .addCase(deleteMaintenanceTaskThunk.fulfilled, (state, action: any) => {
-        const maintenanceId = action.payload?.maintenanceId;
-        if (maintenanceId) {
-          state.maintenanceList = state.maintenanceList.filter((m) => m._id !== maintenanceId);
+        const blockId = action.payload?.blockId || action.payload?.maintenanceId;
+        if (blockId) {
+          state.maintenanceList = state.maintenanceList.filter((m) => m._id !== blockId);
         }
       });
   },

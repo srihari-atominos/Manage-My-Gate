@@ -6,14 +6,13 @@ import {
   fetchAmenitiesThunk,
   fetchMaintenanceListThunk,
   scheduleMaintenanceThunk,
-  updateMaintenanceTaskThunk,
   deleteMaintenanceTaskThunk,
-  updateAmenityStatusThunk,
   createAmenityThunk,
   Amenity,
   MaintenanceTask,
 } from '../store/amenitySlice';
 import { MaintenanceFormData } from '../components/MaintenanceModal';
+import { convertLocalToUtcIso } from '../utils/amenityStateHelpers';
 
 export function useAdminMaintenance() {
   const dispatch = useDispatch<AppDispatch>();
@@ -54,60 +53,57 @@ export function useAdminMaintenance() {
   const handleScheduleSubmit = async (amenityId: string, formData: MaintenanceFormData) => {
     setScheduling(true);
 
-    const payload = {
-      title: formData.title,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      description: formData.description,
-      assignedStaff: formData.assignedStaff,
-      autoCancelBookings: formData.autoCancelBookings,
-    };
-
     try {
-      if (editingTask) {
-        await dispatch(
-          updateMaintenanceTaskThunk({
-            amenityId: editingTask.amenityId || amenityId,
-            maintenanceId: editingTask._id,
-            payload,
+      let finalAmenityId = amenityId;
+      if (amenityId === 'OTHER' && formData.customAmenityName) {
+        const createResult: any = await dispatch(
+          createAmenityThunk({
+            name: formData.customAmenityName,
+            category: 'General',
+            type: 'General',
+            capacity: 10,
+            maxBookingsPerUserPerSlot: 10,
+            bookingRules: {
+              slotDurationMinutes: 60,
+              openTime: '00:00',
+              closeTime: '23:59',
+              advanceBookingDays: 30,
+            },
+            status: 'active',
           })
         ).unwrap();
-      } else {
-        let finalAmenityId = amenityId;
-        if (amenityId === 'OTHER' && formData.customAmenityName) {
-          const createResult: any = await dispatch(
-            createAmenityThunk({
-              name: formData.customAmenityName,
-              category: 'General',
-              type: 'General',
-              capacity: 10,
-              maxBookingsPerUserPerSlot: 10,
-              bookingRules: {
-                slotDurationMinutes: 60,
-                openTime: '00:00',
-                closeTime: '23:59',
-                advanceBookingDays: 30,
-              },
-              status: 'active',
-            })
-          ).unwrap();
-          finalAmenityId = createResult?._id || createResult?.data?._id || createResult?.id;
-          if (!finalAmenityId) {
-            setScheduling(false);
-            Alert.alert('Error', 'Failed to create custom amenity for maintenance');
-            return;
-          }
+        finalAmenityId = createResult?._id || createResult?.data?._id || createResult?.id;
+        if (!finalAmenityId) {
+          setScheduling(false);
+          Alert.alert('Error', 'Failed to create custom amenity for maintenance');
+          return;
         }
-
-        await dispatch(
-          scheduleMaintenanceThunk({
-            id: finalAmenityId,
-            payload,
-          })
-        ).unwrap();
       }
+
+      const targetAmenity = amenities.find((a) => a._id === finalAmenityId);
+      const timezone = (targetAmenity as any)?.timezone || 'Asia/Kolkata';
+
+      const startTime = formData.startTime || '00:00';
+      const endTime = formData.endTime || '23:59';
+
+      const startDateTime = convertLocalToUtcIso(formData.startDate, startTime, timezone);
+      const endDateTime = convertLocalToUtcIso(formData.endDate, endTime, timezone);
+
+      const reason = formData.description
+        ? `${formData.title} - ${formData.description}`
+        : formData.title;
+
+      await dispatch(
+        scheduleMaintenanceThunk({
+          facilityId: finalAmenityId,
+          startDateTime,
+          endDateTime,
+          reason,
+          isCompleteClosure: formData.isCompleteClosure !== false,
+          degradedCapacity: formData.degradedCapacity || 0,
+          conflictAction: formData.autoCancelBookings ? 'CANCEL_AND_PROCEED' : undefined,
+        })
+      ).unwrap();
 
       setScheduling(false);
       handleCloseModal();
@@ -124,8 +120,7 @@ export function useAdminMaintenance() {
     try {
       await dispatch(
         deleteMaintenanceTaskThunk({
-          amenityId: deleteTargetTask.amenityId,
-          maintenanceId: deleteTargetTask._id,
+          blockId: deleteTargetTask._id,
         })
       ).unwrap();
       setDeleteTargetTask(null);

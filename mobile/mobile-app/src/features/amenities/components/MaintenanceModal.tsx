@@ -31,6 +31,8 @@ export interface MaintenanceFormData {
   description: string;
   assignedStaff: string;
   autoCancelBookings: boolean;
+  isCompleteClosure?: boolean;
+  degradedCapacity?: number;
 }
 
 export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
@@ -67,11 +69,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       title: 'Routine Cleaning & Servicing',
       startDate: todayStr,
       endDate: tomorrowStr,
-      startTime: '',
-      endTime: '',
+      startTime: '08:00',
+      endTime: '18:00',
       description: '',
       assignedStaff: '',
       autoCancelBookings: false,
+      isCompleteClosure: true,
+      degradedCapacity: 0,
     },
   });
 
@@ -81,17 +85,36 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   useEffect(() => {
     if (visible) {
       if (initialData) {
+        const parseDateAndTime = (isoString?: string, fallbackDate?: string, fallbackTime?: string) => {
+          if (!isoString) return { date: fallbackDate || '', time: fallbackTime || '' };
+          try {
+            const d = new Date(isoString);
+            const pad = (n: number) => String(n).padStart(2, '0');
+            return {
+              date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+              time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+            };
+          } catch {
+            return { date: fallbackDate || '', time: fallbackTime || '' };
+          }
+        };
+
+        const start = parseDateAndTime(initialData.startDateTime, (initialData as any).startDate, (initialData as any).startTime);
+        const end = parseDateAndTime(initialData.endDateTime, (initialData as any).endDate, (initialData as any).endTime);
+
         reset({
-          amenityId: initialData.amenityId || (amenities.length > 0 ? (amenities[0]?._id || '') : 'OTHER'),
+          amenityId: initialData.facilityId || initialData.amenityId || (amenities.length > 0 ? (amenities[0]?._id || '') : 'OTHER'),
           customAmenityName: '',
-          title: initialData.title || 'Routine Servicing',
-          startDate: initialData.startDate || todayStr,
-          endDate: initialData.endDate || tomorrowStr,
-          startTime: initialData.startTime || '',
-          endTime: initialData.endTime || '',
-          description: initialData.description || '',
-          assignedStaff: initialData.assignedStaff || '',
-          autoCancelBookings: initialData.autoCancelBookings || false,
+          title: initialData.reason || (initialData as any).title || 'Routine Servicing',
+          startDate: start.date || todayStr,
+          endDate: end.date || tomorrowStr,
+          startTime: start.time || '08:00',
+          endTime: end.time || '18:00',
+          description: '',
+          assignedStaff: '',
+          autoCancelBookings: false,
+          isCompleteClosure: initialData.isCompleteClosure !== false,
+          degradedCapacity: initialData.degradedCapacity || 0,
         });
       } else {
         reset({
@@ -105,6 +128,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
           description: '',
           assignedStaff: 'Facilities Team',
           autoCancelBookings: true,
+          isCompleteClosure: true,
+          degradedCapacity: 0,
         });
       }
     }
@@ -237,13 +262,44 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 label="Maintenance Details & Notes"
                 multiline
                 numberOfLines={2}
-                style={{ minHeight: 64 }}
+                inputClassName="min-h-[64px]"
                 value={value}
                 onChangeText={onChange}
                 placeholder="Specify work details, equipment needed..."
               />
             )}
           />
+
+          {/* Complete Facility Closure Toggle */}
+          <Controller
+            control={control}
+            name="isCompleteClosure"
+            render={({ field: { onChange, value } }) => (
+              <ToggleSwitch
+                label="Complete Facility Closure"
+                description="When enabled, entirely closes the amenity. Disable to allow degraded capacity."
+                value={value !== false}
+                onValueChange={onChange}
+                className="p-3 bg-card border border-border rounded-2xl mt-1"
+              />
+            )}
+          />
+
+          {watch('isCompleteClosure') === false && (
+            <Controller
+              control={control}
+              name="degradedCapacity"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  label="Degraded Capacity (Available Capacity)"
+                  placeholder="e.g. 5"
+                  keyboardType="numeric"
+                  value={value !== undefined ? String(value) : ''}
+                  onChangeText={(val) => onChange(parseInt(val, 10) || 0)}
+                />
+              )}
+            />
+          )}
 
           {/* Auto-Cancel Toggle */}
           <Controller
