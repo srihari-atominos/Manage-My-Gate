@@ -182,25 +182,16 @@ const InviteHandlerContent = () => {
     setSubmissionError('')
 
     try {
-      // Step 1: Validate credentials & log user in
-      const loginResult = await login({ email, password, inviteToken: token })
+      // Step 1: Validate credentials & log user in with inviteToken attached (server activates workspace)
+      const loginResult = await login({ login: email, email, password, inviteToken: token })
       if (!loginResult.success) {
         setSubmissionError(loginResult.error || t('auth.invite.invalidCredentials', 'Invalid email or password.'))
         setSubmitting(false)
         return
       }
 
-      // Step 2: Accept invitation and associate workspace
-      const acceptResult = await handleAcceptInvitation(
-        { token, email },
-        null,
-        { skipNavigate: true }
-      )
-      if (!acceptResult.success) {
-        setSubmissionError(acceptResult.error || t('auth.invite.error', 'Failed to join workspace.'))
-      } else {
-        await processSuccessfulAcceptance()
-      }
+      // Step 2: User is authenticated and workspace membership is active -> proceed to handoff/dashboard
+      await processSuccessfulAcceptance()
     } catch (err) {
       setSubmissionError(err.message || t('auth.invite.error', 'Failed to sign in and accept invitation.'))
     } finally {
@@ -354,15 +345,15 @@ const InviteHandlerContent = () => {
   // 3. Valid Invitation Experience
   return (
     <div className="invite-page-wrapper">
-      <CContainer>
-        <CRow className="justify-content-center">
-          <CCol xs={12} className="d-flex justify-content-center">
+      <CContainer fluid="sm" className="px-2 px-sm-3">
+        <CRow className="justify-content-center mx-0">
+          <CCol xs={12} className="d-flex justify-content-center px-0">
             <div className="invite-card-container">
               <CCard className="invite-card border-0 shadow-lg rounded-4 overflow-hidden">
                 {/* Attribution Header */}
                 <InviteHeader inviteData={inviteData} />
 
-                <CCardBody className="p-4 p-md-5">
+                <CCardBody className="p-3 p-sm-4 p-md-5">
                   {/* Global submission error display if any */}
                   {submissionError && (
                     <CAlert color="danger" className="mb-4 py-2 small" dismissible onClose={() => setSubmissionError('')}>
@@ -372,16 +363,16 @@ const InviteHandlerContent = () => {
 
                   {/* Mobile App Shortcut Banner */}
                   {isMobileDevice() && (
-                    <div className="d-flex align-items-center justify-content-between p-2.5 mb-3 rounded-3 bg-primary-subtle text-primary border border-primary-subtle">
-                      <div className="d-flex align-items-center gap-2">
-                        <span style={{ fontSize: '1.2rem' }}>📱</span>
-                        <span className="small fw-semibold">
+                    <div className="d-flex align-items-center justify-content-between p-2.5 p-sm-3 mb-3 rounded-3 bg-primary-subtle text-primary border border-primary-subtle gap-2">
+                      <div className="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                        <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>📱</span>
+                        <span className="small fw-semibold text-truncate">
                           {t('auth.invite.haveMobileApp', 'Have the mobile app installed?')}
                         </span>
                       </div>
                       <a
                         href={`managemygate://accept-invite?token=${token}`}
-                        className="btn btn-sm btn-primary fw-semibold px-3 py-1 text-white text-decoration-none shadow-xs"
+                        className="btn btn-sm btn-primary fw-semibold px-3 py-1.5 text-white text-decoration-none text-nowrap flex-shrink-0"
                       >
                         {t('auth.invite.openInApp', 'Open App')}
                       </a>

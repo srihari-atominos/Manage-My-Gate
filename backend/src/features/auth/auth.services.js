@@ -547,7 +547,8 @@ export class AuthService {
    * @param {object} loginData - Payload containing login (email/username) and password
    */
   async login(loginData) {
-    const { login, password, inviteToken } = loginData;
+    const login = (loginData.login || loginData.email || loginData.username || '').trim();
+    const { password, inviteToken } = loginData;
 
     // 1. Fetch user by email or username
     const user = await userService.getUserByEmailOrUsername(login);
