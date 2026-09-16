@@ -115,10 +115,11 @@ export const mapPricingFormToApiPayload = (params: {
 // ==========================================
 
 export const normalizeFacilityFromApi = (raw: ApiAmenityFacility | any): AmenityFacility => {
-  const isDraft = Boolean(raw.isDraft === true || raw.status === 'DRAFT');
+  const rawStatusUpper = typeof raw.status === 'string' ? raw.status.toUpperCase() : '';
+  const isDraft = Boolean(raw.isDraft === true || raw.isDraft === 'true' || rawStatusUpper === 'DRAFT');
   const derivedStatus: AmenityFacilityStatus = isDraft
     ? 'DRAFT'
-    : raw.status || (raw.isActive === false ? 'INACTIVE' : 'ACTIVE');
+    : (rawStatusUpper as AmenityFacilityStatus) || (raw.isActive === false ? 'INACTIVE' : 'ACTIVE');
 
   const rawPricing = raw.pricingConfig || {};
   const pricingType = (rawPricing.type || rawPricing.pricingType || (raw.bookingFee ? 'HOURLY' : 'FREE')) as AmenityPricingType;
@@ -208,14 +209,15 @@ export const normalizePricingSnapshot = (raw?: ApiPricingSnapshot): AmenityPrici
     taxAmount: raw?.taxAmount ?? 0,
     depositAmount: raw?.depositAmount ?? 0,
     totalAmount: raw?.totalAmount ?? 0,
-    currency: raw?.currency || 'SAR',
+    currency: raw?.currency || 'INR',
   };
 };
 
 export const normalizeHoldFromApi = (
-  raw: ApiAmenityHold,
+  payload: any,
   pricingSnapshot?: ApiPricingSnapshot
 ): AmenityHoldState => {
+  const raw = payload?.hold ? payload.hold : payload;
   return {
     _id: raw._id,
     orgId: raw.orgId,
@@ -234,7 +236,10 @@ export const normalizeHoldFromApi = (
   };
 };
 
-export const normalizeReservationFromApi = (raw: ApiAmenityReservation): AmenityReservation => {
+export const normalizeReservationFromApi = (payload: any): AmenityReservation => {
+  // Accommodate payloads wrapped in { reservation, pass, rawToken } from the confirmation endpoint
+  const raw = payload?.reservation ? payload.reservation : payload;
+
   const facilityObj =
     typeof raw.facilityId === 'object' && raw.facilityId !== null ? raw.facilityId : null;
   const facilityId = facilityObj ? facilityObj._id : String(raw.facilityId);
@@ -250,8 +255,9 @@ export const normalizeReservationFromApi = (raw: ApiAmenityReservation): Amenity
       : undefined;
   const resourceName = resourceObj ? resourceObj.name : undefined;
 
-  const userObj = typeof raw.userId === 'object' && raw.userId !== null ? raw.userId : null;
-  const userId = userObj ? userObj._id || userObj.id : String(raw.userId);
+  const rawUser = raw.residentId || raw.userId;
+  const userObj = typeof rawUser === 'object' && rawUser !== null ? rawUser : null;
+  const userId = userObj ? userObj._id || userObj.id : String(rawUser);
   const userName = userObj ? userObj.name || userObj.username : undefined;
 
   return {

@@ -347,7 +347,15 @@ export const workspaceSlice = createSlice({
       })
       .addCase(toggleModule.fulfilled, (state, action) => {
         state.loading = false
-        state.workspaceModules = action.payload?.data || []
+        const payloadData = action.payload?.data
+        const all = payloadData?.allModules || (Array.isArray(payloadData) ? payloadData : [])
+        const enabled = payloadData?.modules || all.filter((m) => m.enabled)
+        state.workspaceModules = all
+        state.modules = enabled
+        state.allowedFeatures = enabled.map((m) => m.moduleKey)
+        if (state.activeWorkspaceDetails) {
+          state.activeWorkspaceDetails.modules = all
+        }
       })
       .addCase(toggleModule.rejected, (state, action) => {
         state.loading = false
@@ -437,8 +445,15 @@ export const workspaceSlice = createSlice({
       .addCase(loadCurrentModules.fulfilled, (state, action) => {
         state.loading = false
         const payloadData = action.payload?.data
-        const modules = Array.isArray(payloadData) ? payloadData : (payloadData?.modules || [])
+        const all = payloadData?.allModules || (Array.isArray(payloadData) ? payloadData : [])
+        const modules = payloadData?.modules || (Array.isArray(payloadData) ? payloadData : [])
         state.modules = modules
+        if (all.length > 0) {
+          state.workspaceModules = all
+          if (state.activeWorkspaceDetails) {
+            state.activeWorkspaceDetails.modules = all
+          }
+        }
         state.allowedFeatures = modules.map((m) => m.moduleKey)
         state.subscriptionStatus = payloadData?.subscriptionStatus || 'ACTIVE'
         state.accessGranted = payloadData?.accessGranted !== false

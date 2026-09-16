@@ -38,8 +38,9 @@ export function DateTimeStep({
   error,
 }: DateTimeStepProps) {
   const selectedDateObj = useMemo(() => {
-    if (!selectedDate) return new Date();
+    if (!selectedDate || typeof selectedDate !== 'string') return new Date();
     const [y, m, d] = selectedDate.split('-').map(Number);
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return new Date();
     return new Date(y, m - 1, d);
   }, [selectedDate]);
 
@@ -53,8 +54,11 @@ export function DateTimeStep({
   const suggestedSlots = useMemo(() => {
     if (!daySchedule || !daySchedule.isOpen) return [];
 
-    const [openH, openM] = daySchedule.opensAt.split(':').map(Number);
-    const [closeH, closeM] = daySchedule.closesAt.split(':').map(Number);
+    const opensAtStr = daySchedule.opensAt || (daySchedule as any).openTime || '06:00';
+    const closesAtStr = daySchedule.closesAt || (daySchedule as any).closeTime || '22:00';
+
+    const [openH, openM] = typeof opensAtStr === 'string' ? opensAtStr.split(':').map(Number) : [6, 0];
+    const [closeH, closeM] = typeof closesAtStr === 'string' ? closesAtStr.split(':').map(Number) : [22, 0];
     const duration = facility.slotDurationMinutes || 60;
 
     const startMinutes = openH * 60 + openM;

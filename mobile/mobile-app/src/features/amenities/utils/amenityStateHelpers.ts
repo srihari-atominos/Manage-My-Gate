@@ -71,7 +71,7 @@ export const convertLocalToUtcIso = (
   timeStr: string,
   _timezone?: string
 ): string => {
-  if (!dateStr || !timeStr) return '';
+  if (!dateStr || !timeStr || typeof dateStr !== 'string' || typeof timeStr !== 'string') return '';
 
   const [year, month, day] = dateStr.split('-').map(Number);
   const [hours, minutes] = timeStr.split(':').map(Number);

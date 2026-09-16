@@ -65,6 +65,7 @@ const AmenitiesMasterView = () => {
         toast.success('Amenity created successfully!')
       }
       setFormModalVisible(false)
+      loadAmenities()
     } catch (err) {
       toast.error(typeof err === 'string' ? err : err.message || 'Failed to save amenity')
     }

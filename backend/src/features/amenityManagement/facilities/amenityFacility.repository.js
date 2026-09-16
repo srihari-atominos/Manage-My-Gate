@@ -127,7 +127,7 @@ export class AmenityFacilityRepository {
       match.isDraft = { $ne: true };
       match.status = { $ne: 'DRAFT' };
     }
-    if (status && status !== 'ALL') match.status = status;
+    if (status && status.toUpperCase() !== 'ALL') match.status = status.toUpperCase();
     if (search && search.trim()) {
       match.$or = [
         { name: { $regex: search.trim(), $options: 'i' } },

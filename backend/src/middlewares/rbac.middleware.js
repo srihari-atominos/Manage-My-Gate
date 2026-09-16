@@ -5,7 +5,69 @@ import { mapPermission } from '../utils/permissionMapper.js';
 /**
  * Helper to dynamically resolve user permissions from the cache or database.
  */
-export const getPermissionsForUser = async (user) => {
+/**
+ * Helper to check if a user is an administrator via token role or live OrgMembership.
+ */
+export const checkIsAdmin = async (req) => {
+  if (!req?.user) return false;
+  const adminRoles = [
+    'super admin',
+    'platform super admin',
+    'community admin',
+    'admin',
+    'superadmin',
+    'facility manager',
+    'super_admin',
+    'platform_super_admin',
+    'platform_admin',
+    'community_admin',
+    'facility_manager',
+  ];
+  const cleanRole = (r) => (r || '').toLowerCase().trim().replace(/[_-]/g, ' ');
+  const userRole = cleanRole(req.user.role);
+  const userRoles = Array.isArray(req.user.roles) ? req.user.roles.map(cleanRole) : [];
+  if (
+    adminRoles.some((ar) => cleanRole(ar) === userRole) ||
+    userRoles.some((r) => adminRoles.some((ar) => cleanRole(ar) === r))
+  ) {
+    return true;
+  }
+
+  // Live Database OrgMembership verification for active workspace context
+  const userId = req.user.id || req.user._id;
+  const currentOrgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user.orgId;
+  if (userId) {
+    try {
+      const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+      const filter = { userId, status: 'Active' };
+      if (currentOrgId && mongoose.isValidObjectId(currentOrgId)) {
+        filter.orgId = currentOrgId;
+      }
+      const memberships = await OrgMembership.find(filter)
+        .populate('roleId')
+        .populate('roleIds')
+        .lean();
+      for (const m of memberships) {
+        const names = [
+          m.roleId?.name,
+          ...(Array.isArray(m.roleIds) ? m.roleIds.map((r) => r?.name) : []),
+        ].filter(Boolean);
+        if (names.some((n) => adminRoles.some((ar) => cleanRole(ar) === cleanRole(n)))) {
+          return true;
+        }
+      }
+    } catch (memErr) {
+      // Graceful fallback
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Helper to dynamically resolve user permissions from the cache or database.
+ */
+export const getPermissionsForUser = async (user, targetOrgId = null) => {
   if (!user) return [];
   
   const roleIds = [];
@@ -19,19 +81,33 @@ export const getPermissionsForUser = async (user) => {
       }
     });
   }
+  if (Array.isArray(user.roles)) {
+    user.roles.forEach((id) => {
+      if (id && mongoose.isValidObjectId(id) && !roleIds.includes(id.toString())) {
+        roleIds.push(id.toString());
+      }
+    });
+  }
   
-  // Fallback: Query database OrgMembership if roleIds is empty
-  if (roleIds.length === 0 && user.id) {
+  // Also query live database OrgMembership to dynamically include all user roles
+  const userId = user.id || user._id;
+  if (userId && mongoose.isValidObjectId(userId)) {
     try {
       const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
-      const memberships = await OrgMembership.find({ userId: user.id, status: 'Active' }).lean();
+      const filter = { userId, status: 'Active' };
+      if (targetOrgId && mongoose.isValidObjectId(targetOrgId)) {
+        filter.orgId = targetOrgId;
+      }
+      const memberships = await OrgMembership.find(filter).lean();
       memberships.forEach((m) => {
         if (m.roleIds && m.roleIds.length > 0) {
           m.roleIds.forEach((rid) => {
-            if (rid && !roleIds.includes(rid.toString())) roleIds.push(rid.toString());
+            const s = rid?.toString();
+            if (s && !roleIds.includes(s)) roleIds.push(s);
           });
         } else if (m.roleId) {
-          if (!roleIds.includes(m.roleId.toString())) roleIds.push(m.roleId.toString());
+          const s = m.roleId.toString();
+          if (s && !roleIds.includes(s)) roleIds.push(s);
         }
       });
     } catch (err) {
@@ -40,10 +116,10 @@ export const getPermissionsForUser = async (user) => {
   }
 
   // Secondary Fallback: Query roleId by role name if still empty
-  if (roleIds.length === 0 && user.role && user.orgId) {
+  if (roleIds.length === 0 && user.role && (targetOrgId || user.orgId)) {
     try {
       const roleService = (await import('../features/role/role.services.js')).default;
-      const role = await roleService.getRoleByName(user.role, user.orgId);
+      const role = await roleService.getRoleByName(user.role, targetOrgId || user.orgId);
       if (role) {
         roleIds.push(role._id.toString());
       }
@@ -114,18 +190,16 @@ export const authorizePermission = (feature, action) => {
         }
       }
       // Super Admin and Community Admin bypass all permission checks
-      const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
+      const isFullAdmin = await checkIsAdmin(req);
       if (isFullAdmin) {
-        console.log(`[RBAC DEBUG] User ${req.user.username} is ${req.user.role}. Bypassing check.`);
         return next();
       }
 
       // Normalise all user permissions through the mapper before comparing
-      const permissions = await getPermissionsForUser(req.user);
+      const permissions = await getPermissionsForUser(req.user, orgId);
       const userPermissions = permissions.map(mapPermission);
 
       const actions = Array.isArray(action) ? action : [action];
-      console.log(`[RBAC DEBUG] Checking ${feature}:${actions.join(',')} for user ${req.user.username} (Role: ${req.user.role}). Permissions count: ${userPermissions.length}`);
       
       const hasPermission = actions.some(act => {
         const requiredPermission = mapPermission(`${feature}:${act}`);
@@ -133,7 +207,6 @@ export const authorizePermission = (feature, action) => {
       });
 
       if (!hasPermission) {
-        console.error(`[RBAC DEBUG] 403 Forbidden. User has: ${userPermissions.join(',')}. Required ANY of actions for feature '${feature}': ${actions.join(',')}`);
         throw new HttpError(
           403,
           `Forbidden. You do not have permission to access this resource.`
@@ -157,12 +230,13 @@ export const authorizeAnyPermission = (permissionsArray) => {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
-      const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
+      const isFullAdmin = await checkIsAdmin(req);
       if (isFullAdmin) {
         return next();
       }
 
-      const permissions = await getPermissionsForUser(req.user);
+      const orgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user?.orgId;
+      const permissions = await getPermissionsForUser(req.user, orgId);
       const userPermissions = permissions.map(mapPermission);
 
       const hasPermission = permissionsArray.some(p => {

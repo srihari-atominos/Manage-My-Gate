@@ -297,7 +297,7 @@ export function ResidentAmenityDetailView({
             >
               {isMaintenance
                 ? 'Under Maintenance'
-                : facility.status === 'INACTIVE' || facility.status === 'DECOMMISSIONED'
+                : facility.status === 'INACTIVE'
                 ? 'Facility Inactive'
                 : 'Book Now'}
             </Text>

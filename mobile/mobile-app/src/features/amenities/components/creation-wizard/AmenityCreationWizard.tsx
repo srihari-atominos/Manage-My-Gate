@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Modal, Alert } from 'react-native';
+import { View, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmenityArchetype } from '../../types/amenityDomain.types';
 import {
@@ -12,6 +12,8 @@ import {
   mapAmenityCreationPayloadStrategy,
 } from '../../utils/mapAmenityCreationPayloadStrategy';
 import { generateFacilityCode } from '../../services/amenityManagementService';
+import { mapAmenityApiError } from '../../utils/amenityErrorMapper';
+import { showCrossPlatformAlert } from '../../../../utils/alertUtils';
 
 // Flow Controls
 import { AmenityCreationFlowHeader } from './AmenityCreationFlowHeader';
@@ -60,6 +62,7 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
   );
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   // Unified Form State
   const [form, setForm] = useState<AmenityCreationFormState>({
@@ -203,6 +206,7 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
       setSelectedArchetype(initialArchetype);
       setCurrentStepIndex(0);
       setStepErrors({});
+      setPublishError(null);
       setForm({
         name: '',
         code: generateFacilityCode(initialArchetype.split('_')[0] || 'FACILITY'),
@@ -286,13 +290,13 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
         const [ch, cm] = form.closeTime.split(':').map(Number);
         if (oh * 60 + om >= ch * 60 + cm) {
           errors.closeTime = 'Closing time must be after opening time';
-          Alert.alert('Invalid Schedule', 'Closing time must be strictly after opening time.');
+          showCrossPlatformAlert('Invalid Schedule', 'Closing time must be strictly after opening time.');
         }
       }
 
       if (form.openDays.length === 0) {
         errors.openDays = 'Please select at least 1 active day';
-        Alert.alert('Validation Error', 'Please select at least one active day of the week.');
+        showCrossPlatformAlert('Validation Error', 'Please select at least one active day of the week.');
       }
     }
 
@@ -537,14 +541,16 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
   };
 
   const handleNext = () => {
+    setPublishError(null);
     if (!validateCurrentStep()) return;
 
     if (isLastStep) {
       const wholeFormCheck = validateWholeForm();
       if (!wholeFormCheck.isValid) {
+        setPublishError(wholeFormCheck.message);
         setCurrentStepIndex(wholeFormCheck.errorStepIndex);
         setStepErrors(wholeFormCheck.errors);
-        Alert.alert('Required Field Missing', wholeFormCheck.message);
+        showCrossPlatformAlert('Required Field Missing', wholeFormCheck.message);
         return;
       }
       handleFinalSubmit();
@@ -554,6 +560,7 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
   };
 
   const handleBack = () => {
+    setPublishError(null);
     setStepErrors({});
     if (currentStepIndex > 0) {
       setCurrentStepIndex((prev) => prev - 1);
@@ -563,17 +570,23 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
   };
 
   const handleFinalSubmit = async () => {
+    setPublishError(null);
     try {
       const payload = mapAmenityCreationPayloadStrategy(form, false);
       await onSubmit(payload);
     } catch (err: any) {
       console.error('Wizard submission failed', err);
+      const mapped = mapAmenityApiError(err);
+      const errorMsg = mapped.message || 'Failed to publish facility. Please check required fields.';
+      setPublishError(errorMsg);
+      showCrossPlatformAlert('Publish Failed', errorMsg);
     }
   };
 
   const handleSaveDraft = async () => {
+    setPublishError(null);
     if (!form.name.trim()) {
-      Alert.alert('Facility Name Required', 'Please enter a facility name before saving as draft.');
+      showCrossPlatformAlert('Facility Name Required', 'Please enter a facility name before saving as draft.');
       return;
     }
     try {
@@ -585,6 +598,10 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
       }
     } catch (err: any) {
       console.error('Wizard draft save failed', err);
+      const mapped = mapAmenityApiError(err);
+      const errorMsg = mapped.message || 'Failed to save draft. Please verify fields.';
+      setPublishError(errorMsg);
+      showCrossPlatformAlert('Save Draft Failed', errorMsg);
     }
   };
 
@@ -722,7 +739,11 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
           )}
 
           {currentStep.key === 'review' && (
-            <AmenityCreationReviewStep form={form} isEditing={isEditing} />
+            <AmenityCreationReviewStep
+              form={form}
+              isEditing={isEditing}
+              publishError={publishError}
+            />
           )}
         </View>
 

@@ -111,7 +111,7 @@ export class AmenityReservationHoldService {
     const requestedUnits = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60));
     const effectiveQuotaLimit =
       Number(quotaLimit) ||
-      (facility.archetype === 'ROOM_RESOURCE' ? Math.max(10080, requestedUnits) : 240);
+      (facility.archetype === 'ROOM_RESOURCE' ? Math.max(10080, requestedUnits) : 2400);
     await amenityQuotaAllocationService.reserveQuota(
       {
         orgId,

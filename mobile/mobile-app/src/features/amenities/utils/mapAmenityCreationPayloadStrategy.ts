@@ -7,7 +7,7 @@ export interface AmenityCreationFormState {
   archetype: AmenityArchetype;
   category: string;
   location: string;
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'draft';
   imageUrl?: string;
   description?: string;
 
@@ -105,12 +105,13 @@ export function mapAmenityCreationPayloadStrategy(
     code: (form.code || form.name.replace(/[^A-Za-z0-9]/g, '-').toUpperCase()).trim(),
     archetype: form.archetype,
     category: form.category || 'General',
-    location: form.location?.trim() || '',
+    location: form.location?.trim() || 'Clubhouse / Community Center',
     description: form.description?.trim() || '',
     timezone: 'Asia/Kolkata',
     operatingHours,
     pricingConfig,
     cancellationPolicy,
+    advanceBookingDays: Math.max(1, parseInt(String(form.advanceBookingDays || 7), 10) || 7),
     isActive,
     status,
     isDraft: effectiveIsDraft,

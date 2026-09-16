@@ -155,7 +155,7 @@ const matchesUserPermissions = (
   if (itemPermission && userPermissions.includes(itemPermission)) return true;
 
   // Normalized dot vs colon match (e.g., 'notices.read' matches 'notices:read')
-  if (itemPermission) {
+  if (itemPermission && typeof itemPermission === 'string') {
     const dotPerm = itemPermission.replace(':', '.');
     const colonPerm = itemPermission.replace('.', ':');
     if (userPermissions.includes(dotPerm) || userPermissions.includes(colonPerm)) return true;

@@ -13,10 +13,19 @@ const isAdminUser = (user) => {
     'admin',
     'superadmin',
     'facility manager',
+    'super_admin',
+    'platform_super_admin',
+    'platform_admin',
+    'community_admin',
+    'facility_manager',
   ];
-  const userRole = (user.role || '').toLowerCase();
-  const userRoles = Array.isArray(user.roles) ? user.roles.map((r) => (r || '').toLowerCase()) : [];
-  return adminRoles.includes(userRole) || userRoles.some((r) => adminRoles.includes(r));
+  const cleanRole = (r) => (r || '').toLowerCase().trim().replace(/[_-]/g, ' ');
+  const userRole = cleanRole(user.role);
+  const userRoles = Array.isArray(user.roles) ? user.roles.map(cleanRole) : [];
+  return (
+    adminRoles.some((ar) => cleanRole(ar) === userRole) ||
+    userRoles.some((r) => adminRoles.some((ar) => cleanRole(ar) === r))
+  );
 };
 
 export class AmenityFacilityController {

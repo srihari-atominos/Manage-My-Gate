@@ -187,8 +187,8 @@ export const isFeatureAllowedForUser = (
     // Strict evaluation for Amenities: Admin must have the explicit admin amenity permission
     if (feature.permission && feature.permission.startsWith('amenities:') && userPermissions.length > 0) {
       if (userPermissions.includes(feature.permission)) return true;
-      const [domain] = feature.permission.split(':');
-      if (userPermissions.includes(`${domain}:*`)) return true;
+      const [domain] = typeof feature.permission === 'string' ? feature.permission.split(':') : [];
+      if (domain && userPermissions.includes(`${domain}:*`)) return true;
       return false;
     }
     return true;
@@ -208,7 +208,7 @@ export const isFeatureAllowedForUser = (
       'amenities:scanner',
       'amenities:security_logs',
     ];
-    return guardAllowed.includes(feature.permission);
+    return guardAllowed.includes(feature.permission || '');
   }
 
   // Resident persona: strictly exclude admin consoles and guard hardware
@@ -225,9 +225,9 @@ export const isFeatureAllowedForUser = (
 
   // 2. Direct match in user permissions array
   if (userPermissions.length > 0) {
-    if (userPermissions.includes(feature.permission)) return true;
-    const [domain] = feature.permission.split(':');
-    if (userPermissions.includes(`${domain}:*`)) return true;
+    if (feature.permission && userPermissions.includes(feature.permission)) return true;
+    const [domain] = typeof feature.permission === 'string' ? feature.permission.split(':') : [];
+    if (domain && userPermissions.includes(`${domain}:*`)) return true;
   }
 
   // 3. Resident fallback permissions

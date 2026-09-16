@@ -19,11 +19,13 @@ import { ARCHETYPE_CATALOG_OPTIONS, DAYS_NAMES } from '../../../constants/amenit
 export interface AmenityCreationReviewStepProps {
   form: AmenityCreationFormState;
   isEditing?: boolean;
+  publishError?: string | null;
 }
 
 export const AmenityCreationReviewStep: React.FC<AmenityCreationReviewStepProps> = ({
   form,
   isEditing = false,
+  publishError = null,
 }) => {
   const archetypeMeta =
     ARCHETYPE_CATALOG_OPTIONS.find((o) => o.archetype === form.archetype) ||
@@ -48,6 +50,21 @@ export const AmenityCreationReviewStep: React.FC<AmenityCreationReviewStepProps>
           Verify all facility settings and policies before activating for residents.
         </Text>
       </View>
+
+      {/* Prominent Publish Error Banner */}
+      {publishError ? (
+        <View className="bg-destructive/15 border border-destructive/40 rounded-2xl p-4 flex-row items-start gap-3 shadow-xs">
+          <AlertCircle size={20} className="text-destructive shrink-0 mt-0.5" />
+          <View className="flex-1 gap-1">
+            <Text className="text-sm font-bold text-destructive">
+              Unable to Publish Facility
+            </Text>
+            <Text className="text-xs text-destructive font-medium leading-relaxed">
+              {publishError}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       {/* Warning Banner if Location is missing */}
       {!form.location?.trim() && (

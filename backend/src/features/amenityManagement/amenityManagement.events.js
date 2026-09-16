@@ -65,4 +65,16 @@ amenityManagementEvents.on(AMENITY_EVENTS.MAINTENANCE_CANCELLED, (payload) => {
   amenityManagementSocket.dispatchMaintenanceEvent(payload);
 });
 
+amenityManagementEvents.on(AMENITY_EVENTS.FACILITY_CREATED, (payload) => {
+  amenityManagementSocket.dispatchFacilityEvent('AMENITY_CREATED', payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.FACILITY_PUBLISHED, (payload) => {
+  amenityManagementSocket.dispatchFacilityEvent('AMENITY_UPDATED', payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.FACILITY_DEACTIVATED, (payload) => {
+  amenityManagementSocket.dispatchFacilityEvent('AMENITY_UPDATED', payload);
+});
+
 export default amenityManagementEvents;

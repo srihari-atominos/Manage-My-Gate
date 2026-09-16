@@ -20,7 +20,7 @@ export class AmenityFacilityService {
       return;
     }
 
-    const existing = await amenityResourceService.getResourcesByFacilityId(
+    const existing = await amenityResourceService.getAllResourcesByFacilityId(
       facility._id,
       facility.orgId,
       session
@@ -51,7 +51,7 @@ export class AmenityFacilityService {
           {
             name: cleanName,
             totalBulkStock: room.capacity || 1,
-            isActive: room.isActive !== undefined ? room.isActive : matched.isActive,
+            isActive: room.isActive !== undefined ? room.isActive : !facility.isDraft,
           },
           session
         );
@@ -68,6 +68,8 @@ export class AmenityFacilityService {
           session
         );
         processedIds.add(created._id.toString());
+        existingMap.set(identifier, created);
+        existingMap.set(cleanName.toLowerCase(), created);
       }
     }
 

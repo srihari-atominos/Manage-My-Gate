@@ -43,6 +43,20 @@ export class AmenityResourceRepository {
   }
 
   /**
+   * Finds all non-deleted resources for a facility (including inactive ones).
+   * @param {string|mongoose.Types.ObjectId} facilityId
+   * @param {string|mongoose.Types.ObjectId} orgId
+   * @param {mongoose.ClientSession} [session]
+   */
+  async findByFacilityId(facilityId, orgId, session) {
+    return AmenityResource.find({
+      facilityId,
+      orgId,
+      isDeleted: false,
+    }).session(getValidSession(session));
+  }
+
+  /**
    * Atomically increments concurrencyVersion for Resource Mutex locking.
    * @param {string|mongoose.Types.ObjectId} resourceId
    * @param {string|mongoose.Types.ObjectId} orgId

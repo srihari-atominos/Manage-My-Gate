@@ -15,7 +15,7 @@ export interface BasicFacilityInfoData {
   code: string;
   category: string;
   location: string;
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'draft';
   imageUrl?: string;
   description?: string;
 }

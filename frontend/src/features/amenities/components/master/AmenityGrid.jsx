@@ -2,7 +2,7 @@ import React from 'react'
 import { memo } from 'react'
 
 const AmenityGrid = memo(
-  ({ amenities, canManage, canUpdate, canDelete, onEdit, onToggleStatus, onViewDetails }) => {
+  ({ amenities, canManage, canUpdate, canDelete, onEdit, onToggleStatus, onViewDetails, onDelete }) => {
     if (!amenities || amenities.length === 0) {
       return (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
