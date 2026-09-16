@@ -88,7 +88,7 @@ const InviteHandler = () => {
   const navigate = useNavigate()
   const token = searchParams.get('token')
 
-  const { login, handleAcceptInvitation, handleAcceptSsoInvitation, loading: authLoading, error: authError } = useAuth()
+  const { login, loginGoogle, loginMicrosoft, handleAcceptInvitation, handleAcceptSsoInvitation, loading: authLoading, error: authError } = useAuth()
   const { instance: msalInstance } = useMsal()
 
   // ── Invite metadata state ──────────────────────────────────────────────────
@@ -162,18 +162,38 @@ const InviteHandler = () => {
     }
   }, [login, inviteData, token, navigate, t])
 
-  // ── 4. SSO handlers ────────────────────────────────────────────────────────
+  // ── 4. SSO handlers — behaviour differs by user type ──────────────────────
+  //    New users  → POST /auth/accept-invite/sso  (handleAcceptSsoInvitation)
+  //    Existing   → POST /auth/login/google|microsoft (loginGoogle/loginMicrosoft)
+  //    The acceptInviteWithSSO backend method throws 400 if user.status !== 'Pending Verification'
   const handleGoogleSSO = useCallback(async (credentialResponse) => {
     setSubmitError(null)
     if (!credentialResponse?.credential) return
-    await handleAcceptSsoInvitation(token, credentialResponse.credential, 'google')
-  }, [token, handleAcceptSsoInvitation])
+    if (inviteData?.isExisting) {
+      // Existing user — use standard Google login with inviteToken for auto-acceptance
+      const result = await loginGoogle(credentialResponse.credential, token)
+      if (!result?.success) {
+        setSubmitError(result?.error || t('auth.invite.ssoError', 'Google sign-in failed. Please try again.'))
+      }
+    } else {
+      // New user — use dedicated SSO invite acceptance endpoint
+      await handleAcceptSsoInvitation(token, credentialResponse.credential, 'google')
+    }
+  }, [token, inviteData, loginGoogle, handleAcceptSsoInvitation, t])
 
   const handleMicrosoftSSO = useCallback(() => {
     setSubmitError(null)
     msalInstance.loginPopup({ scopes: ['openid', 'profile', 'user.read'] })
       .then(async (response) => {
-        if (response?.idToken) {
+        if (!response?.idToken) return
+        if (inviteData?.isExisting) {
+          // Existing user — use standard Microsoft login with inviteToken
+          const result = await loginMicrosoft(response.idToken, token)
+          if (!result?.success) {
+            setSubmitError(result?.error || t('auth.invite.ssoError', 'Microsoft sign-in failed. Please try again.'))
+          }
+        } else {
+          // New user — use dedicated SSO invite acceptance endpoint
           await handleAcceptSsoInvitation(token, response.idToken, 'microsoft')
         }
       })
@@ -181,7 +201,8 @@ const InviteHandler = () => {
         console.error('Microsoft SSO failed:', err)
         setSubmitError(t('auth.invite.ssoError', 'Microsoft sign-in failed. Please try again.'))
       })
-  }, [token, handleAcceptSsoInvitation, msalInstance, t])
+  }, [token, inviteData, loginMicrosoft, handleAcceptSsoInvitation, msalInstance, t])
+
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (validating) {
