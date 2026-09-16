@@ -79,8 +79,10 @@ export const generateInviteLink = (invitationToken, invitationSource = 'WEB') =>
   }
 
   const baseUrl = rawUrl.trim().replace(/\/+$/, '');
-  // Always generate the canonical /invite/:token path — never /invite/app/ or /#/invite?token=
-  return `${baseUrl}/invite/${invitationToken}`;
+  // The frontend uses HashRouter — React Router reads only the fragment after #.
+  // Format: https://domain.com/#/invite?token=<token>
+  // The InviteHandler at route path="/invite" reads the token via useSearchParams().
+  return `${baseUrl}/#/invite?token=${invitationToken}`;
 };
 
 /**
