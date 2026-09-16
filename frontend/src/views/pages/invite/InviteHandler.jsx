@@ -88,17 +88,26 @@ const InviteHandlerContent = () => {
     }
   }, [token, searchParams])
 
-  // 2. Set default tab according to whether user is detected as existing
+  // 2. Set default tab according to query param (?mode=signin|signup) or backend detection (isExisting)
   useEffect(() => {
-    if (invitation.valid && invitation.data && !tabInitialized) {
-      if (invitation.data.isExisting) {
-        setActiveTab('signin')
-      } else {
-        setActiveTab('signup')
+    const requestedMode = (searchParams.get('mode') || searchParams.get('tab') || '').toLowerCase()
+    if (!tabInitialized) {
+      if (requestedMode === 'signin' || requestedMode === 'signup') {
+        setActiveTab(requestedMode)
+        setTabInitialized(true)
+        return
       }
-      setTabInitialized(true)
+
+      if (invitation.valid && invitation.data) {
+        if (invitation.data.isExisting) {
+          setActiveTab('signin')
+        } else {
+          setActiveTab('signup')
+        }
+        setTabInitialized(true)
+      }
     }
-  }, [invitation.valid, invitation.data, tabInitialized])
+  }, [invitation.valid, invitation.data, tabInitialized, searchParams])
 
   const inviteData = invitation.data
   const isLoading = invitation.loading
@@ -123,7 +132,7 @@ const InviteHandlerContent = () => {
       }
 
       // Universal link / deep-link fallback with store redirect timer
-      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '')
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
       const universalLink = `${window.location.origin}/invite/handoff/${token}`
       const storeUrl = isIos ? APP_STORE_URL : PLAY_STORE_URL
 
@@ -362,22 +371,40 @@ const InviteHandlerContent = () => {
                   )}
 
                   {/* Mobile App Shortcut Banner */}
-                  {isMobileDevice() && (
-                    <div className="d-flex align-items-center justify-content-between p-2.5 p-sm-3 mb-3 rounded-3 bg-primary-subtle text-primary border border-primary-subtle gap-2">
-                      <div className="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                        <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>📱</span>
-                        <span className="small fw-semibold text-truncate">
-                          {t('auth.invite.haveMobileApp', 'Have the mobile app installed?')}
-                        </span>
+                  {isMobileDevice() && (() => {
+                    const isIosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent || '') || (typeof navigator !== 'undefined' && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+                    const targetStoreUrl = isIosDevice ? APP_STORE_URL : PLAY_STORE_URL
+                    const targetStoreLabel = isIosDevice ? 'App Store' : 'Play Store'
+
+                    return (
+                      <div className="p-2.5 p-sm-3 mb-3 rounded-3 bg-primary-subtle text-primary border border-primary-subtle">
+                        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap flex-sm-nowrap">
+                          <div className="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                            <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>📱</span>
+                            <span className="small fw-semibold text-truncate">
+                              {t('auth.invite.haveMobileApp', 'Using a mobile phone?')}
+                            </span>
+                          </div>
+                          <div className="d-flex align-items-center gap-1.5 flex-shrink-0 ms-auto">
+                            <a
+                              href={`managemygate://accept-invite?token=${token}`}
+                              className="btn btn-sm btn-primary fw-semibold px-2.5 py-1 text-white text-decoration-none text-nowrap"
+                            >
+                              {t('auth.invite.openInApp', 'Open App')}
+                            </a>
+                            <a
+                              href={targetStoreUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm btn-outline-primary fw-semibold px-2.5 py-1 text-nowrap"
+                            >
+                              {targetStoreLabel}
+                            </a>
+                          </div>
+                        </div>
                       </div>
-                      <a
-                        href={`managemygate://accept-invite?token=${token}`}
-                        className="btn btn-sm btn-primary fw-semibold px-3 py-1.5 text-white text-decoration-none text-nowrap flex-shrink-0"
-                      >
-                        {t('auth.invite.openInApp', 'Open App')}
-                      </a>
-                    </div>
-                  )}
+                    )
+                  })()}
 
                   {/* Segmented Tab Controls: New User vs Existing User */}
                   <div className="invite-tabs-container">

@@ -21,10 +21,15 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
   const playStoreFallback = 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom'
   const appStoreFallback = 'https://apps.apple.com/app/manage-my-gate/id6746501635'
 
+  const isIos =
+    typeof navigator !== 'undefined' &&
+    (/iphone|ipad|ipod/i.test(navigator.userAgent || '') ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
   const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent || '')
-  const storeUrl = isAndroid
-    ? (handoffData?.playStoreUrl || playStoreFallback)
-    : (handoffData?.appStoreUrl || appStoreFallback)
+
+  const storeUrl = isIos
+    ? (handoffData?.appStoreUrl || appStoreFallback)
+    : (handoffData?.playStoreUrl || playStoreFallback)
   const deepLink = handoffData?.deepLink
 
   useEffect(() => {
@@ -47,7 +52,7 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
     return () => clearTimeout(fallbackTimer)
   }, [deepLink, storeUrl])
 
-  const storeName = isAndroid ? 'Google Play Store' : 'Apple App Store'
+  const storeName = isIos ? 'Apple App Store' : 'Google Play Store'
 
   return (
     <CCard className="border-0 shadow-lg rounded-4 overflow-hidden text-center p-4 p-md-5">

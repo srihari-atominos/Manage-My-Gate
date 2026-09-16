@@ -193,7 +193,8 @@ export const InviteSignInForm = ({
             title={email}
             readOnly
             disabled
-            className="bg-light text-muted small text-truncate"
+            className="bg-light text-muted small"
+            style={{ minWidth: 0, textOverflow: 'ellipsis' }}
           />
         </CInputGroup>
       </div>
