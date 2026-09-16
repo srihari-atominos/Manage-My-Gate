@@ -469,7 +469,8 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
     if (isPaymentRequired) {
       if (paymentMethod === 'WALLET') {
         if (balance < totalAmount) {
-          setStepError(`Insufficient wallet balance (${balance} SAR). Please top up.`);
+          const currency = pricingSnapshot?.currency || 'INR';
+          setStepError(`Insufficient wallet balance (${balance} ${currency}). Please top up.`);
           setIsTopUpOpen(true);
           return;
         }

@@ -34,7 +34,7 @@ export function BookingHoldPaymentStep({
   holdRemainingSeconds,
   isHoldExpired,
   totalAmount,
-  currency = 'SAR',
+  currency = 'INR',
   paymentMethod,
   onPaymentMethodChange,
   balance,

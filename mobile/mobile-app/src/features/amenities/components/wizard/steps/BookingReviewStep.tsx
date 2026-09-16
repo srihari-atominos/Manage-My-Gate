@@ -94,18 +94,18 @@ export function BookingReviewStep({
           <>
             <DetailRow
               label="Base Fee"
-              value={`${pricingSnapshot.baseAmount} ${pricingSnapshot.currency || 'SAR'}`}
+              value={`${pricingSnapshot.baseAmount} ${pricingSnapshot.currency || 'INR'}`}
             />
             {pricingSnapshot.taxAmount > 0 ? (
               <DetailRow
                 label="VAT / Tax"
-                value={`${pricingSnapshot.taxAmount} ${pricingSnapshot.currency || 'SAR'}`}
+                value={`${pricingSnapshot.taxAmount} ${pricingSnapshot.currency || 'INR'}`}
               />
             ) : null}
             {pricingSnapshot.depositAmount > 0 ? (
               <DetailRow
                 label="Refundable Security Deposit"
-                value={`${pricingSnapshot.depositAmount} ${pricingSnapshot.currency || 'SAR'}`}
+                value={`${pricingSnapshot.depositAmount} ${pricingSnapshot.currency || 'INR'}`}
               />
             ) : null}
 
@@ -114,7 +114,7 @@ export function BookingReviewStep({
               <Text className="font-bold text-base text-primary">
                 {pricingSnapshot.totalAmount === 0
                   ? 'Free Access'
-                  : `${pricingSnapshot.totalAmount} ${pricingSnapshot.currency || 'SAR'}`}
+                  : `${pricingSnapshot.totalAmount} ${pricingSnapshot.currency || 'INR'}`}
               </Text>
             </View>
           </>
