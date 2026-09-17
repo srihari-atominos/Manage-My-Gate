@@ -25,7 +25,7 @@ export const Chip = ({
   return (
     <Pressable
       className={cn(
-        'flex-row items-center rounded-full border px-3 py-1.5',
+        'flex-row items-center rounded-full border px-2.5 py-1',
         selected
           ? 'border-blue-600 bg-blue-600'
           : 'border-border bg-card',
@@ -35,16 +35,16 @@ export const Chip = ({
     >
       {Icon && (
         <Icon
-          size={14}
+          size={13}
           className={cn(
-            'me-1.5',
+            'me-1',
             selected ? 'text-white' : 'text-muted-foreground'
           )}
         />
       )}
       <Text
         className={cn(
-          'text-sm font-medium',
+          'text-xs font-medium',
           selected ? 'text-white font-bold' : 'text-foreground',
           labelClassName
         )}

@@ -8,14 +8,15 @@ module.exports = {
   theme: {
     extend: {
       fontSize: {
-        xs: ['14px', { lineHeight: '20px' }],
-        sm: ['16px', { lineHeight: '23px' }],
-        base: ['18px', { lineHeight: '27px' }],
-        lg: ['21px', { lineHeight: '30px' }],
-        xl: ['24px', { lineHeight: '32px' }],
-        '2xl': ['28px', { lineHeight: '36px' }],
-        '3xl': ['34px', { lineHeight: '42px' }],
-        '4xl': ['42px', { lineHeight: '50px' }],
+        '2xs': ['10px', { lineHeight: '13px' }],
+        xs: ['11.5px', { lineHeight: '16px' }],
+        sm: ['13px', { lineHeight: '18px' }],
+        base: ['14.5px', { lineHeight: '20px' }],
+        lg: ['16.5px', { lineHeight: '22px' }],
+        xl: ['18.5px', { lineHeight: '24px' }],
+        '2xl': ['21px', { lineHeight: '26px' }],
+        '3xl': ['25px', { lineHeight: '30px' }],
+        '4xl': ['30px', { lineHeight: '36px' }],
       },
       fontFamily: {
         sans: ['HankenGrotesk_400Regular', 'sans-serif'],

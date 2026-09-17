@@ -116,35 +116,35 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         {leftAvatar ? (
           <Image
             source={{ uri: leftAvatar }}
-            className="w-10 h-10 rounded-full shrink-0 me-3 border border-border/50"
+            className="w-9 h-9 rounded-full shrink-0 me-3 border border-border/50"
             resizeMode="cover"
           />
         ) : leftAvatarFallback ? (
-          <View className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
+          <View className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
             <Text className="text-xs font-bold text-primary">{leftAvatarFallback}</Text>
           </View>
         ) : leftImage ? (
           <Image
             source={{ uri: leftImage }}
-            className="w-11 h-11 rounded-xl shrink-0 me-3.5"
+            className="w-10 h-10 rounded-xl shrink-0 me-3"
             resizeMode="cover"
           />
         ) : DynamicIcon ? (
           <View
-            className="w-12 h-12 rounded-xl items-center justify-center shrink-0 me-3.5 border border-border/50"
+            className="w-10 h-10 rounded-xl items-center justify-center shrink-0 me-3 border border-border/50"
             style={{ backgroundColor: leftIconBgColor }}
           >
-            <Icon as={DynamicIcon} size={22} color={leftIconColor} />
+            <Icon as={DynamicIcon} size={18} color={leftIconColor} />
           </View>
         ) : null}
 
         {/* Middle Details */}
         <View className="flex-1 shrink min-w-0 justify-center">
-          <Text variant="default" className={cn("font-semibold text-[15px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
+          <Text variant="default" className={cn("font-semibold text-[14px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
             {title}
           </Text>
           {subtitle ? (
-            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[13px] font-sans font-medium shrink truncate", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
+            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[12px] font-sans font-medium shrink truncate", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
               {subtitle}
             </Text>
           ) : null}

@@ -100,27 +100,27 @@ export function AmenityCatalogCard({
         className="active:opacity-95"
       >
         {/* Hero Cover Image with Floating Glass Badges */}
-        <View className="h-48 w-full relative bg-muted overflow-hidden">
+        <View className="h-40 w-full relative bg-muted overflow-hidden">
           {imageUrl ? (
             <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
           ) : (
             <View className="w-full h-full items-center justify-center bg-primary/10">
-              <Building2 size={44} className="text-primary/50" />
+              <Building2 size={40} className="text-primary/50" />
             </View>
           )}
 
           {/* Top Badges Row */}
           <View className="absolute top-3 inset-x-3 flex-row justify-between items-center z-10">
             {/* Archetype Pill */}
-            <View className="bg-black/60 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20 shadow-xs">
+            <View className="bg-black/60 px-2.5 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20 shadow-xs">
               {rawArchetype === 'INVENTORY_TOOLS' ? (
-                <Wrench size={12} color="#10b981" />
+                <Wrench size={11} color="#10b981" />
               ) : rawArchetype === 'ROOM_RESOURCE' ? (
-                <DoorOpen size={12} color="#a855f7" />
+                <DoorOpen size={11} color="#a855f7" />
               ) : (
-                <Sparkles size={12} color="#f59e0b" />
+                <Sparkles size={11} color="#f59e0b" />
               )}
-              <Text className="text-xs font-bold text-white uppercase tracking-wider">
+              <Text className="text-[11px] font-bold text-white uppercase tracking-wider">
                 {archetypeMeta.label}
               </Text>
             </View>
@@ -130,14 +130,15 @@ export function AmenityCatalogCard({
               label={statusMeta.label}
               variant={statusMeta.variant}
               dot={statusMeta.pulseDot}
+              size="sm"
             />
           </View>
 
-          {/* Bottom-Right Price Tag Pill */}
-          <View className="absolute bottom-3 right-3 z-10">
-            <View className="bg-card/95 px-3 py-1.5 rounded-xl border border-border/70 shadow-sm flex-row items-center gap-1">
-              <Text className="text-[11px] font-semibold text-muted-foreground">Fee:</Text>
-              <Text className="text-xs font-extrabold text-primary">
+          {/* Bottom-End Price Tag Pill */}
+          <View className="absolute bottom-2.5 end-2.5 z-10">
+            <View className="bg-card/95 px-2.5 py-1 rounded-lg border border-border/70 shadow-sm flex-row items-center gap-1">
+              <Text className="text-[10.5px] font-semibold text-muted-foreground">Fee:</Text>
+              <Text className="text-[11.5px] font-extrabold text-primary">
                 {pricingFormatted.displayRate}
               </Text>
             </View>
@@ -145,14 +146,14 @@ export function AmenityCatalogCard({
         </View>
 
         {/* 2. Card Content & Metadata Body */}
-        <View className="p-4 pb-2">
+        <View className="p-3.5 pb-2">
           {/* Title & Location */}
-          <View className="mb-2">
-            <Text className="text-lg font-extrabold text-foreground tracking-tight">
+          <View className="mb-1.5">
+            <Text className="text-base font-bold text-foreground tracking-tight">
               {amenity.name}
             </Text>
-            <View className="flex-row items-center gap-1 mt-1">
-              <MapPin size={13} className="text-muted-foreground" />
+            <View className="flex-row items-center gap-1 mt-0.5">
+              <MapPin size={12} className="text-muted-foreground" />
               <Text className="text-xs font-medium text-muted-foreground">
                 {locationDisplay}
               </Text>
@@ -214,18 +215,18 @@ export function AmenityCatalogCard({
 
       {/* 3. Primary Action Footer CTA */}
       {onBookClick ? (
-        <View className="px-4 pb-4 pt-2">
+        <View className="px-3.5 pb-3.5 pt-1.5">
           <Button
             variant={bookableCheck.canBook ? 'default' : 'outline'}
             size="default"
             disabled={!bookableCheck.canBook}
             onPress={() => onBookClick(amenity._id)}
-            className="w-full h-11 rounded-2xl flex-row items-center justify-center gap-2 shadow-xs"
+            className="w-full h-9 rounded-xl flex-row items-center justify-center gap-2 shadow-xs"
             accessibilityRole="button"
             accessibilityLabel={`Book ${amenity.name}`}
           >
             <CalendarCheck
-              size={16}
+              size={15}
               className={bookableCheck.canBook ? 'text-primary-foreground' : 'text-muted-foreground'}
             />
             <Text

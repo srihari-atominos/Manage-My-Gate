@@ -189,14 +189,14 @@ export default function AccountScreen() {
           <TouchableOpacity
             onPress={() => router.push('/(resident)/profile' as any)}
             activeOpacity={0.82}
-            className="items-center bg-card border border-border rounded-3xl p-5 gap-2 shadow-sm active:bg-secondary/40 relative overflow-hidden"
+            className="items-center bg-card border border-border rounded-2xl p-4 gap-1.5 shadow-xs active:bg-secondary/40 relative overflow-hidden"
             accessibilityRole="button"
             accessibilityLabel="Edit Profile"
           >
             {/* Top Right Edit Hint Pill */}
-            <View className="absolute top-3.5 right-3.5 flex-row items-center gap-1 bg-primary/10 border border-primary/25 px-2.5 py-1 rounded-full">
-              <Edit3 size={11} color="#FF6A00" strokeWidth={2.4} />
-              <Text className="text-[11px] font-bold text-primary font-sans">
+            <View className="absolute top-3 right-3 flex-row items-center gap-1 bg-primary/10 border border-primary/25 px-2 py-0.5 rounded-full">
+              <Edit3 size={10} color="#FF6A00" strokeWidth={2.4} />
+              <Text className="text-[10.5px] font-bold text-primary font-sans">
                 {t('edit_profile', 'Edit Profile')}
               </Text>
             </View>
@@ -206,18 +206,18 @@ export default function AccountScreen() {
               {resolvedAvatarUrl ? (
                 <Image
                   source={{ uri: resolvedAvatarUrl }}
-                  className="size-20 rounded-full border-2 border-primary/40 shadow-xs"
+                  className="size-16 rounded-full border-2 border-primary/40 shadow-xs"
                 />
               ) : (
-                <View className="size-20 rounded-full bg-primary/20 items-center justify-center border-2 border-primary/40 shadow-xs">
-                  <Text className="text-primary font-black text-2xl font-sans">{avatarLetter}</Text>
+                <View className="size-16 rounded-full bg-primary/20 items-center justify-center border-2 border-primary/40 shadow-xs">
+                  <Text className="text-primary font-black text-xl font-sans">{avatarLetter}</Text>
                 </View>
               )}
             </View>
 
             {/* User Name & Details */}
             <View className="items-center mt-0.5">
-              <Text className="text-xl font-extrabold text-foreground font-sans text-center">
+              <Text className="text-base font-extrabold text-foreground font-sans text-center">
                 {user?.name || (user?.email ? user.email.split('@')[0] : 'User')}
               </Text>
               <Text className="text-xs font-semibold text-primary font-sans text-center mt-0.5">
@@ -226,7 +226,7 @@ export default function AccountScreen() {
             </View>
 
             <View className="flex-row items-center gap-1.5 mt-0.5">
-              <Mail size={13} className="text-muted-foreground" />
+              <Mail size={12} className="text-muted-foreground" />
               <Text className="text-xs text-muted-foreground font-sans text-center">
                 {user?.email || ''}
               </Text>

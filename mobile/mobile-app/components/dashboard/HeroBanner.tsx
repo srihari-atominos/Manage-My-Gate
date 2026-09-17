@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
+import { View, ScrollView, useWindowDimensions, TouchableOpacity } from 'react-native';
 import { Text } from '../ui/text';
 import { ArrowRight, Sparkles, Megaphone, ShieldCheck, Building2, Coins } from 'lucide-react-native';
 import { useTranslation } from '../../src/utils/i18n';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 400);
 
 export interface BannerItem {
   id: string;
@@ -89,6 +86,8 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const bannerWidth = Math.max(280, Math.min(windowWidth - 32, 380));
 
   useEffect(() => {
     let isMounted = true;
@@ -98,7 +97,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         if (!isMounted) return prev;
         const nextIndex = (prev + 1) % BANNERS.length;
         scrollViewRef.current?.scrollTo({
-          x: nextIndex * BANNER_WIDTH,
+          x: nextIndex * bannerWidth,
           animated: true,
         });
         return nextIndex;
@@ -109,11 +108,11 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
       isMounted = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [bannerWidth]);
 
   const handleScrollEnd = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffsetX / BANNER_WIDTH);
+    const index = Math.round(contentOffsetX / bannerWidth);
     if (index >= 0 && index < BANNERS.length) {
       setActiveIndex(index);
     }
@@ -127,7 +126,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScrollEnd}
-        snapToInterval={BANNER_WIDTH}
+        snapToInterval={bannerWidth}
         decelerationRate="fast"
       >
         {BANNERS.map((banner) => (
@@ -135,7 +134,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
             key={banner.id}
             activeOpacity={0.9}
             onPress={() => onBannerPress && onBannerPress(banner)}
-            style={{ width: BANNER_WIDTH }}
+            style={{ width: bannerWidth }}
             className="px-1"
           >
             <View

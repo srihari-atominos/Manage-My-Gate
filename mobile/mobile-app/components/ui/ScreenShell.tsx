@@ -271,7 +271,7 @@ export function ScreenShell({
             {...scrollHandlerProps}
             contentContainerStyle={{
               flexGrow: 1,
-              paddingBottom: shouldShowBottomNav ? Math.max(insets.bottom + 95, 120) : Math.max(insets.bottom, 24),
+              paddingBottom: shouldShowBottomNav ? Math.max(insets.bottom + 70, 84) : Math.max(insets.bottom, 20),
             }}
           >
             {children}

@@ -90,10 +90,10 @@ export const Button = forwardRef<View, ButtonProps>(
     };
 
     const sizeClasses = {
-      default: 'h-12 px-5 py-3 rounded-2xl',
-      sm: 'h-9 rounded-xl px-3.5',
-      lg: 'h-14 rounded-2xl px-8',
-      icon: 'h-11 w-11 rounded-2xl',
+      default: 'h-10 px-4 py-2 rounded-xl',
+      sm: 'h-8 rounded-lg px-2.5',
+      lg: 'h-12 rounded-xl px-6',
+      icon: 'h-9 w-9 rounded-xl',
     };
 
     const isDisabled = disabled || loading;
@@ -114,11 +114,11 @@ export const Button = forwardRef<View, ButtonProps>(
         {({ pressed }) => (
           <View className={cn('flex-row items-center', pressed && variant !== 'link' && 'opacity-80')}>
             {LeftIcon && !loading && (
-              <LeftIcon size={18} className={cn('me-2', textClasses[variant])} />
+              <LeftIcon size={16} className={cn('me-1.5', textClasses[variant])} />
             )}
             <Text
               className={cn(
-                'text-base font-semibold',
+                'text-sm font-semibold',
                 textClasses[variant],
                 textClassName
               )}
@@ -126,7 +126,7 @@ export const Button = forwardRef<View, ButtonProps>(
               {loading ? 'Loading...' : children}
             </Text>
             {RightIcon && !loading && (
-              <RightIcon size={18} className={cn('ms-2', textClasses[variant])} />
+              <RightIcon size={16} className={cn('ms-1.5', textClasses[variant])} />
             )}
           </View>
         )}
