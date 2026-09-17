@@ -290,45 +290,35 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 
   return (
     <>
-      <View className="py-1.5 px-0.5">
-        {/* Top Row: Salutation + Wave (Left) and Location Pill (Right) */}
-        <View className="flex-row items-center justify-between gap-2">
-          <View className="flex-row items-center gap-1.5 flex-1 min-w-0">
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              className="text-[17px] font-bold font-sans text-foreground tracking-tight shrink"
-            >
+      <View className="flex-row items-center justify-between py-2 px-1">
+        {/* Left: Salutation & Subtitle */}
+        <View className="flex-1 pr-2">
+          <View className="flex-row items-center flex-wrap gap-1.5">
+            <Text className="text-[20px] font-extrabold font-sans text-foreground tracking-tight leading-snug">
               {t(timeGreeting.key, timeGreeting.defaultText)}, {displayName}
             </Text>
             <WavingHand />
           </View>
-
-          {/* Right: Location / Villa Badge Pill adopting theme color with location symbol */}
-          {dynamicLocation ? (
-            <TouchableOpacity
-              onPress={() => setVillaModalVisible(true)}
-              activeOpacity={0.75}
-              className="flex-row items-center gap-1 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-2.5 py-1 rounded-full shrink-0"
-              accessibilityRole="button"
-              accessibilityLabel={`Current location: ${dynamicLocation}`}
-            >
-              <MapPin size={11} color="#FF6A00" strokeWidth={2.4} />
-              <Text className="text-[11px] font-bold font-sans text-primary dark:text-primary">
-                {dynamicLocation}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
+          <Text className="text-[13px] font-bold font-sans text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
+            {t('welcome_back_sub', 'Welcome back to your community hub')}
+          </Text>
         </View>
 
-        {/* Subtitle */}
-        <Text
-          numberOfLines={1}
-          ellipsizeMode="tail"
-          className="text-[12px] font-medium font-sans text-muted-foreground mt-0.5 tracking-tight"
-        >
-          {t('welcome_back_sub', 'Welcome back to your community hub')}
-        </Text>
+        {/* Right: Location / Villa Badge Pill adopting existing theme color with location symbol */}
+        {dynamicLocation ? (
+          <TouchableOpacity
+            onPress={() => setVillaModalVisible(true)}
+            activeOpacity={0.75}
+            className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-3 py-1.5 rounded-full shadow-2xs shrink-0"
+            accessibilityRole="button"
+            accessibilityLabel={`Current location: ${dynamicLocation}`}
+          >
+            <MapPin size={13} color="#FF6A00" strokeWidth={2.4} />
+            <Text className="text-[12px] font-bold font-sans text-primary dark:text-primary">
+              {dynamicLocation}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Villa / Unit Switch Modal */}

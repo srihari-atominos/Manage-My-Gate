@@ -168,12 +168,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   return (
     <>
       <View 
-        style={{ paddingTop: Math.max(insets.top, 12) }}
+        style={{ paddingTop: Math.max(insets.top, 16) }}
         className={cn(
           transparent
-            ? 'bg-card/85 dark:bg-card/85 border-b border-border/40'
+            ? 'bg-card/75 dark:bg-card/75 border-b border-border/40'
             : 'bg-card border-b border-border',
-          'px-3.5 pb-2.5 flex-row items-center justify-between shadow-xs'
+          'px-4 pb-3 flex-row items-center justify-between shadow-xs'
         )}
       >
         {/* Left Section: Community / Villa Context Pill */}
@@ -181,13 +181,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-1.5 flex-1 max-w-[62%] me-2 bg-secondary border border-border/80 px-2.5 py-1.5 rounded-full shadow-xs"
+          className="flex-row items-center gap-2 flex-1 max-w-[65%] me-2 bg-secondary border border-border/80 px-3 py-2 rounded-full shadow-xs"
         >
-          <View className="p-1 rounded-full bg-primary items-center justify-center border border-primary/30 shrink-0">
+          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/30 shrink-0">
             {hasUnit ? (
-              <Home size={11} color="#FFFFFF" />
+              <Home size={12} color="#FFFFFF" />
             ) : (
-              <Building2 size={11} color="#FFFFFF" />
+              <Building2 size={12} color="#FFFFFF" />
             )}
           </View>
 
@@ -196,14 +196,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <>
                 <Text
                   numberOfLines={1}
-                  className="text-[12px] font-extrabold font-sans text-foreground shrink-0"
+                  className="text-[13px] font-black font-sans text-foreground shrink-0"
                 >
                   {activeVilla}
                 </Text>
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  className="text-[11px] font-medium font-sans text-muted-foreground flex-1 ms-1"
+                  className="text-[11.5px] font-medium font-sans text-muted-foreground flex-1 ms-1"
                 >
                   • {activeCommunity || 'Community'}
                 </Text>
@@ -212,7 +212,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                className="text-[12px] font-bold font-sans text-foreground flex-1"
+                className="text-[13px] font-bold font-sans text-foreground flex-1"
               >
                 {activeCommunity || 'Community Workspace'}
               </Text>
@@ -220,24 +220,24 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           </View>
 
           {canSwitchContext ? (
-            <ChevronDown size={12} className="text-muted-foreground shrink-0" />
+            <ChevronDown size={13} className="text-muted-foreground shrink-0" />
           ) : null}
         </TouchableOpacity>
 
         {/* Right Section: Theme Toggle, Notification Bell & Profile Avatar */}
-        <View className="flex-row items-center gap-1.5">
+        <View className="flex-row items-center gap-2">
           {/* Theme Shift Toggle Icon Button */}
           <TouchableOpacity
             onPress={toggleTheme}
             activeOpacity={0.7}
-            className="size-9 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
             accessibilityRole="button"
             accessibilityLabel="Toggle Light and Dark Theme"
           >
             {colorScheme === 'dark' ? (
-              <Sun size={16} color="#F59E0B" strokeWidth={2.2} />
+              <Sun size={18} color="#F59E0B" strokeWidth={2.2} />
             ) : (
-              <Moon size={16} color="#334155" strokeWidth={2.2} />
+              <Moon size={18} color="#334155" strokeWidth={2.2} />
             )}
           </TouchableOpacity>
 
@@ -245,14 +245,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-9 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center relative active:bg-secondary shadow-xs"
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center relative active:bg-secondary shadow-xs"
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
-            <Bell size={16} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
+            <Bell size={18} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
             {liveUnreadCount > 0 ? (
-              <View className="absolute -top-0.5 -right-0.5 bg-[#FF6A00] rounded-full min-w-3.5 h-3.5 px-0.5 items-center justify-center border-2 border-card">
-                <Text className="text-[8px] font-bold font-sans text-white leading-tight">
+              <View className="absolute -top-0.5 -right-0.5 bg-[#FF6A00] rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card">
+                <Text className="text-[8.5px] font-bold font-sans text-white leading-tight">
                   {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
                 </Text>
               </View>
@@ -263,11 +263,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={() => setProfileModalVisible(true)}
             activeOpacity={0.85}
-            className="size-9 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
+            className="size-10 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
             accessibilityRole="button"
             accessibilityLabel="User Profile"
           >
-            <Text className="text-white font-bold font-sans text-[13px]">{avatarLetter}</Text>
+            <Text className="text-white font-bold font-sans text-[14px]">{avatarLetter}</Text>
           </TouchableOpacity>
         </View>
       </View>

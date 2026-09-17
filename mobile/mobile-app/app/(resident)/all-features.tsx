@@ -172,6 +172,14 @@ export default function AllFeaturesScreen() {
                     return false;
                   }
 
+                  // Hide resident personal passes for Admin roles
+                  if (
+                    isAdminRole &&
+                    (item.id === 'visitor_resident_passes' || item.id === 'visitor_passes')
+                  ) {
+                    return false;
+                  }
+
                   return isFeatureAllowedForUser(item, user);
                 });
 
@@ -216,15 +224,15 @@ export default function AllFeaturesScreen() {
                         const iconName = meta?.iconName || item.iconName;
                         const colorIcon = meta?.colorIcon || item.colorIcon || '#245FA8';
                         const colorBg = meta?.colorBg || item.colorBg || 'bg-secondary';
-                        const iconShapeClass = meta?.iconShapeClass || 'rounded-[18px]';
+                        const iconShapeClass = meta?.iconShapeClass;
 
                         return (
                           <ActionTile
                             key={item.id}
-                            containerClassName="w-[31.4%]"
+                            containerClassName="w-[31%]"
                             iconBgColor={colorBg}
                             iconShapeClass={iconShapeClass}
-                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={24} />}
+                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={26} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
