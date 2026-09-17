@@ -59,10 +59,10 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
 
 
   return (
-    <View className="gap-2.5 my-2">
+    <View className="gap-2 my-1.5">
       {/* Section Header with Customise Button only */}
       <View className="flex-row items-center justify-between px-1">
-        <Text className="text-[15.5px] font-bold font-sans text-foreground tracking-tight">
+        <Text className="text-[13.5px] font-bold font-sans text-foreground tracking-tight">
           {t('quick_actions', 'Quick Actions')}
         </Text>
 
@@ -94,7 +94,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
               containerClassName="w-[31.4%]"
               iconBgColor={colorBg}
               iconShapeClass={iconShapeClass}
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={20} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}

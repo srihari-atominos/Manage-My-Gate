@@ -113,8 +113,8 @@ const statusBadgeVariants = cva(
 const statusBadgeTextVariants = cva('font-semibold font-sans', {
   variants: {
     size: {
-      sm: 'text-[11px] uppercase tracking-wider',
-      md: 'text-[13px] tracking-wide',
+      sm: 'text-[10px] uppercase tracking-wider',
+      md: 'text-[12px] tracking-wide',
     },
   },
   defaultVariants: {

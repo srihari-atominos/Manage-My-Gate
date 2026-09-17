@@ -69,7 +69,7 @@ export function formatRelativeTime(date: string | Date): string {
 
 const listCardVariants = cva(
   cn(
-    'bg-card rounded-2xl border border-border/80 mb-3 p-3.5 flex-row items-center active:bg-secondary/60',
+    'bg-card rounded-2xl border border-border/80 mb-2.5 p-3 flex-row items-center active:bg-secondary/60',
     Platform.select({
       web: 'transition-all cursor-pointer select-none hover:border-border',
     })
@@ -184,7 +184,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       return (
         <View
           ref={ref}
-          className={cn("bg-card rounded-2xl border border-border/80 mb-3 p-3.5 overflow-hidden", className)}
+          className={cn("bg-card rounded-2xl border border-border/80 mb-2.5 p-3 overflow-hidden", className)}
           style={style as any}
         >
           <Pressable

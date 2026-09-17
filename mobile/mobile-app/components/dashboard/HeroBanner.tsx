@@ -138,46 +138,46 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
             className="px-1"
           >
             <View
-              className={`${banner.bgClass} border ${banner.borderClass} rounded-2xl p-3.5 gap-2 relative overflow-hidden min-h-[136px] justify-between`}
+              className={`${banner.bgClass} border ${banner.borderClass} rounded-2xl p-3 gap-1.5 relative overflow-hidden min-h-[120px] justify-between`}
             >
               {/* Ambient Glowing Background Circles */}
               <View
-                className={`absolute -right-8 -top-8 size-32 rounded-full ${banner.glowColor} pointer-events-none`}
+                className={`absolute -right-8 -top-8 size-28 rounded-full ${banner.glowColor} pointer-events-none`}
               />
               <View
-                className={`absolute -left-10 -bottom-10 size-28 rounded-full ${banner.glowColor} pointer-events-none`}
+                className={`absolute -left-10 -bottom-10 size-24 rounded-full ${banner.glowColor} pointer-events-none`}
               />
 
               {/* Tag Header */}
               <View className="flex-row items-center justify-between z-10">
-                <View className={`${banner.pillBg} border px-2.5 py-0.5 rounded-full flex-row items-center gap-1.5`}>
+                <View className={`${banner.pillBg} border px-2 py-0.5 rounded-full flex-row items-center gap-1`}>
                   {banner.icon}
-                  <Text className="text-white text-[10px] font-bold uppercase tracking-wider font-sans">
+                  <Text className="text-white text-[9px] font-bold uppercase tracking-wider font-sans">
                     {t(`tag_${banner.id === '1' ? 'community' : banner.id === '2' ? 'security_gate' : banner.id === '3' ? 'amenities' : 'financial'}`, banner.tag)}
                   </Text>
                 </View>
 
-                <Sparkles size={15} color="#ffffff" opacity={0.8} />
+                <Sparkles size={13} color="#ffffff" opacity={0.8} />
               </View>
 
               {/* Title & Subtitle */}
-              <View className="gap-0.5 pr-2 z-10">
-                <Text className={`${banner.textColor} text-[15.5px] font-extrabold tracking-tight font-sans leading-tight`}>
+              <View className="gap-0.5 pe-2 z-10">
+                <Text className={`${banner.textColor} text-[14px] font-extrabold tracking-tight font-sans leading-tight`}>
                   {t(banner.id === '1' ? 'banner_welcome_title' : banner.id === '2' ? 'banner_qr_title' : banner.id === '3' ? 'banner_amenities_title' : 'banner_billing_title', banner.title)}
                 </Text>
-                <Text className={`${banner.subtextColor} text-[11.5px] font-medium font-sans leading-snug`}>
+                <Text className={`${banner.subtextColor} text-[10.5px] font-medium font-sans leading-snug`}>
                   {t(banner.id === '1' ? 'banner_welcome_sub' : banner.id === '2' ? 'banner_qr_sub' : banner.id === '3' ? 'banner_amenities_sub' : 'banner_billing_sub', banner.subtitle)}
                 </Text>
               </View>
 
               {/* CTA Link Button */}
               <View className="flex-row items-center justify-between pt-0.5 z-10">
-                <View className={`${banner.ctaBg} px-2.5 py-1 rounded-full flex-row items-center gap-1.5 border`}>
-                  <Text className="text-white text-[10.5px] font-bold font-sans">{t('explore_module', 'Explore Module')}</Text>
-                  <ArrowRight size={11} color="#ffffff" />
+                <View className={`${banner.ctaBg} px-2 py-0.5 rounded-full flex-row items-center gap-1 border`}>
+                  <Text className="text-white text-[9.5px] font-bold font-sans">{t('explore_module', 'Explore Module')}</Text>
+                  <ArrowRight size={10} color="#ffffff" />
                 </View>
 
-                <Text className="text-white/70 text-[9.5px] font-medium font-sans">{t('swipe', 'Swipe →')}</Text>
+                <Text className="text-white/70 text-[9px] font-medium font-sans">{t('swipe', 'Swipe →')}</Text>
               </View>
             </View>
           </TouchableOpacity>

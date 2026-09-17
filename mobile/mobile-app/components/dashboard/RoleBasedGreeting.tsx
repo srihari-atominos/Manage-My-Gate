@@ -49,7 +49,7 @@ const WavingHand: React.FC = () => {
 
   return (
     <Animated.View style={animatedStyle} className="items-center justify-center">
-      <Text className="text-[21px] leading-none">👋</Text>
+      <Text className="text-[18px] leading-none">👋</Text>
     </Animated.View>
   );
 };
@@ -291,16 +291,16 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 
   return (
     <>
-      <View className="flex-row items-center justify-between py-1.5 px-0.5">
+      <View className="flex-row items-center justify-between py-1 px-0.5">
         {/* Left: Salutation & Subtitle */}
-        <View className="flex-1 pr-2">
+        <View className="flex-1 pe-2">
           <View className="flex-row items-center flex-wrap gap-1">
-            <Text className="text-[17px] font-extrabold font-sans text-foreground tracking-tight leading-tight">
+            <Text className="text-[15px] font-extrabold font-sans text-foreground tracking-tight leading-tight">
               {t(timeGreeting.key, timeGreeting.defaultText)}, {displayName}
             </Text>
             <WavingHand />
           </View>
-          <Text className="text-[12px] font-medium font-sans text-muted-foreground mt-0.5 tracking-tight">
+          <Text className="text-[11.5px] font-medium font-sans text-muted-foreground mt-0.5 tracking-tight">
             {t('welcome_back_sub', 'Welcome back to your community hub')}
           </Text>
         </View>
