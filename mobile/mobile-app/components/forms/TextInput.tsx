@@ -188,6 +188,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
                 outlineStyle: 'none',
                 paddingHorizontal: 4,
                 paddingVertical: Platform.OS === 'ios' ? 4 : 2,
+                textAlign: (props.style as any)?.textAlign || 'left',
                 ...(props.multiline ? { textAlignVertical: 'top' } : {}),
               } as any,
               props.style,

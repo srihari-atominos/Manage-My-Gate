@@ -3,6 +3,37 @@
 @tailwind utilities;
 
 @layer base {
+  html, body, #root, #__next, [data-reactroot] {
+    direction: ltr !important;
+    text-align: left !important;
+    unicode-bidi: normal !important;
+  }
+
+  /* Universal LTR layout lock for all elements, wrappers, text and forms */
+  *, *::before, *::after {
+    direction: ltr !important;
+  }
+
+  /* Prevent React Native Web auto-bidi dir attribute from right-aligning Arabic text */
+  [dir="auto"], [dir="rtl"], [dir="ltr"] {
+    direction: ltr !important;
+  }
+
+  /* Default text alignment to left unless center or right class is present */
+  [dir="auto"]:not([class*="text-center"]):not([class*="text-right"]):not([class*="text-end"]),
+  [dir="ltr"]:not([class*="text-center"]):not([class*="text-right"]):not([class*="text-end"]),
+  [dir="rtl"]:not([class*="text-center"]):not([class*="text-right"]):not([class*="text-end"]) {
+    text-align: left;
+  }
+
+  /* Arabic typography scale enhancement for readability */
+  html[lang="ar"], body[lang="ar"], [data-lang="ar"] {
+    font-size: 112%;
+  }
+
+  html[lang="ar"] *, body[lang="ar"] *, [data-lang="ar"] * {
+    letter-spacing: 0px !important;
+  }
   /* ==========================================================================
      THEME 2: VENTOREX ORANGE (ACTIVE)
      ========================================================================== */

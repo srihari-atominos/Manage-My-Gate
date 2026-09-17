@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
-import { Pressable, Text, View, PressableProps } from 'react-native';
+import { Pressable, View, PressableProps } from 'react-native';
+import { Text } from '../ui/text';
 import { LucideIcon } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 

@@ -13,6 +13,7 @@ export default function ResidentLayout() {
       <Stack.Screen name="notices" />
       <Stack.Screen name="visitor" />
       <Stack.Screen name="profile/index" />
+      <Stack.Screen name="account/index" />
       <Stack.Screen name="directory/index" />
       <Stack.Screen name="directory/conversation/[id]" options={{ animation: 'default' }} />
       <Stack.Screen name="notes/index" />

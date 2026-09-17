@@ -15,6 +15,7 @@ import { ProfileModal } from './ProfileModal';
 import { NotificationSheetModal } from './NotificationSheetModal';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
 import { useTranslation } from '@/src/utils/i18n';
+import useSettings from '@/src/features/settings/hooks/useSettings';
 import { cn } from '../../lib/utils';
 
 interface MobileHeaderProps {
@@ -105,9 +106,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   React.useEffect(() => {
     if (params?.openProfile === 'true') {
-      setProfileModalVisible(true);
+      try {
+        router.setParams({ openProfile: undefined });
+      } catch (e) {}
+      router.push('/(resident)/account' as any);
     }
-  }, [params?.openProfile]);
+  }, [params?.openProfile, router]);
 
   // Check if context switching is applicable
   const userUnits = (user as any)?.accessibleUnits || [];
@@ -125,16 +129,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     return 'U';
   }, [user]);
 
-  const { colorScheme, setColorScheme } = useColorScheme();
+  const { themeMode, setThemeMode } = useSettings();
+  const { colorScheme } = useColorScheme();
 
-  const toggleTheme = async () => {
+  const toggleTheme = () => {
     const nextTheme = colorScheme === 'dark' ? 'light' : 'dark';
-    setColorScheme(nextTheme);
-    try {
-      await storage.setItem('theme_preference', nextTheme);
-    } catch (err) {
-      console.warn('Failed to save theme preference:', err);
-    }
+    setThemeMode(nextTheme);
   };
 
   const handleContextPress = () => {
@@ -196,14 +196,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <>
                 <Text
                   numberOfLines={1}
-                  className="text-[13px] font-black font-sans text-foreground shrink-0"
+                  className="text-[14.5px] font-black font-sans text-foreground shrink-0"
                 >
                   {activeVilla}
                 </Text>
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  className="text-[11.5px] font-medium font-sans text-muted-foreground flex-1 ms-1"
+                  className="text-[13px] font-medium font-sans text-muted-foreground flex-1 ms-1"
                 >
                   • {activeCommunity || 'Community'}
                 </Text>
@@ -212,7 +212,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                className="text-[13px] font-bold font-sans text-foreground flex-1"
+                className="text-[14.5px] font-bold font-sans text-foreground flex-1"
               >
                 {activeCommunity || 'Community Workspace'}
               </Text>
@@ -259,13 +259,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             ) : null}
           </TouchableOpacity>
 
-          {/* Profile Avatar Button */}
+          {/* Account Avatar Button */}
           <TouchableOpacity
-            onPress={() => setProfileModalVisible(true)}
+            onPress={() => router.push('/(resident)/account' as any)}
             activeOpacity={0.85}
             className="size-10 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
             accessibilityRole="button"
-            accessibilityLabel="User Profile"
+            accessibilityLabel="User Account"
           >
             <Text className="text-white font-bold font-sans text-[14px]">{avatarLetter}</Text>
           </TouchableOpacity>

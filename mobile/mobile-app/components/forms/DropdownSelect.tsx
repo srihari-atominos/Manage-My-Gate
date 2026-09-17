@@ -92,14 +92,15 @@ export const DropdownSelect = ({
         accessibilityLabel={label ? `${label}: ${selectedOption?.label || placeholder}` : placeholder}
       >
         <Text
+          numberOfLines={1}
           className={cn(
-            'text-[15px] font-sans',
+            'text-[14px] font-sans flex-1 me-1',
             selectedOption ? 'text-foreground font-medium' : 'text-muted-foreground'
           )}
         >
           {selectedOption ? selectedOption.label : placeholder}
         </Text>
-        <ChevronDown size={18} className="text-muted-foreground" />
+        <ChevronDown size={16} className="text-muted-foreground shrink-0" />
       </Pressable>
 
       {Boolean(error) && (

@@ -89,7 +89,10 @@ interface AndroidTabButtonProps {
   isActive: boolean;
   onPress?: () => void;
   isDark: boolean;
+  isCompact?: boolean;
 }
+
+import i18n from '../../src/utils/i18n';
 
 const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
   item,
@@ -100,7 +103,10 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
   const IconComponent = item.icon;
   const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
-  const activePillBg = isDark ? 'rgba(255, 106, 0, 0.22)' : 'rgba(255, 106, 0, 0.12)';
+  const isArabic = i18n.getCurrentLanguage() === 'ar';
+  const tabFontSize = isArabic ? 13.5 : 12;
+  const tabLineHeight = isArabic ? 17 : 15;
+  const translatedLabel = i18n.translateText(item.label);
 
   return (
     <Pressable
@@ -108,7 +114,7 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
       android_ripple={{
         color: isDark ? 'rgba(255, 106, 0, 0.2)' : 'rgba(0, 0, 0, 0.08)',
         borderless: true,
-        radius: 30,
+        radius: 28,
       }}
       style={{
         flex: 1,
@@ -120,15 +126,10 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
       }}
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
-      accessibilityLabel={item.label}
+      accessibilityLabel={translatedLabel}
     >
-      {/* Material 3 Active Indicator Pill */}
       <View
         style={{
-          height: 30,
-          width: 54,
-          borderRadius: 15,
-          backgroundColor: isActive ? activePillBg : 'transparent',
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: 3,
@@ -137,23 +138,22 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
         <IconComponent
           size={22}
           color={iconColor}
-          strokeWidth={isActive ? 2.3 : 1.9}
+          strokeWidth={isActive ? 2.4 : 1.8}
         />
       </View>
 
-      {/* Tab Label */}
       <Text
         style={{
           color: labelColor,
-          fontSize: 11,
-          lineHeight: 13,
+          fontSize: tabFontSize,
+          lineHeight: tabLineHeight,
           fontWeight: isActive ? '700' : '500',
           textAlign: 'center',
         }}
         numberOfLines={1}
         ellipsizeMode="tail"
       >
-        {item.label}
+        {translatedLabel}
       </Text>
     </Pressable>
   );
@@ -177,28 +177,21 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   const IconComponent = item.icon;
   const pressScale = useSharedValue(1.0);
   const pressBlur = useSharedValue(0);
-  const compactScale = useSharedValue(isCompact ? 0.92 : 1.0);
-  const labelOpacity = useSharedValue(isCompact ? 0 : 1.0);
-  const labelHeight = useSharedValue(isCompact ? 0 : 13);
+  const labelOpacity = useSharedValue(1.0);
+  const isArabic = i18n.getCurrentLanguage() === 'ar';
+  const tabFontSize = isArabic ? 13.5 : 12;
+  const tabLineHeight = isArabic ? 17 : 15;
+  const labelHeight = useSharedValue(isArabic ? 18 : 16);
 
+  // Height is constant; no vertical collapsing
   useEffect(() => {
-    compactScale.value = withTiming(isCompact ? 0.92 : 1.0, {
-      duration: 160,
-      easing: Easing.out(Easing.cubic),
-    });
-    labelOpacity.value = withTiming(isCompact ? 0 : 1.0, {
-      duration: 130,
-      easing: Easing.out(Easing.cubic),
-    });
-    labelHeight.value = withTiming(isCompact ? 0 : 13, {
-      duration: 160,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [isCompact, compactScale, labelOpacity, labelHeight]);
+    labelOpacity.value = 1.0;
+    labelHeight.value = isArabic ? 18 : 16;
+  }, [isArabic, labelHeight, labelOpacity]);
 
   // Zooming & motion-blur opacity effect on touch
   const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pressScale.value * compactScale.value }],
+    transform: [{ scale: pressScale.value }],
     opacity: interpolate(pressBlur.value, [0, 1], [isActive ? 1.0 : 0.72, 0.88]),
   }));
 
@@ -229,6 +222,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   // Icons & labels: Active uses Nahom Orange; inactive uses clear readable neutral
   const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
+  const translatedLabel = i18n.translateText(item.label);
 
   return (
     <Pressable
@@ -237,7 +231,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
       className="flex-1 items-center justify-center h-full select-none z-10"
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
-      accessibilityLabel={item.label}
+      accessibilityLabel={translatedLabel}
     >
       <View className="items-center justify-center py-0.5 relative">
         {/* Animated Zoom & Blur Glow Aura */}
@@ -246,42 +240,44 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
             animatedHaloStyle,
             {
               position: 'absolute',
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: isDark ? 'rgba(255, 106, 0, 0.38)' : 'rgba(255, 106, 0, 0.28)',
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: isDark ? 'rgba(255, 106, 0, 0.20)' : 'rgba(255, 106, 0, 0.12)',
               shadowColor: NAHOM_ORANGE,
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.85,
-              shadowRadius: 12,
-              elevation: 4,
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 1,
             },
           ]}
           pointerEvents="none"
         />
 
-        {/* Icon: Visibly bigger than label text (25px vs 9.5px) */}
+        {/* Icon: Visibly bigger than label text */}
         <Animated.View style={animatedIconStyle} className="items-center justify-center">
           <IconComponent
-            size={isCompact ? 21 : 25}
+            size={23}
             color={iconColor}
             strokeWidth={isActive ? 2.4 : 1.9}
           />
         </Animated.View>
 
-        {/* Icon Name: Compact font size underneath */}
+        {/* Icon Name: Standard font size underneath */}
         <Animated.View style={animatedLabelStyle} className="items-center justify-center">
           <Text
             style={{
               color: labelColor,
+              fontSize: tabFontSize,
+              lineHeight: tabLineHeight,
             }}
             className={cn(
-              'text-[9.5px] tracking-tight text-center leading-[11px]',
+              'tracking-tight text-center',
               isActive ? 'font-bold' : 'font-medium'
             )}
             numberOfLines={1}
           >
-            {item.label}
+            {translatedLabel}
           </Text>
         </Animated.View>
       </View>
@@ -293,6 +289,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   scrollY,
 }) => {
   const router = useRouter();
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
   const pathname = usePathname() || '';
   const insets = useSafeAreaInsets();
   const { colorScheme } = useColorScheme();
@@ -300,19 +297,35 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   const isIOS = Platform.OS === 'ios';
   const { isCompact } = useBottomNavScroll();
 
-  const containerHeight = useSharedValue(isCompact ? 48 : 64);
+  // Breadth (width) transition dimensions — height remains constant
+  const FULL_BREADTH = Math.min(SCREEN_WIDTH - 32, 410);
+  const COMPACT_BREADTH = Math.min(SCREEN_WIDTH - 32, 410) * 0.82;
+
+  const containerBreadth = useSharedValue(isCompact ? COMPACT_BREADTH : FULL_BREADTH);
 
   useEffect(() => {
-    containerHeight.value = withTiming(isCompact ? 48 : 64, {
-      duration: 200,
+    containerBreadth.value = withTiming(isCompact ? COMPACT_BREADTH : FULL_BREADTH, {
+      duration: 220,
       easing: Easing.out(Easing.cubic),
     });
-  }, [isCompact, containerHeight]);
+  }, [isCompact, FULL_BREADTH, COMPACT_BREADTH, containerBreadth]);
+
+  const ANDROID_FULL_BREADTH = SCREEN_WIDTH;
+  const ANDROID_COMPACT_BREADTH = Math.min(SCREEN_WIDTH - 40, 360);
+
+  const androidBreadth = useSharedValue(isCompact ? ANDROID_COMPACT_BREADTH : ANDROID_FULL_BREADTH);
+
+  useEffect(() => {
+    androidBreadth.value = withTiming(isCompact ? ANDROID_COMPACT_BREADTH : ANDROID_FULL_BREADTH, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isCompact, ANDROID_FULL_BREADTH, ANDROID_COMPACT_BREADTH, androidBreadth]);
 
   const activeTab: MainTabKey = useMemo(() => {
     if (pathname.includes('/visitor')) return 'security';
     if (pathname.includes('/notices') || pathname.includes('/directory') || pathname.includes('/polls') || pathname.includes('/notes')) return 'community';
-    if (pathname.includes('/profile') || pathname.includes('/settings')) return 'profile';
+    if (pathname.includes('/profile') || pathname.includes('/settings') || pathname.includes('/account')) return 'profile';
     if (pathname.includes('/all-features') || pathname.includes('/amenities') || pathname.includes('/billing') || pathname.includes('/complaints') || pathname.includes('/admin')) return 'all-features';
     return 'dashboard';
   }, [pathname]);
@@ -341,38 +354,28 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   const navTranslateY = useSharedValue(0);
 
   useEffect(() => {
-    const shouldHide = isCompact || isKeyboardVisible;
+    const shouldHide = isKeyboardVisible;
     navTranslateY.value = withTiming(shouldHide ? (isIOS ? 140 : 120) : 0, {
       duration: 220,
       easing: Easing.out(Easing.cubic),
     });
-  }, [isCompact, isKeyboardVisible, isIOS, navTranslateY]);
+  }, [isKeyboardVisible, isIOS, navTranslateY]);
 
   const barAnimatedStyle = useAnimatedStyle(() => {
-    const baseStyle: any = {
-      height: isIOS ? containerHeight.value : undefined,
+    return {
+      width: containerBreadth.value,
+      height: 64, // Constant height — no height transition
+      transform: [{ translateY: navTranslateY.value }],
     };
+  });
 
-    const transforms: any[] = [{ translateY: navTranslateY.value }];
-
-    if (isIOS && scrollY) {
-      const scale = interpolate(
-        scrollY.value,
-        [0, 60, 150],
-        [1.0, 0.96, 0.92],
-        Extrapolation.CLAMP
-      );
-      const scrollYTranslate = interpolate(
-        scrollY.value,
-        [0, 80],
-        [0, 4],
-        Extrapolation.CLAMP
-      );
-      transforms.push({ scale }, { translateY: scrollYTranslate });
-    }
-
-    baseStyle.transform = transforms;
-    return baseStyle;
+  const androidBarAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      width: androidBreadth.value,
+      height: 58, // Constant height — no height transition
+      borderRadius: isCompact ? 28 : 0,
+      transform: [{ translateY: navTranslateY.value }],
+    };
   });
 
   const [containerWidth, setContainerWidth] = useState(0);
@@ -386,10 +389,9 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     return idx >= 0 ? idx : 0;
   }, [selectedTabKey]);
 
-  const slideX = useSharedValue(0);
+  const activeTabRatio = useSharedValue(activeIndex);
   const pillScaleX = useSharedValue(1.0);
-  const tabWidthShared = useSharedValue(0);
-  const dragStartX = useSharedValue(0);
+  const dragStartRatio = useSharedValue(activeIndex);
   const isDraggingShared = useSharedValue(false);
 
   const FAST_SPRING = useMemo(
@@ -401,23 +403,27 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     []
   );
 
+  // Sync ratio when activeIndex changes
   useEffect(() => {
-    if (!isDraggingShared.value && tabWidth > 0) {
-      slideX.value = withSpring(activeIndex * tabWidth, FAST_SPRING);
+    if (!isDraggingShared.value) {
+      activeTabRatio.value = withSpring(activeIndex, FAST_SPRING);
       pillScaleX.value = withSequence(
-        withTiming(1.08, { duration: 60 }),
+        withTiming(1.06, { duration: 50 }),
         withSpring(1.0, { damping: 16, stiffness: 350 })
       );
     }
-  }, [activeIndex, tabWidth, slideX, pillScaleX, isDraggingShared, FAST_SPRING]);
+  }, [activeIndex, FAST_SPRING, isDraggingShared, activeTabRatio, pillScaleX]);
 
-  const slidingPillStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: slideX.value },
-      { scaleX: pillScaleX.value },
-    ],
-    width: tabWidth,
-  }));
+  const slidingPillStyle = useAnimatedStyle(() => {
+    const currentTabW = (containerBreadth.value - horizontalPadding * 2) / TAB_ITEMS.length;
+    return {
+      transform: [
+        { translateX: activeTabRatio.value * currentTabW },
+        { scaleX: pillScaleX.value },
+      ],
+      width: currentTabW,
+    };
+  });
 
   const navigateToTab = useCallback((item: TabItem) => {
     try {
@@ -431,19 +437,18 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     if (isDraggingShared.value) return;
     if (item.key === selectedTabKey) return;
 
-    // Trigger instant slide without waiting for useEffect
     const targetIdx = TAB_ITEMS.findIndex((t) => t.key === item.key);
-    if (targetIdx >= 0 && tabWidth > 0) {
-      slideX.value = withSpring(targetIdx * tabWidth, FAST_SPRING);
+    if (targetIdx >= 0) {
+      activeTabRatio.value = withSpring(targetIdx, FAST_SPRING);
       pillScaleX.value = withSequence(
-        withTiming(1.08, { duration: 60 }),
+        withTiming(1.06, { duration: 50 }),
         withSpring(1.0, { damping: 16, stiffness: 350 })
       );
     }
 
     setSelectedTabKey(item.key);
     navigateToTab(item);
-  }, [isDraggingShared, selectedTabKey, tabWidth, slideX, pillScaleX, FAST_SPRING, navigateToTab]);
+  }, [isDraggingShared, selectedTabKey, activeTabRatio, pillScaleX, FAST_SPRING, navigateToTab]);
 
   const onDragEnd = useCallback((targetIndex: number) => {
     const item = TAB_ITEMS[targetIndex];
@@ -467,18 +472,19 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
       .onStart(() => {
         'worklet';
         isDraggingShared.value = true;
-        dragStartX.value = slideX.value;
-        pillScaleX.value = withTiming(1.12, { duration: 40 });
+        dragStartRatio.value = activeTabRatio.value;
+        pillScaleX.value = withTiming(1.10, { duration: 40 });
       })
       .onUpdate((event) => {
         'worklet';
-        if (tabWidthShared.value <= 0) return;
-        const maxX = (TAB_ITEMS.length - 1) * tabWidthShared.value;
-        const nextX = Math.min(Math.max(dragStartX.value + event.translationX, 0), maxX);
-        slideX.value = nextX;
+        const activeTabW = (containerBreadth.value - horizontalPadding * 2) / TAB_ITEMS.length;
+        if (activeTabW <= 0) return;
+        const deltaRatio = event.translationX / activeTabW;
+        const nextRatio = Math.min(Math.max(dragStartRatio.value + deltaRatio, 0), TAB_ITEMS.length - 1);
+        activeTabRatio.value = nextRatio;
 
         const currentHovered = Math.min(
-          Math.max(Math.round(nextX / tabWidthShared.value), 0),
+          Math.max(Math.round(nextRatio), 0),
           TAB_ITEMS.length - 1
         );
         runOnJS(onHoverTab)(currentHovered);
@@ -487,26 +493,19 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
         'worklet';
         isDraggingShared.value = false;
         pillScaleX.value = withSpring(1.0, { damping: 16, stiffness: 350 });
-        if (tabWidthShared.value <= 0) return;
         const targetIndex = Math.min(
-          Math.max(Math.round(slideX.value / tabWidthShared.value), 0),
+          Math.max(Math.round(activeTabRatio.value), 0),
           TAB_ITEMS.length - 1
         );
-        slideX.value = withSpring(targetIndex * tabWidthShared.value, {
-          damping: 26,
-          stiffness: 420,
-          mass: 0.45,
-        });
+        activeTabRatio.value = withSpring(targetIndex, FAST_SPRING);
         runOnJS(onDragEnd)(targetIndex);
       });
-  }, [slideX, pillScaleX, tabWidthShared, dragStartX, isDraggingShared, onDragEnd, onHoverTab]);
+  }, [activeTabRatio, pillScaleX, containerBreadth, dragStartRatio, isDraggingShared, onDragEnd, onHoverTab, FAST_SPRING]);
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
     if (w > 0 && w !== containerWidth) {
       setContainerWidth(w);
-      const computedTabWidth = (w - (horizontalPadding * 2)) / TAB_ITEMS.length;
-      tabWidthShared.value = computedTabWidth;
     }
   };
 
@@ -516,7 +515,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   // Theme-aware styles:
   // Dark mode: velvety black-charcoal (#101114)
   // Light mode: solid / frosted crisp white (#FFFFFF) with high visibility and contrast
-  const containerBg = isDark ? 'rgba(16, 17, 20, 0.98)' : '#FFFFFF';
+  const containerBg = isDark ? '#101114' : '#FFFFFF';
   const containerBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
   const containerBorderTop = isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.90)';
   const containerBorderBottom = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.08)';
@@ -531,37 +530,34 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   // Space below for Android phone default nav buttons (3-button navigation: Back, Home, Recent Apps or gesture bar)
   // Fits all Android devices (Vivo, Oppo, Samsung, Xiaomi, Motorola, etc.)
   if (!isIOS) {
-    const androidNavButtonSpace = Math.max(insets.bottom, 12) + (insets.bottom > 0 ? 4 : 2);
+    const androidNavButtonSpace = Math.max(insets.bottom, 8);
     const androidBarBg = isDark ? '#121316' : '#FFFFFF';
-    const androidBorderTop = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
+    const androidBorderTop = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
 
     return (
-      <Animated.View
-        style={[
-          {
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            width: '100%',
-            backgroundColor: androidBarBg,
-            borderTopWidth: 1,
-            borderTopColor: androidBorderTop,
-            paddingBottom: androidNavButtonSpace,
-            elevation: 12,
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: isDark ? 0.35 : 0.06,
-            shadowRadius: 6,
-            zIndex: 50,
-            pointerEvents: isKeyboardVisible ? 'none' : 'auto',
-          },
-          barAnimatedStyle,
-        ]}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          width: '100%',
+          backgroundColor: androidBarBg,
+          borderTopWidth: 1,
+          borderTopColor: androidBorderTop,
+          paddingBottom: androidNavButtonSpace,
+          elevation: 8,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: isDark ? 0.35 : 0.06,
+          shadowRadius: 6,
+          zIndex: 50,
+          pointerEvents: isKeyboardVisible ? 'none' : 'box-none',
+        }}
       >
         <View
           style={{
-            height: 58,
+            height: 56,
             width: '100%',
             flexDirection: 'row',
             alignItems: 'center',
@@ -579,7 +575,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
             />
           ))}
         </View>
-      </Animated.View>
+      </View>
     );
   }
 
@@ -598,10 +594,9 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
           <Animated.View
             onLayout={handleLayout}
             style={[
-              barAnimatedStyle,
               {
-                width: '100%',
-                maxWidth: 410,
+                height: 64,
+                overflow: 'hidden',
                 backgroundColor: containerBg,
                 borderColor: containerBorder,
                 borderTopColor: containerBorderTop,
@@ -614,8 +609,9 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
                 shadowOpacity: isDark ? 0.50 : 0.12,
                 shadowRadius: isDark ? 22 : 16,
               },
+              barAnimatedStyle,
             ]}
-            className="h-[64px] px-1.5 flex-row items-center justify-between relative overflow-hidden"
+            className="px-1.5 flex-row items-center justify-between relative overflow-hidden bg-white dark:bg-[#101114]"
           >
             {/* Subtle Specular Top Highlight Line (Dark mode only) */}
             {isDark && (
@@ -634,29 +630,22 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
             )}
 
             {/* Active Tab: Switching Capsule */}
-            {tabWidth > 0 && (
-              <Animated.View
-                style={[
-                  slidingPillStyle,
-                  {
-                    position: 'absolute',
-                    left: horizontalPadding,
-                    top: isCompact ? 3 : 5,
-                    bottom: isCompact ? 3 : 5,
-                    borderRadius: 24,
-                    backgroundColor: activeCapsuleBg,
-                    borderWidth: isDark ? 1 : 1,
-                    borderColor: activeCapsuleBorder,
-                    shadowColor: '#000000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: isDark ? 0.25 : 0.04,
-                    shadowRadius: 4,
-                    elevation: isDark ? 2 : 1,
-                    pointerEvents: 'none',
-                  },
-                ]}
-              />
-            )}
+            <Animated.View
+              style={[
+                slidingPillStyle,
+                {
+                  position: 'absolute',
+                  left: horizontalPadding,
+                  top: 6,
+                  height: 52,
+                  borderRadius: 22,
+                  backgroundColor: activeCapsuleBg,
+                  borderWidth: 1,
+                  borderColor: activeCapsuleBorder,
+                  pointerEvents: 'none',
+                },
+              ]}
+            />
 
             {/* Tab Navigation Items */}
             {TAB_ITEMS.map((item) => (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Modal, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Text } from 'react-native';
+import { View, Modal, TouchableOpacity, ScrollView, Dimensions, StyleSheet } from 'react-native';
+import { Text } from '../ui/text';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

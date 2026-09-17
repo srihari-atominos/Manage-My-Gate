@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ViewProps } from 'react-native';
+import { View, ViewProps } from 'react-native';
+import { Text } from '../ui/text';
 import { cn } from '../../lib/utils';
 
 export interface BadgeProps extends ViewProps {

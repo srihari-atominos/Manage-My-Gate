@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Pressable, Text } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from '../ui/text';
 import { ArrowUpRight, ChevronRight } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { useTranslation } from '../../src/utils/i18n';
+import { useTranslation, default as i18n } from '../../src/utils/i18n';
 
 import { useColorScheme } from 'nativewind';
 import { Platform } from 'react-native';
@@ -137,7 +138,8 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         <View className="w-full items-center justify-center px-0.5">
           <Text
             numberOfLines={2}
-            className="text-[11.5px] font-bold font-sans text-foreground text-center leading-[14px] tracking-tight"
+            style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 13.5, lineHeight: 18 } : undefined}
+            className="text-[12.5px] font-bold font-sans text-foreground text-center leading-[16px] tracking-tight"
           >
             {translatedLabel}
           </Text>
@@ -145,7 +147,8 @@ export const ActionTile: React.FC<ActionTileProps> = ({
           {translatedSubtitle ? (
             <Text
               numberOfLines={1}
-              className="text-[9.5px] font-medium font-sans text-muted-foreground text-center leading-[12px] mt-0.5"
+              style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 12, lineHeight: 16 } : undefined}
+              className="text-[11px] font-medium font-sans text-muted-foreground text-center leading-[14px] mt-0.5"
             >
               {translatedSubtitle}
             </Text>

@@ -389,7 +389,7 @@ export default function ProfileScreen() {
 
   return (
     <ScreenShell
-      title={t('user_profile_account_title', 'User Profile & Account')}
+      title={t('profile', 'Profile')}
       subtitle={t('edit_profile_subtitle', 'Update personal details & profile photo')}
       iconName="User"
       scrollable={false}
@@ -398,7 +398,7 @@ export default function ProfileScreen() {
     >
       <ScrollView
         className="flex-1"
-        contentContainerClassName="p-4 gap-4 pb-28"
+        contentContainerClassName="p-4 gap-4 pb-36"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         {...scrollHandlerProps}

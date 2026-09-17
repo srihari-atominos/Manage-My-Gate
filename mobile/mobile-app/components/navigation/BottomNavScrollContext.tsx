@@ -64,22 +64,23 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
       lastScrollTime.current = now;
 
       const currentY = extractScrollY(event);
-      const delta = currentY - lastScrollY.current;
 
-      // Always expand when pulled to the top of the screen
+      // Protect against iOS overscroll bounce at top
       if (currentY <= 15) {
         setIsCompact(false);
         lastScrollY.current = Math.max(0, currentY);
         return;
       }
 
-      // Scrolling Down threshold: 10px -> Compact / Slide Up Header & Slide Down Bottom Nav
-      if (delta > 10) {
+      const delta = currentY - lastScrollY.current;
+
+      // Scrolling Down threshold: 16px -> Compact / Minimize breadth
+      if (delta > 16) {
         setIsCompact(true);
         lastScrollY.current = currentY;
       }
-      // Scrolling Up threshold: -10px -> Expand / Slide Down Header & Slide Up Bottom Nav
-      else if (delta < -10) {
+      // Scrolling Up threshold: -16px -> Expand / Restore breadth
+      else if (delta < -16) {
         setIsCompact(false);
         lastScrollY.current = currentY;
       }
@@ -89,7 +90,7 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
 
   const scrollHandlerProps = {
     onScroll: handleScroll,
-    scrollEventThrottle: 64,
+    scrollEventThrottle: 32,
   };
 
   return (
@@ -126,7 +127,6 @@ export const useBottomNavScroll = () => {
 
   const handleLocalScroll = useCallback((event: any) => {
     const currentY = extractScrollY(event);
-    const delta = currentY - localLastY.current;
 
     if (currentY <= 15) {
       setGlobalBottomNavCompact(false);
@@ -134,10 +134,12 @@ export const useBottomNavScroll = () => {
       return;
     }
 
-    if (delta > 10) {
+    const delta = currentY - localLastY.current;
+
+    if (delta > 16) {
       setGlobalBottomNavCompact(true);
       localLastY.current = currentY;
-    } else if (delta < -10) {
+    } else if (delta < -16) {
       setGlobalBottomNavCompact(false);
       localLastY.current = currentY;
     }
@@ -153,7 +155,7 @@ export const useBottomNavScroll = () => {
     handleScroll: handleLocalScroll,
     scrollHandlerProps: {
       onScroll: handleLocalScroll,
-      scrollEventThrottle: 16,
+      scrollEventThrottle: 32,
     },
   };
 };

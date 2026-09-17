@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal as RNModal, View, Text, Pressable, TouchableWithoutFeedback, ModalProps as RNModalProps } from 'react-native';
+import { Modal as RNModal, View, Pressable, TouchableWithoutFeedback, ModalProps as RNModalProps } from 'react-native';
+import { Text } from '../ui/text';
 import { X } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 import { IconButton } from './IconButton';

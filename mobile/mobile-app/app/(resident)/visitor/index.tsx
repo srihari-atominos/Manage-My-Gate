@@ -131,7 +131,7 @@ export default function VisitorDashboardScreen() {
           accessibilityLabel="Invite Visitor"
         >
           <Plus size={15} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">{t('new_invite', 'Invite')}</Text>
+          <Text className="text-xs font-bold text-primary-foreground">{t('invite', 'Invite')}</Text>
         </Button>
       }
     >

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, TextProps } from 'react-native';
+import { TextProps } from 'react-native';
+import { Text } from '../ui/text';
 import { cn } from '../../lib/utils';
 
 export interface TypographyProps extends TextProps {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TouchableOpacity, Text } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { Text } from '../ui/text';
 import { SlidersHorizontal } from 'lucide-react-native';
 import FeatureIcon from '../ui/FeatureIcon';
 import ActionTile from './ActionTile';
