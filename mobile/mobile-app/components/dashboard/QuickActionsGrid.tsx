@@ -58,42 +58,42 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
 
 
   return (
-    <View className="gap-2.5 my-2">
+    <View className="gap-2 my-1.5">
       {/* Section Header with Customise Button only */}
-      <View className="flex-row items-center justify-between px-1">
-        <Text className="text-[17px] font-bold font-sans text-foreground tracking-tight">
+      <View className="flex-row items-center justify-between px-0.5">
+        <Text className="text-[15px] font-bold font-sans text-foreground tracking-tight">
           {t('quick_actions', 'Quick Actions')}
         </Text>
 
         <TouchableOpacity
           onPress={onOpenCustomise}
           activeOpacity={0.7}
-          className="flex-row items-center gap-1 bg-secondary border border-border/80 px-2.5 py-1 rounded-full shadow-2xs"
+          className="flex-row items-center gap-1 bg-secondary border border-border/80 px-2.5 py-0.5 rounded-full shadow-2xs"
         >
-          <SlidersHorizontal size={11} className="text-muted-foreground" />
-          <Text className="text-[11px] font-bold font-sans text-foreground">{t('customise', 'Customise')}</Text>
+          <SlidersHorizontal size={10} className="text-muted-foreground" />
+          <Text className="text-[10.5px] font-bold font-sans text-foreground">{t('customise', 'Customise')}</Text>
         </TouchableOpacity>
       </View>
 
 
       {/* Exactly 6 Feature Cards in Clean 3-Column Grid (2 rows x 3 columns) */}
-      <View className="flex-row flex-wrap gap-2.5 justify-start">
+      <View className="flex-row flex-wrap gap-2 justify-start">
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
           const iconName = meta?.iconName || tile.iconName;
           const colorIcon = meta?.colorIcon || tile.colorIcon || '#2563EB';
           const colorBg = meta?.colorBg || tile.colorBg || 'bg-blue-50 dark:bg-blue-950/40';
-          const iconShapeClass = meta?.iconShapeClass || 'rounded-[15px]';
+          const iconShapeClass = meta?.iconShapeClass || 'rounded-xl';
           const badge = meta?.badge || tile.badge;
           const badgeColor = meta?.badgeColor || tile.badgeColor;
 
           return (
             <ActionTile
               key={tile.id}
-              containerClassName="w-[31%]"
+              containerClassName="w-[31.6%]"
               iconBgColor={colorBg}
               iconShapeClass={iconShapeClass}
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={26} />}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={20} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}

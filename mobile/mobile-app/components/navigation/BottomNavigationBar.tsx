@@ -108,7 +108,7 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
       android_ripple={{
         color: isDark ? 'rgba(255, 106, 0, 0.2)' : 'rgba(0, 0, 0, 0.08)',
         borderless: true,
-        radius: 30,
+        radius: 26,
       }}
       style={{
         flex: 1,
@@ -116,7 +116,7 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
         height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 4,
+        paddingVertical: 2,
       }}
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
@@ -125,19 +125,19 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
       {/* Material 3 Active Indicator Pill */}
       <View
         style={{
-          height: 30,
-          width: 54,
-          borderRadius: 15,
+          height: 26,
+          width: 48,
+          borderRadius: 13,
           backgroundColor: isActive ? activePillBg : 'transparent',
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: 3,
+          marginBottom: 2,
         }}
       >
         <IconComponent
-          size={22}
+          size={19}
           color={iconColor}
-          strokeWidth={isActive ? 2.3 : 1.9}
+          strokeWidth={isActive ? 2.2 : 1.8}
         />
       </View>
 
@@ -145,8 +145,8 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
       <Text
         style={{
           color: labelColor,
-          fontSize: 11,
-          lineHeight: 13,
+          fontSize: 10,
+          lineHeight: 12,
           fontWeight: isActive ? '700' : '500',
           textAlign: 'center',
         }}
@@ -531,7 +531,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   // Space below for Android phone default nav buttons (3-button navigation: Back, Home, Recent Apps or gesture bar)
   // Fits all Android devices (Vivo, Oppo, Samsung, Xiaomi, Motorola, etc.)
   if (!isIOS) {
-    const androidNavButtonSpace = Math.max(insets.bottom, 12) + (insets.bottom > 0 ? 4 : 2);
+    const androidNavButtonSpace = Math.max(insets.bottom, 8) + (insets.bottom > 0 ? 2 : 1);
     const androidBarBg = isDark ? '#121316' : '#FFFFFF';
     const androidBorderTop = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
 
@@ -561,7 +561,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
       >
         <View
           style={{
-            height: 58,
+            height: 52,
             width: '100%',
             flexDirection: 'row',
             alignItems: 'center',

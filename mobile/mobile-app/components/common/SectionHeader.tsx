@@ -144,23 +144,23 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   return (
     <View
       className={cn(
-        'flex-row items-center justify-between py-2 px-1',
+        'flex-row items-center justify-between py-1.5 px-0.5',
         containerClassName || className
       )}
     >
       {/* Left Column: Icon Badge + Title + Subtitle */}
-      <View className="flex-row items-center flex-1 min-w-0 mr-2">
+      <View className="flex-row items-center flex-1 min-w-0 me-2">
         {IconComponent ? (
           <View
             className={cn(
-              'w-8 h-8 rounded-xl items-center justify-center mr-2.5 shrink-0 border',
+              'w-7.5 h-7.5 rounded-lg items-center justify-center me-2 shrink-0 border',
               isDark
                 ? 'bg-secondary/70 border-border/60'
                 : iconBgColor || 'bg-primary/10 border-primary/15'
             )}
           >
             <IconComponent
-              size={16}
+              size={15}
               color={iconColor || (isDark ? '#FF8A3D' : '#FF6A00')}
               strokeWidth={2.3}
             />
@@ -170,7 +170,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         <View className="flex-1 min-w-0 justify-center">
           <Text
             numberOfLines={1}
-            className="text-[14.5px] font-bold font-sans text-foreground tracking-tight"
+            className="text-[14px] font-bold font-sans text-foreground tracking-tight"
           >
             {title}
           </Text>
@@ -178,7 +178,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           {displaySubtitle ? (
             <Text
               numberOfLines={1}
-              className="text-[11px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
+              className="text-[10.5px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
             >
               {displaySubtitle}
             </Text>
@@ -190,16 +190,16 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       {actionLabel && onAction && (
         <Pressable
           onPress={onAction}
-          className="flex-row items-center gap-1 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-2.5 py-1 rounded-full active:scale-95 transition-transform shrink-0 shadow-xs"
+          className="flex-row items-center gap-1 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-2 py-0.5 rounded-full active:scale-95 transition-transform shrink-0 shadow-xs"
           accessibilityRole="button"
           accessibilityLabel={actionLabel}
         >
-          <Text className="text-[11px] font-bold font-sans text-primary">
+          <Text className="text-[10.5px] font-bold font-sans text-primary">
             {actionLabel}
           </Text>
           {isExpanded !== undefined ? (
             <ChevronRight
-              size={12}
+              size={11}
               color="#FF6A00"
               strokeWidth={2.4}
               style={{
@@ -207,7 +207,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
               }}
             />
           ) : (
-            <ArrowRight size={11} color="#FF6A00" strokeWidth={2.4} />
+            <ArrowRight size={10} color="#FF6A00" strokeWidth={2.4} />
           )}
         </Pressable>
       )}
