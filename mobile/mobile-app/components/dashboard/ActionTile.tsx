@@ -81,26 +81,25 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             backgroundColor: isDark ? '#181A20' : '#FFFFFF',
             borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
             borderWidth: 1.2,
-            borderRadius: 14,
-            height: 96,
-            paddingHorizontal: 4,
-            paddingVertical: 7,
-            alignItems: 'center',
-            justifyContent: 'center',
+            borderRadius: 22,
+            height: 140,
+            paddingHorizontal: 9,
+            paddingVertical: 10,
+            justifyContent: 'space-between',
             ...(isAndroid
               ? {
-                  elevation: 2,
+                  elevation: 2.5,
                   shadowColor: '#000000',
                 }
               : {
                   shadowColor: '#000000',
                   shadowOffset: { width: 0, height: 1.5 },
                   shadowOpacity: isDark ? 0.25 : 0.05,
-                  shadowRadius: 4,
+                  shadowRadius: 5,
                 }),
           },
         ]}
-        className="w-full relative overflow-hidden active:bg-secondary/70 items-center justify-center"
+        className="w-full relative overflow-hidden active:bg-secondary/70"
         accessibilityRole="button"
         accessibilityLabel={`${translatedLabel} ${translatedSubtitle}`}
       >
@@ -108,7 +107,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         {badge ? (
           <View
             style={badgeColor ? { backgroundColor: badgeColor } : undefined}
-            className={`absolute top-1.5 right-1.5 px-1 py-0.2 rounded-full ${
+            className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-full ${
               !badgeColor ? 'bg-primary' : ''
             } items-center justify-center z-10`}
           >
@@ -117,39 +116,48 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             </Text>
           </View>
         ) : showArrow ? (
-          <View className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-secondary items-center justify-center border border-border/40 z-10">
+          <View className="absolute top-2 right-2 w-4 h-4 rounded-full bg-secondary items-center justify-center border border-border/40 z-10">
             <ArrowUpRight size={8} className="text-muted-foreground" />
           </View>
         ) : null}
 
-        {/* Center: Refined Feature Icon Container */}
-        <View
-          className={`w-9.5 h-9.5 items-center justify-center mb-1.5 ${
-            iconShapeClass || 'rounded-xl'
-          } ${
-            iconBgColor || 'bg-secondary'
-          }`}
-        >
-          {icon}
+        {/* Center: Prominent Enlarged Feature Icon Container */}
+        <View className="w-full items-center pt-1">
+          <View
+            className={`w-12 h-12 items-center justify-center ${
+              iconShapeClass || 'rounded-[18px]'
+            } ${
+              iconBgColor || 'bg-secondary'
+            }`}
+          >
+            {icon}
+          </View>
         </View>
 
-        {/* Center: Balanced Label and Subtitle */}
-        <View className="w-full items-center justify-center px-0.5">
+        {/* Bottom Block: Left-aligned Title & Subtitle with Chevron */}
+        <View className="w-full pb-0.5">
           <Text
             numberOfLines={2}
-            className="text-[11px] font-semibold font-sans text-foreground text-center leading-[13px] tracking-tight"
+            className="text-[12px] font-bold font-sans text-foreground leading-[15px] tracking-tight text-start"
           >
             {translatedLabel}
           </Text>
 
-          {translatedSubtitle ? (
-            <Text
-              numberOfLines={1}
-              className="text-[9px] font-medium font-sans text-muted-foreground text-center leading-[11px] mt-0.5"
-            >
-              {translatedSubtitle}
-            </Text>
-          ) : null}
+          <View className="flex-row items-center justify-between mt-1 w-full">
+            {translatedSubtitle ? (
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                className="text-[9.5px] font-medium font-sans text-muted-foreground leading-[12px] flex-1 me-1 text-start"
+              >
+                {translatedSubtitle}
+              </Text>
+            ) : (
+              <View className="flex-1" />
+            )}
+
+            <ChevronRight size={10} color="#94A3B8" className="shrink-0" />
+          </View>
         </View>
       </AnimatedPressable>
     </View>

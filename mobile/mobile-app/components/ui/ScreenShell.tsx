@@ -217,18 +217,18 @@ export function ScreenShell({
                       router.replace('/(resident)/dashboard' as any);
                     }
                   }}
-                  className="me-2 p-1.5 rounded-lg active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"
+                  className="me-1 p-2 rounded-full active:bg-secondary -ms-1 shrink-0"
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Go back"
                 >
-                  <Icon as={ChevronLeft} size={19} className="text-foreground" />
+                  <Icon as={ChevronLeft} size={20} className="text-foreground" />
                 </Pressable>
               )}
 
               {DynamicIcon ? (
-                <View className="me-2 size-8 rounded-lg bg-primary/15 items-center justify-center border border-primary/25 shrink-0">
-                  <Icon as={DynamicIcon} size={16} className="text-primary" />
+                <View className="me-2.5 size-10 rounded-full bg-primary/10 items-center justify-center border border-primary/20 shrink-0">
+                  <Icon as={DynamicIcon} size={18} className="text-primary" />
                 </View>
               ) : null}
 
@@ -238,7 +238,7 @@ export function ScreenShell({
                 className="flex-1 justify-center active:opacity-80 min-w-0"
                 accessibilityHint="Double tap header title to switch active Role or Villa Unit"
               >
-                <Text numberOfLines={1} className="text-[16px] text-foreground font-bold tracking-tight shrink">
+                <Text numberOfLines={1} className="text-[17px] text-foreground font-bold tracking-tight shrink">
                   {title}
                 </Text>
                 {subtitle ? (
@@ -250,16 +250,16 @@ export function ScreenShell({
             </View>
 
             {/* Header Right Action Slots + Global Navigation Trigger Button */}
-            <View className="flex-row items-center gap-1 shrink-0">
+            <View className="flex-row items-center gap-1.5 shrink-0">
               {headerRight ? headerRight : null}
 
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => setShowGlobalNavModal(true)}
-                className="p-1.5 rounded-lg bg-secondary border border-border/80 items-center justify-center"
+                className="size-9.5 rounded-full bg-secondary border border-border/80 items-center justify-center"
                 accessibilityLabel="Global Easy Navigation"
               >
-                <Icon as={Compass} size={17} className="text-foreground" />
+                <Icon as={Compass} size={18} className="text-foreground" />
               </TouchableOpacity>
             </View>
           </View>

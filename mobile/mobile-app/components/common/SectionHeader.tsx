@@ -153,16 +153,16 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         {IconComponent ? (
           <View
             className={cn(
-              'w-7.5 h-7.5 rounded-lg items-center justify-center me-2 shrink-0 border',
+              'w-9 h-9 rounded-full items-center justify-center me-2.5 shrink-0 border',
               isDark
-                ? 'bg-secondary/70 border-border/60'
-                : iconBgColor || 'bg-primary/10 border-primary/15'
+                ? 'bg-secondary/80 border-border/60'
+                : iconBgColor || 'bg-orange-50/90 border-orange-200/50'
             )}
           >
             <IconComponent
-              size={15}
+              size={17}
               color={iconColor || (isDark ? '#FF8A3D' : '#FF6A00')}
-              strokeWidth={2.3}
+              strokeWidth={2.2}
             />
           </View>
         ) : null}
@@ -170,7 +170,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         <View className="flex-1 min-w-0 justify-center">
           <Text
             numberOfLines={1}
-            className="text-[14px] font-bold font-sans text-foreground tracking-tight"
+            className="text-[15px] font-bold font-sans text-foreground tracking-tight"
           >
             {title}
           </Text>
@@ -178,7 +178,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           {displaySubtitle ? (
             <Text
               numberOfLines={1}
-              className="text-[10.5px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
+              className="text-[11.5px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
             >
               {displaySubtitle}
             </Text>

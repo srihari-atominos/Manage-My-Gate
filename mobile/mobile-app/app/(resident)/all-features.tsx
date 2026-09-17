@@ -210,21 +210,21 @@ export default function AllFeaturesScreen() {
                       className="px-0 py-1"
                     />
 
-                    <View className="flex-row flex-wrap gap-2 justify-start">
+                    <View className="flex-row flex-wrap gap-2.5 justify-start">
                       {displayedItems.map((item) => {
                         const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === item.id);
                         const iconName = meta?.iconName || item.iconName;
                         const colorIcon = meta?.colorIcon || item.colorIcon || '#245FA8';
                         const colorBg = meta?.colorBg || item.colorBg || 'bg-secondary';
-                        const iconShapeClass = meta?.iconShapeClass;
+                        const iconShapeClass = meta?.iconShapeClass || 'rounded-[18px]';
 
                         return (
                           <ActionTile
                             key={item.id}
-                            containerClassName="w-[31.6%]"
+                            containerClassName="w-[31.4%]"
                             iconBgColor={colorBg}
                             iconShapeClass={iconShapeClass}
-                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={20} />}
+                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={24} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
