@@ -24,6 +24,10 @@ import organizationReducer from '../features/organization/store/organizationSlic
 
 import { injectStore } from '../services/apiClient';
 
+import visitorReducer from '../modules/visitor-management/visitorSlice';
+import staffReducer from '../modules/staff-operations/staffSlice';
+import automationReducer from '../modules/automation-engine/automationSlice';
+
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -48,6 +52,9 @@ export const store = configureStore({
     communityNote: communityNoteReducer,
     directoryMessaging: directoryMessagingReducer,
     organization: organizationReducer,
+    visitor: visitorReducer,
+    staff: staffReducer,
+    automation: automationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

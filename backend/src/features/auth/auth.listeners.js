@@ -38,7 +38,7 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
             });
 
             await transporter.sendMail({
-              from: `"${smtpIntegration.accountLabel || 'Manage My Gate'}" <${authUsername}>`,
+              from: `"${smtpIntegration.accountLabel || 'Nahom'}" <${authUsername}>`,
               to: identifier,
               subject: 'Your One-Time Password (OTP)',
               html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes.</p>`,

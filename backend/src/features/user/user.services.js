@@ -260,7 +260,7 @@ export class UserService {
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const existing = await userRepository.findByEmail(trimmedEmail, session);
-      const isExisting = !!existing && (existing.status === 'Active' || !!(existing.password && existing.password.length > 0));
+      const isExisting = !!existing;
 
       // Check if membership already exists in this organization
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;

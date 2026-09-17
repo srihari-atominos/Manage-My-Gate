@@ -344,7 +344,7 @@ export default function SettingsScreen() {
 
         {/* Version Footer */}
         <Text className="text-center text-xs text-muted-foreground mt-6 mb-2">
-          Manage My Gate v1.0.0
+          Nahom v1.0.0
         </Text>
       </ScrollView>
 

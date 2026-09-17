@@ -25,9 +25,12 @@ notificationEvents.on('notification_created', (notification) => {
     type: notification.type,
     sound: 'default',
     data: {
+      ...(notification.metadata || {}),
       notificationId: notification._id ? notification._id.toString() : null,
       orgId: notification.orgId ? notification.orgId.toString() : null,
       createdAt: notification.createdAt,
+      type: notification.type,
+      actionUrl: notification.actionUrl,
     },
   }).catch((err) => {
     logger.error('Push notification background dispatch failed:', err);

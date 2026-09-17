@@ -1105,21 +1105,23 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Create Account Prompt (Transparent container without underline) */}
+              {/* Create Organisation Prompt */}
               <View className="items-center justify-center pt-2.5 pb-2">
                 <Animated.View style={{ transform: [{ scale: createAccountPressScale }] }}>
                   <View className="bg-transparent flex-row items-center justify-center">
                     <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
-                      Don't have an account?{' '}
+                      Don't have an Organisation?{' '}
                     </Text>
                     <TouchableOpacity
                       onPress={() => router.push('/(auth)/signup')}
                       onPressIn={handleCreateAccountPressIn}
                       onPressOut={handleCreateAccountPressOut}
                       activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Create Organisation"
                     >
                       <Text className="text-xs font-bold text-[#EA580C]">
-                        Create Account
+                        Create Organisation
                       </Text>
                     </TouchableOpacity>
                   </View>

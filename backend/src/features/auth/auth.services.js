@@ -547,7 +547,8 @@ export class AuthService {
    * @param {object} loginData - Payload containing login (email/username) and password
    */
   async login(loginData) {
-    const { login, password, inviteToken } = loginData;
+    const login = (loginData.login || loginData.email || loginData.username || '').trim();
+    const { password, inviteToken } = loginData;
 
     // 1. Fetch user by email or username
     const user = await userService.getUserByEmailOrUsername(login);
@@ -1854,7 +1855,9 @@ export class AuthService {
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      // Resolve scoped token and workspaces (outside transaction) scoped explicitly to target invitation orgId
+      // Resolve scoped token and workspaces (outside transaction)
+      // Pass orgId explicitly so the JWT is scoped to the newly-accepted community,
+      // not the user's prior/default active community (fixes multi-org SSO invite bug).
       const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(activatedUser, orgId);
       const token = signToken(tokenPayload);
 
@@ -2015,8 +2018,10 @@ export class AuthService {
 
     const invitationSource = tokenDoc?.invitationSource || 'WEB';
     const isAlreadyMemberInOrg = membershipDoc ? membershipDoc.status === 'Active' : false;
-    const hasAccountCredentials = user.status === 'Active' || !!(user.password && user.password.length > 0);
-    const isAlreadyRegistered = isAlreadyMemberInOrg || hasAccountCredentials;
+    const hasPassword = !!(user.password && user.password.length > 0);
+    const hasAccountCredentials = hasPassword && user.status === 'Active';
+    // User is only considered an existing registered user who can Sign In with credentials if they actually have a password configured
+    const isAlreadyRegistered = hasPassword && (user.status === 'Active' || isAlreadyMemberInOrg);
 
     let inviterName = '';
     if (tokenDoc?.inviterId) {
@@ -2268,7 +2273,7 @@ export class AuthService {
     const scheme = config.mobile?.scheme || 'managemygate';
     const universalDomain = config.mobile?.universalLinkDomain || 'app.managemygate.com';
     const androidPackage = config.mobile?.androidPackageName || 'com.atominosconsulting.nahom';
-    const iosAppStoreId = config.mobile?.iosAppStoreId || '6470000000';
+    const iosAppStoreId = config.mobile?.iosAppStoreId || '6746501635';
 
     return {
       handoffId: handoffResult.handoffId,

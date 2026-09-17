@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, Share, Platform } from 'react-native';
+import { View, ScrollView, Share, Platform, Linking } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -9,6 +9,7 @@ import { VisitorQRCode } from './VisitorQRCode';
 import { VisitorPassCode } from './VisitorPassCode';
 import { CheckCircle2, Share2, Home } from 'lucide-react-native';
 import { PassTypeKey } from '../../mocks/visitorMocks';
+import { encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 export interface GeneratedPassData {
   id: string;
@@ -53,17 +54,47 @@ export const GeneratedPassView: React.FC<GeneratedPassViewProps> = ({
       return;
     }
 
+    const rawType = (passData.passType || 'GUEST').toUpperCase();
+    const barcodePayload = encodeAppBarcode(rawType, passData.code, passData.id, passData.visitorName || 'Guest');
+    const barcodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=12&data=${encodeURIComponent(barcodePayload)}`;
+
     const shareMessage =
-      `*Manage-My-Gate Visitor Pass*\n\n` +
-      `Visitor Name: ${passData.visitorName}\n` +
-      `Pass Type: ${PASS_TYPE_NAMES[passData.passType]}\n` +
-      `Pass Code: ${passData.code}\n` +
-      `Valid Until: ${new Date(passData.validUntil).toLocaleString()}\n\n` +
-      `Please show this code or QR at the security gate for entry.`;
+      `🚪 *NAHOM VISITOR PASS* 🚪\n\n` +
+      `🔑 *PASS CODE:* *${passData.code}*\n` +
+      `👤 *Visitor:* ${passData.visitorName || 'Guest'}\n` +
+      `🎫 *Pass Type:* ${rawType}\n` +
+      `⏰ *Valid Until:* ${passData.validUntil ? new Date(passData.validUntil).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Today'}\n\n` +
+      `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n` +
+      `*Security Instructions:*\n` +
+      `Please present this 6-digit Pass Code (${passData.code}) or the Barcode image at the security gate for fast check-in.`;
+
+    const cleanPhone = passData.phone ? passData.phone.replace(/[^0-9]/g, '') : '';
+    const nativeWhatsappUrl = cleanPhone
+      ? `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(shareMessage)}`
+      : `whatsapp://send?text=${encodeURIComponent(shareMessage)}`;
+
+    if (Platform.OS !== 'web') {
+      try {
+        await Linking.openURL(nativeWhatsappUrl);
+        return;
+      } catch (err) {
+        // WhatsApp not installed: fallback to native share
+      }
+
+      try {
+        await Share.share({
+          title: `Nahom Visitor Pass (${passData.code})`,
+          message: shareMessage,
+        });
+        return;
+      } catch (shareErr) {
+        console.log('Error opening native share sheet:', shareErr);
+      }
+    }
 
     try {
       await Share.share({
-        title: 'Visitor Pass Code',
+        title: `Nahom Visitor Pass (${passData.code})`,
         message: shareMessage,
       });
     } catch (err) {

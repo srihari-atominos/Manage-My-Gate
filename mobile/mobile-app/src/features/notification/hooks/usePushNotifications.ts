@@ -14,6 +14,7 @@ import {
 import {
   setPendingRoute,
   setLastHandledNotificationId,
+  addRealTimeNotification,
 } from '../store/notificationSlice';
 
 /**
@@ -110,6 +111,23 @@ export function usePushNotifications() {
     // A. Received while app is in foreground
     notificationListenerRef.current = Notifications.addNotificationReceivedListener((notification: any) => {
       console.log('[usePushNotifications] Foreground notification received by Android system:', notification?.request?.content?.title);
+      const content = notification?.request?.content;
+      const data = content?.data || {};
+      const notifId = data?.notificationId || notification?.request?.identifier;
+      if (notifId && isDuplicateNotification(notifId)) return;
+
+      const formattedNotification: any = {
+        id: notifId,
+        _id: notifId,
+        title: content?.title || 'Nahom Alert',
+        body: content?.body || '',
+        type: data?.type || 'INFO',
+        actionUrl: data?.actionUrl || null,
+        metadata: data,
+        createdAt: data?.createdAt || new Date().toISOString(),
+        isRead: false,
+      };
+      dispatch(addRealTimeNotification(formattedNotification));
     });
 
     // B. User tapped notification while app was running or in background

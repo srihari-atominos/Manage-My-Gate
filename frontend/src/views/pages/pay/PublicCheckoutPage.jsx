@@ -388,7 +388,7 @@ const PublicCheckoutPage = () => {
           textAlign: 'center',
           background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)'
         }}>
-          <h2 style={{ margin: 0, fontWeight: 800, fontSize: '28px', letterSpacing: '-0.5px' }}>Manage My Gate</h2>
+          <h2 style={{ margin: 0, fontWeight: 800, fontSize: '28px', letterSpacing: '-0.5px' }}>Nahom</h2>
           <p style={{ margin: '6px 0 0 0', opacity: 0.9, fontSize: '15px' }}>Gated Community & Property Management Platform</p>
         </div>
 

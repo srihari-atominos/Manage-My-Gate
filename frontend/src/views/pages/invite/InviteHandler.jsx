@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   CSpinner,
@@ -20,6 +20,9 @@ import { InviteSsoButtons } from '../../../features/auth/components/InviteSsoBut
 import { InviteMobileHandoffCard } from '../../../features/auth/components/InviteMobileHandoffCard.jsx'
 import '../../../features/auth/styles/_auth.scss'
 
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom'
+const APP_STORE_URL = 'https://apps.apple.com/app/manage-my-gate/id6746501635'
+
 const isMobileDevice = () => {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false
   const userAgent = navigator.userAgent || navigator.vendor || window.opera || ''
@@ -36,9 +39,9 @@ const isMobileDevice = () => {
 /**
  * InviteHandlerContent Component
  *
- * Inner view for the canonical workspace invitation landing experience (/invite/:token).
+ * Inner view for the canonical workspace invitation landing experience (/invite/:token or /#/invite?token=).
  * Orchestrates token validation, lifecycle-state presentation, tab selection
- * between New User (Sign Up) and Existing User (Sign In), and Single Sign-On.
+ * between New User (Sign Up) and Existing User (Sign In), Single Sign-On, and smart mobile handoff.
  */
 const InviteHandlerContent = () => {
   const { token: routeToken } = useParams()
@@ -56,6 +59,8 @@ const InviteHandlerContent = () => {
     handleRejectInvitation,
     handleCreateInviteHandoff,
     login,
+    loginGoogle,
+    loginMicrosoft,
     logout,
   } = useAuth()
 
@@ -83,17 +88,26 @@ const InviteHandlerContent = () => {
     }
   }, [token, searchParams])
 
-  // 2. Set default tab according to whether user is detected as existing
+  // 2. Set default tab according to query param (?mode=signin|signup) or backend detection (isExisting)
   useEffect(() => {
-    if (invitation.valid && invitation.data && !tabInitialized) {
-      if (invitation.data.isExisting) {
-        setActiveTab('signin')
-      } else {
-        setActiveTab('signup')
+    const requestedMode = (searchParams.get('mode') || searchParams.get('tab') || '').toLowerCase()
+    if (!tabInitialized) {
+      if (requestedMode === 'signin' || requestedMode === 'signup') {
+        setActiveTab(requestedMode)
+        setTabInitialized(true)
+        return
       }
-      setTabInitialized(true)
+
+      if (invitation.valid && invitation.data) {
+        if (invitation.data.isExisting) {
+          setActiveTab('signin')
+        } else {
+          setActiveTab('signup')
+        }
+        setTabInitialized(true)
+      }
     }
-  }, [invitation.valid, invitation.data, tabInitialized])
+  }, [invitation.valid, invitation.data, tabInitialized, searchParams])
 
   const inviteData = invitation.data
   const isLoading = invitation.loading
@@ -111,11 +125,30 @@ const InviteHandlerContent = () => {
   // Helper: Process mobile handoff or redirect directly to web dashboard based on user device
   const processSuccessfulAcceptance = async () => {
     if (isMobileDevice()) {
-      const handoffRes = await handleCreateInviteHandoff()
-      if (handoffRes.success && handoffRes.data) {
+      const handoffRes = await handleCreateInviteHandoff({ token })
+      if (handoffRes?.success && handoffRes?.data) {
         setHandoffData(handoffRes.data)
         return
       }
+
+      // Universal link / deep-link fallback with store redirect timer
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+      const universalLink = `${window.location.origin}/invite/handoff/${token}`
+      const storeUrl = isIos ? APP_STORE_URL : PLAY_STORE_URL
+
+      const storeTimer = setTimeout(() => {
+        window.location.href = storeUrl
+      }, 1500)
+
+      const cancelOnHide = () => {
+        if (document.hidden) {
+          clearTimeout(storeTimer)
+          document.removeEventListener('visibilitychange', cancelOnHide)
+        }
+      }
+      document.addEventListener('visibilitychange', cancelOnHide)
+      window.location.href = universalLink
+      return
     }
 
     // PC / Desktop Browser: navigate directly to Web Frontend Dashboard
@@ -158,25 +191,16 @@ const InviteHandlerContent = () => {
     setSubmissionError('')
 
     try {
-      // Step 1: Validate credentials & log user in
-      const loginResult = await login({ email, password })
+      // Step 1: Validate credentials & log user in with inviteToken attached (server activates workspace)
+      const loginResult = await login({ login: email, email, password, inviteToken: token })
       if (!loginResult.success) {
         setSubmissionError(loginResult.error || t('auth.invite.invalidCredentials', 'Invalid email or password.'))
         setSubmitting(false)
         return
       }
 
-      // Step 2: Accept invitation and associate workspace
-      const acceptResult = await handleAcceptInvitation(
-        { token, email },
-        null,
-        { skipNavigate: true }
-      )
-      if (!acceptResult.success) {
-        setSubmissionError(acceptResult.error || t('auth.invite.error', 'Failed to join workspace.'))
-      } else {
-        await processSuccessfulAcceptance()
-      }
+      // Step 2: User is authenticated and workspace membership is active -> proceed to handoff/dashboard
+      await processSuccessfulAcceptance()
     } catch (err) {
       setSubmissionError(err.message || t('auth.invite.error', 'Failed to sign in and accept invitation.'))
     } finally {
@@ -207,20 +231,42 @@ const InviteHandlerContent = () => {
     }
   }
 
-  // Handler: Single Sign-On (Google / Microsoft)
+  // Handler: SSO Invitation Acceptance / Existing User Sign In
   const handleSsoSuccess = async (ssoCredential, provider) => {
     setSubmitting(true)
     setSubmissionError('')
 
     try {
-      const result = await handleAcceptSsoInvitation(token, ssoCredential, provider, { skipNavigate: true })
-      if (!result.success) {
-        setSubmissionError(result.error || t('auth.invite.error', 'SSO acceptance failed.'))
-      } else {
+      if (activeTab === 'signin' || invitation.data?.isExisting) {
+        // Existing user SSO authentication
+        let loginResult
+        if (provider === 'google') {
+          loginResult = await loginGoogle(ssoCredential, token, { skipNavigate: true })
+        } else if (provider === 'microsoft') {
+          loginResult = await loginMicrosoft(ssoCredential, token, { skipNavigate: true })
+        }
+        if (!loginResult?.success) {
+          setSubmissionError(loginResult?.error || t('auth.invite.ssoError', 'SSO sign-in failed. Please try again.'))
+          return
+        }
         await processSuccessfulAcceptance()
+      } else {
+        // New user SSO invitation acceptance
+        const result = await handleAcceptSsoInvitation(
+          token,
+          ssoCredential,
+          provider,
+          { skipNavigate: true }
+        )
+
+        if (!result.success) {
+          setSubmissionError(result.error || t('auth.invite.error', 'Failed to accept invitation via SSO.'))
+        } else {
+          await processSuccessfulAcceptance()
+        }
       }
     } catch (err) {
-      setSubmissionError(err.message || t('auth.invite.error', 'SSO acceptance failed.'))
+      setSubmissionError(err.message || t('auth.invite.error', 'Failed to accept invitation via SSO.'))
     } finally {
       setSubmitting(false)
     }
@@ -308,21 +354,57 @@ const InviteHandlerContent = () => {
   // 3. Valid Invitation Experience
   return (
     <div className="invite-page-wrapper">
-      <CContainer>
-        <CRow className="justify-content-center">
-          <CCol xs={12} className="d-flex justify-content-center">
+      <CContainer fluid="sm" className="px-2 px-sm-3">
+        <CRow className="justify-content-center mx-0">
+          <CCol xs={12} className="d-flex justify-content-center px-0">
             <div className="invite-card-container">
               <CCard className="invite-card border-0 shadow-lg rounded-4 overflow-hidden">
                 {/* Attribution Header */}
                 <InviteHeader inviteData={inviteData} />
 
-                <CCardBody className="p-4 p-md-5">
+                <CCardBody className="p-3 p-sm-4 p-md-5">
                   {/* Global submission error display if any */}
                   {submissionError && (
                     <CAlert color="danger" className="mb-4 py-2 small" dismissible onClose={() => setSubmissionError('')}>
                       {submissionError}
                     </CAlert>
                   )}
+
+                  {/* Mobile App Shortcut Banner */}
+                  {isMobileDevice() && (() => {
+                    const isIosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent || '') || (typeof navigator !== 'undefined' && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+                    const targetStoreUrl = isIosDevice ? APP_STORE_URL : PLAY_STORE_URL
+                    const targetStoreLabel = isIosDevice ? 'App Store' : 'Play Store'
+
+                    return (
+                      <div className="p-2.5 p-sm-3 mb-3 rounded-3 bg-primary-subtle text-primary border border-primary-subtle">
+                        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap flex-sm-nowrap">
+                          <div className="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                            <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>📱</span>
+                            <span className="small fw-semibold text-truncate">
+                              {t('auth.invite.haveMobileApp', 'Using a mobile phone?')}
+                            </span>
+                          </div>
+                          <div className="d-flex align-items-center gap-1.5 flex-shrink-0 ms-auto">
+                            <a
+                              href={`managemygate://accept-invite?token=${token}`}
+                              className="btn btn-sm btn-primary fw-semibold px-2.5 py-1 text-white text-decoration-none text-nowrap"
+                            >
+                              {t('auth.invite.openInApp', 'Open App')}
+                            </a>
+                            <a
+                              href={targetStoreUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm btn-outline-primary fw-semibold px-2.5 py-1 text-nowrap"
+                            >
+                              {targetStoreLabel}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Segmented Tab Controls: New User vs Existing User */}
                   <div className="invite-tabs-container">
@@ -358,6 +440,7 @@ const InviteHandlerContent = () => {
                       {/* SSO Providers */}
                       <InviteSsoButtons
                         onSsoSuccess={handleSsoSuccess}
+                        onSsoError={(errMsg) => setSubmissionError(errMsg)}
                         disabled={submitting}
                       />
 
@@ -395,6 +478,7 @@ const InviteHandlerContent = () => {
                       {/* SSO Providers for Existing Users */}
                       <InviteSsoButtons
                         onSsoSuccess={handleSsoSuccess}
+                        onSsoError={(errMsg) => setSubmissionError(errMsg)}
                         disabled={submitting}
                       />
 

@@ -72,11 +72,11 @@ export const InviteHeader = ({ inviteData }) => {
           </div>
         )}
 
-        <div className="d-flex align-items-center justify-content-between py-1">
-          <span className="text-muted small d-flex align-items-center gap-1.5">
+        <div className="d-flex align-items-center justify-content-between py-1 flex-wrap gap-1">
+          <span className="text-muted small d-flex align-items-center gap-1.5 flex-shrink-0">
             <CIcon icon={cilUser} size="sm" className="text-secondary" /> {t('auth.invite.email', 'Email')}:
           </span>
-          <span className="small text-muted font-monospace">{email}</span>
+          <span className="small text-muted font-monospace text-break text-end">{email}</span>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import HttpError from '../../utils/httpError.utils.js'
 import { generateInviteLink, resolveInvitationSource } from './utils/invite.utils.js'
 import fs from 'fs'
 
+
 export class UserController {
   /**
    * Retrieves and formats all users.
@@ -52,7 +53,10 @@ export class UserController {
 
       const inviterId = req.user?.id || req.user?._id || null;
 
-      const invitationSource = resolveInvitationSource(req);
+      // The web admin panel always sends web invitations — the email link must
+      // always point to the smart /invite/:token web landing page, never to a
+      // mobile-specific path. Do NOT derive this from Referer/Origin headers.
+      const invitationSource = 'WEB';
 
       const { user, invitationToken, membership } = await userService.inviteUser(
         email,
@@ -66,7 +70,8 @@ export class UserController {
         inviterId
       );
 
-      const inviteLink = generateInviteLink(invitationToken, invitationSource);
+      // Generate the canonical invite URL for the admin UI "Copy Link" feature
+      const inviteLink = generateInviteLink(invitationToken);
 
       const formatted = {
         id: user._id,

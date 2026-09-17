@@ -10,6 +10,8 @@ export interface NotificationItemData {
   createdAt: string;
   actionUrl?: string;
   readAt?: string;
+  orgId?: string;
+  recipientId?: string;
   metadata?: Record<string, any>;
 }
 

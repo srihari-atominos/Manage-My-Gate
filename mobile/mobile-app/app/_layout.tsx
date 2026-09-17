@@ -35,6 +35,7 @@ import usePushNotifications from '../src/features/notification/hooks/usePushNoti
 import { clearPendingRoute } from '../src/features/notification/store/notificationSlice';
 import { useGlobalAppSocket } from '../src/hooks/useGlobalAppSocket';
 import { getDeferredHandoffContext } from '../src/features/auth/services/deferredDeepLinkService';
+import { GlobalNotificationPresenter } from '@/components/feedback/GlobalNotificationPresenter';
 
 // Prevent splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -238,6 +239,7 @@ export default function RootLayout() {
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
               <Stack screenOptions={{ headerShown: false }} />
               <AuthRouteGuard />
+              <GlobalNotificationPresenter />
               <PortalHost />
             </BottomSheetModalProvider>
           </Provider>

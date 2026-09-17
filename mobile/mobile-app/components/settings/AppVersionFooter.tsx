@@ -14,7 +14,7 @@ export const AppVersionFooter = ({ className }: AppVersionFooterProps) => {
   return (
     <View className={cn('py-6 items-center justify-center', className)}>
       <Text className="text-xs font-bold text-muted-foreground tracking-wider uppercase">
-        Manage My Gate Enterprise
+        Nahom Enterprise
       </Text>
       <Text className="mt-1 text-[11px] text-muted-foreground/70 font-mono">
         v{version} (Build {buildNumber}) • Smart Gate OS

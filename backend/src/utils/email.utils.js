@@ -47,7 +47,7 @@ export const getSmtpTransporter = async (orgId = null) => {
 
     return {
       transporter,
-      from: `"${smtpIntegration?.accountLabel || 'Manage My Gate'}" <${authUsername}>`,
+      from: `"${smtpIntegration?.accountLabel || 'Nahom'}" <${authUsername}>`,
       authUsername,
     };
   } catch (err) {

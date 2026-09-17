@@ -101,7 +101,7 @@ const ContactSupportPage = () => {
         <CContainer className="d-flex justify-content-between align-items-center">
           <Link to="/" className="text-decoration-none d-flex align-items-center gap-2">
             <CIcon icon={cilShieldAlt} size="xl" className="text-primary" />
-            <span className="fw-bold fs-5 text-body">Manage My Gate</span>
+            <span className="fw-bold fs-5 text-body">Nahom</span>
           </Link>
           <Link to="/login">
             <CButton color="primary" variant="outline" size="sm">
@@ -293,7 +293,7 @@ const ContactSupportPage = () => {
                 <Link to="/">
                   <CButton color="secondary" variant="ghost">
                     <CIcon icon={cilArrowLeft} className="me-2" />
-                    Back to ManageMyGate Portal
+                    Back to Nahom Portal
                   </CButton>
                 </Link>
               </div>
@@ -306,7 +306,7 @@ const ContactSupportPage = () => {
       <footer className="bg-body border-top py-3 mt-auto">
         <CContainer className="d-flex flex-wrap justify-content-between align-items-center small text-body-secondary gap-2">
           <div>
-            <strong>Manage My Gate</strong> &copy; {new Date().getFullYear()} Atominos Consulting Private Limited.
+            <strong>Nahom</strong> &copy; {new Date().getFullYear()} Atominos Consulting Private Limited.
           </div>
           <div className="d-flex align-items-center gap-3">
             <Link to="/privacy-policy" className="text-decoration-none text-body-secondary">
