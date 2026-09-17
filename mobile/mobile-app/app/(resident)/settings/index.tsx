@@ -13,7 +13,7 @@ import { SettingToggleRow } from '@/src/features/settings/components/SettingTogg
 import { useSettings } from '@/src/features/settings/hooks/useSettings';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useRouter } from 'expo-router';
-import { LANGUAGE_OPTIONS } from '@/src/utils/i18n';
+import { useTranslation, LANGUAGE_OPTIONS } from '@/src/utils/i18n';
 import { useCommunityPulse } from '@/src/features/communityPulse/hooks/useCommunityPulse';
 import { InterestSelectorModal } from '@/src/features/communityPulse/components/InterestSelectorModal';
 import { CreatePulseBottomSheet } from '@/src/features/communityPulse/components/CreatePulseBottomSheet';
@@ -38,6 +38,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
+  const { tRole } = useTranslation();
   const [createPulseOpen, setCreatePulseOpen] = useState(false);
   const [interestsOpen, setInterestsOpen] = useState(false);
   const [directoryOpen, setDirectoryOpen] = useState(false);
@@ -188,10 +189,10 @@ export default function SettingsScreen() {
             </View>
             <View className="flex-1 min-w-0">
               <Text className="text-base font-bold text-foreground" numberOfLines={1}>
-                {user?.username || user?.name || user?.email || 'Logged In Resident'}
+                {user?.username || user?.name || user?.email || t('logged_in_resident', 'Logged In Resident')}
               </Text>
               <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                {user?.role || 'Member'}
+                {user?.role ? tRole(user.role) : t('member', 'Member')}
               </Text>
               {user?.email ? (
                 <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
@@ -301,7 +302,7 @@ export default function SettingsScreen() {
               <Text className="text-sm font-semibold text-foreground">
                 {t('clear_cache', 'Clear Application Cache')}
               </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">Free up temporary storage</Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">{t('free_storage', 'Free up temporary storage')}</Text>
             </View>
           </Pressable>
 
@@ -318,7 +319,7 @@ export default function SettingsScreen() {
               <Text className="text-sm font-semibold text-destructive">
                 {t('sign_out', 'Sign Out')}
               </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">Log out of your account</Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">{t('log_out_desc', 'Log out of your account')}</Text>
             </View>
           </Pressable>
 
@@ -344,7 +345,7 @@ export default function SettingsScreen() {
 
         {/* Version Footer */}
         <Text className="text-center text-xs text-muted-foreground mt-6 mb-2">
-          Manage My Gate v1.0.0
+          {t('manage_my_gate', 'Manage My Gate')} v1.0.0
         </Text>
       </ScrollView>
 

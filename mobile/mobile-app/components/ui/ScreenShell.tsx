@@ -100,38 +100,6 @@ export function ScreenShell({
     !isAuthScreen &&
     !isSubFlowOrCreationScreen;
 
-  // Collapsible Header Animation (moves up on scroll down, moves down on scroll up)
-  const headerTranslateY = useSharedValue(0);
-  const headerMarginTop = useSharedValue(0);
-  const headerOpacity = useSharedValue(1);
-
-  React.useEffect(() => {
-    if (collapsibleHeader) {
-      headerTranslateY.value = withTiming(isCompact ? -80 : 0, {
-        duration: 250,
-        easing: Easing.out(Easing.cubic),
-      });
-      headerMarginTop.value = withTiming(isCompact ? -58 : 0, {
-        duration: 250,
-        easing: Easing.out(Easing.cubic),
-      });
-      headerOpacity.value = withTiming(isCompact ? 0 : 1, {
-        duration: 200,
-        easing: Easing.out(Easing.cubic),
-      });
-    } else {
-      headerTranslateY.value = 0;
-      headerMarginTop.value = 0;
-      headerOpacity.value = 1;
-    }
-  }, [isCompact, collapsibleHeader]);
-
-  const animatedHeaderStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: headerTranslateY.value }],
-    marginTop: headerMarginTop.value,
-    opacity: headerOpacity.value,
-  }));
-
   const [showGlobalNavModal, setShowGlobalNavModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showVillaModal, setShowVillaModal] = useState(false);
@@ -195,13 +163,9 @@ export function ScreenShell({
         className="bg-card z-30"
       />
 
-      {/* Header row (animated collapsible header that moves up on scroll down, and down on scroll up) */}
+      {/* Header row (rock-solid stable header without scroll jiggle or layout bleeding) */}
       {!hideHeader && (
-        <Animated.View
-          style={[
-            animatedHeaderStyle,
-            { overflow: 'hidden' },
-          ]}
+        <View
           className="bg-card border-b border-border px-4 pb-3 shadow-xs z-30"
         >
           <View className="flex-row items-center justify-between gap-2 min-h-[44px]">
@@ -238,11 +202,11 @@ export function ScreenShell({
                 className="flex-1 justify-center active:opacity-80 min-w-0"
                 accessibilityHint="Double tap header title to switch active Role or Villa Unit"
               >
-                <Text variant="large" numberOfLines={1} className="text-foreground font-bold tracking-tight shrink">
+                <Text variant="large" numberOfLines={1} className="text-foreground text-xl font-bold tracking-tight shrink">
                   {title}
                 </Text>
                 {subtitle ? (
-                  <Text variant="muted" numberOfLines={1} className="text-xs text-muted-foreground mt-0.5 font-medium shrink">
+                  <Text variant="muted" numberOfLines={1} className="text-sm text-muted-foreground mt-0.5 font-medium shrink">
                     {subtitle}
                   </Text>
                 ) : null}
@@ -263,7 +227,7 @@ export function ScreenShell({
               </TouchableOpacity>
             </View>
           </View>
-        </Animated.View>
+        </View>
       )}
 
       {/* Error banner */}

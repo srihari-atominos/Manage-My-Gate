@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import * as LucideIcons from 'lucide-react-native';
 import { Text } from './text';
 import { cn } from '../../lib/utils';
+import i18n from '../../src/utils/i18n';
 
 export interface ActionGridItem {
   id: string;
@@ -114,7 +115,8 @@ export function ActionGrid({
 
                 {/* Label Title */}
                 <Text
-                  className="text-[11px] font-semibold text-foreground text-center leading-[1.18] px-0.5"
+                  style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 13.5, lineHeight: 18 } : undefined}
+                  className="text-[12px] font-semibold text-foreground text-center leading-[15px] px-0.5"
                   numberOfLines={2}
                   ellipsizeMode="tail"
                 >

@@ -15,13 +15,27 @@ export interface AppPreferences {
   requireGateApprovalPin: boolean;
 }
 
+let globalThemeMode: ThemeMode = 'light';
+const themeListeners = new Set<(mode: ThemeMode) => void>();
+
 export const useSettings = () => {
   const systemRNTheme = useRNColorScheme();
   const { colorScheme, setColorScheme } = useColorScheme();
   const { t, languageCode, setLanguage } = useTranslation();
 
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(globalThemeMode);
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
+
+  // Sync with global theme updates
+  useEffect(() => {
+    const listener = (mode: ThemeMode) => {
+      setThemeModeState(mode);
+    };
+    themeListeners.add(listener);
+    return () => {
+      themeListeners.delete(listener);
+    };
+  }, []);
 
   const [preferences, setPreferences] = useState<AppPreferences>({
     gateAlerts: true,
@@ -37,17 +51,20 @@ export const useSettings = () => {
     const restoreSettings = async () => {
       try {
         const savedTheme = await storage.getItem('theme_preference');
-        if (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'system') {
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          globalThemeMode = savedTheme as ThemeMode;
           setThemeModeState(savedTheme as ThemeMode);
-          if (savedTheme === 'system') {
-            setColorScheme(systemRNTheme === 'dark' ? 'dark' : 'light');
-          } else {
-            setColorScheme(savedTheme);
-          }
-        } else {
-          // Default to Phone System Default on fresh install
+          setColorScheme(savedTheme as 'light' | 'dark');
+        } else if (savedTheme === 'system') {
+          globalThemeMode = 'system';
           setThemeModeState('system');
           setColorScheme(systemRNTheme === 'dark' ? 'dark' : 'light');
+        } else {
+          // Default to Light (White) theme on fresh install
+          globalThemeMode = 'light';
+          setThemeModeState('light');
+          setColorScheme('light');
+          await storage.setItem('theme_preference', 'light');
         }
 
         await i18n.initLanguage();
@@ -61,7 +78,10 @@ export const useSettings = () => {
 
   const setThemeMode = useCallback(
     async (nextMode: ThemeMode) => {
+      globalThemeMode = nextMode;
       setThemeModeState(nextMode);
+      themeListeners.forEach((fn) => fn(nextMode));
+
       if (nextMode === 'system') {
         const effectiveTheme = systemRNTheme === 'dark' ? 'dark' : 'light';
         setColorScheme(effectiveTheme);

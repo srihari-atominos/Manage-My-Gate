@@ -92,17 +92,21 @@ interface AndroidTabButtonProps {
   isCompact?: boolean;
 }
 
+import i18n from '../../src/utils/i18n';
+
 const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
   item,
   isActive,
   onPress,
   isDark,
-  isCompact = false,
 }) => {
   const IconComponent = item.icon;
   const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
-  const activePillBg = isDark ? 'rgba(255, 106, 0, 0.22)' : 'rgba(255, 106, 0, 0.12)';
+  const isArabic = i18n.getCurrentLanguage() === 'ar';
+  const tabFontSize = isArabic ? 13.5 : 12;
+  const tabLineHeight = isArabic ? 17 : 15;
+  const translatedLabel = i18n.translateText(item.label);
 
   return (
     <Pressable
@@ -110,7 +114,7 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
       android_ripple={{
         color: isDark ? 'rgba(255, 106, 0, 0.2)' : 'rgba(0, 0, 0, 0.08)',
         borderless: true,
-        radius: 30,
+        radius: 28,
       }}
       style={{
         flex: 1,
@@ -118,47 +122,39 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
         height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: isCompact ? 2 : 4,
+        paddingVertical: 4,
       }}
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
-      accessibilityLabel={item.label}
+      accessibilityLabel={translatedLabel}
     >
-      {/* Material 3 Active Indicator Pill */}
       <View
         style={{
-          height: isCompact ? 26 : 30,
-          width: isCompact ? 48 : 54,
-          borderRadius: 15,
-          backgroundColor: isActive ? activePillBg : 'transparent',
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: isCompact ? 0 : 3,
+          marginBottom: 3,
         }}
       >
         <IconComponent
-          size={isCompact ? 20 : 22}
+          size={22}
           color={iconColor}
-          strokeWidth={isActive ? 2.3 : 1.9}
+          strokeWidth={isActive ? 2.4 : 1.8}
         />
       </View>
 
-      {/* Tab Label (Hidden in compact mode so nav bar reduces size instead of hiding) */}
-      {!isCompact && (
-        <Text
-          style={{
-            color: labelColor,
-            fontSize: 11,
-            lineHeight: 13,
-            fontWeight: isActive ? '700' : '500',
-            textAlign: 'center',
-          }}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {item.label}
-        </Text>
-      )}
+      <Text
+        style={{
+          color: labelColor,
+          fontSize: tabFontSize,
+          lineHeight: tabLineHeight,
+          fontWeight: isActive ? '700' : '500',
+          textAlign: 'center',
+        }}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {translatedLabel}
+      </Text>
     </Pressable>
   );
 };
@@ -182,13 +178,16 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   const pressScale = useSharedValue(1.0);
   const pressBlur = useSharedValue(0);
   const labelOpacity = useSharedValue(1.0);
-  const labelHeight = useSharedValue(13);
+  const isArabic = i18n.getCurrentLanguage() === 'ar';
+  const tabFontSize = isArabic ? 13.5 : 12;
+  const tabLineHeight = isArabic ? 17 : 15;
+  const labelHeight = useSharedValue(isArabic ? 18 : 16);
 
   // Height is constant; no vertical collapsing
   useEffect(() => {
     labelOpacity.value = 1.0;
-    labelHeight.value = 13;
-  }, []);
+    labelHeight.value = isArabic ? 18 : 16;
+  }, [isArabic, labelHeight, labelOpacity]);
 
   // Zooming & motion-blur opacity effect on touch
   const animatedIconStyle = useAnimatedStyle(() => ({
@@ -223,6 +222,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   // Icons & labels: Active uses Nahom Orange; inactive uses clear readable neutral
   const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
+  const translatedLabel = i18n.translateText(item.label);
 
   return (
     <Pressable
@@ -231,7 +231,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
       className="flex-1 items-center justify-center h-full select-none z-10"
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
-      accessibilityLabel={item.label}
+      accessibilityLabel={translatedLabel}
     >
       <View className="items-center justify-center py-0.5 relative">
         {/* Animated Zoom & Blur Glow Aura */}
@@ -254,7 +254,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
           pointerEvents="none"
         />
 
-        {/* Icon: Visibly bigger than label text (25px vs 9.5px) */}
+        {/* Icon: Visibly bigger than label text */}
         <Animated.View style={animatedIconStyle} className="items-center justify-center">
           <IconComponent
             size={23}
@@ -263,19 +263,21 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
           />
         </Animated.View>
 
-        {/* Icon Name: Compact font size underneath */}
+        {/* Icon Name: Standard font size underneath */}
         <Animated.View style={animatedLabelStyle} className="items-center justify-center">
           <Text
             style={{
               color: labelColor,
+              fontSize: tabFontSize,
+              lineHeight: tabLineHeight,
             }}
             className={cn(
-              'text-[9.5px] tracking-tight text-center leading-[11px]',
+              'tracking-tight text-center',
               isActive ? 'font-bold' : 'font-medium'
             )}
             numberOfLines={1}
           >
-            {item.label}
+            {translatedLabel}
           </Text>
         </Animated.View>
       </View>
@@ -360,22 +362,10 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   }, [isKeyboardVisible, isIOS, navTranslateY]);
 
   const barAnimatedStyle = useAnimatedStyle(() => {
-    const transforms: any[] = [{ translateY: navTranslateY.value }];
-
-    if (isIOS && scrollY) {
-      const scrollYTranslate = interpolate(
-        scrollY.value,
-        [0, 80],
-        [0, 4],
-        Extrapolation.CLAMP
-      );
-      transforms.push({ translateY: scrollYTranslate });
-    }
-
     return {
       width: containerBreadth.value,
       height: 64, // Constant height — no height transition
-      transform: transforms,
+      transform: [{ translateY: navTranslateY.value }],
     };
   });
 
@@ -540,9 +530,9 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   // Space below for Android phone default nav buttons (3-button navigation: Back, Home, Recent Apps or gesture bar)
   // Fits all Android devices (Vivo, Oppo, Samsung, Xiaomi, Motorola, etc.)
   if (!isIOS) {
-    const androidNavButtonSpace = Math.max(insets.bottom, 12) + (insets.bottom > 0 ? 4 : 2);
+    const androidNavButtonSpace = Math.max(insets.bottom, 8);
     const androidBarBg = isDark ? '#121316' : '#FFFFFF';
-    const androidBorderTop = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
+    const androidBorderTop = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
 
     return (
       <View
@@ -551,53 +541,40 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
           bottom: 0,
           left: 0,
           right: 0,
-          alignItems: 'center',
+          width: '100%',
+          backgroundColor: androidBarBg,
+          borderTopWidth: 1,
+          borderTopColor: androidBorderTop,
+          paddingBottom: androidNavButtonSpace,
+          elevation: 8,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: isDark ? 0.35 : 0.06,
+          shadowRadius: 6,
           zIndex: 50,
           pointerEvents: isKeyboardVisible ? 'none' : 'box-none',
         }}
       >
-        <Animated.View
-          style={[
-            {
-              backgroundColor: androidBarBg,
-              borderTopWidth: 1,
-              borderTopColor: androidBorderTop,
-              borderLeftWidth: isCompact ? 1 : 0,
-              borderRightWidth: isCompact ? 1 : 0,
-              borderColor: androidBorderTop,
-              paddingBottom: androidNavButtonSpace,
-              elevation: 12,
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: isDark ? 0.35 : 0.06,
-              shadowRadius: 6,
-              overflow: 'hidden',
-            },
-            androidBarAnimatedStyle,
-          ]}
+        <View
+          style={{
+            height: 56,
+            width: '100%',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-around',
+            paddingHorizontal: 4,
+          }}
         >
-          <View
-            style={{
-              height: 58,
-              width: '100%',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-around',
-              paddingHorizontal: 4,
-            }}
-          >
-            {TAB_ITEMS.map((item) => (
-              <AndroidTabButton
-                key={item.key}
-                item={item}
-                isActive={selectedTabKey === item.key}
-                onPress={() => handleTabPress(item)}
-                isDark={isDark}
-                isCompact={isCompact}
-              />
-            ))}
-          </View>
-        </Animated.View>
+          {TAB_ITEMS.map((item) => (
+            <AndroidTabButton
+              key={item.key}
+              item={item}
+              isActive={selectedTabKey === item.key}
+              onPress={() => handleTabPress(item)}
+              isDark={isDark}
+            />
+          ))}
+        </View>
       </View>
     );
   }

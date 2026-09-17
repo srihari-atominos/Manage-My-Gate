@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TouchableOpacity, Text } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { Text } from '../ui/text';
 import { X, Plus, ChevronLeft, ChevronRight, ArrowDown } from 'lucide-react-native';
 import FeatureIcon from '../ui/FeatureIcon';
 import { ALL_AVAILABLE_FEATURES } from '../../src/features/dashboard/dashboardCatalog';

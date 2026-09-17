@@ -252,13 +252,11 @@ export default function AccountScreen() {
             <Text className="text-xs font-bold text-muted-foreground uppercase px-1 font-sans">
               {t('theme_mode', 'Theme Mode')}
             </Text>
-            <View className="bg-card border border-border rounded-2xl p-4 shadow-xs">
-              <ThemeToggleSwitch
-                themeMode={themeMode}
-                onSelectMode={setThemeMode}
-                t={t}
-              />
-            </View>
+            <ThemeToggleSwitch
+              themeMode={themeMode}
+              onSelectMode={setThemeMode}
+              t={t}
+            />
           </View>
 
           {/* 3. Context Switchers Section */}
@@ -333,7 +331,7 @@ export default function AccountScreen() {
                     {t('community_directory', 'Community Directory')}
                   </Text>
                   <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                    Find residents, security & staff
+                    {t('find_residents_security', 'Find residents, security & staff')}
                   </Text>
                 </View>
               </View>
@@ -352,10 +350,10 @@ export default function AccountScreen() {
                 </View>
                 <View>
                   <Text className="text-sm font-bold text-foreground font-sans">
-                    All Community Notes
+                    {t('all_community_notes', 'All Community Notes')}
                   </Text>
                   <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                    View 24h status notes & publish
+                    {t('view_24h_notes', 'View 24h status notes & publish')}
                   </Text>
                 </View>
               </View>
@@ -386,7 +384,7 @@ export default function AccountScreen() {
                     {t('app_settings', 'App Settings')}
                   </Text>
                   <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                    Notifications, language & security
+                    {t('notifications_lang_security', 'Notifications, language & security')}
                   </Text>
                 </View>
               </View>
@@ -411,9 +409,6 @@ export default function AccountScreen() {
           </View>
         </View>
       </Animated.ScrollView>
-
-      {/* Down Bar Navigation with Tab Highlight for Account / Profile */}
-      <BottomNavigationBar scrollY={scrollY} />
 
       {/* Interactive Villa Switcher Modal */}
       {villaModalVisible && (

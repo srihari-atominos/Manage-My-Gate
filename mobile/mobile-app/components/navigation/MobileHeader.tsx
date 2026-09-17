@@ -15,6 +15,7 @@ import { ProfileModal } from './ProfileModal';
 import { NotificationSheetModal } from './NotificationSheetModal';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
 import { useTranslation } from '@/src/utils/i18n';
+import useSettings from '@/src/features/settings/hooks/useSettings';
 import { cn } from '../../lib/utils';
 
 interface MobileHeaderProps {
@@ -128,16 +129,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     return 'U';
   }, [user]);
 
-  const { colorScheme, setColorScheme } = useColorScheme();
+  const { themeMode, setThemeMode } = useSettings();
+  const { colorScheme } = useColorScheme();
 
-  const toggleTheme = async () => {
+  const toggleTheme = () => {
     const nextTheme = colorScheme === 'dark' ? 'light' : 'dark';
-    setColorScheme(nextTheme);
-    try {
-      await storage.setItem('theme_preference', nextTheme);
-    } catch (err) {
-      console.warn('Failed to save theme preference:', err);
-    }
+    setThemeMode(nextTheme);
   };
 
   const handleContextPress = () => {
@@ -199,14 +196,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <>
                 <Text
                   numberOfLines={1}
-                  className="text-[13px] font-black font-sans text-foreground shrink-0"
+                  className="text-[14.5px] font-black font-sans text-foreground shrink-0"
                 >
                   {activeVilla}
                 </Text>
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  className="text-[11.5px] font-medium font-sans text-muted-foreground flex-1 ms-1"
+                  className="text-[13px] font-medium font-sans text-muted-foreground flex-1 ms-1"
                 >
                   • {activeCommunity || 'Community'}
                 </Text>
@@ -215,7 +212,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                className="text-[13px] font-bold font-sans text-foreground flex-1"
+                className="text-[14.5px] font-bold font-sans text-foreground flex-1"
               >
                 {activeCommunity || 'Community Workspace'}
               </Text>

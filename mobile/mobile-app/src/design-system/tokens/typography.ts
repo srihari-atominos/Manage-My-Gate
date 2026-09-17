@@ -1,13 +1,13 @@
 export const typography = {
   fontSize: {
-    xs: 12,
-    sm: 14,
-    base: 16,
-    lg: 18,
-    xl: 20,
-    '2xl': 24,
-    '3xl': 30,
-    '4xl': 36,
+    xs: 14,
+    sm: 16,
+    base: 18,
+    lg: 21,
+    xl: 24,
+    '2xl': 28,
+    '3xl': 34,
+    '4xl': 42,
   },
   fontWeight: {
     normal: '400',

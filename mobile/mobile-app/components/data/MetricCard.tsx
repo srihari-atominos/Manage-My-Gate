@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../ui/text';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
