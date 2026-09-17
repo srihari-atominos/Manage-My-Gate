@@ -4,12 +4,15 @@ import { RootState } from '../../../store/store';
 import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 export interface QuickNavItem extends ActionGridItem {}
 import { useAmenityDashboard } from '../hooks/useAmenityDashboard';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
 export interface MobileQuickNavHubProps {
   searchQuery?: string;
 }
 
 export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) {
+  const { user } = useAuth();
   const { dashboardStats } = useAmenityDashboard();
 
   const walletState = useSelector((state: RootState) => (state as any).wallet);
@@ -57,7 +60,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
     return `₹${amount}`;
   };
 
-  const dynamicNavItems: ActionGridItem[] = [
+  const dynamicNavItems: (ActionGridItem & { permission?: string })[] = [
     {
       id: 'master',
       name: 'Amenity Master',
@@ -67,6 +70,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#EA8A00',
       badge: totalAmenities > 0 ? String(totalAmenities) : undefined,
       badgeColor: 'bg-amber-500',
+      permission: 'amenities:amenities',
     },
     {
       id: 'calendar',
@@ -77,6 +81,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#7C3AED',
       badge: upcomingBookings > 0 ? String(upcomingBookings) : undefined,
       badgeColor: 'bg-purple-500',
+      permission: 'amenities:admin_calander',
     },
     {
       id: 'ledgers',
@@ -87,6 +92,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#C0267A',
       badge: monthlyRevenue > 0 ? formatRevenueBadge(monthlyRevenue) : undefined,
       badgeColor: 'bg-pink-500',
+      permission: 'amenities:ledgers',
     },
     {
       id: 'maint',
@@ -97,6 +103,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#EA8A00',
       badge: activeMaintenance > 0 ? String(activeMaintenance) : undefined,
       badgeColor: 'bg-amber-500',
+      permission: 'amenities:maintenance',
     },
     {
       id: 'discover',
@@ -105,6 +112,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       iconName: 'Compass',
       colorBg: 'bg-indigo-500/10 dark:bg-indigo-500/20',
       colorIcon: '#6366F1',
+      permission: 'amenities:discover',
     },
     {
       id: 'bookings',
@@ -115,6 +123,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#2563EB',
       badge: myBookingsCount > 0 ? String(myBookingsCount) : undefined,
       badgeColor: 'bg-blue-500',
+      permission: 'amenities:my_booking',
     },
     {
       id: 'wallet',
@@ -125,6 +134,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       badgeColor: 'bg-emerald-500',
       colorBg: 'bg-emerald-500/10 dark:bg-emerald-500/20',
       colorIcon: '#16A34A',
+      permission: 'amenities:wallet',
     },
     {
       id: 'scanner',
@@ -135,6 +145,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#0F9F8F',
       badge: 'LIVE',
       badgeColor: 'bg-teal-600',
+      permission: 'amenities:scanner',
     },
     {
       id: 'sec-logs',
@@ -145,13 +156,18 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#475569',
       badge: securityLogsCount > 0 ? String(securityLogsCount) : undefined,
       badgeColor: 'bg-slate-600',
+      permission: 'amenities:security_logs',
     },
   ];
+
+  const permittedItems = dynamicNavItems.filter((item) =>
+    user ? isFeatureAllowedForUser({ id: item.id, permission: item.permission }, user) : true
+  );
 
   return (
     <ActionGrid
       title="Quick Actions"
-      items={dynamicNavItems}
+      items={permittedItems}
       searchQuery={searchQuery}
     />
   );

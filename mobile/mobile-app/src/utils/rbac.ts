@@ -112,12 +112,17 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'complaints:assignee': ['complaints:assignee', 'complaints:update', 'complaints'],
 
   // Amenities & Facilities
-  'amenities:scanner': ['amenities:scanner', 'amenities:security_logs', 'amenities:view', 'amenities:read', 'amenities'],
-  'amenities:security_logs': ['amenities:security_logs', 'amenities:scanner', 'amenities:view', 'amenities:read', 'amenities'],
-  'amenities:discover': ['amenities:discover', 'amenities:view', 'amenities:read', 'amenities'],
-  'amenities:my_booking': ['amenities:my_booking', 'amenities:view', 'amenities:read', 'amenities'],
-  'amenities:wallet': ['amenities:wallet', 'amenities'],
-  'amenities:dashboard': ['amenities:dashboard', 'amenities'],
+  'amenities:scanner': ['amenities:scanner', 'amenities.scanner', 'amenities:guard', 'amenities.guard'],
+  'amenities:security_logs': ['amenities:security_logs', 'amenities.security_logs', 'amenities:guard', 'amenities.guard'],
+  'amenities:discover': ['amenities:discover', 'amenities.discover', 'amenities:resident', 'amenities.resident', 'amenities:read', 'amenities.read'],
+  'amenities:my_booking': ['amenities:my_booking', 'amenities.my_booking', 'amenities:book', 'amenities.book', 'amenities:resident', 'amenities.resident'],
+  'amenities:wallet': ['amenities:wallet', 'amenities.wallet', 'amenities:resident', 'amenities.resident'],
+  'amenities:amenities': ['amenities:amenities', 'amenities.amenities', 'amenities:admin', 'amenities.admin', 'amenities:create', 'amenities:update', 'amenities:delete'],
+  'amenities:admin_calander': ['amenities:admin_calander', 'amenities.admin_calander', 'amenities:admin', 'amenities.admin'],
+  'amenities:maintenance': ['amenities:maintenance', 'amenities.maintenance', 'amenities:admin', 'amenities.admin'],
+  'amenities:settings': ['amenities:settings', 'amenities.settings', 'amenities:admin', 'amenities.admin'],
+  'amenities:dashboard': ['amenities:dashboard', 'amenities.dashboard', 'amenities:admin', 'amenities.admin'],
+  'amenities:ledgers': ['amenities:ledgers', 'amenities.ledgers', 'amenities:admin', 'amenities.admin'],
 
   // Billing & Invoices
   'billing:action_center': ['billing:action_center', 'billing:dashboard', 'billing:view', 'billing:read', 'billing'],
@@ -171,12 +176,28 @@ const matchesUserPermissions = (
   return false;
 };
 
-// Initial fallback sets (ONLY used when user.permissions is completely unpopulated/empty)
+// Features strictly reserved for resident self-service (hidden from Admin and Guard consoles)
+export const RESIDENT_ONLY_FEATURE_IDS = new Set([
+  'visitor_resident_passes',
+  'visitor_passes',
+  'amenities_discover',
+  'amenities_my_booking',
+  'amenities_wallet',
+  'billing_my_dues',
+  'billing_wallet',
+]);
+
+// Features strictly reserved for gate security hardware (hidden from Admin and Resident consoles)
+export const GUARD_ONLY_FEATURE_IDS = new Set([
+  'visitor_gate_console',
+  'amenities_scanner',
+  'amenities_security_logs',
+]);
+
+// Features allowed for Security Guard
 const FALLBACK_SECURITY_FEATURE_IDS = new Set([
   'visitor_gate_console',
   'visitor_admin_logs',
-  'visitor_community_passes',
-  'visitor_blacklist',
   'amenities_scanner',
   'amenities_security_logs',
   'notices_active_board',
@@ -210,6 +231,7 @@ const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'complaints_track_requests',
   'notices_active_board',
   'notices_polls',
+  'admin_villas',
 ]);
 
 const FALLBACK_RESIDENT_PERMISSIONS = new Set([
@@ -227,8 +249,7 @@ const FALLBACK_RESIDENT_PERMISSIONS = new Set([
 ]);
 
 /**
- * Primary RBAC resolver: strictly respects Role Builder permissions when assigned.
- * Hardcoded temporary data is NEVER forced when explicit permissions exist for Security or any role.
+ * Primary RBAC resolver: strictly respects Role Builder permissions and persona boundaries.
  */
 export const isFeatureAllowedForUser = (
   item: { id: string; permission?: string; categoryKey?: string },
@@ -236,31 +257,68 @@ export const isFeatureAllowedForUser = (
 ): boolean => {
   if (!user || !item) return false;
   if (item.id === 'admin_organizations' || item.id === 'admin_audit_logs') {
-    return user.isPlatform === true || Boolean(user.permissions && user.permissions.includes('platform:super_admin'));
+    return user.isPlatform === true || Boolean(user.permissions && (user.permissions.includes('platform:super_admin') || user.permissions.includes('*')));
   }
 
-  // 1. Super Admins & Community Admins have full feature access
-  if (checkIsAdmin(user)) {
+  const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+
+  // Super Admin / Platform bypass (full system visibility)
+  if (user.isPlatform === true || permissions.includes('platform:super_admin') || permissions.includes('*')) {
     return true;
   }
 
-  const roleName = getUserRoleName(user).toLowerCase();
-  const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+  const isAdmin = checkIsAdmin(user);
+  const isSecurity = checkIsSecurityRole(user);
 
-  // 2. Strict evaluation of permissions assigned in Role Builder (when permissions array is populated)
+  // 1. Community Admin persona: strictly exclude resident self-service and guard hardware equipment
+  if (isAdmin) {
+    if (RESIDENT_ONLY_FEATURE_IDS.has(item.id)) return false;
+    if (GUARD_ONLY_FEATURE_IDS.has(item.id)) return false;
+
+    // Strict evaluation for Amenities: Admin must have the explicit admin amenity permission
+    if (item.permission && item.permission.startsWith('amenities:') && permissions.length > 0) {
+      return matchesUserPermissions(item.permission, item.id, permissions);
+    }
+    return true;
+  }
+
+  // 2. Security Guard persona: strictly exclude admin consoles and resident booking flows
+  if (isSecurity) {
+    if (RESIDENT_ONLY_FEATURE_IDS.has(item.id)) return false;
+    if (FALLBACK_SECURITY_FEATURE_IDS.has(item.id)) return true;
+    if (item.permission && FALLBACK_SECURITY_PERMISSIONS.has(item.permission)) {
+      return !item.permission.startsWith('amenities:') || item.permission === 'amenities:scanner' || item.permission === 'amenities:security_logs';
+    }
+    return false;
+  }
+
+  // 3. Resident persona: strictly exclude admin consoles and guard hardware
+  if (GUARD_ONLY_FEATURE_IDS.has(item.id)) return false;
+
+  if (item.permission && item.permission.startsWith('amenities:')) {
+    const isResidentAmenity =
+      item.permission === 'amenities:discover' ||
+      item.permission === 'amenities:my_booking' ||
+      item.permission === 'amenities:wallet' ||
+      item.id === 'amenities_discover' ||
+      item.id === 'amenities_my_booking' ||
+      item.id === 'amenities_wallet';
+    if (!isResidentAmenity) return false;
+    if (permissions.length > 0) {
+      return matchesUserPermissions(item.permission, item.id, permissions);
+    }
+    return true;
+  }
+
+  // Strict evaluation of permissions assigned in Role Builder (when permissions array is populated)
   if (permissions.length > 0) {
     return matchesUserPermissions(item.permission, item.id, permissions);
   }
 
-  // 3. Fallback persona validation when explicit permissions array is not provided:
-  // 3a. Security Guard persona (Only gate, scanner, logs, notices, tickets allowed)
-  if (checkIsSecurityRole(user)) {
-    if (FALLBACK_SECURITY_FEATURE_IDS.has(item.id)) return true;
-    if (item.permission && FALLBACK_SECURITY_PERMISSIONS.has(item.permission)) return true;
-    return false;
-  }
+  // 4. Fallback persona validation when explicit permissions array is not provided:
+  const roleName = getUserRoleName(user).toLowerCase();
 
-  // 3b. Staff / Assignee persona
+  // 4a. Staff / Assignee persona
   if (roleName.includes('staff') || roleName.includes('assignee') || roleName.includes('vendor')) {
     const staffAllowed = [
       'complaints_assignee',
@@ -271,7 +329,7 @@ export const isFeatureAllowedForUser = (
     return staffAllowed.includes(item.id);
   }
 
-  // 3c. Facility / Community Manager persona
+  // 4b. Facility / Community Manager persona
   if (roleName.includes('facility') || roleName.includes('manager')) {
     const managerAllowed = [
       'amenities_dashboard',
@@ -296,7 +354,7 @@ export const isFeatureAllowedForUser = (
     return managerAllowed.includes(item.id);
   }
 
-  // 3d. Resident / Tenant / Owner persona
+  // 4c. Resident / Tenant / Owner persona
   const isResidentRole =
     !roleName ||
     roleName.includes('resident') ||

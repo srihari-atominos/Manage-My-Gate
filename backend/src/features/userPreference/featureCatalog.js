@@ -30,7 +30,9 @@ export const SYSTEM_FEATURE_CATALOG = [
       { id: 'amenities_admin_calendar', name: 'Admin Calendar', permission: 'amenities:admin_calander', iconName: 'CalendarDays', colorBg: 'bg-pink-500/15', colorIcon: '#ec4899', route: '/(resident)/amenities/admin-calendar' },
       { id: 'amenities_ledgers', name: 'Ledgers & Accounts', permission: 'amenities:ledgers', iconName: 'Receipt', colorBg: 'bg-emerald-500/15', colorIcon: '#059669', route: '/(resident)/amenities/ledgers' },
       { id: 'amenities_maintenance', name: 'Maintenance Schedule', permission: 'amenities:maintenance', iconName: 'Wrench', colorBg: 'bg-orange-600/15', colorIcon: '#ea580c', route: '/(resident)/amenities/maintenance' },
-      { id: 'amenities_scanner', name: 'Security Gate Scanner', permission: 'amenities:scanner', iconName: 'ScanLine', colorBg: 'bg-sky-500/15', colorIcon: '#0284c7', route: '/(resident)/amenities/scanner' }
+      { id: 'amenities_settings', name: 'Pricing & Rules Settings', permission: 'amenities:settings', iconName: 'SlidersHorizontal', colorBg: 'bg-indigo-600/15', colorIcon: '#6366f1', route: '/(resident)/amenities/settings' },
+      { id: 'amenities_scanner', name: 'Security Gate Scanner', permission: 'amenities:scanner', iconName: 'ScanLine', colorBg: 'bg-sky-500/15', colorIcon: '#0284c7', route: '/(resident)/amenities/scanner' },
+      { id: 'amenities_security_logs', name: 'Security Access Logs', permission: 'amenities:security_logs', iconName: 'History', colorBg: 'bg-slate-500/15', colorIcon: '#475569', route: '/(resident)/amenities/security-logs' }
     ]
   },
   {
@@ -84,8 +86,9 @@ export const SYSTEM_FEATURE_CATALOG = [
 ];
 
 export const DEFAULT_ACTIVE_QUICK_ACTIONS = [
-  'billing_dashboard',
   'visitor_resident_passes',
+  'billing_dashboard',
   'complaints_track_requests',
+  'amenities_discover',
   'notices_active_board'
 ];

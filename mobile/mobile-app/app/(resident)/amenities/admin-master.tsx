@@ -2,38 +2,50 @@ import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { KPIRow } from '@/components/ui/KPIRow';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
-import { FAB } from '@/components/ui/FAB';
-
 import { AmenityMasterCard } from '@/src/features/amenities/components/AmenityMasterCard';
-import { useAmenityMaster } from '@/src/features/amenities/hooks/useAmenityMaster';
-import { AmenityFormModal } from '@/src/features/amenities/components/AmenityFormModal';
+import { AmenityFilterDrawer } from '@/src/features/amenities/components/AmenityFilterDrawer';
+import { AmenityDeactivationConflictModal } from '@/src/features/amenities/components/AmenityDeactivationConflictModal';
+import { useAmenityMaster, ArchetypeFilterOption, AmenityStatusFilter } from '@/src/features/amenities/hooks/useAmenityMaster';
+import {
+  AmenityCreationWizard,
+  AmenityArchetypeSheet,
+} from '@/src/features/amenities/components/creation-wizard';
 import { AmenityDetailSheet } from '@/src/features/amenities/components/AmenityDetailSheet';
-import { Amenity } from '@/src/features/amenities/store/amenitySlice';
+import { AmenityFacility } from '@/src/features/amenities/types/amenityDomain.types';
 import { Plus } from 'lucide-react-native';
-
-const CATEGORY_CHIPS = ['All', 'Sports', 'Fitness', 'Event Space', 'Clubhouse', 'Wellness', 'Workspace'];
 
 export default function AdminAmenityMasterScreen() {
   const router = useRouter();
   const {
-    amenities,
+    facilities,
     filteredAmenities,
     pagination,
     handleLoadMore,
     search,
     setSearch,
-    selectedCategory,
-    setSelectedCategory,
+    statusFilter,
+    setStatusFilter,
+    statusCounts,
+    availableCategories,
+    activeFilters,
+    activeFilterCount,
+    isFilterDrawerOpen,
+    setIsFilterDrawerOpen,
+    handleApplyFilters,
+    handleResetFilters,
+    selectedArchetype,
+    setSelectedArchetype,
     loading,
     error,
     isFormModalOpen,
+    isArchetypeSheetOpen,
+    creationArchetype,
     editingAmenity,
     selectedAmenityDetail,
     setSelectedAmenityDetail,
@@ -41,67 +53,52 @@ export default function AdminAmenityMasterScreen() {
     setDeleteTarget,
     deactivateTarget,
     setDeactivateTarget,
+    deactivationConflict,
+    handleResolveDeactivationConflict,
+    handleCloseDeactivationConflict,
     saving,
+    savingDraft,
     loadData,
     handleOpenCreateModal,
+    handleSelectArchetypeForCreation,
+    handleCloseArchetypeSheet,
     handleOpenEditModal,
     handleCloseFormModal,
     handleFormSubmit,
+    handleSaveDraft,
     handleToggleStatus,
     handleConfirmDeactivate,
     handleConfirmDelete,
   } = useAmenityMaster();
 
-  const kpis = useMemo(() => {
-    const total = amenities.length;
-    const active = amenities.filter((a) => (a.status || 'active').toLowerCase() === 'active').length;
-    const maintenance = amenities.filter((a) => (a.status || '').toLowerCase() === 'maintenance').length;
-    return { total, active, maintenance };
-  }, [amenities]);
+  // Status sort options with live counts (matching Billing Ledger pattern)
+  const statusSortOptions = useMemo(() => [
+    { label: `All (${statusCounts.total})`, value: 'ALL' },
+    { label: `Active (${statusCounts.active})`, value: 'ACTIVE' },
+    { label: `Draft (${statusCounts.draft})`, value: 'DRAFT' },
+    { label: `Inactive (${statusCounts.inactive})`, value: 'INACTIVE' },
+    { label: `Maintenance (${statusCounts.maintenance})`, value: 'MAINTENANCE' },
+  ], [statusCounts]);
 
-  const categorySortOptions = useMemo(() => {
-    return CATEGORY_CHIPS.map((cat) => ({ label: cat, value: cat }));
-  }, []);
+  const emptySubtitle = useMemo(() => {
+    if (search.trim()) return `No facilities match "${search.trim()}".`;
+    if (statusFilter !== 'ALL') return `No facilities match status filter "${statusFilter.toLowerCase()}".`;
+    if (activeFilterCount > 0) return 'No facilities match the active filter criteria.';
+    return 'No facility records found in master catalog.';
+  }, [search, statusFilter, activeFilterCount]);
 
   const renderHeader = () => (
-    <View className="mb-3 gap-3">
-      {/* Facility Summary KPI Strip */}
-      <KPIRow
-        cards={[
-          {
-            title: 'Total Amenities',
-            value: String(kpis.total),
-            subtitle: 'Master Catalog',
-            iconName: 'Building2',
-            variant: 'info',
-            onPress: () => setSelectedCategory('All'),
-          },
-          {
-            title: 'Active',
-            value: String(kpis.active),
-            subtitle: 'Open for Booking',
-            iconName: 'CheckCircle2',
-            variant: 'success',
-          },
-          {
-            title: 'Under Maintenance',
-            value: String(kpis.maintenance),
-            subtitle: 'Temporary Closed',
-            iconName: 'Wrench',
-            variant: kpis.maintenance > 0 ? 'warning' : 'default',
-            onPress: () => router.push('/(resident)/amenities/maintenance' as any),
-          },
-        ]}
-      />
-
-      {/* Unified Search & Category Filter Bar */}
+    <View className="mb-3">
+      {/* Search & Status Filter Bar with Filter Drawer Trigger */}
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search facility name or location..."
-        sortOptions={categorySortOptions}
-        currentSort={selectedCategory}
-        onSortChange={setSelectedCategory}
+        searchPlaceholder="Search facility name, location or code..."
+        sortOptions={statusSortOptions}
+        currentSort={statusFilter}
+        onSortChange={(val) => setStatusFilter(val as AmenityStatusFilter)}
+        onFilterPress={() => setIsFilterDrawerOpen(true)}
+        activeFilterCount={activeFilterCount}
         variant="default"
         className="px-0 py-0 border-0"
       />
@@ -111,9 +108,9 @@ export default function AdminAmenityMasterScreen() {
   return (
     <ScreenShell
       title="Amenity Master Console"
-      subtitle="Define community facilities, pricing & operating hours"
+      subtitle={`Total ${facilities.length} community facilities`}
       iconName="Building2"
-      loading={loading && amenities.length === 0}
+      loading={loading && facilities.length === 0}
       error={error}
       onRetry={loadData}
       headerRight={
@@ -121,54 +118,68 @@ export default function AdminAmenityMasterScreen() {
           variant="default"
           size="sm"
           onPress={handleOpenCreateModal}
-          className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
+          className="flex-row items-center gap-1.5 rounded-full px-3.5 h-8"
           accessibilityLabel="Add New Amenity Facility"
         >
           <Plus size={14} className="text-primary-foreground" />
-          <Text className="text-primary-foreground font-bold text-xs">Add</Text>
+          <Text className="text-primary-foreground font-bold text-xs">Add Facility</Text>
         </Button>
       }
     >
       <View className="flex-1 bg-background">
         {/* Master Amenity List */}
-        <PaginatedList<Amenity>
+        <PaginatedList<AmenityFacility>
           data={filteredAmenities}
           renderItem={(item) => (
             <AmenityMasterCard
               key={item._id}
               item={item}
-              onPress={(a) => setSelectedAmenityDetail(a)}
-              onEdit={(a) => handleOpenEditModal(a)}
-              onToggleStatus={(a) => handleToggleStatus(a)}
-              onDelete={(a) => setDeleteTarget(a)}
+              onPress={(f) => setSelectedAmenityDetail(f)}
+              onEdit={(f) => handleOpenEditModal(f)}
+              onToggleStatus={(f) => handleToggleStatus(f)}
+              onDelete={(f) => setDeleteTarget(f)}
             />
           )}
           pagination={pagination || { currentPage: 1, totalPages: 1, totalRecords: filteredAmenities.length, limit: 50 }}
           onLoadMore={handleLoadMore}
           onRefresh={loadData}
-          loading={loading && amenities.length === 0}
+          loading={loading && facilities.length === 0}
           ListHeaderComponent={renderHeader()}
           emptyIcon="Building2"
           emptyTitle="No Amenity Records Found"
-          emptySubtitle="No facility records match your active category filter or search query."
-          contentContainerClassName="px-4 pt-3 pb-28"
-        />
-
-        {/* Primary Creation Action: Add Facility FAB */}
-        <FAB
-          iconName="Plus"
-          label="Add Facility"
-          onPress={handleOpenCreateModal}
+          emptySubtitle={emptySubtitle}
+          contentContainerClassName="px-4 pt-3 pb-10"
         />
       </View>
 
-      {/* Amenity Create / Edit Form Modal */}
-      <AmenityFormModal
+      {/* Advanced Multi-Select Filter Drawer */}
+      <AmenityFilterDrawer
+        visible={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        filters={activeFilters}
+        availableCategories={availableCategories}
+        onApply={handleApplyFilters}
+        onReset={handleResetFilters}
+      />
+
+      {/* 1. Initial Archetype Selection Bottom Sheet (Visitor Pattern UX) */}
+      <AmenityArchetypeSheet
+        visible={isArchetypeSheetOpen}
+        selectedArchetype={creationArchetype}
+        onClose={handleCloseArchetypeSheet}
+        onSelectArchetype={handleSelectArchetypeForCreation}
+      />
+
+      {/* 2. Amenity Create / Edit Flow Wizard */}
+      <AmenityCreationWizard
         visible={isFormModalOpen}
         onClose={handleCloseFormModal}
         onSubmit={handleFormSubmit as any}
+        onSaveDraft={handleSaveDraft as any}
         amenity={editingAmenity}
         loading={saving}
+        savingDraft={savingDraft}
+        initialArchetype={creationArchetype}
       />
 
       {/* Facility Inspection Detail Sheet */}
@@ -183,23 +194,51 @@ export default function AdminAmenityMasterScreen() {
       {/* Status Toggle Confirmation Modal */}
       <ConfirmationModal
         visible={!!deactivateTarget}
-        title={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Deactivate Amenity Facility?' : 'Activate Amenity Facility?'}
-        message={deactivateTarget?.status?.toLowerCase() === 'active' 
-          ? `"${deactivateTarget?.name}" has active or upcoming resident bookings. Deactivating this facility will cancel all associated future bookings. Are you sure you want to proceed?`
-          : `Are you sure you want to activate "${deactivateTarget?.name}" and open it for resident bookings?`
+        title={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? 'Deactivate Amenity Facility?'
+            : 'Activate Amenity Facility?'
         }
-        variant={deactivateTarget?.status?.toLowerCase() === 'active' ? 'warning' : 'info'}
-        confirmLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Deactivate & Cancel Bookings' : 'Activate Facility'}
-        cancelLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Keep Active' : 'Keep Inactive'}
+        message={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? `"${deactivateTarget?.name}" will be deactivated and marked unavailable for resident bookings. Are you sure you want to proceed?`
+            : `Are you sure you want to activate "${deactivateTarget?.name}" and open it for resident bookings?`
+        }
+        variant={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? 'warning'
+            : 'info'
+        }
+        confirmLabel={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? 'Deactivate Facility'
+            : 'Activate Facility'
+        }
+        cancelLabel={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? 'Keep Active'
+            : 'Keep Inactive'
+        }
         onConfirm={handleConfirmDeactivate}
         onCancel={() => setDeactivateTarget(null)}
+      />
+
+      {/* Interactive Deactivation Conflict Resolution Modal (Policy T1) */}
+      <AmenityDeactivationConflictModal
+        visible={!!deactivationConflict}
+        facility={deactivationConflict?.facility || null}
+        bookingsCount={deactivationConflict?.count || 0}
+        loading={saving}
+        onHonorExisting={() => handleResolveDeactivationConflict('HONOR_EXISTING')}
+        onCancelAndRefund={() => handleResolveDeactivationConflict('CANCEL_AND_REFUND')}
+        onDismiss={handleCloseDeactivationConflict}
       />
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         visible={!!deleteTarget}
         title="Delete Amenity Record?"
-        message={`Are you sure you want to permanently delete "${deleteTarget?.name}"? All future reservation slots for this facility will be removed.`}
+        message={`Are you sure you want to permanently delete "${deleteTarget?.name}"? All associated settings and schedule configurations for this facility will be removed.`}
         variant="danger"
         confirmLabel="Delete Record"
         cancelLabel="Keep Amenity"

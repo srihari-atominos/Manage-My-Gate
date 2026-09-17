@@ -1,232 +1,133 @@
-import React from 'react';
-import { View, ScrollView } from 'react-native';
+/**
+ * Amenity Management Phase 6B.2 - Route: Resident Facility Booking Wizard
+ * Thin route wrapper that retrieves authoritative facility data by route ID,
+ * guards against non-ACTIVE facilities, and delegates orchestration to AmenityBookingWizard.
+ */
+
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { DatePicker } from '@/components/common/DatePicker';
-import { QuantitySelector } from '@/components/common/QuantitySelector';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { DetailSection } from '@/components/ui/DetailSection';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { useResidentBooking } from '../../../../src/features/amenities/hooks/useResidentBooking';
-import { TimeSlotSelector } from '../../../../src/features/amenities/components/TimeSlotSelector';
-import { BookingCheckoutModal } from '../../../../src/features/amenities/components/BookingCheckoutModal';
-import { WalletTopUpModal } from '../../../../src/features/amenities/components/WalletTopUpModal';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { AmenityFacility } from '../../../../src/features/amenities/types/amenityDomain.types';
+import amenityManagementService from '../../../../src/features/amenities/services/amenityManagementService';
+import { AmenityBookingWizard } from '../../../../src/features/amenities/components/wizard/AmenityBookingWizard';
+import { AlertTriangle, ArrowLeft } from 'lucide-react-native';
 
-export default function AmenitySlotWizardScreen() {
-  const {
-    currentAmenity,
-    slots,
-    selectedDate,
-    selectedSlot,
-    guestsCount,
-    paymentMethod,
-    isCheckoutOpen,
-    isTopUpOpen,
-    balance,
-    toppingUp,
-    totalFee,
-    isBalanceSufficient,
-    loading,
-    creatingBooking,
-    error,
-    isOCCError,
-    occErrorMessage,
-    isSuccessModalOpen,
-    handleCloseSuccessModal,
-    handleViewPass,
-    handleDateChange,
-    handleSlotSelect,
-    setGuestsCount,
-    setPaymentMethod,
-    handleOpenCheckout,
-    handleCloseCheckout,
-    handleConfirmBooking,
-    handleRetryOCC,
-    handleOpenTopUp,
-    handleCloseTopUp,
-    handleTopUpSubmit,
-  } = useResidentBooking();
+export default function AmenityBookingRoute() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
 
-  return (
-    <ScreenShell
-      title={currentAmenity?.name || 'Reserve Facility'}
-      subtitle={currentAmenity?.category || 'Amenity Slot Wizard'}
-      iconName="Calendar"
-      loading={loading && !currentAmenity}
-      error={error && !isOCCError ? error : null}
-    >
-      <ScrollView
-        className="flex-1 px-4 pt-2"
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        scrollEventThrottle={16}
-        alwaysBounceVertical={true}
-        bounces={true}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 110 }}
-      >
-        {/* OCC Conflict Alert Banner */}
-        {isOCCError ? (
-          <View className="mb-4 bg-amber-500/10 border border-amber-500/40 p-4 rounded-2xl">
-            <Text className="text-amber-800 dark:text-amber-200 font-bold text-sm mb-1">
-              Slot Concurrency Conflict
-            </Text>
-            <Text className="text-amber-700 dark:text-amber-300 text-xs mb-3">
-              {occErrorMessage || 'Another resident just booked this time slot. Please re-select an available slot.'}
-            </Text>
-            <Button variant="default" onPress={handleRetryOCC} className="bg-amber-600 self-start">
-              <Text className="text-white text-xs font-semibold">Refresh & Re-select</Text>
-            </Button>
-          </View>
-        ) : null}
+  const [facility, setFacility] = useState<AmenityFacility | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-        {/* Facility Info Card */}
-        {currentAmenity ? (
-          <View className="bg-card p-4 rounded-2xl border border-border mb-4">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text variant="large" className="font-bold text-foreground">
-                {currentAmenity.name}
-              </Text>
-              <StatusBadge
-                label={currentAmenity.status || 'ACTIVE'}
-                variant={currentAmenity.status === 'MAINTENANCE' ? 'warning' : 'success'}
-              />
-            </View>
-            {currentAmenity.description ? (
-              <Text variant="muted" className="text-xs text-muted-foreground mb-3">
-                {currentAmenity.description}
-              </Text>
-            ) : null}
+  useEffect(() => {
+    let isMounted = true;
+    if (!id) {
+      setError('Facility ID is missing from navigation context.');
+      setLoading(false);
+      return;
+    }
 
-            <View className="flex-row items-center justify-between pt-2 border-t border-border/40">
-              <Text variant="muted" className="text-xs">
-                Location: {currentAmenity.location || 'Community Clubhouse'}
-              </Text>
-              <Text variant="muted" className="text-xs font-semibold text-foreground">
-                Rate: {currentAmenity.bookingFee ? `$${currentAmenity.bookingFee}/slot` : 'Free'}
-              </Text>
-            </View>
-          </View>
-        ) : null}
+    setLoading(true);
+    setError(null);
 
-        {/* Date Selection */}
-        <View className="mb-4">
-          <DatePicker
-            label="Booking Date"
-            value={(() => {
-              const [y, m, d] = (selectedDate || '').split('-').map(Number);
-              return !isNaN(y) && !isNaN(m) && !isNaN(d) ? new Date(y, m - 1, d, 12, 0, 0) : new Date();
-            })()}
-            minDate={new Date()}
-            onChange={(d) => {
-              const y = d.getFullYear();
-              const m = String(d.getMonth() + 1).padStart(2, '0');
-              const day = String(d.getDate()).padStart(2, '0');
-              handleDateChange(`${y}-${m}-${day}`);
-            }}
-          />
+    amenityManagementService
+      .getFacilityById(id)
+      .then((response) => {
+        if (!isMounted) return;
+        const facilityData = (response?.data || response) as AmenityFacility;
+        if (facilityData && (facilityData._id || (facilityData as any).id)) {
+          setFacility(facilityData);
+        } else {
+          setError('Facility record could not be found.');
+        }
+      })
+      .catch((err: any) => {
+        if (!isMounted) return;
+        setError(err?.message || 'Failed to load facility details.');
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  // Loading State
+  if (loading) {
+    return (
+      <ScreenShell title="Reserve Facility" subtitle="Loading facility..." loading>
+        <View className="flex-1 items-center justify-center p-6">
+          <ActivityIndicator size="large" className="text-primary" />
+          <Text variant="muted" className="text-sm mt-3">Fetching facility details...</Text>
         </View>
+      </ScreenShell>
+    );
+  }
 
-        {/* Daily Booking Info or Time Slot Selector */}
-        {currentAmenity?.pricing?.pricingType === 'daily' ? (
-          <View className="bg-card p-4 rounded-2xl border border-border mb-4 mt-2">
-            <Text className="font-semibold text-sm text-foreground mb-3">Daily Booking Details</Text>
-            <View className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 mb-2 flex-row items-center">
-              <Text className="text-emerald-700 dark:text-emerald-300 font-medium text-xs flex-1">
-                Operating Hours: {currentAmenity.bookingRules?.openTime || '00:00'} - {currentAmenity.bookingRules?.closeTime || '23:59'}
-              </Text>
-              <StatusBadge label="Full Day" variant="success" />
-            </View>
-            <View className="flex-row items-center justify-between">
-              <Text variant="muted" className="text-xs">Capacity Included:</Text>
-              <Text className="text-sm font-semibold">{currentAmenity.capacity || 1} Persons</Text>
-            </View>
-          </View>
-        ) : (
-          <TimeSlotSelector
-            slots={slots}
-            selectedSlot={selectedSlot}
-            onSlotSelect={handleSlotSelect}
-            loading={loading}
-            selectedDate={selectedDate}
-          />
-        )}
+  // Error State / Not Found
+  if (error || !facility) {
+    return (
+      <ScreenShell title="Reserve Facility" subtitle="Facility unavailable" error={error}>
+        <View className="flex-1 items-center justify-center p-6 gap-3">
+          <AlertTriangle size={36} className="text-destructive" />
+          <Text className="font-bold text-base text-foreground text-center">
+            Unable to Open Booking Wizard
+          </Text>
+          <Text variant="muted" className="text-xs text-center text-muted-foreground max-w-xs">
+            {error || 'The requested facility does not exist or could not be loaded.'}
+          </Text>
+          <Button
+            variant="outline"
+            onPress={() => router.back()}
+            className="mt-2 h-11 px-4 rounded-xl flex-row items-center gap-1.5"
+          >
+            <ArrowLeft size={16} className="text-foreground" />
+            <Text className="font-semibold text-foreground">Return to Catalog</Text>
+          </Button>
+        </View>
+      </ScreenShell>
+    );
+  }
 
-        {/* Guests Count Selector */}
-        {currentAmenity?.pricing?.pricingType !== 'daily' ? (
-          <View className="bg-card p-4 rounded-2xl border border-border my-3 flex-row items-center justify-between">
-            <View className="flex-1 me-3">
-              <Text className="font-semibold text-sm text-foreground">Guests Count</Text>
-              <Text variant="muted" className="text-xs text-muted-foreground mt-0.5">
-                Number of attendees for this slot
-              </Text>
-            </View>
-            <QuantitySelector
-              value={guestsCount}
-              min={1}
-              max={currentAmenity?.capacity || 10}
-              onChange={setGuestsCount}
+  // Non-ACTIVE Facility Guard
+  if (facility.status !== 'ACTIVE') {
+    return (
+      <ScreenShell title={facility.name} subtitle="Booking unavailable">
+        <View className="flex-1 items-center justify-center p-6 gap-4">
+          <View className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 items-center w-full max-w-sm gap-2">
+            <AlertTriangle size={32} className="text-amber-600 dark:text-amber-400" />
+            <Text className="font-bold text-sm text-amber-800 dark:text-amber-200 text-center">
+              Facility Not Open for Reservations
+            </Text>
+            <Text className="text-xs text-amber-700 dark:text-amber-300 text-center leading-relaxed">
+              This facility is currently {facility.status.toLowerCase()}. Reservations are only allowed when the facility is in ACTIVE status.
+            </Text>
+            <StatusBadge
+              label={facility.status}
+              variant={facility.status === 'MAINTENANCE' ? 'warning' : 'neutral'}
             />
           </View>
-        ) : null}
 
-      </ScrollView>
+          <Button
+            variant="outline"
+            onPress={() => router.back()}
+            className="h-11 px-4 rounded-xl flex-row items-center gap-1.5"
+          >
+            <ArrowLeft size={16} className="text-foreground" />
+            <Text className="font-semibold text-foreground">Back to Amenities</Text>
+          </Button>
+        </View>
+      </ScreenShell>
+    );
+  }
 
-      {/* Proceed to Checkout CTA - Sticky Bottom */}
-      <View className="px-4 py-3 bg-card border-t border-border">
-        <Button
-          variant="default"
-          disabled={(currentAmenity?.pricing?.pricingType !== 'daily' && !selectedSlot) || loading}
-          onPress={handleOpenCheckout}
-          className="bg-primary min-h-[52px] justify-center rounded-xl"
-        >
-          <Text className="text-white font-bold text-base">
-            {currentAmenity?.pricing?.pricingType === 'daily' || selectedSlot
-              ? `Proceed to Checkout ($${totalFee.toFixed(2)})`
-              : 'Select a Time Slot'}
-          </Text>
-        </Button>
-      </View>
-
-      {/* Checkout Review Bottom Sheet Modal */}
-      <BookingCheckoutModal
-        visible={isCheckoutOpen}
-        onClose={handleCloseCheckout}
-        onConfirm={handleConfirmBooking}
-        amenity={currentAmenity}
-        slot={selectedSlot}
-        date={selectedDate}
-        guestsCount={guestsCount}
-        paymentMethod={paymentMethod}
-        onPaymentMethodChange={setPaymentMethod}
-        walletBalance={balance}
-        totalFee={totalFee}
-        isBalanceSufficient={isBalanceSufficient}
-        loading={creatingBooking}
-        error={error && !isOCCError ? error : null}
-        onTopUp={handleOpenTopUp}
-      />
-
-      {/* Wallet Top-Up Modal */}
-      <WalletTopUpModal
-        visible={isTopUpOpen}
-        onClose={handleCloseTopUp}
-        onSubmit={handleTopUpSubmit}
-        loading={toppingUp}
-      />
-
-      {/* Success Confirmation Modal */}
-      <ConfirmationModal
-        visible={isSuccessModalOpen}
-        title="Reservation Confirmed!"
-        message="Your amenity reservation has been placed successfully. You can view your active reservations and passes in My Bookings."
-        confirmLabel="Go to My Bookings"
-        cancelLabel="Close"
-        variant="info"
-        onConfirm={handleViewPass}
-        onCancel={handleCloseSuccessModal}
-      />
-    </ScreenShell>
-  );
+  // ACTIVE Facility: Delegate to AmenityBookingWizard
+  return <AmenityBookingWizard facility={facility} onClose={() => router.back()} />;
 }

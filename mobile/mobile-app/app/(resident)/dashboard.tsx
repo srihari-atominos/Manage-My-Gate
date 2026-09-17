@@ -124,7 +124,7 @@ export default function DashboardScreen() {
         router.push('/(resident)/visitor' as any);
         break;
       case '3':
-        router.push('/(resident)/amenities/dashboard' as any);
+        router.push('/(resident)/amenities/discover' as any);
         break;
       case '4':
         router.push('/(resident)/billing' as any);

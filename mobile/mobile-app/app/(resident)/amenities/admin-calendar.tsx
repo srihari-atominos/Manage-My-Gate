@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
@@ -18,9 +18,23 @@ import { ManualBookingModal } from '../../../src/features/amenities/components/M
 import { AdminCancelReasonModal } from '../../../src/features/amenities/components/AdminCancelReasonModal';
 import { BookingDetailModal } from '../../../src/features/amenities/components/BookingDetailModal';
 import { AmenityBooking } from '../../../src/features/amenities/store/amenityBookingSlice';
+import { useAuth } from '../../../src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '../../../src/utils/rbac';
 
 export default function AdminAmenityCalendarScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Guard: Non-admin users or users without amenity permissions are redirected
+  if (user && !isFeatureAllowedForUser({ id: 'amenities_admin_calendar', permission: 'amenities:admin_calander' }, user)) {
+    if (isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user)) {
+      return <Redirect href="/(resident)/amenities/discover" />;
+    }
+    if (isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
+      return <Redirect href="/(resident)/amenities/scanner" />;
+    }
+    return <Redirect href="/(resident)/dashboard" />;
+  }
   const {
     adminBookings,
     filteredBookings,

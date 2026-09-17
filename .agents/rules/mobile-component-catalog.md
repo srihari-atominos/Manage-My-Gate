@@ -75,3 +75,25 @@ NEVER hardcode hex codes or physical margin classes (`mr-`, `ml-`, `pr-`, `pl-`)
 1. **Strict 3-Item Limit for Dashboard Activity Previews:** Top-level executive and resident dashboard screens MUST ONLY render a preview of at most 3 items (`.slice(0, 3)`) in their "Recent Activity" or queue snippet section. Never render full datasets, unbounded arrays, or more than 3 items directly on a dashboard screen. Full datasets belong in the dedicated sub-screen linked via `<SectionHeader actionLabel="View All">`.
 2. **Scroll Containment & FAB Bottom Inset:** Every screen with a Floating Action Button (`<FAB>`) MUST configure its `<ScrollView>` with adequate bottom content padding (minimum `pb-28` in `contentContainerClassName` or `paddingBottom: 110` in `contentContainerStyle`) to prevent list items from scrolling beyond the visible container or getting clipped underneath the bottom FAB.
 
+---
+
+## VI. Standardized "Type-Selection-First" Multi-Step Creation Flow
+
+Whenever a feature requires creating an entity that has multiple types, archetypes, or categories (e.g. Visitor Pass, Amenity Facility, Service Request, Incident Ticket), you MUST strictly follow this 3-stage pattern:
+
+### 1. Stage 1: Archetype / Category Selection Bottom Sheet
+* **Trigger:** Tapping the primary creation FAB or CTA (e.g., `+ Add Facility`, `+ Invite Visitor`) MUST open a dedicated Selection Bottom Sheet FIRST (`[Feature]TypeSheet.tsx` or `[Feature]ArchetypeSheet.tsx`).
+* **Content:** Present rich cards with Lucide icons, titles, badges, and practical community examples for each option.
+* **Dismissal:** Tapping a card immediately selects the archetype, dismisses the sheet, and opens the Creation Wizard initialized with that chosen type.
+
+### 2. Stage 2: Locked-Type Multi-Step Wizard Container
+* **Dynamic Step Orchestration:** The wizard steps MUST dynamically map to the chosen archetype (e.g., Shared Capacity gets Headcount Quotas, Exclusive Hourly gets Court Slot Mutex & Buffers).
+* **Locked Flow Header:** The header (`[Feature]FlowHeader.tsx`) MUST render the selected archetype as a **static, read-only status badge**.
+* **STRICT PROHIBITION (No Mid-Flow Type Switching):** You MUST NOT place a dropdown chevron (`ChevronDown`) or clickable type switcher in the wizard header. Switching types mid-flow mutates required step lists, destroys in-progress form state, and confuses users. To change type, the user must close the wizard and select again.
+
+### 3. Stage 3: Step Form Data Collection Layout
+* **Details First, Media at Bottom:** Form fields for core specifications (Name, Category, Location, Description, Quotas) MUST be positioned at the top. Heavy media attachments (Photo dropzone, AttachmentPicker) MUST be placed at the bottom.
+* **No Direct Image URL Inputs:** Never provide raw text inputs for direct image URLs. Always use native image pickers or attachment uploaders.
+* **Auto-Generated System Codes:** Never ask users to manually invent internal codes/slugs (e.g. `FAC-TENNIS-01`). Auto-generate them in the background and display them in a subtle read-only badge.
+* **Multi-Chip Quick Presets:** For numeric, duration, or buffer fields (e.g., slot intervals, advance notice, cancellation windows), provide interactive multi-chip presets (`<Chip>` or `<SegmentedControl>`) with standard defaults alongside an optional custom field.
+

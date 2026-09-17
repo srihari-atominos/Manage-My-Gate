@@ -35,6 +35,8 @@ export interface Amenity {
   rules?: string;
   status?: string;
   currentStatus?: string;
+  isDraft?: boolean;
+  isActive?: boolean;
   imageUrl?: string;
   images?: string[];
   iconName?: string;
@@ -53,7 +55,9 @@ export const normalizeAmenity = (raw: any): Amenity => {
   const bookingFee = raw.pricing?.baseRate ?? raw.bookingFee ?? 0;
   const openTime = raw.bookingRules?.openTime || raw.openTime || '06:00';
   const closeTime = raw.bookingRules?.closeTime || raw.closeTime || '22:00';
-  const statusRaw = String(raw.status || 'active').toLowerCase();
+  const isDraft = Boolean(raw.isDraft === true || String(raw.status).toUpperCase() === 'DRAFT');
+  const statusRaw = isDraft ? 'draft' : String(raw.status || 'active').toLowerCase();
+  const isActive = isDraft ? false : (raw.isActive !== false && statusRaw !== 'inactive');
   const imageUrl = Array.isArray(raw.images) && raw.images.length > 0 ? raw.images[0] : raw.imageUrl;
 
   return {
@@ -66,6 +70,8 @@ export const normalizeAmenity = (raw: any): Amenity => {
     openTime,
     closeTime,
     status: statusRaw,
+    isDraft,
+    isActive,
     imageUrl,
     location: raw.location || 'Community Facilities',
     capacity: raw.capacity || 20,
@@ -434,6 +440,7 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchAmenitiesThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const page = action.meta.arg?.page || 1;
         const payload = action.payload?.data || action.payload;
         let list: any[] = [];
@@ -584,6 +591,7 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchMaintenanceListThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const payload = action.payload?.data || action.payload || [];
         state.maintenanceList = Array.isArray(payload) ? payload : payload.maintenanceList || [];
       })
