@@ -82,10 +82,10 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             backgroundColor: isDark ? '#181A20' : '#FFFFFF',
             borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
             borderWidth: 1.2,
-            borderRadius: 18,
-            height: 126,
+            borderRadius: 16,
+            height: 110,
             paddingHorizontal: 6,
-            paddingVertical: 10,
+            paddingVertical: 8,
             alignItems: 'center',
             justifyContent: 'center',
             ...(isAndroid
@@ -109,24 +109,24 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         {badge ? (
           <View
             style={badgeColor ? { backgroundColor: badgeColor } : undefined}
-            className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-full ${
+            className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full ${
               !badgeColor ? 'bg-primary' : ''
             } items-center justify-center z-10`}
           >
-            <Text className="text-[8px] font-extrabold font-sans text-white tracking-wide uppercase">
+            <Text className="text-[7.5px] font-extrabold font-sans text-white tracking-wide uppercase">
               {badge}
             </Text>
           </View>
         ) : showArrow ? (
-          <View className="absolute top-2 right-2 w-4 h-4 rounded-full bg-secondary items-center justify-center border border-border/40 z-10">
-            <ArrowUpRight size={9} className="text-muted-foreground" />
+          <View className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-secondary items-center justify-center border border-border/40 z-10">
+            <ArrowUpRight size={8} className="text-muted-foreground" />
           </View>
         ) : null}
 
-        {/* Center: Prominent Enlarged Feature Icon Container */}
+        {/* Center: Refined Feature Icon Container */}
         <View
-          className={`w-12 h-12 items-center justify-center mb-2 ${
-            iconShapeClass || 'rounded-2xl'
+          className={`w-10 h-10 items-center justify-center mb-1.5 ${
+            iconShapeClass || 'rounded-xl'
           } ${
             iconBgColor || 'bg-secondary'
           }`}
@@ -138,8 +138,8 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         <View className="w-full items-center justify-center px-0.5">
           <Text
             numberOfLines={2}
-            style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 13.5, lineHeight: 18 } : undefined}
-            className="text-[12.5px] font-bold font-sans text-foreground text-center leading-[16px] tracking-tight"
+            style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 12.5, lineHeight: 16 } : undefined}
+            className="text-[11.5px] font-bold font-sans text-foreground text-center leading-[14px] tracking-tight"
           >
             {translatedLabel}
           </Text>
@@ -147,8 +147,8 @@ export const ActionTile: React.FC<ActionTileProps> = ({
           {translatedSubtitle ? (
             <Text
               numberOfLines={1}
-              style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 12, lineHeight: 16 } : undefined}
-              className="text-[11px] font-medium font-sans text-muted-foreground text-center leading-[14px] mt-0.5"
+              style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 10.5, lineHeight: 14 } : undefined}
+              className="text-[9.5px] font-medium font-sans text-muted-foreground text-center leading-[12px] mt-0.5"
             >
               {translatedSubtitle}
             </Text>

@@ -104,8 +104,8 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
   const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
   const isArabic = i18n.getCurrentLanguage() === 'ar';
-  const tabFontSize = isArabic ? 13.5 : 12;
-  const tabLineHeight = isArabic ? 17 : 15;
+  const tabFontSize = isArabic ? 11.5 : 10;
+  const tabLineHeight = isArabic ? 14 : 12;
   const translatedLabel = i18n.translateText(item.label);
 
   return (
@@ -179,14 +179,14 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   const pressBlur = useSharedValue(0);
   const labelOpacity = useSharedValue(1.0);
   const isArabic = i18n.getCurrentLanguage() === 'ar';
-  const tabFontSize = isArabic ? 13.5 : 12;
-  const tabLineHeight = isArabic ? 17 : 15;
-  const labelHeight = useSharedValue(isArabic ? 18 : 16);
+  const tabFontSize = isArabic ? 11.5 : 10;
+  const tabLineHeight = isArabic ? 14 : 12;
+  const labelHeight = useSharedValue(isArabic ? 15 : 13);
 
   // Height is constant; no vertical collapsing
   useEffect(() => {
     labelOpacity.value = 1.0;
-    labelHeight.value = isArabic ? 18 : 16;
+    labelHeight.value = isArabic ? 15 : 13;
   }, [isArabic, labelHeight, labelOpacity]);
 
   // Zooming & motion-blur opacity effect on touch
@@ -257,7 +257,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
         {/* Icon: Visibly bigger than label text */}
         <Animated.View style={animatedIconStyle} className="items-center justify-center">
           <IconComponent
-            size={23}
+            size={21}
             color={iconColor}
             strokeWidth={isActive ? 2.4 : 1.9}
           />

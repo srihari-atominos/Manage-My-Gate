@@ -116,7 +116,7 @@ export default function AllFeaturesScreen() {
 
   return (
     <ScreenShell
-      title={t('all_features', 'All Features & Services')}
+      title={t('all_features', 'All Features')}
       subtitle={t('explore_quick_actions', 'Explore community quick actions and services')}
       iconName="LayoutGrid"
       scrollable={false}
@@ -126,10 +126,10 @@ export default function AllFeaturesScreen() {
         <TouchableOpacity
           onPress={() => setCustomiseOpen(true)}
           activeOpacity={0.8}
-          className="flex-row items-center gap-1 bg-primary/10 border border-primary/30 px-2.5 py-1.5 rounded-full"
+          className="flex-row items-center gap-1 bg-primary/10 border border-primary/30 px-2 py-1 rounded-full"
         >
-          <SlidersHorizontal size={13} className="text-muted-foreground" />
-          <Text className="text-xs font-bold text-foreground font-sans">{t('customise', 'Customise')}</Text>
+          <SlidersHorizontal size={12} className="text-muted-foreground" />
+          <Text className="text-[11px] font-bold text-foreground font-sans">{t('customise', 'Customise')}</Text>
         </TouchableOpacity>
       }
     >
@@ -220,7 +220,7 @@ export default function AllFeaturesScreen() {
                       className="px-0 py-1"
                     />
 
-                    <View className="flex-row flex-wrap gap-2.5 justify-start">
+                    <View className="flex-row flex-wrap justify-start gap-x-[2.9%] gap-y-2.5">
                       {displayedItems.map((item) => {
                         const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === item.id);
                         const iconName = meta?.iconName || item.iconName;
@@ -231,10 +231,10 @@ export default function AllFeaturesScreen() {
                         return (
                           <ActionTile
                             key={item.id}
-                            containerClassName="w-[31%]"
+                            containerClassName="w-[31.4%]"
                             iconBgColor={colorBg}
                             iconShapeClass={iconShapeClass}
-                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={26} />}
+                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}

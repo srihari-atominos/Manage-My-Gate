@@ -168,8 +168,8 @@ export function ScreenShell({
         <View
           className="bg-card border-b border-border px-4 pb-3 shadow-xs z-30"
         >
-          <View className="flex-row items-center justify-between gap-2 min-h-[44px]">
-            <View className="flex-row items-center flex-1 me-2 min-w-0">
+          <View className="flex-row items-center justify-between gap-1.5 min-h-[40px]">
+            <View className="flex-row items-center flex-1 me-1.5 min-w-0">
               {showBackButton && (
                 <Pressable
                   onPress={() => {
@@ -181,18 +181,18 @@ export function ScreenShell({
                       router.replace('/(resident)/dashboard' as any);
                     }
                   }}
-                  className="me-2 p-2 rounded-xl active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"
+                  className="me-1.5 p-1.5 rounded-lg active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Go back"
                 >
-                  <Icon as={ChevronLeft} size={20} className="text-foreground" />
+                  <Icon as={ChevronLeft} size={19} className="text-foreground" />
                 </Pressable>
               )}
 
               {DynamicIcon ? (
-                <View className="me-2.5 size-9 rounded-xl bg-primary/15 items-center justify-center border border-primary/25 shrink-0">
-                  <Icon as={DynamicIcon} size={18} className="text-primary" />
+                <View className="me-2 size-8 rounded-lg bg-primary/10 items-center justify-center border border-primary/20 shrink-0">
+                  <Icon as={DynamicIcon} size={16} className="text-primary" />
                 </View>
               ) : null}
 
@@ -202,11 +202,11 @@ export function ScreenShell({
                 className="flex-1 justify-center active:opacity-80 min-w-0"
                 accessibilityHint="Double tap header title to switch active Role or Villa Unit"
               >
-                <Text variant="large" numberOfLines={1} className="text-foreground text-xl font-bold tracking-tight shrink">
+                <Text numberOfLines={1} className="text-[15.5px] font-bold text-foreground tracking-tight shrink">
                   {title}
                 </Text>
                 {subtitle ? (
-                  <Text variant="muted" numberOfLines={1} className="text-sm text-muted-foreground mt-0.5 font-medium shrink">
+                  <Text numberOfLines={1} className="text-[11px] text-muted-foreground mt-0.5 font-medium shrink">
                     {subtitle}
                   </Text>
                 ) : null}
@@ -220,10 +220,10 @@ export function ScreenShell({
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => setShowGlobalNavModal(true)}
-                className="p-2 rounded-xl bg-secondary border border-border/80 items-center justify-center"
+                className="p-1.5 rounded-lg bg-secondary border border-border/80 items-center justify-center"
                 accessibilityLabel="Global Easy Navigation"
               >
-                <Icon as={Compass} size={18} className="text-foreground" />
+                <Icon as={Compass} size={16} className="text-foreground" />
               </TouchableOpacity>
             </View>
           </View>

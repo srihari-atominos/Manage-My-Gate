@@ -58,7 +58,7 @@ export function ActionGrid({
 
       {/* Universal 3-Column Wrap Grid */}
       {filteredItems.length > 0 ? (
-        <View className="flex-row flex-wrap justify-start gap-x-[3.5%] gap-y-3">
+        <View className="flex-row flex-wrap justify-start gap-x-[2.9%] gap-y-2.5">
           {filteredItems.map((item) => {
             const IconComp = item.iconName
               ? (LucideIcons as Record<string, any>)[item.iconName] || LucideIcons.Circle
@@ -81,7 +81,7 @@ export function ActionGrid({
                 accessibilityRole="button"
                 accessibilityLabel={item.name}
                 className={cn(
-                  'w-[31%] bg-card p-3 rounded-2xl border border-border items-center justify-center active:opacity-75 shadow-xs relative min-h-[96px]',
+                  'w-[31.4%] bg-card p-2.5 rounded-xl border border-border items-center justify-center active:opacity-75 shadow-xs relative min-h-[86px]',
                   item.disabled && 'opacity-50'
                 )}
               >
@@ -89,11 +89,11 @@ export function ActionGrid({
                 {item.badge !== undefined && item.badge !== null && item.badge !== '' && (
                   <View
                     className={cn(
-                      'absolute top-2 end-2 px-1.5 py-0.5 rounded-full min-w-[18px] items-center justify-center z-10',
+                      'absolute top-1.5 end-1.5 px-1 py-0.2 rounded-full min-w-[16px] items-center justify-center z-10',
                       item.badgeColor || 'bg-primary'
                     )}
                   >
-                    <Text className="text-[10px] font-bold text-white leading-none">
+                    <Text className="text-[9px] font-bold text-white leading-none">
                       {item.badge}
                     </Text>
                   </View>
@@ -102,21 +102,21 @@ export function ActionGrid({
                 {/* Icon Container */}
                 <View
                   className={cn(
-                    'w-12 h-12 rounded-[16px] items-center justify-center mb-2',
+                    'w-9.5 h-9.5 rounded-xl items-center justify-center mb-1.5',
                     item.colorBg || 'bg-primary/10'
                   )}
                 >
                   {item.icon ? (
                     item.icon
                   ) : (
-                    <IconComp size={22} color={item.colorIcon || 'hsl(var(--primary))'} strokeWidth={2.2} />
+                    <IconComp size={20} color={item.colorIcon || 'hsl(var(--primary))'} strokeWidth={2.2} />
                   )}
                 </View>
 
                 {/* Label Title */}
                 <Text
-                  style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 13.5, lineHeight: 18 } : undefined}
-                  className="text-[12px] font-semibold text-foreground text-center leading-[15px] px-0.5"
+                  style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 12.5, lineHeight: 16 } : undefined}
+                  className="text-[11px] font-semibold text-foreground text-center leading-[13px] px-0.5"
                   numberOfLines={2}
                   ellipsizeMode="tail"
                 >
