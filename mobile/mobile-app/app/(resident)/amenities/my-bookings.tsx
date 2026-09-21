@@ -12,9 +12,11 @@ import { AmenityBookingCard } from '@/src/features/amenities/components/AmenityB
 import { PassQRModal } from '@/src/features/amenities/components/PassQRModal';
 import { CancelBookingModal } from '@/src/features/amenities/components/CancelBookingModal';
 import { AmenityBooking } from '@/src/features/amenities/store/amenityBookingSlice';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function MyBookingsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const {
     myBookings,
     filteredBookings,
@@ -38,12 +40,12 @@ export default function MyBookingsScreen() {
 
   const sortOptions = useMemo(
     () => [
-      { label: 'All Bookings', value: 'All' },
-      { label: 'Confirmed', value: 'CONFIRMED' },
-      { label: 'Completed', value: 'COMPLETED' },
-      { label: 'Cancelled', value: 'CANCELLED' },
+      { label: t('all_bookings', 'All Bookings'), value: 'All' },
+      { label: t('confirmed', 'Confirmed'), value: 'CONFIRMED' },
+      { label: t('completed', 'Completed'), value: 'COMPLETED' },
+      { label: t('cancelled', 'Cancelled'), value: 'CANCELLED' },
     ],
-    []
+    [t]
   );
 
   const displayedBookings = useMemo(() => {
@@ -75,7 +77,7 @@ export default function MyBookingsScreen() {
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by facility name or pass code..."
+        searchPlaceholder={t('search_facility_pass', 'Search by facility name or pass code...')}
         sortOptions={sortOptions}
         currentSort={selectedFilter}
         onSortChange={setSelectedFilter}
@@ -87,8 +89,8 @@ export default function MyBookingsScreen() {
 
   return (
     <ScreenShell
-      title="My Amenity Bookings"
-      subtitle="View, manage & access your digital reservation passes"
+      title={t('my_amenity_bookings', 'My Amenity Bookings')}
+      subtitle={t('my_amenity_bookings_sub', 'View, manage & access your digital reservation passes')}
       iconName="CalendarCheck"
       loading={loading && myBookings.length === 0}
       error={error}
@@ -103,7 +105,7 @@ export default function MyBookingsScreen() {
           accessibilityLabel="Book Amenity"
         >
           <Plus size={15} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">Book Amenity</Text>
+          <Text className="text-xs font-bold text-primary-foreground">{t('book_amenity', 'Book Amenity')}</Text>
         </Button>
       }
     >
@@ -118,8 +120,8 @@ export default function MyBookingsScreen() {
           loading={loading}
           ListHeaderComponent={renderHeader()}
           emptyIcon="CalendarX"
-          emptyTitle="No Bookings Found"
-          emptySubtitle="You have no reservations matching this filter."
+          emptyTitle={t('no_bookings_found', 'No Bookings Found')}
+          emptySubtitle={t('no_bookings_matching_filter', 'You have no reservations matching this filter.')}
           contentContainerClassName="px-4 pt-3 pb-28"
         />
       </View>

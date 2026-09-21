@@ -3,6 +3,8 @@ import { View, TextInput, Pressable, ActivityIndicator } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
+import { useTranslation } from '../../src/utils/i18n';
+
 export interface SearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
@@ -28,8 +30,11 @@ export const SearchBar = ({
   containerClassName,
   onSubmitEditing,
 }: SearchBarProps) => {
+  const { translateText, t } = useTranslation();
   const [isFocused, setIsFocused] = useState(false);
   const debounceTimerRef = useRef<any>(null);
+
+  const displayPlaceholder = placeholder ? translateText(placeholder) : t('search', 'Search...');
 
   useEffect(() => {
     if (onSearchDebounced) {
@@ -57,7 +62,7 @@ export const SearchBar = ({
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder}
+        placeholder={displayPlaceholder}
         placeholderTextColor="#737c88"
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
@@ -66,7 +71,7 @@ export const SearchBar = ({
         returnKeyType="search"
         onSubmitEditing={onSubmitEditing}
         accessibilityRole="search"
-        accessibilityLabel={placeholder}
+        accessibilityLabel={displayPlaceholder}
       />
 
       {loading && (

@@ -6,6 +6,7 @@ import * as LucideIcons from 'lucide-react-native';
 import { Check, Copy } from 'lucide-react-native';
 import * as React from 'react';
 import { Clipboard, Platform, Pressable, View } from 'react-native';
+import { translateText } from '../../src/utils/i18n';
 
 export interface DetailRowProps {
   label: string;
@@ -71,6 +72,8 @@ const DetailRow = React.forwardRef<View, DetailRowProps>(
     const isPrimitiveValue =
       typeof value === 'string' || typeof value === 'number';
 
+    const renderedValue = isPrimitiveValue ? translateText(String(value)) : value;
+
     return (
       <View
         ref={ref}
@@ -87,7 +90,7 @@ const DetailRow = React.forwardRef<View, DetailRowProps>(
 
         {/* Label */}
         <Text variant="muted" className="text-sm flex-1 mr-2" numberOfLines={1}>
-          {label}
+          {translateText(label)}
         </Text>
 
         {/* Value Container */}
@@ -98,7 +101,7 @@ const DetailRow = React.forwardRef<View, DetailRowProps>(
               className="text-sm font-medium text-right text-foreground"
               numberOfLines={2}
             >
-              {value}
+              {renderedValue}
             </Text>
           ) : (
             value

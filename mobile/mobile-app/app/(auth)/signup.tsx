@@ -38,6 +38,7 @@ import { TextInput } from '@/components/forms/TextInput';
 import { PasswordInput } from '@/components/forms/PasswordInput';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { parseBackendError } from '@/src/utils/validation';
+import { useTranslation } from '@/src/utils/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
@@ -150,6 +151,7 @@ function CTAButton({
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { register: performRegister, login: performLogin, requestOtp, otpSent, loading, error, clearStatus, isAuthenticated } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
 
@@ -368,14 +370,14 @@ export default function SignupScreen() {
                         style={{ color: userType === 'new' ? '#EA580C' : '#57534E' }}
                         className={`text-xs ${userType === 'new' ? 'font-bold' : 'font-medium'}`}
                       >
-                        New User
+                        {t('new_user', 'New User')}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleTabSwitch('existing')}
                       activeOpacity={0.85}
                       accessibilityRole="tab"
-                      accessibilityLabel="Existing User Sign In"
+                      accessibilityLabel={t('existing_user', 'Existing User')}
                       accessibilityState={{ selected: userType === 'existing' }}
                       style={
                         userType === 'existing'
@@ -404,7 +406,7 @@ export default function SignupScreen() {
                         style={{ color: userType === 'existing' ? '#EA580C' : '#57534E' }}
                         className={`text-xs ${userType === 'existing' ? 'font-bold' : 'font-medium'}`}
                       >
-                        Existing User
+                        {t('existing_user', 'Existing User')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -414,14 +416,14 @@ export default function SignupScreen() {
                     /* NEW USER: Sign-Up Form */
                     <View className="gap-3.5">
                       <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center font-sans">
-                        Create Resident Account
+                        {t('create_resident_account', 'Create Resident Account')}
                       </Text>
                       <Controller
                         control={control}
                         name="name"
                         render={({ field: { onChange, onBlur, value } }) => (
                           <TextInput
-                            label="Full Name"
+                            label={t('full_name', 'Full Name')}
                             labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
                             required
                             value={value}
@@ -443,7 +445,7 @@ export default function SignupScreen() {
                         render={({ field: { onChange, onBlur, value } }) => (
                           <TextInput
                             ref={emailInputRef}
-                            label="Email Address"
+                            label={t('email_address', 'Email Address')}
                             labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
                             required
                             value={value}
@@ -466,7 +468,7 @@ export default function SignupScreen() {
                         name="phone"
                         render={({ field: { onChange, value } }) => (
                           <PhoneInput
-                            label="Phone Number"
+                            label={t('phone_number', 'Phone Number')}
                             required
                             placeholder="98765 43210"
                             value={value}
@@ -481,7 +483,7 @@ export default function SignupScreen() {
                         render={({ field: { onChange, onBlur, value } }) => (
                           <TextInput
                             ref={unitInputRef}
-                            label="Villa / Unit No. (Optional)"
+                            label={t('villa_unit_optional', 'Villa / Unit No. (Optional)')}
                             labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
                             value={value}
                             onChangeText={onChange}
@@ -500,12 +502,12 @@ export default function SignupScreen() {
                         render={({ field: { onChange, onBlur, value } }) => (
                           <PasswordInput
                             ref={passwordInputRef}
-                            label="Password"
+                            label={t('password', 'Password')}
                             required
                             value={value}
                             onChangeText={onChange}
                             onBlur={onBlur}
-                            placeholder="Create a password"
+                            placeholder={t('create_password', 'Create a password')}
                             leftIcon={Lock}
                             showRequirements
                             error={errors.password?.message}
@@ -521,12 +523,12 @@ export default function SignupScreen() {
                         render={({ field: { onChange, onBlur, value } }) => (
                           <PasswordInput
                             ref={confirmPasswordInputRef}
-                            label="Confirm Password"
+                            label={t('confirm_password', 'Confirm Password')}
                             required
                             value={value}
                             onChangeText={onChange}
                             onBlur={onBlur}
-                            placeholder="Re-enter password"
+                            placeholder={t('re_enter_password', 'Re-enter password')}
                             leftIcon={Lock}
                             confirmValue={watch('password')}
                             error={errors.confirmPassword?.message}
@@ -546,15 +548,15 @@ export default function SignupScreen() {
                         onPress={handleSubmit(onSubmit)}
                         disabled={loading || localLoading}
                         loading={loading || localLoading}
-                        label="Create Account"
-                        loadingLabel="Creating..."
+                        label={t('create_account', 'Create Account')}
+                        loadingLabel={t('creating_account', 'Creating...')}
                       />
                     </View>
                   ) : (
                     /* EXISTING USER: Sign-In Form */
                     <View className="gap-3.5">
                       <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center font-sans">
-                        Welcome Back
+                        {t('welcome_back', 'Welcome Back')}
                       </Text>
 
                       {/* Sub-tabs: Email/Password vs Phone OTP */}
@@ -589,7 +591,7 @@ export default function SignupScreen() {
                             style={{ color: existingAuthMode === 'basic' ? '#EA580C' : '#57534E' }}
                             className={`text-xs ${existingAuthMode === 'basic' ? 'font-bold' : 'font-medium'}`}
                           >
-                            Email / Password
+                            {t('email_password', 'Email / Password')}
                           </Text>
                         </TouchableOpacity>
 
@@ -623,7 +625,7 @@ export default function SignupScreen() {
                             style={{ color: existingAuthMode === 'phone' ? '#EA580C' : '#57534E' }}
                             className={`text-xs ${existingAuthMode === 'phone' ? 'font-bold' : 'font-medium'}`}
                           >
-                            Sign in with OTP
+                            {t('sign_in_with_otp', 'Sign in with OTP')}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -635,13 +637,13 @@ export default function SignupScreen() {
                             name="login"
                             render={({ field: { onChange, onBlur, value } }) => (
                               <TextInput
-                                label="Email or Username"
+                                label={t('email_or_username', 'Email or Username')}
                                 labelClassName="text-sm font-bold text-[#1C1917] dark:text-white"
                                 required
                                 value={value}
                                 onChangeText={onChange}
                                 onBlur={onBlur}
-                                placeholder="Enter your email or username"
+                                placeholder={t('enter_email_or_username', 'Enter your email or username')}
                                 autoCapitalize="none"
                                 autoCorrect={false}
                                 keyboardType="email-address"
@@ -656,16 +658,16 @@ export default function SignupScreen() {
                           <View>
                             <View className="flex-row items-center justify-between mb-1.5">
                               <Text className="text-sm font-bold text-[#1C1917] dark:text-white">
-                                Password <Text className="text-[#EA580C] font-bold">*</Text>
+                                {t('password', 'Password')} <Text className="text-[#EA580C] font-bold">*</Text>
                               </Text>
                               <TouchableOpacity
                                 onPress={() => router.push('/(auth)/forgot-password')}
                                 activeOpacity={0.8}
                                 hitSlop={8}
                                 accessibilityRole="button"
-                                accessibilityLabel="Forgot password"
+                                accessibilityLabel={t('forgot_password', 'Forgot password')}
                               >
-                                <Text className="text-xs font-bold text-[#EA580C]">Forgot?</Text>
+                                <Text className="text-xs font-bold text-[#EA580C]">{t('forgot_password_short', 'Forgot?')}</Text>
                               </TouchableOpacity>
                             </View>
                             <Controller
@@ -677,7 +679,7 @@ export default function SignupScreen() {
                                   value={value}
                                   onChangeText={onChange}
                                   onBlur={onBlur}
-                                  placeholder="Enter your password"
+                                  placeholder={t('enter_password', 'Enter your password')}
                                   leftIcon={Lock}
                                   error={signInForm.formState.errors.password?.message}
                                   returnKeyType="go"
@@ -697,8 +699,8 @@ export default function SignupScreen() {
                             onPress={signInForm.handleSubmit(onSignInSubmit)}
                             disabled={signInLoading || googleLoading}
                             loading={signInLoading}
-                            label="Sign In"
-                            loadingLabel="Signing In..."
+                            label={t('sign_in', 'Sign In')}
+                            loadingLabel={t('signing_in', 'Signing In...')}
                           />
                         </>
                       ) : (
@@ -708,7 +710,7 @@ export default function SignupScreen() {
                             name="phone"
                             render={({ field: { onChange, value } }) => (
                               <PhoneInput
-                                label="Mobile Number"
+                                label={t('phone_number', 'Mobile Number')}
                                 required
                                 placeholder="98765 43210"
                                 value={value}
@@ -728,8 +730,8 @@ export default function SignupScreen() {
                             onPress={phoneForm.handleSubmit(onPhoneSignInSubmit)}
                             disabled={isSubmittingPhone || googleLoading}
                             loading={isSubmittingPhone}
-                            label="Sign in with OTP"
-                            loadingLabel="Sending Code..."
+                            label={t('sign_in_with_otp', 'Sign in with OTP')}
+                            loadingLabel={t('sending_code', 'Sending Code...')}
                           />
                         </>
                       )}
@@ -742,7 +744,7 @@ export default function SignupScreen() {
                   <View className="flex-1 h-[1.5px] bg-white/70 dark:bg-white/20" />
                   <View className="bg-white/75 dark:bg-[#1C1917]/75 px-3.5 py-1 rounded-full border border-white/70 dark:border-white/15 shadow-2xs backdrop-blur-md">
                     <Text className="text-[10px] font-bold text-[#1C1917] dark:text-white tracking-widest uppercase font-sans">
-                      Or Continue With
+                      {t('or_continue_with', 'Or Continue With')}
                     </Text>
                   </View>
                   <View className="flex-1 h-[1.5px] bg-white/70 dark:bg-white/20" />
@@ -764,32 +766,32 @@ export default function SignupScreen() {
                     {userType === 'new' ? (
                       <>
                         <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
-                          Already have an account?{' '}
+                          {t('already_have_account', 'Already have an account?')}{' '}
                         </Text>
                         <TouchableOpacity
                           onPress={() => router.replace('/(auth)/login')}
                           activeOpacity={0.8}
                           accessibilityRole="button"
-                          accessibilityLabel="Switch to sign in"
+                          accessibilityLabel={t('switch_to_sign_in', 'Switch to sign in')}
                         >
                           <Text className="text-xs font-bold text-[#EA580C]">
-                            Sign In
+                            {t('sign_in', 'Sign In')}
                           </Text>
                         </TouchableOpacity>
                       </>
                     ) : (
                       <>
                         <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
-                          Don't have an account?{' '}
+                          {t('dont_have_account', "Don't have an account?")}{' '}
                         </Text>
                         <TouchableOpacity
                           onPress={() => handleTabSwitch('new')}
                           activeOpacity={0.8}
                           accessibilityRole="button"
-                          accessibilityLabel="Switch to create account"
+                          accessibilityLabel={t('switch_to_create_account', 'Switch to create account')}
                         >
                           <Text className="text-xs font-bold text-[#EA580C]">
-                            Create Account
+                            {t('create_account', 'Create Account')}
                           </Text>
                         </TouchableOpacity>
                       </>

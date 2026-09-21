@@ -60,12 +60,12 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
           {isDropTargetActive ? (
             <View className="bg-primary px-2 py-0.5 rounded-full flex-row items-center gap-1">
               <ArrowDown size={10} color="#fff" />
-              <Text className="text-[9px] font-bold text-primary-foreground uppercase">Drop Here</Text>
+              <Text className="text-[9px] font-bold text-primary-foreground uppercase">{t('drop_here', 'Drop Here')}</Text>
             </View>
           ) : null}
         </View>
         <Text className="text-[11px] font-medium font-sans text-muted-foreground">
-          {activeItems.length}/{maxCapacity} Selected
+          {activeItems.length}/{maxCapacity} {t('selected', 'Selected')}
         </Text>
       </View>
 

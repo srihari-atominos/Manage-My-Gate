@@ -141,11 +141,11 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         {/* Middle Details */}
         <View className="flex-1 shrink min-w-0 justify-center">
           <Text variant="default" className={cn("font-semibold text-[15px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
-            {title}
+            {i18n.translateText(title)}
           </Text>
           {subtitle ? (
             <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[13px] font-sans font-medium shrink truncate", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
-              {subtitle}
+              {i18n.translateText(subtitle)}
             </Text>
           ) : null}
           {timestamp ? (

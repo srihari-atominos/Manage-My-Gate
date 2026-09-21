@@ -4,6 +4,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/text';
 import { User, Users, Car, Package, Wrench, ChevronRight } from 'lucide-react-native';
 import { PassTypeKey } from '../../mocks/visitorMocks';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface InvitationOption {
   type: PassTypeKey;
@@ -59,12 +60,14 @@ export const VisitorInvitationTypeSheet: React.FC<VisitorInvitationTypeSheetProp
   onClose,
   onSelectType,
 }) => {
+  const { t, translateText } = useTranslation();
+
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Select Invitation Type">
+    <BottomSheet visible={visible} onClose={onClose} title={t('select_invitation_type', 'Select Invitation Type')}>
       <ScrollView className="max-h-[520px] px-1 py-2">
         <View className="gap-3 pb-6">
           <Text variant="muted" className="text-xs px-1">
-            Choose the type of visitor pass to generate the appropriate multi-step entry approval.
+            {t('select_visitor_pass_type_desc', 'Choose the type of visitor pass to generate the appropriate multi-step entry approval.')}
           </Text>
 
           {INVITATION_OPTIONS.map((option) => {
@@ -86,18 +89,18 @@ export const VisitorInvitationTypeSheet: React.FC<VisitorInvitationTypeSheetProp
                 <View className="flex-1 gap-0.5">
                   <View className="flex-row items-center gap-2">
                     <Text className="text-base font-bold text-foreground">
-                      {option.title}
+                      {translateText(option.title)}
                     </Text>
                     {option.badge ? (
                       <View className="bg-secondary px-2 py-0.5 rounded-full border border-border">
                         <Text className="text-[10px] font-semibold text-secondary-foreground">
-                          {option.badge}
+                          {translateText(option.badge)}
                         </Text>
                       </View>
                     ) : null}
                   </View>
                   <Text variant="muted" className="text-xs leading-4">
-                    {option.description}
+                    {translateText(option.description)}
                   </Text>
                 </View>
 

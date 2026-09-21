@@ -3,6 +3,7 @@ import { Platform, View, Text } from 'react-native';
 import { TextInput, TextInputProps } from './TextInput';
 import { Eye, EyeOff, Check, X } from 'lucide-react-native';
 import { validatePassword } from '../../src/utils/validation';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface PasswordInputProps extends TextInputProps {
   showRequirements?: boolean;
@@ -11,6 +12,7 @@ export interface PasswordInputProps extends TextInputProps {
 
 export const PasswordInput = forwardRef<any, PasswordInputProps>(
   ({ showRequirements = false, confirmValue, value, ...props }, ref) => {
+    const { t, translateText } = useTranslation();
     const [isSecure, setIsSecure] = useState(true);
 
     const stringVal = typeof value === 'string' ? value : '';
@@ -31,8 +33,8 @@ export const PasswordInput = forwardRef<any, PasswordInputProps>(
           autoComplete={Platform.select({ web: 'current-password', default: 'password' })}
           textContentType="password"
           importantForAutofill="yes"
-          accessibilityLabel={props.label || 'Password'}
-          error={isConfirmMismatch ? 'Passwords do not match.' : props.error}
+          accessibilityLabel={props.label || t('password', 'Password')}
+          error={isConfirmMismatch ? t('passwords_not_match', 'Passwords do not match.') : props.error}
           {...props}
         />
 
@@ -50,7 +52,7 @@ export const PasswordInput = forwardRef<any, PasswordInputProps>(
               ) : (
                 <X size={10} className="text-muted-foreground me-1" />
               )}
-              <Text className="text-[10px] font-medium text-foreground">8+ chars</Text>
+              <Text className="text-[10px] font-medium text-foreground">{t('req_8_chars', '8+ chars')}</Text>
             </View>
 
             <View
@@ -65,7 +67,7 @@ export const PasswordInput = forwardRef<any, PasswordInputProps>(
               ) : (
                 <X size={10} className="text-muted-foreground me-1" />
               )}
-              <Text className="text-[10px] font-medium text-foreground">Uppercase</Text>
+              <Text className="text-[10px] font-medium text-foreground">{t('req_uppercase', 'Uppercase')}</Text>
             </View>
 
             <View
@@ -80,7 +82,7 @@ export const PasswordInput = forwardRef<any, PasswordInputProps>(
               ) : (
                 <X size={10} className="text-muted-foreground me-1" />
               )}
-              <Text className="text-[10px] font-medium text-foreground">Lowercase</Text>
+              <Text className="text-[10px] font-medium text-foreground">{t('req_lowercase', 'Lowercase')}</Text>
             </View>
 
             <View
@@ -95,7 +97,7 @@ export const PasswordInput = forwardRef<any, PasswordInputProps>(
               ) : (
                 <X size={10} className="text-muted-foreground me-1" />
               )}
-              <Text className="text-[10px] font-medium text-foreground">Number</Text>
+              <Text className="text-[10px] font-medium text-foreground">{t('req_number', 'Number')}</Text>
             </View>
           </View>
         )}

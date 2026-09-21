@@ -3,6 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { UploadCloud, File as FileIcon, X } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 import { ImagePreview } from '../common/ImagePreview';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface FileInfo {
   name: string;
@@ -19,12 +20,6 @@ export interface FileUploadFieldProps {
   className?: string;
 }
 
-/**
- * FileUploadField
- * 
- * CRITICAL NOTE: Any images rendered by this component (uploaded by users)
- * are treated STRICTLY as conceptual references. They are not meant to be replicated exactly.
- */
 export const FileUploadField = ({
   label,
   files,
@@ -33,11 +28,13 @@ export const FileUploadField = ({
   maxFiles = 1,
   className,
 }: FileUploadFieldProps) => {
+  const { t, translateText } = useTranslation();
+
   return (
     <View className={cn('w-full', className)}>
       {Boolean(label) && (
         <Text className="mb-1.5 text-sm font-medium text-foreground">
-          {label}
+          {translateText(label)}
         </Text>
       )}
       
@@ -50,10 +47,10 @@ export const FileUploadField = ({
             <UploadCloud size={20} className="text-muted-foreground" />
           </View>
           <Text className="text-sm font-medium text-primary">
-            Tap to select file
+            {t('tap_to_select_file', 'Tap to select file')}
           </Text>
           <Text className="mt-1 text-xs text-muted-foreground">
-            Supports PDF, JPG, PNG
+            {t('supports_formats_file', 'Supports PDF, JPG, PNG')}
           </Text>
         </Pressable>
       )}

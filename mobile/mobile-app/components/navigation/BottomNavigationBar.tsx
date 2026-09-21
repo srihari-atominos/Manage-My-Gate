@@ -92,7 +92,7 @@ interface AndroidTabButtonProps {
   isCompact?: boolean;
 }
 
-import i18n from '../../src/utils/i18n';
+import { useTranslation } from '../../src/utils/i18n';
 
 const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
   item,
@@ -100,13 +100,14 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
   onPress,
   isDark,
 }) => {
+  const { t, language } = useTranslation();
   const IconComponent = item.icon;
   const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
-  const isArabic = i18n.getCurrentLanguage() === 'ar';
+  const isArabic = language === 'ar';
   const tabFontSize = isArabic ? 13.5 : 12;
   const tabLineHeight = isArabic ? 17 : 15;
-  const translatedLabel = i18n.translateText(item.label);
+  const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key === 'all-features' ? 'view_all' : item.key, item.label);
 
   return (
     <Pressable
@@ -174,11 +175,12 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   isDark,
   isCompact,
 }) => {
+  const { t, language } = useTranslation();
   const IconComponent = item.icon;
   const pressScale = useSharedValue(1.0);
   const pressBlur = useSharedValue(0);
   const labelOpacity = useSharedValue(1.0);
-  const isArabic = i18n.getCurrentLanguage() === 'ar';
+  const isArabic = language === 'ar';
   const tabFontSize = isArabic ? 13.5 : 12;
   const tabLineHeight = isArabic ? 17 : 15;
   const labelHeight = useSharedValue(isArabic ? 18 : 16);
@@ -222,7 +224,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   // Icons & labels: Active uses Nahom Orange; inactive uses clear readable neutral
   const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
-  const translatedLabel = i18n.translateText(item.label);
+  const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key === 'all-features' ? 'view_all' : item.key, item.label);
 
   return (
     <Pressable

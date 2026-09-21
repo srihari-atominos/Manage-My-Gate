@@ -717,7 +717,7 @@ export default function LoginScreen() {
                     style={{ color: authMode === 'basic' ? '#EA580C' : '#57534E' }}
                     className={`text-xs ${authMode === 'basic' ? 'font-bold' : 'font-medium'}`}
                   >
-                    Email / Password
+                    {t('email_password', 'Email / Password')}
                   </Text>
                 </TouchableOpacity>
 
@@ -751,7 +751,7 @@ export default function LoginScreen() {
                     style={{ color: authMode === 'phone' ? '#EA580C' : '#57534E' }}
                     className={`text-xs ${authMode === 'phone' ? 'font-bold' : 'font-medium'}`}
                   >
-                    Sign in with OTP
+                    {t('sign_in_with_otp', 'Sign in with OTP')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -781,7 +781,7 @@ export default function LoginScreen() {
                           <Lock size={14} color="#EA580C" strokeWidth={2.4} />
                         </View>
                         <Text className="text-[13px] font-bold text-[#C2410C] dark:text-[#FDBA74] tracking-tight">
-                          Authentication Required
+                          {t('authentication_required', 'Authentication Required')}
                         </Text>
                       </View>
 
@@ -791,7 +791,7 @@ export default function LoginScreen() {
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         className="w-6 h-6 rounded-full bg-[#EA580C]/10 items-center justify-center"
                         accessibilityRole="button"
-                        accessibilityLabel="Dismiss notice"
+                        accessibilityLabel={t('dismiss_notice', 'Dismiss notice')}
                       >
                         <X size={12} color="#C2410C" />
                       </TouchableOpacity>
@@ -801,7 +801,7 @@ export default function LoginScreen() {
                     <View className="flex-row items-center bg-white dark:bg-[#1C1917] border border-[#FED7AA]/60 rounded-xl px-3 py-2 gap-2 shadow-2xs">
                       <View className="bg-[#EA580C]/15 px-2 py-0.5 rounded-md shrink-0">
                         <Text className="text-[9.5px] font-bold text-[#EA580C] uppercase">
-                          {params.switchType === 'villa' ? 'Unit' : params.switchType === 'community' ? 'Community' : 'Role'}
+                          {params.switchType === 'villa' ? t('unit', 'Unit') : params.switchType === 'community' ? t('community', 'Community') : t('role', 'Role')}
                         </Text>
                       </View>
                       <Text
@@ -985,7 +985,7 @@ export default function LoginScreen() {
                       name="phone"
                       render={({ field: { onChange, value } }) => (
                         <PhoneInput
-                          label="Mobile Number"
+                          label={t('phone_number', 'Mobile Number')}
                           placeholder="98765 43210"
                           value={value}
                           onChangeText={onChange}
@@ -999,7 +999,7 @@ export default function LoginScreen() {
                       <Checkbox
                         checked={keepSignedIn}
                         onCheckedChange={setKeepSignedIn}
-                        label="Stay signed in"
+                        label={t('stay_signed_in', 'Stay signed in')}
                         labelClassName="text-xs text-[#78716C] dark:text-[#A8A29E] font-medium"
                         className="items-center"
                       />
@@ -1061,13 +1061,13 @@ export default function LoginScreen() {
                           <View className="flex-row items-center gap-2 z-10">
                             <ActivityIndicator color="#FFFFFF" size="small" />
                             <Text className="font-bold text-white text-sm font-sans">
-                              Sending OTP Code...
+                              {t('sending_otp', 'Sending OTP Code...')}
                             </Text>
                           </View>
                         ) : (
                           <View className="flex-row items-center justify-center gap-2 z-10">
                             <Text className="font-bold text-white text-base font-sans">
-                              Sign in with OTP
+                              {t('sign_in_with_otp', 'Sign in with OTP')}
                             </Text>
                             <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
                               <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
@@ -1085,7 +1085,7 @@ export default function LoginScreen() {
                 <View className="flex-1 h-[1.5px] bg-white/50 dark:bg-white/20" />
                 <View className="bg-white/75 dark:bg-[#1C1917]/75 px-3.5 py-1 rounded-full border border-white/70 dark:border-white/15 shadow-2xs backdrop-blur-md">
                   <Text className="text-[10px] font-bold text-[#1C1917] dark:text-white tracking-widest uppercase font-sans">
-                    Or Continue With
+                    {t('or_continue_with', 'Or Continue With')}
                   </Text>
                 </View>
                 <View className="flex-1 h-[1.5px] bg-white/50 dark:bg-white/20" />
@@ -1110,7 +1110,7 @@ export default function LoginScreen() {
                 <Animated.View style={{ transform: [{ scale: createAccountPressScale }] }}>
                   <View className="bg-transparent flex-row items-center justify-center">
                     <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
-                      Don't have an account?{' '}
+                      {t('dont_have_account', "Don't have an account?")}{' '}
                     </Text>
                     <TouchableOpacity
                       onPress={() => router.push('/(auth)/signup')}
@@ -1119,7 +1119,7 @@ export default function LoginScreen() {
                       activeOpacity={0.8}
                     >
                       <Text className="text-xs font-bold text-[#EA580C]">
-                        Create Account
+                        {t('create_account', 'Create Account')}
                       </Text>
                     </TouchableOpacity>
                   </View>

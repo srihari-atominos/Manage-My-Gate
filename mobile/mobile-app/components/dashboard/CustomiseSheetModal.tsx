@@ -244,7 +244,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
             {/* Divider Sub-header */}
             <View className="px-5 py-2.5 bg-muted/30 border-b border-border flex-row items-center justify-between">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                {t('available_actions', 'Available Actions')} ({selectedIds.length}/6 Selected)
+                {t('available_actions', 'Available Actions')} ({selectedIds.length}/6 {t('selected', 'Selected')})
               </Text>
               <Sparkles size={14} color="#0284c7" />
             </View>

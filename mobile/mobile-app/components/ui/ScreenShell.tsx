@@ -29,6 +29,7 @@ import { VillaSwitchModal } from '../navigation/VillaSwitchModal';
 import { GlobalNavModal } from '../navigation/GlobalNavModal';
 import { BottomNavigationBar } from '../navigation/BottomNavigationBar';
 import { useBottomNavScroll } from '../navigation/BottomNavScrollContext';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface ScreenShellProps {
   title: string;
@@ -75,6 +76,7 @@ export function ScreenShell({
   const router = useRouter();
   const pathname = usePathname() || '';
   const insets = useSafeAreaInsets();
+  const { t, translateText } = useTranslation();
   const { isCompact, setIsCompact, scrollHandlerProps } = useBottomNavScroll();
 
   // Reset scroll compact state on route change so every screen begins fully expanded
@@ -203,11 +205,11 @@ export function ScreenShell({
                 accessibilityHint="Double tap header title to switch active Role or Villa Unit"
               >
                 <Text variant="large" numberOfLines={1} className="text-foreground text-xl font-bold tracking-tight shrink">
-                  {title}
+                  {translateText(title)}
                 </Text>
                 {subtitle ? (
                   <Text variant="muted" numberOfLines={1} className="text-sm text-muted-foreground mt-0.5 font-medium shrink">
-                    {subtitle}
+                    {translateText(subtitle)}
                   </Text>
                 ) : null}
               </Pressable>
@@ -221,7 +223,7 @@ export function ScreenShell({
                 activeOpacity={0.8}
                 onPress={() => setShowGlobalNavModal(true)}
                 className="p-2 rounded-xl bg-secondary border border-border/80 items-center justify-center"
-                accessibilityLabel="Global Easy Navigation"
+                accessibilityLabel={t('global_navigation', 'Global Easy Navigation')}
               >
                 <Icon as={Compass} size={18} className="text-foreground" />
               </TouchableOpacity>
@@ -236,7 +238,7 @@ export function ScreenShell({
           <View className="flex-row items-center flex-1 me-2">
             <Icon as={AlertCircle} size={18} className="text-destructive me-2.5 shrink-0" />
             <Text className="text-destructive text-xs font-medium flex-1" numberOfLines={2}>
-              {error}
+              {translateText(error)}
             </Text>
           </View>
           {onRetry ? (
@@ -244,9 +246,9 @@ export function ScreenShell({
               onPress={onRetry}
               className="bg-destructive px-3 py-1.5 rounded-lg active:opacity-80"
               accessibilityRole="button"
-              accessibilityLabel="Retry"
+              accessibilityLabel={t('retry', 'Retry')}
             >
-              <Text className="text-destructive-foreground text-xs font-semibold">Retry</Text>
+              <Text className="text-destructive-foreground text-xs font-semibold">{t('retry', 'Retry')}</Text>
             </Pressable>
           ) : null}
         </View>

@@ -2,17 +2,19 @@ import React from 'react';
 import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useRouter, usePathname } from 'expo-router';
+import { useTranslation } from '@/src/utils/i18n';
 
 const NAV_ITEMS = [
-  { name: 'Dashboard', route: '/(resident)/notices/dashboard' },
-  { name: 'Active Notice', route: '/(resident)/notices' },
-  { name: 'Manage Notices', route: '/(resident)/notices/manage' },
-  { name: 'Polls', route: '/(resident)/polls' },
+  { id: 'dashboard', name: 'Dashboard', route: '/(resident)/notices/dashboard' },
+  { id: 'active_notice', name: 'Active Notice', route: '/(resident)/notices' },
+  { id: 'manage_notices', name: 'Manage Notices', route: '/(resident)/notices/manage' },
+  { id: 'polls', name: 'Polls', route: '/(resident)/polls' },
 ];
 
 export function NoticeBoardTopNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   return (
     <View className="border-b border-border/40 px-2 pb-0">
@@ -27,14 +29,16 @@ export function NoticeBoardTopNav() {
             isActive = pathname.endsWith(`/${routeEnd}`);
           }
 
+          const displayName = t(item.id, item.name);
+
           return (
             <TouchableOpacity
-              key={item.name}
+              key={item.id}
               onPress={() => router.push(item.route)}
               className={`px-4 py-3 mr-2 border-b-2 ${isActive ? 'border-primary' : 'border-transparent'}`}
             >
               <Text className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
-                {item.name}
+                {displayName}
               </Text>
             </TouchableOpacity>
           );

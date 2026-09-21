@@ -3,6 +3,7 @@ import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import * as LucideIcons from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface QuickNavItem {
   id: string;
@@ -22,10 +23,11 @@ export interface ComplaintQuickNavHubProps {
 
 export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: ComplaintQuickNavHubProps) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const navItems: QuickNavItem[] = [
     {
-      id: 'raise-ticket',
+      id: 'feature_complaints_raise_ticket_name',
       name: 'Raise Ticket',
       keywords: ['raise', 'create', 'new', 'ticket', 'report', 'issue', 'complaint', 'upkeep'],
       route: '/(resident)/complaints/raise-ticket',
@@ -34,7 +36,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
       colorIcon: '#3b82f6',
     },
     {
-      id: 'my-tickets',
+      id: 'feature_complaints_track_requests_name',
       name: 'My Tickets',
       keywords: ['my', 'tickets', 'track', 'status', 'list', 'history', 'complaints', 'upkeep'],
       route: '/(resident)/complaints/my-tickets',
@@ -43,7 +45,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
       colorIcon: '#f59e0b',
     },
     {
-      id: 'management',
+      id: 'feature_complaints_complaint_management_name',
       name: 'Management',
       keywords: ['management', 'admin', 'kanban', 'board', 'queue', 'upkeep', 'staff'],
       route: '/(resident)/complaints/manage',
@@ -52,7 +54,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
       colorIcon: '#6366f1',
     },
     {
-      id: 'staff-directory',
+      id: 'staff_vendors',
       name: 'Staff & Vendors',
       keywords: ['staff', 'vendors', 'technician', 'roster', 'contacts', 'directory', 'upkeep', 'maintenance', 'worker', 'crew'],
       route: '/(resident)/complaints/staff',
@@ -61,7 +63,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
       colorIcon: '#10b981',
     },
     {
-      id: 'assignee-console',
+      id: 'assignee_queue',
       name: 'Assignee Queue',
       keywords: ['assignee', 'queue', 'tasks', 'staff', 'technician', 'work orders', 'assigned'],
       route: '/(resident)/complaints/assignee',
@@ -74,7 +76,8 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
   const filteredItems = navItems.filter((item) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
-    const matchName = item.name.toLowerCase().includes(q);
+    const translated = t(item.id, item.name);
+    const matchName = item.name.toLowerCase().includes(q) || translated.toLowerCase().includes(q);
     const matchId = item.id.toLowerCase().includes(q);
     const matchKeywords = item.keywords ? item.keywords.some((k) => k.toLowerCase().includes(q)) : false;
     return matchName || matchId || matchKeywords;
@@ -83,13 +86,14 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
   return (
     <View className="mb-8">
       <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1 mb-4 px-1">
-        Complaints & Maintenance Features
+        {t('complaints_maintenance_features', 'Complaints & Maintenance Features')}
       </Text>
 
       {filteredItems.length > 0 ? (
         <View className="flex-row flex-wrap justify-start gap-x-[3.5%] gap-y-3">
           {filteredItems.map((item) => {
             const IconComp = (LucideIcons as Record<string, any>)[item.iconName] || LucideIcons.Circle;
+            const displayName = t(item.id, item.name);
 
             return (
               <Pressable
@@ -105,7 +109,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
                   className="text-[11px] font-bold text-foreground text-center"
                   numberOfLines={2}
                 >
-                  {item.name}
+                  {displayName}
                 </Text>
               </Pressable>
             );
@@ -124,14 +128,16 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
                 className="text-[11px] font-bold text-foreground text-center"
                 numberOfLines={2}
               >
-                Feedback
+                {t('feedback', 'Feedback')}
               </Text>
             </Pressable>
           ) : null}
         </View>
       ) : (
         <View className="p-6 bg-card rounded-2xl border border-border items-center justify-center">
-          <Text className="text-xs text-muted-foreground">No feature found for "{searchQuery}"</Text>
+          <Text className="text-xs text-muted-foreground">
+            {t('no_matching_features', `No feature found for "${searchQuery}"`)}
+          </Text>
         </View>
       )}
     </View>

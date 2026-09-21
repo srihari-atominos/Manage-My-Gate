@@ -9,6 +9,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { OtpInputField } from '@/components/auth/OtpInputField';
+import { useTranslation } from '@/src/utils/i18n';
 
 const otpSchema = yup.object().shape({
   code: yup
@@ -22,6 +23,7 @@ interface OtpFormValues {
 }
 
 export default function RegisterOtpScreen() {
+  const { t } = useTranslation();
   const { email } = useLocalSearchParams<{ email: string }>();
   const { verifyRegistration, loading, error, successMsg, clearStatus } = useAuth();
   
@@ -66,7 +68,7 @@ export default function RegisterOtpScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Verify Email' }} />
+      <Stack.Screen options={{ title: t('verify_email', 'Verify Email') }} />
       <ImageBackground
         source={require('../../assets/images/auth-bg.jpg')}
         style={{ flex: 1 }}
@@ -87,11 +89,11 @@ export default function RegisterOtpScreen() {
                 <KeyRoundIcon className="size-8 text-primary" />
               </View>
               <Text className="text-2xl font-extrabold text-[#1C1917] dark:text-white tracking-tight text-center">
-                Enter Verification Code
+                {t('enter_verification_code', 'Enter Verification Code')}
               </Text>
               <Text className="text-muted-foreground text-sm text-center mt-1.5 px-4">
-                We sent a verification code to your email:{'\n'}
-                <Text className="font-semibold text-[#1C1917] dark:text-white">{fixedEmail || 'your email'}</Text>
+                {t('sent_code_email', 'We sent a verification code to your email:')}{'\n'}
+                <Text className="font-semibold text-[#1C1917] dark:text-white">{fixedEmail || t('your_email', 'your email')}</Text>
               </Text>
             </View>
 
@@ -107,7 +109,7 @@ export default function RegisterOtpScreen() {
               className="bg-white/75 dark:bg-[#1C1917]/75 backdrop-blur-xl border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-4 shadow-xl shadow-black/5"
             >
               <View className="gap-2">
-                <Text className="text-[#1C1917] dark:text-white font-semibold text-sm">Security Code</Text>
+                <Text className="text-[#1C1917] dark:text-white font-semibold text-sm">{t('security_code', 'Security Code')}</Text>
                 
                 <Controller
                   control={control}
@@ -143,7 +145,7 @@ export default function RegisterOtpScreen() {
                 textClassName="font-bold text-base"
                 className="mt-2 h-12"
               >
-                Verify & Continue
+                {t('verify_and_continue', 'Verify & Continue')}
               </Button>
             </View>
           </View>

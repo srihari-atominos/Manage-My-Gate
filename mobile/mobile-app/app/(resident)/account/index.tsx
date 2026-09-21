@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, Image, BackHandler } from 'react-native';
+import { View, TouchableOpacity, Image, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -12,19 +12,19 @@ import {
   Settings,
   Mail,
   Building2,
-  ChevronRight,
   Users,
   Sparkles,
   LogOut,
-  User as UserIcon,
-  Shield,
   Edit3,
 } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { ThemeToggleSwitch } from '@/components/settings/ThemeToggleSwitch';
-import BottomNavigationBar from '@/components/navigation/BottomNavigationBar';
+import {
+  ThemeToggleSwitch,
+  SettingsCard,
+  SettingsRow,
+} from '@/components/settings';
 import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
 import { VillaSwitchModal } from '@/components/navigation/VillaSwitchModal';
 import { OrgSwitchModal } from '@/components/navigation/OrgSwitchModal';
@@ -40,7 +40,7 @@ export default function AccountScreen() {
   const { user, logout } = useAuth();
   const { t, tRole } = useTranslation();
   const { themeMode, setThemeMode } = useSettings();
-  const { handleScroll, scrollHandlerProps } = useBottomNavScroll();
+  const { handleScroll } = useBottomNavScroll();
 
   const userAny = user as any;
 
@@ -49,7 +49,7 @@ export default function AccountScreen() {
     userAny?.villaNumber ||
     userAny?.activeVillaNumber ||
     userAny?.unitNumber ||
-    'No Unit Assigned';
+    '#104';
 
   const dynamicCommunity = useMemo(() => {
     const userOrg =
@@ -67,8 +67,8 @@ export default function AccountScreen() {
       return workspaces[0].name;
     }
 
-    return 'Community Workspace';
-  }, [userAny]);
+    return t('community_workspace', 'Community Workspace');
+  }, [userAny, t]);
 
   const dynamicRole =
     user?.role ||
@@ -184,14 +184,14 @@ export default function AccountScreen() {
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) + 120 }}
       >
-        <View className="gap-4 max-w-md mx-auto w-full pt-2">
+        <View className="gap-2 max-w-md mx-auto w-full pt-2">
           {/* 1. User Profile Header Hero Card */}
           <TouchableOpacity
             onPress={() => router.push('/(resident)/profile' as any)}
             activeOpacity={0.82}
-            className="items-center bg-card border border-border rounded-3xl p-5 gap-2 shadow-sm active:bg-secondary/40 relative overflow-hidden"
+            className="items-center bg-card border border-border rounded-3xl p-5 gap-2 shadow-xs active:bg-secondary/40 relative overflow-hidden"
             accessibilityRole="button"
-            accessibilityLabel="Edit Profile"
+            accessibilityLabel={t('edit_profile', 'Edit Profile')}
           >
             {/* Top Right Edit Hint Pill */}
             <View className="absolute top-3.5 right-3.5 flex-row items-center gap-1 bg-primary/10 border border-primary/25 px-2.5 py-1 rounded-full">
@@ -218,19 +218,21 @@ export default function AccountScreen() {
             {/* User Name & Details */}
             <View className="items-center mt-0.5">
               <Text className="text-xl font-extrabold text-foreground font-sans text-center">
-                {user?.name || (user?.email ? user.email.split('@')[0] : 'User')}
+                {user?.name || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident'))}
               </Text>
               <Text className="text-xs font-semibold text-primary font-sans text-center mt-0.5">
                 {dynamicCommunity}
               </Text>
             </View>
 
-            <View className="flex-row items-center gap-1.5 mt-0.5">
-              <Mail size={13} className="text-muted-foreground" />
-              <Text className="text-xs text-muted-foreground font-sans text-center">
-                {user?.email || ''}
-              </Text>
-            </View>
+            {user?.email ? (
+              <View className="flex-row items-center gap-1.5 mt-0.5">
+                <Mail size={13} className="text-muted-foreground" />
+                <Text className="text-xs text-muted-foreground font-sans text-center">
+                  {user.email}
+                </Text>
+              </View>
+            ) : null}
 
             {/* Unit & Role Pills */}
             <View className="flex-row flex-wrap justify-center gap-2 mt-2">
@@ -248,158 +250,84 @@ export default function AccountScreen() {
           </TouchableOpacity>
 
           {/* 2. Theme Mode Section */}
-          <View className="gap-2">
-            <Text className="text-xs font-bold text-muted-foreground uppercase px-1 font-sans">
-              {t('theme_mode', 'Theme Mode')}
-            </Text>
+          <SettingsCard containerClassName="mx-0 mt-3">
             <ThemeToggleSwitch
               themeMode={themeMode}
               onSelectMode={setThemeMode}
               t={t}
             />
-          </View>
+          </SettingsCard>
 
           {/* 3. Context Switchers Section */}
-          <View className="gap-2">
-            <Text className="text-xs font-bold text-muted-foreground uppercase px-1 font-sans">
-              {t('context_switchers', 'Context Switchers')}
-            </Text>
-
-            {/* Switch Community */}
-            <TouchableOpacity
+          <SettingsCard
+            title={t('context_switchers', 'Context Switchers')}
+            containerClassName="mx-0 mt-3"
+          >
+            <SettingsRow
+              icon={Building2}
+              iconColor="#6366f1"
+              iconBgColor="rgba(99, 102, 241, 0.12)"
+              title={t('switch_community', 'Switch Community')}
+              subtitle={dynamicCommunity}
               onPress={() => setOrgModalVisible(true)}
-              activeOpacity={0.7}
-              className="bg-card border border-border rounded-2xl p-3.5 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
-            >
-              <View className="flex-row items-center gap-3">
-                <View className="bg-indigo-500/10 border border-indigo-500/20 p-2.5 rounded-xl">
-                  <Building2 size={18} color="#6366f1" />
-                </View>
-                <View>
-                  <Text className="text-sm font-bold text-foreground font-sans">
-                    {t('switch_community', 'Switch Community')}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                    {dynamicCommunity}
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={17} className="text-muted-foreground" />
-            </TouchableOpacity>
-
-            {/* Switch Villa Unit */}
-            <TouchableOpacity
+            />
+            <SettingsRow
+              icon={Home}
+              iconColor="#10b981"
+              iconBgColor="rgba(16, 185, 129, 0.12)"
+              title={t('switch_unit', 'Switch Villa Unit')}
+              subtitle={dynamicUnit}
               onPress={() => setVillaModalVisible(true)}
-              activeOpacity={0.7}
-              className="bg-card border border-border rounded-2xl p-3.5 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
-            >
-              <View className="flex-row items-center gap-3">
-                <View className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl">
-                  <Home size={18} color="#10b981" />
-                </View>
-                <View>
-                  <Text className="text-sm font-bold text-foreground font-sans">
-                    {t('switch_unit', 'Switch Villa Unit')}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                    {dynamicUnit}
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={17} className="text-muted-foreground" />
-            </TouchableOpacity>
-          </View>
+              isLast={true}
+            />
+          </SettingsCard>
 
           {/* 4. Community & Directory Section */}
-          <View className="gap-2">
-            <Text className="text-xs font-bold text-muted-foreground uppercase px-1 font-sans">
-              {t('community_directory', 'Community & Directory')}
-            </Text>
-
-            {/* Community Directory */}
-            <TouchableOpacity
+          <SettingsCard
+            title={t('community_directory', 'Community & Directory')}
+            containerClassName="mx-0 mt-3"
+          >
+            <SettingsRow
+              icon={Users}
+              iconColor="#0ea5e9"
+              iconBgColor="rgba(14, 165, 233, 0.12)"
+              title={t('community_directory', 'Community Directory')}
+              subtitle={t('find_residents_security', 'Find residents, security & staff')}
               onPress={() => router.push('/(resident)/directory' as any)}
-              activeOpacity={0.7}
-              className="bg-card border border-border rounded-2xl p-3.5 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
-            >
-              <View className="flex-row items-center gap-3">
-                <View className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl">
-                  <Users size={18} color="#10b981" />
-                </View>
-                <View>
-                  <Text className="text-sm font-bold text-foreground font-sans">
-                    {t('community_directory', 'Community Directory')}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                    {t('find_residents_security', 'Find residents, security & staff')}
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={17} className="text-muted-foreground" />
-            </TouchableOpacity>
-
-            {/* All Community Notes */}
-            <TouchableOpacity
+            />
+            <SettingsRow
+              icon={Sparkles}
+              iconColor="#ec4899"
+              iconBgColor="rgba(236, 72, 153, 0.12)"
+              title={t('all_community_notes', 'All Community Notes')}
+              subtitle={t('view_24h_notes', 'View 24h status notes & publish')}
               onPress={() => router.push('/(resident)/notes' as any)}
-              activeOpacity={0.7}
-              className="bg-card border border-border rounded-2xl p-3.5 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
-            >
-              <View className="flex-row items-center gap-3">
-                <View className="bg-pink-500/10 border border-pink-500/20 p-2.5 rounded-xl">
-                  <Sparkles size={18} color="#ec4899" />
-                </View>
-                <View>
-                  <Text className="text-sm font-bold text-foreground font-sans">
-                    {t('all_community_notes', 'All Community Notes')}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                    {t('view_24h_notes', 'View 24h status notes & publish')}
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={17} className="text-muted-foreground" />
-            </TouchableOpacity>
-          </View>
+              isLast={true}
+            />
+          </SettingsCard>
 
           {/* 5. Preferences Section */}
-          <View className="gap-2">
-            <Text className="text-xs font-bold text-muted-foreground uppercase px-1 font-sans">
-              {t('preferences', 'Preferences')}
-            </Text>
-
-            {/* App Settings */}
-            <TouchableOpacity
+          <SettingsCard
+            title={t('preferences', 'Preferences')}
+            containerClassName="mx-0 mt-3"
+          >
+            <SettingsRow
+              icon={Settings}
+              title={t('app_settings', 'App Settings')}
+              subtitle={t('notifications_lang_security', 'Notifications, language & security')}
               onPress={() => router.push('/(resident)/settings' as any)}
-              activeOpacity={0.7}
-              className="bg-card border border-border rounded-2xl p-3.5 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
-              accessibilityRole="button"
-              accessibilityLabel="App Settings"
-            >
-              <View className="flex-row items-center gap-3">
-                <View className="bg-secondary border border-border p-2.5 rounded-xl">
-                  <Settings size={18} className="text-foreground" />
-                </View>
-                <View>
-                  <Text className="text-sm font-bold text-foreground font-sans">
-                    {t('app_settings', 'App Settings')}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                    {t('notifications_lang_security', 'Notifications, language & security')}
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={17} className="text-muted-foreground" />
-            </TouchableOpacity>
-          </View>
+              isLast={true}
+            />
+          </SettingsCard>
 
           {/* 6. Account Sign Out Section */}
-          <View className="gap-2 pt-1">
+          <View className="pt-2">
             <TouchableOpacity
               onPress={() => setLogoutModalOpen(true)}
               activeOpacity={0.75}
               className="bg-destructive/10 border border-destructive/25 rounded-2xl p-4 flex-row items-center justify-center gap-2.5 active:bg-destructive/20 shadow-xs"
               accessibilityRole="button"
-              accessibilityLabel="Sign Out"
+              accessibilityLabel={t('sign_out', 'Sign Out')}
             >
               <LogOut size={18} className="text-destructive" />
               <Text className="text-sm font-bold text-destructive font-sans">

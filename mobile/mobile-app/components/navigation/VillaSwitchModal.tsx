@@ -224,7 +224,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
                 <Building2 size={16} color="#6366f1" />
                 <Text className="text-xs font-bold text-foreground">{t('switch_community', 'Switch Community / Workspace')}</Text>
               </View>
-              <Text className="text-[11px] font-bold text-primary">Switch</Text>
+              <Text className="text-[11px] font-bold text-primary">{t('switch', 'Switch')}</Text>
             </TouchableOpacity>
           )}
 

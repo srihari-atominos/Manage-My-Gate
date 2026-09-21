@@ -31,6 +31,7 @@ import { NahomEmblem, NahomWordmark } from '@/components/auth/NahomBrandLogo';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { OtpInputField } from '@/components/auth/OtpInputField';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+import { useTranslation } from '@/src/utils/i18n';
 
 // Step 1: Identifier schema
 const identifierEmailSchema = yup.object().shape({
@@ -72,6 +73,7 @@ const passwordSchema = yup.object().shape({
 });
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const { forgotPassword, verifyResetOtp, resetPassword, loading, error, successMsg, clearStatus } = useAuth();
 
   const [step, setStep] = React.useState<0 | 1 | 2 | 3>(0);
@@ -228,22 +230,22 @@ export default function ForgotPasswordScreen() {
 
                 <Text className="text-xl font-extrabold text-foreground text-center">
                   {step === 3
-                    ? 'Password Reset!'
+                    ? t('password_reset_success_title', 'Password Reset!')
                     : step === 2
-                    ? 'Create New Password'
+                    ? t('create_new_password', 'Create New Password')
                     : step === 1
-                    ? 'Enter Security Code'
-                    : 'Reset Password'}
+                    ? t('enter_security_code', 'Enter Security Code')
+                    : t('reset_password', 'Reset Password')}
                 </Text>
 
                 <Text className="text-xs text-muted-foreground text-center px-2">
                   {step === 3
-                    ? 'Your password has been changed successfully. You can now sign in.'
+                    ? t('password_changed_login_desc', 'Your password has been changed successfully. You can now sign in.')
                     : step === 2
-                    ? 'Your identity has been verified. Choose a strong new password.'
+                    ? t('choose_strong_password_desc', 'Your identity has been verified. Choose a strong new password.')
                     : step === 1
-                    ? `We sent a 6-digit verification code to:\n${identifier}`
-                    : 'Enter your verified account email or phone number to receive a recovery code.'}
+                    ? `${t('we_sent_code_to', 'We sent a 6-digit verification code to:')}\n${identifier}`
+                    : t('enter_account_recovery_desc', 'Enter your verified account email or phone number to receive a recovery code.')}
                 </Text>
               </View>
 
@@ -280,7 +282,7 @@ export default function ForgotPasswordScreen() {
                         style={{ color: method === 'email' ? '#EA580C' : '#57534E' }}
                         className={`text-xs ${method === 'email' ? 'font-bold' : 'font-medium'}`}
                       >
-                        Email
+                        {t('email', 'Email')}
                       </Text>
                     </TouchableOpacity>
 
@@ -310,7 +312,7 @@ export default function ForgotPasswordScreen() {
                         style={{ color: method === 'phone' ? '#EA580C' : '#57534E' }}
                         className={`text-xs ${method === 'phone' ? 'font-bold' : 'font-medium'}`}
                       >
-                        Phone Number
+                        {t('phone_number', 'Phone Number')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -321,7 +323,7 @@ export default function ForgotPasswordScreen() {
                       name="email"
                       render={({ field: { onChange, onBlur, value } }) => (
                         <TextInput
-                          label="Email Address"
+                          label={t('email_address', 'Email Address')}
                           placeholder="name@example.com"
                           value={value}
                           onChangeText={onChange}
@@ -340,7 +342,7 @@ export default function ForgotPasswordScreen() {
                       name="phone"
                       render={({ field: { onChange, value } }) => (
                         <PhoneInput
-                          label="Phone Number"
+                          label={t('phone_number', 'Phone Number')}
                           placeholder="98765 43210"
                           value={value}
                           onChangeText={onChange}
@@ -360,7 +362,7 @@ export default function ForgotPasswordScreen() {
                     textClassName="font-bold text-sm"
                     className="mt-2 h-12 bg-primary rounded-xl w-full items-center justify-center"
                   >
-                    Send Recovery Code
+                    {t('send_recovery_code', 'Send Recovery Code')}
                   </Button>
                 </View>
               )}
@@ -395,7 +397,7 @@ export default function ForgotPasswordScreen() {
                     >
                       <ArrowLeft size={13} color="#94A3B8" />
                       <Text className="text-xs text-muted-foreground font-medium">
-                        Change ID
+                        {t('change_id', 'Change ID')}
                       </Text>
                     </TouchableOpacity>
 
@@ -411,7 +413,7 @@ export default function ForgotPasswordScreen() {
                             : 'text-primary'
                         }`}
                       >
-                        {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                        {resendCooldown > 0 ? `${t('resend_in', 'Resend in')} ${resendCooldown}s` : t('resend_code', 'Resend Code')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -422,7 +424,7 @@ export default function ForgotPasswordScreen() {
                     textClassName="font-bold text-sm"
                     className="mt-2 h-12 bg-primary rounded-xl w-full items-center justify-center"
                   >
-                    Verify Security Code
+                    {t('verify_security_code', 'Verify Security Code')}
                   </Button>
                 </View>
               )}
@@ -435,9 +437,9 @@ export default function ForgotPasswordScreen() {
                     name="newPassword"
                     render={({ field: { onChange, onBlur, value } }) => (
                       <PasswordInput
-                        label="New Password"
+                        label={t('new_password', 'New Password')}
                         required
-                        placeholder="Min 8 chars, 1 uppercase, 1 symbol"
+                        placeholder={t('password_requirements_placeholder', 'Min 8 chars, 1 uppercase, 1 symbol')}
                         value={value}
                         onChangeText={onChange}
                         onBlur={onBlur}
@@ -454,9 +456,9 @@ export default function ForgotPasswordScreen() {
                     name="confirmPassword"
                     render={({ field: { onChange, onBlur, value } }) => (
                       <PasswordInput
-                        label="Confirm Password"
+                        label={t('confirm_password', 'Confirm Password')}
                         required
-                        placeholder="Re-enter new password"
+                        placeholder={t('re_enter_new_password', 'Re-enter new password')}
                         value={value}
                         onChangeText={onChange}
                         onBlur={onBlur}
@@ -474,7 +476,7 @@ export default function ForgotPasswordScreen() {
                     textClassName="font-bold text-sm"
                     className="mt-2 h-12 bg-primary rounded-xl w-full items-center justify-center"
                   >
-                    Update Password
+                    {t('update_password', 'Update Password')}
                   </Button>
                 </View>
               )}
@@ -487,7 +489,7 @@ export default function ForgotPasswordScreen() {
                     textClassName="font-bold text-sm"
                     className="h-12 bg-primary rounded-xl w-full items-center justify-center"
                   >
-                    Back to Sign In
+                    {t('back_to_sign_in', 'Back to Sign In')}
                   </Button>
                 </View>
               )}
@@ -500,7 +502,7 @@ export default function ForgotPasswordScreen() {
                     activeOpacity={0.8}
                   >
                     <Text className="text-xs font-bold text-[#EA580C]">
-                      Back to Sign In
+                      {t('back_to_sign_in', 'Back to Sign In')}
                     </Text>
                   </TouchableOpacity>
                 </View>

@@ -20,6 +20,7 @@ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { sessionStore } from '@/src/utils/storage';
+import { useTranslation } from '@/src/utils/i18n';
 
 interface FeatureModule {
   id: string;
@@ -68,6 +69,7 @@ const FEATURE_MODULES: FeatureModule[] = [
 ];
 
 export default function SelectFeaturesScreen() {
+  const { t, tFeatureName, tFeatureSubtitle } = useTranslation();
   const { user, createWorkspace, updateOrganizationFeatures, switchWorkspaceContext, loading, error, clearStatus } = useAuth();
   const params = useLocalSearchParams<{
     orgId?: string;
@@ -162,7 +164,7 @@ export default function SelectFeaturesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Configure Features', headerBackVisible: Boolean(params?.orgName) }} />
+      <Stack.Screen options={{ title: t('configure_features', 'Configure Features'), headerBackVisible: Boolean(params?.orgName) }} />
       <KeyboardAvoidingShell className="bg-background">
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1 }} className="bg-background">
           <View className="gap-5 max-w-lg mx-auto w-full py-2 sm:py-4">
@@ -172,10 +174,10 @@ export default function SelectFeaturesScreen() {
                 <Sparkles className="size-9 text-primary" size={34} color="#03A9F4" />
               </View>
               <Text className="text-2xl font-extrabold text-foreground tracking-tight text-center">
-                Select Organization Features
+                {t('select_org_features', 'Select Organization Features')}
               </Text>
               <Text className="text-muted-foreground text-sm text-center mt-1 px-2">
-                Choose the modules you want active for your enterprise workspace
+                {t('choose_modules_workspace_desc', 'Choose the modules you want active for your enterprise workspace')}
               </Text>
             </View>
 
@@ -206,8 +208,12 @@ export default function SelectFeaturesScreen() {
                     </View>
 
                     <View className="flex-1 me-1">
-                      <Text className="font-bold text-foreground text-sm sm:text-base mb-0.5">{item.title}</Text>
-                      <Text className="text-muted-foreground text-xs leading-4">{item.description}</Text>
+                      <Text className="font-bold text-foreground text-sm sm:text-base mb-0.5">
+                        {tFeatureName(item.id, item.title)}
+                      </Text>
+                      <Text className="text-muted-foreground text-xs leading-4">
+                        {tFeatureSubtitle(item.id, item.description)}
+                      </Text>
                     </View>
 
                     <View
@@ -231,7 +237,7 @@ export default function SelectFeaturesScreen() {
                 textClassName="font-bold text-base"
                 className="h-12 bg-primary rounded-xl w-full items-center justify-center"
               >
-                {loading ? 'Finalizing Setup...' : 'Complete & Launch Workspace'}
+                {loading ? t('finalizing_setup', 'Finalizing Setup...') : t('complete_launch_workspace', 'Complete & Launch Workspace')}
               </Button>
             </View>
           </View>

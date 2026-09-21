@@ -6,6 +6,7 @@ import { Button } from './button';
 import { Icon } from './icon';
 import { Text } from './text';
 import { cn } from '../../lib/utils';
+import { useTranslation } from '@/src/utils/i18n';
 
 export type ConfirmationVariant = 'danger' | 'warning' | 'info' | 'success';
 
@@ -91,6 +92,7 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
     },
     ref
   ) => {
+    const { translateText } = useTranslation();
     const validVariant: ConfirmationVariant = CONFIRMATION_VARIANT_CONFIG[variant] ? variant : 'danger';
     const config = CONFIRMATION_VARIANT_CONFIG[validVariant];
     const confirmButtonVariant = validVariant === 'danger' ? 'destructive' : 'default';
@@ -116,12 +118,12 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
 
             {/* Title */}
             <Text className="text-center mt-4 text-[18px] font-bold font-sans text-foreground">
-              {title}
+              {translateText(title)}
             </Text>
 
             {/* Message */}
             <Text variant="muted" className="text-center mt-2 text-[14px] font-sans text-muted-foreground">
-              {message}
+              {translateText(message)}
             </Text>
 
             {/* Action buttons */}
@@ -132,7 +134,7 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
                 onPress={onCancel}
                 className="flex-1 border-border active:bg-secondary/60"
               >
-                <Text className="text-foreground">{cancelLabel}</Text>
+                <Text className="text-foreground">{translateText(cancelLabel)}</Text>
               </Button>
               <Button
                 variant={
@@ -149,7 +151,7 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
                 onPress={onConfirm}
                 className="flex-1"
               >
-                <Text>{confirmLabel}</Text>
+                <Text>{translateText(confirmLabel)}</Text>
               </Button>
             </View>
           </View>

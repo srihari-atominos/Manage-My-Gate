@@ -5,6 +5,7 @@ import { ChevronRight, ArrowRight, Sparkles } from 'lucide-react-native';
 import * as LucideIcons from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/src/utils/i18n';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -97,6 +98,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 }) => {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { translateText } = useTranslation();
 
   // Resolve dynamic icon component
   let IconComponent: React.ComponentType<any> | null = null;
@@ -114,6 +116,10 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
     displaySubtitle = `${displaySubtitle} · ${count} ${count === 1 ? 'feature' : 'features'}`;
   }
 
+  const localizedTitle = translateText(title);
+  const localizedSubtitle = displaySubtitle ? translateText(displaySubtitle) : undefined;
+  const localizedActionLabel = actionLabel ? translateText(actionLabel) : undefined;
+
   // Fallback simple header style if not identity or minimal invocation
   if (variant === 'simple' && !IconComponent && !displaySubtitle) {
     return (
@@ -124,16 +130,16 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         )}
       >
         <Text className="text-[13px] font-bold font-sans uppercase tracking-wider text-muted-foreground">
-          {title}
+          {localizedTitle}
         </Text>
         {actionLabel && onAction && (
           <Pressable
             onPress={onAction}
             className="flex-row items-center gap-1 active:opacity-70 py-1 px-1.5"
             accessibilityRole="button"
-            accessibilityLabel={actionLabel}
+            accessibilityLabel={localizedActionLabel}
           >
-            <Text className="text-xs font-bold text-primary font-sans">{actionLabel}</Text>
+            <Text className="text-xs font-bold text-primary font-sans">{localizedActionLabel}</Text>
             <ChevronRight size={13} color="#FF6A00" />
           </Pressable>
         )}
@@ -172,7 +178,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             numberOfLines={1}
             className="text-[14.5px] font-bold font-sans text-foreground tracking-tight"
           >
-            {title}
+            {localizedTitle}
           </Text>
 
           {displaySubtitle ? (
@@ -180,7 +186,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
               numberOfLines={1}
               className="text-[11px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
             >
-              {displaySubtitle}
+              {localizedSubtitle}
             </Text>
           ) : null}
         </View>
@@ -192,10 +198,10 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           onPress={onAction}
           className="flex-row items-center gap-1 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-2.5 py-1 rounded-full active:scale-95 transition-transform shrink-0 shadow-xs"
           accessibilityRole="button"
-          accessibilityLabel={actionLabel}
+          accessibilityLabel={localizedActionLabel}
         >
           <Text className="text-[11px] font-bold font-sans text-primary">
-            {actionLabel}
+            {localizedActionLabel}
           </Text>
           {isExpanded !== undefined ? (
             <ChevronRight

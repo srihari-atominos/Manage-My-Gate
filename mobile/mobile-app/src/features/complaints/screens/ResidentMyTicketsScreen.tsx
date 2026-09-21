@@ -12,8 +12,10 @@ import { ComplaintCard } from '../components/ComplaintCard';
 import { ComplaintDetailSheet } from '../components/ComplaintDetailSheet';
 import { Complaint } from '../types';
 import { getStatusTabStyle } from '@/components/ui/statusTabColors';
+import { useTranslation } from '@/src/utils/i18n';
 
 export function ResidentMyTicketsScreen() {
+  const { t } = useTranslation();
   const {
     complaints,
     isLoading,
@@ -127,17 +129,17 @@ export function ResidentMyTicketsScreen() {
   };
 
   const filterTabs = [
-    { label: 'All', value: 'ALL', count: metrics.total },
-    { label: 'Open', value: 'OPEN' },
-    { label: 'In Progress', value: 'IN_PROGRESS', count: metrics.inProgress },
-    { label: 'Action Needed', value: 'ACTION_NEEDED', count: metrics.actionNeeded },
-    { label: 'Completed', value: 'COMPLETED', count: metrics.resolved },
+    { label: t('all', 'All'), value: 'ALL', count: metrics.total },
+    { label: t('open', 'Open'), value: 'OPEN' },
+    { label: t('in_progress', 'In Progress'), value: 'IN_PROGRESS', count: metrics.inProgress },
+    { label: t('action_needed', 'Action Needed'), value: 'ACTION_NEEDED', count: metrics.actionNeeded },
+    { label: t('completed', 'Completed'), value: 'COMPLETED', count: metrics.resolved },
   ];
 
   return (
     <ScreenShell
-      title="Track My Tickets"
-      subtitle="View live status, rate completed repairs & manage maintenance requests"
+      title={t('track_my_tickets', 'Track My Tickets')}
+      subtitle={t('track_my_tickets_sub', 'View live status, rate completed repairs & manage maintenance requests')}
       iconName="ListOrdered"
       loading={isLoading && complaints.length === 0}
     >
@@ -163,7 +165,7 @@ export function ResidentMyTicketsScreen() {
           <SearchFilterBar
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
-            searchPlaceholder="Search ticket # or title..."
+            searchPlaceholder={t('search_ticket_placeholder', 'Search ticket # or title...')}
           />
 
           {/* SECTION 2: HORIZONTAL FILTER CHIPS */}
@@ -212,8 +214,8 @@ export function ResidentMyTicketsScreen() {
               <View className="pt-6">
                 <EmptyState
                   icon={CheckCircle2}
-                  title="No Tickets Found"
-                  description="You have no maintenance requests matching your selected search filter."
+                  title={t('no_tickets_found', 'No Tickets Found')}
+                  description={t('no_tickets_desc', 'You have no maintenance requests matching your selected search filter.')}
                 />
               </View>
             ) : (

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, Home, Building2, ChevronDown, Sun, Moon } from 'lucide-react-native';
+import { Bell, Home, Building2, ChevronDown, Sun, Moon, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import storage from '../../src/utils/storage';
@@ -259,15 +259,15 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             ) : null}
           </TouchableOpacity>
 
-          {/* Account Avatar Button */}
+          {/* App Settings Icon Button */}
           <TouchableOpacity
-            onPress={() => router.push('/(resident)/account' as any)}
-            activeOpacity={0.85}
-            className="size-10 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
+            onPress={() => router.push('/(resident)/settings' as any)}
+            activeOpacity={0.7}
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
             accessibilityRole="button"
-            accessibilityLabel="User Account"
+            accessibilityLabel={t('app_settings', 'Settings')}
           >
-            <Text className="text-white font-bold font-sans text-[14px]">{avatarLetter}</Text>
+            <Settings size={18} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
           </TouchableOpacity>
         </View>
       </View>

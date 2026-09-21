@@ -28,18 +28,18 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   const { user } = useAuth();
   const { t, tFeatureName, tFeatureSubtitle } = useTranslation();
 
-  // Strictly permitted features for the user's role (up to 6 cards). Forbidden cards are NEVER displayed.
+  // Permitted features for the user's role (up to 8 cards in a 4-column grid).
   const displayFeatures = React.useMemo(() => {
     // 1. If equipped features passed from hook, filter strictly to permitted items
     if (propEquippedFeatures && propEquippedFeatures.length > 0) {
       const allowed = propEquippedFeatures.filter((item) => isFeatureAllowedForUser(item, user));
       if (allowed.length > 0) {
-        return allowed.slice(0, 6);
+        return allowed.slice(0, 8);
       }
     }
 
     const defaultIds = getDefaultQuickActionsForUser(user);
-    const candidateIds = (activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : defaultIds);
+    const candidateIds = activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : defaultIds;
 
     // 2. Filter candidate IDs strictly to permitted features only
     const allowedItems = candidateIds
@@ -47,22 +47,21 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
       .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item) && isFeatureAllowedForUser(item!, user));
 
     if (allowedItems.length > 0) {
-      return allowedItems.slice(0, 6);
+      return allowedItems.slice(0, 8);
     }
 
     // 3. Fallback strictly to default permitted items for this persona
     return defaultIds
       .map((id) => ALL_AVAILABLE_FEATURES.find((item) => item.id === id))
       .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item) && isFeatureAllowedForUser(item!, user))
-      .slice(0, 6);
+      .slice(0, 8);
   }, [propEquippedFeatures, activeFeatureIds, user]);
-
 
   return (
     <View className="gap-2.5 my-2">
-      {/* Section Header with Customise Button only */}
+      {/* Section Header with Customise Button */}
       <View className="flex-row items-center justify-between px-1">
-        <Text className="text-[17px] font-bold font-sans text-foreground tracking-tight">
+        <Text className="text-[16px] font-bold font-sans text-foreground tracking-tight">
           {t('quick_actions', 'Quick Actions')}
         </Text>
 
@@ -70,31 +69,32 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           onPress={onOpenCustomise}
           activeOpacity={0.7}
           className="flex-row items-center gap-1 bg-secondary border border-border/80 px-2.5 py-1 rounded-full shadow-2xs"
+          accessibilityRole="button"
+          accessibilityLabel={t('customise', 'Customise')}
         >
           <SlidersHorizontal size={11} className="text-muted-foreground" />
           <Text className="text-[11px] font-bold font-sans text-foreground">{t('customise', 'Customise')}</Text>
         </TouchableOpacity>
       </View>
 
-
-      {/* Exactly 6 Feature Cards in Clean 3-Column Grid (2 rows x 3 columns) */}
-      <View className="flex-row flex-wrap gap-2.5 justify-start">
+      {/* 4-Column Grid with Equal-Size Rounded Tiles */}
+      <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3">
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
           const iconName = meta?.iconName || tile.iconName;
           const colorIcon = meta?.colorIcon || tile.colorIcon || '#2563EB';
           const colorBg = meta?.colorBg || tile.colorBg || 'bg-blue-50 dark:bg-blue-950/40';
-          const iconShapeClass = meta?.iconShapeClass || 'rounded-[15px]';
+          const iconShapeClass = meta?.iconShapeClass || 'rounded-[14px]';
           const badge = meta?.badge || tile.badge;
           const badgeColor = meta?.badgeColor || tile.badgeColor;
 
           return (
             <ActionTile
               key={tile.id}
-              containerClassName="w-[31%]"
+              containerClassName="w-[23%]"
               iconBgColor={colorBg}
               iconShapeClass={iconShapeClass}
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={26} />}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
@@ -110,4 +110,3 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
 };
 
 export default QuickActionsGrid;
-

@@ -8,6 +8,7 @@ import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useTranslation } from '@/src/utils/i18n';
 
 const otpSchema = yup.object().shape({
   code: yup
@@ -21,6 +22,7 @@ interface OtpFormValues {
 }
 
 export default function OtpScreen() {
+  const { t } = useTranslation();
   const { phone, email } = useLocalSearchParams<{ phone?: string; email?: string }>();
   const { verifyOtp, requestOtp, loading, error, successMsg, isAuthenticated, clearStatus } = useAuth();
   const [resendCooldown, setResendCooldown] = React.useState(30);
@@ -49,7 +51,7 @@ export default function OtpScreen() {
 
   React.useEffect(() => {
     if (successMsg) {
-      Alert.alert('Verification', successMsg);
+      Alert.alert(t('verification', 'Verification'), successMsg);
     }
   }, [successMsg]);
 
@@ -75,7 +77,7 @@ export default function OtpScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Verify Identity' }} />
+      <Stack.Screen options={{ title: t('verify_identity', 'Verify Identity') }} />
       <ImageBackground
         source={require('../../assets/images/auth-bg.jpg')}
         style={{ flex: 1 }}
@@ -96,10 +98,10 @@ export default function OtpScreen() {
                 <KeyRoundIcon className="size-8 text-primary" />
               </View>
               <Text className="text-2xl font-extrabold text-foreground tracking-tight">
-                Enter Verification Code
+                {t('enter_verification_code', 'Enter Verification Code')}
               </Text>
               <Text className="text-muted-foreground text-sm text-center mt-1.5 px-4">
-                We sent a verification code to your {isEmail ? 'email' : 'phone number'}:{'\n'}
+                {isEmail ? t('sent_code_email', 'We sent a verification code to your email:') : t('sent_code_phone', 'We sent a verification code to your phone number:')}{'\n'}
                 <Text className="font-semibold text-foreground">{identifier}</Text>
               </Text>
             </View>
@@ -116,7 +118,7 @@ export default function OtpScreen() {
               className="bg-white/75 dark:bg-[#1C1917]/75 backdrop-blur-xl border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-4 shadow-xl shadow-black/5"
             >
               <View className="gap-2">
-                <Text className="text-[#1C1917] dark:text-white font-semibold text-sm">Security Code</Text>
+                <Text className="text-[#1C1917] dark:text-white font-semibold text-sm">{t('security_code', 'Security Code')}</Text>
                 
                 <Controller
                   control={control}
@@ -152,7 +154,7 @@ export default function OtpScreen() {
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="font-bold text-primary-foreground">Verify & Sign In</Text>
+                  <Text className="font-bold text-primary-foreground">{t('verify_and_sign_in', 'Verify & Sign In')}</Text>
                 )}
               </Button>
 
@@ -160,11 +162,11 @@ export default function OtpScreen() {
               <View className="items-center mt-2">
                 {resendCooldown > 0 ? (
                   <Text className="text-muted-foreground text-xs font-medium">
-                    Resend code in {resendCooldown}s
+                    {`${t('resend_code_in', 'Resend code in')} ${resendCooldown}s`}
                   </Text>
                 ) : (
                   <Button onPress={handleResend} variant="ghost" className="h-8">
-                    <Text className="text-primary text-xs font-semibold">Resend verification code</Text>
+                    <Text className="text-primary text-xs font-semibold">{t('resend_verification_code', 'Resend verification code')}</Text>
                   </Button>
                 )}
               </View>

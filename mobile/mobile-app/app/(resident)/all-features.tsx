@@ -28,7 +28,7 @@ export default function AllFeaturesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ category?: string }>();
-  const { t, tCategoryName, tFeatureName, tFeatureSubtitle } = useTranslation();
+  const { t, tCategoryName, tFeatureName, tFeatureSubtitle, translateText } = useTranslation();
   const { scrollHandlerProps } = useBottomNavScroll();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -187,36 +187,43 @@ export default function AllFeaturesScreen() {
                 const hasMore = filteredItems.length > 6;
                 const displayedItems = isExpanded ? filteredItems : filteredItems.slice(0, 6);
 
-                const categoryMeta: Record<string, { icon: string; subtitle: string; color: string }> = {
-                  visitor_management: { icon: 'ShieldCheck', subtitle: 'Security & Gate Access', color: '#2563EB' },
-                  amenities_facilities: { icon: 'Sparkles', subtitle: 'Facilities & Reservations', color: '#16A34A' },
-                  complaints_helpdesk: { icon: 'ListTodo', subtitle: 'Issues & SLA Helpdesk', color: '#7C3AED' },
-                  notice_board_polls: { icon: 'Megaphone', subtitle: 'Broadcasts & Resident Polls', color: '#DB2777' },
-                  financial_billing: { icon: 'CreditCard', subtitle: 'Dues, Invoices & Accounts', color: '#0D9488' },
-                  administration_security: { icon: 'UserRoundCog', subtitle: 'Staff, RBAC & Settings', color: '#D97706' },
+                const categoryMeta: Record<string, { icon: string; subKey: string; subtitle: string; color: string }> = {
+                  visitor_management: { icon: 'ShieldCheck', subKey: 'cat_visitor_sub', subtitle: 'Security & Gate Access', color: '#2563EB' },
+                  amenities_facilities: { icon: 'Sparkles', subKey: 'cat_amenities_sub', subtitle: 'Facilities & Reservations', color: '#16A34A' },
+                  complaints_helpdesk: { icon: 'ListTodo', subKey: 'cat_complaints_sub', subtitle: 'Issues & SLA Helpdesk', color: '#7C3AED' },
+                  notice_board_polls: { icon: 'Megaphone', subKey: 'cat_notice_sub', subtitle: 'Broadcasts & Resident Polls', color: '#DB2777' },
+                  financial_billing: { icon: 'CreditCard', subKey: 'cat_billing_sub', subtitle: 'Dues, Invoices & Accounts', color: '#0D9488' },
+                  administration_security: { icon: 'UserRoundCog', subKey: 'cat_admin_sub', subtitle: 'Staff, RBAC & Settings', color: '#D97706' },
                 };
 
                 const currentMeta = categoryMeta[category.categoryKey] || {
                   icon: 'Layers',
+                  subKey: '',
                   subtitle: 'Module Features',
                   color: '#FF6A00',
                 };
+
+                const actionLabel = hasMore
+                  ? isExpanded
+                    ? t('show_less', 'Show less')
+                    : t('view_all_count', `View all (${filteredItems.length})`, { count: filteredItems.length })
+                  : undefined;
 
                 return (
                   <View key={category.categoryKey} className="gap-2.5">
                     <SectionHeader
                       title={tCategoryName(category.categoryKey, category.categoryName)}
-                      subtitle={currentMeta.subtitle}
+                      subtitle={currentMeta.subKey ? t(currentMeta.subKey, currentMeta.subtitle) : translateText(currentMeta.subtitle)}
                       count={filteredItems.length}
                       icon={currentMeta.icon}
                       iconColor={currentMeta.color}
-                      actionLabel={hasMore ? (isExpanded ? 'Show less' : `View all (${filteredItems.length})`) : undefined}
+                      actionLabel={actionLabel}
                       isExpanded={isExpanded}
                       onAction={hasMore ? () => toggleCategoryExpand(category.categoryKey) : undefined}
                       className="px-0 py-1"
                     />
 
-                    <View className="flex-row flex-wrap gap-2.5 justify-start">
+                    <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3">
                       {displayedItems.map((item) => {
                         const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === item.id);
                         const iconName = meta?.iconName || item.iconName;
@@ -227,10 +234,10 @@ export default function AllFeaturesScreen() {
                         return (
                           <ActionTile
                             key={item.id}
-                            containerClassName="w-[31%]"
+                            containerClassName="w-[23%]"
                             iconBgColor={colorBg}
                             iconShapeClass={iconShapeClass}
-                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={26} />}
+                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}

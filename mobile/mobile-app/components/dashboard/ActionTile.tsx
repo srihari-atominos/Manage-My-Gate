@@ -1,12 +1,10 @@
 import React from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, Platform } from 'react-native';
 import { Text } from '../ui/text';
-import { ArrowUpRight, ChevronRight } from 'lucide-react-native';
+import { ArrowUpRight } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useTranslation, default as i18n } from '../../src/utils/i18n';
-
 import { useColorScheme } from 'nativewind';
-import { Platform } from 'react-native';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -24,7 +22,7 @@ export interface ActionTileProps {
   subtitle?: string;
   metaValue?: string;
   statusBadge?: SmartCardStatusBadge | string;
-  progress?: number; // 0 to 100
+  progress?: number;
   footerText?: string;
   onPress: () => void;
   badge?: string;
@@ -45,7 +43,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   badgeColor,
   iconBgColor,
   iconShapeClass,
-  containerClassName = 'w-[31.4%]',
+  containerClassName = 'w-[22.8%]',
   showArrow = false,
 }) => {
   const { t } = useTranslation();
@@ -59,7 +57,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   }));
 
   const handlePressIn = () => {
-    scale.value = withTiming(0.96, { duration: 90 });
+    scale.value = withTiming(0.95, { duration: 90 });
   };
 
   const handlePressOut = () => {
@@ -67,8 +65,8 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   };
 
   const displaySubtitle = metaValue || subtitle;
-  const translatedLabel = t(label, label);
-  const translatedSubtitle = displaySubtitle ? t(displaySubtitle, displaySubtitle) : '';
+  const translatedLabel = i18n.translateText(label);
+  const translatedSubtitle = displaySubtitle ? i18n.translateText(displaySubtitle) : '';
 
   return (
     <View className={containerClassName}>
@@ -81,52 +79,52 @@ export const ActionTile: React.FC<ActionTileProps> = ({
           {
             backgroundColor: isDark ? '#181A20' : '#FFFFFF',
             borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-            borderWidth: 1.2,
-            borderRadius: 18,
-            height: 126,
-            paddingHorizontal: 6,
-            paddingVertical: 10,
+            borderWidth: 1,
+            borderRadius: 16,
+            minHeight: 96,
+            paddingHorizontal: 4,
+            paddingVertical: 8,
             alignItems: 'center',
             justifyContent: 'center',
             ...(isAndroid
               ? {
-                  elevation: 2.5,
+                  elevation: 2,
                   shadowColor: '#000000',
                 }
               : {
                   shadowColor: '#000000',
-                  shadowOffset: { width: 0, height: 2 },
+                  shadowOffset: { width: 0, height: 1 },
                   shadowOpacity: isDark ? 0.3 : 0.05,
-                  shadowRadius: 6,
+                  shadowRadius: 4,
                 }),
           },
         ]}
         className="w-full relative overflow-hidden active:bg-secondary/70 items-center justify-center"
         accessibilityRole="button"
-        accessibilityLabel={`${translatedLabel} ${translatedSubtitle}`}
+        accessibilityLabel={`${translatedLabel}${translatedSubtitle ? ` ${translatedSubtitle}` : ''}`}
       >
-        {/* Optional Badge / Arrow placed in top-right corner */}
+        {/* Top-Right Anchored Badge / Arrow */}
         {badge ? (
           <View
             style={badgeColor ? { backgroundColor: badgeColor } : undefined}
-            className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-full ${
+            className={`absolute top-1.5 right-1.5 px-1.5 py-0.2 rounded-full ${
               !badgeColor ? 'bg-primary' : ''
             } items-center justify-center z-10`}
           >
-            <Text className="text-[8px] font-extrabold font-sans text-white tracking-wide uppercase">
+            <Text className="text-[7.5px] font-black font-sans text-white tracking-wide uppercase">
               {badge}
             </Text>
           </View>
         ) : showArrow ? (
-          <View className="absolute top-2 right-2 w-4 h-4 rounded-full bg-secondary items-center justify-center border border-border/40 z-10">
-            <ArrowUpRight size={9} className="text-muted-foreground" />
+          <View className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-secondary items-center justify-center border border-border/40 z-10">
+            <ArrowUpRight size={8} className="text-muted-foreground" />
           </View>
         ) : null}
 
-        {/* Center: Prominent Enlarged Feature Icon Container */}
+        {/* Centered Line-Style Feature Icon */}
         <View
-          className={`w-12 h-12 items-center justify-center mb-2 ${
-            iconShapeClass || 'rounded-2xl'
+          className={`w-9 h-9 items-center justify-center mb-1.5 ${
+            iconShapeClass || 'rounded-xl'
           } ${
             iconBgColor || 'bg-secondary'
           }`}
@@ -134,25 +132,15 @@ export const ActionTile: React.FC<ActionTileProps> = ({
           {icon}
         </View>
 
-        {/* Center: Balanced Label and Subtitle */}
+        {/* Centered Label */}
         <View className="w-full items-center justify-center px-0.5">
           <Text
             numberOfLines={2}
-            style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 13.5, lineHeight: 18 } : undefined}
-            className="text-[12.5px] font-bold font-sans text-foreground text-center leading-[16px] tracking-tight"
+            style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 11, lineHeight: 14 } : undefined}
+            className="text-[10.5px] font-semibold font-sans text-foreground text-center leading-[13px] tracking-tight"
           >
             {translatedLabel}
           </Text>
-
-          {translatedSubtitle ? (
-            <Text
-              numberOfLines={1}
-              style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 12, lineHeight: 16 } : undefined}
-              className="text-[11px] font-medium font-sans text-muted-foreground text-center leading-[14px] mt-0.5"
-            >
-              {translatedSubtitle}
-            </Text>
-          ) : null}
         </View>
       </AnimatedPressable>
     </View>
@@ -160,4 +148,3 @@ export const ActionTile: React.FC<ActionTileProps> = ({
 };
 
 export default ActionTile;
-

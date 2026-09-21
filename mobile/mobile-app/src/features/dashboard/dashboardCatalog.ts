@@ -69,25 +69,30 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
 
 export const REAL_APP_FEATURES = ALL_AVAILABLE_FEATURES;
 
-export const DEFAULT_6_QUICK_ACTIONS = [
+export const DEFAULT_8_QUICK_ACTIONS = [
   'visitor_resident_passes',
-  'billing_dashboard',
-  'complaints_track_requests',
-  'amenities_discover',
-  'notices_active_board',
   'visitor_gate_pass',
+  'billing_dashboard',
+  'billing_my_dues',
+  'amenities_discover',
+  'amenities_my_booking',
+  'notices_active_board',
+  'complaints_track_requests',
 ];
 
-export const DEFAULT_5_QUICK_ACTIONS = DEFAULT_6_QUICK_ACTIONS;
+export const DEFAULT_6_QUICK_ACTIONS = DEFAULT_8_QUICK_ACTIONS;
+export const DEFAULT_5_QUICK_ACTIONS = DEFAULT_8_QUICK_ACTIONS;
 
 export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
   admin: [
     'visitor_admin_dashboard',
     'billing_action_center',
     'admin_users',
+    'admin_villas',
     'amenities_dashboard',
     'notices_dashboard',
-    'admin_villas',
+    'complaints_complaint_management',
+    'admin_workspace_settings',
   ],
   guard: [
     'visitor_gate_console',
@@ -96,14 +101,18 @@ export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
     'complaints_track_requests',
     'complaints_raise_ticket',
     'amenities_security_logs',
+    'visitor_admin_logs',
+    'visitor_blacklist',
   ],
   resident: [
     'visitor_resident_passes',
-    'billing_dashboard',
-    'complaints_track_requests',
-    'amenities_discover',
-    'notices_active_board',
     'visitor_gate_pass',
+    'billing_dashboard',
+    'billing_my_dues',
+    'amenities_discover',
+    'amenities_my_booking',
+    'notices_active_board',
+    'complaints_track_requests',
   ],
 };
 
@@ -134,4 +143,3 @@ export const getRoleDefaultQuickActions = (user: any): string[] => {
 };
 
 export { isFeatureAllowedForUser } from '@/src/utils/rbac';
-
