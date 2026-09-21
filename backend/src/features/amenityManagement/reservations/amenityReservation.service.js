@@ -1011,6 +1011,144 @@ export class AmenityReservationService {
   async listReservations(queryParams) {
     return amenityReservationRepository.findWithPagination(queryParams);
   }
+
+  /**
+   * Resolves whether a user has administrative scope for amenity operations based on permissions.
+   *
+   * @param {object} user - The authenticated user object from req.user
+   * @param {string[]} requiredPermissions - Required permission strings
+   * @returns {Promise<boolean>}
+   */
+  async checkAmenityAdminScope(user, requiredPermissions = ['amenities:admin_calander', 'amenities:manage_bookings', 'amenities:scanner']) {
+    if (!user) return false;
+
+    // Platform and Organization-level super admins bypass permission checks
+    if (
+      user.isPlatform ||
+      user.isPlatformSuperAdmin ||
+      ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(user.role)
+    ) {
+      return true;
+    }
+
+    try {
+      const { mapPermission } = await import('../../../utils/permissionMapper.js');
+      const normalizedRequired = requiredPermissions.map(mapPermission);
+
+      // If user payload directly carries permissions (e.g., in JWT claims or mocks)
+      if (Array.isArray(user.permissions)) {
+        if (user.permissions.includes('*')) return true;
+        const userPerms = user.permissions.map(mapPermission);
+        if (normalizedRequired.some((reqPerm) => userPerms.includes(reqPerm))) {
+          return true;
+        }
+      }
+
+      // Dynamically resolve permissions from database via RBAC engine
+      const { getPermissionsForUser } = await import('../../../middlewares/rbac.middleware.js');
+      const normalizedUser = {
+        ...user,
+        id: user.id || user._id,
+      };
+      const permissions = await getPermissionsForUser(normalizedUser);
+      if (Array.isArray(permissions)) {
+        if (permissions.includes('*')) return true;
+        const userPerms = permissions.map(mapPermission);
+        return normalizedRequired.some((reqPerm) => userPerms.includes(reqPerm));
+      }
+    } catch (err) {
+      // Non-blocking fallback
+    }
+
+    return false;
+  }
+
+  /**
+   * Evaluates whether an authenticated user is authorized to view or access a reservation.
+   * Access is granted to:
+   * 1. Users with administrative/staff amenity permissions.
+   * 2. The primary resident who booked the reservation (reservation.residentId).
+   * 3. Household members (family members, co-residents, owners) sharing the same unit (reservation.unitId).
+   *
+   * @param {Object} user - The authenticated user object (from req.user)
+   * @param {Object} reservation - The target reservation document
+   * @returns {Promise<boolean>}
+   */
+  async canUserAccessReservation(user, reservation) {
+    if (!user || !reservation) return false;
+
+    const userId = (user.id || user._id)?.toString();
+    if (!userId) return false;
+
+    // 1. Direct creator/owner of the reservation
+    const resResidentId = (reservation.residentId?._id || reservation.residentId)?.toString();
+    if (resResidentId && resResidentId === userId) {
+      return true;
+    }
+
+    // 2. Admin / Staff scope
+    const hasAdminScope = await this.checkAmenityAdminScope(user, [
+      'amenities:admin_calander',
+      'amenities:manage_bookings',
+      'amenities:scanner',
+    ]);
+    if (hasAdminScope) {
+      return true;
+    }
+
+    // 3. Family member or co-resident in the same unit
+    const resUnitId = (reservation.unitId?._id || reservation.unitId)?.toString();
+    if (resUnitId) {
+      // Direct JWT/session token check
+      const userVillaId = (user.villaId || user.unitId)?.toString();
+      if (userVillaId && userVillaId === resUnitId) {
+        return true;
+      }
+
+      if (Array.isArray(user.accessibleUnits)) {
+        const hasUnitAccess = user.accessibleUnits.some(
+          (u) => (u.villaId || u._id || u.id)?.toString() === resUnitId
+        );
+        if (hasUnitAccess) return true;
+      }
+
+      // Check database User record via userService
+      try {
+        const userService = (await import('../../user/user.services.js')).default;
+        const userDoc = await userService.getUserById(userId);
+        if (userDoc?.villaId && userDoc.villaId.toString() === resUnitId) {
+          return true;
+        }
+      } catch (err) {
+        // Non-blocking fallback
+      }
+
+      // Check database Villa record residents array via villaService
+      try {
+        const villaService = (await import('../../villa/villa.services.js')).default;
+        const orgId = reservation.orgId || user.orgId;
+        const villa = await villaService.getUnitById(reservation.unitId, orgId);
+        if (villa) {
+          if (
+            villa.primaryResidentId?.toString() === userId ||
+            villa.ownerId?.toString() === userId
+          ) {
+            return true;
+          }
+          if (Array.isArray(villa.residents)) {
+            const isResident = villa.residents.some(
+              (r) => (r.userId?._id || r.userId)?.toString() === userId
+            );
+            if (isResident) return true;
+          }
+        }
+      } catch (err) {
+        // Non-blocking fallback
+      }
+    }
+
+    return false;
+  }
 }
 
 export const amenityReservationService = new AmenityReservationService();

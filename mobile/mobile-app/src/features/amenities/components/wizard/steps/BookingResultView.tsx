@@ -17,6 +17,15 @@ import {
   AmenityReservation,
   AmenityAccessPass,
 } from '../../../types/amenityDomain.types';
+import {
+  formatApprovalStatusLabel,
+  formatAccessStatusLabel,
+  formatCompletionStatusLabel,
+  formatBookingStatusLabel,
+  formatPaymentStatusLabel,
+  formatReservationDate,
+  formatReservationTimeRange,
+} from '../../../utils/amenityStateHelpers';
 import { CheckCircle2, AlertCircle, Clock, QrCode } from 'lucide-react-native';
 
 export interface BookingResultViewProps {
@@ -126,7 +135,7 @@ export function BookingResultView({
           label="Booking Status"
           value={
             <StatusBadge
-              label={reservation.bookingStatus}
+              label={formatBookingStatusLabel(reservation.bookingStatus)}
               variant={isConfirmed ? 'success' : isPendingApproval ? 'warning' : 'danger'}
             />
           }
@@ -135,7 +144,7 @@ export function BookingResultView({
           label="Payment Status"
           value={
             <StatusBadge
-              label={reservation.paymentStatus}
+              label={formatPaymentStatusLabel(reservation.paymentStatus)}
               variant={
                 reservation.paymentStatus === 'PAID' || reservation.paymentStatus === 'NOT_REQUIRED'
                   ? 'success'
@@ -150,7 +159,7 @@ export function BookingResultView({
           label="Approval Status"
           value={
             <StatusBadge
-              label={reservation.approvalStatus}
+              label={formatApprovalStatusLabel(reservation.approvalStatus)}
               variant={
                 reservation.approvalStatus === 'APPROVED' ||
                 reservation.approvalStatus === 'NOT_REQUIRED'
@@ -166,7 +175,7 @@ export function BookingResultView({
           label="Access Status"
           value={
             <StatusBadge
-              label={reservation.accessStatus}
+              label={formatAccessStatusLabel(reservation.accessStatus)}
               variant={
                 reservation.accessStatus === 'PASS_GENERATED' ||
                 reservation.accessStatus === 'CHECKED_IN'
@@ -182,7 +191,7 @@ export function BookingResultView({
           label="Completion Status"
           value={
             <StatusBadge
-              label={reservation.completionStatus}
+              label={formatCompletionStatusLabel(reservation.completionStatus)}
               variant={
                 reservation.completionStatus === 'COMPLETED'
                   ? 'success'
@@ -193,15 +202,45 @@ export function BookingResultView({
               }
             />
           }
+          isLast
         />
       </DetailSection>
 
       {/* Booking Summary */}
       <DetailSection title="Booking Details" className="border border-border bg-card">
         <DetailRow label="Facility" value={facility.name} />
+        {reservation.reservationNumber ? (
+          <DetailRow label="Reservation #" value={reservation.reservationNumber} />
+        ) : null}
+        {formatReservationDate(
+          reservation.startDateTime || (reservation as any).effectiveStartDateTime,
+          facility.timezone || reservation.facilityTimezone || 'Asia/Kolkata'
+        ) ? (
+          <DetailRow
+            label="Date"
+            value={formatReservationDate(
+              reservation.startDateTime || (reservation as any).effectiveStartDateTime,
+              facility.timezone || reservation.facilityTimezone || 'Asia/Kolkata'
+            )}
+          />
+        ) : null}
+        {formatReservationTimeRange(
+          reservation.startDateTime || (reservation as any).effectiveStartDateTime,
+          reservation.endDateTime || (reservation as any).effectiveEndDateTime,
+          facility.timezone || reservation.facilityTimezone || 'Asia/Kolkata'
+        ) ? (
+          <DetailRow
+            label="Time"
+            value={formatReservationTimeRange(
+              reservation.startDateTime || (reservation as any).effectiveStartDateTime,
+              reservation.endDateTime || (reservation as any).effectiveEndDateTime,
+              facility.timezone || reservation.facilityTimezone || 'Asia/Kolkata'
+            )}
+          />
+        ) : null}
         <DetailRow label="Headcount" value={String(reservation.headcount || 1)} />
         {reservation.paymentReference ? (
-          <DetailRow label="Payment Ref" value={reservation.paymentReference} />
+          <DetailRow label="Payment Ref" value={reservation.paymentReference} isLast />
         ) : null}
       </DetailSection>
 
@@ -211,8 +250,14 @@ export function BookingResultView({
           <Text className="font-bold text-base text-primary-foreground">View My Bookings</Text>
         </Button>
 
-        <Button variant="outline" onPress={onDone} className="h-12 w-full rounded-xl">
-          <Text className="font-semibold text-foreground">Done</Text>
+        <Button
+          variant="outline"
+          onPress={onDone}
+          className="h-12 w-full rounded-xl"
+          accessibilityRole="button"
+          accessibilityLabel="Close and return to front page"
+        >
+          <Text className="font-semibold text-foreground">Close</Text>
         </Button>
       </View>
     </ScrollView>

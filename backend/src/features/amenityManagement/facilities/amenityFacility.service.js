@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import HttpError from '../../../utils/httpError.utils.js';
 import amenityFacilityRepository from './amenityFacility.repository.js';
 import amenityResourceService from '../resources/amenityResource.service.js';
@@ -5,6 +6,61 @@ import amenityReservationService from '../reservations/amenityReservation.servic
 import amenityManagementEvents, { AMENITY_EVENTS } from '../amenityManagement.events.js';
 import amenityOutboxEventRepository from '../outbox/amenityOutboxEvent.repository.js';
 import { withTransactionRetry } from '../domain/concurrency/transaction.utils.js';
+
+function toLegacyAmenityDoc(f) {
+  const pConfig = f.pricingConfig || {};
+  return {
+    _id: f._id,
+    orgId: f.orgId,
+    name: f.name,
+    description: f.description || '',
+    type:
+      f.archetype === 'EXCLUSIVE_HOURLY'
+        ? 'sports'
+        : f.archetype === 'SHARED_CAPACITY'
+          ? 'pool'
+          : f.archetype === 'EVENT_SPACE'
+            ? 'hall'
+            : 'general',
+    category: f.category || 'General',
+    archetype: f.archetype,
+    code: f.code,
+    location: f.location || '',
+    pricing: {
+      baseRate: pConfig.baseRate || 0,
+      pricingType: (pConfig.pricingType || 'FREE').toLowerCase(),
+      peakRateMultiplier: 1,
+      weekendRateMultiplier: 1,
+      holidayRateMultiplier: 1,
+      securityDeposit: pConfig.securityDeposit || 0,
+      securityDepositDescription:
+        (pConfig.securityDeposit || 0) > 0 ? 'Refundable deposit against equipment damages.' : null,
+      taxPercentage: pConfig.taxPercentage || 0,
+      cancellationChargePercentage: 0,
+      dynamicPricingEnabled: false,
+    },
+    openDays: [0, 1, 2, 3, 4, 5, 6],
+    capacity: f.maxCapacity || 1,
+    bookingRules: {
+      slotDurationMinutes: f.slotDurationMinutes || 60,
+      bufferTimeMinutes: f.setupBufferMinutes || 10,
+      openTime: f.operatingHours?.[0]?.openTime || '06:00',
+      closeTime: f.operatingHours?.[0]?.closeTime || '22:00',
+      maxBookingsPerUserPerSlot: f.maxHeadcountPerReservation || 2,
+      advanceBookingDays: f.advanceBookingDays || 7,
+      minAdvanceBookingHours: 1,
+      isCancellationEnabled: f.cancellationPolicy?.isAllowed !== false,
+      holidayCalendarIds: [],
+      weeklyOffDays: [],
+      cancellationRefundRules: [],
+    },
+    status: (f.status || 'ACTIVE').toLowerCase(),
+    isDeleted: Boolean(f.isDeleted),
+    maintenanceSchedules: [],
+    createdAt: f.createdAt || new Date(),
+    updatedAt: f.updatedAt || new Date(),
+  };
+}
 
 export class AmenityFacilityService {
   /**
@@ -168,6 +224,16 @@ export class AmenityFacilityService {
       amenityManagementEvents.emit(AMENITY_EVENTS.FACILITY_CREATED, facility);
       if (!isDraft) {
         amenityManagementEvents.emit(AMENITY_EVENTS.FACILITY_PUBLISHED, facility);
+      }
+      try {
+        const legacyDoc = toLegacyAmenityDoc(facility);
+        await mongoose.connection.db.collection('amenities').updateOne(
+          { _id: facility._id },
+          { $set: legacyDoc },
+          { upsert: true }
+        );
+      } catch (legacyErr) {
+        // Safe non-blocking sync
       }
 
       return facility;
@@ -367,6 +433,16 @@ export class AmenityFacilityService {
         }
       }
 
+      try {
+        const legacyDoc = toLegacyAmenityDoc(updated);
+        await mongoose.connection.db.collection('amenities').updateOne(
+          { _id: updated._id },
+          { $set: legacyDoc }
+        );
+      } catch (legacyErr) {
+        // Safe non-blocking sync
+      }
+
       return updated;
     };
 
@@ -393,6 +469,15 @@ export class AmenityFacilityService {
       const resources = await amenityResourceService.getResourcesByFacilityId(facilityId, orgId, trxSession);
       for (const res of resources) {
         await amenityResourceService.softDeleteResource(res._id, orgId, trxSession);
+      }
+
+      try {
+        await mongoose.connection.db.collection('amenities').updateOne(
+          { _id: deleted._id },
+          { $set: { isDeleted: true, status: 'inactive' } }
+        );
+      } catch (legacyErr) {
+        // Safe non-blocking sync
       }
 
       return deleted;

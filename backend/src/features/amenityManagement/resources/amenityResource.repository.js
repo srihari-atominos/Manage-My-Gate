@@ -22,7 +22,7 @@ export class AmenityResourceRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(resourceId, orgId, session) {
-    const filter = { _id: resourceId, isDeleted: false };
+    const filter = { _id: resourceId, isDeleted: { $ne: true } };
     if (orgId) filter.orgId = orgId;
     return AmenityResource.findOne(filter).session(getValidSession(session));
   }
@@ -37,8 +37,8 @@ export class AmenityResourceRepository {
     return AmenityResource.find({
       facilityId,
       orgId,
-      isActive: true,
-      isDeleted: false,
+      isActive: { $ne: false },
+      isDeleted: { $ne: true },
     }).session(getValidSession(session));
   }
 
@@ -52,7 +52,7 @@ export class AmenityResourceRepository {
     return AmenityResource.find({
       facilityId,
       orgId,
-      isDeleted: false,
+      isDeleted: { $ne: true },
     }).session(getValidSession(session));
   }
 
@@ -106,7 +106,7 @@ export class AmenityResourceRepository {
   async findWithPagination({ orgId, facilityId, isActive, isSerializedAsset, page = 1, limit = 10 }) {
     const match = {
       orgId: new mongoose.Types.ObjectId(orgId),
-      isDeleted: false,
+      isDeleted: { $ne: true },
     };
 
     if (facilityId) match.facilityId = new mongoose.Types.ObjectId(facilityId);

@@ -453,6 +453,8 @@ export const fetchReservationsThunk = createAsyncThunk(
       page?: number;
       limit?: number;
       facilityId?: string;
+      resourceId?: string;
+      residentId?: string;
       bookingStatus?: string;
       paymentStatus?: string;
       unitId?: string;

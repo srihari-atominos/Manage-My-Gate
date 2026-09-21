@@ -54,6 +54,11 @@ const amenityAccessPassSchema = new mongoose.Schema(
       required: [true, 'Pass token hash is required'],
       trim: true,
     },
+    qrData: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     validFrom: {
       type: Date,
       required: [true, 'Valid from datetime is required'],

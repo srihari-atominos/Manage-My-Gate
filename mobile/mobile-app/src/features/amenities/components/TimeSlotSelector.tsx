@@ -4,6 +4,7 @@ import { Clock, Check } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { AmenitySlot } from '../store/amenitySlice';
+import { formatTo12Hour } from '../utils/amenityStateHelpers';
 import { cn } from '@/lib/utils';
 
 export interface TimeSlotSelectorProps {
@@ -147,7 +148,7 @@ export function TimeSlotSelector({
                       : 'text-foreground'
                   )}
                 >
-                  {slotStartTime}
+                  {formatTo12Hour(slotStartTime)}
                 </Text>
 
                 {isSelected && (
@@ -165,7 +166,7 @@ export function TimeSlotSelector({
                     !isAvailable ? 'text-muted-foreground/60' : 'text-muted-foreground'
                   )}
                 >
-                  {slotEndTime}
+                  {formatTo12Hour(slotEndTime)}
                 </Text>
                 <Text
                   className={cn(

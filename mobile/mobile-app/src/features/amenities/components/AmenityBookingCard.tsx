@@ -5,6 +5,7 @@ import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { AmenityBooking } from '../store/amenityBookingSlice';
+import { formatTimeRange12Hour } from '../utils/amenityStateHelpers';
 
 export interface AmenityBookingCardProps {
   booking: AmenityBooking;
@@ -122,8 +123,10 @@ export function AmenityBookingCard({
   const timeWindowSubtitle = [
     booking?.date,
     booking?.startTime && booking?.endTime
-      ? `${booking.startTime} - ${booking.endTime}`
-      : booking?.startTime || booking?.endTime || '',
+      ? formatTimeRange12Hour(booking.startTime, booking.endTime)
+      : booking?.startTime || booking?.endTime
+      ? formatTimeRange12Hour(booking?.startTime || booking?.endTime)
+      : '',
   ].filter(Boolean).join(' • ');
 
   return (

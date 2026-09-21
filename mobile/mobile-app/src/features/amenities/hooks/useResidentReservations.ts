@@ -20,6 +20,7 @@ import {
   fetchPassesByReservationThunk,
   clearV2Errors,
 } from '../store/amenityBookingSlice';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 export const RESERVATION_FILTER_TABS = [
   'All',
@@ -35,6 +36,7 @@ export interface ReservationFilterParams {
   limit?: number;
   facilityId?: string;
   resourceId?: string;
+  residentId?: string;
   unitId?: string;
   bookingStatus?: string;
   paymentStatus?: string;
@@ -45,6 +47,8 @@ export interface ReservationFilterParams {
 
 export function useResidentReservations(initialParams: ReservationFilterParams = {}) {
   const dispatch = useDispatch<AppDispatch>();
+  const { user } = useAuth();
+  const userId = user?.id || (user as any)?._id;
 
   const [selectedTab, setSelectedTab] = useState<ReservationFilterTab>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -65,10 +69,14 @@ export function useResidentReservations(initialParams: ReservationFilterParams =
   // Fetch reservations with server-side pagination & filters
   const loadReservations = useCallback(
     async (params?: ReservationFilterParams) => {
-      const mergedParams = { ...backendFilters, ...params };
+      const mergedParams = {
+        residentId: userId,
+        ...backendFilters,
+        ...params,
+      };
       return await dispatch(fetchReservationsThunk(mergedParams)).unwrap();
     },
-    [dispatch, backendFilters]
+    [dispatch, backendFilters, userId]
   );
 
   // Initial load

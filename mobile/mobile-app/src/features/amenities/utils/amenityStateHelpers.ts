@@ -138,37 +138,206 @@ export const convertLocalToUtcIso = (
  * Formats a UTC ISO datetime string into human-friendly local date and time display components.
  */
 export const formatUtcToLocalDisplay = (
-  utcIso: string,
+  utcIso: string | Date | null | undefined,
   timezone?: string
-): { dateStr: string; timeStr: string; formatted: string } => {
-  if (!utcIso) return { dateStr: '', timeStr: '', formatted: '' };
+): { dateStr: string; timeStr: string; formatted: string; humanDate: string } => {
+  if (!utcIso) return { dateStr: '', timeStr: '', formatted: '', humanDate: '' };
 
   try {
-    const d = new Date(utcIso);
-    if (isNaN(d.getTime())) {
-      return { dateStr: '', timeStr: '', formatted: '' };
+    const d = typeof utcIso === 'string' ? new Date(utcIso) : utcIso;
+    if (!d || isNaN(d.getTime())) {
+      return { dateStr: '', timeStr: '', formatted: '', humanDate: '' };
     }
 
-    const options: Intl.DateTimeFormatOptions = {
-      timeZone: timezone || 'UTC',
+    const tz = timezone || 'UTC';
+
+    // Format YYYY-MM-DD in the target timezone (en-CA produces standard ISO-like date)
+    const datePart = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
+    }).format(d);
+
+    // Format 24-hour HH:mm in the target timezone
+    const timePart = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
-    };
+    }).format(d);
 
-    // If Intl is available, format with specified timezone; fallback to UTC
-    const datePart = d.toISOString().substring(0, 10);
-    const timePart = d.toISOString().substring(11, 16);
+    // Human-friendly date e.g. "17 Sep 2026"
+    const humanDate = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(d);
 
     return {
       dateStr: datePart,
       timeStr: timePart,
       formatted: `${datePart} ${timePart}`,
+      humanDate,
     };
   } catch (err) {
-    return { dateStr: '', timeStr: '', formatted: '' };
+    return { dateStr: '', timeStr: '', formatted: '', humanDate: '' };
   }
 };
+
+/**
+ * Formats a reservation's start datetime into clean Indian date display (e.g. "17 Sep 2026").
+ */
+export const formatReservationDate = (
+  utcIso?: string | Date | null,
+  timezone: string = 'Asia/Kolkata'
+): string => {
+  if (!utcIso) return '';
+  const res = formatUtcToLocalDisplay(utcIso, timezone);
+  return res.humanDate || res.dateStr || '';
+};
+
+/**
+ * Formats a reservation's start and end datetimes into Indian 12-hour time range (e.g. "3:00 PM - 4:00 PM").
+ */
+export const formatReservationTimeRange = (
+  startIso?: string | Date | null,
+  endIso?: string | Date | null,
+  timezone: string = 'Asia/Kolkata'
+): string => {
+  if (!startIso && !endIso) return '';
+  const startRes = formatUtcToLocalDisplay(startIso, timezone);
+  const endRes = formatUtcToLocalDisplay(endIso, timezone);
+  return formatTimeRange12Hour(startRes.timeStr, endRes.timeStr);
+};
+
+/**
+ * Formats a 24-hour time string ("HH:mm") into 12-hour Indian format (e.g., "12:00 PM", "1:00 PM", "2:00 PM").
+ */
+export const formatTo12Hour = (timeStr: string): string => {
+  if (!timeStr || typeof timeStr !== 'string') return '';
+  // If already in 12-hour format, return trimmed
+  if (/am|pm/i.test(timeStr)) return timeStr.trim();
+
+  const [hStr, mStr = '00'] = timeStr.split(':');
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h)) return timeStr;
+
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  const minutePad = isNaN(m) ? '00' : String(m).padStart(2, '0');
+
+  return `${hour12}:${minutePad} ${period}`;
+};
+
+/**
+ * Formats a start and end time string pair into 12-hour Indian timing range (e.g., "12:00 PM - 1:00 PM").
+ */
+export const formatTimeRange12Hour = (startStr?: string, endStr?: string): string => {
+  if (!startStr && !endStr) return '';
+  if (!startStr) return formatTo12Hour(endStr || '');
+  if (!endStr) return formatTo12Hour(startStr);
+  return `${formatTo12Hour(startStr)} - ${formatTo12Hour(endStr)}`;
+};
+
+/**
+ * Maps raw backend approval status enums to friendly resident UI display labels.
+ * Converts 'NOT_REQUIRED' to 'Auto-Approved'.
+ */
+export const formatApprovalStatusLabel = (status?: string): string => {
+  switch (status) {
+    case 'NOT_REQUIRED':
+      return 'Auto-Approved';
+    case 'APPROVED':
+      return 'Approved';
+    case 'PENDING_REVIEW':
+      return 'Awaiting Approval';
+    case 'REJECTED':
+      return 'Rejected';
+    default:
+      return status ? status.replace(/_/g, ' ') : '';
+  }
+};
+
+/**
+ * Maps raw backend access status enums to friendly resident UI display labels.
+ */
+export const formatAccessStatusLabel = (status?: string): string => {
+  switch (status) {
+    case 'PASS_GENERATED':
+      return 'Pass Ready';
+    case 'CHECKED_IN':
+      return 'Checked In';
+    case 'CHECKED_OUT':
+      return 'Checked Out';
+    case 'NOT_APPLICABLE':
+      return 'Not Required';
+    case 'ACCESS_REVOKED':
+      return 'Revoked';
+    default:
+      return status ? status.replace(/_/g, ' ') : '';
+  }
+};
+
+/**
+ * Maps raw backend completion status enums to friendly resident UI display labels.
+ */
+export const formatCompletionStatusLabel = (status?: string): string => {
+  switch (status) {
+    case 'PENDING':
+      return 'Upcoming';
+    case 'COMPLETED':
+      return 'Completed';
+    case 'NO_SHOW':
+      return 'No Show';
+    case 'ABANDONED':
+      return 'Expired';
+    default:
+      return status ? status.replace(/_/g, ' ') : '';
+  }
+};
+
+/**
+ * Maps raw backend booking status enums to friendly resident UI display labels.
+ */
+export const formatBookingStatusLabel = (status?: string): string => {
+  switch (status) {
+    case 'CONFIRMED':
+      return 'Confirmed';
+    case 'PENDING_APPROVAL':
+      return 'Pending Review';
+    case 'CANCELLED':
+      return 'Cancelled';
+    case 'REJECTED':
+      return 'Rejected';
+    default:
+      return status ? status.replace(/_/g, ' ') : '';
+  }
+};
+
+/**
+ * Maps raw backend payment status enums to friendly resident UI display labels.
+ */
+export const formatPaymentStatusLabel = (status?: string): string => {
+  switch (status) {
+    case 'NOT_REQUIRED':
+      return 'Free';
+    case 'PAID':
+      return 'Paid';
+    case 'PENDING':
+      return 'Payment Due';
+    case 'HELD_AUTHORIZED':
+      return 'Reserved';
+    case 'REFUNDED':
+      return 'Refunded';
+    case 'REFUND_PENDING':
+      return 'Refund In Progress';
+    case 'FAILED':
+      return 'Payment Failed';
+    default:
+      return status ? status.replace(/_/g, ' ') : '';
+  }
+};
+

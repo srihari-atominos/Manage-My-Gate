@@ -547,7 +547,8 @@ describe('Amenity Management V2 — Phase 3A RBAC & Authorization Verification S
       const body = await res.json();
       assert.equal(body.success, true);
       assert.equal(body.data._id, residentAReservationId);
-      assert.equal(body.data.residentId, residentAUser._id.toString());
+      const resResidentId = (body.data.residentId?._id || body.data.residentId)?.toString();
+      assert.equal(resResidentId, residentAUser._id.toString());
     });
 
     it('Facility Manager should view Resident B reservation by sequential number', async () => {
@@ -642,7 +643,8 @@ describe('Amenity Management V2 — Phase 3A RBAC & Authorization Verification S
 
       // All returned records must belong to residentA
       for (const item of body.data.data) {
-        assert.equal(item.residentId, residentAUser._id.toString());
+        const itemResidentId = (item.residentId?._id || item.residentId)?.toString();
+        assert.equal(itemResidentId, residentAUser._id.toString());
       }
     });
 
@@ -660,7 +662,8 @@ describe('Amenity Management V2 — Phase 3A RBAC & Authorization Verification S
 
       // Must be forced to Resident A, so Resident B records are NEVER returned
       for (const item of body.data.data) {
-        assert.equal(item.residentId, residentAUser._id.toString());
+        const itemResidentId = (item.residentId?._id || item.residentId)?.toString();
+        assert.equal(itemResidentId, residentAUser._id.toString());
       }
     });
 

@@ -181,6 +181,10 @@ export interface AmenityReservation {
   unitId?: string;
   startDateTime: string; // UTC ISO string
   endDateTime: string; // UTC ISO string
+  effectiveStartDateTime?: string;
+  effectiveEndDateTime?: string;
+  requestedStartDateTime?: string;
+  requestedEndDateTime?: string;
   headcount: number;
   quantity: number;
   guests?: Array<{ name: string; phone?: string; email?: string }>;

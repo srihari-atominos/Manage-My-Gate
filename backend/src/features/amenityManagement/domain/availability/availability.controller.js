@@ -23,6 +23,29 @@ export class AvailabilityController {
       return next(error);
     }
   }
+
+  /**
+   * Evaluates and returns all bookable daily time slots for a facility on a date.
+   * Excludes past slots and slots already booked or held.
+   */
+  async getDailySlots(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const { facilityId, resourceId, date, requestedQuantity } = req.query;
+
+      const result = await availabilityService.getDailySlots({
+        orgId,
+        facilityId,
+        resourceId: resourceId || null,
+        dateStr: date,
+        requestedQuantity: Number(requestedQuantity) || 1,
+      });
+
+      return res.success(result, 'Daily slots retrieved successfully');
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 export const availabilityController = new AvailabilityController();

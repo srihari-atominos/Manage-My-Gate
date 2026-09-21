@@ -244,8 +244,19 @@ const amenityReservationSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: 'amenity_management_reservations',
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+// Virtual properties for backward and cross-layer compatibility
+amenityReservationSchema.virtual('startDateTime').get(function () {
+  return this.effectiveStartDateTime || this.requestedStartDateTime;
+});
+
+amenityReservationSchema.virtual('endDateTime').get(function () {
+  return this.effectiveEndDateTime || this.requestedEndDateTime;
+});
 
 // Indexes
 amenityReservationSchema.index(

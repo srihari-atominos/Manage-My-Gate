@@ -12,6 +12,7 @@ import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { AmenityFacility, AmenityResource, AmenityPricingSnapshot } from '../../../types/amenityDomain.types';
 import { getArchetypeMeta } from '../../../utils/amenityPresentation';
+import { formatTimeRange12Hour } from '../../../utils/amenityStateHelpers';
 import { ShieldCheck, Sparkles, AlertCircle } from 'lucide-react-native';
 
 export interface BookingReviewStepProps {
@@ -72,7 +73,7 @@ export function BookingReviewStep({
         <DetailRow label="Date" value={selectedDate} />
         <DetailRow
           label="Time Window"
-          value={`${startTime} - ${endTime} (${facility.timezone || 'Asia/Riyadh'})`}
+          value={`${formatTimeRange12Hour(startTime, endTime)} (${facility.timezone || 'Asia/Kolkata'})`}
         />
 
         <DetailRow

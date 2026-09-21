@@ -131,5 +131,16 @@ export default function AmenityBookingRoute() {
   }
 
   // ACTIVE Facility: Delegate to AmenityBookingWizard
-  return <AmenityBookingWizard facility={facility} onClose={() => router.back()} />;
+  return (
+    <AmenityBookingWizard
+      facility={facility}
+      onClose={() => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(resident)');
+        }
+      }}
+    />
+  );
 }

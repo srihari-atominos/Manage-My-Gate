@@ -11,7 +11,7 @@ import { mapPermission } from '../../../utils/permissionMapper.js';
  * @param {string[]} requiredPermissions - Required permission strings
  * @returns {Promise<boolean>} - True if user has administrative scope, false if resident-restricted
  */
-const checkAmenityAdminScope = async (user, requiredPermissions = ['amenities:amenities', 'amenities:admin_calander']) => {
+const checkAmenityAdminScope = async (user, requiredPermissions = ['amenities:admin_calander', 'amenities:manage_bookings']) => {
   if (!user) return false;
 
   // Platform and Organization-level super admins bypass permission checks
@@ -103,7 +103,7 @@ export class AmenityReservationController {
       const { reservationId } = req.params;
       const orgId = req.tenant.orgId;
       const userId = req.user.id || req.user._id;
-      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:amenities']);
+      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:admin_calander', 'amenities:manage_bookings']);
       const { reason } = req.body;
 
       const reservation = await amenityReservationService.getReservationById(reservationId);
@@ -111,7 +111,8 @@ export class AmenityReservationController {
         throw new HttpError(404, 'Reservation not found');
       }
 
-      if (!hasAdminScope && reservation.residentId.toString() !== userId.toString()) {
+      const isAuthorized = await amenityReservationService.canUserAccessReservation(req.user, reservation);
+      if (!isAuthorized) {
         throw new HttpError(403, 'Forbidden. You do not have permission to cancel this reservation.');
       }
 
@@ -166,7 +167,7 @@ export class AmenityReservationController {
       const limit = Math.min(100, Number(req.query.limit) || 10);
 
       // Check if user is administrative or resident-restricted
-      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:admin_calander', 'amenities:amenities']);
+      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:admin_calander', 'amenities:manage_bookings']);
       let effectiveResidentId = req.query.residentId;
       if (!hasAdminScope) {
         effectiveResidentId = req.user.id || req.user._id;
@@ -201,15 +202,14 @@ export class AmenityReservationController {
     try {
       const { reservationId } = req.params;
       const orgId = req.tenant.orgId;
-      const userId = req.user.id || req.user._id;
-      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:admin_calander', 'amenities:amenities']);
 
       const reservation = await amenityReservationService.getReservationById(reservationId);
       if (!reservation || reservation.orgId.toString() !== orgId.toString()) {
         throw new HttpError(404, 'Reservation not found');
       }
 
-      if (!hasAdminScope && reservation.residentId.toString() !== userId.toString()) {
+      const isAuthorized = await amenityReservationService.canUserAccessReservation(req.user, reservation);
+      if (!isAuthorized) {
         throw new HttpError(403, 'Forbidden. You do not have permission to view this reservation.');
       }
 
@@ -226,15 +226,14 @@ export class AmenityReservationController {
     try {
       const { reservationNumber } = req.params;
       const orgId = req.tenant.orgId;
-      const userId = req.user.id || req.user._id;
-      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:admin_calander', 'amenities:amenities']);
 
       const reservation = await amenityReservationService.getReservationByNumber(orgId, reservationNumber);
       if (!reservation) {
         throw new HttpError(404, 'Reservation not found');
       }
 
-      if (!hasAdminScope && reservation.residentId.toString() !== userId.toString()) {
+      const isAuthorized = await amenityReservationService.canUserAccessReservation(req.user, reservation);
+      if (!isAuthorized) {
         throw new HttpError(403, 'Forbidden. You do not have permission to view this reservation.');
       }
 

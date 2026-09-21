@@ -143,8 +143,8 @@ export const normalizeFacilityFromApi = (raw: ApiAmenityFacility | any): Amenity
     : [];
 
   return {
-    _id: raw._id,
-    orgId: raw.orgId,
+    _id: raw._id || raw.id,
+    orgId: raw.orgId || raw.organizationId,
     code: raw.code,
     name: raw.name,
     description: raw.description,
@@ -184,20 +184,20 @@ export const normalizeFacilityFromApi = (raw: ApiAmenityFacility | any): Amenity
   };
 };
 
-export const normalizeResourceFromApi = (raw: ApiAmenityResource): AmenityResource => {
+export const normalizeResourceFromApi = (raw: ApiAmenityResource | any): AmenityResource => {
   return {
-    _id: raw._id,
-    orgId: raw.orgId,
-    facilityId: raw.facilityId,
+    _id: raw._id || raw.id,
+    orgId: raw.orgId || raw.organizationId,
+    facilityId: raw.facilityId || raw.facility_id,
     name: raw.name,
-    identifier: raw.identifier,
-    concurrencyVersion: raw.concurrencyVersion,
-    setupBufferMinutes: raw.setupBufferMinutes,
-    teardownBufferMinutes: raw.teardownBufferMinutes,
-    isSerializedAsset: raw.isSerializedAsset,
+    identifier: raw.identifier || raw.code,
+    concurrencyVersion: raw.concurrencyVersion ?? 0,
+    setupBufferMinutes: raw.setupBufferMinutes ?? 0,
+    teardownBufferMinutes: raw.teardownBufferMinutes ?? 0,
+    isSerializedAsset: Boolean(raw.isSerializedAsset),
     serialNumber: raw.serialNumber,
-    assetState: raw.assetState,
-    totalBulkStock: raw.totalBulkStock,
+    assetState: raw.assetState || 'AVAILABLE',
+    totalBulkStock: raw.totalBulkStock ?? 1,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };
@@ -272,8 +272,12 @@ export const normalizeReservationFromApi = (payload: any): AmenityReservation =>
     userId,
     userName,
     unitId: raw.unitId,
-    startDateTime: raw.startDateTime,
-    endDateTime: raw.endDateTime,
+    startDateTime: raw.startDateTime || raw.effectiveStartDateTime || raw.requestedStartDateTime || '',
+    endDateTime: raw.endDateTime || raw.effectiveEndDateTime || raw.requestedEndDateTime || '',
+    effectiveStartDateTime: raw.effectiveStartDateTime,
+    effectiveEndDateTime: raw.effectiveEndDateTime,
+    requestedStartDateTime: raw.requestedStartDateTime,
+    requestedEndDateTime: raw.requestedEndDateTime,
     headcount: raw.headcount,
     quantity: raw.quantity,
     guests: Array.isArray(raw.guests) ? [...raw.guests] : [],

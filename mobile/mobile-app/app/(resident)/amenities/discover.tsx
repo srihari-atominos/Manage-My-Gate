@@ -93,8 +93,11 @@ export default function DiscoverAmenitiesScreen() {
 
   const handleCardPress = async (facility: AmenityFacility) => {
     setPreviewFacility(facility);
+    const targetId = facility?._id || (facility as any)?.id;
     try {
-      await selectFacility(facility._id);
+      if (targetId) {
+        await selectFacility(String(targetId));
+      }
     } catch (e) {}
   };
 

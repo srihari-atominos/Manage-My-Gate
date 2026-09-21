@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import availabilityController from './availability.controller.js';
-import { checkAvailabilityRules } from './availability.validateRules.js';
+import { checkAvailabilityRules, getDailySlotsRules } from './availability.validateRules.js';
 import validate from '../../../../middlewares/validator.middleware.js';
 import isAuthenticated from '../../../../middlewares/auth.middleware.js';
 import tenantContext from '../../../../middlewares/tenant.middleware.js';
@@ -17,6 +17,14 @@ router.get(
   authorizePermission('amenities', ['amenities', 'discover', 'my_booking']),
   validate(checkAvailabilityRules),
   availabilityController.check
+);
+
+// GET /daily-slots - Get daily available slots
+router.get(
+  '/daily-slots',
+  authorizePermission('amenities', ['amenities', 'discover', 'my_booking']),
+  validate(getDailySlotsRules),
+  availabilityController.getDailySlots
 );
 
 export default router;

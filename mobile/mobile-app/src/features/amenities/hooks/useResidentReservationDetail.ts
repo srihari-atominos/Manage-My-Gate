@@ -97,9 +97,10 @@ export function useResidentReservationDetail(
 
   useEffect(() => {
     if (reservationId) {
+      dispatch(clearV2Errors() as unknown as AnyAction);
       loadData(reservationId);
     }
-  }, [reservationId, loadData]);
+  }, [reservationId, loadData, dispatch]);
 
   // Pull-to-refresh
   const refresh = useCallback(async () => {

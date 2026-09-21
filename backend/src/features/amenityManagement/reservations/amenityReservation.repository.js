@@ -154,6 +154,12 @@ export class AmenityReservationRepository {
             { $skip: skip },
             { $limit: limit },
             {
+              $addFields: {
+                startDateTime: { $ifNull: ['$effectiveStartDateTime', '$requestedStartDateTime'] },
+                endDateTime: { $ifNull: ['$effectiveEndDateTime', '$requestedEndDateTime'] },
+              },
+            },
+            {
               $lookup: {
                 from: 'amenity_management_facilities',
                 localField: 'facilityId',

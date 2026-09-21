@@ -7,6 +7,7 @@ import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { QRCodeView } from '@/components/ui/QRCodeView';
 import { AmenityBooking } from '../store/amenityBookingSlice';
+import { formatTimeRange12Hour } from '../utils/amenityStateHelpers';
 import { encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 export interface PassQRModalProps {
@@ -61,8 +62,10 @@ export function PassQRModal({ visible, onClose, booking }: PassQRModalProps) {
             label="Time Window"
             value={
               booking.startTime && booking.endTime
-                ? `${booking.startTime} - ${booking.endTime}`
-                : booking.startTime || booking.endTime || 'Full Day'
+                ? formatTimeRange12Hour(booking.startTime, booking.endTime)
+                : booking.startTime || booking.endTime
+                ? formatTimeRange12Hour(booking.startTime || booking.endTime)
+                : 'Full Day'
             }
             iconName="Clock"
           />

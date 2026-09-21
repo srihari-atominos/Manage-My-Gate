@@ -57,6 +57,7 @@ export class AmenityAccessPassService {
         reservationId,
         passType,
         passTokenHash,
+        qrData: rawToken,
         validFrom,
         validUntil,
       },
