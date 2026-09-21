@@ -30,7 +30,7 @@ export const AmenityBookingFlowFooter: React.FC<AmenityBookingFlowFooterProps> =
   isLastStep = false,
   isHoldStep = false,
   priceTotal,
-  currency = 'SAR',
+  currency = 'INR',
   loading = false,
   disabled = false,
 }) => {

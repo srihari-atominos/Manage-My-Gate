@@ -19,6 +19,7 @@ const statusVariantMap: Record<string, StatusVariant> = {
   scheduled: 'info',
   in_progress: 'warning',
   completed: 'success',
+  cancelled: 'danger',
 };
 
 export function MaintenanceTaskCard({
@@ -31,15 +32,43 @@ export function MaintenanceTaskCard({
   const statusRaw = (task.status || 'scheduled').toLowerCase();
   const isRecurring = Boolean(task.isRecurring || task.recurringSeriesId);
   const typeLabel = task.maintenanceType ? task.maintenanceType.toUpperCase() : 'CLEANING';
-  const formattedDates = `${task.startDate} to ${task.endDate}${
-    task.startTime ? ` • ${task.startTime} - ${task.endTime || ''}` : ''
-  }`;
+
+  const formatDateTime = (isoStr?: string) => {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleDateString('en-IN', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return isoStr;
+    }
+  };
+
+  const formattedDates =
+    task.startDateTime && task.endDateTime
+      ? `${formatDateTime(task.startDateTime)} – ${formatDateTime(task.endDateTime)}`
+      : (task as any).startDate && (task as any).endDate
+      ? `${(task as any).startDate} to ${(task as any).endDate}${
+          (task as any).startTime ? ` • ${(task as any).startTime} - ${(task as any).endTime || ''}` : ''
+        }`
+      : 'Scheduled Window';
+
+  const title = task.title || task.reason || 'Routine Maintenance';
+  const closureType = task.isCompleteClosure === false ? 'Partial Closure' : 'Full Closure';
+  const capacityInfo =
+    task.isCompleteClosure === false && task.degradedCapacity
+      ? ` (Cap: ${task.degradedCapacity})`
+      : '';
 
   return (
     <ListCard
       key={task._id}
-      title={`${task.amenityName || 'Facility'} • ${task.title}`}
-      subtitle={`Schedule: ${formattedDates} • ${typeLabel}${task.assignedStaff ? `\nStaff: ${task.assignedStaff}` : ''}`}
+      title={`${task.amenityName || 'Facility'} • ${title}`}
+      subtitle={`Schedule: ${formattedDates} • ${typeLabel}${closureType ? `\n${closureType}${capacityInfo}` : ''}${task.assignedStaff ? ` • Staff: ${task.assignedStaff}` : ''}`}
       backgroundImage={facilityImageUrl}
       leftIcon={isRecurring ? 'Repeat' : 'Wrench'}
       leftIconBgColor={facilityImageUrl ? 'rgba(255,255,255,0.2)' : isRecurring ? 'bg-primary/15' : 'bg-status-warning/15'}
@@ -54,27 +83,27 @@ export function MaintenanceTaskCard({
       className={cn('mb-3', className)}
     >
       <View className="flex-row justify-end gap-2 pt-2 border-t border-border/40 mt-1">
-        {onEdit && (
+        {onEdit && statusRaw !== 'cancelled' && statusRaw !== 'completed' && (
           <Button
             variant="outline"
             size="sm"
             onPress={() => onEdit(task)}
             className="py-1 px-3 border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20"
-            accessibilityLabel={`Edit maintenance task ${task.title}`}
+            accessibilityLabel={`Edit maintenance task ${title}`}
           >
             <Text className="text-blue-600 dark:text-blue-400 text-xs font-bold">Edit Task</Text>
           </Button>
         )}
 
-        {onDelete && (
+        {onDelete && statusRaw !== 'cancelled' && statusRaw !== 'completed' && (
           <Button
             variant="destructive"
             size="sm"
             onPress={() => onDelete(task)}
             className="py-1 px-3 bg-red-600 active:bg-red-700"
-            accessibilityLabel={`Delete maintenance task ${task.title}`}
+            accessibilityLabel={`Cancel maintenance task ${title}`}
           >
-            <Text className="text-white text-xs font-semibold">Delete</Text>
+            <Text className="text-white text-xs font-semibold">Cancel Block</Text>
           </Button>
         )}
       </View>

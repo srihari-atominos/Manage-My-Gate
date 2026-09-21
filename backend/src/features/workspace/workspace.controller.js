@@ -110,7 +110,7 @@ export class WorkspaceController {
       const { workspaceId, moduleId } = req.params;
       const { enabled } = req.body;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.user.orgId;
+      const orgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user.orgId;
       const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
       const data = await workspaceService.toggleModule(workspaceId, orgId, isPlatform, moduleId, enabled, actorId);
       res.success(data, 'Module toggled successfully');
@@ -233,7 +233,7 @@ export class WorkspaceController {
 
   async getCurrentModules(req, res, next) {
     try {
-      const orgId = req.user.orgId;
+      const orgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user.orgId;
       const actorId = req.user.id || req.user._id;
       const data = await workspaceService.getCurrentWorkspaceModules(orgId, actorId);
       res.success(data, 'Current workspace modules retrieved successfully');

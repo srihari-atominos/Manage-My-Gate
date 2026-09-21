@@ -20,7 +20,7 @@ router.use(isAuthenticated, tenantContext);
 // POST / - Create facility
 router.post(
   '/',
-  authorizePermission('amenities', 'amenities'),
+  authorizePermission('amenities', ['amenities', 'create']),
   validate(createFacilityRules),
   amenityFacilityController.create
 );
@@ -28,7 +28,7 @@ router.post(
 // GET / - List facilities with pagination
 router.get(
   '/',
-  authorizePermission('amenities', ['amenities', 'discover']),
+  authorizePermission('amenities', ['amenities', 'discover', 'read']),
   validate(listFacilitiesRules),
   amenityFacilityController.getAll
 );
@@ -36,7 +36,7 @@ router.get(
 // GET /code/:code - Get facility by code
 router.get(
   '/code/:code',
-  authorizePermission('amenities', ['amenities', 'discover']),
+  authorizePermission('amenities', ['amenities', 'discover', 'read']),
   validate(facilityCodeParamRules),
   amenityFacilityController.getByCode
 );
@@ -44,7 +44,7 @@ router.get(
 // GET /:facilityId - Get facility by ID
 router.get(
   '/:facilityId',
-  authorizePermission('amenities', ['amenities', 'discover']),
+  authorizePermission('amenities', ['amenities', 'discover', 'read']),
   validate(facilityIdParamRules),
   amenityFacilityController.getById
 );
@@ -52,7 +52,7 @@ router.get(
 // PATCH /:facilityId - Update facility
 router.patch(
   '/:facilityId',
-  authorizePermission('amenities', 'amenities'),
+  authorizePermission('amenities', ['amenities', 'update']),
   validate([...facilityIdParamRules, ...updateFacilityRules]),
   amenityFacilityController.update
 );
@@ -60,7 +60,7 @@ router.patch(
 // PUT /:facilityId - Update facility (idempotent full/partial update alias)
 router.put(
   '/:facilityId',
-  authorizePermission('amenities', 'amenities'),
+  authorizePermission('amenities', ['amenities', 'update']),
   validate([...facilityIdParamRules, ...updateFacilityRules]),
   amenityFacilityController.update
 );
@@ -68,7 +68,7 @@ router.put(
 // DELETE /:facilityId - Soft delete facility
 router.delete(
   '/:facilityId',
-  authorizePermission('amenities', 'amenities'),
+  authorizePermission('amenities', ['amenities', 'delete']),
   validate(facilityIdParamRules),
   amenityFacilityController.delete
 );

@@ -242,34 +242,41 @@ export function ResidentAmenityDetailView({
       ) : null}
 
       {/* 8. Available Resources Section (for ROOM_RESOURCE or INVENTORY_TOOLS) */}
-      {(facility.archetype === 'ROOM_RESOURCE' || facility.archetype === 'INVENTORY_TOOLS') &&
-      resources.length > 0 ? (
+      {(facility.archetype === 'ROOM_RESOURCE' || facility.archetype === 'INVENTORY_TOOLS') ? (
         <DetailSection
           title={facility.archetype === 'INVENTORY_TOOLS' ? 'Inventory Assets & Stock' : 'Room Resources'}
           iconName={facility.archetype === 'INVENTORY_TOOLS' ? 'Wrench' : 'DoorOpen'}
           collapsible={false}
         >
-          {resources.map((res, index) => (
-            <DetailRow
-              key={res._id}
-              label={`${res.identifier} - ${res.name}`}
-              value={
-                <View className="flex-row items-center gap-1.5">
-                  <StatusBadge
-                    label={res.assetState}
-                    variant={res.assetState === 'AVAILABLE' ? 'success' : 'warning'}
-                  />
-                  {res.totalBulkStock > 1 ? (
-                    <Text className="text-xs font-semibold text-muted-foreground">
-                      (Qty: {res.totalBulkStock})
-                    </Text>
-                  ) : null}
-                </View>
-              }
-              iconName={facility.archetype === 'INVENTORY_TOOLS' ? 'Tool' : 'DoorClosed'}
-              isLast={index === resources.length - 1}
-            />
-          ))}
+          {resources.length === 0 ? (
+            <View className="py-3 px-2 items-center justify-center">
+              <Text variant="muted" className="text-xs text-center text-muted-foreground">
+                No active {facility.archetype === 'INVENTORY_TOOLS' ? 'assets' : 'rooms'} currently listed for this facility.
+              </Text>
+            </View>
+          ) : (
+            resources.map((res, index) => (
+              <DetailRow
+                key={res._id || res.identifier || `res-${index}`}
+                label={`${res.identifier ? `${res.identifier} - ` : ''}${res.name}`}
+                value={
+                  <View className="flex-row items-center gap-1.5">
+                    <StatusBadge
+                      label={res.assetState || 'AVAILABLE'}
+                      variant={res.assetState === 'AVAILABLE' ? 'success' : 'warning'}
+                    />
+                    {res.totalBulkStock > 1 ? (
+                      <Text className="text-xs font-semibold text-muted-foreground">
+                        (Qty: {res.totalBulkStock})
+                      </Text>
+                    ) : null}
+                  </View>
+                }
+                iconName={facility.archetype === 'INVENTORY_TOOLS' ? 'Tool' : 'DoorClosed'}
+                isLast={index === resources.length - 1}
+              />
+            ))
+          )}
         </DetailSection>
       ) : null}
 

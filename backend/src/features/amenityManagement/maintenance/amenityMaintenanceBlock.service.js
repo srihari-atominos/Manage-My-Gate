@@ -293,6 +293,8 @@ export class AmenityMaintenanceBlockService {
    * @param {string} [params.conflictAction]
    * @param {Array<Object>} [params.resolutions]
    * @param {string|import('mongoose').Types.ObjectId} [params.cancelledBy]
+   * @param {Array<{ startDateTime: string|Date, endDateTime: string|Date }>} [params.windows]
+   * @param {boolean} [params.allowConcurrent=false]
    * @param {import('mongoose').ClientSession} [session]
    */
   async scheduleMaintenanceBlock(
@@ -308,15 +310,42 @@ export class AmenityMaintenanceBlockService {
       bufferAfterMinutes = 0,
       startDateTime,
       endDateTime,
+      windows = [],
       isCompleteClosure = true,
       degradedCapacity = 0,
       reason,
       conflictAction = null,
       resolutions = [],
       cancelledBy = null,
+      allowConcurrent = false,
     },
     session
   ) {
+    if (Array.isArray(windows) && windows.length > 0) {
+      return this.scheduleMaintenanceWindows(
+        {
+          orgId,
+          facilityId,
+          resourceId,
+          resourceIds,
+          title,
+          maintenanceType,
+          internalNotes,
+          bufferBeforeMinutes,
+          bufferAfterMinutes,
+          windows,
+          isCompleteClosure,
+          degradedCapacity,
+          reason,
+          conflictAction,
+          resolutions,
+          cancelledBy,
+          allowConcurrent,
+        },
+        session
+      );
+    }
+
     if (!title || !title.trim()) {
       throw new HttpError(400, 'Maintenance title is required');
     }
@@ -617,6 +646,318 @@ export class AmenityMaintenanceBlockService {
       return executeSchedule(session);
     }
     return withTransactionRetry(executeSchedule);
+  }
+
+  /**
+   * Schedules multiple maintenance blackout windows for a facility in a single transaction.
+   * Enables administrators to schedule maintenance for Today, Tomorrow, and future dates in one action.
+   *
+   * @param {Object} params
+   * @param {string|import('mongoose').Types.ObjectId} params.orgId
+   * @param {string|import('mongoose').Types.ObjectId} params.facilityId
+   * @param {string|import('mongoose').Types.ObjectId} [params.resourceId]
+   * @param {Array<string|import('mongoose').Types.ObjectId>} [params.resourceIds]
+   * @param {string} params.title
+   * @param {string} [params.maintenanceType='PREVENTIVE']
+   * @param {string} [params.internalNotes]
+   * @param {number} [params.bufferBeforeMinutes=0]
+   * @param {number} [params.bufferAfterMinutes=0]
+   * @param {Array<{ startDateTime: string|Date, endDateTime: string|Date }>} params.windows
+   * @param {boolean} [params.isCompleteClosure=true]
+   * @param {number} [params.degradedCapacity=0]
+   * @param {string} params.reason
+   * @param {string} [params.conflictAction]
+   * @param {Array<Object>} [params.resolutions]
+   * @param {string|import('mongoose').Types.ObjectId} [params.cancelledBy]
+   * @param {boolean} [params.allowConcurrent=false]
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async scheduleMaintenanceWindows(params, session) {
+    const {
+      orgId,
+      facilityId,
+      resourceId = null,
+      resourceIds = [],
+      title,
+      maintenanceType = 'PREVENTIVE',
+      internalNotes = '',
+      bufferBeforeMinutes = 0,
+      bufferAfterMinutes = 0,
+      windows = [],
+      isCompleteClosure = true,
+      degradedCapacity = 0,
+      reason,
+      conflictAction = null,
+      resolutions = [],
+      cancelledBy = null,
+      allowConcurrent = false,
+    } = params;
+
+    if (!title || !title.trim()) {
+      throw new HttpError(400, 'Maintenance title is required');
+    }
+
+    if (!reason || !reason.trim()) {
+      throw new HttpError(400, 'Maintenance reason is required');
+    }
+
+    if (!Array.isArray(windows) || windows.length === 0) {
+      throw new HttpError(400, 'At least one maintenance window is required');
+    }
+
+    const numBufBefore = Math.max(0, parseInt(bufferBeforeMinutes, 10) || 0);
+    const numBufAfter = Math.max(0, parseInt(bufferAfterMinutes, 10) || 0);
+
+    // Validate each window
+    const normalizedWindows = windows.map((w, idx) => {
+      const start = new Date(w.startDateTime);
+      const end = new Date(w.endDateTime);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+        throw new HttpError(400, `Invalid window at index ${idx}: endDateTime must be later than startDateTime`);
+      }
+      const { effectiveStart, effectiveEnd } = computeEffectiveMaintenanceWindow(
+        start,
+        end,
+        numBufBefore,
+        numBufAfter
+      );
+      return {
+        start,
+        end,
+        effectiveStart,
+        effectiveEnd,
+      };
+    });
+
+    // Normalize target resource IDs with deterministic Case C synchronization
+    let targetResourceIds = [];
+    if (Array.isArray(resourceIds) && resourceIds.length > 0) {
+      targetResourceIds = [...new Set(resourceIds.filter(Boolean).map(String))];
+      if (resourceId && !targetResourceIds.includes(String(resourceId))) {
+        targetResourceIds.unshift(String(resourceId));
+      }
+    } else if (resourceId) {
+      targetResourceIds = [String(resourceId)];
+    }
+    const targetResourceId = targetResourceIds.length > 0 ? targetResourceIds[0] : null;
+
+    const executeBatchSchedule = async (trxSession) => {
+      // 1. Verify Facility exists and is active
+      const facility = await amenityFacilityService.getFacilityById(facilityId, orgId, trxSession);
+      if (!facility) {
+        throw new HttpError(404, `Facility ${facilityId} not found`);
+      }
+      if (String(facility.orgId) !== String(orgId)) {
+        throw new HttpError(403, 'Facility does not belong to specified organization');
+      }
+      if (facility.isActive === false || facility.isDeleted === true || facility.status === 'INACTIVE') {
+        throw new HttpError(400, 'Facility is inactive or deleted');
+      }
+
+      // 2. Verify all specified Resources exist and belong to the facility
+      for (const resId of targetResourceIds) {
+        const resource = await amenityResourceService.getResourceById(resId, orgId, trxSession);
+        if (!resource) {
+          throw new HttpError(404, `Resource ${resId} not found`);
+        }
+        if (String(resource.orgId) !== String(orgId)) {
+          throw new HttpError(403, `Resource ${resId} does not belong to specified organization`);
+        }
+        if (String(resource.facilityId) !== String(facilityId)) {
+          throw new HttpError(400, 'Resource does not belong to specified facility');
+        }
+        if (resource.isActive === false || resource.isDeleted === true) {
+          throw new HttpError(400, `Resource ${resId} is inactive or deleted`);
+        }
+      }
+
+      const createdBlocks = [];
+
+      for (const win of normalizedWindows) {
+        // Inspect existing overlapping maintenance blocks if not allowed
+        if (!allowConcurrent) {
+          const existingMaintenance = await amenityMaintenanceBlockRepository.findOverlappingBlocks(
+            {
+              orgId,
+              facilityId,
+              resourceId: targetResourceId,
+              resourceIds: targetResourceIds,
+              startDateTime: win.effectiveStart,
+              endDateTime: win.effectiveEnd,
+            },
+            trxSession
+          );
+          const externalOverlaps = (existingMaintenance || []).filter(
+            (b) => !createdBlocks.some((cb) => String(cb._id) === String(b._id))
+          );
+          if (externalOverlaps.length > 0) {
+            throw new HttpError(
+              409,
+              `A maintenance block already exists that overlaps with window ${win.start.toISOString()} - ${win.end.toISOString()}`,
+              { overlappingBlockIds: externalOverlaps.map((b) => b._id) }
+            );
+          }
+        }
+
+        // Inspect impacted active reservations
+        const overlappingReservations = await amenityReservationService.findOverlappingActiveReservations(
+          {
+            orgId,
+            facilityId,
+            resourceId: targetResourceId,
+            resourceIds: targetResourceIds,
+            effectiveStartDateTime: win.effectiveStart,
+            effectiveEndDateTime: win.effectiveEnd,
+          },
+          trxSession
+        );
+
+        let overlappingBookings = [];
+        try {
+          const bookingMod = await import('../../amenityBooking/amenityBooking.services.js');
+          const amenityBookingService = bookingMod.amenityBookingService || bookingMod.default;
+          overlappingBookings = await amenityBookingService.findOverlappingBookingsForWindow(
+            {
+              orgId,
+              amenityId: facilityId,
+              startDateTime: win.effectiveStart,
+              endDateTime: win.effectiveEnd,
+            },
+            trxSession
+          );
+        } catch (e) {
+          overlappingBookings = [];
+        }
+
+        const totalConflicts = (overlappingReservations?.length || 0) + (overlappingBookings?.length || 0);
+        let planResolutions = [];
+        if (totalConflicts > 0) {
+          if (conflictAction === 'CANCEL_AND_PROCEED') {
+            for (const r of (overlappingReservations || [])) {
+              planResolutions.push({
+                targetId: r._id,
+                targetType: 'V2_RESERVATION',
+                resolution: 'CANCEL',
+                notes: `Facility maintenance closure: ${reason.trim()}`,
+              });
+            }
+            for (const b of (overlappingBookings || [])) {
+              planResolutions.push({
+                targetId: b._id,
+                targetType: 'V1_BOOKING',
+                resolution: 'CANCEL',
+                notes: `Facility maintenance closure: ${reason.trim()}`,
+              });
+            }
+          } else if (Array.isArray(resolutions) && resolutions.length > 0) {
+            planResolutions = resolutions.map((res) => ({
+              ...res,
+              targetId: res.targetId || res.id,
+              targetType:
+                res.targetType ||
+                (overlappingReservations.some((r) => String(r._id) === String(res.targetId || res.id))
+                  ? 'V2_RESERVATION'
+                  : 'V1_BOOKING'),
+            }));
+          } else {
+            throw new HttpError(
+              409,
+              `Maintenance window ${win.start.toISOString()} conflicts with ${totalConflicts} booking(s). Confirmation required to cancel and proceed.`,
+              {
+                code: 'MAINTENANCE_IMPACT_NOT_RESOLVED',
+                requiresConflictAction: true,
+                impactedReservationsCount: overlappingReservations.length,
+                impactedBookingsCount: overlappingBookings.length,
+              }
+            );
+          }
+        }
+
+        // Create maintenance block
+        const block = await amenityMaintenanceBlockRepository.create(
+          {
+            orgId,
+            facilityId,
+            resourceId: targetResourceId,
+            resourceIds: targetResourceIds,
+            title: title.trim(),
+            maintenanceType,
+            internalNotes: (internalNotes || '').trim(),
+            bufferBeforeMinutes: numBufBefore,
+            bufferAfterMinutes: numBufAfter,
+            startDateTime: win.start,
+            endDateTime: win.end,
+            isCompleteClosure,
+            degradedCapacity,
+            reason: reason.trim(),
+            status: 'SCHEDULED',
+          },
+          trxSession
+        );
+
+        // Execute resolutions
+        for (const item of planResolutions) {
+          await this._resolveImpactItem({
+            blockId: block._id,
+            orgId,
+            facilityId,
+            resourceId: targetResourceId,
+            resourceIds: targetResourceIds,
+            targetId: item.targetId,
+            targetType: item.targetType,
+            resolution: item.resolution,
+            newSlot: item.newSlot,
+            notes: item.notes || `Maintenance: ${reason.trim()}`,
+            cancelledBy,
+            session: trxSession,
+          });
+        }
+
+        // Outbox event
+        await amenityOutboxEventRepository.createEvent(
+          {
+            orgId,
+            aggregateType: 'AMENITY_MAINTENANCE',
+            aggregateId: block._id,
+            eventType: 'MAINTENANCE_SCHEDULED',
+            payload: {
+              blockId: block._id,
+              facilityId,
+              resourceId: targetResourceId,
+              resourceIds: targetResourceIds,
+              title: block.title,
+              startDateTime: win.start,
+              endDateTime: win.end,
+              status: 'SCHEDULED',
+            },
+          },
+          trxSession
+        );
+
+        amenityManagementEvents.emit('amenity:maintenance:scheduled', {
+          blockId: block._id,
+          orgId,
+          facilityId,
+          resourceId: targetResourceId,
+          resourceIds: targetResourceIds,
+          startDateTime: win.start,
+          endDateTime: win.end,
+          status: 'SCHEDULED',
+        });
+
+        createdBlocks.push(block);
+      }
+
+      return {
+        count: createdBlocks.length,
+        blocks: createdBlocks,
+      };
+    };
+
+    if (session) {
+      return executeBatchSchedule(session);
+    }
+    return withTransactionRetry(executeBatchSchedule);
   }
 
   /**
@@ -1146,8 +1487,9 @@ export class AmenityMaintenanceBlockService {
    * @param {string|import('mongoose').Types.ObjectId} params.facilityId
    * @param {string|import('mongoose').Types.ObjectId} [params.resourceId]
    * @param {Array<string|import('mongoose').Types.ObjectId>} [params.resourceIds]
-   * @param {Date|string} params.startDateTime
-   * @param {Date|string} params.endDateTime
+   * @param {Date|string} [params.startDateTime]
+   * @param {Date|string} [params.endDateTime]
+   * @param {Array<{ startDateTime: string|Date, endDateTime: string|Date }>} [params.windows]
    * @param {number} [params.bufferBeforeMinutes=0]
    * @param {number} [params.bufferAfterMinutes=0]
    * @param {import('mongoose').ClientSession} [session]
@@ -1160,11 +1502,61 @@ export class AmenityMaintenanceBlockService {
       resourceIds = [],
       startDateTime,
       endDateTime,
+      windows = [],
       bufferBeforeMinutes = 0,
       bufferAfterMinutes = 0,
     },
     session
   ) {
+    if (Array.isArray(windows) && windows.length > 0) {
+      const windowPreviews = [];
+      let totalImpacted = 0;
+      const allConflictingBlocks = [];
+      const allConflictingReservations = [];
+      const allConflictingBookings = [];
+
+      for (const win of windows) {
+        const preview = await this.getImpactPreview(
+          {
+            orgId,
+            facilityId,
+            resourceId,
+            resourceIds,
+            startDateTime: win.startDateTime,
+            endDateTime: win.endDateTime,
+            bufferBeforeMinutes,
+            bufferAfterMinutes,
+          },
+          session
+        );
+        windowPreviews.push({
+          startDateTime: win.startDateTime,
+          endDateTime: win.endDateTime,
+          ...preview,
+        });
+        totalImpacted += preview.impactedReservationsCount || 0;
+        if (preview.conflictingMaintenanceBlocks) {
+          allConflictingBlocks.push(...preview.conflictingMaintenanceBlocks);
+        }
+        if (preview.conflictingReservations) {
+          allConflictingReservations.push(...preview.conflictingReservations);
+        }
+        if (preview.conflictingBookings) {
+          allConflictingBookings.push(...preview.conflictingBookings);
+        }
+      }
+
+      return {
+        hasConflicts: allConflictingBlocks.length > 0 || totalImpacted > 0,
+        totalConflicts: totalImpacted,
+        impactedReservationsCount: totalImpacted,
+        conflictingMaintenanceBlocks: allConflictingBlocks,
+        conflictingReservations: allConflictingReservations,
+        conflictingBookings: allConflictingBookings,
+        windows: windowPreviews,
+      };
+    }
+
     const numBufBefore = Math.max(0, parseInt(bufferBeforeMinutes, 10) || 0);
     const numBufAfter = Math.max(0, parseInt(bufferAfterMinutes, 10) || 0);
     if (bufferBeforeMinutes < 0 || bufferAfterMinutes < 0) {

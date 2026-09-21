@@ -159,7 +159,7 @@ const matchesUserPermissions = (
   if (itemPermission && userPermissions.includes(itemPermission)) return true;
 
   // Normalized dot vs colon match (e.g., 'notices.read' matches 'notices:read')
-  if (itemPermission) {
+  if (itemPermission && typeof itemPermission === 'string') {
     const dotPerm = itemPermission.replace(':', '.');
     const colonPerm = itemPermission.replace('.', ':');
     if (userPermissions.includes(dotPerm) || userPermissions.includes(colonPerm)) return true;
@@ -190,7 +190,6 @@ export const GUARD_ONLY_FEATURE_IDS = new Set<string>([]);
 // Features allowed for Security Guard
 const FALLBACK_SECURITY_FEATURE_IDS = new Set([
   'visitor_gate_console',
-  'visitor_gate_pass',
   'visitor_invite',
   'visitor_admin_logs',
   'amenities_scanner',
@@ -216,7 +215,6 @@ const FALLBACK_SECURITY_PERMISSIONS = new Set([
 
 const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'visitor_resident_passes',
-  'visitor_gate_pass',
   'visitor_gate_console',
   'visitor_invite',
   'billing_dashboard',
@@ -418,7 +416,7 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
     'complaints_track_requests',
     'amenities_discover',
     'notices_active_board',
-    'visitor_gate_pass',
+    'visitor_gate_console',
   ];
 };
 

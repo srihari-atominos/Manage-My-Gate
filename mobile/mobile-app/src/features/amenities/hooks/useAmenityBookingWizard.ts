@@ -39,6 +39,7 @@ import {
   mapHoldFormToApiPayload,
   mapConfirmFormToApiPayload,
   mapPricingFormToApiPayload,
+  normalizeResourceFromApi,
 } from '../utils/amenityPayloadMappers';
 import amenityManagementService, { generateUUID } from '../services/amenityManagementService';
 
@@ -112,8 +113,22 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
     _now.getDate()
   ).padStart(2, '0')}`;
   const [selectedDate, setSelectedDate] = useState<string>(defaultDate);
-  const [startTime, setStartTime] = useState<string>('09:00');
-  const [endTime, setEndTime] = useState<string>('10:00');
+
+  // Dynamically derive next upcoming hour for today's default, avoiding hardcoded past '09:00'
+  const currentHour = _now.getHours();
+  const nextHour = Math.min(23, currentHour + 1);
+  const hourAfter = Math.min(23, nextHour + 1);
+  const defaultStartTime = `${String(nextHour).padStart(2, '0')}:00`;
+  const defaultEndTime = `${String(hourAfter).padStart(2, '0')}:00`;
+
+  const [startTime, setStartTime] = useState<string>(defaultStartTime);
+  const [endTime, setEndTime] = useState<string>(defaultEndTime);
+
+  // Available Daily Slots evaluated from server (disappearing booked/past slots)
+  const [availableDailySlots, setAvailableDailySlots] = useState<
+    Array<{ start: string; end: string; label: string }> | undefined
+  >(undefined);
+  const [loadingDailySlots, setLoadingDailySlots] = useState<boolean>(false);
 
   const [headcount, setHeadcount] = useState<number>(1);
   const [quantity, setQuantity] = useState<number>(1);
@@ -161,23 +176,28 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
 
   // Load Resources for resource-driven archetypes
   useEffect(() => {
-    if (facility.archetype === 'ROOM_RESOURCE' || facility.archetype === 'INVENTORY_TOOLS') {
+    const targetFacilityId = facility?._id || (facility as any)?.id;
+    if ((facility?.archetype === 'ROOM_RESOURCE' || facility?.archetype === 'INVENTORY_TOOLS') && targetFacilityId) {
       let isMounted = true;
       setResourcesLoading(true);
       amenityManagementService
-        .getResources({ facilityId: facility._id })
+        .getResources({ facilityId: String(targetFacilityId) })
         .then((res) => {
           if (isMounted) {
             const rawPayload: any = res?.data;
-            const resList =
+            const resList: any[] =
               (Array.isArray(rawPayload) ? rawPayload : null) ||
               (Array.isArray(rawPayload?.data) ? rawPayload.data : null) ||
               (Array.isArray(rawPayload?.items) ? rawPayload.items : null) ||
+              (Array.isArray((res as any)?.items) ? (res as any).items : null) ||
+              (Array.isArray((res as any)?.data) ? (res as any).data : null) ||
               [];
-            setAvailableResources(resList as AmenityResource[]);
+            const normalized = resList.map((r: any) => normalizeResourceFromApi(r));
+            setAvailableResources(normalized);
           }
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error('[useAmenityBookingWizard] Failed to fetch resources:', err);
           if (isMounted) setAvailableResources([]);
         })
         .finally(() => {
@@ -188,7 +208,43 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
         isMounted = false;
       };
     }
-  }, [facility._id, facility.archetype]);
+  }, [facility?._id, (facility as any)?.id, facility?.archetype]);
+
+  // Fetch available slots from server (filtering out booked and past slots)
+  const fetchDailySlots = useCallback(async (date: string, resourceId?: string) => {
+    if (!facility._id || !date) return;
+    setLoadingDailySlots(true);
+    try {
+      const res = await amenityManagementService.getDailySlots({
+        facilityId: facility._id,
+        date,
+        resourceId,
+        requestedQuantity: facility.archetype === 'INVENTORY_TOOLS' ? quantity : headcount,
+      });
+      const rawSlots = res?.data?.slots || (res as any)?.slots || [];
+      setAvailableDailySlots(rawSlots);
+
+      // If available slots returned and current selection is not in list, auto-select first available slot
+      if (rawSlots.length > 0) {
+        setStartTime((prevStart) => {
+          const hasMatch = rawSlots.some((s: any) => s.start === prevStart);
+          return hasMatch ? prevStart : rawSlots[0].start;
+        });
+        setEndTime((prevEnd) => {
+          const hasMatch = rawSlots.some((s: any) => s.end === prevEnd);
+          return hasMatch ? prevEnd : rawSlots[0].end;
+        });
+      }
+    } catch {
+      // Gracefully retained, fallback handled in DateTimeStep
+    } finally {
+      setLoadingDailySlots(false);
+    }
+  }, [facility._id, facility.archetype, quantity, headcount]);
+
+  useEffect(() => {
+    fetchDailySlots(selectedDate, selectedResource?._id);
+  }, [fetchDailySlots, selectedDate, selectedResource?._id]);
 
   // Fetch digital wallet balance on mount
   useEffect(() => {
@@ -476,7 +532,8 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
     if (isPaymentRequired) {
       if (paymentMethod === 'WALLET') {
         if (balance < totalAmount) {
-          setStepError(`Insufficient wallet balance (${balance} SAR). Please top up.`);
+          const currency = pricingSnapshot?.currency || 'INR';
+          setStepError(`Insufficient wallet balance (${balance} ${currency}). Please top up.`);
           setIsTopUpOpen(true);
           return;
         }
@@ -602,6 +659,9 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
     setStartTime,
     endTime,
     setEndTime,
+    availableDailySlots,
+    loadingDailySlots,
+    fetchDailySlots,
     headcount,
     setHeadcount,
     quantity,

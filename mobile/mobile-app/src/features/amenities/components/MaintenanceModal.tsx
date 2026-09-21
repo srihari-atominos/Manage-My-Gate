@@ -123,6 +123,14 @@ export interface MaintenanceModalProps {
   loading?: boolean;
 }
 
+export interface MaintenanceWindowItem {
+  id: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+}
+
 export interface MaintenanceFormData {
   amenityId: string;
   customAmenityName?: string;
@@ -133,6 +141,7 @@ export interface MaintenanceFormData {
   endDate: string;
   startTime: string;
   endTime: string;
+  windows?: MaintenanceWindowItem[];
   frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
   interval: number;
   selectedDays: number[];
@@ -142,6 +151,8 @@ export interface MaintenanceFormData {
   description: string;
   assignedStaff: string;
   autoCancelBookings: boolean;
+  isCompleteClosure?: boolean;
+  degradedCapacity?: number;
 }
 
 export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
@@ -154,6 +165,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   loading = false,
 }) => {
   const [customDayMode, setCustomDayMode] = useState<boolean>(false);
+  const [windows, setWindows] = useState<MaintenanceWindowItem[]>([]);
 
   const amenityOptions = [
     ...amenities.map((a) => ({
@@ -195,39 +207,123 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       description: '',
       assignedStaff: 'Facilities Team',
       autoCancelBookings: true,
+      isCompleteClosure: true,
+      degradedCapacity: 0,
     },
   });
 
   const startDateVal = watch('startDate');
   const endDateVal = watch('endDate');
 
+  const handleAddWindow = () => {
+    const lastWindow = windows[windows.length - 1];
+    let nextStartDate = todayStr;
+    let nextEndDate = todayStr;
+    let sTime = '00:00';
+    let eTime = '17:00';
+
+    if (lastWindow) {
+      sTime = lastWindow.startTime || '00:00';
+      eTime = lastWindow.endTime || '17:00';
+      try {
+        const prev = new Date(`${lastWindow.startDate}T00:00:00`);
+        const next = new Date(prev.getTime() + 86400000);
+        nextStartDate = formatDateString(next);
+        nextEndDate = nextStartDate;
+      } catch {
+        nextStartDate = tomorrowStr;
+        nextEndDate = tomorrowStr;
+      }
+    }
+
+    setWindows((prev) => [
+      ...prev,
+      {
+        id: String(Date.now() + Math.random()),
+        startDate: nextStartDate,
+        endDate: nextEndDate,
+        startTime: sTime,
+        endTime: eTime,
+      },
+    ]);
+  };
+
+  const handleRemoveWindow = (id: string) => {
+    if (windows.length <= 1) return;
+    setWindows((prev) => prev.filter((w) => w.id !== id));
+  };
+
+  const handleUpdateWindow = (id: string, updates: Partial<MaintenanceWindowItem>) => {
+    setWindows((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, ...updates } : w))
+    );
+  };
+
   useEffect(() => {
     if (visible) {
+      const parseDateAndTime = (isoString?: string, fallbackDate?: string, fallbackTime?: string) => {
+        if (!isoString) return { date: fallbackDate || '', time: fallbackTime || '' };
+        try {
+          const d = new Date(isoString);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          return {
+            date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+            time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+          };
+        } catch {
+          return { date: fallbackDate || '', time: fallbackTime || '' };
+        }
+      };
+
       if (initialData) {
+        const start = parseDateAndTime(initialData.startDateTime, (initialData as any).startDate, (initialData as any).startTime);
+        const end = parseDateAndTime(initialData.endDateTime, (initialData as any).endDate, (initialData as any).endTime);
+
         const initDayOfMonth = initialData.recurrence?.dayOfMonth || 1;
         setCustomDayMode(![1, 15, 28].includes(initDayOfMonth));
 
+        setWindows([
+          {
+            id: '1',
+            startDate: start.date || initialData.startDate || todayStr,
+            endDate: end.date || initialData.endDate || todayStr,
+            startTime: start.time || initialData.startTime || '00:00',
+            endTime: end.time || initialData.endTime || '17:00',
+          },
+        ]);
+
         reset({
-          amenityId: initialData.amenityId || defaultAmenity,
+          amenityId: initialData.facilityId || initialData.amenityId || defaultAmenity,
           customAmenityName: '',
-          title: initialData.title || 'Routine Servicing',
+          title: initialData.title || initialData.reason || 'Routine Servicing',
           isRecurring: Boolean(initialData.isRecurring || initialData.recurringSeriesId),
           maintenanceType: (initialData.maintenanceType as any) || 'CLEANING',
-          startDate: initialData.startDate || todayStr,
-          endDate: initialData.endDate || tomorrowStr,
-          startTime: initialData.startTime || '08:00',
-          endTime: initialData.endTime || '18:00',
+          startDate: start.date || initialData.startDate || todayStr,
+          endDate: end.date || initialData.endDate || tomorrowStr,
+          startTime: start.time || initialData.startTime || '08:00',
+          endTime: end.time || initialData.endTime || '18:00',
           frequency: (initialData.recurrence?.frequency as any) || 'WEEKLY',
           interval: initialData.recurrence?.interval || 1,
           selectedDays: initialData.recurrence?.daysOfWeek?.length ? initialData.recurrence.daysOfWeek : [1],
           dayOfMonth: initDayOfMonth,
           occurrenceCount: initialData.recurrence?.occurrenceCount || 8,
-          description: initialData.description || '',
-          assignedStaff: initialData.assignedStaff || '',
-          autoCancelBookings: initialData.autoCancelBookings || false,
+          description: initialData.description || initialData.internalNotes || '',
+          assignedStaff: initialData.assignedStaff || 'Facilities Team',
+          autoCancelBookings: initialData.autoCancelBookings !== false,
+          isCompleteClosure: initialData.isCompleteClosure !== false,
+          degradedCapacity: initialData.degradedCapacity || 0,
         });
       } else {
         setCustomDayMode(false);
+        setWindows([
+          {
+            id: '1',
+            startDate: todayStr,
+            endDate: todayStr,
+            startTime: '00:00',
+            endTime: '17:00',
+          },
+        ]);
         reset({
           amenityId: defaultAmenity,
           customAmenityName: '',
@@ -246,6 +342,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
           description: '',
           assignedStaff: 'Facilities Team',
           autoCancelBookings: true,
+          isCompleteClosure: true,
+          degradedCapacity: 0,
         });
       }
     }
@@ -255,6 +353,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     if (data.amenityId === 'OTHER' && !data.customAmenityName?.trim()) {
       setError('customAmenityName', { type: 'manual', message: 'Please enter a custom amenity name' });
       return;
+    }
+    if (!data.isRecurring && windows.length > 0) {
+      data.windows = windows;
+      data.startDate = windows[0].startDate;
+      data.endDate = windows[0].endDate;
+      data.startTime = windows[0].startTime;
+      data.endTime = windows[0].endTime;
     }
     onSubmit(data.amenityId, data);
   };
@@ -629,88 +734,192 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
             </View>
           </View>
         ) : (
-          /* ===================== ONE-OFF DATES ===================== */
+          /* ===================== MULTI-WINDOW MAINTENANCE DATES ===================== */
+          <View className="gap-3">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-1.5">
+                <Calendar size={15} className="text-primary" />
+                <Text className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  Maintenance Windows ({windows.length})
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleAddWindow}
+                activeOpacity={0.7}
+                className="flex-row items-center gap-1 px-2.5 py-1.5 bg-primary/10 rounded-xl border border-primary/20"
+              >
+                <Plus size={13} className="text-primary" />
+                <Text className="text-xs font-bold text-primary">+ Add Date Window</Text>
+              </TouchableOpacity>
+            </View>
+
+            {windows.map((w, idx) => (
+              <View
+                key={w.id}
+                className="bg-card border border-border rounded-2xl p-3 gap-2.5"
+              >
+                <View className="flex-row items-center justify-between pb-1 border-b border-border/50">
+                  <Text className="text-xs font-bold text-foreground">
+                    Window #{idx + 1}
+                  </Text>
+                  {windows.length > 1 && (
+                    <TouchableOpacity
+                      onPress={() => handleRemoveWindow(w.id)}
+                      activeOpacity={0.7}
+                      className="flex-row items-center gap-1"
+                    >
+                      <Text className="text-xs font-semibold text-destructive">Remove</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View className="flex-row gap-2.5">
+                  <View className="flex-1">
+                    <DatePicker
+                      label="Start Date *"
+                      value={w.startDate ? new Date(`${w.startDate}T00:00:00`) : new Date()}
+                      onChange={(d) =>
+                        handleUpdateWindow(w.id, {
+                          startDate: formatDateString(d),
+                          endDate: w.endDate || formatDateString(d),
+                        })
+                      }
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <DatePicker
+                      label="End Date *"
+                      value={w.endDate ? new Date(`${w.endDate}T00:00:00`) : new Date()}
+                      onChange={(d) =>
+                        handleUpdateWindow(w.id, { endDate: formatDateString(d) })
+                      }
+                    />
+                  </View>
+                </View>
+
+                <View className="flex-row gap-2.5">
+                  <View className="flex-1">
+                    <TextInput
+                      label="Start Time"
+                      placeholder="00:00"
+                      value={w.startTime}
+                      onChangeText={(val) => handleUpdateWindow(w.id, { startTime: val })}
+                      leftIcon={<Clock size={15} className="text-muted-foreground" />}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <TextInput
+                      label="End Time"
+                      placeholder="17:00"
+                      value={w.endTime}
+                      onChangeText={(val) => handleUpdateWindow(w.id, { endTime: val })}
+                      leftIcon={<Clock size={15} className="text-muted-foreground" />}
+                    />
+                  </View>
+                </View>
+
+                {/* Quick Presets for this window */}
+                <View className="flex-row flex-wrap gap-1.5 mt-0.5">
+                  {TIME_PRESETS.map((preset) => {
+                    const isActive = w.startTime === preset.start && w.endTime === preset.end;
+                    return (
+                      <TouchableOpacity
+                        key={preset.label}
+                        onPress={() =>
+                          handleUpdateWindow(w.id, {
+                            startTime: preset.start,
+                            endTime: preset.end,
+                          })
+                        }
+                        activeOpacity={0.7}
+                        className={`px-2 py-0.5 rounded-lg border ${
+                          isActive ? 'bg-primary/15 border-primary' : 'bg-muted/40 border-border'
+                        }`}
+                      >
+                        <Text
+                          className={`text-[10px] font-medium ${
+                            isActive ? 'text-primary font-bold' : 'text-muted-foreground'
+                          }`}
+                        >
+                          {preset.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
+
+            <Text className="text-[11px] text-muted-foreground">
+              Schedule multiple windows (e.g. today 12:00 AM–5:00 PM, tomorrow 12:00 AM–5:00 PM, and 10 days later) in this single submission.
+            </Text>
+          </View>
+        )}
+
+        {/* Operating Times Section (Only for Recurring Series) */}
+        {watch('isRecurring') && (
           <View className="flex-row gap-3">
             <View className="flex-1">
-              <DatePicker
-                label="Start Date *"
-                value={startDateVal ? new Date(`${startDateVal}T00:00:00`) : new Date()}
-                onChange={(d) => setValue('startDate', formatDateString(d), { shouldDirty: true })}
-                error={errors.startDate?.message}
+              <Controller
+                control={control}
+                name="startTime"
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    label="Window Start Time"
+                    placeholder="08:00"
+                    value={value}
+                    onChangeText={onChange}
+                    leftIcon={<Clock size={16} className="text-muted-foreground" />}
+                  />
+                )}
               />
             </View>
             <View className="flex-1">
-              <DatePicker
-                label="End Date *"
-                value={endDateVal ? new Date(`${endDateVal}T00:00:00`) : new Date()}
-                onChange={(d) => setValue('endDate', formatDateString(d), { shouldDirty: true })}
-                error={errors.endDate?.message}
+              <Controller
+                control={control}
+                name="endTime"
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    label="Window End Time"
+                    placeholder="18:00"
+                    value={value}
+                    onChangeText={onChange}
+                    leftIcon={<Clock size={16} className="text-muted-foreground" />}
+                  />
+                )}
               />
             </View>
           </View>
         )}
 
-        {/* Operating Times Section */}
-        <View className="flex-row gap-3">
-          <View className="flex-1">
-            <Controller
-              control={control}
-              name="startTime"
-              render={({ field: { onChange, value } }) => (
-                <TextInput
-                  label={watch('isRecurring') ? 'Window Start Time' : 'Start Time'}
-                  placeholder="08:00"
-                  value={value}
-                  onChangeText={onChange}
-                  leftIcon={<Clock size={16} className="text-muted-foreground" />}
-                />
-              )}
-            />
-          </View>
-          <View className="flex-1">
-            <Controller
-              control={control}
-              name="endTime"
-              render={({ field: { onChange, value } }) => (
-                <TextInput
-                  label={watch('isRecurring') ? 'Window End Time' : 'End Time'}
-                  placeholder="18:00"
-                  value={value}
-                  onChangeText={onChange}
-                  leftIcon={<Clock size={16} className="text-muted-foreground" />}
-                />
-              )}
-            />
-          </View>
-        </View>
-
-        {/* Quick Time Presets */}
-        <View className="flex-row flex-wrap gap-1.5 -mt-1">
-          {TIME_PRESETS.map((preset) => {
-            const isActive = watch('startTime') === preset.start && watch('endTime') === preset.end;
-            return (
-              <TouchableOpacity
-                key={preset.label}
-                onPress={() => {
-                  setValue('startTime', preset.start, { shouldDirty: true });
-                  setValue('endTime', preset.end, { shouldDirty: true });
-                }}
-                activeOpacity={0.7}
-                className={`px-2.5 py-1 rounded-lg border ${
-                  isActive ? 'bg-primary/15 border-primary' : 'bg-muted/40 border-border'
-                }`}
-              >
-                <Text
-                  className={`text-[11px] font-medium ${
-                    isActive ? 'text-primary font-bold' : 'text-muted-foreground'
+        {watch('isRecurring') && (
+          <View className="flex-row flex-wrap gap-1.5 -mt-1">
+            {TIME_PRESETS.map((preset) => {
+              const isActive = watch('startTime') === preset.start && watch('endTime') === preset.end;
+              return (
+                <TouchableOpacity
+                  key={preset.label}
+                  onPress={() => {
+                    setValue('startTime', preset.start, { shouldDirty: true });
+                    setValue('endTime', preset.end, { shouldDirty: true });
+                  }}
+                  activeOpacity={0.7}
+                  className={`px-2.5 py-1 rounded-lg border ${
+                    isActive ? 'bg-primary/15 border-primary' : 'bg-muted/40 border-border'
                   }`}
                 >
-                  {preset.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                  <Text
+                    className={`text-[11px] font-medium ${
+                      isActive ? 'text-primary font-bold' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {preset.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {/* Task Description */}
         <Controller
@@ -728,6 +937,37 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
             />
           )}
         />
+
+        {/* Complete Facility Closure Toggle */}
+        <Controller
+          control={control}
+          name="isCompleteClosure"
+          render={({ field: { onChange, value } }) => (
+            <ToggleSwitch
+              label="Complete Facility Closure"
+              description="When enabled, entirely closes the amenity. Disable to allow degraded capacity."
+              value={value !== false}
+              onValueChange={onChange}
+              className="p-3 bg-card border border-border rounded-2xl mt-1"
+            />
+          )}
+        />
+
+        {watch('isCompleteClosure') === false && (
+          <Controller
+            control={control}
+            name="degradedCapacity"
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                label="Degraded Capacity (Available Capacity)"
+                placeholder="e.g. 5"
+                keyboardType="numeric"
+                value={value !== undefined ? String(value) : ''}
+                onChangeText={(val) => onChange(parseInt(val, 10) || 0)}
+              />
+            )}
+          />
+        )}
 
         {/* Auto-Cancel Toggle */}
         <Controller
@@ -756,6 +996,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 : 'Save Maintenance Changes'
               : watch('isRecurring')
               ? `Schedule Recurring Series (${watch('occurrenceCount')} Occurrences)`
+              : windows.length > 1
+              ? `Schedule ${windows.length} Maintenance Windows`
               : 'Schedule Maintenance Window'
           }
         >
@@ -768,6 +1010,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 : 'Save Changes'
               : watch('isRecurring')
               ? `Schedule Recurring Series (${watch('occurrenceCount')} Occurrences)`
+              : windows.length > 1
+              ? `Schedule ${windows.length} Maintenance Windows`
               : 'Schedule Maintenance Window'}
           </Text>
         </Button>

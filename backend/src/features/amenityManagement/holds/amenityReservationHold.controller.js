@@ -11,7 +11,7 @@ import { mapPermission } from '../../../utils/permissionMapper.js';
  * @param {string[]} requiredPermissions - Required permission strings
  * @returns {Promise<boolean>} - True if user has administrative scope, false if resident-restricted
  */
-const checkAmenityAdminScope = async (user, requiredPermissions = ['amenities:amenities', 'amenities:admin_calander']) => {
+const checkAmenityAdminScope = async (user, requiredPermissions = ['amenities:admin_calander', 'amenities:manage_bookings']) => {
   if (!user) return false;
 
   // Platform and Organization-level super admins bypass permission checks
@@ -61,7 +61,7 @@ export class AmenityReservationHoldController {
     try {
       const orgId = req.tenant.orgId;
       const residentId = req.user.id || req.user._id;
-      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:amenities', 'amenities:admin_calander']);
+      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:admin_calander', 'amenities:manage_bookings']);
       const unitId = (!hasAdminScope && (req.user.villaId || req.user.unitId)) ? (req.user.villaId || req.user.unitId) : (req.body.unitId || req.user.villaId || req.user.unitId || req.user.id);
       const idempotencyKey = req.headers['x-idempotency-key'] || req.headers['idempotency-key'];
 
@@ -109,7 +109,7 @@ export class AmenityReservationHoldController {
       const { holdId } = req.params;
       const orgId = req.tenant.orgId;
       const userId = req.user.id || req.user._id;
-      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:amenities', 'amenities:admin_calander']);
+      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:admin_calander', 'amenities:manage_bookings']);
       const hold = await amenityReservationHoldService.getHoldById(holdId);
 
       if (!hold) {
@@ -120,7 +120,8 @@ export class AmenityReservationHoldController {
         throw new HttpError(403, 'Forbidden. Reservation hold does not belong to this organization.');
       }
 
-      if (!hasAdminScope && hold.residentId.toString() !== userId.toString()) {
+      const holdResidentId = (hold.residentId?._id || hold.residentId)?.toString();
+      if (!hasAdminScope && holdResidentId !== userId.toString()) {
         throw new HttpError(403, 'Forbidden. You do not have permission to view this hold.');
       }
 
@@ -138,7 +139,7 @@ export class AmenityReservationHoldController {
       const { holdId } = req.params;
       const orgId = req.tenant.orgId;
       const userId = req.user.id || req.user._id;
-      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:amenities']);
+      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:admin_calander', 'amenities:manage_bookings']);
 
       const hold = await amenityReservationHoldService.getHoldById(holdId);
       if (!hold) {
@@ -149,7 +150,8 @@ export class AmenityReservationHoldController {
         throw new HttpError(403, 'Forbidden. Reservation hold does not belong to this organization.');
       }
 
-      if (!hasAdminScope && hold.residentId.toString() !== userId.toString()) {
+      const holdResidentId = (hold.residentId?._id || hold.residentId)?.toString();
+      if (!hasAdminScope && holdResidentId !== userId.toString()) {
         throw new HttpError(403, 'Forbidden. You do not have permission to release this hold.');
       }
 

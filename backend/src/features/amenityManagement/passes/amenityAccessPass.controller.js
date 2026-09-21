@@ -11,7 +11,7 @@ import { mapPermission } from '../../../utils/permissionMapper.js';
  * @param {string[]} requiredPermissions - Required permission strings
  * @returns {Promise<boolean>} - True if user has administrative scope, false if resident-restricted
  */
-const checkAmenityAdminScope = async (user, requiredPermissions = ['amenities:amenities', 'amenities:admin_calander', 'amenities:scanner']) => {
+const checkAmenityAdminScope = async (user, requiredPermissions = ['amenities:admin_calander', 'amenities:manage_bookings', 'amenities:scanner']) => {
   if (!user) return false;
 
   // Platform and Organization-level super admins bypass permission checks
@@ -102,14 +102,15 @@ export class AmenityAccessPassController {
       const { reservationId } = req.params;
       const orgId = req.tenant.orgId;
       const userId = req.user.id || req.user._id;
-      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:amenities', 'amenities:admin_calander', 'amenities:scanner']);
+      const hasAdminScope = await checkAmenityAdminScope(req.user, ['amenities:admin_calander', 'amenities:manage_bookings', 'amenities:scanner']);
 
       const reservation = await amenityReservationService.getReservationById(reservationId);
       if (!reservation || reservation.orgId.toString() !== orgId.toString()) {
         throw new HttpError(404, 'Reservation not found');
       }
 
-      if (!hasAdminScope && reservation.residentId.toString() !== userId.toString()) {
+      const isAuthorized = await amenityReservationService.canUserAccessReservation(req.user, reservation);
+      if (!isAuthorized) {
         throw new HttpError(403, 'Forbidden. You do not have permission to view passes for this reservation.');
       }
 

@@ -17,7 +17,6 @@ export interface AppFeatureItem {
 export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   // 1. Visitor & Gate Security
   { id: 'visitor_resident_passes', name: 'Resident Passes', subtitle: 'Digital Verified Pass', iconName: 'TicketCheck', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_gate_pass', name: 'Gate Pass', subtitle: 'Gate Console & PIN', iconName: 'DoorOpen', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/gate-console', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security', badge: 'GATE', badgeColor: '#10B981' },
   { id: 'visitor_invite', name: 'Invite Visitor', subtitle: 'Pre-Approve Entry', iconName: 'UserPlus', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#10B981', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/invite', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security', badge: 'NEW', badgeColor: '#10B981' },
   { id: 'visitor_admin_dashboard', name: 'Admin Console', subtitle: 'Visitor Monitoring', iconName: 'MonitorCog', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/admin', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
   { id: 'visitor_community_passes', name: 'Community Passes', subtitle: 'Pass Registry', iconName: 'TicketCheck', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/admin/community-passes', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
@@ -77,7 +76,7 @@ export const DEFAULT_6_QUICK_ACTIONS = [
   'complaints_track_requests',
   'amenities_discover',
   'notices_active_board',
-  'visitor_gate_pass',
+  'visitor_gate_console',
 ];
 
 export const DEFAULT_5_QUICK_ACTIONS = DEFAULT_6_QUICK_ACTIONS;
@@ -105,7 +104,7 @@ export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
     'complaints_track_requests',
     'amenities_discover',
     'notices_active_board',
-    'visitor_gate_pass',
+    'visitor_gate_console',
   ],
 };
 

@@ -71,10 +71,10 @@ export function useAdminCalendar() {
         date: selectedDate,
         startDate: dateBounds.startDate,
         endDate: dateBounds.endDate,
-        amenityId: selectedAmenityId,
-        status: statusFilter,
-        search: searchQuery,
-        paymentStatus: paymentStatusFilter,
+        amenityId: selectedAmenityId !== 'All' ? selectedAmenityId : undefined,
+        status: statusFilter !== 'All' ? statusFilter : undefined,
+        search: searchQuery.trim() || undefined,
+        paymentStatus: paymentStatusFilter !== 'All' ? paymentStatusFilter : undefined,
       })
     );
     dispatch(fetchAmenitiesThunk({}));

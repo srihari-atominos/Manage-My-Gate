@@ -35,27 +35,38 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
   const router = useRouter();
   const wizard = useAmenityBookingWizard(facility);
 
+  const isPaymentStep = wizard.currentStep.key === 'payment';
+  const isResultStep = wizard.currentStep.key === 'result';
+  const isReviewStep = wizard.currentStep.key === 'review';
+
+  const handleCloseToMyBookings = () => {
+    wizard.handleRestartBooking();
+    router.replace('/(resident)/amenities/my-bookings');
+  };
+
   const handleCancelPress = () => {
+    // After booking completion (result step or confirmed reservation), close button navigates directly to My Bookings page
+    if (isResultStep || wizard.v2CurrentReservation) {
+      handleCloseToMyBookings();
+      return;
+    }
+
     if (wizard.activeHold && !wizard.isHoldExpired) {
       wizard.setIsCancelModalOpen(true);
     } else {
       if (onClose) onClose();
-      else router.back();
+      else if (router.canGoBack()) router.back();
+      else router.replace('/(resident)/amenities/my-bookings');
     }
   };
 
   const handleDonePress = () => {
-    if (onClose) onClose();
-    else router.push('/(resident)/amenities/discover');
+    handleCloseToMyBookings();
   };
 
   const handleViewBookingsPress = () => {
-    router.push('/(resident)/amenities/my-bookings');
+    handleCloseToMyBookings();
   };
-
-  const isPaymentStep = wizard.currentStep.key === 'payment';
-  const isResultStep = wizard.currentStep.key === 'result';
-  const isReviewStep = wizard.currentStep.key === 'review';
 
   return (
     <View className="flex-1 bg-background">
@@ -107,6 +118,8 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
             checkingAvailability={wizard.checkingAvailability}
             availabilityResult={wizard.availabilityResult}
             onCheckAvailability={wizard.handleEvaluateAvailability}
+            availableSlots={wizard.availableDailySlots}
+            slotsLoading={wizard.loadingDailySlots}
             error={wizard.stepError}
           />
         )}
@@ -148,7 +161,7 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
             holdRemainingSeconds={wizard.holdRemainingSeconds}
             isHoldExpired={wizard.isHoldExpired}
             totalAmount={wizard.pricingSnapshot?.totalAmount || 0}
-            currency={wizard.pricingSnapshot?.currency || 'SAR'}
+            currency={wizard.pricingSnapshot?.currency || 'INR'}
             paymentMethod={wizard.paymentMethod}
             onPaymentMethodChange={wizard.setPaymentMethod}
             balance={wizard.balance}
@@ -182,7 +195,7 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
           isLastStep={wizard.isLastStep}
           isHoldStep={isReviewStep}
           priceTotal={wizard.pricingSnapshot?.totalAmount}
-          currency={wizard.pricingSnapshot?.currency || 'SAR'}
+          currency={wizard.pricingSnapshot?.currency || 'INR'}
           loading={wizard.checkingAvailability || wizard.calculatingPricing || wizard.v2Holding}
           disabled={
             (wizard.currentStep.key === 'datetime' && wizard.availabilityResult?.available === false) ||
@@ -219,7 +232,7 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
           orderId: `order_amenity_${Date.now()}`,
           paymentId: `pay_rec_${Date.now()}`,
           amount: wizard.pricingSnapshot?.totalAmount || 0,
-          currency: wizard.pricingSnapshot?.currency || 'SAR',
+          currency: wizard.pricingSnapshot?.currency || 'INR',
           description: `Amenity Booking: ${facility.name}`,
         }}
         onSuccess={wizard.handleRazorpaySuccess}

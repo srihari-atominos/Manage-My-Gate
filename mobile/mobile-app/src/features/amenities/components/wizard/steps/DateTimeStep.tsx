@@ -9,8 +9,8 @@ import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { DatePicker } from '@/components/common/DatePicker';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { AmenityFacility, AmenityAvailabilityResult } from '../../../types/amenityDomain.types';
 import { Clock, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react-native';
+import { formatTo12Hour, formatTimeRange12Hour } from '../../../utils/amenityStateHelpers';
 
 export interface DateTimeStepProps {
   facility: AmenityFacility;
@@ -22,6 +22,8 @@ export interface DateTimeStepProps {
   checkingAvailability?: boolean;
   availabilityResult?: AmenityAvailabilityResult | null;
   onCheckAvailability: () => Promise<boolean>;
+  availableSlots?: Array<{ start: string; end: string; label: string }>;
+  slotsLoading?: boolean;
   error?: string | null;
 }
 
@@ -35,11 +37,14 @@ export function DateTimeStep({
   checkingAvailability = false,
   availabilityResult,
   onCheckAvailability,
+  availableSlots,
+  slotsLoading = false,
   error,
 }: DateTimeStepProps) {
   const selectedDateObj = useMemo(() => {
-    if (!selectedDate) return new Date();
+    if (!selectedDate || typeof selectedDate !== 'string') return new Date();
     const [y, m, d] = selectedDate.split('-').map(Number);
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return new Date();
     return new Date(y, m - 1, d);
   }, [selectedDate]);
 
@@ -49,43 +54,67 @@ export function DateTimeStep({
     return facility.operatingHours?.find((h) => h.dayOfWeek === dayOfWeek);
   }, [facility.operatingHours, dayOfWeek]);
 
-  // Generate suggested slot chunks based on slotDurationMinutes and operating hours
+  // Generate suggested slot chunks based on slotDurationMinutes, operating hours, and server availability
   const suggestedSlots = useMemo(() => {
     if (!daySchedule || !daySchedule.isOpen) return [];
 
-    const rawOpen = (daySchedule as any).opensAt || (daySchedule as any).openTime || '06:00';
-    const rawClose = (daySchedule as any).closesAt || (daySchedule as any).closeTime || '22:00';
-    const [openH, openM] = String(rawOpen).split(':').map(Number);
-    const [closeH, closeM] = String(rawClose).split(':').map(Number);
+    const opensAtStr = daySchedule.opensAt || (daySchedule as any).openTime || '06:00';
+    const closesAtStr = daySchedule.closesAt || (daySchedule as any).closeTime || '22:00';
+
+    const [openH, openM] = typeof opensAtStr === 'string' ? opensAtStr.split(':').map(Number) : [6, 0];
+    const [closeH, closeM] = typeof closesAtStr === 'string' ? closesAtStr.split(':').map(Number) : [22, 0];
     const duration = facility.slotDurationMinutes || 60;
 
     const startMinutes = (isNaN(openH) ? 6 : openH) * 60 + (isNaN(openM) ? 0 : openM);
     const endMinutes = (isNaN(closeH) ? 22 : closeH) * 60 + (isNaN(closeM) ? 0 : closeM);
 
-    const slots: { start: string; end: string; label: string }[] = [];
+    // Check if viewing today's date
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const isToday = selectedDate === todayStr;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const baseSlots: { start: string; end: string; label: string }[] = [];
     let current = startMinutes;
 
-    while (current + duration <= endMinutes && slots.length < 12) {
+    while (current + duration <= endMinutes) {
       const slotStartH = Math.floor(current / 60);
       const slotStartM = current % 60;
       const slotEndH = Math.floor((current + duration) / 60);
       const slotEndM = (current + duration) % 60;
 
-      const pad = (n: number) => String(n).padStart(2, '0');
       const startStr = `${pad(slotStartH)}:${pad(slotStartM)}`;
       const endStr = `${pad(slotEndH)}:${pad(slotEndM)}`;
 
-      slots.push({
-        start: startStr,
-        end: endStr,
-        label: `${startStr} - ${endStr}`,
-      });
+      // Filter out slots that have already passed if viewing today (2 min grace)
+      const isPast = isToday && current < currentMinutes - 2;
+
+      if (!isPast) {
+        baseSlots.push({
+          start: startStr,
+          end: endStr,
+          label: formatTimeRange12Hour(startStr, endStr),
+        });
+      }
 
       current += duration;
     }
 
-    return slots;
-  }, [daySchedule, facility.slotDurationMinutes]);
+    // If server provided vetted available slots, filter out booked slots (they disappear)
+    if (availableSlots !== undefined && availableSlots !== null) {
+      if (availableSlots.length > 0) {
+        const availableSet = new Set(availableSlots.map((s) => s.start));
+        return baseSlots.filter((s) => availableSet.has(s.start));
+      }
+      // If server explicitly returned empty slots and is not loading, all slots are booked/passed
+      if (!slotsLoading) {
+        return [];
+      }
+    }
+
+    return baseSlots;
+  }, [availableSlots, daySchedule, facility.slotDurationMinutes, selectedDate, slotsLoading]);
 
   const handleDateSelected = (d: Date) => {
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -103,7 +132,7 @@ export function DateTimeStep({
           Select Date & Time Window
         </Text>
         <Text variant="muted" className="text-xs text-muted-foreground mt-0.5">
-          Schedule your reservation in facility local time ({facility.timezone || 'Asia/Riyadh'}).
+          Schedule your reservation in facility local time ({facility.timezone || 'UTC'}).
         </Text>
       </View>
 
@@ -145,13 +174,21 @@ export function DateTimeStep({
             <Text className="font-semibold text-sm text-foreground">Available Time Slots</Text>
             {daySchedule?.isOpen ? (
               <StatusBadge
-                label={`${(daySchedule as any).opensAt || (daySchedule as any).openTime || '06:00'} - ${(daySchedule as any).closesAt || (daySchedule as any).closeTime || '22:00'}`}
+                label={formatTimeRange12Hour(
+                  daySchedule.opensAt || (daySchedule as any).openTime || '06:00',
+                  daySchedule.closesAt || (daySchedule as any).closeTime || '22:00'
+                )}
                 variant="info"
               />
             ) : null}
           </View>
 
-          {suggestedSlots.length > 0 ? (
+          {slotsLoading ? (
+            <View className="py-6 items-center justify-center gap-2">
+              <ActivityIndicator size="small" className="text-primary" />
+              <Text variant="muted" className="text-xs text-muted-foreground">Checking available slots...</Text>
+            </View>
+          ) : suggestedSlots.length > 0 ? (
             <View className="flex-row flex-wrap gap-2">
               {suggestedSlots.map((slot) => {
                 const isSelected = startTime === slot.start && endTime === slot.end;
@@ -181,9 +218,15 @@ export function DateTimeStep({
               })}
             </View>
           ) : (
-            <Text variant="muted" className="text-xs">
-              No preset slots generated. Please select your desired hours below.
-            </Text>
+            <View className="p-4 rounded-xl bg-muted/30 border border-border items-center justify-center gap-1 my-1">
+              <Clock size={20} className="text-muted-foreground" />
+              <Text className="text-xs font-semibold text-foreground text-center">
+                No Available Time Slots
+              </Text>
+              <Text variant="muted" className="text-[11px] text-muted-foreground text-center">
+                All slots for this date may be booked or have passed. Please select another date.
+              </Text>
+            </View>
           )}
 
           {/* Current Selection Indicator */}
@@ -191,7 +234,7 @@ export function DateTimeStep({
             <View className="flex-row items-center gap-2">
               <Clock size={16} className="text-primary" />
               <Text className="text-xs font-medium text-foreground">
-                Selected: {startTime} to {endTime}
+                Selected: {formatTo12Hour(startTime)} to {formatTo12Hour(endTime)}
               </Text>
             </View>
 

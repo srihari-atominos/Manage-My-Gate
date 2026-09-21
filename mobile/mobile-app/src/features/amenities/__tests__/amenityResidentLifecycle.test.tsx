@@ -392,7 +392,7 @@ describe('Phase 6C.4 — Final Resident Amenity Lifecycle Integration & Hardenin
       await render(
         <ResidentReservationDetailView reservation={resPending} accessPasses={[]} />
       );
-      expect(screen.getAllByText('PENDING_APPROVAL').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Pending Review|PENDING_APPROVAL/i).length).toBeGreaterThanOrEqual(1);
     });
 
     it('Scenario 14: Payment status preserved independently', async () => {
@@ -403,7 +403,7 @@ describe('Phase 6C.4 — Final Resident Amenity Lifecycle Integration & Hardenin
       await render(
         <ResidentReservationDetailView reservation={resHeld} accessPasses={[]} />
       );
-      expect(screen.getAllByText('HELD_AUTHORIZED').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Reserved|HELD_AUTHORIZED/i).length).toBeGreaterThanOrEqual(1);
     });
 
     it('Scenario 15: Approval status preserved without inferring from payment', async () => {
@@ -416,7 +416,7 @@ describe('Phase 6C.4 — Final Resident Amenity Lifecycle Integration & Hardenin
         <ResidentReservationDetailView reservation={resAwaitingReview} accessPasses={[]} />
       );
       expect(screen.getAllByText(/PAID/i).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('PENDING_REVIEW').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Awaiting Approval|PENDING_REVIEW/i).length).toBeGreaterThanOrEqual(1);
     });
 
     it('Scenario 16: Access status preserved independently', async () => {
@@ -427,7 +427,7 @@ describe('Phase 6C.4 — Final Resident Amenity Lifecycle Integration & Hardenin
       await render(
         <ResidentReservationDetailView reservation={resCheckedIn} accessPasses={[]} />
       );
-      expect(screen.getAllByText('CHECKED_IN').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Checked In|CHECKED_IN/i).length).toBeGreaterThanOrEqual(1);
     });
 
     it('Scenario 17: Completion status preserved independently without device clock mutation', async () => {

@@ -21,6 +21,9 @@ import {
   isHoldActive,
   convertLocalToUtcIso,
   formatUtcToLocalDisplay,
+  formatReservationDate,
+  formatReservationTimeRange,
+  formatApprovalStatusLabel,
 } from '../utils/amenityStateHelpers';
 import { mapAmenityApiError } from '../utils/amenityErrorMapper';
 import {
@@ -195,6 +198,47 @@ describe('Amenity Management v2 - Data-Binding Layer Verification', () => {
     it('handles invalid dates gracefully without throwing', () => {
       expect(convertLocalToUtcIso('', '')).toBe('');
       expect(formatUtcToLocalDisplay('invalid-iso').formatted).toBe('');
+    });
+
+    it('formats reservation date and 12-hour time in Asia/Kolkata timezone accurately', () => {
+      // 09:30 UTC = 15:00 IST (3:00 PM), 10:30 UTC = 16:00 IST (4:00 PM)
+      const startUtc = '2026-09-17T09:30:00.000Z';
+      const endUtc = '2026-09-17T10:30:00.000Z';
+      const tz = 'Asia/Kolkata';
+
+      const formattedDate = formatReservationDate(startUtc, tz);
+      expect(formattedDate).toMatch(/17 Sep(t)? 2026/);
+
+      const formattedTimeRange = formatReservationTimeRange(startUtc, endUtc, tz);
+      expect(formattedTimeRange).toBe('3:00 PM - 4:00 PM');
+    });
+
+    it('maps approvalStatus NOT_REQUIRED to friendly Auto-Approved label', () => {
+      expect(formatApprovalStatusLabel('NOT_REQUIRED')).toBe('Auto-Approved');
+      expect(formatApprovalStatusLabel('APPROVED')).toBe('Approved');
+      expect(formatApprovalStatusLabel('PENDING_REVIEW')).toBe('Awaiting Approval');
+    });
+
+    it('normalizes reservation with effectiveStartDateTime fallback when startDateTime is omitted', () => {
+      const rawApiDoc = {
+        _id: 'res-123',
+        orgId: 'org-456',
+        facilityId: 'fac-789',
+        reservationNumber: 'RES-202609-000011',
+        effectiveStartDateTime: '2026-09-17T09:30:00.000Z',
+        effectiveEndDateTime: '2026-09-17T10:30:00.000Z',
+        bookingStatus: 'CONFIRMED',
+        paymentStatus: 'PAID',
+        approvalStatus: 'NOT_REQUIRED',
+        accessStatus: 'PASS_GENERATED',
+        completionStatus: 'PENDING',
+      };
+
+      const normalized = normalizeReservationFromApi(rawApiDoc);
+      expect(normalized.startDateTime).toBe('2026-09-17T09:30:00.000Z');
+      expect(normalized.endDateTime).toBe('2026-09-17T10:30:00.000Z');
+      expect(normalized.effectiveStartDateTime).toBe('2026-09-17T09:30:00.000Z');
+      expect(normalized.effectiveEndDateTime).toBe('2026-09-17T10:30:00.000Z');
     });
   });
 

@@ -306,14 +306,14 @@ export default function AmenityMaintenanceScheduleScreen() {
         loading={scheduling}
       />
 
-      {/* Delete Maintenance Confirmation Modal */}
+      {/* Cancel Maintenance Confirmation Modal */}
       <ConfirmationModal
         visible={!!deleteTargetTask}
-        title="Delete Maintenance Task?"
-        message={`Are you sure you want to delete "${deleteTargetTask?.title}" for ${deleteTargetTask?.amenityName}? This will unblock conflicting resident reservation slots.`}
+        title="Cancel Maintenance Window?"
+        message={`Are you sure you want to cancel the maintenance window "${deleteTargetTask?.reason || (deleteTargetTask as any)?.title || 'Maintenance'}"? This will unblock conflicting resident reservation slots.`}
         variant="danger"
-        confirmLabel="Delete Task"
-        cancelLabel="Keep Task"
+        confirmLabel="Cancel Maintenance"
+        cancelLabel="Keep Window"
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTargetTask(null)}
       />

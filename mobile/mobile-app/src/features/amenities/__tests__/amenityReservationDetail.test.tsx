@@ -311,7 +311,7 @@ describe('Amenity Management Phase 6C.3: Resident Reservation Detail & Access Pa
       );
 
       // bookingStatus appears in header and in lifecycle status
-      const elements = screen.getAllByText('CONFIRMED');
+      const elements = screen.getAllByText(/CONFIRMED/i);
       expect(elements.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -358,7 +358,7 @@ describe('Amenity Management Phase 6C.3: Resident Reservation Detail & Access Pa
         />
       );
 
-      expect(screen.getByText(/PENDING/i)).toBeTruthy();
+      expect(screen.getByText(/Upcoming|PENDING/i)).toBeTruthy();
     });
 
     it('Scenario 12: Displays rejection and cancellation reasons when present', async () => {

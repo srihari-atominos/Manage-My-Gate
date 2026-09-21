@@ -71,7 +71,8 @@ export class AmenityReservationHoldService {
       throw new HttpError(400, 'Invalid reservation range: startDateTime must be earlier than endDateTime');
     }
 
-    if (start < new Date()) {
+    const GRACE_PERIOD_MS = 2 * 60 * 1000;
+    if (start.getTime() + GRACE_PERIOD_MS < Date.now()) {
       throw new HttpError(400, 'Reservation start time cannot be in the past');
     }
 
@@ -111,7 +112,7 @@ export class AmenityReservationHoldService {
     const requestedUnits = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60));
     const effectiveQuotaLimit =
       Number(quotaLimit) ||
-      (facility.archetype === 'ROOM_RESOURCE' ? Math.max(10080, requestedUnits) : 240);
+      (facility.archetype === 'ROOM_RESOURCE' ? Math.max(10080, requestedUnits) : 2400);
     await amenityQuotaAllocationService.reserveQuota(
       {
         orgId,

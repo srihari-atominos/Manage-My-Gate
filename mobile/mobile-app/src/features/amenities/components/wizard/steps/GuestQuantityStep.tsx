@@ -4,8 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { View, TouchableOpacity, TextInput } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { TextInput } from '@/components/forms/TextInput';
 import { QuantitySelector } from '@/components/common/QuantitySelector';
 import { Button } from '@/components/ui/button';
 import { AmenityFacility, AmenityGuest } from '../../../types/amenityDomain.types';
@@ -158,25 +159,23 @@ export function GuestQuantityStep({
               placeholder="Guest full name"
               value={newGuestName}
               onChangeText={setNewGuestName}
-              placeholderTextColor="#94a3b8"
-              className="h-10 px-3 rounded-xl border border-border bg-background text-xs text-foreground"
             />
 
             <View className="flex-row gap-2">
-              <TextInput
-                placeholder="Mobile number (optional)"
-                value={newGuestPhone}
-                onChangeText={setNewGuestPhone}
-                keyboardType="phone-pad"
-                placeholderTextColor="#94a3b8"
-                className="flex-1 h-10 px-3 rounded-xl border border-border bg-background text-xs text-foreground"
-              />
+              <View className="flex-1">
+                <TextInput
+                  placeholder="Mobile number (optional)"
+                  value={newGuestPhone}
+                  onChangeText={setNewGuestPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
 
               <Button
                 variant="outline"
                 onPress={handleAddGuestRow}
                 disabled={!newGuestName.trim()}
-                className="h-10 px-3 rounded-xl flex-row items-center gap-1"
+                className="h-10 px-3 rounded-xl flex-row items-center gap-1 self-end mb-0.5"
               >
                 <Plus size={14} className="text-foreground" />
                 <Text className="text-xs font-semibold text-foreground">Add</Text>
@@ -195,8 +194,6 @@ export function GuestQuantityStep({
           onChangeText={onNotesChange}
           multiline
           numberOfLines={2}
-          placeholderTextColor="#94a3b8"
-          className="p-3 rounded-xl border border-border bg-background text-xs text-foreground min-h-[60px]"
         />
       </View>
 

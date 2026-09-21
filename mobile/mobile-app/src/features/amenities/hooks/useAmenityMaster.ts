@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import { selectActiveOrgId } from '../../auth/store/authSelectors';
@@ -12,6 +11,7 @@ import { normalizeFacilityFromApi } from '../utils/amenityPayloadMappers';
 import { mapAmenityApiError } from '../utils/amenityErrorMapper';
 import { upsertAmenity, removeAmenity, fetchAmenitiesThunk } from '../store/amenitySlice';
 import { SECONDARY_CATEGORIES } from '../constants/amenityCatalogPresets';
+import { showCrossPlatformAlert } from '../../../utils/alertUtils';
 
 export type ArchetypeFilterOption = 'All' | AmenityArchetype;
 export type AmenityStatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'DRAFT';
@@ -31,6 +31,7 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     selectActiveOrgId(state)
   );
   const isAuthInitialized = useSelector((state: RootState) => (state as any)?.auth?.isInitialized);
+  const reduxAmenities = useSelector((state: RootState) => (state as any)?.amenities?.amenities);
 
   const [facilities, setFacilities] = useState<AmenityFacility[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -69,22 +70,20 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
   // Live status counts for filter pills (matching Billing Ledger pattern)
   const statusCounts = useMemo(() => {
     const total = facilities.length;
-    const active = facilities.filter(
-      (f) =>
-        (f.status === 'ACTIVE' || (f as any).isActive === true) &&
-        f.status !== 'MAINTENANCE' &&
-        f.status !== 'DRAFT' &&
-        !(f as any).isDraft
-    ).length;
-    const inactive = facilities.filter(
-      (f) =>
-        (f.status === 'INACTIVE' || (f as any).isActive === false) &&
-        f.status !== 'MAINTENANCE' &&
-        f.status !== 'DRAFT' &&
-        !(f as any).isDraft
-    ).length;
-    const maintenance = facilities.filter((f) => f.status === 'MAINTENANCE').length;
-    const draft = facilities.filter((f) => f.status === 'DRAFT' || (f as any).isDraft === true).length;
+    const active = facilities.filter((f) => {
+      const s = String(f.status || '').toUpperCase();
+      const isDraft = f.isDraft === true || s === 'DRAFT';
+      const isActive = (f as any).isActive === true || s === 'ACTIVE';
+      return isActive && s !== 'MAINTENANCE' && !isDraft;
+    }).length;
+    const inactive = facilities.filter((f) => {
+      const s = String(f.status || '').toUpperCase();
+      const isDraft = f.isDraft === true || s === 'DRAFT';
+      const isInactive = (f as any).isActive === false || s === 'INACTIVE';
+      return isInactive && s !== 'MAINTENANCE' && !isDraft;
+    }).length;
+    const maintenance = facilities.filter((f) => String(f.status || '').toUpperCase() === 'MAINTENANCE').length;
+    const draft = facilities.filter((f) => f.isDraft === true || String(f.status || '').toUpperCase() === 'DRAFT').length;
     return { total, active, inactive, maintenance, draft };
   }, [facilities]);
 
@@ -163,6 +162,25 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     loadData();
   }, [loadData, activeOrgId, isAuthInitialized]);
 
+  // Synchronize new socket-delivered or newly added facilities from Redux store
+  useEffect(() => {
+    if (Array.isArray(reduxAmenities) && reduxAmenities.length > 0) {
+      setFacilities((prev) => {
+        const prevMap = new Map(prev.map((p) => [String(p._id), p]));
+        let hasChanges = false;
+        const merged = [...prev];
+        reduxAmenities.forEach((ra: any) => {
+          const id = String(ra._id || ra.id || '');
+          if (id && !prevMap.has(id)) {
+            hasChanges = true;
+            merged.unshift(normalizeFacilityFromApi(ra));
+          }
+        });
+        return hasChanges ? merged : prev;
+      });
+    }
+  }, [reduxAmenities]);
+
   const filteredAmenities = useMemo(() => {
     return facilities.filter((facility) => {
       const query = search.trim().toLowerCase();
@@ -176,22 +194,18 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
 
       // Status filter
       let matchesStatus = true;
+      const facStatusUpper = String(facility.status || '').toUpperCase();
+      const facIsActive = (facility as any).isActive === true || facStatusUpper === 'ACTIVE';
+      const facIsDraft = facility.isDraft === true || facStatusUpper === 'DRAFT';
+
       if (statusFilter === 'ACTIVE') {
-        matchesStatus =
-          (facility.status === 'ACTIVE' || (facility as any).isActive === true) &&
-          facility.status !== 'MAINTENANCE' &&
-          facility.status !== 'DRAFT' &&
-          !(facility as any).isDraft;
+        matchesStatus = facIsActive && facStatusUpper !== 'MAINTENANCE' && !facIsDraft;
       } else if (statusFilter === 'INACTIVE') {
-        matchesStatus =
-          (facility.status === 'INACTIVE' || (facility as any).isActive === false) &&
-          facility.status !== 'MAINTENANCE' &&
-          facility.status !== 'DRAFT' &&
-          !(facility as any).isDraft;
+        matchesStatus = !facIsActive && facStatusUpper !== 'MAINTENANCE' && !facIsDraft;
       } else if (statusFilter === 'MAINTENANCE') {
-        matchesStatus = facility.status === 'MAINTENANCE';
+        matchesStatus = facStatusUpper === 'MAINTENANCE';
       } else if (statusFilter === 'DRAFT') {
-        matchesStatus = facility.status === 'DRAFT' || (facility as any).isDraft === true;
+        matchesStatus = facIsDraft;
       }
 
       // Archetype filter (multi-select takes priority if selected, fallback to selectedArchetype)
@@ -284,10 +298,32 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     setIsArchetypeSheetOpen(false);
   };
 
-  const handleOpenEditModal = (amenity: AmenityFacility) => {
-    setEditingAmenity(amenity);
-    if (amenity.archetype) {
-      setCreationArchetype(amenity.archetype);
+  const handleOpenEditModal = async (amenity: AmenityFacility) => {
+    // If it's a ROOM_RESOURCE, we must fetch its sub-rooms so the UI doesn't overwrite them with defaults
+    let fullAmenity = { ...amenity };
+    if (amenity.archetype === 'ROOM_RESOURCE') {
+      try {
+        const facilityId = amenity._id || (amenity as any).id;
+        const res = await amenityManagementService.getResources({ facilityId: String(facilityId), limit: 100 });
+        const rawItems = res?.data?.data || res?.data || (res as any)?.items || [];
+        
+        // Map to the format expected by RoomResourceConfigStep: { id, name, capacity }
+        if (Array.isArray(rawItems) && rawItems.length > 0) {
+          (fullAmenity as any).subRooms = rawItems.map((r: any) => ({
+            id: r._id || r.id || r.identifier,
+            name: r.name,
+            capacity: r.totalBulkStock || 1,
+            isActive: r.isActive,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch sub-rooms for editing:', err);
+      }
+    }
+
+    setEditingAmenity(fullAmenity);
+    if (fullAmenity.archetype) {
+      setCreationArchetype(fullAmenity.archetype);
     }
     setIsFormModalOpen(true);
   };
@@ -302,21 +338,40 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     try {
       if (editingAmenity) {
         const facilityId = editingAmenity._id || (editingAmenity as any).id;
-        await amenityManagementService.updateFacility(facilityId, payload);
-        Alert.alert('Success', 'Facility specifications updated successfully');
+        const updateRes: any = await amenityManagementService.updateFacility(facilityId, payload);
+        const rawUpdated = updateRes?.data?.data || updateRes?.data || updateRes;
+        const normalized = normalizeFacilityFromApi(rawUpdated);
+        if (normalized && (normalized._id || (normalized as any).id)) {
+          setFacilities((prev) =>
+            prev.map((f) => (f._id === normalized._id ? normalized : f))
+          );
+          dispatch(upsertAmenity(normalized));
+        }
       } else {
-        await amenityManagementService.createFacility(payload);
-        Alert.alert('Success', 'Facility created successfully in master catalog');
+        const createRes: any = await amenityManagementService.createFacility(payload);
+        const rawCreated = createRes?.data?.data || createRes?.data || createRes;
+        const normalized = normalizeFacilityFromApi(rawCreated);
+        if (normalized && (normalized._id || (normalized as any).id)) {
+          setFacilities((prev) => [
+            normalized,
+            ...prev.filter((f) => f._id !== normalized._id),
+          ]);
+          dispatch(upsertAmenity(normalized));
+        }
+        // Auto-clear active search & filters so the newly published facility is immediately visible
+        setSearch('');
+        setStatusFilter('ALL');
+        setSelectedArchetype('All');
+        setActiveFilters({ archetypes: [], categories: [], pricingModel: 'ALL' });
       }
       handleCloseFormModal();
       await loadData();
     } catch (err: any) {
       console.error('Failed to save amenity facility', err);
-      const mapped = mapAmenityApiError(err);
-      Alert.alert(
-        'Save Failed',
-        mapped.message || 'Failed to save amenity facility. Please verify required fields.'
-      );
+      // Re-throw so the calling wizard (AmenityCreationWizard) can display the error alert
+      // and set publishError on its review step. Do NOT call showCrossPlatformAlert here
+      // to prevent duplicate alerts.
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -327,31 +382,47 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     try {
       if (editingAmenity) {
         const facilityId = editingAmenity._id || (editingAmenity as any).id;
-        await amenityManagementService.updateFacility(facilityId, {
+        const updateRes: any = await amenityManagementService.updateFacility(facilityId, {
           ...payload,
           isDraft: true,
           status: 'DRAFT',
           isActive: false,
         });
-        Alert.alert('Draft Saved', 'Facility draft updated successfully');
+        const rawUpdated = updateRes?.data?.data || updateRes?.data || updateRes;
+        const normalized = normalizeFacilityFromApi(rawUpdated);
+        if (normalized && (normalized._id || (normalized as any).id)) {
+          setFacilities((prev) =>
+            prev.map((f) => (f._id === normalized._id ? normalized : f))
+          );
+          dispatch(upsertAmenity(normalized));
+        }
       } else {
-        await amenityManagementService.createFacility({
+        const createRes: any = await amenityManagementService.createFacility({
           ...payload,
           isDraft: true,
           status: 'DRAFT',
           isActive: false,
         });
-        Alert.alert('Draft Saved', 'Facility draft saved successfully');
+        const rawCreated = createRes?.data?.data || createRes?.data || createRes;
+        const normalized = normalizeFacilityFromApi(rawCreated);
+        if (normalized && (normalized._id || (normalized as any).id)) {
+          setFacilities((prev) => [
+            normalized,
+            ...prev.filter((f) => f._id !== normalized._id),
+          ]);
+          dispatch(upsertAmenity(normalized));
+        }
+        setSearch('');
+        setStatusFilter('ALL');
+        setSelectedArchetype('All');
+        setActiveFilters({ archetypes: [], categories: [], pricingModel: 'ALL' });
       }
       handleCloseFormModal();
       await loadData();
     } catch (err: any) {
       console.error('Failed to save amenity draft', err);
-      const mapped = mapAmenityApiError(err);
-      Alert.alert(
-        'Save Draft Failed',
-        mapped.message || 'Failed to save facility draft. Please verify fields.'
-      );
+      // Re-throw so the wizard displays the error alert via its own handler
+      throw err;
     } finally {
       setSavingDraft(false);
     }
@@ -375,10 +446,6 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
 
     try {
       await amenityManagementService.updateFacilityStatus(facilityId, nextIsActive);
-      Alert.alert(
-        'Success',
-        `Facility ${nextIsActive ? 'activated' : 'deactivated'} successfully`
-      );
       await loadData();
     } catch (err: any) {
       console.error('Failed to change status', err);
@@ -394,7 +461,7 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
         return;
       }
 
-      Alert.alert('Status Update Error', mapped.message || 'Failed to update facility status');
+      showCrossPlatformAlert('Status Update Error', mapped.message || 'Failed to update facility status');
     } finally {
       setSaving(false);
     }
@@ -415,12 +482,11 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
           ? `Facility "${target.name}" deactivated. Existing confirmed bookings will be honored.`
           : `Facility "${target.name}" deactivated. Existing bookings cancelled with full refunds.`;
       setDeactivationConflict(null);
-      Alert.alert('Success', msg);
       await loadData();
     } catch (err: any) {
       console.error('Failed to resolve deactivation conflict', err);
       const mapped = mapAmenityApiError(err);
-      Alert.alert('Resolution Failed', mapped.message || 'Failed to update facility with chosen action');
+      showCrossPlatformAlert('Resolution Failed', mapped.message || 'Failed to update facility with chosen action');
     } finally {
       setSaving(false);
     }
@@ -438,12 +504,20 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     try {
       await amenityManagementService.deleteFacility(facilityId);
       dispatch(removeAmenity(facilityId));
-      Alert.alert('Success', 'Facility removed from master catalog');
       await loadData();
     } catch (err: any) {
       console.error('Failed to delete amenity', err);
       const mapped = mapAmenityApiError(err);
-      Alert.alert('Delete Error', mapped.message || 'Failed to delete facility record');
+      
+      // If it's a 404, it was likely already deleted (e.g. via double tap or stuck state)
+      // We should silently ignore it AND visually remove it from the list
+      if (mapped.statusCode === 404 || err?.response?.status === 404 || err?.status === 404 || (mapped.message && mapped.message.toLowerCase().includes('not found'))) {
+        dispatch(removeAmenity(facilityId));
+        setFacilities((prev) => prev.filter(f => f._id !== facilityId && (f as any).id !== facilityId));
+        return;
+      }
+      
+      showCrossPlatformAlert('Delete Error', mapped.message || 'Failed to delete facility record');
     } finally {
       setSaving(false);
     }

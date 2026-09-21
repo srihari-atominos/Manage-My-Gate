@@ -328,8 +328,12 @@ export interface ScheduleMaintenanceApiPayload {
   internalNotes?: string;
   bufferBeforeMinutes?: number;
   bufferAfterMinutes?: number;
-  startDateTime: string;
-  endDateTime: string;
+  startDateTime?: string;
+  endDateTime?: string;
+  windows?: Array<{
+    startDateTime: string;
+    endDateTime: string;
+  }>;
   isCompleteClosure?: boolean;
   degradedCapacity?: number;
   conflictAction?: 'CANCEL_AND_PROCEED';
@@ -401,8 +405,12 @@ export interface MaintenanceImpactPreviewApiPayload {
   facilityId: string;
   resourceId?: string | null;
   resourceIds?: string[];
-  startDateTime: string;
-  endDateTime: string;
+  startDateTime?: string;
+  endDateTime?: string;
+  windows?: Array<{
+    startDateTime: string;
+    endDateTime: string;
+  }>;
   bufferBeforeMinutes?: number;
   bufferAfterMinutes?: number;
 }
@@ -425,6 +433,9 @@ export interface ResolveMaintenanceImpactApiPayload {
 
 export interface ExtendMaintenanceBlockApiPayload {
   newEndDateTime: string;
+  blockType?: string;
+  isCompleteClosure?: boolean;
+  degradedCapacity?: number;
   conflictAction?: 'CANCEL_AND_PROCEED';
   resolutions?: Array<{
     targetId: string;

@@ -120,8 +120,9 @@ export class AmenityBookingService {
       }
 
       const now = moment().tz(TIMEZONE).toDate();
+      const GRACE_PERIOD_MS = 2 * 60 * 1000;
 
-      if (bookingDateTimeStart < now) {
+      if (bookingDateTimeStart.getTime() + GRACE_PERIOD_MS < now.getTime()) {
         if (amenity.pricing?.pricingType === 'daily' && bookingDateTimeEnd > now) {
           // Allow booking for today if it's a daily amenity and hasn't closed yet
         } else {

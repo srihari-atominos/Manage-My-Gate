@@ -457,6 +457,8 @@ export const fetchReservationsThunk = createAsyncThunk(
       page?: number;
       limit?: number;
       facilityId?: string;
+      resourceId?: string;
+      residentId?: string;
       bookingStatus?: string;
       paymentStatus?: string;
       unitId?: string;
@@ -622,6 +624,8 @@ const amenityBookingSlice = createSlice({
       state.v2Error = null;
       state.v2Holding = false;
       state.v2Confirming = false;
+      state.v2CurrentReservation = null;
+      state.v2AccessPasses = [];
     },
     clearV2PassResults: (state) => {
       state.v2CheckInResult = null;

@@ -19,6 +19,7 @@ export class AmenityMaintenanceBlockController {
         bufferAfterMinutes,
         startDateTime,
         endDateTime,
+        windows,
         isCompleteClosure,
         degradedCapacity,
         reason,
@@ -38,6 +39,7 @@ export class AmenityMaintenanceBlockController {
         bufferAfterMinutes: bufferAfterMinutes !== undefined ? bufferAfterMinutes : 0,
         startDateTime,
         endDateTime,
+        windows: Array.isArray(windows) && windows.length > 0 ? windows : undefined,
         isCompleteClosure: isCompleteClosure !== undefined ? isCompleteClosure : true,
         degradedCapacity: degradedCapacity || 0,
         reason,
@@ -64,6 +66,7 @@ export class AmenityMaintenanceBlockController {
         resourceIds,
         startDateTime,
         endDateTime,
+        windows,
         bufferBeforeMinutes,
         bufferAfterMinutes,
       } = req.body;
@@ -75,6 +78,7 @@ export class AmenityMaintenanceBlockController {
         resourceIds: resourceIds || [],
         startDateTime,
         endDateTime,
+        windows: Array.isArray(windows) && windows.length > 0 ? windows : undefined,
         bufferBeforeMinutes: bufferBeforeMinutes !== undefined ? bufferBeforeMinutes : 0,
         bufferAfterMinutes: bufferAfterMinutes !== undefined ? bufferAfterMinutes : 0,
       });

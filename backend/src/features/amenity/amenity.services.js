@@ -21,6 +21,84 @@ export class AmenityService {
       ];
     }
     
+    try {
+      const mongoose = (await import('mongoose')).default;
+      const targetOrgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
+      const v2Facilities = await mongoose.connection.db
+        .collection('amenity_management_facilities')
+        .find({ orgId: targetOrgId, isDeleted: false })
+        .toArray();
+
+      if (v2Facilities && v2Facilities.length > 0) {
+        const existingAmenities = await amenityRepository.findAllByOrg(orgId, { isDeleted: false });
+        const existingIds = new Set(existingAmenities.map((a) => a._id.toString()));
+
+        for (const f of v2Facilities) {
+          if (!existingIds.has(f._id.toString())) {
+            const pConfig = f.pricingConfig || {};
+            const legacyDoc = {
+              _id: f._id,
+              orgId: f.orgId,
+              name: f.name,
+              description: f.description || '',
+              type:
+                f.archetype === 'EXCLUSIVE_HOURLY'
+                  ? 'sports'
+                  : f.archetype === 'SHARED_CAPACITY'
+                    ? 'pool'
+                    : f.archetype === 'EVENT_SPACE'
+                      ? 'hall'
+                      : 'general',
+              category: f.category || 'General',
+              archetype: f.archetype,
+              code: f.code,
+              location: f.location || '',
+              pricing: {
+                baseRate: pConfig.baseRate || 0,
+                pricingType: (pConfig.pricingType || 'FREE').toLowerCase(),
+                peakRateMultiplier: 1,
+                weekendRateMultiplier: 1,
+                holidayRateMultiplier: 1,
+                securityDeposit: pConfig.securityDeposit || 0,
+                securityDepositDescription:
+                  (pConfig.securityDeposit || 0) > 0 ? 'Refundable deposit against equipment damages.' : null,
+                taxPercentage: pConfig.taxPercentage || 0,
+                cancellationChargePercentage: 0,
+                dynamicPricingEnabled: false,
+              },
+              openDays: [0, 1, 2, 3, 4, 5, 6],
+              capacity: f.maxCapacity || 1,
+              bookingRules: {
+                slotDurationMinutes: f.slotDurationMinutes || 60,
+                bufferTimeMinutes: f.setupBufferMinutes || 10,
+                openTime: f.operatingHours?.[0]?.openTime || '06:00',
+                closeTime: f.operatingHours?.[0]?.closeTime || '22:00',
+                maxBookingsPerUserPerSlot: f.maxHeadcountPerReservation || 2,
+                advanceBookingDays: f.advanceBookingDays || 7,
+                minAdvanceBookingHours: 1,
+                isCancellationEnabled: f.cancellationPolicy?.isAllowed !== false,
+                holidayCalendarIds: [],
+                weeklyOffDays: [],
+                cancellationRefundRules: [],
+              },
+              status: (f.status || 'ACTIVE').toLowerCase(),
+              isDeleted: false,
+              maintenanceSchedules: [],
+              createdAt: f.createdAt || new Date(),
+              updatedAt: f.updatedAt || new Date(),
+            };
+            await mongoose.connection.db.collection('amenities').updateOne(
+              { _id: f._id },
+              { $set: legacyDoc },
+              { upsert: true }
+            );
+          }
+        }
+      }
+    } catch (syncErr) {
+      // Non-blocking sync error logging
+    }
+
     let amenities = await amenityRepository.findAllByOrg(orgId, dbFilter);
     
     if (filters.priceRange) {
@@ -145,6 +223,70 @@ export class AmenityService {
     amenityData.orgId = orgId; // override/set just to be safe
     const created = await amenityRepository.create(amenityData);
     
+    try {
+      const mongoose = (await import('mongoose')).default;
+      const archetype =
+        created.archetype ||
+        (created.type === 'sports'
+          ? 'EXCLUSIVE_HOURLY'
+          : created.type === 'pool'
+            ? 'SHARED_CAPACITY'
+            : created.type === 'hall'
+              ? 'EVENT_SPACE'
+              : 'SHARED_CAPACITY');
+      const v2Doc = {
+        _id: created._id,
+        orgId: created.orgId,
+        name: created.name,
+        code:
+          created.code ||
+          `FAC-${created.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8)}-${Math.floor(100 + Math.random() * 900)}`,
+        archetype,
+        description: created.description || '',
+        location: created.location || 'Main Campus',
+        category: created.category || created.type || 'General',
+        timezone: 'Asia/Kolkata',
+        operatingHours: [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
+          dayOfWeek,
+          openTime: created.bookingRules?.openTime || '06:00',
+          closeTime: created.bookingRules?.closeTime || '22:00',
+          isOpen: true,
+        })),
+        slotDurationMinutes: created.bookingRules?.slotDurationMinutes || 60,
+        maxCapacity: created.capacity || 1,
+        maxHeadcountPerReservation: created.bookingRules?.maxBookingsPerUserPerSlot || 2,
+        pricingConfig: {
+          pricingType: (created.pricing?.pricingType || 'FREE').toUpperCase(),
+          baseRate: created.pricing?.baseRate || created.ratePerHour || 0,
+          currency: 'INR',
+          securityDeposit: created.pricing?.securityDeposit || 0,
+          taxPercentage: created.pricing?.taxPercentage || 0,
+          cancellationFee: 0,
+        },
+        requiresApproval: false,
+        cancellationPolicy: {
+          isAllowed: created.bookingRules?.isCancellationEnabled !== false,
+          refundCutoffHours: 2,
+          refundPercentage: 100,
+        },
+        status: (created.status || 'ACTIVE').toUpperCase(),
+        isDraft: false,
+        isActive: created.status !== 'inactive',
+        isDeleted: false,
+        deletedAt: null,
+        concurrencyVersion: 0,
+        createdAt: created.createdAt || new Date(),
+        updatedAt: created.updatedAt || new Date(),
+      };
+      await mongoose.connection.db.collection('amenity_management_facilities').updateOne(
+        { _id: created._id },
+        { $set: v2Doc },
+        { upsert: true }
+      );
+    } catch (syncV2Err) {
+      // Non-blocking sync
+    }
+
     // Audit log can be handled by events
     amenityEventEmitter.emit(AMENITY_CREATED, created);
     return created;
@@ -176,6 +318,28 @@ export class AmenityService {
     }
 
     const updated = await amenityRepository.update(id, orgId, updateData);
+
+    try {
+      const mongoose = (await import('mongoose')).default;
+      const v2Updates = {
+        updatedAt: new Date(),
+      };
+      if (updated.name) v2Updates.name = updated.name;
+      if (updated.description) v2Updates.description = updated.description;
+      if (updated.location) v2Updates.location = updated.location;
+      if (updated.capacity) v2Updates.maxCapacity = updated.capacity;
+      if (updated.status) {
+        v2Updates.status = updated.status.toUpperCase();
+        v2Updates.isActive = updated.status.toLowerCase() !== 'inactive';
+      }
+      await mongoose.connection.db.collection('amenity_management_facilities').updateOne(
+        { _id: updated._id },
+        { $set: v2Updates }
+      );
+    } catch (syncV2Err) {
+      // Non-blocking sync
+    }
+
     amenityEventEmitter.emit(AMENITY_UPDATED, updated);
     return updated;
   }
@@ -207,6 +371,23 @@ export class AmenityService {
     }
 
     const updated = await amenityRepository.update(id, orgId, { status: normalizedStatus });
+
+    try {
+      const mongoose = (await import('mongoose')).default;
+      await mongoose.connection.db.collection('amenity_management_facilities').updateOne(
+        { _id: updated._id },
+        {
+          $set: {
+            status: normalizedStatus.toUpperCase(),
+            isActive: normalizedStatus !== 'inactive',
+            updatedAt: new Date(),
+          },
+        }
+      );
+    } catch (syncV2Err) {
+      // Non-blocking sync
+    }
+
     amenityEventEmitter.emit(AMENITY_UPDATED, updated);
     return updated;
   }
@@ -235,6 +416,18 @@ export class AmenityService {
     }
 
     const deleted = await amenityRepository.softDelete(id, orgId);
+
+    try {
+      const mongoose = (await import('mongoose')).default;
+      const targetId = mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+      await mongoose.connection.db.collection('amenity_management_facilities').updateOne(
+        { _id: targetId },
+        { $set: { isDeleted: true, status: 'INACTIVE', isActive: false, deletedAt: new Date() } }
+      );
+    } catch (syncV2Err) {
+      // Non-blocking sync
+    }
+
     amenityEventEmitter.emit(AMENITY_DELETED, deleted);
     return deleted;
   }

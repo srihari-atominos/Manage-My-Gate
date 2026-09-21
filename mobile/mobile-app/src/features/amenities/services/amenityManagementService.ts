@@ -234,6 +234,23 @@ export const amenityManagementService = {
     return extractEnvelope(response);
   },
 
+  async getDailySlots(params: {
+    facilityId: string;
+    date: string;
+    resourceId?: string;
+    requestedQuantity?: number;
+  }): Promise<ApiResponse<{ slots: Array<{ start: string; end: string; label: string; startUtc: string; endUtc: string }> }>> {
+    const query = new URLSearchParams();
+    query.append('facilityId', params.facilityId);
+    query.append('date', params.date);
+    if (params.resourceId) query.append('resourceId', params.resourceId);
+    if (params.requestedQuantity) query.append('requestedQuantity', String(params.requestedQuantity));
+
+    const url = getAmenityV2Url(`/availability/daily-slots?${query.toString()}`);
+    const response = await apiClient.get<ApiResponse<{ slots: Array<{ start: string; end: string; label: string; startUtc: string; endUtc: string }> }>>(url);
+    return extractEnvelope(response);
+  },
+
   // ==========================================
   // 4. Pricing Calculation (/pricing)
   // ==========================================
@@ -294,6 +311,8 @@ export const amenityManagementService = {
     page?: number;
     limit?: number;
     facilityId?: string;
+    resourceId?: string;
+    residentId?: string;
     bookingStatus?: string;
     paymentStatus?: string;
     unitId?: string;
@@ -304,6 +323,8 @@ export const amenityManagementService = {
     if (params.page) query.append('page', String(params.page));
     if (params.limit) query.append('limit', String(params.limit));
     if (params.facilityId) query.append('facilityId', params.facilityId);
+    if (params.resourceId) query.append('resourceId', params.resourceId);
+    if (params.residentId) query.append('residentId', params.residentId);
     if (params.bookingStatus) query.append('bookingStatus', params.bookingStatus);
     if (params.paymentStatus) query.append('paymentStatus', params.paymentStatus);
     if (params.unitId) query.append('unitId', params.unitId);

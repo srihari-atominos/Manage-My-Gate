@@ -39,6 +39,16 @@ export class AvailabilityService {
       throw new HttpError(400, 'Invalid date range: startDateTime must be earlier than endDateTime');
     }
 
+    const GRACE_PERIOD_MS = 2 * 60 * 1000;
+    if (start.getTime() + GRACE_PERIOD_MS < Date.now()) {
+      return {
+        isAvailable: false,
+        reason: 'Reservation start time cannot be in the past',
+        effectiveStartDateTime: start,
+        effectiveEndDateTime: end,
+      };
+    }
+
     // 1. Fetch Facility
     const facility = await amenityFacilityRepository.findById(facilityId, orgId, session);
     if (
@@ -187,6 +197,33 @@ export class AvailabilityService {
       }
 
       case 'SHARED_CAPACITY': {
+        // If someone booked or held this slot, check if active reservations/holds exist
+        const activeHolds = await amenityReservationHoldRepository.findOverlappingActiveHolds(
+          { orgId, facilityId, resourceId, effectiveStartDateTime: effectiveStart, effectiveEndDateTime: effectiveEnd },
+          session
+        );
+        if (activeHolds.length > 0) {
+          return {
+            isAvailable: false,
+            reason: 'Requested time is locked by an active hold',
+            effectiveStartDateTime: effectiveStart,
+            effectiveEndDateTime: effectiveEnd,
+          };
+        }
+
+        const activeResvs = await amenityReservationRepository.findOverlappingActiveReservations(
+          { orgId, facilityId, resourceId, effectiveStartDateTime: effectiveStart, effectiveEndDateTime: effectiveEnd },
+          session
+        );
+        if (activeResvs.length > 0) {
+          return {
+            isAvailable: false,
+            reason: 'Requested time is booked by a confirmed reservation',
+            effectiveStartDateTime: effectiveStart,
+            effectiveEndDateTime: effectiveEnd,
+          };
+        }
+
         const slotStartUTC = start.toISOString();
         const bucketId = `BUCKET:${orgId}:${facilityId}:${slotStartUTC}`;
         const bucket = await amenitySlotAllocationRepository.findById(bucketId, session);
@@ -311,6 +348,120 @@ export class AvailabilityService {
           effectiveEndDateTime: effectiveEnd,
         };
     }
+  }
+
+  /**
+   * Generates and evaluates all daily time slots for a facility on a given date.
+   * Excludes past time slots (with 2-min grace period) and slots that are booked,
+   * held, or blocked by maintenance.
+   *
+   * @param {Object} params
+   * @param {string|import('mongoose').Types.ObjectId} params.orgId
+   * @param {string|import('mongoose').Types.ObjectId} params.facilityId
+   * @param {string|import('mongoose').Types.ObjectId} [params.resourceId]
+   * @param {string} params.dateStr - 'YYYY-MM-DD'
+   * @param {number} [params.requestedQuantity=1]
+   * @param {import('mongoose').ClientSession} [session]
+   * @returns {Promise<{ slots: Array<{ start: string, end: string, label: string, startUtc: string, endUtc: string }> }>}
+   */
+  async getDailySlots({ orgId, facilityId, resourceId, dateStr, requestedQuantity = 1 }, session) {
+    const facility = await amenityFacilityRepository.findById(facilityId, orgId, session);
+    if (
+      !facility ||
+      !facility.isActive ||
+      facility.isDraft ||
+      facility.isDeleted ||
+      facility.status === 'DRAFT' ||
+      facility.status === 'INACTIVE'
+    ) {
+      return { slots: [] };
+    }
+
+    const tz = facility.timezone || 'Asia/Kolkata';
+    const targetDate = moment.tz(dateStr, 'YYYY-MM-DD', tz).startOf('day');
+    const dayOfWeek = targetDate.day();
+
+    const dayRule = facility.operatingHours?.find((h) => h.dayOfWeek === dayOfWeek);
+    if (!dayRule || !dayRule.isOpen) {
+      return { slots: [] };
+    }
+
+    const opensAtStr = dayRule.openTime || dayRule.opensAt || '06:00';
+    const closesAtStr = dayRule.closeTime || dayRule.closesAt || '22:00';
+    const duration = facility.slotDurationMinutes || 60;
+
+    const [openH, openM] = typeof opensAtStr === 'string' ? opensAtStr.split(':').map(Number) : [6, 0];
+    const [closeH, closeM] = typeof closesAtStr === 'string' ? closesAtStr.split(':').map(Number) : [22, 0];
+
+    const startMinutes = openH * 60 + openM;
+    const endMinutes = closeH * 60 + closeM;
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const nowMs = Date.now();
+    const GRACE_PERIOD_MS = 2 * 60 * 1000;
+
+    const availableSlots = [];
+    let current = startMinutes;
+
+    while (current + duration <= endMinutes) {
+      const slotStartH = Math.floor(current / 60);
+      const slotStartM = current % 60;
+      const slotEndH = Math.floor((current + duration) / 60);
+      const slotEndM = (current + duration) % 60;
+
+      const startStr = `${pad(slotStartH)}:${pad(slotStartM)}`;
+      const endStr = `${pad(slotEndH)}:${pad(slotEndM)}`;
+
+      const slotStartUtc = moment.tz(`${dateStr}T${startStr}`, 'YYYY-MM-DDTHH:mm', tz).toDate();
+      let slotEndUtc = moment.tz(`${dateStr}T${endStr}`, 'YYYY-MM-DDTHH:mm', tz).toDate();
+      if (slotEndUtc <= slotStartUtc) {
+        slotEndUtc = moment(slotEndUtc).add(1, 'days').toDate();
+      }
+
+      // 1. Past time check: if slot start time has already passed, it disappears
+      const isPast = slotStartUtc.getTime() + GRACE_PERIOD_MS < nowMs;
+
+      if (!isPast) {
+        // 2. Archetype availability check: checks overlapping holds, confirmed reservations, discrete allocations, maintenance
+        const avail = await this.checkAvailability(
+          {
+            orgId,
+            facilityId,
+            resourceId,
+            startDateTime: slotStartUtc,
+            endDateTime: slotEndUtc,
+            requestedQuantity: Number(requestedQuantity) || 1,
+          },
+          session
+        );
+
+        // "if someone booked that slot it should disappear"
+        if (avail.isAvailable) {
+          const formatTo12Hour = (tStr) => {
+            const [hStr, mStr = '00'] = (tStr || '').split(':');
+            const h = parseInt(hStr, 10);
+            const m = parseInt(mStr, 10);
+            if (isNaN(h)) return tStr;
+            const period = h >= 12 ? 'PM' : 'AM';
+            const hour12 = h % 12 === 0 ? 12 : h % 12;
+            const minutePad = isNaN(m) ? '00' : String(m).padStart(2, '0');
+            return `${hour12}:${minutePad} ${period}`;
+          };
+
+          availableSlots.push({
+            start: startStr,
+            end: endStr,
+            label: `${formatTo12Hour(startStr)} - ${formatTo12Hour(endStr)}`,
+            startUtc: slotStartUtc.toISOString(),
+            endUtc: slotEndUtc.toISOString(),
+          });
+        }
+      }
+
+      current += duration;
+    }
+
+    return { slots: availableSlots };
   }
 }
 

@@ -12,7 +12,11 @@ export class AmenityReservationRepository {
     const validSession = getValidSession(session);
     const options = validSession ? { session: validSession } : {};
     const [doc] = await AmenityReservation.create([reservationData], options);
-    return doc;
+    return AmenityReservation.populate(doc, [
+      { path: 'facilityId', select: 'name timezone type category isExclusive' },
+      { path: 'resourceId', select: 'name type' },
+      { path: 'residentId', select: 'name username email' }
+    ]);
   }
 
   /**
@@ -21,7 +25,11 @@ export class AmenityReservationRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(reservationId, session) {
-    return AmenityReservation.findById(reservationId).session(getValidSession(session));
+    return AmenityReservation.findById(reservationId)
+      .populate('facilityId', 'name timezone type category isExclusive')
+      .populate('resourceId', 'name type')
+      .populate('residentId', 'name username email')
+      .session(getValidSession(session));
   }
 
   /**
@@ -31,7 +39,11 @@ export class AmenityReservationRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findByReservationNumber(orgId, reservationNumber, session) {
-    return AmenityReservation.findOne({ orgId, reservationNumber }).session(getValidSession(session));
+    return AmenityReservation.findOne({ orgId, reservationNumber })
+      .populate('facilityId', 'name timezone type category isExclusive')
+      .populate('resourceId', 'name type')
+      .populate('residentId', 'name username email')
+      .session(getValidSession(session));
   }
 
   /**
@@ -142,7 +154,64 @@ export class AmenityReservationRepository {
       { $sort: { createdAt: -1 } },
       {
         $facet: {
-          data: [{ $skip: skip }, { $limit: limit }],
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $addFields: {
+                startDateTime: { $ifNull: ['$effectiveStartDateTime', '$requestedStartDateTime'] },
+                endDateTime: { $ifNull: ['$effectiveEndDateTime', '$requestedEndDateTime'] },
+              },
+            },
+            {
+              $lookup: {
+                from: 'amenity_management_facilities',
+                localField: 'facilityId',
+                foreignField: '_id',
+                as: 'facilityId',
+              },
+            },
+            {
+              $unwind: {
+                path: '$facilityId',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $lookup: {
+                from: 'amenity_management_resources',
+                localField: 'resourceId',
+                foreignField: '_id',
+                as: 'resourceId',
+              },
+            },
+            {
+              $unwind: {
+                path: '$resourceId',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'residentId',
+                foreignField: '_id',
+                as: 'residentId',
+              },
+            },
+            {
+              $unwind: {
+                path: '$residentId',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $project: {
+                'residentId.password': 0,
+                'residentId.otp': 0,
+              },
+            }
+          ],
           totalCount: [{ $count: 'count' }],
         },
       },

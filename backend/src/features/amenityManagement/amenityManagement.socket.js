@@ -83,6 +83,23 @@ export class AmenityManagementSocket {
       logger.warn('Failed to emit MAINTENANCE_SCHEDULED socket event:', { error: err.message });
     }
   }
+
+  /**
+   * Dispatches facility lifecycle event to organization room.
+   * @param {string} eventType ('AMENITY_CREATED' | 'AMENITY_UPDATED' | 'AMENITY_DELETED')
+   * @param {Object} payload
+   */
+  dispatchFacilityEvent(eventType, payload) {
+    try {
+      const io = getIO();
+      if (!io) return;
+      if (payload.orgId) {
+        io.to(`org:${payload.orgId}`).emit(eventType, payload);
+      }
+    } catch (err) {
+      logger.warn(`Failed to emit ${eventType} socket event:`, { error: err.message });
+    }
+  }
 }
 
 export const amenityManagementSocket = new AmenityManagementSocket();

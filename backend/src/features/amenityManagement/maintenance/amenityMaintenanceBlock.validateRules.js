@@ -13,8 +13,25 @@ export const scheduleMaintenanceRules = [
   body('internalNotes').optional().isString(),
   body('bufferBeforeMinutes').optional().isInt({ min: 0 }).withMessage('bufferBeforeMinutes must be >= 0'),
   body('bufferAfterMinutes').optional().isInt({ min: 0 }).withMessage('bufferAfterMinutes must be >= 0'),
-  body('startDateTime').notEmpty().withMessage('startDateTime is required').isISO8601().withMessage('startDateTime must be valid ISO8601'),
-  body('endDateTime').notEmpty().withMessage('endDateTime is required').isISO8601().withMessage('endDateTime must be valid ISO8601'),
+  body('startDateTime')
+    .if(body('windows').not().exists())
+    .notEmpty().withMessage('startDateTime is required when windows is not provided')
+    .isISO8601().withMessage('startDateTime must be valid ISO8601'),
+  body('endDateTime')
+    .if(body('windows').not().exists())
+    .notEmpty().withMessage('endDateTime is required when windows is not provided')
+    .isISO8601().withMessage('endDateTime must be valid ISO8601'),
+  body('windows')
+    .optional()
+    .isArray({ min: 1 }).withMessage('windows must be an array of at least 1 window'),
+  body('windows.*.startDateTime')
+    .if(body('windows').exists())
+    .notEmpty().withMessage('Each window must have a startDateTime')
+    .isISO8601().withMessage('Window startDateTime must be valid ISO8601'),
+  body('windows.*.endDateTime')
+    .if(body('windows').exists())
+    .notEmpty().withMessage('Each window must have an endDateTime')
+    .isISO8601().withMessage('Window endDateTime must be valid ISO8601'),
   body('isCompleteClosure').optional().isBoolean().withMessage('isCompleteClosure must be a boolean'),
   body('degradedCapacity').optional().isInt({ min: 0 }).withMessage('degradedCapacity must be >= 0'),
   body('reason').notEmpty().withMessage('reason is required').isString().trim(),
@@ -29,8 +46,25 @@ export const impactPreviewRules = [
   body('resourceId').optional({ nullable: true }).isMongoId().withMessage('Invalid resourceId'),
   body('resourceIds').optional().isArray().withMessage('resourceIds must be an array'),
   body('resourceIds.*').optional().isMongoId().withMessage('Each resourceId must be a valid MongoId'),
-  body('startDateTime').notEmpty().withMessage('startDateTime is required').isISO8601().withMessage('startDateTime must be valid ISO8601'),
-  body('endDateTime').notEmpty().withMessage('endDateTime is required').isISO8601().withMessage('endDateTime must be valid ISO8601'),
+  body('startDateTime')
+    .if(body('windows').not().exists())
+    .notEmpty().withMessage('startDateTime is required when windows is not provided')
+    .isISO8601().withMessage('startDateTime must be valid ISO8601'),
+  body('endDateTime')
+    .if(body('windows').not().exists())
+    .notEmpty().withMessage('endDateTime is required when windows is not provided')
+    .isISO8601().withMessage('endDateTime must be valid ISO8601'),
+  body('windows')
+    .optional()
+    .isArray({ min: 1 }).withMessage('windows must be an array of at least 1 window'),
+  body('windows.*.startDateTime')
+    .if(body('windows').exists())
+    .notEmpty().withMessage('Each window must have a startDateTime')
+    .isISO8601().withMessage('Window startDateTime must be valid ISO8601'),
+  body('windows.*.endDateTime')
+    .if(body('windows').exists())
+    .notEmpty().withMessage('Each window must have an endDateTime')
+    .isISO8601().withMessage('Window endDateTime must be valid ISO8601'),
   body('bufferBeforeMinutes').optional().isInt({ min: 0 }).withMessage('bufferBeforeMinutes must be >= 0'),
   body('bufferAfterMinutes').optional().isInt({ min: 0 }).withMessage('bufferAfterMinutes must be >= 0'),
 ];

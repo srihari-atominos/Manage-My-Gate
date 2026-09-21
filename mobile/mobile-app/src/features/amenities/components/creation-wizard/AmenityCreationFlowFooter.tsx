@@ -14,6 +14,7 @@ export interface AmenityCreationFlowFooterProps {
   savingDraft?: boolean;
   disabled?: boolean;
   isEditing?: boolean;
+  allowSaveDraft?: boolean;
 }
 
 export const AmenityCreationFlowFooter: React.FC<AmenityCreationFlowFooterProps> = ({
@@ -26,6 +27,7 @@ export const AmenityCreationFlowFooter: React.FC<AmenityCreationFlowFooterProps>
   savingDraft = false,
   disabled = false,
   isEditing = false,
+  allowSaveDraft,
 }) => {
   return (
     <View className="bg-card border-t border-border px-4 py-3 pb-6 flex-row items-center gap-2.5">
@@ -45,7 +47,7 @@ export const AmenityCreationFlowFooter: React.FC<AmenityCreationFlowFooterProps>
       )}
 
       {/* Save Draft CTA */}
-      {onSaveDraft && (
+      {onSaveDraft && (allowSaveDraft !== undefined ? allowSaveDraft : true) && (
         <Button
           variant="secondary"
           onPress={onSaveDraft}

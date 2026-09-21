@@ -49,7 +49,7 @@ export function ResidentAmenityDetailSheet({
           baseRate: (amenity as any).pricing?.baseRate ?? (amenity as any).bookingFee ?? 0,
           depositAmount: (amenity as any).pricing?.securityDeposit ?? 0,
           taxRate: 0,
-          currency: 'SAR',
+          currency: (amenity as any).pricingConfig?.currency || 'INR',
         },
         bookingRules: {
           minNoticeHours: 1,

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, Pressable } from 'react-native';
-import { Calendar, Clock, Users, ShieldAlert, Sparkles } from 'lucide-react-native';
+import { Calendar, Clock, Users, ShieldAlert, Sparkles, ShieldCheck, QrCode, Hourglass } from 'lucide-react-native';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,17 @@ import {
   AmenityAccessStatus,
   AmenityCompletionStatus,
 } from '../types/amenityDomain.types';
-import { formatUtcToLocalDisplay } from '../utils/amenityStateHelpers';
+import {
+  formatUtcToLocalDisplay,
+  formatTimeRange12Hour,
+  formatReservationDate,
+  formatReservationTimeRange,
+  formatApprovalStatusLabel,
+  formatAccessStatusLabel,
+  formatCompletionStatusLabel,
+  formatBookingStatusLabel,
+  formatPaymentStatusLabel,
+} from '../utils/amenityStateHelpers';
 
 export interface ResidentReservationCardProps {
   reservation: AmenityReservation;
@@ -117,18 +127,19 @@ export function ResidentReservationCard({
   const resourceName = reservation.resourceName;
   const reservationNumber = reservation.reservationNumber || reservation._id;
 
-  // Format date & time components
-  const startDisplay = formatUtcToLocalDisplay(
-    reservation.startDateTime || (reservation as any).effectiveStartDateTime || (reservation as any).requestedStartDateTime
-  );
-  const endDisplay = formatUtcToLocalDisplay(
-    reservation.endDateTime || (reservation as any).effectiveEndDateTime || (reservation as any).requestedEndDateTime
-  );
+  // Format date & time components with Indian timezone fallback
+  const tz = reservation.facilityTimezone || 'Asia/Kolkata';
+  const rawStart =
+    reservation.startDateTime ||
+    (reservation as any).effectiveStartDateTime ||
+    (reservation as any).requestedStartDateTime;
+  const rawEnd =
+    reservation.endDateTime ||
+    (reservation as any).effectiveEndDateTime ||
+    (reservation as any).requestedEndDateTime;
 
-  const formattedDate = startDisplay.dateStr || 'Scheduled Date';
-  const formattedTimeRange = startDisplay.timeStr && endDisplay.timeStr
-    ? `${startDisplay.timeStr} - ${endDisplay.timeStr}`
-    : startDisplay.timeStr || 'Time Scheduled';
+  const formattedDate = formatReservationDate(rawStart, tz) || 'Scheduled Date';
+  const formattedTimeRange = formatReservationTimeRange(rawStart, rawEnd, tz) || 'Time Scheduled';
 
   // Determine cancellation eligibility
   const isCancellable =
@@ -156,11 +167,11 @@ export function ResidentReservationCard({
       title={facilityName}
       subtitle={resourceName ? `${resourceName} • ${reservationNumber}` : reservationNumber}
       status={{
-        label: reservation.bookingStatus,
+        label: formatBookingStatusLabel(reservation.bookingStatus),
         variant: getBookingStatusVariant(reservation.bookingStatus),
       }}
       secondaryBadge={{
-        label: reservation.paymentStatus,
+        label: formatPaymentStatusLabel(reservation.paymentStatus),
         variant: getPaymentStatusVariant(reservation.paymentStatus),
       }}
       onPress={handleCardPress}
@@ -169,7 +180,7 @@ export function ResidentReservationCard({
     >
       <View className="pt-2.5 mt-1 border-t border-border/50 gap-2.5">
         {/* Schedule & Headcount Row */}
-        <View className="flex-row items-center justify-between flex-wrap gap-2">
+        <View className="flex-row items-center flex-wrap gap-x-4 gap-y-2">
           <View className="flex-row items-center gap-1.5">
             <Icon as={Calendar} size={14} className="text-muted-foreground" />
             <Text variant="muted" className="text-xs font-medium">
@@ -190,34 +201,48 @@ export function ResidentReservationCard({
           </View>
         </View>
 
-        {/* The Five Orthogonal State Dimensions Grid */}
-        <View className="bg-muted/40 p-2.5 rounded-xl border border-border/40 gap-1.5">
+        {/* Status Lifecycle Summary Box */}
+        <View className="bg-muted/40 p-3 rounded-2xl border border-border/50 gap-2">
+          {/* Approval Dimension */}
           <View className="flex-row items-center justify-between">
-            <Text variant="muted" className="text-[11px] font-medium text-muted-foreground">
-              Approval:
-            </Text>
+            <View className="flex-row items-center gap-1.5">
+              <Icon as={ShieldCheck} size={13} className="text-muted-foreground" />
+              <Text variant="muted" className="text-xs font-medium text-muted-foreground">
+                Approval
+              </Text>
+            </View>
             <StatusBadge
-              label={reservation.approvalStatus}
+              label={formatApprovalStatusLabel(reservation.approvalStatus)}
               variant={getApprovalStatusVariant(reservation.approvalStatus)}
               size="sm"
             />
           </View>
+
+          {/* Access Dimension */}
           <View className="flex-row items-center justify-between">
-            <Text variant="muted" className="text-[11px] font-medium text-muted-foreground">
-              Access:
-            </Text>
+            <View className="flex-row items-center gap-1.5">
+              <Icon as={QrCode} size={13} className="text-muted-foreground" />
+              <Text variant="muted" className="text-xs font-medium text-muted-foreground">
+                Gate Pass
+              </Text>
+            </View>
             <StatusBadge
-              label={reservation.accessStatus}
+              label={formatAccessStatusLabel(reservation.accessStatus)}
               variant={getAccessStatusVariant(reservation.accessStatus)}
               size="sm"
             />
           </View>
+
+          {/* Session / Completion Dimension */}
           <View className="flex-row items-center justify-between">
-            <Text variant="muted" className="text-[11px] font-medium text-muted-foreground">
-              Completion:
-            </Text>
+            <View className="flex-row items-center gap-1.5">
+              <Icon as={Hourglass} size={13} className="text-muted-foreground" />
+              <Text variant="muted" className="text-xs font-medium text-muted-foreground">
+                Session
+              </Text>
+            </View>
             <StatusBadge
-              label={reservation.completionStatus}
+              label={formatCompletionStatusLabel(reservation.completionStatus)}
               variant={getCompletionStatusVariant(reservation.completionStatus)}
               size="sm"
             />

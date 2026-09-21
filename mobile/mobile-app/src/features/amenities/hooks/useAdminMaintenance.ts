@@ -6,9 +6,7 @@ import {
   fetchAmenitiesThunk,
   fetchMaintenanceListThunk,
   scheduleMaintenanceThunk,
-  updateMaintenanceTaskThunk,
   deleteMaintenanceTaskThunk,
-  updateAmenityStatusThunk,
   createAmenityThunk,
   upsertAmenity,
   setMaintenanceList,
@@ -19,6 +17,7 @@ import {
 import { MaintenanceFormData } from '../components/MaintenanceModal';
 import amenityManagementService from '../services/amenityManagementService';
 import { normalizeFacilityFromApi } from '../utils/amenityPayloadMappers';
+import { convertLocalToUtcIso } from '../utils/amenityStateHelpers';
 
 export function useAdminMaintenance() {
   const dispatch = useDispatch<AppDispatch>();
@@ -161,17 +160,6 @@ export function useAdminMaintenance() {
   const handleScheduleSubmit = async (amenityId: string, formData: MaintenanceFormData) => {
     setScheduling(true);
 
-    const payload = {
-      title: formData.title,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      description: formData.description,
-      assignedStaff: formData.assignedStaff,
-      autoCancelBookings: formData.autoCancelBookings,
-    };
-
     try {
       if (editingTask) {
         if (formData.isRecurring) {
@@ -186,6 +174,7 @@ export function useAdminMaintenance() {
                 deleteMaintenanceTaskThunk({
                   amenityId: editingTask.amenityId || amenityId,
                   maintenanceId: editingTask._id,
+                  blockId: editingTask._id,
                 })
               ).unwrap();
             } catch (_) {}
@@ -239,14 +228,6 @@ export function useAdminMaintenance() {
           try {
             await amenityManagementService.updateMaintenanceStatus(editingTask._id, 'SCHEDULED');
           } catch (_) {}
-          // Also update V1
-          await dispatch(
-            updateMaintenanceTaskThunk({
-              amenityId: editingTask.amenityId || amenityId,
-              maintenanceId: editingTask._id,
-              payload,
-            })
-          ).unwrap();
         }
       } else {
         let finalAmenityId = amenityId;
@@ -325,19 +306,42 @@ export function useAdminMaintenance() {
             console.warn('[useAdminMaintenance] Recurring schedule error:', recErr);
           }
         } else {
-          // One-Off Maintenance submission
-          // Try scheduling in V2
+          // One-Off / Multi-Window Maintenance submission
+          const windowsList =
+            formData.windows && formData.windows.length > 0
+              ? formData.windows
+              : [
+                  {
+                    id: '1',
+                    startDate: formData.startDate,
+                    endDate: formData.endDate,
+                    startTime: formData.startTime || '00:00',
+                    endTime: formData.endTime || '17:00',
+                  },
+                ];
+
+          const v2Windows = windowsList.map((w) => {
+            const sDt = new Date(`${w.startDate}T${w.startTime || '00:00'}:00`);
+            const eDt = new Date(`${w.endDate || w.startDate}T${w.endTime || '17:00'}:00`);
+            return {
+              startDateTime: isNaN(sDt.getTime()) ? new Date().toISOString() : sDt.toISOString(),
+              endDateTime: isNaN(eDt.getTime()) ? new Date(Date.now() + 86400000).toISOString() : eDt.toISOString(),
+            };
+          });
+
+          // 1. Schedule via V2 API
           try {
-            const startDt = new Date(`${formData.startDate}T${formData.startTime || '08:00'}:00`);
-            const endDt = new Date(`${formData.endDate}T${formData.endTime || '18:00'}:00`);
             await amenityManagementService.scheduleMaintenance({
               facilityId: finalAmenityId,
               title: formData.title,
               reason: formData.description || formData.title,
-              startDateTime: isNaN(startDt.getTime()) ? new Date().toISOString() : startDt.toISOString(),
-              endDateTime: isNaN(endDt.getTime()) ? new Date(Date.now() + 86400000).toISOString() : endDt.toISOString(),
+              startDateTime: v2Windows[0].startDateTime,
+              endDateTime: v2Windows[0].endDateTime,
+              windows: v2Windows,
               maintenanceType: formData.maintenanceType || 'CLEANING',
               internalNotes: formData.description || undefined,
+              isCompleteClosure: formData.isCompleteClosure !== false,
+              degradedCapacity: formData.degradedCapacity || 0,
               conflictAction: formData.autoCancelBookings ? 'CANCEL_AND_PROCEED' : undefined,
             });
             scheduledSuccess = true;
@@ -346,18 +350,25 @@ export function useAdminMaintenance() {
             console.warn('[useAdminMaintenance] V2 maintenance schedule note:', v2Err);
           }
 
-          // Also schedule in V1 so both V1 and V2 are updated
+          // 2. Also dispatch scheduleMaintenanceThunk
           try {
             await dispatch(
               scheduleMaintenanceThunk({
-                id: finalAmenityId,
-                payload,
+                facilityId: finalAmenityId,
+                startDateTime: v2Windows[0].startDateTime,
+                endDateTime: v2Windows[0].endDateTime,
+                windows: v2Windows,
+                title: formData.title,
+                reason: formData.description || formData.title,
+                isCompleteClosure: formData.isCompleteClosure !== false,
+                degradedCapacity: formData.degradedCapacity || 0,
+                conflictAction: formData.autoCancelBookings ? 'CANCEL_AND_PROCEED' : undefined,
               })
             ).unwrap();
             scheduledSuccess = true;
-          } catch (v1Err: any) {
+          } catch (thunkErr: any) {
             if (!lastErrorMsg) {
-              lastErrorMsg = v1Err?.response?.data?.message || v1Err?.message || '';
+              lastErrorMsg = thunkErr?.response?.data?.message || thunkErr?.message || '';
             }
           }
         }
@@ -409,6 +420,7 @@ export function useAdminMaintenance() {
             deleteMaintenanceTaskThunk({
               amenityId: targetAmenityId,
               maintenanceId: targetId,
+              blockId: targetId,
             })
           ).unwrap();
           deleted = true;

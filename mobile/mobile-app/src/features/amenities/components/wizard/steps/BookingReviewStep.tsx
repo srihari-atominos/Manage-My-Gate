@@ -12,6 +12,7 @@ import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { AmenityFacility, AmenityResource, AmenityPricingSnapshot } from '../../../types/amenityDomain.types';
 import { getArchetypeMeta } from '../../../utils/amenityPresentation';
+import { formatTimeRange12Hour } from '../../../utils/amenityStateHelpers';
 import { ShieldCheck, Sparkles, AlertCircle } from 'lucide-react-native';
 
 export interface BookingReviewStepProps {
@@ -72,7 +73,7 @@ export function BookingReviewStep({
         <DetailRow label="Date" value={selectedDate} />
         <DetailRow
           label="Time Window"
-          value={`${startTime} - ${endTime} (${facility.timezone || 'Asia/Riyadh'})`}
+          value={`${formatTimeRange12Hour(startTime, endTime)} (${facility.timezone || 'Asia/Kolkata'})`}
         />
 
         <DetailRow
@@ -94,18 +95,18 @@ export function BookingReviewStep({
           <>
             <DetailRow
               label="Base Fee"
-              value={`${pricingSnapshot.baseAmount} ${pricingSnapshot.currency || 'SAR'}`}
+              value={`${pricingSnapshot.baseAmount} ${pricingSnapshot.currency || 'INR'}`}
             />
             {pricingSnapshot.taxAmount > 0 ? (
               <DetailRow
                 label="VAT / Tax"
-                value={`${pricingSnapshot.taxAmount} ${pricingSnapshot.currency || 'SAR'}`}
+                value={`${pricingSnapshot.taxAmount} ${pricingSnapshot.currency || 'INR'}`}
               />
             ) : null}
             {pricingSnapshot.depositAmount > 0 ? (
               <DetailRow
                 label="Refundable Security Deposit"
-                value={`${pricingSnapshot.depositAmount} ${pricingSnapshot.currency || 'SAR'}`}
+                value={`${pricingSnapshot.depositAmount} ${pricingSnapshot.currency || 'INR'}`}
               />
             ) : null}
 
@@ -114,7 +115,7 @@ export function BookingReviewStep({
               <Text className="font-bold text-base text-primary">
                 {pricingSnapshot.totalAmount === 0
                   ? 'Free Access'
-                  : `${pricingSnapshot.totalAmount} ${pricingSnapshot.currency || 'SAR'}`}
+                  : `${pricingSnapshot.totalAmount} ${pricingSnapshot.currency || 'INR'}`}
               </Text>
             </View>
           </>

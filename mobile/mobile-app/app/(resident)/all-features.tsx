@@ -70,7 +70,7 @@ export default function AllFeaturesScreen() {
       router.navigate('/(resident)/visitor' as any);
       return;
     }
-    if (tileId === 'visitor_gate_pass' || tileId === 'visitor_gate_console') {
+    if (tileId === 'visitor_gate_console') {
       router.navigate('/(resident)/visitor/gate-console' as any);
       return;
     }

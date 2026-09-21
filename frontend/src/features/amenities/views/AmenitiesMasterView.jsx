@@ -57,15 +57,54 @@ const AmenitiesMasterView = () => {
 
   const handleSave = async (data) => {
     try {
+      if (!data) throw new Error("Form data is undefined")
+
+      // Map the legacy UI data to the new Domain schema required by backend V2
+      const mappedPayload = {
+        ...data,
+        code: data.code || (data.name || 'FACILITY').toUpperCase().replace(/\s+/g, '-').substring(0, 15) + '-' + Math.floor(1000 + Math.random() * 9000),
+        archetype:
+          data.type === 'Event Space'
+            ? 'EVENT_SPACE'
+            : data.type === 'Sports'
+            ? 'EXCLUSIVE_HOURLY'
+            : 'SHARED_CAPACITY',
+        operatingHours:
+          data.openDays?.map((day) => ({
+            dayOfWeek: day,
+            openTime: data.bookingRules?.openTime || '06:00',
+            closeTime: data.bookingRules?.closeTime || '22:00',
+            isOpen: true,
+          })) || [],
+        slotDurationMinutes: data.bookingRules?.slotDurationMinutes || 60,
+        setupBufferMinutes: data.bookingRules?.bufferTimeMinutes || 0,
+        advanceBookingDays: data.bookingRules?.advanceBookingDays || 7,
+        maxCapacity: data.capacity || 1,
+        maxHeadcountPerReservation: data.maxBookingsPerUserPerSlot || 1,
+        pricingConfig: {
+          pricingType: (data.pricing?.pricingType || 'FREE').toUpperCase(),
+          baseRate: data.pricing?.baseRate || 0,
+        },
+        cancellationPolicy: {
+          isAllowed: data.bookingRules?.isCancellationEnabled || false,
+          refundCutoffHours: data.bookingRules?.cancellationRefundRules?.[0]?.cancelBeforeHours || 0,
+          refundPercentage: data.bookingRules?.cancellationRefundRules?.[0]?.refundPercentage || 0,
+        },
+        location: data.location || 'N/A',
+        status: (String(data.status || 'ACTIVE')).toUpperCase(),
+      }
+
       if (selectedAmenity) {
-        await updateAmenity(selectedAmenity._id, data)
+        await updateAmenity(selectedAmenity._id, mappedPayload)
         toast.success('Amenity updated successfully!')
       } else {
-        await createAmenity(data)
+        await createAmenity(mappedPayload)
         toast.success('Amenity created successfully!')
       }
       setFormModalVisible(false)
+      loadAmenities()
     } catch (err) {
+      console.error('Failed to save amenity:', err)
       toast.error(typeof err === 'string' ? err : err.message || 'Failed to save amenity')
     }
   }

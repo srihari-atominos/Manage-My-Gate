@@ -51,6 +51,16 @@ export class AmenityResourceService {
   }
 
   /**
+   * Retrieves all non-deleted sub-resources under a facility.
+   * @param {string|import('mongoose').Types.ObjectId} facilityId
+   * @param {string|import('mongoose').Types.ObjectId} orgId
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async getAllResourcesByFacilityId(facilityId, orgId, session) {
+    return amenityResourceRepository.findByFacilityId(facilityId, orgId, session);
+  }
+
+  /**
    * Updates an existing resource.
    * @param {string|import('mongoose').Types.ObjectId} resourceId
    * @param {string|import('mongoose').Types.ObjectId} orgId

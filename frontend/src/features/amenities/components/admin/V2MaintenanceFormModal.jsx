@@ -34,8 +34,7 @@ const V2MaintenanceFormModal = ({
   const [reason, setReason] = useState('');
   const [maintenanceType, setMaintenanceType] = useState('PREVENTIVE');
   const [internalNotes, setInternalNotes] = useState('');
-  const [startDateTime, setStartDateTime] = useState('');
-  const [endDateTime, setEndDateTime] = useState('');
+  const [windows, setWindows] = useState([]);
   const [bufferBeforeMinutes, setBufferBeforeMinutes] = useState(15);
   const [bufferAfterMinutes, setBufferAfterMinutes] = useState(15);
   const [isCompleteClosure, setIsCompleteClosure] = useState(true);
@@ -54,19 +53,19 @@ const V2MaintenanceFormModal = ({
       setMaintenanceType('PREVENTIVE');
       setInternalNotes('');
 
-      // Default start tomorrow 09:00 to 12:00
-      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      tomorrow.setHours(9, 0, 0, 0);
-      const isoStart = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16);
-      tomorrow.setHours(12, 0, 0, 0);
-      const isoEnd = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16);
+      // Default start today 00:00 to 17:00
+      const now = new Date();
+      const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      const isoStart = `${todayStr}T00:00`;
+      const isoEnd = `${todayStr}T17:00`;
 
-      setStartDateTime(isoStart);
-      setEndDateTime(isoEnd);
+      setWindows([
+        {
+          id: Date.now(),
+          startDateTime: isoStart,
+          endDateTime: isoEnd,
+        },
+      ]);
       setBufferBeforeMinutes(15);
       setBufferAfterMinutes(15);
       setIsCompleteClosure(true);
@@ -84,21 +83,81 @@ const V2MaintenanceFormModal = ({
     }
   };
 
+  const handleAddWindow = () => {
+    const lastWindow = windows[windows.length - 1];
+    let nextStart = '';
+    let nextEnd = '';
+    if (lastWindow && lastWindow.startDateTime && lastWindow.endDateTime) {
+      // Smart default: next day with same times
+      const prevStart = new Date(lastWindow.startDateTime);
+      const prevEnd = new Date(lastWindow.endDateTime);
+      const durationMs = prevEnd.getTime() - prevStart.getTime();
+      const nextStartDate = new Date(prevStart.getTime() + 24 * 60 * 60 * 1000);
+      const nextEndDate = new Date(nextStartDate.getTime() + durationMs);
+
+      nextStart = new Date(nextStartDate.getTime() - nextStartDate.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      nextEnd = new Date(nextEndDate.getTime() - nextEndDate.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+    } else {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      nextStart = `${iso}T00:00`;
+      nextEnd = `${iso}T17:00`;
+    }
+
+    setWindows((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        startDateTime: nextStart,
+        endDateTime: nextEnd,
+      },
+    ]);
+  };
+
+  const handleRemoveWindow = (id) => {
+    if (windows.length <= 1) return;
+    setWindows((prev) => prev.filter((w) => w.id !== id));
+  };
+
+  const handleWindowChange = (id, field, value) => {
+    setWindows((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, [field]: value } : w))
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setValidationError('');
 
-    if (!facilityId || !title.trim() || !reason.trim() || !startDateTime || !endDateTime) {
+    if (!facilityId || !title.trim() || !reason.trim() || windows.length === 0) {
       setValidationError('Please complete all required fields.');
       return;
     }
 
-    const startEpoch = new Date(startDateTime).getTime();
-    const endEpoch = new Date(endDateTime).getTime();
-    if (endEpoch <= startEpoch) {
-      setValidationError('End time must be after start time.');
-      return;
+    // Validate each window
+    for (let i = 0; i < windows.length; i++) {
+      const w = windows[i];
+      if (!w.startDateTime || !w.endDateTime) {
+        setValidationError(`Window #${i + 1}: Start and end date/time are required.`);
+        return;
+      }
+      const startEpoch = new Date(w.startDateTime).getTime();
+      const endEpoch = new Date(w.endDateTime).getTime();
+      if (endEpoch <= startEpoch) {
+        setValidationError(`Window #${i + 1}: End time must be after start time.`);
+        return;
+      }
     }
+
+    const formattedWindows = windows.map((w) => ({
+      startDateTime: new Date(w.startDateTime).toISOString(),
+      endDateTime: new Date(w.endDateTime).toISOString(),
+    }));
 
     const basePayload = {
       facilityId,
@@ -108,8 +167,9 @@ const V2MaintenanceFormModal = ({
       reason: reason.trim(),
       maintenanceType,
       internalNotes: internalNotes.trim() || undefined,
-      startDateTime: new Date(startDateTime).toISOString(),
-      endDateTime: new Date(endDateTime).toISOString(),
+      startDateTime: formattedWindows[0].startDateTime,
+      endDateTime: formattedWindows[0].endDateTime,
+      windows: formattedWindows,
       bufferBeforeMinutes: parseInt(bufferBeforeMinutes, 10) || 0,
       bufferAfterMinutes: parseInt(bufferAfterMinutes, 10) || 0,
       isCompleteClosure,
@@ -126,6 +186,7 @@ const V2MaintenanceFormModal = ({
           resourceIds: basePayload.resourceIds,
           startDateTime: basePayload.startDateTime,
           endDateTime: basePayload.endDateTime,
+          windows: basePayload.windows,
           bufferBeforeMinutes: basePayload.bufferBeforeMinutes,
           bufferAfterMinutes: basePayload.bufferAfterMinutes,
         })
@@ -264,27 +325,65 @@ const V2MaintenanceFormModal = ({
               />
             </div>
 
-            <div className="form-row-grid">
-              <div className="form-group">
-                <label className="form-label">Start Date/Time *</label>
-                <input
-                  type="datetime-local"
-                  className="form-control"
-                  value={startDateTime}
-                  onChange={(e) => setStartDateTime(e.target.value)}
-                  required
-                />
+            {/* Maintenance Schedule Windows */}
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <label className="form-label m-0 fw-bold">
+                  <i className="fa-solid fa-calendar-days me-1 text-primary"></i> Maintenance Windows ({windows.length})
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={handleAddWindow}
+                >
+                  <i className="fa-solid fa-plus me-1"></i> Add Another Window
+                </button>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">End Date/Time *</label>
-                <input
-                  type="datetime-local"
-                  className="form-control"
-                  value={endDateTime}
-                  onChange={(e) => setEndDateTime(e.target.value)}
-                  required
-                />
+              {windows.map((w, idx) => (
+                <div key={w.id} className="p-2.5 mb-2 border rounded bg-light position-relative">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="small fw-bold text-secondary">
+                      Window #{idx + 1}
+                    </span>
+                    {windows.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn btn-link btn-sm text-danger p-0 text-decoration-none"
+                        style={{ fontSize: '12px' }}
+                        onClick={() => handleRemoveWindow(w.id)}
+                        title="Remove this window"
+                      >
+                        <i className="fa-solid fa-trash me-1"></i> Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="form-row-grid">
+                    <div className="form-group mb-0">
+                      <label className="form-label small">Start Date/Time *</label>
+                      <input
+                        type="datetime-local"
+                        className="form-control form-control-sm"
+                        value={w.startDateTime}
+                        onChange={(e) => handleWindowChange(w.id, 'startDateTime', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="form-group mb-0">
+                      <label className="form-label small">End Date/Time *</label>
+                      <input
+                        type="datetime-local"
+                        className="form-control form-control-sm"
+                        value={w.endDateTime}
+                        onChange={(e) => handleWindowChange(w.id, 'endDateTime', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="text-muted small mt-1">
+                You can schedule multiple maintenance periods (e.g. today 12:00 AM–5:00 PM, tomorrow 12:00 AM–5:00 PM, and 10 days later) in this single submission.
               </div>
             </div>
 
@@ -366,7 +465,10 @@ const V2MaintenanceFormModal = ({
                 </>
               ) : (
                 <>
-                  <i className="fa-solid fa-calendar-plus me-1"></i> Schedule Block
+                  <i className="fa-solid fa-calendar-plus me-1"></i>{' '}
+                  {windows.length > 1
+                    ? `Schedule ${windows.length} Maintenance Blocks`
+                    : 'Schedule Block'}
                 </>
               )}
             </button>

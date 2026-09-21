@@ -30,7 +30,9 @@ export class AmenityFacilityRepository {
     }
     const filter = { _id: facilityId, isDeleted: false };
     if (actualOrgId) filter.orgId = actualOrgId;
-    return AmenityFacility.findOne(filter).session(getValidSession(actualSession));
+    const validSession = getValidSession(actualSession);
+    const query = AmenityFacility.findOne(filter);
+    return validSession ? query.session(validSession) : query;
   }
 
   /**
@@ -40,11 +42,13 @@ export class AmenityFacilityRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findByCode(orgId, code, session) {
-    return AmenityFacility.findOne({
+    const validSession = getValidSession(session);
+    const query = AmenityFacility.findOne({
       orgId,
       code: code.trim().toUpperCase(),
       isDeleted: false,
-    }).session(getValidSession(session));
+    });
+    return validSession ? query.session(validSession) : query;
   }
 
   /**
@@ -54,11 +58,14 @@ export class AmenityFacilityRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async incrementConcurrencyVersion(facilityId, orgId, session) {
-    return AmenityFacility.findOneAndUpdate(
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession, returnDocument: 'after' } : { returnDocument: 'after' };
+    const query = AmenityFacility.findOneAndUpdate(
       { _id: facilityId, orgId, isDeleted: false, isActive: true },
       { $inc: { concurrencyVersion: 1 } },
-      { session: getValidSession(session), returnDocument: 'after' }
+      options
     );
+    return validSession ? query.session(validSession) : query;
   }
 
   /**
@@ -69,11 +76,14 @@ export class AmenityFacilityRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async update(facilityId, orgId, updateData, session) {
-    return AmenityFacility.findOneAndUpdate(
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession, returnDocument: 'after', runValidators: true } : { returnDocument: 'after', runValidators: true };
+    const query = AmenityFacility.findOneAndUpdate(
       { _id: facilityId, orgId, isDeleted: false },
       { $set: updateData },
-      { session: getValidSession(session), returnDocument: 'after', runValidators: true }
+      options
     );
+    return validSession ? query.session(validSession) : query;
   }
 
   /**
@@ -83,11 +93,14 @@ export class AmenityFacilityRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async softDelete(facilityId, orgId, session) {
-    return AmenityFacility.findOneAndUpdate(
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession, returnDocument: 'after' } : { returnDocument: 'after' };
+    const query = AmenityFacility.findOneAndUpdate(
       { _id: facilityId, orgId, isDeleted: false },
       { $set: { isDeleted: true, deletedAt: new Date(), isActive: false } },
-      { session: getValidSession(session), returnDocument: 'after' }
+      options
     );
+    return validSession ? query.session(validSession) : query;
   }
 
   /**
@@ -114,7 +127,7 @@ export class AmenityFacilityRepository {
       match.isDraft = { $ne: true };
       match.status = { $ne: 'DRAFT' };
     }
-    if (status && status !== 'ALL') match.status = status;
+    if (status && status.toUpperCase() !== 'ALL') match.status = status.toUpperCase();
     if (search && search.trim()) {
       match.$or = [
         { name: { $regex: search.trim(), $options: 'i' } },

@@ -22,8 +22,30 @@ const calculateDuration = (start, end) => {
   }
 }
 
+const formatTo12Hour = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return ''
+  if (/am|pm/i.test(timeStr)) return timeStr
+  const [hStr, mStr = '00'] = timeStr.split(':')
+  const h = parseInt(hStr, 10)
+  const m = parseInt(mStr, 10)
+  if (isNaN(h)) return timeStr
+  const period = h >= 12 ? 'PM' : 'AM'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  const minutePad = isNaN(m) ? '00' : String(m).padStart(2, '0')
+  return `${hour12}:${minutePad} ${period}`
+}
+
 const TimeSlotSelector = memo(
   ({ draft, availableSlots = [], slotsLoading, updateDraft, onBack, errorMsg }) => {
+    // "and if someone booked that slot it should disappear"
+    // Filter out booked slots and past/closed slots
+    const displaySlots = availableSlots.filter((slot) => {
+      if (slot.status === 'Booked' || slot.status === 'Closed') {
+        return false;
+      }
+      return true;
+    });
+
     return (
       <CCard className="border-0 shadow-sm mb-4">
         <CCardBody className="p-4">
@@ -36,15 +58,15 @@ const TimeSlotSelector = memo(
             </div>
           ) : (
             <div className="d-flex flex-wrap gap-3 mb-4">
-              {availableSlots.length === 0 ? (
+              {displaySlots.length === 0 ? (
                 <div className="w-100 text-center p-4 text-muted border rounded bg-body-secondary">
                   <i className="fa-regular fa-calendar-xmark fs-2 mb-3 text-secondary"></i>
                   <h6 className="fw-bold">No available slots for this date.</h6>
-                  <p className="mb-0 small">Please select another date or amenity.</p>
+                  <p className="mb-0 small">All slots may already be booked or have passed. Please select another date.</p>
                 </div>
               ) : (
                 <div className="d-flex flex-wrap gap-3">
-                  {availableSlots.map((slot, idx) => {
+                  {displaySlots.map((slot, idx) => {
                     const maxLimit =
                       slot.maxBookingsPerUser || draft.amenity?.maxBookingsPerUserPerSlot || 2
                     const myCount = slot.myBookingsCount || 0
@@ -141,9 +163,9 @@ const TimeSlotSelector = memo(
                           ></div>
                         )}
 
-                        <div className="fw-bolder fs-3 text-body mb-1">{slot.startTime}</div>
+                        <div className="fw-bolder fs-3 text-body mb-1">{formatTo12Hour(slot.startTime)}</div>
                         <div className="d-flex align-items-center mb-3">
-                          <span className="text-secondary fw-semibold me-2">{slot.endTime}</span>
+                          <span className="text-secondary fw-semibold me-2">{formatTo12Hour(slot.endTime)}</span>
                           <span className="text-black-50 small">{slot.duration || '60'}m</span>
                         </div>
 

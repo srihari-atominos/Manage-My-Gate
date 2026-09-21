@@ -25,7 +25,15 @@ import {
   getCompletionStatusVariant,
 } from './ResidentReservationCard';
 import { ResidentAccessPassCard } from './ResidentAccessPassCard';
-import { formatUtcToLocalDisplay } from '../utils/amenityStateHelpers';
+import {
+  formatUtcToLocalDisplay,
+  formatTo12Hour,
+  formatApprovalStatusLabel,
+  formatAccessStatusLabel,
+  formatCompletionStatusLabel,
+  formatBookingStatusLabel,
+  formatPaymentStatusLabel,
+} from '../utils/amenityStateHelpers';
 
 export interface ResidentReservationDetailViewProps {
   reservation: AmenityReservation;
@@ -48,15 +56,26 @@ export function ResidentReservationDetailView({
   const reservationNumber = reservation.reservationNumber || reservation._id;
   const pricing = reservation.pricingSnapshot;
 
-  const startFormatted = formatUtcToLocalDisplay(
-    reservation.startDateTime,
-    reservation.facilityTimezone
-  ).formatted;
+  const tz = reservation.facilityTimezone || 'Asia/Kolkata';
+  const rawStart =
+    reservation.startDateTime ||
+    (reservation as any).effectiveStartDateTime ||
+    (reservation as any).requestedStartDateTime;
+  const rawEnd =
+    reservation.endDateTime ||
+    (reservation as any).effectiveEndDateTime ||
+    (reservation as any).requestedEndDateTime;
 
-  const endFormatted = formatUtcToLocalDisplay(
-    reservation.endDateTime,
-    reservation.facilityTimezone
-  ).formatted;
+  const startDisplayObj = formatUtcToLocalDisplay(rawStart, tz);
+  const endDisplayObj = formatUtcToLocalDisplay(rawEnd, tz);
+
+  const startFormatted = startDisplayObj.dateStr
+    ? `${startDisplayObj.humanDate || startDisplayObj.dateStr} at ${formatTo12Hour(startDisplayObj.timeStr)}`
+    : '';
+
+  const endFormatted = endDisplayObj.dateStr
+    ? `${endDisplayObj.humanDate || endDisplayObj.dateStr} at ${formatTo12Hour(endDisplayObj.timeStr)}`
+    : '';
 
   // Calculate duration display
   const durationText = React.useMemo(() => {
@@ -112,7 +131,7 @@ export function ResidentReservationDetailView({
             </Text>
           </View>
           <StatusBadge
-            label={reservation.bookingStatus}
+            label={formatBookingStatusLabel(reservation.bookingStatus)}
             variant={getBookingStatusVariant(reservation.bookingStatus)}
           />
         </View>
@@ -135,7 +154,7 @@ export function ResidentReservationDetailView({
           label="Booking Status"
           value={
             <StatusBadge
-              label={reservation.bookingStatus}
+              label={formatBookingStatusLabel(reservation.bookingStatus)}
               variant={getBookingStatusVariant(reservation.bookingStatus)}
             />
           }
@@ -144,7 +163,7 @@ export function ResidentReservationDetailView({
           label="Payment Status"
           value={
             <StatusBadge
-              label={reservation.paymentStatus}
+              label={formatPaymentStatusLabel(reservation.paymentStatus)}
               variant={getPaymentStatusVariant(reservation.paymentStatus)}
             />
           }
@@ -153,7 +172,7 @@ export function ResidentReservationDetailView({
           label="Approval Status"
           value={
             <StatusBadge
-              label={reservation.approvalStatus}
+              label={formatApprovalStatusLabel(reservation.approvalStatus)}
               variant={getApprovalStatusVariant(reservation.approvalStatus)}
             />
           }
@@ -162,7 +181,7 @@ export function ResidentReservationDetailView({
           label="Access Status"
           value={
             <StatusBadge
-              label={reservation.accessStatus}
+              label={formatAccessStatusLabel(reservation.accessStatus)}
               variant={getAccessStatusVariant(reservation.accessStatus)}
             />
           }
@@ -171,7 +190,7 @@ export function ResidentReservationDetailView({
           label="Completion Status"
           value={
             <StatusBadge
-              label={reservation.completionStatus}
+              label={formatCompletionStatusLabel(reservation.completionStatus)}
               variant={getCompletionStatusVariant(reservation.completionStatus)}
             />
           }
