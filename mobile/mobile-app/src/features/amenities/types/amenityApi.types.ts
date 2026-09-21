@@ -318,27 +318,130 @@ export interface ReviewReservationApiPayload {
   rejectionReason?: string;
 }
 
-export interface RescheduleReservationApiPayload {
-  newStartDateTime: string;
-  newEndDateTime: string;
-}
-
 export interface ScheduleMaintenanceApiPayload {
   facilityId: string;
-  resourceId?: string;
+  resourceId?: string | null;
+  resourceIds?: string[];
+  title: string;
+  reason: string;
+  maintenanceType?: 'CLEANING' | 'REPAIR' | 'INSPECTION' | 'UPGRADE' | 'PREVENTIVE' | 'OTHER';
+  internalNotes?: string;
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
   startDateTime: string;
   endDateTime: string;
+  isCompleteClosure?: boolean;
+  degradedCapacity?: number;
+  conflictAction?: 'CANCEL_AND_PROCEED';
+  resolutions?: Array<{
+    targetId: string;
+    resolution: 'CANCEL' | 'RESCHEDULE' | 'REVIEW_INDIVIDUALLY';
+  }>;
+}
+
+export interface MaintenanceRecurrenceConfig {
+  frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM';
+  interval?: number;
+  daysOfWeek?: number[];
+  dayOfMonth?: number;
+  startDate?: string;
+  endDate?: string;
+  occurrenceCount?: number;
+  timezone?: string;
+}
+
+export interface PreviewRecurringMaintenanceApiPayload {
+  facilityId: string;
+  resourceId?: string | null;
+  resourceIds?: string[];
+  title: string;
+  description?: string;
   reason: string;
-  blockType: string;
+  maintenanceType?: string;
+  startDateTime: string;
+  endDateTime: string;
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
+  recurrence: MaintenanceRecurrenceConfig;
+}
+
+export interface ScheduleRecurringMaintenanceApiPayload extends PreviewRecurringMaintenanceApiPayload {
+  internalNotes?: string;
+  isCompleteClosure?: boolean;
+  degradedCapacity?: number;
+  conflictAction?: 'CANCEL_AND_PROCEED';
+  impactResolutions?: Array<{
+    targetId: string;
+    resolution: 'CANCEL' | 'RESCHEDULE' | 'REVIEW_INDIVIDUALLY';
+  }>;
+  resolutions?: Array<{
+    targetId: string;
+    resolution: 'CANCEL' | 'RESCHEDULE' | 'REVIEW_INDIVIDUALLY';
+  }>;
+}
+
+export interface DeclareEmergencyMaintenanceApiPayload {
+  facilityId: string;
+  resourceId?: string | null;
+  resourceIds?: string[];
+  title: string;
+  reason: string;
+  maintenanceType?: string;
+  internalNotes?: string;
+  endDateTime: string;
+  bufferAfterMinutes?: number;
+  conflictAction?: 'CANCEL_AND_PROCEED' | 'REVIEW_ALL';
+  resolutions?: Array<{
+    targetId: string;
+    resolution: 'CANCEL' | 'RESCHEDULE' | 'REVIEW_INDIVIDUALLY';
+  }>;
+}
+
+export interface MaintenanceImpactPreviewApiPayload {
+  facilityId: string;
+  resourceId?: string | null;
+  resourceIds?: string[];
+  startDateTime: string;
+  endDateTime: string;
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
+}
+
+export interface FindAlternativesApiPayload {
+  facilityId: string;
+  resourceId?: string | null;
+  originalStart: string;
+  originalEnd: string;
+  searchDaysAhead?: number;
+}
+
+export interface ResolveMaintenanceImpactApiPayload {
+  resolutions: Array<{
+    targetId: string;
+    targetType?: 'V1_BOOKING' | 'V2_RESERVATION';
+    resolution: 'CANCEL' | 'RESCHEDULE' | 'REVIEW_INDIVIDUALLY';
+  }>;
+}
+
+export interface ExtendMaintenanceBlockApiPayload {
+  newEndDateTime: string;
+  conflictAction?: 'CANCEL_AND_PROCEED';
+  resolutions?: Array<{
+    targetId: string;
+    resolution: 'CANCEL' | 'RESCHEDULE' | 'REVIEW_INDIVIDUALLY';
+  }>;
 }
 
 export interface CheckInPassApiPayload {
-  rawToken: string;
+  rawToken?: string;
+  passCode?: string;
   gateId?: string;
+  turnstileId?: string;
 }
 
 export interface CheckOutPassApiPayload {
-  rawToken: string;
+  rawToken?: string;
+  passCode?: string;
   inspectionDetails?: AmenityInspectionDetails;
 }
 

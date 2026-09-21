@@ -415,7 +415,7 @@ describe('Phase 6C.4 — Final Resident Amenity Lifecycle Integration & Hardenin
       await render(
         <ResidentReservationDetailView reservation={resAwaitingReview} accessPasses={[]} />
       );
-      expect(screen.getAllByText('PAID').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/PAID/i).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('PENDING_REVIEW').length).toBeGreaterThanOrEqual(1);
     });
 

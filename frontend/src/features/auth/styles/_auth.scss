@@ -588,13 +588,31 @@
 }
 
 .invite-sso-container {
+  width: 100%;
+
   .google-login-wrapper {
     display: flex;
     justify-content: center;
+    align-items: center;
     width: 100%;
 
     > div {
       width: 100% !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+
+      > div {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+      }
+
+      iframe {
+        margin: 0 auto !important;
+        max-width: 100% !important;
+      }
     }
   }
 }

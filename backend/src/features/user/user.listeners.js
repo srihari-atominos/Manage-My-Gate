@@ -2,6 +2,7 @@ import userEvents from './user.events.js';
 import integrationHubService from '../integrationHub/integrationHub.service.js';
 import messageTemplateService from '../messageTemplate/messageTemplate.service.js';
 import logger from '../../utils/logger.utils.js';
+import { maskEmail, maskPhone } from '../../utils/phone.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from './utils/invite.utils.js';
 
@@ -334,7 +335,11 @@ userEvents.on('USER_ADDED', async ({ email, orgId }) => {
 });
 
 userEvents.on('EMAIL_OTP_SENT', async ({ email, code }) => {
-  logger.info(`[USER EMAIL CHANGE OTP DELIVERED] Identifier: ${email} | Verification OTP Code: ${code}`);
+  if (process.env.NODE_ENV !== 'production') {
+    logger.info(`[USER EMAIL CHANGE OTP DELIVERED] Identifier: ${maskEmail(email)} | Verification OTP Code: ${code}`);
+  } else {
+    logger.info(`[USER EMAIL CHANGE OTP DISPATCHED] Identifier: ${maskEmail(email)}`);
+  }
 
   try {
     const { sendEmail } = await import('../../utils/email.utils.js');
@@ -352,9 +357,13 @@ userEvents.on('EMAIL_OTP_SENT', async ({ email, code }) => {
     `;
     const sent = await sendEmail(null, email, emailSubject, emailBody);
     if (sent) {
-      logger.info(`Email change OTP successfully delivered to inbox: ${email}`);
+      logger.info(`Email change OTP successfully delivered to inbox: ${maskEmail(email)}`);
     } else {
-      logger.info(`Email change verification code for ${email}: ${code}`);
+      if (process.env.NODE_ENV !== 'production') {
+        logger.info(`Email change verification code for ${maskEmail(email)}: ${code}`);
+      } else {
+        logger.warn(`Email change OTP could not be sent to inbox for ${maskEmail(email)}`);
+      }
     }
   } catch (error) {
     logger.error(`Asynchronous EMAIL_OTP_SENT dispatch failed: ${error.message}`);

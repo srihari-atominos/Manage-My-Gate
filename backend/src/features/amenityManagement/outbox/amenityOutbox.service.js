@@ -115,6 +115,8 @@ export class AmenityOutboxService {
         break;
 
       case 'MAINTENANCE_SCHEDULED':
+      case 'EMERGENCY_MAINTENANCE_DECLARED':
+      case 'RECURRING_MAINTENANCE_SCHEDULED':
       case 'MAINTENANCE_EXTENDED':
       case 'MAINTENANCE_COMPLETED':
       case 'MAINTENANCE_CANCELLED':

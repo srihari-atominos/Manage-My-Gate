@@ -62,7 +62,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
 
   const dynamicNavItems: (ActionGridItem & { permission?: string })[] = [
     {
-      id: 'master',
+      id: 'amenities_master',
       name: 'Amenity Master',
       route: '/(resident)/amenities/admin-master',
       iconName: 'SlidersHorizontal',
@@ -73,7 +73,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       permission: 'amenities:amenities',
     },
     {
-      id: 'calendar',
+      id: 'amenities_admin_calendar',
       name: 'Admin Calendar',
       route: '/(resident)/amenities/admin-calendar',
       iconName: 'CalendarCog',
@@ -84,7 +84,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       permission: 'amenities:admin_calander',
     },
     {
-      id: 'ledgers',
+      id: 'amenities_ledgers',
       name: 'Ledgers',
       route: '/(resident)/amenities/ledgers',
       iconName: 'BookOpenCheck',
@@ -95,7 +95,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       permission: 'amenities:ledgers',
     },
     {
-      id: 'maint',
+      id: 'amenities_maintenance',
       name: 'Maintenance',
       route: '/(resident)/amenities/maintenance',
       iconName: 'Wrench',
@@ -106,7 +106,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       permission: 'amenities:maintenance',
     },
     {
-      id: 'discover',
+      id: 'amenities_discover',
       name: 'Discover',
       route: '/(resident)/amenities/discover',
       iconName: 'Compass',
@@ -115,7 +115,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       permission: 'amenities:discover',
     },
     {
-      id: 'bookings',
+      id: 'amenities_my_booking',
       name: 'My Bookings',
       route: '/(resident)/amenities/my-bookings',
       iconName: 'CalendarCheck',
@@ -126,7 +126,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       permission: 'amenities:my_booking',
     },
     {
-      id: 'wallet',
+      id: 'amenities_wallet',
       name: 'Digital Wallet',
       route: '/(resident)/amenities/wallet',
       iconName: 'WalletCards',
@@ -137,7 +137,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       permission: 'amenities:wallet',
     },
     {
-      id: 'scanner',
+      id: 'amenities_scanner',
       name: 'Security Scanner',
       route: '/(resident)/amenities/scanner',
       iconName: 'ScanQrCode',
@@ -148,7 +148,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       permission: 'amenities:scanner',
     },
     {
-      id: 'sec-logs',
+      id: 'amenities_security_logs',
       name: 'Security Logs',
       route: '/(resident)/amenities/security-logs',
       iconName: 'ClipboardList',

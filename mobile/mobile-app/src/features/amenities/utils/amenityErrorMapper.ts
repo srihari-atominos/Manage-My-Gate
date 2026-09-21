@@ -29,6 +29,8 @@ export const mapAmenityApiError = (error: any): AmenityErrorDetails => {
   const status = error.response?.status;
   const responseData = error.response?.data;
   const baseMessage = responseData?.message || error.message || 'Operation failed';
+  const errorCode = responseData?.code || responseData?.errorCode;
+  const errorReason = responseData?.reason;
 
   // 1. HTTP 400 - Bad Request / Validation Failure (Express-Validator)
   if (status === 400) {
@@ -57,6 +59,8 @@ export const mapAmenityApiError = (error: any): AmenityErrorDetails => {
 
     return {
       statusCode: 400,
+      code: errorCode,
+      reason: errorReason,
       message: detailedMessage || 'Validation failed. Please check the entered details.',
       fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
       details: responseData?.details,
@@ -75,6 +79,8 @@ export const mapAmenityApiError = (error: any): AmenityErrorDetails => {
   if (status === 403) {
     return {
       statusCode: 403,
+      code: errorCode,
+      reason: errorReason,
       message:
         baseMessage === 'Operation failed'
           ? 'You do not have permission to perform this action in this community.'

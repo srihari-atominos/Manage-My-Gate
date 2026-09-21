@@ -74,7 +74,7 @@ const ConversationsView = () => {
           senderType: 'SUPERADMIN',
           channel: 'GMAIL',
           recipientContact: selectedInquiry?.email || 'naveenpv5886@gmail.com',
-          content: 'Hello! Welcome to Manage My Gate. Your account details have been initialized.',
+          content: 'Hello! Welcome to Nahom. Your account details have been initialized.',
           status: 'SENT',
           timestamp: new Date(Date.now() - 3600000).toISOString()
         }

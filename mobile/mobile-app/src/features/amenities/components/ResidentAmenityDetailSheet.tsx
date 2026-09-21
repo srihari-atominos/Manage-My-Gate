@@ -58,7 +58,18 @@ export function ResidentAmenityDetailSheet({
           requiresApproval: false,
           maxActiveReservationsPerResident: (amenity as any).maxBookingsPerUserPerSlot || 1,
         },
-        operatingHours: [],
+        operatingHours: Array.isArray((amenity as any).operatingHours) && (amenity as any).operatingHours.length > 0
+          ? (amenity as any).operatingHours
+          : ((amenity as any).openTime && (amenity as any).closeTime
+              ? [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+                  dayOfWeek: day,
+                  opensAt: (amenity as any).openTime,
+                  closesAt: (amenity as any).closeTime,
+                  openTime: (amenity as any).openTime,
+                  closeTime: (amenity as any).closeTime,
+                  isOpen: true,
+                }))
+              : []),
         images: Array.isArray(amenity.images) ? amenity.images : (amenity as any).imageUrl ? [(amenity as any).imageUrl] : [],
         createdAt: (amenity as any).createdAt || new Date().toISOString(),
         updatedAt: (amenity as any).updatedAt || new Date().toISOString(),

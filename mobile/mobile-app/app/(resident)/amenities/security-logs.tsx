@@ -19,7 +19,12 @@ export default function AmenitySecurityLogsScreen() {
   const { user } = useAuth();
 
   // Guard: Users without security guard / log permissions are redirected
-  if (user && !isFeatureAllowedForUser({ id: 'amenities_security_logs', permission: 'amenities:security_logs' }, user)) {
+  const hasLogsAccess =
+    isFeatureAllowedForUser({ id: 'amenities_security_logs', permission: 'amenities:security_logs' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user);
+
+  if (user && !hasLogsAccess) {
     if (isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user)) {
       return <Redirect href="/(resident)/amenities/discover" />;
     }

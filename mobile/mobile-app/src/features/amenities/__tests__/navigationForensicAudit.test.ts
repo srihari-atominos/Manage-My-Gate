@@ -119,7 +119,6 @@ describe('Navigation Forensic Audit & Feature Cutover', () => {
       { id: 'a-master', route: '/(resident)/amenities/admin-master', permission: 'amenities:amenities' },
       { id: 'a-maintenance', route: '/(resident)/amenities/maintenance', permission: 'amenities:maintenance' },
       { id: 'a-ledgers', route: '/(resident)/amenities/ledgers', permission: 'amenities:ledgers' },
-      { id: 'a-settings', route: '/(resident)/amenities/settings', permission: 'amenities:settings' },
     ];
 
     it('Resident sees exactly the 3 resident items and zero admin/guard items', () => {

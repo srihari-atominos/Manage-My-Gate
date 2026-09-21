@@ -274,6 +274,13 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
     }
   }, [dispatch, facility._id, startUtcIso, endUtcIso, headcount, quantity]);
 
+  // Auto-recalculate pricing when slot selection, headcount, or quantity changes
+  useEffect(() => {
+    if (startUtcIso && endUtcIso) {
+      handleFetchAuthoritativePricing();
+    }
+  }, [startUtcIso, endUtcIso, headcount, quantity, handleFetchAuthoritativePricing]);
+
   // ==========================================
   // Step Progression & Validation
   // ==========================================
@@ -490,9 +497,10 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
 
       // Deterministic idempotency key
       const idempotencyKey = `confirm_hold_${activeHold._id}`;
-      const reservation = await dispatch(
+      const confirmResult = await dispatch(
         confirmReservationThunk({ payload, idempotencyKey })
       ).unwrap();
+      const reservation = confirmResult.reservation;
 
       // Proactively fetch passes if eligible
       if (canDisplayAmenityAccessPass(reservation)) {
@@ -535,9 +543,10 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
 
         const idempotencyKey = `confirm_hold_${activeHold._id}`;
         try {
-          const reservation = await dispatch(
+          const confirmResult = await dispatch(
             confirmReservationThunk({ payload, idempotencyKey })
           ).unwrap();
+          const reservation = confirmResult.reservation;
 
           if (canDisplayAmenityAccessPass(reservation)) {
             dispatch(fetchPassesByReservationThunk(reservation._id));

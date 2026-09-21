@@ -93,9 +93,9 @@ export const checkIsSecurityRole = (user: UserLike | null | undefined): boolean 
 // Permission synonyms and equivalencies mapping for Role Builder permission keys
 const PERMISSION_SYNONYMS: Record<string, string[]> = {
   // Visitor & Gate Security
-  'visitor:guard': ['visitor:guard', 'visitor.guard', 'visitor:admin', 'visitor', 'gate:console', 'visitor_gate_console'],
-  'visitor:admin': ['visitor:admin', 'visitor.admin', 'visitor:guard', 'visitor', 'visitor_admin_dashboard', 'visitor_community_passes', 'visitor_admin_logs'],
-  'visitor:resident': ['visitor:resident', 'visitor.resident', 'visitor', 'visitor_resident_passes', 'visitor_passes', 'visitor:view', 'visitor:read', 'visitor_gate_pass'],
+  'visitor:guard': ['visitor:guard', 'visitor.guard', 'visitor:admin', 'visitor', 'gate:console', 'visitor_gate_console', 'visitor_gate_pass'],
+  'visitor:admin': ['visitor:admin', 'visitor.admin', 'visitor:guard', 'visitor', 'visitor_admin_dashboard', 'visitor_community_passes', 'visitor_admin_logs', 'visitor_gate_console', 'visitor_gate_pass', 'visitor_invite'],
+  'visitor:resident': ['visitor:resident', 'visitor.resident', 'visitor', 'visitor_resident_passes', 'visitor_passes', 'visitor:view', 'visitor:read', 'visitor_gate_pass', 'visitor_gate_console', 'visitor_invite'],
 
   // Notice Board
   'notices:active_board': ['notices:active_board', 'notices:read', 'notices.read', 'notices:view', 'notices.view', 'notices', 'notice_board'],
@@ -180,23 +180,18 @@ const matchesUserPermissions = (
 export const RESIDENT_ONLY_FEATURE_IDS = new Set([
   'visitor_resident_passes',
   'visitor_passes',
-  'amenities_discover',
-  'amenities_my_booking',
-  'amenities_wallet',
   'billing_my_dues',
   'billing_wallet',
 ]);
 
 // Features strictly reserved for gate security hardware (hidden from Admin and Resident consoles)
-export const GUARD_ONLY_FEATURE_IDS = new Set([
-  'visitor_gate_console',
-  'amenities_scanner',
-  'amenities_security_logs',
-]);
+export const GUARD_ONLY_FEATURE_IDS = new Set<string>([]);
 
 // Features allowed for Security Guard
 const FALLBACK_SECURITY_FEATURE_IDS = new Set([
   'visitor_gate_console',
+  'visitor_gate_pass',
+  'visitor_invite',
   'visitor_admin_logs',
   'amenities_scanner',
   'amenities_security_logs',
@@ -209,6 +204,7 @@ const FALLBACK_SECURITY_FEATURE_IDS = new Set([
 const FALLBACK_SECURITY_PERMISSIONS = new Set([
   'visitor:guard',
   'visitor:admin',
+  'visitor:resident',
   'amenities:scanner',
   'amenities:security_logs',
   'notices:active_board',
@@ -221,6 +217,8 @@ const FALLBACK_SECURITY_PERMISSIONS = new Set([
 const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'visitor_resident_passes',
   'visitor_gate_pass',
+  'visitor_gate_console',
+  'visitor_invite',
   'billing_dashboard',
   'billing_my_dues',
   'billing_wallet',
@@ -275,10 +273,20 @@ export const isFeatureAllowedForUser = (
     if (RESIDENT_ONLY_FEATURE_IDS.has(item.id)) return false;
     if (GUARD_ONLY_FEATURE_IDS.has(item.id)) return false;
 
+    // In GlobalNavModal, keep role-specific amenity item filtering (items prefixed with 'a-')
+    if (item.id && item.id.startsWith('a-')) {
+      if (['a-discover', 'a-bookings', 'a-wallet', 'a-scanner'].includes(item.id)) {
+        if (permissions.length > 0) {
+          return permissions.includes(item.permission || '') || permissions.includes('*');
+        }
+      }
+    }
+
     // Strict evaluation for Amenities: Admin must have the explicit admin amenity permission
     if (item.permission && item.permission.startsWith('amenities:') && permissions.length > 0) {
       return matchesUserPermissions(item.permission, item.id, permissions);
     }
+
     return true;
   }
 
@@ -303,7 +311,12 @@ export const isFeatureAllowedForUser = (
       item.id === 'amenities_discover' ||
       item.id === 'amenities_my_booking' ||
       item.id === 'amenities_wallet';
-    if (!isResidentAmenity) return false;
+    if (!isResidentAmenity) {
+      if (permissions.length > 0 && matchesUserPermissions(item.permission, item.id, permissions)) {
+        return true;
+      }
+      return false;
+    }
     if (permissions.length > 0) {
       return matchesUserPermissions(item.permission, item.id, permissions);
     }

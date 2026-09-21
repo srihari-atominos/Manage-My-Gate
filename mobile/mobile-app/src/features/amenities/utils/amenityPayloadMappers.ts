@@ -234,30 +234,55 @@ export const normalizeHoldFromApi = (
   };
 };
 
-export const normalizeReservationFromApi = (raw: ApiAmenityReservation): AmenityReservation => {
+export const normalizeReservationFromApi = (raw: any): AmenityReservation => {
+  if (!raw) return raw as any;
+
+  // Unpack nested payload wrappers if raw is { reservation: { ... } } or { data: { reservation: ... } }
+  const doc = (raw && typeof raw === 'object' && 'reservation' in raw && raw.reservation)
+    ? raw.reservation
+    : (raw && typeof raw === 'object' && raw.data && typeof raw.data === 'object' && 'reservation' in raw.data && raw.data.reservation)
+      ? raw.data.reservation
+      : (raw && typeof raw === 'object' && raw.data && typeof raw.data === 'object' && ('_id' in raw.data || 'bookingStatus' in raw.data || 'status' in raw.data))
+        ? raw.data
+        : raw;
+
   const facilityObj =
-    typeof raw.facilityId === 'object' && raw.facilityId !== null ? raw.facilityId : null;
-  const facilityId = facilityObj ? facilityObj._id : String(raw.facilityId);
-  const facilityName = facilityObj ? facilityObj.name : undefined;
-  const facilityTimezone = facilityObj ? facilityObj.timezone : undefined;
+    typeof doc.facilityId === 'object' && doc.facilityId !== null ? doc.facilityId : null;
+  const facilityId = facilityObj ? facilityObj._id : String(doc.facilityId || '');
+  const facilityName = facilityObj ? facilityObj.name : doc.facilityName;
+  const facilityTimezone = facilityObj ? facilityObj.timezone : doc.facilityTimezone;
 
   const resourceObj =
-    typeof raw.resourceId === 'object' && raw.resourceId !== null ? raw.resourceId : null;
+    typeof doc.resourceId === 'object' && doc.resourceId !== null ? doc.resourceId : null;
   const resourceId = resourceObj
     ? resourceObj._id
-    : raw.resourceId
-      ? String(raw.resourceId)
+    : doc.resourceId
+      ? String(doc.resourceId)
       : undefined;
-  const resourceName = resourceObj ? resourceObj.name : undefined;
+  const resourceName = resourceObj ? resourceObj.name : doc.resourceName;
 
-  const userObj = typeof raw.userId === 'object' && raw.userId !== null ? raw.userId : null;
-  const userId = userObj ? userObj._id || userObj.id : String(raw.userId);
-  const userName = userObj ? userObj.name || userObj.username : undefined;
+  const userObj = typeof doc.userId === 'object' && doc.userId !== null ? doc.userId : null;
+  const userId = userObj ? userObj._id || userObj.id : String(doc.userId || doc.residentId || '');
+  const userName = userObj ? userObj.name || userObj.username : doc.userName || doc.residentName;
+
+  const startDt = doc.startDateTime || doc.requestedStartDateTime || doc.effectiveStartDateTime || '';
+  const endDt = doc.endDateTime || doc.requestedEndDateTime || doc.effectiveEndDateTime || '';
+
+  // Fallbacks for the 5 orthogonal state dimensions
+  const derivedBookingStatus = doc.bookingStatus || (
+    doc.status === 'CONFIRMED' || doc.status === 'APPROVED' ? 'CONFIRMED' :
+    doc.status === 'PENDING' || doc.status === 'PENDING_APPROVAL' ? 'PENDING_APPROVAL' :
+    doc.status === 'CANCELLED' || doc.status === 'REJECTED' ? 'REJECTED' : 'CONFIRMED'
+  );
+  const derivedPaymentStatus = doc.paymentStatus || 'NOT_REQUIRED';
+  const derivedApprovalStatus = doc.approvalStatus || 'NOT_REQUIRED';
+  const derivedAccessStatus = doc.accessStatus || (derivedBookingStatus === 'CONFIRMED' ? 'PASS_GENERATED' : 'NOT_APPLICABLE');
+  const derivedCompletionStatus = doc.completionStatus || 'PENDING';
 
   return {
-    _id: raw._id,
-    reservationNumber: raw.reservationNumber,
-    orgId: raw.orgId,
+    _id: String(doc._id || doc.id || ''),
+    reservationNumber: doc.reservationNumber,
+    orgId: doc.orgId,
     facilityId,
     facilityName,
     facilityTimezone,
@@ -265,49 +290,52 @@ export const normalizeReservationFromApi = (raw: ApiAmenityReservation): Amenity
     resourceName,
     userId,
     userName,
-    unitId: raw.unitId,
-    startDateTime: raw.startDateTime,
-    endDateTime: raw.endDateTime,
-    headcount: raw.headcount,
-    quantity: raw.quantity,
-    guests: Array.isArray(raw.guests) ? [...raw.guests] : [],
-    pricingSnapshot: normalizePricingSnapshot(raw.pricingSnapshot),
+    unitId: doc.unitId,
+    startDateTime: startDt,
+    endDateTime: endDt,
+    headcount: doc.headcount ?? 1,
+    quantity: doc.quantity ?? 1,
+    guests: Array.isArray(doc.guests) ? [...doc.guests] : [],
+    pricingSnapshot: normalizePricingSnapshot(doc.pricingSnapshot),
 
     // The Five Independent State Dimensions
-    bookingStatus: raw.bookingStatus,
-    paymentStatus: raw.paymentStatus,
-    approvalStatus: raw.approvalStatus,
-    accessStatus: raw.accessStatus,
-    completionStatus: raw.completionStatus,
+    bookingStatus: derivedBookingStatus,
+    paymentStatus: derivedPaymentStatus,
+    approvalStatus: derivedApprovalStatus,
+    accessStatus: derivedAccessStatus,
+    completionStatus: derivedCompletionStatus,
 
-    rejectionReason: raw.rejectionReason,
-    cancellationReason: raw.cancellationReason,
-    notes: raw.notes,
-    holdId: raw.holdId,
-    paymentReference: raw.paymentReference,
-    createdAt: raw.createdAt,
-    updatedAt: raw.updatedAt,
+    rejectionReason: doc.rejectionReason,
+    cancellationReason: doc.cancellationReason,
+    notes: doc.notes,
+    holdId: doc.holdId,
+    paymentReference: doc.paymentReference,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
   };
 };
 
-export const normalizeAccessPassFromApi = (raw: ApiAmenityAccessPass): AmenityAccessPass => {
+export const normalizeAccessPassFromApi = (raw: ApiAmenityAccessPass | any): AmenityAccessPass => {
+  if (!raw) return raw as any;
+
   const checkInTimestamp = raw.checkInTimestamp || (raw as any).checkedInAt || null;
   const checkOutTimestamp = raw.checkOutTimestamp || (raw as any).checkedOutAt || null;
+  const qrData = String(raw.qrData || raw.rawToken || raw.passTokenHash || raw.passCode || raw._id || '');
 
   return {
-    _id: raw._id,
-    orgId: raw.orgId,
-    facilityId: raw.facilityId,
-    facilityName: raw.facilityName,
-    reservationId: raw.reservationId,
-    userId: raw.userId,
-    passCode: raw.passCode,
-    qrData: raw.qrData,
-    passType: raw.passType,
-    validFrom: raw.validFrom,
-    validUntil: raw.validUntil,
-    maxUses: raw.maxUses,
-    currentUses: raw.currentUses,
+    _id: String(raw._id || raw.id || ''),
+    orgId: String(raw.orgId || ''),
+    facilityId: String(raw.facilityId || ''),
+    facilityName: raw.facilityName || 'Amenity Facility',
+    reservationId: String(raw.reservationId || ''),
+    userId: String(raw.userId || ''),
+    passCode: raw.passCode || raw._id || 'PASS-001',
+    qrData,
+    passType: raw.passType || 'QR_DYNAMIC',
+    validFrom: raw.validFrom || new Date().toISOString(),
+    validUntil: raw.validUntil || new Date(Date.now() + 86400000).toISOString(),
+    maxUses: raw.maxUses ?? 1,
+    currentUses: raw.currentUses ?? 0,
     checkedInAt: raw.checkedInAt || (checkInTimestamp ? String(checkInTimestamp) : undefined),
     checkedOutAt: raw.checkedOutAt || (checkOutTimestamp ? String(checkOutTimestamp) : undefined),
     status: raw.status || (raw.isRevoked ? 'REVOKED' : checkOutTimestamp ? 'USED' : 'ACTIVE'),

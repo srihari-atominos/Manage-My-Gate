@@ -31,6 +31,10 @@ export function getValidSession(session) {
  * @returns {Promise<T>}
  */
 export async function withTransaction(fn) {
+  if (mongoose.connection.readyState === 0) {
+    return fn(undefined);
+  }
+
   let session = null;
   try {
     session = await mongoose.startSession();

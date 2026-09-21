@@ -23,6 +23,7 @@ export interface AppBottomSheetProps {
   snapPoints?: (string | number)[];
   children: React.ReactNode;
   enableDynamicSizing?: boolean;
+  contentContainerStyle?: any;
 }
 
 const bottomSheetHeaderVariants = cva(
@@ -40,6 +41,7 @@ function BottomSheet({
   onClose,
   title,
   children,
+  contentContainerStyle,
 }: AppBottomSheetProps) {
   if (!visible) return null;
 
@@ -95,7 +97,10 @@ function BottomSheet({
 
           {/* Scrollable Body Content */}
           <ScrollView
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 80, flexGrow: 1 }}
+            contentContainerStyle={[
+              { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 80, flexGrow: 1 },
+              contentContainerStyle,
+            ]}
             showsVerticalScrollIndicator={true}
             bounces={true}
             alwaysBounceVertical={false}

@@ -39,6 +39,15 @@ export class AmenityReservationService {
   }
 
   /**
+   * Finds active reservations overlapping a given time range.
+   * @param {Object} criteria
+   * @param {mongoose.ClientSession} [session]
+   */
+  async findOverlappingActiveReservations(criteria, session) {
+    return amenityReservationRepository.findOverlappingActiveReservations(criteria, session);
+  }
+
+  /**
    * Internal implementation of reservation confirmation inside a transaction session.
    * @private
    */
@@ -274,6 +283,172 @@ export class AmenityReservationService {
       return this._executeCancelReservation(params, trxSession);
     });
   }
+
+  /**
+   * Reschedules an active reservation to a new time window and/or sibling resource.
+   * Revalidates availability at execution time in transaction to prevent overbooking/race conditions.
+   *
+   * @param {Object} params
+   * @param {string|mongoose.Types.ObjectId} params.reservationId
+   * @param {string|mongoose.Types.ObjectId} params.orgId
+   * @param {Date|string} params.newStartDateTime
+   * @param {Date|string} params.newEndDateTime
+   * @param {string|mongoose.Types.ObjectId} [params.newResourceId]
+   * @param {string|mongoose.Types.ObjectId} [params.rescheduledBy]
+   * @param {string} [params.reason]
+   * @param {mongoose.ClientSession} [session]
+   */
+  async rescheduleReservation(params, session) {
+    if (session) {
+      return this._executeRescheduleReservation(params, session);
+    }
+    return withTransactionRetry(async (trxSession) => {
+      return this._executeRescheduleReservation(params, trxSession);
+    });
+  }
+
+  /**
+   * Internal implementation of reservation rescheduling inside transaction.
+   * @private
+   */
+  async _executeRescheduleReservation(
+    { reservationId, orgId, newStartDateTime, newEndDateTime, newResourceId, rescheduledBy, reason = '' },
+    session
+  ) {
+    const reservation = await amenityReservationRepository.findById(reservationId, session);
+    if (!reservation || reservation.orgId.toString() !== orgId.toString()) {
+      throw new HttpError(404, 'Reservation not found');
+    }
+
+    if (['CANCELLED', 'REJECTED', 'COMPLETED'].includes(reservation.bookingStatus)) {
+      throw new HttpError(400, `Cannot reschedule a ${reservation.bookingStatus.toLowerCase()} reservation`);
+    }
+
+    const start = new Date(newStartDateTime);
+    const end = new Date(newEndDateTime);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+      throw new HttpError(400, 'Invalid date range: newStartDateTime must be earlier than newEndDateTime');
+    }
+
+    const facility = await amenityFacilityRepository.findById(reservation.facilityId, orgId, session);
+    if (!facility) {
+      throw new HttpError(404, 'Amenity facility not found');
+    }
+
+    let targetResourceId = reservation.resourceId;
+    if (newResourceId && String(newResourceId) !== String(reservation.resourceId)) {
+      const amenityResourceService = (await import('../resources/amenityResource.service.js')).default;
+      const resource = await amenityResourceService.getResourceById(newResourceId, orgId, session);
+      if (!resource || !resource.isActive || resource.isDeleted) {
+        throw new HttpError(400, 'Replacement resource is not active or does not exist');
+      }
+      if (String(resource.facilityId) !== String(reservation.facilityId)) {
+        throw new HttpError(400, 'Replacement resource does not belong to the same facility');
+      }
+      if (resource.assetState === 'MAINTENANCE') {
+        throw new HttpError(400, 'Replacement resource is currently under maintenance');
+      }
+      targetResourceId = resource._id;
+    }
+
+    // Availability revalidation at execution time
+    const { availabilityService } = await import('../domain/availability/availability.service.js');
+    const availCheck = await availabilityService.checkAvailability(
+      {
+        orgId,
+        facilityId: reservation.facilityId,
+        resourceId: targetResourceId,
+        startDateTime: start,
+        endDateTime: end,
+        requestedQuantity: reservation.headcount || reservation.quantity || 1,
+      },
+      session
+    );
+
+    if (!availCheck.isAvailable) {
+      throw new HttpError(409, `Target slot is unavailable: ${availCheck.reason || 'Slot already booked or under maintenance'}`);
+    }
+
+    // Release old allocations & allocate new
+    if (facility.archetype === 'EXCLUSIVE_HOURLY') {
+      const oldSlotStartUTC = reservation.requestedStartDateTime.toISOString();
+      const oldSlotId = `SLOT:${reservation.orgId}:${reservation.facilityId}:${reservation.resourceId || 'ALL'}:${oldSlotStartUTC}`;
+      await amenitySlotAllocationRepository.releaseDiscreteSlot(oldSlotId, session);
+
+      const newSlotStartUTC = start.toISOString();
+      const newSlotId = `SLOT:${reservation.orgId}:${reservation.facilityId}:${targetResourceId || 'ALL'}:${newSlotStartUTC}`;
+      await amenitySlotAllocationRepository.promoteDiscreteSlot(newSlotId, reservation._id, session);
+    }
+
+    const historyEntry = {
+      action: 'RESCHEDULED',
+      performedBy: rescheduledBy || reservation.residentId,
+      timestamp: new Date(),
+      notes: reason || 'Reservation rescheduled due to maintenance',
+    };
+
+    const updatedReservation = await amenityReservationRepository.updateStateDimensions(
+      reservationId,
+      {
+        requestedStartDateTime: start,
+        requestedEndDateTime: end,
+        effectiveStartDateTime: availCheck.effectiveStartDateTime || start,
+        effectiveEndDateTime: availCheck.effectiveEndDateTime || end,
+        resourceId: targetResourceId,
+        $push: { approvalHistory: historyEntry },
+      },
+      session
+    );
+
+    // Revoke old passes and issue new access pass if confirmed
+    await amenityAccessPassService.revokeAllByReservationId(
+      reservationId,
+      orgId,
+      'Pass revoked due to reservation reschedule',
+      session
+    );
+
+    if (reservation.bookingStatus === 'CONFIRMED') {
+      await amenityAccessPassService.issueAccessPass(
+        {
+          orgId,
+          reservationId: reservation._id,
+          passType: 'QR_DYNAMIC',
+          validFrom: availCheck.effectiveStartDateTime || start,
+          validUntil: availCheck.effectiveEndDateTime || end,
+        },
+        session
+      );
+    }
+
+    // Transactional Outbox & Domain Event
+    await amenityOutboxEventRepository.createEvent(
+      {
+        orgId,
+        eventType: 'RESERVATION_RESCHEDULED',
+        aggregateId: reservation._id,
+        aggregateType: 'AmenityReservation',
+        payload: {
+          reservationId: reservation._id,
+          reservationNumber: reservation.reservationNumber,
+          residentId: reservation.residentId,
+          facilityId: reservation.facilityId,
+          resourceId: targetResourceId,
+          previousStartDateTime: reservation.requestedStartDateTime,
+          previousEndDateTime: reservation.requestedEndDateTime,
+          newStartDateTime: start,
+          newEndDateTime: end,
+          reason,
+        },
+      },
+      session
+    );
+
+    amenityManagementEvents.emit('amenity:reservation:rescheduled', updatedReservation);
+
+    return updatedReservation;
+  }
+
 
   /**
    * Retrieves all future active/confirmed reservations for a facility without date limit.

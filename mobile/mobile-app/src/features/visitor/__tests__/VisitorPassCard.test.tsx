@@ -5,6 +5,8 @@ import { mapServiceFormToApiPayload } from '../utils/mapServiceFormToApiPayload'
 import { mapGroupFormToApiPayload } from '../utils/mapGroupFormToApiPayload';
 import { mapFormToApiPayloadStrategy } from '../utils/mapFormToApiPayloadStrategy';
 import { validateGuestIdProofNumber } from '../components/guest/GuestPassOptionsStep';
+import { generateUnicodeQr } from '@/src/utils/qrPngGenerator';
+import { buildVisitorPassShareMessage, encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 describe('Visitor Management Mobile Pass Logic & Payload Mappings', () => {
   const baseContext = {
@@ -418,6 +420,48 @@ describe('Visitor Management Mobile Pass Logic & Payload Mappings', () => {
       const villaPayload = mapFormToApiPayloadStrategy('GUEST', guestFormData, adminVillaContext);
       expect(villaPayload.passType).toBe('GUEST');
       expect(villaPayload.villaId).toBe('60c72b2f9b1d8e25d88db659');
+    });
+  });
+
+  describe('WhatsApp Visual QR & Share Message Protocol', () => {
+    it('generates a valid monospace Unicode QR code block with quiet zones', () => {
+      const payload = encodeAppBarcode('GUEST', '1C98B7', '6aa8ccbaf9dabad5641c98b7', 'Guest');
+      const unicodeQr = generateUnicodeQr(payload);
+
+      expect(unicodeQr).toBeTruthy();
+      expect(typeof unicodeQr).toBe('string');
+      // Must contain UTF-8 half-block characters
+      expect(unicodeQr).toMatch(/[█▀▄]/);
+      // Line width must be ultra-compact (Version 1 QR = 23 characters per row with padding)
+      const lines = unicodeQr.split('\n').filter((l) => l.length > 0);
+      expect(lines.length).toBeLessThanOrEqual(13);
+      expect(lines[0].length).toBeLessThanOrEqual(25);
+    });
+
+    it('formats a complete WhatsApp message with embedded visual QR code and image link', () => {
+      const barcodePayload = encodeAppBarcode('ADMIN_GUEST', '1C98B7', '6aa8ccbaf9dabad5641c98b7', 'Guest');
+      const message = buildVisitorPassShareMessage({
+        passCode: '1C98B7',
+        visitorName: 'Guest',
+        passTypeLabel: 'ADMIN_GUEST',
+        validUntil: '2026-09-21T18:00:00.000Z',
+        destination: 'Villa 12',
+        barcodePayload,
+      });
+
+      expect(message).toContain('🚪 *NAHOM VISITOR PASS* 🚪');
+      expect(message).toContain('🔑 *PASS CODE:* *1C98B7*');
+      expect(message).toContain('👤 *Visitor:* Guest');
+      expect(message).toContain('🎫 *Pass Type:* Guest Pass');
+      expect(message).toContain('📍 *Destination Unit:* Villa 12');
+      expect(message).toContain('📱 *QR PASS:*');
+      // Must include monospace backticks for WhatsApp rendering
+      expect(message).toContain('```');
+      // Must include high-resolution QR image link
+      expect(message).toContain('📱 *Barcode / QR Pass Link:*');
+      expect(message).toContain('https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=12&data=');
+      expect(message).toContain('Security Instructions:');
+      expect(message).toContain('1C98B7');
     });
   });
 });

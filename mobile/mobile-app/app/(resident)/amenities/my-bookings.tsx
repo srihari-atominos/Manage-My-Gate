@@ -28,7 +28,12 @@ export default function MyBookingsScreen() {
   const { user } = useAuth();
 
   // Guard: Users without resident booking permissions are redirected
-  if (user && !isFeatureAllowedForUser({ id: 'amenities_my_booking', permission: 'amenities:my_booking' }, user)) {
+  const hasBookingsAccess =
+    isFeatureAllowedForUser({ id: 'amenities_my_booking', permission: 'amenities:my_booking' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user);
+
+  if (user && !hasBookingsAccess) {
     if (isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
       return <Redirect href="/(resident)/amenities/scanner" />;
     }

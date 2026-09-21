@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Share, ActivityIndicator, Linking, Alert, Platform, Clipboard } from 'react-native';
-import { File, Paths } from 'expo-file-system';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -12,8 +9,8 @@ import { VisitorPass } from '../store/visitorPassSlice';
 import { VisitorQRCode } from './shared/VisitorQRCode';
 import { QrCode, ShieldAlert, Copy, Check, Share2, MessageCircle, Barcode, Image as ImageIcon } from 'lucide-react-native';
 
-import { PASS_TYPE_META, encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
-import { generateQrPngBytes, bytesToBase64 } from '@/src/utils/qrPngGenerator';
+import { PASS_TYPE_META, encodeAppBarcode, buildVisitorPassShareMessage } from '@/src/utils/appBarcodeProtocol';
+import { shareQrImage } from '@/src/utils/qrPngGenerator';
 import { useVisitorPass } from '../hooks/useVisitorPass';
 
 export interface VisitorPassDetailsModalProps {
@@ -102,73 +99,28 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
   };
 
   const buildShareText = () => {
-    return (
-      `🚪 *NAHOM VISITOR PASS* 🚪\n\n` +
-      `🔑 *PASS CODE:* *${passCode}*\n` +
-      `👤 *Visitor:* ${pass.visitorName || 'Guest'}\n` +
-      `🎫 *Pass Type:* ${passTypeMeta.label}\n` +
-      (destination ? `📍 *Destination Unit:* ${destination}\n` : '') +
-      `⏰ *Valid Until:* ${pass.validUntil ? new Date(pass.validUntil).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Today'}\n\n` +
-      `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n` +
-      `*Security Instructions:*\n` +
-      `Please present this 6-digit Pass Code (${passCode}) or the Barcode image at the security gate for fast check-in.`
-    );
+    return buildVisitorPassShareMessage({
+      passCode,
+      visitorName: pass.visitorName || 'Guest',
+      passTypeLabel: passTypeMeta.label,
+      validUntil: pass.validUntil,
+      destination,
+      barcodePayload,
+    });
   };
 
   const handleShareBarcodeToWhatsApp = async () => {
     if (!passCode || sharingImage) return;
     setSharingImage(true);
     try {
-      if (Platform.OS !== 'web') {
-        // 1. Generate pure JS high-res PNG image (100% offline, zero network delay)
-        const pngBytes = generateQrPngBytes(barcodePayload, 10, 4);
-
-        // 2. Save PNG to device cache
-        let targetUri = '';
-        try {
-          if (File && Paths && Paths.cache) {
-            const file = new File(Paths.cache, `MMG_Pass_${passCode}.png`);
-            if (!file.exists) {
-              file.create();
-            }
-            file.write(pngBytes);
-            targetUri = file.uri;
-          }
-        } catch {
-          // fallback to legacy FileSystem
-        }
-
-        if (!targetUri) {
-          try {
-            const base64 = bytesToBase64(pngBytes);
-            const cacheDir =
-              (FileSystem as any)?.cacheDirectory ||
-              (FileSystem as any)?.documentDirectory ||
-              '';
-            const fallbackUri = `${cacheDir}MMG_Pass_${passCode}.png`;
-            if ((FileSystem as any)?.writeAsStringAsync) {
-              await (FileSystem as any).writeAsStringAsync(fallbackUri, base64, {
-                encoding: (FileSystem as any).EncodingType?.Base64 || 'base64',
-              });
-              targetUri = fallbackUri;
-            }
-          } catch (fsErr) {
-            console.log('Error writing barcode PNG to cache:', fsErr);
-          }
-        }
-
-        // 3. Share the actual PNG barcode image via system share sheet
-        if (targetUri && (await Sharing.isAvailableAsync())) {
-          await Sharing.shareAsync(targetUri, {
-            mimeType: 'image/png',
-            dialogTitle: `Nahom Pass - ${passCode}`,
-            UTI: 'public.png',
-          });
-          return;
-        }
+      const shared = await shareQrImage(
+        barcodePayload,
+        passCode,
+        `Nahom Pass - ${passCode}`
+      );
+      if (!shared) {
+        await handleSendWhatsAppMessage();
       }
-
-      await handleSendWhatsAppMessage();
     } catch (e) {
       console.log('Error sharing barcode image:', e);
       await handleSendWhatsAppMessage();

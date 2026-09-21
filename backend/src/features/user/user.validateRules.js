@@ -28,6 +28,16 @@ export const inviteUserRules = [
     .isString()
     .withMessage('Role name must be a string')
     .trim(),
+  body('name')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('Name must be a string')
+    .trim(),
+  body('phone')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('Phone must be a string')
+    .trim(),
 ];
 
 /**
@@ -61,6 +71,18 @@ export const requestEmailOtpRules = [
 ];
 
 /**
+ * Validation rules for requesting a phone OTP during profile update.
+ */
+export const requestPhoneOtpRules = [
+  body('newPhone')
+    .notEmpty()
+    .withMessage('New phone number is required')
+    .isString()
+    .withMessage('Please provide a valid phone number')
+    .trim(),
+];
+
+/**
  * Validation rules for updating user profile.
  */
 export const updateProfileRules = [
@@ -70,8 +92,12 @@ export const updateProfileRules = [
     .escape(),
   body('phone')
     .optional()
+    .trim(),
+  body('phoneOtp')
+    .optional()
     .trim()
-    .escape(),
+    .isLength({ min: 6, max: 6 })
+    .withMessage('Phone OTP must be 6 digits'),
   body('email')
     .optional()
     .trim()

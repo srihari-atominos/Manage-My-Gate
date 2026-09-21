@@ -19,6 +19,22 @@ export class AmenityBookingService {
     };
   }
 
+  async getBookingById(bookingId, orgId, session = null) {
+    return await amenityBookingRepository.findById(bookingId, orgId, session);
+  }
+
+  async findConflicts(orgId, amenityId, date, startTime, endTime, session = null) {
+    return await amenityBookingRepository.findConflicts(orgId, amenityId, date, startTime, endTime, session);
+  }
+
+  async findByOrgPaginated(orgId, filters = {}, skip = 0, limit = 10) {
+    return await amenityBookingRepository.findByOrgPaginated(orgId, filters, skip, limit);
+  }
+
+  async findOverlappingBookingsForWindow({ orgId, amenityId, startDateTime, endDateTime }, session = null) {
+    return await amenityBookingRepository.findOverlappingBookingsForWindow({ orgId, amenityId, startDateTime, endDateTime }, session);
+  }
+
   async getMyBookings(userId, orgId, filters = {}) {
     return await amenityBookingRepository.findByUser(userId, orgId, filters);
   }
@@ -113,13 +129,70 @@ export class AmenityBookingService {
         }
       }
 
-      // 5. Maintenance Validation
+      // 5. Maintenance Validation (Authoritative v2 AmenityMaintenanceBlock + Legacy schedules)
+      try {
+        const { amenityMaintenanceBlockService } = await import(
+          '../amenityManagement/maintenance/amenityMaintenanceBlock.service.js'
+        );
+        const maintenanceBlocks = await amenityMaintenanceBlockService.getOverlappingBlocks({
+          orgId: user.orgId || amenity.orgId,
+          facilityId: amenity._id,
+          startDateTime: bookingDateTimeStart,
+          endDateTime: bookingDateTimeEnd,
+        });
+
+        const activeBlock = maintenanceBlocks.find((b) => b.isCompleteClosure !== false);
+        if (activeBlock) {
+          const bufBefore = (activeBlock.bufferBeforeMinutes || 0) * 60000;
+          const bufAfter = (activeBlock.bufferAfterMinutes || 0) * 60000;
+          const unavailableFrom = new Date(new Date(activeBlock.startDateTime).getTime() - bufBefore).toISOString();
+          const unavailableUntil = new Date(new Date(activeBlock.endDateTime).getTime() + bufAfter).toISOString();
+          const errorDetails = {
+            code: 'AMENITY_UNAVAILABLE',
+            reason: 'UNDER_MAINTENANCE',
+            unavailableFrom,
+            unavailableUntil,
+            expectedReopeningAt: unavailableUntil,
+            facilityId: String(amenity._id),
+            resourceId: activeBlock.resourceId ? String(activeBlock.resourceId) : null,
+          };
+          const err = new HttpError(
+            400,
+            `Amenity is under maintenance: ${activeBlock.title || activeBlock.reason}`,
+            errorDetails
+          );
+          err.code = 'AMENITY_UNAVAILABLE';
+          err.reason = 'UNDER_MAINTENANCE';
+          throw err;
+        }
+      } catch (err) {
+        if (err.code === 'AMENITY_UNAVAILABLE' || err.statusCode === 400) {
+          throw err;
+        }
+      }
+
       if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
         for (const maint of amenity.maintenanceSchedules) {
           const maintStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
           const maintEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
           if (bookingDateTimeStart < maintEnd && bookingDateTimeEnd > maintStart) {
-            throw new HttpError(400, 'Amenity is under maintenance during this time slot');
+            const errorDetails = {
+              code: 'AMENITY_UNAVAILABLE',
+              reason: 'UNDER_MAINTENANCE',
+              unavailableFrom: maintStart.toISOString(),
+              unavailableUntil: maintEnd.toISOString(),
+              expectedReopeningAt: maintEnd.toISOString(),
+              facilityId: String(amenity._id),
+              resourceId: null,
+            };
+            const err = new HttpError(
+              400,
+              `Amenity is under maintenance: ${maint.description || 'Scheduled Maintenance'}`,
+              errorDetails
+            );
+            err.code = 'AMENITY_UNAVAILABLE';
+            err.reason = 'UNDER_MAINTENANCE';
+            throw err;
           }
         }
       }
@@ -220,8 +293,8 @@ export class AmenityBookingService {
       let walletPayerId = userId;
 
       if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
-        const walletRepository = (await import('../wallet/wallet.repository.js')).default;
-        walletToUse = await walletRepository.getWallet(userId, orgId, sessionOpt);
+        const walletService = (await import('../wallet/wallet.service.js')).default;
+        walletToUse = await walletService.getWallet(userId, orgId, sessionOpt);
 
         // If personal wallet does not have enough balance, check household/primary resident wallet
         if (!walletToUse || walletToUse.balance < totalAmount) {
@@ -232,7 +305,7 @@ export class AmenityBookingService {
               const Villa = (await import('../villa/villa.model.js')).default;
               const villaDoc = await Villa.findById(userDoc.villaId).session(sessionOpt);
               if (villaDoc && villaDoc.primaryResidentId && String(villaDoc.primaryResidentId) !== String(userId)) {
-                const primaryWallet = await walletRepository.getWallet(villaDoc.primaryResidentId, orgId, sessionOpt);
+                const primaryWallet = await walletService.getWallet(villaDoc.primaryResidentId, orgId, sessionOpt);
                 if (primaryWallet && primaryWallet.balance >= totalAmount) {
                   walletToUse = primaryWallet;
                   walletPayerId = villaDoc.primaryResidentId;
@@ -283,12 +356,12 @@ export class AmenityBookingService {
       let updatedWallet = null;
       let walletTxn = null;
       if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
-        const walletRepository = (await import('../wallet/wallet.repository.js')).default;
+        const walletService = (await import('../wallet/wallet.service.js')).default;
         
-        updatedWallet = await walletRepository.updateBalance(walletPayerId, orgId, -totalAmount, sessionOpt);
+        updatedWallet = await walletService.updateBalance(walletPayerId, orgId, -totalAmount, sessionOpt);
         
         const isFamilyMember = String(walletPayerId) !== String(userId);
-        walletTxn = await walletRepository.createTransaction({
+        walletTxn = await walletService.createTransaction({
           orgId,
           userId: walletPayerId,
           type: 'Debit',
@@ -440,8 +513,7 @@ export class AmenityBookingService {
         user = await userService.getUserById(effectiveUserId, sessionOpt);
       } else if (villaNumber) {
         // If residentId is missing but we have villaNumber, find user by villaNumber
-        const userRepository = (await import('../user/user.repository.js')).default;
-        user = await userRepository.findByVillaNumber(villaNumber, orgId, sessionOpt);
+        user = await userService.getUserByVillaNumber(villaNumber, orgId, sessionOpt);
       }
 
       if (!user || user.orgId.toString() !== orgId.toString()) {
@@ -533,7 +605,7 @@ export class AmenityBookingService {
   }
 
 
-  async cancelBooking(bookingId, userId, orgId, reason = '', isAdmin = false) {
+  async cancelBooking(bookingId, userId, orgId, reason = '', isAdmin = false, options = {}) {
     const mongoose = (await import('mongoose')).default;
     // Removed transaction to support standalone local MongoDB
     
@@ -559,8 +631,16 @@ export class AmenityBookingService {
       let refundPercentage = 100; // default to full refund if no rules
       let refundAmount = booking.pricingDetails?.totalAmount || booking.totalPrice || 0;
 
-      // 2. Read cancellationRefundRules
-      if (amenity?.bookingRules?.isCancellationEnabled && amenity.bookingRules.cancellationRefundRules?.length > 0) {
+      // 2. Read cancellationRefundRules or administrative refund override
+      const rawOverride = typeof options === 'number'
+        ? options
+        : (options && typeof options.refundOverridePercentage === 'number' ? options.refundOverridePercentage : null);
+      const refundOverride = (rawOverride !== null && Number.isFinite(rawOverride)) ? rawOverride : null;
+
+      if (refundOverride !== null && isAdmin) {
+        refundPercentage = Math.max(0, Math.min(100, refundOverride));
+        refundAmount = (refundAmount * refundPercentage) / 100;
+      } else if (amenity?.bookingRules?.isCancellationEnabled && amenity.bookingRules.cancellationRefundRules?.length > 0) {
         const rules = [...amenity.bookingRules.cancellationRefundRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
         
         const moment = (await import('moment-timezone')).default;
@@ -591,9 +671,9 @@ export class AmenityBookingService {
 
         if (isWallet && refundAmount > 0) {
           try {
-            const walletRepository = (await import('../wallet/wallet.repository.js')).default;
-            await walletRepository.updateBalance(targetUserId, orgId, refundAmount);
-            await walletRepository.createTransaction({
+            const walletService = (await import('../wallet/wallet.service.js')).default;
+            await walletService.updateBalance(targetUserId, orgId, refundAmount);
+            await walletService.createTransaction({
               orgId,
               userId: targetUserId,
               type: 'Credit',
@@ -622,9 +702,9 @@ export class AmenityBookingService {
           } catch (refundError) {
              console.error(`[CANCEL BOOKING] Refund failed for booking ${bookingId}, crediting to digital wallet:`, refundError.message);
              try {
-               const walletRepository = (await import('../wallet/wallet.repository.js')).default;
-               await walletRepository.updateBalance(targetUserId, orgId, refundAmount);
-               await walletRepository.createTransaction({
+               const walletService = (await import('../wallet/wallet.service.js')).default;
+               await walletService.updateBalance(targetUserId, orgId, refundAmount);
+               await walletService.createTransaction({
                  orgId,
                  userId: targetUserId,
                  type: 'Credit',
@@ -646,9 +726,9 @@ export class AmenityBookingService {
         } else if (refundAmount > 0) {
           // ONLINE or other digital payment method without direct gateway ID: Credit to resident's digital wallet
           try {
-            const walletRepository = (await import('../wallet/wallet.repository.js')).default;
-            await walletRepository.updateBalance(targetUserId, orgId, refundAmount);
-            await walletRepository.createTransaction({
+            const walletService = (await import('../wallet/wallet.service.js')).default;
+            await walletService.updateBalance(targetUserId, orgId, refundAmount);
+            await walletService.createTransaction({
               orgId,
               userId: targetUserId,
               type: 'Credit',
@@ -693,6 +773,49 @@ export class AmenityBookingService {
       throw error;
     }
   }
+
+  async rescheduleBooking(bookingId, orgId, { bookingDate, startTime, endTime, rescheduledBy, reason = '' }, session = null) {
+    const booking = await amenityBookingRepository.findById(bookingId, orgId, session);
+    if (!booking) {
+      const HttpError = (await import('../../utils/httpError.utils.js')).default;
+      throw new HttpError(404, 'Booking not found');
+    }
+
+    if (['rejected', 'cancelled', 'completed'].includes(booking.status)) {
+      const HttpError = (await import('../../utils/httpError.utils.js')).default;
+      throw new HttpError(400, `Booking cannot be rescheduled in its current state: ${booking.status}`);
+    }
+
+    const amenityId = booking.amenityId?._id || booking.amenityId;
+    const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime, session);
+    const otherConflicts = conflicts.filter((c) => c._id.toString() !== booking._id.toString());
+    if (otherConflicts.length > 0) {
+      const HttpError = (await import('../../utils/httpError.utils.js')).default;
+      throw new HttpError(409, 'The proposed alternative slot conflicts with an existing booking');
+    }
+
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const newStart = moment.tz(`${bookingDate}T${startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+    let newEnd = moment.tz(`${bookingDate}T${endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+    if (newEnd < newStart) {
+      newEnd = moment(newEnd).add(1, 'days').toDate();
+    }
+
+    const updateData = {
+      bookingDate,
+      startTime,
+      endTime,
+      qrExpiresAt: newEnd,
+      rescheduledAt: new Date(),
+      rescheduledBy: rescheduledBy || null,
+      rescheduleReason: reason,
+    };
+
+    const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, booking.status, updateData, session);
+    return updated;
+  }
+
 
   async cancelBookingAndRefund(bookingId, userId) {
     const mongoose = (await import('mongoose')).default;
@@ -746,9 +869,9 @@ export class AmenityBookingService {
       if (booking.paymentStatus === 'captured' || booking.paymentStatus === 'success') {
         const isWallet = booking.paymentMethod && booking.paymentMethod.toUpperCase() === 'WALLET';
         if (isWallet && refundAmountRupees > 0) {
-          const walletRepository = (await import('../wallet/wallet.repository.js')).default;
-          await walletRepository.updateBalance(userId, booking.orgId, refundAmountRupees);
-          await walletRepository.createTransaction({
+          const walletService = (await import('../wallet/wallet.service.js')).default;
+          await walletService.updateBalance(userId, booking.orgId, refundAmountRupees);
+          await walletService.createTransaction({
             orgId: booking.orgId,
             userId,
             type: 'Credit',
@@ -1138,4 +1261,5 @@ export class AmenityBookingService {
   }
 }
 
-export default new AmenityBookingService();
+export const amenityBookingService = new AmenityBookingService();
+export default amenityBookingService;

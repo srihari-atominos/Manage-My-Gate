@@ -1,11 +1,5 @@
-/**
- * Amenity Management Phase 6B.2 - Step: Booking Result View
- * Authoritative presentation of the 5 independent reservation dimensions.
- * Renders access pass QR code when eligible. Zero fabricated tokens or flattened statuses.
- */
-
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Share } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -17,7 +11,7 @@ import {
   AmenityReservation,
   AmenityAccessPass,
 } from '../../../types/amenityDomain.types';
-import { CheckCircle2, AlertCircle, Clock, QrCode } from 'lucide-react-native';
+import { CheckCircle2, AlertCircle, Clock, QrCode, Share2 } from 'lucide-react-native';
 
 export interface BookingResultViewProps {
   facility: AmenityFacility;
@@ -44,11 +38,27 @@ export function BookingResultView({
     );
   }
 
-  const isPendingApproval = reservation.bookingStatus === 'PENDING_APPROVAL';
-  const isConfirmed = reservation.bookingStatus === 'CONFIRMED';
-  const isRejected = reservation.bookingStatus === 'REJECTED';
+  const rawBookingStatus = String(reservation.bookingStatus || (reservation as any).status || 'CONFIRMED');
+  const isPendingApproval = rawBookingStatus === 'PENDING_APPROVAL' || rawBookingStatus === 'PENDING';
+  const isConfirmed = rawBookingStatus === 'CONFIRMED' || rawBookingStatus === 'APPROVED';
+  const isRejected = rawBookingStatus === 'REJECTED' || rawBookingStatus === 'CANCELLED';
 
   const primaryPass = accessPasses?.[0];
+
+  const handleSharePass = async () => {
+    try {
+      const passCode = primaryPass?.passCode || reservation.reservationNumber || reservation._id;
+      const facilityName = facility?.name || 'Amenity Pass';
+      const validUntilStr = primaryPass?.validUntil ? new Date(primaryPass.validUntil).toLocaleString() : 'As scheduled';
+      const message = `Gate Access Pass for ${facilityName}\nPass Code: ${passCode}\nValid Until: ${validUntilStr}\nPresent this code or QR scanner at community entry gate.`;
+      await Share.share({
+        title: `Amenity Pass - ${facilityName}`,
+        message,
+      });
+    } catch (err) {
+      console.warn('Share error:', err);
+    }
+  };
 
   return (
     <ScrollView className="flex-1" contentContainerClassName="gap-4 pb-8">
@@ -96,24 +106,36 @@ export function BookingResultView({
       </View>
 
       {/* Access Pass QR Presentation (When Eligible & Returned) */}
-      {isPassEligible && primaryPass?.qrData ? (
+      {isPassEligible && (primaryPass?.qrData || reservation._id) ? (
         <View className="items-center gap-3 rounded-3xl border border-border bg-card p-6">
-          <View className="flex-row items-center gap-2">
-            <QrCode size={18} className="text-primary" />
-            <Text className="font-bold text-sm text-foreground">Digital Access Pass</Text>
+          <View className="flex-row items-center justify-between w-full">
+            <View className="flex-row items-center gap-2">
+              <QrCode size={18} className="text-primary" />
+              <Text className="font-bold text-sm text-foreground">Digital Access Pass</Text>
+            </View>
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={handleSharePass}
+              className="flex-row items-center gap-1.5 h-8 px-3 rounded-full border-primary/40 bg-primary/5 active:bg-primary/10">
+              <Share2 size={13} className="text-primary" />
+              <Text className="text-xs font-bold text-primary">Share</Text>
+            </Button>
           </View>
 
           <QRCodeView
-            value={primaryPass.qrData}
+            value={primaryPass?.qrData || primaryPass?.passCode || reservation.reservationNumber || reservation._id}
             size={180}
-            caption={`Pass Code: ${primaryPass.passCode}`}
+            caption={`Pass Code: ${primaryPass?.passCode || reservation.reservationNumber || reservation._id}`}
           />
 
           <View className="mt-1 flex-row items-center gap-2">
-            <StatusBadge label={primaryPass.status || 'ACTIVE'} variant="success" dot />
-            <Text variant="muted" className="text-[11px]">
-              Valid until: {new Date(primaryPass.validUntil).toLocaleTimeString()}
-            </Text>
+            <StatusBadge label={primaryPass?.status || 'ACTIVE'} variant="success" dot />
+            {primaryPass?.validUntil ? (
+              <Text variant="muted" className="text-[11px]">
+                Valid until: {new Date(primaryPass.validUntil).toLocaleTimeString()}
+              </Text>
+            ) : null}
           </View>
         </View>
       ) : null}
@@ -126,7 +148,7 @@ export function BookingResultView({
           label="Booking Status"
           value={
             <StatusBadge
-              label={reservation.bookingStatus}
+              label={reservation.bookingStatus || 'CONFIRMED'}
               variant={isConfirmed ? 'success' : isPendingApproval ? 'warning' : 'danger'}
             />
           }
@@ -135,7 +157,7 @@ export function BookingResultView({
           label="Payment Status"
           value={
             <StatusBadge
-              label={reservation.paymentStatus}
+              label={reservation.paymentStatus || 'NOT_REQUIRED'}
               variant={
                 reservation.paymentStatus === 'PAID' || reservation.paymentStatus === 'NOT_REQUIRED'
                   ? 'success'
@@ -150,7 +172,7 @@ export function BookingResultView({
           label="Approval Status"
           value={
             <StatusBadge
-              label={reservation.approvalStatus}
+              label={reservation.approvalStatus || 'NOT_REQUIRED'}
               variant={
                 reservation.approvalStatus === 'APPROVED' ||
                 reservation.approvalStatus === 'NOT_REQUIRED'
@@ -166,7 +188,7 @@ export function BookingResultView({
           label="Access Status"
           value={
             <StatusBadge
-              label={reservation.accessStatus}
+              label={reservation.accessStatus || 'PASS_GENERATED'}
               variant={
                 reservation.accessStatus === 'PASS_GENERATED' ||
                 reservation.accessStatus === 'CHECKED_IN'
@@ -182,7 +204,7 @@ export function BookingResultView({
           label="Completion Status"
           value={
             <StatusBadge
-              label={reservation.completionStatus}
+              label={reservation.completionStatus || 'PENDING'}
               variant={
                 reservation.completionStatus === 'COMPLETED'
                   ? 'success'

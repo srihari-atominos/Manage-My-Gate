@@ -125,8 +125,8 @@ app.use(['/api', '/api/v1', '/api/v2'], (req, res, next) => {
 app.use('/api', apiRouter);
 app.use('/api/v1', apiRouter);
 
-// Mount Amenity Management Subsystem v2 API
-app.use('/api/v2/amenity-management', amenityManagementRouter);
+// Mount Amenity Management Subsystem v2 API (supports both aliases)
+app.use(['/api/v2/amenity-management', '/api/v2/amenities'], amenityManagementRouter);
 
 // Health check routes
 app.get(['/health', '/api/health'], (req, res) => {

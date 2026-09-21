@@ -20,6 +20,8 @@ const amenityOutboxEventSchema = new mongoose.Schema(
           'REFUND_DISPATCH_REQUIRED',
           'WAITLIST_RELEASED',
           'MAINTENANCE_SCHEDULED',
+          'EMERGENCY_MAINTENANCE_DECLARED',
+          'RECURRING_MAINTENANCE_SCHEDULED',
           'MAINTENANCE_EXTENDED',
           'MAINTENANCE_COMPLETED',
           'MAINTENANCE_CANCELLED',

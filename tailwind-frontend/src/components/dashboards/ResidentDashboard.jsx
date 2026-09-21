@@ -48,7 +48,7 @@ export const ResidentDashboard = () => {
 
   const handleCopyPass = () => {
     if (!generatedPass) return;
-    const text = `Manage-My-Gate Guest Pass\nGuest: ${generatedPass.guestName}\nCode: ${generatedPass.code}\nValid Until: ${generatedPass.validUntil}`;
+    const text = `Nahom Guest Pass\nGuest: ${generatedPass.guestName}\nCode: ${generatedPass.code}\nValid Until: ${generatedPass.validUntil}`;
     navigator.clipboard.writeText(text);
     toast.success('Copied pass details to clipboard!');
   };

@@ -153,6 +153,8 @@ export const syncPermissions = async () => {
       'integrations:create', 'integrations:read', 'integrations:update', 'integrations:delete',
       'amenities:dashboard', 'amenities:admin_calander', 'amenities:ledgers',
       'amenities:amenities', 'amenities:maintenance', 'amenities:settings',
+      'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
+      'amenities:scanner', 'amenities:security_logs',
       'complaints:view', 'complaints:create', 'complaints:update', 'complaints:delete',
       'complaints:assign', 'complaints:dashboard', 'complaints:reports',
       'complaints:calendar', 'complaints:settings', 'complaints:comments',
@@ -191,10 +193,10 @@ export const syncPermissions = async () => {
       }
     }
 
-    // 6.7 Self-healing: Ensure all existing memberships have status 'Active' (fixes dev/seed data missing status)
+    // 6.7 Self-healing: Ensure existing memberships missing a status field get defaulted to 'Active'
     const OrgMembershipModel = (await import('../features/orgMembership/orgMembership.model.js')).default;
-    await OrgMembershipModel.updateMany({ status: { $ne: 'Active' } }, { $set: { status: 'Active' } });
-    logger.info('Self-healed all memberships to status "Active".');
+    await OrgMembershipModel.updateMany({ $or: [{ status: { $exists: false } }, { status: null }, { status: '' }] }, { $set: { status: 'Active' } });
+    logger.info('Self-healed memberships with missing status to "Active".');
 
     // 6.8 Self-healing: Ensure all existing workspaces have all default modules backfilled
     const WorkspaceModel = (await import('../features/workspace/workspace.model.js')).default;

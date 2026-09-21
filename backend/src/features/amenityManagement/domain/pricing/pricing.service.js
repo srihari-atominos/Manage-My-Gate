@@ -39,29 +39,33 @@ export class PricingService {
     const durationHours = durationMs / (1000 * 60 * 60);
     const durationDays = Math.max(1, Math.ceil(durationHours / 24));
 
+    const qty = Math.max(1, Number(quantity) || 1);
+    const count = Math.max(1, Number(headcount) || 1);
+    const unitMultiplier = qty * count;
+
     switch (pricingType) {
       case 'FREE':
         baseAmount = 0;
         break;
 
       case 'HOURLY':
-        baseAmount = Math.round(durationHours * baseRate * quantity * 100) / 100;
+        baseAmount = Math.round(durationHours * baseRate * unitMultiplier * 100) / 100;
         break;
 
       case 'DAILY':
-        baseAmount = Math.round(durationDays * baseRate * quantity * 100) / 100;
+        baseAmount = Math.round(durationDays * baseRate * unitMultiplier * 100) / 100;
         break;
 
       case 'FIXED_EVENT':
-        baseAmount = baseRate;
+        baseAmount = Math.round(baseRate * unitMultiplier * 100) / 100;
         break;
 
       case 'TIERED':
-        baseAmount = Math.round(durationHours * baseRate * 100) / 100;
+        baseAmount = Math.round(durationHours * baseRate * unitMultiplier * 100) / 100;
         break;
 
       default:
-        baseAmount = baseRate;
+        baseAmount = Math.round(baseRate * unitMultiplier * 100) / 100;
         break;
     }
 

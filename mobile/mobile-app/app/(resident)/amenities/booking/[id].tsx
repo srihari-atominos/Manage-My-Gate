@@ -13,6 +13,7 @@ import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { AmenityFacility } from '../../../../src/features/amenities/types/amenityDomain.types';
 import amenityManagementService from '../../../../src/features/amenities/services/amenityManagementService';
+import { normalizeFacilityFromApi } from '../../../../src/features/amenities/utils/amenityPayloadMappers';
 import { AmenityBookingWizard } from '../../../../src/features/amenities/components/wizard/AmenityBookingWizard';
 import { AlertTriangle, ArrowLeft } from 'lucide-react-native';
 
@@ -39,8 +40,9 @@ export default function AmenityBookingRoute() {
       .getFacilityById(id)
       .then((response) => {
         if (!isMounted) return;
-        const facilityData = (response?.data || response) as AmenityFacility;
-        if (facilityData && (facilityData._id || (facilityData as any).id)) {
+        const rawData = (response?.data || response) as any;
+        if (rawData && (rawData._id || rawData.id)) {
+          const facilityData = normalizeFacilityFromApi(rawData);
           setFacility(facilityData);
         } else {
           setError('Facility record could not be found.');

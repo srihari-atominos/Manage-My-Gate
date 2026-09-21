@@ -94,7 +94,6 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
         { id: 'a-master', labelKey: 'feature_amenities_master_name', defaultLabel: 'Amenity Master', route: '/(resident)/amenities/admin-master', icon: Sliders, color: '#ea580c', permission: 'amenities:amenities' },
         { id: 'a-maintenance', labelKey: 'feature_amenities_maintenance_name', defaultLabel: 'Maintenance Scheduler', route: '/(resident)/amenities/maintenance', icon: Wrench, color: '#f59e0b', permission: 'amenities:maintenance' },
         { id: 'a-ledgers', labelKey: 'feature_amenities_ledgers_name', defaultLabel: 'Amenity Ledgers', route: '/(resident)/amenities/ledgers', icon: Receipt, color: '#0d9488', permission: 'amenities:ledgers' },
-        { id: 'a-settings', labelKey: 'feature_amenities_settings_name', defaultLabel: 'Amenity Settings', route: '/(resident)/amenities/settings', icon: Settings, color: '#6366f1', permission: 'amenities:settings' },
       ],
     },
     {
@@ -110,6 +109,8 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       defaultTitle: 'VISITORS & SECURITY',
       items: [
         { id: 'v-main', labelKey: 'feature_visitor_resident_passes_name', defaultLabel: 'Visitor Pass Hub', route: '/(resident)/visitor', icon: ShieldCheck, color: '#8b5cf6', permission: 'visitor:resident' },
+        { id: 'v-gate-console', labelKey: 'feature_visitor_gate_console_name', defaultLabel: 'Gate Console', route: '/(resident)/visitor/gate-console', icon: QrCode, color: '#10b981', permission: 'visitor:resident' },
+        { id: 'v-invite', labelKey: 'feature_visitor_invite_name', defaultLabel: 'Invite Visitor', route: '/(resident)/visitor/invite', icon: PlusCircle, color: '#3b82f6', permission: 'visitor:resident' },
       ],
     },
     {

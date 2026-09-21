@@ -43,8 +43,10 @@ export {
 // Facility Domain Model
 export interface AmenityFacilityOperatingHour {
   dayOfWeek: number;
-  opensAt: string;
-  closesAt: string;
+  opensAt?: string;
+  closesAt?: string;
+  openTime?: string;
+  closeTime?: string;
   isOpen: boolean;
 }
 
@@ -251,6 +253,8 @@ export interface AmenityMaintenanceBlock {
 export interface AmenityErrorDetails {
   message: string;
   statusCode?: number;
+  code?: string;
+  reason?: string;
   fieldErrors?: Record<string, string>;
   isConflict?: boolean;
   conflictType?:

@@ -29,18 +29,14 @@ export default function DiscoverAmenitiesScreen() {
   const { user } = useAuth();
 
   // Guard: Users without discover/resident amenity permissions are redirected
-  if (user && !isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user)) {
+  const hasDiscoverAccess =
+    isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user);
+
+  if (user && !hasDiscoverAccess) {
     if (isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
       return <Redirect href="/(resident)/amenities/scanner" />;
-    }
-    if (isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user)) {
-      return <Redirect href="/(resident)/amenities/dashboard" />;
-    }
-    if (isFeatureAllowedForUser({ id: 'amenities_admin_calendar', permission: 'amenities:admin_calander' }, user)) {
-      return <Redirect href="/(resident)/amenities/admin-calendar" />;
-    }
-    if (isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user)) {
-      return <Redirect href="/(resident)/amenities/admin-master" />;
     }
     return <Redirect href="/(resident)/dashboard" />;
   }

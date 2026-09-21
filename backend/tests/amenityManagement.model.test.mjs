@@ -384,6 +384,7 @@ describe('Amenity Management Phase 4A — Database Models Test Suite', () => {
       const invalidMaint = new AmenityMaintenanceBlock({
         orgId: mockOrgId,
         facilityId: mockFacilityId,
+        title: 'Filter replacement',
         startDateTime: new Date('2026-10-15T12:00:00Z'),
         endDateTime: new Date('2026-10-15T11:00:00Z'), // Earlier than start
         reason: 'Filter replacement',
@@ -395,6 +396,7 @@ describe('Amenity Management Phase 4A — Database Models Test Suite', () => {
       const validMaint = new AmenityMaintenanceBlock({
         orgId: mockOrgId,
         facilityId: mockFacilityId,
+        title: 'Filter replacement',
         startDateTime: new Date('2026-10-15T10:00:00Z'),
         endDateTime: new Date('2026-10-15T12:00:00Z'),
         reason: 'Filter replacement',

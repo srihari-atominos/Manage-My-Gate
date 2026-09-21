@@ -52,19 +52,43 @@ const Assignee = () => {
   // Filter for currently logged-in user
   const assignedComplaints = (complaints || []).filter((c) => {
     const uid = String(user?.id || user?._id || user?.userId || '')
+    if (!uid) return false
+
+    // Explicitly exclude unassigned complaints / initial open states
+    if (
+      ['Open', 'Submitted', 'Waiting For Assignment'].includes(c.status) &&
+      !c.assignedTechnicianId &&
+      !c.assignedTechnicianName &&
+      !c.isBroadcast
+    ) {
+      return false
+    }
+
     const assigneeIdStr =
       typeof c.assignedTechnicianId === 'object' && c.assignedTechnicianId !== null
-        ? String(c.assignedTechnicianId._id)
+        ? String(c.assignedTechnicianId._id || c.assignedTechnicianId.id || '')
         : String(c.assignedTechnicianId || '')
-    const isMatch =
-      assigneeIdStr === uid ||
-      (c.isBroadcast && c.broadcastTechnicianIds?.map(String).includes(uid))
-    console.log(
-      `[DEBUG] Complaint: ${c.complaintNumber} | user object:`,
-      user,
-      `| extracted uid: ${uid} | isMatch: ${isMatch}`,
+
+    const isDirectMatch = Boolean(assigneeIdStr && assigneeIdStr === uid)
+    const isNameMatch = Boolean(
+      !assigneeIdStr &&
+        c.assignedTechnicianName &&
+        user?.name &&
+        c.assignedTechnicianName.trim().toLowerCase() === user.name.trim().toLowerCase(),
     )
-    return isMatch
+    const isBroadcastMatch = Boolean(
+      c.isBroadcast &&
+        c.status === 'Waiting For Acceptance' &&
+        c.broadcastTechnicianIds?.some((bid) => {
+          const bidStr =
+            typeof bid === 'object' && bid !== null
+              ? String(bid._id || bid.id || '')
+              : String(bid || '')
+          return Boolean(bidStr && bidStr === uid)
+        }),
+    )
+
+    return isDirectMatch || isNameMatch || isBroadcastMatch
   })
 
   console.log('[DEBUG] Raw complaints array from Redux:', complaints)

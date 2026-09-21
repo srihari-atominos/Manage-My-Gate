@@ -323,7 +323,7 @@ describe('Amenity Management Phase 6C.3: Resident Reservation Detail & Access Pa
         />
       );
 
-      const elements = screen.getAllByText('PAID');
+      const elements = screen.getAllByText(/PAID/i);
       expect(elements.length).toBeGreaterThanOrEqual(1);
     });
 

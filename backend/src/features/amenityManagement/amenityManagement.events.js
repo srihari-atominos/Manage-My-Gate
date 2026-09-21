@@ -9,6 +9,7 @@ export const AMENITY_EVENTS = {
   GATE_PASS_ISSUED: 'amenity:pass:issued',
   APPROVAL_REQUESTED: 'amenity:approval:requested',
   MAINTENANCE_SCHEDULED: 'amenity:maintenance:scheduled',
+  RECURRING_MAINTENANCE_SCHEDULED: 'amenity:maintenance:recurring_scheduled',
   MAINTENANCE_EXTENDED: 'amenity:maintenance:extended',
   MAINTENANCE_COMPLETED: 'amenity:maintenance:completed',
   MAINTENANCE_CANCELLED: 'amenity:maintenance:cancelled',
@@ -50,6 +51,10 @@ amenityManagementEvents.on(AMENITY_EVENTS.GATE_PASS_ISSUED, (payload) => {
 });
 
 amenityManagementEvents.on(AMENITY_EVENTS.MAINTENANCE_SCHEDULED, (payload) => {
+  amenityManagementSocket.dispatchMaintenanceEvent(payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.RECURRING_MAINTENANCE_SCHEDULED, (payload) => {
   amenityManagementSocket.dispatchMaintenanceEvent(payload);
 });
 

@@ -210,16 +210,19 @@ export class AmenityAccessPassService {
       throw new HttpError(404, 'Invalid pass: token not found for this organization');
     }
 
-    if (existingPass.isRevoked) {
-      throw new HttpError(403, 'Access denied: pass is revoked');
-    }
-
     if (!existingPass.checkInTimestamp) {
+      if (existingPass.isRevoked) {
+        throw new HttpError(403, 'Access denied: pass is revoked');
+      }
       throw new HttpError(400, 'Check-out rejected: pass has not been checked in yet');
     }
 
     if (existingPass.checkOutTimestamp) {
       throw new HttpError(409, 'Pass has already been checked out');
+    }
+
+    if (existingPass.isRevoked) {
+      throw new HttpError(403, 'Access denied: pass is revoked');
     }
 
     throw new HttpError(400, 'Check-out validation failed');

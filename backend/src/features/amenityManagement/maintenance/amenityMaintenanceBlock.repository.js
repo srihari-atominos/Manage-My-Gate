@@ -27,31 +27,64 @@ export class AmenityMaintenanceBlockRepository {
   }
 
   /**
-   * Finds active maintenance blocks overlapping a given time interval.
-   * Matches blocks where:
-   * - facilityId matches (or resourceId if provided)
-   * - status is SCHEDULED or IN_PROGRESS
-   * - startDateTime < queryEnd AND endDateTime > queryStart
+   * Finds active maintenance blocks overlapping a given time interval,
+   * accounting for resource targeting (single, multi, or facility-wide)
+   * and operational buffer blackout windows.
+   *
    * @param {Object} params
+   * @param {string|mongoose.Types.ObjectId} params.orgId
+   * @param {string|mongoose.Types.ObjectId} [params.facilityId]
+   * @param {string|mongoose.Types.ObjectId} [params.resourceId]
+   * @param {Array<string|mongoose.Types.ObjectId>} [params.resourceIds]
+   * @param {Date|string} params.startDateTime
+   * @param {Date|string} params.endDateTime
+   * @param {mongoose.ClientSession} [session]
    */
-  async findOverlappingBlocks({ orgId, facilityId, resourceId, startDateTime, endDateTime }, session) {
+  async findOverlappingBlocks(
+    { orgId, facilityId, resourceId, resourceIds, startDateTime, endDateTime },
+    session
+  ) {
+    const qStart = new Date(startDateTime).getTime();
+    const qEnd = new Date(endDateTime).getTime();
+    const MAX_BUFFER_WINDOW_MS = 24 * 60 * 60 * 1000; // 24hr upper envelope for index scan
+
     const filter = {
       orgId,
       status: { $in: ['SCHEDULED', 'IN_PROGRESS'] },
-      startDateTime: { $lt: endDateTime },
-      endDateTime: { $gt: startDateTime },
+      startDateTime: { $lt: new Date(qEnd + MAX_BUFFER_WINDOW_MS) },
+      endDateTime: { $gt: new Date(qStart - MAX_BUFFER_WINDOW_MS) },
     };
 
-    if (resourceId) {
-      filter.$or = [
-        { resourceId },
-        { facilityId, resourceId: null }, // Entire facility closure also affects the resource
-      ];
-    } else if (facilityId) {
+    if (facilityId) {
       filter.facilityId = facilityId;
     }
 
-    return AmenityMaintenanceBlock.find(filter).session(getValidSession(session));
+    const targetResourceIds = Array.isArray(resourceIds) && resourceIds.length > 0
+      ? resourceIds.map(String)
+      : (resourceId ? [String(resourceId)] : []);
+
+    if (targetResourceIds.length > 0) {
+      filter.$or = [
+        { resourceId: { $in: targetResourceIds } },
+        { resourceIds: { $in: targetResourceIds } },
+        {
+          facilityId,
+          resourceId: null,
+          $or: [{ resourceIds: { $exists: false } }, { resourceIds: { $size: 0 } }],
+        },
+      ];
+    }
+
+    const blocks = await AmenityMaintenanceBlock.find(filter).session(getValidSession(session));
+
+    // Refine with exact effective buffer window
+    return blocks.filter((b) => {
+      const bBufBefore = (b.bufferBeforeMinutes || 0) * 60000;
+      const bBufAfter = (b.bufferAfterMinutes || 0) * 60000;
+      const bEffectiveStart = new Date(b.startDateTime).getTime() - bBufBefore;
+      const bEffectiveEnd = new Date(b.endDateTime).getTime() + bBufAfter;
+      return bEffectiveStart < qEnd && bEffectiveEnd > qStart;
+    });
   }
 
   /**
@@ -61,12 +94,19 @@ export class AmenityMaintenanceBlockRepository {
    * @param {string} status
    * @param {mongoose.ClientSession} [session]
    */
-  async updateStatus(blockId, orgId, status, session) {
+  async updateStatus(blockId, orgId, status, session, completionData = {}) {
     const filter = { _id: blockId };
     if (orgId) filter.orgId = orgId;
     const update = { status };
     if (status === 'COMPLETED') {
-      update.completedAt = new Date();
+      const now = completionData?.actualCompletedAt ? new Date(completionData.actualCompletedAt) : new Date();
+      update.actualCompletedAt = now;
+      if (completionData?.completedBy) {
+        update.completedBy = completionData.completedBy;
+      }
+      if (completionData?.completionNotes) {
+        update.completionNotes = completionData.completionNotes;
+      }
     }
     return AmenityMaintenanceBlock.findOneAndUpdate(
       filter,
@@ -112,6 +152,68 @@ export class AmenityMaintenanceBlockRepository {
       AmenityMaintenanceBlock.countDocuments(filter).session(validSession),
     ]);
     return { records, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  /**
+   * Bulk creates multiple maintenance block occurrence documents in a session.
+   * @param {Array<Object>} blocksData
+   * @param {mongoose.ClientSession} [session]
+   */
+  async createMany(blocksData, session) {
+    const validSession = getValidSession(session);
+    const options = validSession ? { session: validSession } : {};
+    return AmenityMaintenanceBlock.create(blocksData, options);
+  }
+
+  /**
+   * Finds all occurrence blocks for a given recurring series.
+   * @param {string|mongoose.Types.ObjectId} seriesId
+   * @param {string|mongoose.Types.ObjectId} orgId
+   * @param {mongoose.ClientSession} [session]
+   */
+  async findBySeriesId(seriesId, orgId, session) {
+    const filter = { recurrenceSeriesId: seriesId };
+    if (orgId) filter.orgId = orgId;
+    return AmenityMaintenanceBlock.find(filter)
+      .sort({ occurrenceIndex: 1, startDateTime: 1 })
+      .session(getValidSession(session));
+  }
+
+  /**
+   * Lists occurrence blocks for a recurring series with pagination.
+   * @param {Object} params
+   * @param {string|mongoose.Types.ObjectId} params.seriesId
+   * @param {string|mongoose.Types.ObjectId} params.orgId
+   * @param {number} [params.page=1]
+   * @param {number} [params.limit=50]
+   * @param {mongoose.ClientSession} [session]
+   */
+  async listSeriesOccurrences({ seriesId, orgId, page = 1, limit = 50 }, session) {
+    const filter = { recurrenceSeriesId: seriesId };
+    if (orgId) filter.orgId = orgId;
+    const skip = (page - 1) * limit;
+    const validSession = getValidSession(session);
+    const [records, total] = await Promise.all([
+      AmenityMaintenanceBlock.find(filter)
+        .sort({ occurrenceIndex: 1, startDateTime: 1 })
+        .skip(skip)
+        .limit(limit)
+        .session(validSession),
+      AmenityMaintenanceBlock.countDocuments(filter).session(validSession),
+    ]);
+    return { records, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  /**
+   * Deletes maintenance block by ID within organization.
+   * @param {string|mongoose.Types.ObjectId} blockId
+   * @param {string|mongoose.Types.ObjectId} [orgId]
+   * @param {mongoose.ClientSession} [session]
+   */
+  async deleteById(blockId, orgId, session) {
+    const filter = { _id: blockId };
+    if (orgId) filter.orgId = orgId;
+    return AmenityMaintenanceBlock.findOneAndDelete(filter).session(getValidSession(session));
   }
 }
 

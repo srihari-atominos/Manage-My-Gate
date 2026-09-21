@@ -191,8 +191,14 @@ export class AvailabilityService {
         const bucketId = `BUCKET:${orgId}:${facilityId}:${slotStartUTC}`;
         const bucket = await amenitySlotAllocationRepository.findById(bucketId, session);
 
+        // Sum degraded capacity from non-closure maintenance blocks
+        const totalDegradedCapacity = maintenanceBlocks
+          .filter((b) => !b.isCompleteClosure && (b.degradedCapacity || 0) > 0)
+          .reduce((sum, b) => sum + (b.degradedCapacity || 0), 0);
+
         const currentAllocated = bucket ? bucket.allocatedHeadcount : 0;
-        const maxCap = facility.maxCapacity || 1;
+        const baseCap = facility.maxCapacity || 1;
+        const maxCap = Math.max(0, baseCap - totalDegradedCapacity);
         const availableHeadcount = Math.max(0, maxCap - currentAllocated);
 
         if (requestedQuantity > availableHeadcount) {

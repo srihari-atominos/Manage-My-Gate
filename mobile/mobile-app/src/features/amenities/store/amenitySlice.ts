@@ -19,6 +19,7 @@ export interface AmenitySlot {
   bookingId?: string;
   bookingStatus?: string;
   myBookingsCount?: number;
+  isUnderMaintenance?: boolean;
 }
 
 export interface Amenity {
@@ -95,6 +96,17 @@ export interface MaintenanceTask {
   endDate: string;
   startTime?: string;
   endTime?: string;
+  maintenanceType?: string;
+  recurringSeriesId?: string;
+  isRecurring?: boolean;
+  recurrence?: {
+    frequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | string;
+    interval?: number;
+    occurrenceCount?: number;
+    daysOfWeek?: number[];
+    dayOfMonth?: number;
+    timezone?: string;
+  };
   assignedStaff?: string;
   status?: string;
   autoCancelBookings?: boolean;
@@ -430,6 +442,13 @@ const amenitySlice = createSlice({
         }
       }
     },
+    setMaintenanceList: (state, action: PayloadAction<MaintenanceTask[]>) => {
+      state.maintenanceList = action.payload;
+    },
+    removeMaintenanceTask: (state, action: PayloadAction<string>) => {
+      const targetId = String(action.payload);
+      state.maintenanceList = state.maintenanceList.filter((m) => String(m._id) !== targetId);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -462,7 +481,7 @@ const amenitySlice = createSlice({
           };
         }
         const normalizedList = list.map(normalizeAmenity);
-        const targetList = page > 1 ? [...state.amenities, ...normalizedList] : normalizedList;
+        const targetList = page > 1 ? [...state.amenities, ...normalizedList] : [...normalizedList, ...state.amenities];
         const seenIds = new Set<string>();
         const seenNames = new Set<string>();
         const uniqueAmenities: Amenity[] = [];
@@ -616,6 +635,8 @@ export const {
   clearAmenityError,
   upsertAmenity,
   removeAmenity,
+  setMaintenanceList,
+  removeMaintenanceTask,
 } = amenitySlice.actions;
 
 export default amenitySlice.reducer;

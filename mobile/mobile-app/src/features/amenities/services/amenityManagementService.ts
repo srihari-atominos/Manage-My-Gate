@@ -22,8 +22,14 @@ import {
   CalculatePricingApiPayload,
   CancelReservationApiPayload,
   ReviewReservationApiPayload,
-  RescheduleReservationApiPayload,
   ScheduleMaintenanceApiPayload,
+  PreviewRecurringMaintenanceApiPayload,
+  ScheduleRecurringMaintenanceApiPayload,
+  DeclareEmergencyMaintenanceApiPayload,
+  MaintenanceImpactPreviewApiPayload,
+  FindAlternativesApiPayload,
+  ResolveMaintenanceImpactApiPayload,
+  ExtendMaintenanceBlockApiPayload,
   CheckInPassApiPayload,
   CheckOutPassApiPayload,
   RevokePassApiPayload,
@@ -272,7 +278,7 @@ export const amenityManagementService = {
   async confirmReservation(
     payload: ConfirmReservationApiPayload,
     idempotencyKey?: string
-  ): Promise<ApiResponse<ApiAmenityReservation>> {
+  ): Promise<ApiResponse<any>> {
     // Deterministic idempotency key derived from hold ID unless explicitly provided
     const key = idempotencyKey || `confirm_hold_${payload.holdId}`;
     const url = getAmenityV2Url('/reservations/confirm');
@@ -330,15 +336,6 @@ export const amenityManagementService = {
     payload: ReviewReservationApiPayload
   ): Promise<ApiResponse<ApiAmenityReservation>> {
     const url = getAmenityV2Url(`/reservations/${id}/review`);
-    const response = await apiClient.post<ApiResponse<ApiAmenityReservation>>(url, payload);
-    return extractEnvelope(response);
-  },
-
-  async rescheduleReservation(
-    id: string,
-    payload: RescheduleReservationApiPayload
-  ): Promise<ApiResponse<ApiAmenityReservation>> {
-    const url = getAmenityV2Url(`/reservations/${id}/reschedule`);
     const response = await apiClient.post<ApiResponse<ApiAmenityReservation>>(url, payload);
     return extractEnvelope(response);
   },
@@ -432,6 +429,91 @@ export const amenityManagementService = {
     const response = await apiClient.patch<ApiResponse<ApiAmenityMaintenanceBlock>>(url, { status });
     return extractEnvelope(response);
   },
+
+  async previewRecurringMaintenance(
+    payload: PreviewRecurringMaintenanceApiPayload
+  ): Promise<ApiResponse<any>> {
+    const url = getAmenityV2Url('/maintenance/recurring/preview');
+    const response = await apiClient.post<ApiResponse<any>>(url, payload);
+    return extractEnvelope(response);
+  },
+
+  async scheduleRecurringMaintenance(
+    payload: ScheduleRecurringMaintenanceApiPayload
+  ): Promise<ApiResponse<any>> {
+    const url = getAmenityV2Url('/maintenance/recurring');
+    const response = await apiClient.post<ApiResponse<any>>(url, payload);
+    return extractEnvelope(response);
+  },
+
+  async getRecurringSeries(seriesId: string): Promise<ApiResponse<any>> {
+    const url = getAmenityV2Url(`/maintenance/recurring/${seriesId}`);
+    const response = await apiClient.get<ApiResponse<any>>(url);
+    return extractEnvelope(response);
+  },
+
+  async getRecurringSeriesOccurrences(
+    seriesId: string,
+    params: { page?: number; limit?: number } = {}
+  ): Promise<ApiResponse<ApiPaginatedResponse<ApiAmenityMaintenanceBlock>>> {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', String(params.page));
+    if (params.limit) query.append('limit', String(params.limit));
+
+    const queryString = query.toString();
+    const url = getAmenityV2Url(`/maintenance/recurring/${seriesId}/occurrences${queryString ? `?${queryString}` : ''}`);
+    const response = await apiClient.get<ApiResponse<ApiPaginatedResponse<ApiAmenityMaintenanceBlock>>>(url);
+    return extractEnvelope(response);
+  },
+
+  async declareEmergencyMaintenance(
+    payload: DeclareEmergencyMaintenanceApiPayload
+  ): Promise<ApiResponse<ApiAmenityMaintenanceBlock>> {
+    const url = getAmenityV2Url('/maintenance/emergency');
+    const response = await apiClient.post<ApiResponse<ApiAmenityMaintenanceBlock>>(url, payload);
+    return extractEnvelope(response);
+  },
+
+  async getImpactPreview(
+    payload: MaintenanceImpactPreviewApiPayload
+  ): Promise<ApiResponse<any>> {
+    const url = getAmenityV2Url('/maintenance/impact-preview');
+    const response = await apiClient.post<ApiResponse<any>>(url, payload);
+    return extractEnvelope(response);
+  },
+
+  async getAlternatives(
+    payload: FindAlternativesApiPayload
+  ): Promise<ApiResponse<any>> {
+    const url = getAmenityV2Url('/maintenance/alternatives');
+    const response = await apiClient.post<ApiResponse<any>>(url, payload);
+    return extractEnvelope(response);
+  },
+
+  async resolveMaintenanceImpact(
+    blockId: string,
+    payload: ResolveMaintenanceImpactApiPayload
+  ): Promise<ApiResponse<any>> {
+    const url = getAmenityV2Url(`/maintenance/${blockId}/resolve-impact`);
+    const response = await apiClient.post<ApiResponse<any>>(url, payload);
+    return extractEnvelope(response);
+  },
+
+  async extendMaintenanceBlock(
+    blockId: string,
+    payload: ExtendMaintenanceBlockApiPayload
+  ): Promise<ApiResponse<ApiAmenityMaintenanceBlock>> {
+    const url = getAmenityV2Url(`/maintenance/${blockId}/extend`);
+    const response = await apiClient.patch<ApiResponse<ApiAmenityMaintenanceBlock>>(url, payload);
+    return extractEnvelope(response);
+  },
+
+  async deleteMaintenanceBlock(blockId: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    const url = getAmenityV2Url(`/maintenance/${blockId}`);
+    const response = await apiClient.delete<ApiResponse<{ success: boolean; message: string }>>(url);
+    return extractEnvelope(response);
+  },
 };
 
 export default amenityManagementService;
+

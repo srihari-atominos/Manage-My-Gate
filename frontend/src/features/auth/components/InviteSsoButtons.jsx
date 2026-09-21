@@ -42,6 +42,21 @@ export const InviteSsoButtons = ({ onSsoSuccess, onSsoError, disabled }) => {
     }
   }
 
+  // Responsive button width matching mobile card content and capped at Google's 400px maximum
+  const [btnWidth, setBtnWidth] = React.useState(360)
+
+  React.useEffect(() => {
+    const updateWidth = () => {
+      if (typeof window !== 'undefined') {
+        const calculated = Math.min(Math.max(window.innerWidth - 64, 260), 400)
+        setBtnWidth(calculated)
+      }
+    }
+    updateWidth()
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [])
+
   return (
     <div className="invite-sso-container">
       <div className="d-flex align-items-center my-4">
@@ -52,7 +67,7 @@ export const InviteSsoButtons = ({ onSsoSuccess, onSsoError, disabled }) => {
         <div className="flex-grow-1 border-top" />
       </div>
 
-      <div className="d-flex flex-column gap-2.5">
+      <div className="d-flex flex-column align-items-center gap-2.5 w-100">
         {/* Google SSO */}
         <div className="google-login-wrapper w-100 d-flex justify-content-center">
           <GoogleLogin
@@ -70,28 +85,31 @@ export const InviteSsoButtons = ({ onSsoSuccess, onSsoError, disabled }) => {
             type="standard"
             theme="outline"
             size="large"
-            width="100%"
+            width={String(btnWidth)}
             text="continue_with"
           />
         </div>
 
         {/* Microsoft SSO */}
-        <CButton
-          type="button"
-          color="light"
-          variant="outline"
-          className="w-100 py-2 d-flex align-items-center justify-content-center gap-2 border rounded-3 fw-semibold text-dark shadow-xs"
-          disabled={disabled}
-          onClick={handleMicrosoftClick}
-        >
-          <svg width="18" height="18" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
-            <rect x="1" y="1" width="9" height="9" fill="#f25022" />
-            <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
-            <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
-            <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
-          </svg>
-          <span>{t('auth.invite.continueWithMicrosoft', 'Continue with Microsoft')}</span>
-        </CButton>
+        <div className="w-100 d-flex justify-content-center">
+          <CButton
+            type="button"
+            color="light"
+            variant="outline"
+            className="w-100 py-2 d-flex align-items-center justify-content-center gap-2 border rounded-3 fw-semibold text-dark shadow-xs"
+            style={{ maxWidth: `${btnWidth}px`, minHeight: '40px' }}
+            disabled={disabled}
+            onClick={handleMicrosoftClick}
+          >
+            <svg width="18" height="18" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+              <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+              <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+              <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+            </svg>
+            <span>{t('auth.invite.continueWithMicrosoft', 'Continue with Microsoft')}</span>
+          </CButton>
+        </div>
       </div>
     </div>
   )

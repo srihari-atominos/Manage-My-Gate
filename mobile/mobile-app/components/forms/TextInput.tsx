@@ -157,7 +157,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             'flex-row rounded-xl border bg-white/75 dark:bg-[#292524]/75 px-3 min-h-[42px] py-1 shadow-2xs transition-colors backdrop-blur-sm',
             props.multiline ? 'items-start' : 'items-center',
             // Default border
-            'border-white/80 dark:border-white/20',
+            'border-border dark:border-white/20',
             // Focused state
             isFocused && !error && 'border-primary ring-2 ring-primary/20',
             // Incomplete status

@@ -94,7 +94,6 @@ export class AmenityAccessPassRepository {
       {
         orgId,
         passTokenHash,
-        isRevoked: false,
         checkInTimestamp: { $ne: null },
         checkOutTimestamp: null,
       },

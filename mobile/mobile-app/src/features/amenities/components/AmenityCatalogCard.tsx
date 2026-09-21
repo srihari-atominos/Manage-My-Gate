@@ -81,7 +81,9 @@ export function AmenityCatalogCard({
   if (Array.isArray(facility.operatingHours) && facility.operatingHours.length > 0) {
     const openDay = facility.operatingHours.find((h) => h.isOpen);
     if (openDay) {
-      hoursDisplay = `${openDay.opensAt} - ${openDay.closesAt}`;
+      const openTime = (openDay as any).opensAt || (openDay as any).openTime || '08:00';
+      const closeTime = (openDay as any).closesAt || (openDay as any).closeTime || '22:00';
+      hoursDisplay = `${openTime} - ${closeTime}`;
     }
   } else if (legacyAmenity.openTime && legacyAmenity.closeTime) {
     hoursDisplay = `${legacyAmenity.openTime} - ${legacyAmenity.closeTime}`;

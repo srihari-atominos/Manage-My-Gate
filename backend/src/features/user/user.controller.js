@@ -48,7 +48,7 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email, phone, villaId, residentType, roleName } = req.body;
+      const { email, phone, villaId, residentType, roleName, name } = req.body;
       const orgId = req.tenant.orgId;
 
       const inviterId = req.user?.id || req.user?._id || null;
@@ -65,7 +65,7 @@ export class UserController {
         residentType,
         roleName,
         phone,
-        '',
+        name || '',
         invitationSource,
         inviterId
       );
@@ -139,15 +139,29 @@ export class UserController {
   }
 
   /**
-   * Updates current user's profile, email (with OTP), and avatar.
+   * Requests an OTP to verify a new phone number during profile update.
+   */
+  async requestPhoneOtp(req, res, next) {
+    try {
+      const userId = req.user.id || req.user._id;
+      const { newPhone } = req.body;
+      const result = await userService.requestPhoneOtp(userId, newPhone);
+      res.success(result, 'Verification OTP sent to new phone number');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Updates current user's profile, email (with OTP), phone (with OTP), and avatar.
    */
   async updateProfile(req, res, next) {
     try {
-      const userId = req.user.id;
-      const { name, phone, email, emailOtp } = req.body;
+      const userId = req.user.id || req.user._id;
+      const { name, phone, phoneOtp, email, emailOtp } = req.body;
       const avatarFilename = req.file ? req.file.filename : undefined;
 
-      const updatedUser = await userService.updateProfile(userId, { name, phone, email, emailOtp, avatarFilename });
+      const updatedUser = await userService.updateProfile(userId, { name, phone, phoneOtp, email, emailOtp, avatarFilename });
       
       res.success({
         id: updatedUser._id,
@@ -155,6 +169,7 @@ export class UserController {
         email: updatedUser.email,
         name: updatedUser.name,
         phone: updatedUser.phone,
+        phoneVerified: updatedUser.phoneVerified,
         avatar: updatedUser.avatar,
       }, 'Profile updated successfully');
     } catch (error) {

@@ -233,7 +233,7 @@ export function generateInvoiceHtml(item: Invoice | any, options: GenerateInvoic
     <div class="header">
       <div>
         <div class="title">Invoice / Receipt</div>
-        <div class="sub">ManageMyGate Mobile Statement</div>
+        <div class="sub">Nahom Mobile Statement</div>
       </div>
       <div class="org">
         ${communityName}
@@ -296,7 +296,7 @@ export function generateInvoiceHtml(item: Invoice | any, options: GenerateInvoic
     ${settlementHTML}
 
     <div class="footer">
-      <p>Computer-generated mobile receipt. Managed securely via ManageMyGate.</p>
+      <p>Computer-generated mobile receipt. Managed securely via Nahom.</p>
     </div>
   </div>
 </body>

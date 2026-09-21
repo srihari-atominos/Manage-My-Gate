@@ -40,7 +40,7 @@ export class AmenityReservationRepository {
    * @param {Object} params
    */
   async findOverlappingActiveReservations(
-    { orgId, facilityId, resourceId, effectiveStartDateTime, effectiveEndDateTime },
+    { orgId, facilityId, resourceId, resourceIds, effectiveStartDateTime, effectiveEndDateTime },
     session
   ) {
     const filter = {
@@ -50,7 +50,11 @@ export class AmenityReservationRepository {
       effectiveStartDateTime: { $lt: effectiveEndDateTime },
       effectiveEndDateTime: { $gt: effectiveStartDateTime },
     };
-    if (resourceId) filter.resourceId = resourceId;
+    if (resourceIds && Array.isArray(resourceIds) && resourceIds.length > 0) {
+      filter.resourceId = { $in: resourceIds };
+    } else if (resourceId) {
+      filter.resourceId = resourceId;
+    }
 
     return AmenityReservation.find(filter).session(getValidSession(session));
   }

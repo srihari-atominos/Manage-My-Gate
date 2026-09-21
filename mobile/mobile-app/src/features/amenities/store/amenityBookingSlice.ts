@@ -438,8 +438,12 @@ export const confirmReservationThunk = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const res = await amenityManagementService.confirmReservation(payload, idempotencyKey);
-      return normalizeReservationFromApi(res?.data || res);
+      const res: any = await amenityManagementService.confirmReservation(payload, idempotencyKey);
+      const rawData = res?.data || res;
+      const reservation = normalizeReservationFromApi(rawData);
+      const passData = rawData?.pass || rawData?.data?.pass;
+      const pass = passData ? normalizeAccessPassFromApi(passData) : null;
+      return { reservation, pass };
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -877,9 +881,12 @@ const amenityBookingSlice = createSlice({
       })
       .addCase(confirmReservationThunk.fulfilled, (state, action) => {
         state.v2Confirming = false;
-        state.v2CurrentReservation = action.payload;
+        state.v2CurrentReservation = action.payload.reservation;
         state.activeHold = null; // Clear active hold on successful confirmation
-        state.v2Reservations.unshift(action.payload);
+        state.v2Reservations.unshift(action.payload.reservation);
+        if (action.payload.pass) {
+          state.v2AccessPasses.unshift(action.payload.pass);
+        }
       })
       .addCase(confirmReservationThunk.rejected, (state, action) => {
         state.v2Confirming = false;

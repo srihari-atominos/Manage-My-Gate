@@ -79,7 +79,7 @@ const ARCHETYPE_PRESENTATION_MAP: Record<AmenityArchetype, ArchetypePresentation
   },
 };
 
-const STATUS_PRESENTATION_MAP: Record<AmenityFacilityStatus, FacilityStatusPresentationMeta> = {
+const STATUS_PRESENTATION_MAP: Record<AmenityFacilityStatus | 'DECOMMISSIONED', FacilityStatusPresentationMeta> = {
   DRAFT: {
     status: 'DRAFT',
     label: 'Draft',
@@ -104,6 +104,13 @@ const STATUS_PRESENTATION_MAP: Record<AmenityFacilityStatus, FacilityStatusPrese
   INACTIVE: {
     status: 'INACTIVE',
     label: 'Inactive',
+    variant: 'neutral',
+    isBookable: false,
+    pulseDot: false,
+  },
+  DECOMMISSIONED: {
+    status: 'DECOMMISSIONED' as any,
+    label: 'Decommissioned',
     variant: 'neutral',
     isBookable: false,
     pulseDot: false,
@@ -218,9 +225,11 @@ export const formatFacilityOperatingHours = (
         isOpen: false,
       };
     }
+    const opensAt = (entry as any).opensAt || (entry as any).openTime || '08:00';
+    const closesAt = (entry as any).closesAt || (entry as any).closeTime || '22:00';
     return {
       day: dayName,
-      hours: `${entry.opensAt || '08:00'} - ${entry.closesAt || '22:00'}`,
+      hours: `${opensAt} - ${closesAt}`,
       isOpen: true,
     };
   });

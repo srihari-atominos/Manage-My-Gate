@@ -105,7 +105,7 @@ export const useRazorpayCheckout = () => {
         key: keyId,
         amount: amountInPaise,
         currency: currency,
-        name: 'Manage-My-Gate',
+        name: 'Nahom',
         description: 'Subscription Renewal',
         order_id: orderId, // This is the Razorpay order_id
         

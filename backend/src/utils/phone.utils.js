@@ -1,0 +1,80 @@
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
+
+/**
+ * Normalizes an incoming raw phone string to canonical E.164 format.
+ * @param {string} rawPhone - The input phone number string.
+ * @param {string} [defaultCountry='IN'] - Fallback country code if rawPhone lacks country prefix.
+ * @returns {string|null} Canonical E.164 formatted string (e.g. "+919876543210") or fallback format.
+ */
+export function normalizePhone(rawPhone, defaultCountry = 'IN') {
+  if (!rawPhone || typeof rawPhone !== 'string') return null;
+  const trimmed = rawPhone.trim();
+  if (!trimmed) return null;
+
+  try {
+    const phoneNumber = parsePhoneNumberFromString(trimmed, defaultCountry);
+    if (phoneNumber && phoneNumber.isValid()) {
+      return phoneNumber.format('E.164');
+    }
+  } catch (err) {
+    // If parsing fails, fall back below
+  }
+
+  // Fallback: If it starts with '+', preserve '+' and strip non-digits
+  if (trimmed.startsWith('+')) {
+    const digits = trimmed.slice(1).replace(/\D/g, '');
+    return digits ? `+${digits}` : null;
+  }
+
+  // Fallback for raw numeric string
+  const digitsOnly = trimmed.replace(/\D/g, '');
+  if (!digitsOnly) return null;
+
+  if (digitsOnly.length === 10 && defaultCountry === 'IN') {
+    return `+91${digitsOnly}`;
+  }
+
+  return `+${digitsOnly}`;
+}
+
+/**
+ * Safely masks a phone number for logging output.
+ * E.g., "+919876543210" -> "+91*****3210"
+ * @param {string} phone
+ * @returns {string}
+ */
+export function maskPhone(phone) {
+  if (!phone || typeof phone !== 'string') return '';
+  const trimmed = phone.trim();
+  if (trimmed.length <= 4) return '****';
+  
+  const visibleTail = 4;
+  if (trimmed.startsWith('+')) {
+    const countryPrefix = trimmed.slice(0, 3);
+    const middleLength = trimmed.length - countryPrefix.length - visibleTail;
+    if (middleLength <= 0) return countryPrefix + '****';
+    return countryPrefix + '*'.repeat(middleLength) + trimmed.slice(-visibleTail);
+  }
+
+  const maskedLength = trimmed.length - visibleTail;
+  return '*'.repeat(maskedLength) + trimmed.slice(-visibleTail);
+}
+
+/**
+ * Safely masks an email address for logging output.
+ * E.g., "john.doe@example.com" -> "j***e@example.com"
+ * @param {string} email
+ * @returns {string}
+ */
+export function maskEmail(email) {
+  if (!email || typeof email !== 'string' || !email.includes('@')) return '****';
+  const [local, domain] = email.split('@');
+  if (local.length <= 2) return `${local[0]}*@${domain}`;
+  return `${local[0]}***${local[local.length - 1]}@${domain}`;
+}
+
+export default {
+  normalizePhone,
+  maskPhone,
+  maskEmail,
+};

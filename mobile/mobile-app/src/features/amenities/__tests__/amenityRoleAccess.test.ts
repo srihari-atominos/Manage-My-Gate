@@ -29,7 +29,6 @@ describe('Amenity Management — 3-Role Feature Access (Visitor Pattern Parity)'
     feat('amenities_master'),
     feat('amenities_admin_calendar'),
     feat('amenities_maintenance'),
-    feat('amenities_settings'),
     feat('amenities_dashboard'),
     feat('amenities_ledgers'),
   ];

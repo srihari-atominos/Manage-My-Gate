@@ -26,6 +26,8 @@ export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeo
   secondaryBadge?: { label: string; variant: StatusVariant };
   timestamp?: string | Date;       // shows relative time (e.g., '2h ago')
   rightContent?: React.ReactNode;  // custom right slot (amount, chevron)
+  titleLines?: number;             // maximum lines for title (default: 1)
+  subtitleLines?: number;          // maximum lines for subtitle (default: 1)
   onPress?: () => void;
   onLongPress?: () => void;
   className?: string;
@@ -98,6 +100,8 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       timestamp,
       disableRelativeTime = false,
       rightContent,
+      titleLines = 1,
+      subtitleLines = 1,
       children,
       onPress,
       onLongPress,
@@ -140,11 +144,11 @@ const ListCard = React.forwardRef<View, ListCardProps>(
 
         {/* Middle Details */}
         <View className="flex-1 shrink min-w-0 justify-center">
-          <Text variant="default" className={cn("font-semibold text-[14px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
+          <Text variant="default" className={cn("font-semibold text-[14px] font-sans tracking-tight shrink", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={titleLines}>
             {title}
           </Text>
           {subtitle ? (
-            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[12px] font-sans font-medium shrink truncate", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
+            <Text variant="muted" numberOfLines={subtitleLines} className={cn("mt-0.5 text-[12px] font-sans font-medium shrink", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
               {subtitle}
             </Text>
           ) : null}

@@ -677,6 +677,60 @@ class WalletService {
     walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
     return transaction;
   }
+
+  async getWallet(userId, orgId, session = null) {
+    return walletRepository.getWallet(userId, orgId, session);
+  }
+
+  async updateBalance(userId, orgId, amountDelta, session = null) {
+    return walletRepository.updateBalance(userId, orgId, amountDelta, session);
+  }
+
+  async createTransaction(data, session = null) {
+    return walletRepository.createTransaction(data, session);
+  }
+
+  async updateTransactionDescription(bookingId, type, description, session = null) {
+    return walletRepository.updateTransactionDescription(bookingId, type, description, session);
+  }
+
+  async deductBookingPayment({ userId, orgId, totalAmount, booking, isFamilyMember = false, session = null }) {
+    const updatedWallet = await walletRepository.updateBalance(userId, orgId, -totalAmount, session);
+    const walletTxn = await walletRepository.createTransaction({
+      orgId,
+      userId,
+      bookingId: booking.bookingId,
+      type: 'Debit',
+      amount: totalAmount,
+      paymentMethod: 'wallet',
+      paymentStatus: 'success',
+      referenceType: 'AmenityBooking',
+      referenceId: booking._id,
+      amenityName: booking.amenityName || 'Amenity',
+      description: isFamilyMember
+        ? `Family booking deduction for amenity: ${booking.amenityName || 'Amenity'}`
+        : `Booking payment for amenity: ${booking.amenityName || 'Amenity'}`
+    }, session);
+    return { updatedWallet, walletTxn };
+  }
+
+  async processBookingRefund({ targetUserId, orgId, refundAmount, booking, description = '', session = null }) {
+    const updatedWallet = await walletRepository.updateBalance(targetUserId, orgId, refundAmount, session);
+    const walletTxn = await walletRepository.createTransaction({
+      orgId,
+      userId: targetUserId,
+      bookingId: booking.bookingId,
+      type: 'Credit',
+      amount: refundAmount,
+      paymentMethod: 'wallet',
+      paymentStatus: 'refunded',
+      referenceType: 'AmenityBooking',
+      referenceId: booking._id,
+      amenityName: booking.amenityName || 'Amenity',
+      description: description || `Refund for cancelled booking: ${booking.amenityName || 'Amenity'}`
+    }, session);
+    return { updatedWallet, walletTxn };
+  }
 }
 
 export default new WalletService();

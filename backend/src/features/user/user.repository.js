@@ -1,4 +1,5 @@
 import User from './user.model.js';
+import { normalizePhone } from '../../utils/phone.utils.js';
 
 export class UserRepository {
   async findById(id, session) {
@@ -82,19 +83,24 @@ export class UserRepository {
    */
   async findByPhone(phone, session) {
     if (!phone) return null;
-    const trimmedPhone = phone.trim();
+    const trimmedPhone = String(phone).trim();
     if (!trimmedPhone) return null;
 
+    const normalized = normalizePhone(trimmedPhone);
     const digitsOnly = trimmedPhone.replace(/\D/g, '');
-    const last10 = digitsOnly.slice(-10);
 
-    const orConditions = [{ phone: trimmedPhone }];
-    if (digitsOnly) {
+    const orConditions = [];
+    if (normalized) {
+      orConditions.push({ phone: normalized });
+    }
+    if (trimmedPhone && trimmedPhone !== normalized) {
+      orConditions.push({ phone: trimmedPhone });
+    }
+    if (digitsOnly && digitsOnly !== normalized && digitsOnly !== trimmedPhone) {
       orConditions.push({ phone: digitsOnly });
     }
-    if (last10 && last10.length >= 7) {
-      orConditions.push({ phone: new RegExp(`${last10}$`) });
-    }
+
+    if (orConditions.length === 0) return null;
 
     return await User.findOne({
       $or: orConditions,

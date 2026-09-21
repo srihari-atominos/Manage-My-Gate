@@ -56,7 +56,12 @@ export default function AmenitySecurityGateScannerScreen() {
   const { user } = useAuth();
 
   // Guard: Users without security guard / scanner permissions are redirected
-  if (user && !isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
+  const hasScannerAccess =
+    isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user);
+
+  if (user && !hasScannerAccess) {
     if (isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user)) {
       return <Redirect href="/(resident)/amenities/discover" />;
     }
@@ -181,8 +186,18 @@ export default function AmenitySecurityGateScannerScreen() {
           message = v2PassError.message || 'This pass has already been checked out.';
         }
       } else if (code === 403) {
-        title = 'Access Denied';
-        message = v2PassError.message || 'Pass is revoked or outside its validity window.';
+        if (
+          v2PassError.code === 'PASS_REVOKED' ||
+          v2PassError.reason === 'EMERGENCY_MAINTENANCE' ||
+          v2PassError.message?.toLowerCase().includes('emergency') ||
+          v2PassError.message?.toLowerCase().includes('evacuat')
+        ) {
+          title = 'EMERGENCY EVACUATION — ACCESS REVOKED';
+          message = 'Facility is closed under emergency maintenance. Turnstile entry is strictly barred.';
+        } else {
+          title = 'Access Denied';
+          message = v2PassError.message || 'Pass is revoked or outside its validity window.';
+        }
       } else if (code === 404) {
         title = 'Pass Not Recognized';
         message = v2PassError.message || 'Invalid pass. This QR code is not recognized for this community.';

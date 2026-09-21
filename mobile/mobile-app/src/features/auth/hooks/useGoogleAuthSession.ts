@@ -11,6 +11,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const DEFAULT_GOOGLE_CLIENT_ID = '610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com';
 const DEFAULT_GOOGLE_ANDROID_CLIENT_ID = '610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com';
+const DEFAULT_GOOGLE_IOS_CLIENT_ID = '512495714957-ppgtahfr70hmjclhmq7n3c7822aacd41.apps.googleusercontent.com';
 
 export function useGoogleAuthSession() {
   const { loginWithGoogle, loading } = useAuth();
@@ -19,11 +20,14 @@ export function useGoogleAuthSession() {
 
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
   const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || DEFAULT_GOOGLE_ANDROID_CLIENT_ID;
-  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || googleClientId;
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || DEFAULT_GOOGLE_IOS_CLIENT_ID;
 
-  const redirectUri = AuthSession.makeRedirectUri({
-    native: 'com.atominosconsulting.nahom:/oauthredirect',
-    preferLocalhost: true,
+  const iosRedirectUri = `com.googleusercontent.apps.${iosClientId.split('.apps')[0]}:/oauthredirect`;
+  const redirectUri = Platform.select({
+    ios: iosRedirectUri,
+    default: AuthSession.makeRedirectUri({
+      native: 'com.atominosconsulting.nahom:/oauthredirect',
+    }),
   });
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({

@@ -235,9 +235,10 @@ export function useResidentBooking() {
         notes,
       });
 
-      const reservation = await dispatch(
+      const confirmResult = await dispatch(
         confirmReservationThunk({ payload, idempotencyKey })
       ).unwrap();
+      const reservation = confirmResult.reservation;
 
       // If eligible for access pass, proactively fetch passes
       if (canDisplayAmenityAccessPass(reservation)) {

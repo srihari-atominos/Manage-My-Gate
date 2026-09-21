@@ -16,6 +16,42 @@ export class AmenityBookingRepository {
     }).session(session);
   }
 
+  async findOverlappingBookingsForWindow({ orgId, amenityId, startDateTime, endDateTime }, session = null) {
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const startM = moment.tz(startDateTime, TIMEZONE);
+    const endM = moment.tz(endDateTime, TIMEZONE);
+    const startDateStr = startM.format('YYYY-MM-DD');
+    const endDateStr = endM.format('YYYY-MM-DD');
+
+    const filter = {
+      orgId,
+      status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] },
+      bookingDate: { $gte: startDateStr, $lte: endDateStr },
+    };
+    if (amenityId) {
+      filter.amenityId = amenityId;
+    }
+
+    const candidateBookings = await AmenityBooking.find(filter)
+      .populate({ path: 'amenityId', select: 'name' })
+      .populate({ path: 'userId', select: 'name email phone flatNumber' })
+      .session(session);
+
+    const qStart = new Date(startDateTime).getTime();
+    const qEnd = new Date(endDateTime).getTime();
+
+    return candidateBookings.filter((b) => {
+      if (!b.bookingDate || !b.startTime || !b.endTime) return false;
+      const bStart = moment.tz(`${b.bookingDate}T${b.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate().getTime();
+      let bEnd = moment.tz(`${b.bookingDate}T${b.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate().getTime();
+      if (bEnd < bStart) {
+        bEnd += 24 * 60 * 60 * 1000;
+      }
+      return bStart < qEnd && bEnd > qStart;
+    });
+  }
+
   async countUserBookingsOnDate(userId, orgId, amenityId, date, session = null) {
     const bookings = await AmenityBooking.find({
       userId,

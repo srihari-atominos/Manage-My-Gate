@@ -2,6 +2,7 @@ import http from 'http';
 import app from './index.js';
 import config from './src/config/config.js';
 
+
 import './src/features/user/user.listeners.js';
 import './src/features/securityLog/securityLog.listeners.js';
 import './src/features/complaint/complaint.listeners.js';
@@ -90,6 +91,13 @@ const startServer = async () => {
     process.once('SIGTERM', () => shutdown('SIGTERM'));
     process.once('SIGINT', () => shutdown('SIGINT'));
     process.once('SIGUSR2', () => shutdown('SIGUSR2'));
+
+    process.on('unhandledRejection', (reason, promise) => {
+      logger.error('Unhandled Rejection at:', { promise, reason: reason?.stack || reason });
+    });
+    process.on('uncaughtException', (error) => {
+      logger.error('Uncaught Exception thrown:', { error: error?.stack || error });
+    });
   } catch (error) {
     logger.error('Server startup FAILED: ', error);
     process.exit(1);

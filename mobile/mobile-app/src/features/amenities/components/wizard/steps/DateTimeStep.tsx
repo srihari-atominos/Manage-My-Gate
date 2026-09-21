@@ -53,12 +53,14 @@ export function DateTimeStep({
   const suggestedSlots = useMemo(() => {
     if (!daySchedule || !daySchedule.isOpen) return [];
 
-    const [openH, openM] = daySchedule.opensAt.split(':').map(Number);
-    const [closeH, closeM] = daySchedule.closesAt.split(':').map(Number);
+    const rawOpen = (daySchedule as any).opensAt || (daySchedule as any).openTime || '06:00';
+    const rawClose = (daySchedule as any).closesAt || (daySchedule as any).closeTime || '22:00';
+    const [openH, openM] = String(rawOpen).split(':').map(Number);
+    const [closeH, closeM] = String(rawClose).split(':').map(Number);
     const duration = facility.slotDurationMinutes || 60;
 
-    const startMinutes = openH * 60 + openM;
-    const endMinutes = closeH * 60 + closeM;
+    const startMinutes = (isNaN(openH) ? 6 : openH) * 60 + (isNaN(openM) ? 0 : openM);
+    const endMinutes = (isNaN(closeH) ? 22 : closeH) * 60 + (isNaN(closeM) ? 0 : closeM);
 
     const slots: { start: string; end: string; label: string }[] = [];
     let current = startMinutes;
@@ -143,7 +145,7 @@ export function DateTimeStep({
             <Text className="font-semibold text-sm text-foreground">Available Time Slots</Text>
             {daySchedule?.isOpen ? (
               <StatusBadge
-                label={`${daySchedule.opensAt} - ${daySchedule.closesAt}`}
+                label={`${(daySchedule as any).opensAt || (daySchedule as any).openTime || '06:00'} - ${(daySchedule as any).closesAt || (daySchedule as any).closeTime || '22:00'}`}
                 variant="info"
               />
             ) : null}
