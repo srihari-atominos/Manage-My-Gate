@@ -10,8 +10,10 @@ import { BlacklistEntryCard, BlacklistEntry } from '@/src/features/visitor/compo
 import { AdminBlacklistModal } from '@/src/features/visitor/components/admin/AdminBlacklistModal';
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
 import { Plus } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function AdminBlacklistScreen() {
+  const { t } = useTranslation();
   const {
     blacklist,
     status,
@@ -64,7 +66,7 @@ export default function AdminBlacklistScreen() {
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search barred visitor name, phone, reason..."
+        searchPlaceholder={t('search_barred_visitor_name_phone_reason', 'Search barred visitor name, phone, reason...')}
         variant="default"
         className="px-0 py-0 border-0"
       />
@@ -73,17 +75,16 @@ export default function AdminBlacklistScreen() {
 
   return (
     <ScreenShell
-      title="Community Visitor Blacklist"
-      subtitle="Restricted visitors & security breach registry"
+      title={t('community_visitor_blacklist', 'Community Visitor Blacklist')}
+      subtitle={t('restricted_visitors_security_breach_registry', 'Restricted visitors & security breach registry')}
       headerRight={
         <Button
-          variant="destructive"
           size="sm"
           onPress={() => setModalOpen(true)}
-          className="flex-row items-center gap-1 rounded-full"
+          className="flex-row items-center gap-1 px-3 py-1.5 h-8 rounded-full bg-emerald-600 active:bg-emerald-700"
         >
-          <Plus size={14} className="text-destructive-foreground" />
-          <Text className="text-xs font-bold text-destructive-foreground">Add Entry</Text>
+          <Plus size={14} color="#ffffff" />
+          <Text className="text-xs font-bold text-white">{t('add_entry', 'Add Entry')}</Text>
         </Button>
       }
     >
@@ -104,8 +105,8 @@ export default function AdminBlacklistScreen() {
           onRefresh={handleRefresh}
           ListHeaderComponent={renderHeader()}
           emptyIcon="ShieldAlert"
-          emptyTitle="No Blacklisted Visitors"
-          emptySubtitle="Add individuals to prevent gate entry across the community."
+          emptyTitle={t('no_blacklisted_visitors', 'No Blacklisted Visitors')}
+          emptySubtitle={t('add_individuals_to_prevent_gate_entry_across_the_community', 'Add individuals to prevent gate entry across the community.')}
           contentContainerClassName="px-4 pt-3 pb-28"
         />
       </View>
@@ -121,10 +122,10 @@ export default function AdminBlacklistScreen() {
 
       <ConfirmationModal
         visible={Boolean(selectedRemoveId)}
-        title="Remove Blacklist Entry?"
-        message="Are you sure you want to remove this visitor from the community blacklist?"
+        title={t('remove_blacklist_entry_title', 'Remove Blacklist Entry?')}
+        message={t('remove_blacklist_entry_msg', 'Are you sure you want to remove this visitor from the community blacklist?')}
         variant="danger"
-        confirmLabel="Remove Entry"
+        confirmLabel={t('remove_entry', 'Remove Entry')}
         onConfirm={handleConfirmRemove}
         onCancel={() => setSelectedRemoveId(null)}
         loading={actionStatus === 'loading'}

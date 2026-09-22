@@ -31,7 +31,7 @@ export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeo
   className?: string;
 }
 
-import { i18n } from '../../src/utils/i18n';
+import { useTranslation, i18n } from '../../src/utils/i18n';
 
 export function formatDate(date: string | Date): string {
   if (!date) return '';
@@ -49,7 +49,7 @@ export function formatDateTime(date: string | Date): string {
   return formatDate(date);
 }
 
-export function formatRelativeTime(date: string | Date): string {
+export function formatRelativeTime(date: string | Date, tFunc?: (key: string, fb?: string) => string): string {
   if (!date) return '';
   const past = new Date(date);
   if (isNaN(past.getTime())) return typeof date === 'string' ? date : '';
@@ -58,12 +58,18 @@ export function formatRelativeTime(date: string | Date): string {
   const diffMs = now.getTime() - past.getTime();
   const diffMins = Math.floor(diffMs / 60000);
 
-  if (diffMins < 1) return i18n.t('just_now', 'Just now');
-  if (diffMins < 60) return `${diffMins} ${i18n.t('mins_ago_unit', 'm ago')}`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours} ${i18n.t('hours_ago_unit', 'h ago')}`;
+  const t = tFunc || i18n.t;
 
-  // When past 24 hours (e.g. days or weeks ago), display the exact date when created (no time)
+  if (diffMins < 1) return t('just_now', 'Just now');
+  if (diffMins < 60) return `${diffMins} ${t('mins_ago_unit', 'm ago')}`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} ${t('hours_ago_unit', 'h ago')}`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return `1 ${t('day_ago_unit', '1d ago')}`;
+  if (diffDays < 7) return `${diffDays} ${t('days_ago_unit', `${diffDays}d ago`)}`;
+
+  // When past 7 days, display the exact date when created (no time)
   return formatDate(past);
 }
 
@@ -107,6 +113,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
     },
     ref
   ) => {
+    const { translateText, t } = useTranslation();
     const DynamicIcon = typeof leftIcon === 'string' ? (LucideIcons as Record<string, any>)[leftIcon] : leftIcon;
     const showDefaultChevron = showChevron && rightContent === undefined;
 
@@ -131,21 +138,21 @@ const ListCard = React.forwardRef<View, ListCardProps>(
           />
         ) : DynamicIcon ? (
           <View
-            className="w-12 h-12 rounded-xl items-center justify-center shrink-0 me-3.5 border border-border/50"
+            className="w-11 h-11 rounded-xl items-center justify-center shrink-0 me-3 border border-border/50"
             style={{ backgroundColor: leftIconBgColor }}
           >
-            <Icon as={DynamicIcon} size={22} color={leftIconColor} />
+            <Icon as={DynamicIcon} size={20} color={leftIconColor} />
           </View>
         ) : null}
 
         {/* Middle Details */}
         <View className="flex-1 shrink min-w-0 justify-center">
-          <Text variant="default" className={cn("font-semibold text-[15px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
-            {i18n.translateText(title)}
+          <Text variant="default" className={cn("font-semibold text-[14.5px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
+            {translateText(title)}
           </Text>
           {subtitle ? (
-            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[13px] font-sans font-medium shrink truncate", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
-              {i18n.translateText(subtitle)}
+            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[12.5px] font-sans font-medium shrink truncate", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
+              {translateText(subtitle)}
             </Text>
           ) : null}
           {timestamp ? (
@@ -158,7 +165,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
                 ? (typeof timestamp === 'string' && isNaN(new Date(timestamp).getTime())
                     ? timestamp
                     : formatDate(timestamp))
-                : formatRelativeTime(timestamp)}
+                : formatRelativeTime(timestamp, t)}
             </Text>
           ) : null}
         </View>

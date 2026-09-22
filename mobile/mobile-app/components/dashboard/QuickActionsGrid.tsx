@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from '../ui/text';
-import { SlidersHorizontal } from 'lucide-react-native';
+import { SlidersHorizontal, Plus } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import FeatureIcon from '../ui/FeatureIcon';
 import ActionTile from './ActionTile';
 import { FeatureItem } from '../../src/features/dashboard/dashboardService';
@@ -26,15 +27,17 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   onTilePress,
 }) => {
   const { user } = useAuth();
-  const { t, tFeatureName, tFeatureSubtitle } = useTranslation();
+  const { t, tFeatureName, tFeatureSubtitle, language } = useTranslation();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
-  // Permitted features for the user's role (up to 8 cards in a 4-column grid).
+  // Permitted features for the user's role (up to 7 cards, 8th is View More).
   const displayFeatures = React.useMemo(() => {
     // 1. If equipped features passed from hook, filter strictly to permitted items
     if (propEquippedFeatures && propEquippedFeatures.length > 0) {
       const allowed = propEquippedFeatures.filter((item) => isFeatureAllowedForUser(item, user));
       if (allowed.length > 0) {
-        return allowed.slice(0, 8);
+        return allowed.slice(0, 7);
       }
     }
 
@@ -47,15 +50,15 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
       .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item) && isFeatureAllowedForUser(item!, user));
 
     if (allowedItems.length > 0) {
-      return allowedItems.slice(0, 8);
+      return allowedItems.slice(0, 7);
     }
 
     // 3. Fallback strictly to default permitted items for this persona
     return defaultIds
       .map((id) => ALL_AVAILABLE_FEATURES.find((item) => item.id === id))
       .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item) && isFeatureAllowedForUser(item!, user))
-      .slice(0, 8);
-  }, [propEquippedFeatures, activeFeatureIds, user]);
+      .slice(0, 7);
+  }, [propEquippedFeatures, activeFeatureIds, user, language]);
 
   return (
     <View className="gap-2.5 my-2">
@@ -78,13 +81,11 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
       </View>
 
       {/* 4-Column Grid with Equal-Size Rounded Tiles */}
-      <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3">
+      <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3.5">
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
           const iconName = meta?.iconName || tile.iconName;
           const colorIcon = meta?.colorIcon || tile.colorIcon || '#2563EB';
-          const colorBg = meta?.colorBg || tile.colorBg || 'bg-blue-50 dark:bg-blue-950/40';
-          const iconShapeClass = meta?.iconShapeClass || 'rounded-[14px]';
           const badge = meta?.badge || tile.badge;
           const badgeColor = meta?.badgeColor || tile.badgeColor;
 
@@ -92,9 +93,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
             <ActionTile
               key={tile.id}
               containerClassName="w-[23%]"
-              iconBgColor={colorBg}
-              iconShapeClass={iconShapeClass}
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={25} strokeWidth={1.9} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
@@ -104,6 +103,17 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
             />
           );
         })}
+
+        {/* 8th Tile: View More (+) with App Primary Theme Accent Squircle */}
+        <ActionTile
+          key="view_more_tile"
+          containerClassName="w-[23%]"
+          isAccent={true}
+          accentBg={isDark ? '#FF8A3D' : '#C2410C'}
+          icon={<Plus size={26} color="#FFFFFF" strokeWidth={2.4} />}
+          label={t('view_more', 'View More')}
+          onPress={onOpenViewMore}
+        />
       </View>
     </View>
   );

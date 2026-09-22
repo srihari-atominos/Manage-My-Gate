@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import apiClient from '../../../services/apiClient';
 
 export const login = async (credentials: any) => {
@@ -114,10 +115,77 @@ export const deleteAccount = async () => {
 };
 
 export const updateProfile = async (data: any) => {
-  const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
-  return await apiClient.put('/users/profile', data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
-  });
+  let payload = data;
+  if (
+    data &&
+    !(typeof FormData !== 'undefined' && data instanceof FormData) &&
+    typeof (data as any)?._parts === 'undefined'
+  ) {
+    const hasAvatarFile =
+      data.avatar &&
+      (typeof data.avatar === 'object' ||
+        (typeof data.avatar === 'string' &&
+          (data.avatar.startsWith('file://') ||
+            data.avatar.startsWith('content://') ||
+            data.avatar.startsWith('ph://') ||
+            data.avatar.startsWith('blob:') ||
+            data.avatar.startsWith('data:'))));
+
+    if (hasAvatarFile) {
+      const formData = new FormData();
+      const keys = Object.keys(data);
+      for (const key of keys) {
+        if (key === 'avatar') {
+          const av = data.avatar;
+          if (Platform.OS === 'web') {
+            if (typeof File !== 'undefined' && av instanceof File) {
+              formData.append('avatar', av, av.name);
+            } else if (typeof Blob !== 'undefined' && av instanceof Blob) {
+              formData.append('avatar', av, 'avatar.jpg');
+            } else if (typeof av === 'string' && (av.startsWith('blob:') || av.startsWith('data:'))) {
+              try {
+                const res = await fetch(av);
+                const blob = await res.blob();
+                formData.append('avatar', blob, 'avatar.jpg');
+              } catch {
+                formData.append('avatar', av);
+              }
+            } else if (av && av.uri) {
+              try {
+                const res = await fetch(av.uri);
+                const blob = await res.blob();
+                formData.append('avatar', blob, av.name || 'avatar.jpg');
+              } catch {
+                formData.append('avatar', av.uri);
+              }
+            }
+          } else {
+            if (typeof av === 'string') {
+              const fileName = av.split('/').pop()?.split('?')[0] || 'avatar.jpg';
+              const ext = fileName.split('.').pop()?.toLowerCase();
+              const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+              formData.append('avatar', {
+                uri: av,
+                name: fileName,
+                type: mimeType,
+              } as any);
+            } else if (av && av.uri) {
+              formData.append('avatar', {
+                uri: av.uri,
+                name: av.name || 'avatar.jpg',
+                type: av.type || 'image/jpeg',
+              } as any);
+            }
+          }
+        } else if (data[key] !== undefined && data[key] !== null) {
+          formData.append(key, String(data[key]));
+        }
+      }
+      payload = formData;
+    }
+  }
+
+  return await apiClient.put('/users/profile', payload);
 };
 
 export const requestEmailChangeOtp = async (newEmail: string) => {

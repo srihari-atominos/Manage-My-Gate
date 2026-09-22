@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, createContext, useMemo } from 'react';
 import { I18nManager } from 'react-native';
 import storage from '../storage';
 
@@ -16,7 +16,7 @@ try {
   I18nManager.forceRTL(false);
 } catch (e) {}
 
-export type LanguageCode = 'en' | 'ta' | 'hi' | 'ml' | 'te' | 'kn' | 'ar';
+export type LanguageCode = 'en' | 'ta' | 'hi' | 'ml' | 'te' | 'kn' | 'ar' | string;
 
 export interface LanguageOption {
   code: LanguageCode;
@@ -34,7 +34,7 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
   { code: 'kn', label: 'ಕನ್ನಡ (Kannada)', nativeName: 'ಕನ್ನಡ' },
 ];
 
-export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
+export const TRANSLATIONS: Record<string, Record<string, string>> = {
   en,
   ar,
   ta,
@@ -44,9 +44,59 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   kn,
 };
 
+// Global bidirectional reverse-index (phrase -> canonical key)
+const reverseLookupMap = new Map<string, string>();
+
+function buildReverseMap() {
+  reverseLookupMap.clear();
+  for (const [langCode, dict] of Object.entries(TRANSLATIONS)) {
+    if (!dict) continue;
+    for (const [key, val] of Object.entries(dict)) {
+      if (typeof val === 'string') {
+        const cleanVal = val.trim().toLowerCase();
+        if (cleanVal && !reverseLookupMap.has(cleanVal)) {
+          reverseLookupMap.set(cleanVal, key);
+        }
+      }
+      // Also index key variants (e.g. "status_published" -> index "published" and "status_published")
+      const cleanKey = key.toLowerCase();
+      if (!reverseLookupMap.has(cleanKey)) {
+        reverseLookupMap.set(cleanKey, key);
+      }
+      const strippedKey = cleanKey
+        .replace(/^(status|priority|cat|role|feature)_/, '')
+        .replace(/_name$|_sub$|_desc$/, '');
+      if (strippedKey && !reverseLookupMap.has(strippedKey)) {
+        reverseLookupMap.set(strippedKey, key);
+      }
+      const spaceKey = strippedKey.replace(/_/g, ' ');
+      if (spaceKey && !reverseLookupMap.has(spaceKey)) {
+        reverseLookupMap.set(spaceKey, key);
+      }
+    }
+  }
+}
+
+// Build index on module load
+buildReverseMap();
+
 let currentLanguageCode: LanguageCode = 'en';
 const listeners = new Set<(lang: LanguageCode) => void>();
 const warnedKeys = new Set<string>();
+
+export const registerLanguage = (
+  code: string,
+  label: string,
+  nativeName: string,
+  dictionary: Record<string, string>
+) => {
+  TRANSLATIONS[code] = dictionary;
+  if (!LANGUAGE_OPTIONS.some((opt) => opt.code === code)) {
+    LANGUAGE_OPTIONS.push({ code, label, nativeName });
+  }
+  buildReverseMap();
+  listeners.forEach((fn) => fn(currentLanguageCode));
+};
 
 export const i18n = {
   getCurrentLanguage: (): LanguageCode => currentLanguageCode,
@@ -164,9 +214,9 @@ export const i18n = {
 
     if (!text) {
       // 1. Direct normalization fallback (e.g., dot notation "common.status.available" -> "status_available" or "available")
-      const dotToUnderscore = key.toLowerCase().replace(/\./g, '_');
-      const cleanNormalized = key.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-      const suffixOnly = key.includes('.') ? key.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]+/g, '_') : '';
+      const dotToUnderscore = key.toLowerCase().replace(/\./g, '_').replace(/^_+|_+$/g, '');
+      const cleanNormalized = key.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      const suffixOnly = key.includes('.') ? key.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') : '';
       const statusKey = `status_${cleanNormalized.replace(/^status_|^common_status_/, '')}`;
 
       if (dict[dotToUnderscore]) {
@@ -188,6 +238,7 @@ export const i18n = {
         !dict[dotToUnderscore] &&
         !dict[cleanNormalized] &&
         !dict[statusKey] &&
+        !fallback &&
         /^[a-zA-Z0-9_.-]+$/.test(key) &&
         typeof __DEV__ !== 'undefined' &&
         __DEV__ &&
@@ -213,56 +264,171 @@ export const i18n = {
 
   tRole: (role?: string, fallback?: string): string => {
     if (!role) return fallback || 'Resident';
-    const roleKey = `role_${String(role).toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
-    const direct = i18n.t(roleKey);
-    if (direct !== roleKey) return direct;
-    return i18n.translateText(fallback || String(role));
+    const cleanRole = String(role).toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const roleKey = `role_${cleanRole}`;
+    const dict = TRANSLATIONS[currentLanguageCode] || TRANSLATIONS.en;
+    if (dict) {
+      if (dict[roleKey]) return dict[roleKey];
+      if (dict[cleanRole]) return dict[cleanRole];
+    }
+    return fallback ? i18n.translateText(fallback) : String(role);
+  },
+
+  tFeatureName: (id?: string, fallback?: string): string => {
+    if (!id) return fallback || '';
+    const cleanId = String(id).toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const dict = TRANSLATIONS[currentLanguageCode] || TRANSLATIONS.en;
+    if (dict) {
+      if (dict[`feature_${cleanId}_name`]) return dict[`feature_${cleanId}_name`];
+      if (dict[`feature_${cleanId}`]) return dict[`feature_${cleanId}`];
+      if (dict[cleanId]) return dict[cleanId];
+    }
+    return fallback ? i18n.translateText(fallback) : (fallback || cleanId);
+  },
+
+  tFeatureSubtitle: (id?: string, fallback?: string): string => {
+    if (!id) return fallback || '';
+    const cleanId = String(id).toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const dict = TRANSLATIONS[currentLanguageCode] || TRANSLATIONS.en;
+    if (dict) {
+      if (dict[`feature_${cleanId}_sub`]) return dict[`feature_${cleanId}_sub`];
+      if (dict[`feature_${cleanId}_desc`]) return dict[`feature_${cleanId}_desc`];
+      if (dict[`${cleanId}_desc`]) return dict[`${cleanId}_desc`];
+      if (dict[`${cleanId}_sub`]) return dict[`${cleanId}_sub`];
+      if (dict[cleanId]) return dict[cleanId];
+    }
+    return fallback ? i18n.translateText(fallback) : '';
+  },
+
+  tCategoryName: (key?: string, fallback?: string): string => {
+    if (!key) return fallback || '';
+    const cleanKey = String(key).toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const dict = TRANSLATIONS[currentLanguageCode] || TRANSLATIONS.en;
+    if (dict) {
+      if (dict[`cat_${cleanKey}`]) return dict[`cat_${cleanKey}`];
+      if (dict[cleanKey]) return dict[cleanKey];
+    }
+    return fallback ? i18n.translateText(fallback) : cleanKey;
   },
 
   /**
-   * Translates text dynamically to active language using clean phrase and exact dictionary matches.
+   * Universal multi-way text translator.
+   * Matches raw text in ANY language via pre-computed reverse index and renders the active target language.
    */
   translateText: (rawText?: string): string => {
     if (!rawText || typeof rawText !== 'string') {
       return rawText || '';
     }
-    if (currentLanguageCode === 'en') {
-      return rawText;
-    }
 
     const trimmed = rawText.trim();
     if (!trimmed) return rawText;
 
-    const dict = TRANSLATIONS[currentLanguageCode];
+    const dict = TRANSLATIONS[currentLanguageCode] || TRANSLATIONS.en;
     if (!dict) return rawText;
 
-    // 1. Exact direct key or normalized key match
-    const normalizedKey = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    // 1. Exact direct key match
+    if (dict[trimmed]) {
+      return dict[trimmed];
+    }
+
+    // 2. Normalized key match (e.g. "active_quick_actions")
+    const normalizedKey = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
     if (dict[normalizedKey]) {
       return dict[normalizedKey];
     }
 
-    // 2. Direct match against English values in dictionary
-    for (const [k, enVal] of Object.entries(TRANSLATIONS.en)) {
-      if (enVal.toLowerCase() === trimmed.toLowerCase() && dict[k]) {
-        return dict[k];
+    // Direct taxonomy prefix checks
+    if (dict[`status_${normalizedKey}`]) return dict[`status_${normalizedKey}`];
+    if (dict[`priority_${normalizedKey}`]) return dict[`priority_${normalizedKey}`];
+    if (dict[`cat_${normalizedKey}`]) return dict[`cat_${normalizedKey}`];
+    if (dict[`role_${normalizedKey}`]) return dict[`role_${normalizedKey}`];
+    if (dict[`feature_${normalizedKey}_name`]) return dict[`feature_${normalizedKey}_name`];
+    if (dict[`feature_${normalizedKey}`]) return dict[`feature_${normalizedKey}`];
+
+    // 3. Bidirectional multi-way match across ALL languages (English, Arabic, Tamil, Hindi, etc.)
+    const cleanLower = trimmed.toLowerCase();
+    const resolvedKey = reverseLookupMap.get(cleanLower);
+    if (resolvedKey) {
+      if (dict[resolvedKey]) {
+        return dict[resolvedKey];
+      }
+      if (TRANSLATIONS.en?.[resolvedKey]) {
+        return TRANSLATIONS.en[resolvedKey];
       }
     }
 
-    // 3. Known compound phrases (e.g. "Villa A-104" -> "الفيلا A-104" or "Flat 404-B")
-    const villaPrefixMatch = trimmed.match(/^(Villa|Unit|Flat|Building)\s+(.+)$/i);
+    // 4. Known compound phrases (e.g. "Villa A-104", "الفيلا A-104", "Flat 404-B")
+    const villaPrefixMatch = trimmed.match(/^(Villa|Unit|Flat|Building|الفيلا|الوحدة|الشقة|المبنى)\s+(.+)$/i);
     if (villaPrefixMatch) {
       const prefix = villaPrefixMatch[1].toLowerCase();
       const unitCode = villaPrefixMatch[2];
-      const translatedPrefix = dict[prefix] || dict.villa || dict.unit || villaPrefixMatch[1];
+      const prefixKey = reverseLookupMap.get(prefix) || 'villa';
+      const translatedPrefix = dict[prefixKey] || dict.villa || dict.unit || villaPrefixMatch[1];
       return `${translatedPrefix} ${unitCode}`;
+    }
+
+    // 5. Dynamic compound pattern: Waiting Xm
+    const waitingMatch = trimmed.match(/^(Waiting|قيد الانتظار|காத்திருக்கிறது|प्रतीक्षारत)\s+(\d+)\s*(m|min|mins)?$/i);
+    if (waitingMatch) {
+      const num = waitingMatch[2];
+      const waitingWord = dict.waiting || 'Waiting';
+      const minsUnit = dict.mins_unit || 'm';
+      return `${waitingWord} ${num}${minsUnit}`;
+    }
+
+    // 6. Dynamic compound pattern: Max X persons
+    const maxPersonsMatch = trimmed.match(/^(Max|الحد الأقصى|அதிகபட்சம்|अधिकतम)\s+(\d+)\s*(persons|person|أشخاص|நபர்கள்|व्यक्ति)?$/i);
+    if (maxPersonsMatch) {
+      const num = maxPersonsMatch[2];
+      const maxWord = dict.max || 'Max';
+      const personsWord = dict.persons || 'persons';
+      return `${maxWord} ${num} ${personsWord}`;
+    }
+
+    // 7. Dynamic compound pattern: Xm slots
+    const slotsMatch = trimmed.match(/^(\d+)\s*(m|min|mins)\s+(slots|slot|فترات|இடங்கள்|स्लॉट)$/i);
+    if (slotsMatch) {
+      const num = slotsMatch[1];
+      const minsUnit = dict.mins_unit || 'm';
+      const slotsWord = dict.slots || 'slots';
+      return `${num}${minsUnit} ${slotsWord}`;
+    }
+
+    // 8. Dynamic compound pattern: Welcome to <Community Name>
+    const welcomeMatch = trimmed.match(/^(Welcome to|مرحباً بكم في|مرحبا بكم في|வரவேற்கிறோம்|में आपका स्वागत है|స్వాగతం|ലേക്ക് സ്വാഗതം|ಗೆ ಸ್ವಾಗತ)\s+(.+)$/i);
+    if (welcomeMatch) {
+      const communityName = welcomeMatch[2];
+      const welcomePrefix = dict.welcome_to || dict.welcome || 'Welcome to';
+      return currentLanguageCode === 'hi'
+        ? `${communityName} ${welcomePrefix}`
+        : `${welcomePrefix} ${communityName}`;
+    }
+
+    if (currentLanguageCode === 'en') {
+      return rawText;
     }
 
     return rawText;
   },
 };
 
-export const useTranslation = () => {
+export interface I18nContextType {
+  language: LanguageCode;
+  languageCode: LanguageCode;
+  t: (key: string, fallbackOrParams?: string | Record<string, any>, params?: Record<string, any>) => string;
+  translateText: (rawText?: string) => string;
+  tRole: (role?: string, fallback?: string) => string;
+  tFeatureName: (id?: string, fallback?: string) => string;
+  tFeatureSubtitle: (id?: string, fallback?: string) => string;
+  tCategoryName: (key?: string, fallback?: string) => string;
+  setLanguage: (code: LanguageCode) => Promise<void>;
+  hasKey: (key?: string) => boolean;
+  isRTL: boolean;
+}
+
+export const I18nContext = createContext<I18nContextType | null>(null);
+
+export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLang] = useState<LanguageCode>(i18n.getCurrentLanguage());
 
   useEffect(() => {
@@ -271,51 +437,55 @@ export const useTranslation = () => {
     });
   }, []);
 
-  const t = (
-    key: string,
-    fallbackOrParams?: string | Record<string, any>,
-    params?: Record<string, any>
-  ): string => i18n.t(key, fallbackOrParams, params);
+  const value = useMemo<I18nContextType>(
+    () => ({
+      language: lang,
+      languageCode: lang,
+      t: (k, f, p) => i18n.t(k, f, p),
+      translateText: (text) => i18n.translateText(text),
+      tRole: (r, f) => i18n.tRole(r, f),
+      tFeatureName: (id, f) => i18n.tFeatureName(id, f),
+      tFeatureSubtitle: (id, f) => i18n.tFeatureSubtitle(id, f),
+      tCategoryName: (k, f) => i18n.tCategoryName(k, f),
+      setLanguage: i18n.setLanguage,
+      hasKey: i18n.hasKey,
+      isRTL: lang === 'ar',
+    }),
+    [lang]
+  );
 
-  const tRole = (role?: string, fallback?: string): string => i18n.tRole(role, fallback);
-  const tFeatureName = (id?: string, fallback?: string): string => {
-    if (id) {
-      const directKey = `feature_${id}_name`;
-      const direct = i18n.t(directKey);
-      if (direct !== directKey) return direct;
-      if (i18n.t(id) !== id) return i18n.t(id);
+  return React.createElement(I18nContext.Provider, { value }, children);
+};
+
+export const useTranslation = (): I18nContextType => {
+  const context = useContext(I18nContext);
+  const [localLang, setLocalLang] = useState<LanguageCode>(i18n.getCurrentLanguage());
+
+  useEffect(() => {
+    if (!context) {
+      return i18n.subscribe((newLang) => {
+        setLocalLang(newLang);
+      });
     }
-    return i18n.translateText(fallback || id || '');
-  };
+  }, [context]);
 
-  const tFeatureSubtitle = (id?: string, fallback?: string): string => {
-    if (id) {
-      const directKey = `feature_${id}_sub`;
-      const direct = i18n.t(directKey);
-      if (direct !== directKey) return direct;
-    }
-    return i18n.translateText(fallback || '');
-  };
+  if (context) {
+    return context;
+  }
 
-  const tCategoryName = (key?: string, fallback?: string): string => {
-    if (key) {
-      const direct = i18n.t(key);
-      if (direct !== key) return direct;
-    }
-    return i18n.translateText(fallback || key || '');
-  };
-
+  // Fallback for components mounted outside I18nProvider
   return {
-    t,
-    tRole,
-    tFeatureName,
-    tFeatureSubtitle,
-    tCategoryName,
-    hasKey: i18n.hasKey,
-    language: lang,
-    languageCode: lang,
+    language: localLang,
+    languageCode: localLang,
+    t: (k: string, f?: any, p?: any) => i18n.t(k, f, p),
+    translateText: (text?: string) => i18n.translateText(text),
+    tRole: (r?: string, f?: string) => i18n.tRole(r, f),
+    tFeatureName: (id?: string, f?: string) => i18n.tFeatureName(id, f),
+    tFeatureSubtitle: (id?: string, f?: string) => i18n.tFeatureSubtitle(id, f),
+    tCategoryName: (k?: string, f?: string) => i18n.tCategoryName(k, f),
     setLanguage: i18n.setLanguage,
-    translateText: i18n.translateText,
+    hasKey: i18n.hasKey,
+    isRTL: localLang === 'ar',
   };
 };
 
@@ -356,5 +526,8 @@ export const getStatusTranslationKey = (status?: string): string => {
 export const translateText = i18n.translateText;
 export const t = i18n.t;
 export const tRole = i18n.tRole;
+export const tFeatureName = i18n.tFeatureName;
+export const tFeatureSubtitle = i18n.tFeatureSubtitle;
+export const tCategoryName = i18n.tCategoryName;
 
 export default i18n;

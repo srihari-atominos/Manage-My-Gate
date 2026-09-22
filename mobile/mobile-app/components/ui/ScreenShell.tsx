@@ -52,6 +52,8 @@ export interface ScreenShellProps {
   hideBottomNav?: boolean;       // Explicitly hide bottom navigation bar
   hideHeader?: boolean;          // Explicitly hide top navigation bar (for wizard flows with custom headers)
   collapsibleHeader?: boolean;   // Move top header up/down dynamically with scroll (default: true)
+  showIconWithBackButton?: boolean; // Show icon badge even when back button is active (default: false)
+  showGlobalNavButton?: boolean; // Force show compass navigation button even with headerRight (default: false)
 }
 
 export function ScreenShell({
@@ -72,11 +74,13 @@ export function ScreenShell({
   hideBottomNav = false,
   hideHeader = false,
   collapsibleHeader = true,
+  showIconWithBackButton = false,
+  showGlobalNavButton = false,
 }: ScreenShellProps) {
   const router = useRouter();
   const pathname = usePathname() || '';
   const insets = useSafeAreaInsets();
-  const { t, translateText } = useTranslation();
+  const { t, translateText, language } = useTranslation();
   const { isCompact, setIsCompact, scrollHandlerProps } = useBottomNavScroll();
 
   // Reset scroll compact state on route change so every screen begins fully expanded
@@ -168,10 +172,10 @@ export function ScreenShell({
       {/* Header row (rock-solid stable header without scroll jiggle or layout bleeding) */}
       {!hideHeader && (
         <View
-          className="bg-card border-b border-border px-4 pb-3 shadow-xs z-30"
+          className="bg-card border-b border-border px-3.5 pt-1.5 pb-2.5 shadow-xs z-30"
         >
-          <View className="flex-row items-center justify-between gap-2 min-h-[44px]">
-            <View className="flex-row items-center flex-1 me-2 min-w-0">
+          <View className="flex-row items-center justify-between gap-1.5 min-h-[48px]">
+            <View className="flex-row items-center flex-1 min-w-0 me-1.5">
               {showBackButton && (
                 <Pressable
                   onPress={() => {
@@ -183,18 +187,18 @@ export function ScreenShell({
                       router.replace('/(resident)/dashboard' as any);
                     }
                   }}
-                  className="me-2 p-2 rounded-xl active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"
+                  className="me-2 p-1.5 rounded-xl active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Go back"
                 >
-                  <Icon as={ChevronLeft} size={20} className="text-foreground" />
+                  <Icon as={ChevronLeft} size={22} className="text-foreground" />
                 </Pressable>
               )}
 
-              {DynamicIcon ? (
-                <View className="me-2.5 size-9 rounded-xl bg-primary/15 items-center justify-center border border-primary/25 shrink-0">
-                  <Icon as={DynamicIcon} size={18} className="text-primary" />
+              {DynamicIcon && (!showBackButton || showIconWithBackButton) ? (
+                <View className="me-2 size-8 rounded-lg bg-primary/15 items-center justify-center border border-primary/25 shrink-0">
+                  <Icon as={DynamicIcon} size={16} className="text-primary" />
                 </View>
               ) : null}
 
@@ -204,11 +208,17 @@ export function ScreenShell({
                 className="flex-1 justify-center active:opacity-80 min-w-0"
                 accessibilityHint="Double tap header title to switch active Role or Villa Unit"
               >
-                <Text variant="large" numberOfLines={1} className="text-foreground text-xl font-bold tracking-tight shrink">
+                <Text
+                  numberOfLines={subtitle ? 1 : 2}
+                  className="text-foreground text-[18px] sm:text-[20px] font-bold tracking-tight leading-tight shrink"
+                >
                   {translateText(title)}
                 </Text>
                 {subtitle ? (
-                  <Text variant="muted" numberOfLines={1} className="text-sm text-muted-foreground mt-0.5 font-medium shrink">
+                  <Text
+                    numberOfLines={1}
+                    className="text-xs sm:text-[13px] text-muted-foreground mt-0.5 font-medium leading-none shrink"
+                  >
                     {translateText(subtitle)}
                   </Text>
                 ) : null}
@@ -219,14 +229,16 @@ export function ScreenShell({
             <View className="flex-row items-center gap-1.5 shrink-0">
               {headerRight ? headerRight : null}
 
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setShowGlobalNavModal(true)}
-                className="p-2 rounded-xl bg-secondary border border-border/80 items-center justify-center"
-                accessibilityLabel={t('global_navigation', 'Global Easy Navigation')}
-              >
-                <Icon as={Compass} size={18} className="text-foreground" />
-              </TouchableOpacity>
+              {(!headerRight || showGlobalNavButton) && (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setShowGlobalNavModal(true)}
+                  className="p-1.5 rounded-xl bg-secondary border border-border/80 items-center justify-center"
+                  accessibilityLabel={t('global_navigation', 'Global Easy Navigation')}
+                >
+                  <Icon as={Compass} size={18} className="text-foreground" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>

@@ -28,7 +28,7 @@ export default function AllFeaturesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ category?: string }>();
-  const { t, tCategoryName, tFeatureName, tFeatureSubtitle, translateText } = useTranslation();
+  const { t, tCategoryName, tFeatureName, tFeatureSubtitle, translateText, language } = useTranslation();
   const { scrollHandlerProps } = useBottomNavScroll();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,7 +116,7 @@ export default function AllFeaturesScreen() {
 
   return (
     <ScreenShell
-      title={t('all_features', 'All Features & Services')}
+      title={t('quick_actions', 'Quick Actions')}
       subtitle={t('explore_quick_actions', 'Explore community quick actions and services')}
       iconName="LayoutGrid"
       scrollable={false}
@@ -144,7 +144,7 @@ export default function AllFeaturesScreen() {
           <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 py-3 shadow-xs">
             <Search size={18} color="#172B70" className="me-2.5 shrink-0" />
             <TextInput
-              placeholder={t('search', 'Search all features...')}
+              placeholder={t('search_all_features', 'Search all features...')}
               placeholderTextColor="#64748B"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -163,11 +163,15 @@ export default function AllFeaturesScreen() {
               .filter((cat) => !selectedCategoryKey || cat.categoryKey === selectedCategoryKey)
               .map((category) => {
                 const filteredItems = category.items.filter((item) => {
-                  if (
-                    searchQuery &&
-                    !item.name.toLowerCase().includes(searchQuery.toLowerCase())
-                  ) {
-                    return false;
+                  if (searchQuery) {
+                    const localizedName = tFeatureName(item.id, item.name);
+                    const q = searchQuery.toLowerCase();
+                    if (
+                      !item.name.toLowerCase().includes(q) &&
+                      !localizedName.toLowerCase().includes(q)
+                    ) {
+                      return false;
+                    }
                   }
 
                   // Hide resident personal passes for Admin roles
@@ -223,24 +227,24 @@ export default function AllFeaturesScreen() {
                       className="px-0 py-1"
                     />
 
-                    <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3">
+                    <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3.5">
                       {displayedItems.map((item) => {
                         const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === item.id);
                         const iconName = meta?.iconName || item.iconName;
                         const colorIcon = meta?.colorIcon || item.colorIcon || '#245FA8';
-                        const colorBg = meta?.colorBg || item.colorBg || 'bg-secondary';
-                        const iconShapeClass = meta?.iconShapeClass;
+                        const badge = meta?.badge || item.badge;
+                        const badgeColor = meta?.badgeColor || item.badgeColor;
 
                         return (
                           <ActionTile
                             key={item.id}
                             containerClassName="w-[23%]"
-                            iconBgColor={colorBg}
-                            iconShapeClass={iconShapeClass}
-                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
+                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={25} strokeWidth={1.9} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
+                            badge={badge}
+                            badgeColor={badgeColor}
                             onPress={() => handleTileClick(item.id)}
                           />
                         );

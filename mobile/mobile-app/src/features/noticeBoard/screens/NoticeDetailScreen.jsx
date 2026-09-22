@@ -15,9 +15,11 @@ import { ActionBar } from '@/components/ui/ActionBar';
 import { useNoticeBoard } from '../hooks/useNoticeBoard';
 import { NoticeImageGallery, ErrorBoundary } from '../components';
 import { Heart, Share2, Pin } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 function NoticeDetailContent() {
   const { id } = useLocalSearchParams();
+  const { t, translateText, tCategoryName } = useTranslation();
 
   const {
     selectedNotice,
@@ -113,29 +115,29 @@ function NoticeDetailContent() {
             {selectedNotice.isPinned && (
               <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-md">
                 <Icon as={Pin} size={12} className="text-primary me-1" />
-                <Text className="text-primary text-xs font-semibold">Pinned</Text>
+                <Text className="text-primary text-xs font-semibold">{t('pinned', 'Pinned')}</Text>
               </View>
             )}
-            <StatusBadge label={selectedNotice.category || 'General'} variant="info" size="sm" />
-            <StatusBadge label={selectedNotice.priority || 'Medium'} variant={getStatusVariant(selectedNotice.priority || 'Medium')} size="sm" />
-            <StatusBadge label={selectedNotice.status || 'Published'} variant={getStatusVariant(selectedNotice.status || 'Published')} size="sm" />
+            <StatusBadge label={tCategoryName(selectedNotice.category || 'General')} variant="info" size="sm" />
+            <StatusBadge label={t(`priority_${(selectedNotice.priority || 'medium').toLowerCase()}`, selectedNotice.priority || 'Medium')} variant={getStatusVariant(selectedNotice.priority || 'Medium')} size="sm" />
+            <StatusBadge label={t(`status_${(selectedNotice.status || 'published').toLowerCase()}`, selectedNotice.status || 'Published')} variant={getStatusVariant(selectedNotice.status || 'Published')} size="sm" />
           </View>
 
           {/* Notice Title */}
           <Text className="text-foreground text-2xl font-bold mb-4 text-start">
-            {selectedNotice.title}
+            {translateText(selectedNotice.title)}
           </Text>
 
           {/* Metadata Cards */}
-          <DetailSection title="Notice Details" iconName="Info">
-            <DetailRow label="Posted by" value={creatorName} iconName="User" />
-            <DetailRow label="Posted On" value={formattedPostedDate || 'N/A'} iconName="Calendar" />
-            <DetailRow label="Expiry" value={formattedExpiryDate || 'N/A'} iconName="CalendarOff" isLast />
+          <DetailSection title={t('notice_details', 'Notice Details')} iconName="Info">
+            <DetailRow label={t('posted_by', 'Posted By')} value={creatorName} iconName="User" />
+            <DetailRow label={t('posted_on', 'Posted On')} value={formattedPostedDate || t('n_a', 'N/A')} iconName="Calendar" />
+            <DetailRow label={t('expiry', 'Expiry')} value={formattedExpiryDate || t('n_a', 'N/A')} iconName="CalendarOff" isLast />
           </DetailSection>
 
           {/* Announcement Body */}
           <Text className="text-foreground text-base leading-relaxed text-start mb-6">
-            {selectedNotice.description}
+            {translateText(selectedNotice.description || selectedNotice.content)}
           </Text>
 
           {/* Images slide section using reusable component */}
@@ -153,11 +155,11 @@ function NoticeDetailContent() {
       <View className="absolute bottom-0 left-0 right-0">
         <ActionBar
           primaryAction={{
-            label: isBookmarked ? 'Bookmarked' : 'Add to Bookmarks',
+            label: isBookmarked ? t('bookmarked', 'Bookmarked') : t('add_to_bookmarks', 'Add to Bookmarks'),
             onPress: handleBookmarkToggle,
           }}
           secondaryAction={{
-            label: 'Share',
+            label: t('share', 'Share'),
             onPress: handleShare,
           }}
         />
@@ -167,9 +169,10 @@ function NoticeDetailContent() {
 }
 
 export default function NoticeDetailScreen() {
+  const { t } = useTranslation();
   return (
     <ErrorBoundary>
-      <ScreenShell title="Notice Detail">
+      <ScreenShell title={t('notice_details', 'Notice Details')}>
         <NoticeDetailContent />
       </ScreenShell>
     </ErrorBoundary>

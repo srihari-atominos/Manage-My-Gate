@@ -139,7 +139,7 @@ export const NoticeBoardFilters: React.FC<NoticeManagementFilterBarProps> = ({
 
   const isWeb = Platform.OS === 'web';
 
-  const { t } = useTranslation();
+  const { t, translateText, language } = useTranslation();
 
   return (
     <View className="gap-2.5">
@@ -242,7 +242,7 @@ export const NoticeBoardFilters: React.FC<NoticeManagementFilterBarProps> = ({
         {/* Sort By Filter */}
         <View className="flex-1 min-w-[90px]">
           <DropdownSelect
-            options={SORT_OPTIONS.map(opt => ({ ...opt, label: t(opt.label.toLowerCase().replace(/[^a-z0-9]+/g, '_'), opt.label) }))}
+            options={SORT_OPTIONS.map(opt => ({ ...opt, label: translateText(opt.label) }))}
             value={activeSortOption}
             onValueChange={handleSortSelect}
             placeholder={t('sort', 'Sort')}

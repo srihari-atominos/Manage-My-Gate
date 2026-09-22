@@ -154,7 +154,7 @@ const StatusBadge = React.forwardRef<View, StatusBadgeProps>(
   ({ label, variant = 'neutral', size = 'md', dot = false, className, style, ...props }, ref) => {
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === 'dark';
-    const { t, hasKey, translateText } = useTranslation();
+    const { t, hasKey, translateText, language } = useTranslation();
 
     const validVariant = STATUS_COLORS[variant] ? variant : 'neutral';
     const colorConfig = isDark ? STATUS_COLORS[validVariant].dark : STATUS_COLORS[validVariant].light;

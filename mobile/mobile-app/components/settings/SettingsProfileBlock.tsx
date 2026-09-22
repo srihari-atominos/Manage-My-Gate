@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/src/utils/i18n';
+import { getImageUrl } from '@/src/utils/imageUrl';
 
 export interface SettingsProfileBlockProps {
   name: string;
@@ -47,7 +48,7 @@ export const SettingsProfileBlock: React.FC<SettingsProfileBlockProps> = ({
           {/* Large Circular Avatar */}
           <View className="h-14 w-14 rounded-full bg-primary/15 border-2 border-primary/30 items-center justify-center overflow-hidden shrink-0">
             {avatarUrl && avatarUrl.trim() ? (
-              <Image source={{ uri: avatarUrl }} className="h-full w-full" resizeMode="cover" />
+              <Image source={{ uri: getImageUrl(avatarUrl) }} className="h-full w-full" resizeMode="cover" />
             ) : (
               <Text className="text-primary font-black text-xl font-sans">
                 {avatarLetter.toUpperCase()}

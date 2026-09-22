@@ -6,6 +6,7 @@ import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Amenity } from '../store/amenitySlice';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface AmenityDetailSheetProps {
   visible: boolean;
@@ -24,6 +25,7 @@ export function AmenityDetailSheet({
   onEditClick,
   onScheduleMaintenanceClick,
 }: AmenityDetailSheetProps) {
+  const { t, translateText } = useTranslation();
   if (!visible || !amenity) return null;
 
   const category = amenity.category || amenity.type || 'General';
@@ -46,7 +48,7 @@ export function AmenityDetailSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Facility Master Specifications">
+    <BottomSheet visible={visible} onClose={onClose} title={t('facility_master_specifications', 'Facility Master Specifications')}>
       <View className="py-1">
         {/* Amenity Cover Image Banner */}
         {imageUrl ? (
@@ -57,13 +59,13 @@ export function AmenityDetailSheet({
 
         <View className="flex-row items-center justify-between mb-3 bg-card p-3 rounded-xl border border-border">
           <View className="flex-1 me-2">
-            <Text className="text-base font-bold text-foreground">{amenity.name}</Text>
+            <Text className="text-base font-bold text-foreground">{translateText(amenity.name)}</Text>
             <Text variant="muted" className="text-xs text-muted-foreground">
-              {category} • {amenity.location || 'Community Zone'}
+              {translateText(category)} • {translateText(amenity.location || 'Community Zone')}
             </Text>
           </View>
           <StatusBadge
-            label={amenity.status || 'ACTIVE'}
+            label={translateText(amenity.status || 'ACTIVE')}
             variant={statusVariantMap[amenity.status || 'ACTIVE'] || 'neutral'}
           />
         </View>
@@ -151,8 +153,8 @@ export function AmenityDetailSheet({
 
           {amenity.description ? (
             <DetailRow
-              label="House Rules & Description"
-              value={amenity.description}
+              label={t('house_rules_description', 'House Rules & Description')}
+              value={translateText(amenity.description)}
               iconName="FileText"
               isLast={true}
             />

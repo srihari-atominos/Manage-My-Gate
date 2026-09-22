@@ -23,18 +23,36 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname).toLowerCase();
+    let ext = path.extname(file.originalname || '').toLowerCase();
+    if (!ext || !['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+      const mime = (file.mimetype || '').toLowerCase();
+      if (mime.includes('png')) ext = '.png';
+      else if (mime.includes('webp')) ext = '.webp';
+      else ext = '.jpg';
+    }
     cb(null, `${uniqueSuffix}${ext}`);
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  const allowedMimeTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/pjpeg',
+    'image/x-png',
+    'application/octet-stream',
+  ];
   const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
   
-  const ext = path.extname(file.originalname).toLowerCase();
+  const rawExt = path.extname(file.originalname || '').toLowerCase();
+  const normalizedMime = (file.mimetype || '').toLowerCase();
   
-  if (allowedMimeTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
+  const isMimeValid = allowedMimeTypes.includes(normalizedMime);
+  const isExtValid = allowedExtensions.includes(rawExt);
+  
+  if (isMimeValid || isExtValid) {
     cb(null, true);
   } else {
     cb(new Error('Security violation: Invalid file type or extension.'), false);
@@ -45,7 +63,7 @@ export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit for modern mobile camera photos
     files: 1, // Limit number of files to 1
   },
 });

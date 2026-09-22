@@ -6,7 +6,7 @@ import * as LucideIcons from 'lucide-react-native';
 import { Check, Copy } from 'lucide-react-native';
 import * as React from 'react';
 import { Clipboard, Platform, Pressable, View } from 'react-native';
-import { translateText } from '../../src/utils/i18n';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface DetailRowProps {
   label: string;
@@ -44,6 +44,7 @@ const DetailRow = React.forwardRef<View, DetailRowProps>(
     },
     ref
   ) => {
+    const { translateText, language } = useTranslation();
     const [copied, setCopied] = React.useState(false);
 
     const handleCopy = React.useCallback(() => {

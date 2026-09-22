@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { WalkInApprovalItem } from '../../mocks/visitorMocks';
 import { ShieldAlert, Clock, Check, X, Car, User } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface WalkInApprovalCardProps {
   item: WalkInApprovalItem;
@@ -19,6 +20,7 @@ export const WalkInApprovalCard: React.FC<WalkInApprovalCardProps> = ({
   onReject,
   onPressDetails,
 }) => {
+  const { t, translateText } = useTranslation();
   return (
     <View className="bg-card border border-amber-500/30 rounded-2xl p-4 gap-3 shadow-sm shadow-black/5">
       {/* Clickable Header Banner & Visitor Info */}
@@ -35,10 +37,10 @@ export const WalkInApprovalCard: React.FC<WalkInApprovalCardProps> = ({
             </View>
             <View>
               <Text className="text-[11px] font-bold font-sans text-amber-600 uppercase tracking-wider">
-                Gate Walk-In Request
+                {t('gate_walkin_request', 'Gate Walk-In Request')}
               </Text>
               <Text variant="muted" className="text-[12px] font-sans">
-                {item.gateName}
+                {translateText(item.gateName)}
               </Text>
             </View>
           </View>
@@ -46,7 +48,7 @@ export const WalkInApprovalCard: React.FC<WalkInApprovalCardProps> = ({
           <View className="flex-row items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
             <Clock size={12} className="text-amber-600" />
             <Text className="text-[11px] font-bold font-sans text-amber-600">
-              Waiting {item.waitingDurationMinutes}m
+              {t('waiting', 'Waiting')} {item.waitingDurationMinutes}{t('mins_unit', 'm')}
             </Text>
           </View>
         </View>
@@ -62,7 +64,7 @@ export const WalkInApprovalCard: React.FC<WalkInApprovalCardProps> = ({
               {item.visitorName}
             </Text>
             <Text variant="muted" className="text-[13px] font-sans">
-              {item.phone} • {item.purpose}
+              {item.phone} • {translateText(item.purpose)}
             </Text>
             {item.vehicleNo ? (
               <View className="flex-row items-center gap-1 mt-0.5">
@@ -86,7 +88,7 @@ export const WalkInApprovalCard: React.FC<WalkInApprovalCardProps> = ({
           className="flex-1 h-11 rounded-xl flex-row items-center justify-center gap-1.5"
         >
           <X size={18} color="#fff" />
-          <Text>Deny</Text>
+          <Text>{t('deny', 'Deny')}</Text>
         </Button>
 
         <Button
@@ -95,7 +97,7 @@ export const WalkInApprovalCard: React.FC<WalkInApprovalCardProps> = ({
           className="flex-1 h-11 rounded-xl flex-row items-center justify-center gap-1.5"
         >
           <Check size={18} color="#fff" />
-          <Text>Approve</Text>
+          <Text>{t('approve', 'Approve')}</Text>
         </Button>
       </View>
     </View>

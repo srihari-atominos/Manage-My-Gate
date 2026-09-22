@@ -44,7 +44,7 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   { id: 'complaints_assignee', name: 'Assignee Console', subtitle: 'Work Orders', iconName: 'UserCheck', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', permission: 'complaints:assignee', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
 
   // 4. Notice Board & Polls
-  { id: 'notices_active_board', name: 'Notice Board', subtitle: 'Circulars', iconName: 'Megaphone', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
+  { id: 'notices_active_board', name: 'Notice Board', subtitle: 'Circulars', iconName: 'Megaphone', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board', badge: '1', badgeColor: '#EF4444' },
   { id: 'notices_dashboard', name: 'Notice Stats', subtitle: 'Broadcasts', iconName: 'ChartBar', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', permission: 'notices:dashboard', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
   { id: 'notices_manage_notices', name: 'Manage Notices', subtitle: 'Draft & Publish', iconName: 'FilePenLine', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', permission: 'notices:manage_notices', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
   { id: 'notices_polls', name: 'Community Polls', subtitle: 'Resident Voting', iconName: 'Vote', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', permission: 'notices:polls', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
@@ -65,19 +65,21 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   { id: 'admin_integrations', name: 'Integration Hub', subtitle: 'API & Webhooks', iconName: 'Workflow', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/integrations', permission: 'integrations:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
   { id: 'admin_organizations', name: 'Org Manager', subtitle: 'Platform Tenancy', iconName: 'Building', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/organizations', permission: 'platform:super_admin', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
   { id: 'admin_audit_logs', name: 'Audit Logs', subtitle: 'Security Activity', iconName: 'History', colorBg: 'bg-slate-100 dark:bg-slate-800/40', colorIcon: '#475569', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/audit-logs', permission: 'platform:super_admin', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
+
+  // 7. Community & Directory
+  { id: 'community_directory', name: 'Directory', subtitle: 'Resident Directory', iconName: 'ContactRound', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/directory', categoryKey: 'community_directory', categoryName: 'Community' },
 ];
 
 export const REAL_APP_FEATURES = ALL_AVAILABLE_FEATURES;
 
 export const DEFAULT_8_QUICK_ACTIONS = [
-  'visitor_resident_passes',
-  'visitor_gate_pass',
   'billing_dashboard',
-  'billing_my_dues',
-  'amenities_discover',
-  'amenities_my_booking',
+  'community_directory',
+  'visitor_resident_passes',
   'notices_active_board',
+  'amenities_discover',
   'complaints_track_requests',
+  'visitor_gate_pass',
 ];
 
 export const DEFAULT_6_QUICK_ACTIONS = DEFAULT_8_QUICK_ACTIONS;

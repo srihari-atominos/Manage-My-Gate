@@ -19,9 +19,11 @@ import {
 } from '../components';
 import { debounce } from '../utils/debounce';
 import { NoticeItem } from '../components/NoticeCard';
+import { useTranslation } from '@/src/utils/i18n';
 
 function ManageNoticesContent() {
   const router = useRouter();
+  const { t, language } = useTranslation();
 
   // Connect to real-time events
   useNoticeSocket();
@@ -151,6 +153,7 @@ function ManageNoticesContent() {
   const renderNoticeItem = useCallback(
     (notice: NoticeItem) => (
       <NoticeCard
+        key={`${notice._id || notice.id}-${language}`}
         notice={notice}
         onPress={handleCardPress}
         onPinToggle={handlePinToggle}
@@ -163,7 +166,7 @@ function ManageNoticesContent() {
         canDelete={canDelete}
       />
     ),
-    [handleCardPress, handlePinToggle, handleStatusChange, handleEditPress, handleDeletePress, canPin, canUpdate, canDelete]
+    [handleCardPress, handlePinToggle, handleStatusChange, handleEditPress, handleDeletePress, canPin, canUpdate, canDelete, language]
   );
 
   const stats = dashboardStats?.kpis || {};
@@ -250,8 +253,9 @@ function ManageNoticesContent() {
         ) : (
           <PaginatedList<NoticeItem>
             data={notices}
+            extraData={language}
             renderItem={renderNoticeItem}
-            keyExtractor={(item) => item._id || item.id || ''}
+            keyExtractor={(item) => `${item._id || item.id || ''}-${language}`}
             loading={loading}
             onRefresh={handleRefresh}
             onLoadMore={handleLoadMore}

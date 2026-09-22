@@ -83,10 +83,11 @@ app.use(cors((req, callback) => {
   });
 }));
 
-// Set up Helmet with CSP disabled for frontend integrations and allow popups for Google OAuth
+// Set up Helmet with CSP disabled for frontend integrations, allow popups for Google OAuth, and allow cross-origin resource loading (for uploaded media/avatars)
 app.use(helmet({
   contentSecurityPolicy: false,
-  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // Standard body-parsers with rawBody capture for webhooks
@@ -104,10 +105,19 @@ app.use(cookieParser());
 // Attach standard response helper
 app.use(responseHandler);
 
-// Static public folder
+// Static public folder with explicit cross-origin headers
+const staticOptions = {
+  setHeaders: (res) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+};
+
 app.use('/.well-known', express.static(path.join(__dirname, 'public', '.well-known')));
-app.use('/public', express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/public/uploads', express.static(path.join(__dirname, 'uploads'), staticOptions));
+app.use('/public', express.static(path.join(__dirname, 'public'), staticOptions));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), staticOptions));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), staticOptions));
 
 // Mount API routes at /api and /api/v1
 app.use('/api', apiRouter);

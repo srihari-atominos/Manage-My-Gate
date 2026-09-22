@@ -17,9 +17,11 @@ import { VisitorPass } from '@/src/features/visitor/store/visitorPassSlice';
 import { PassTypeKey } from '@/src/features/visitor/mocks/visitorMocks';
 import { Button } from '@/components/ui/button';
 import { Building2, Home, UserPlus, Filter, ShieldAlert, ChevronDown, Plus } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function AdminCommunityPassesScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const {
     communityPasses,
     pagination,
@@ -203,19 +205,18 @@ export default function AdminCommunityPassesScreen() {
 
   return (
     <ScreenShell
-      title="All Community Passes"
-      subtitle="Master pass registry & villa-level security filters"
+      title={t('all_community_passes', 'All Community Passes')}
+      subtitle={t('master_pass_registry_villa_level_securit', 'Master pass registry & villa-level security filters')}
       headerRight={
         <Button
-          variant="default"
           size="sm"
           onPress={() => setTypeSheetOpen(true)}
-          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1 px-2.5 py-1 h-8 rounded-full bg-emerald-600 active:bg-emerald-700"
           accessibilityRole="button"
-          accessibilityLabel="Create New Community Pass"
+          accessibilityLabel={t('new_pass', 'New Pass')}
         >
-          <Plus size={15} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">New Pass</Text>
+          <Plus size={14} color="#ffffff" />
+          <Text className="text-xs font-bold text-white">{t('new_pass', 'New Pass')}</Text>
         </Button>
       }
     >

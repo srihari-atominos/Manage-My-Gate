@@ -118,14 +118,13 @@ export default function AdminAmenityMasterScreen() {
       onRetry={loadData}
       headerRight={
         <Button
-          variant="default"
           size="sm"
           onPress={handleOpenCreateModal}
-          className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
+          className="flex-row items-center gap-1 rounded-full px-3 h-8 bg-emerald-600 active:bg-emerald-700"
           accessibilityLabel="Add New Amenity Facility"
         >
-          <Plus size={14} className="text-primary-foreground" />
-          <Text className="text-primary-foreground font-bold text-xs">Add</Text>
+          <Plus size={14} color="#ffffff" />
+          <Text className="text-white font-bold text-xs">Add</Text>
         </Button>
       }
     >

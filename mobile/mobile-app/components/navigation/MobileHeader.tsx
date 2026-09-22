@@ -37,7 +37,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 }) => {
   const { user } = useAuth();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, translateText, language } = useTranslation();
   
   // Real-time notification hook initialization to ensure unread badge remains active
   const { unreadCount: hookUnreadCount } = useNotifications();
@@ -81,8 +81,8 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
       }
     }
 
-    return 'Community Workspace';
-  }, [communityName, user, reduxWorkspaces]);
+    return t('community_workspace', 'Community Workspace');
+  }, [communityName, user, reduxWorkspaces, language, t]);
 
   const [activeVilla, setActiveVilla] = useState<string | null>(dynamicVilla);
   const [activeCommunity, setActiveCommunity] = useState<string>(dynamicCommunity);
@@ -156,12 +156,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   // Formatted header string preventing nested Text styling glitches
   const headerTextString = React.useMemo(() => {
-    const comm = activeCommunity || 'Green Meadows';
+    const defaultComm = t('green_meadows', 'Green Meadows');
+    const comm = activeCommunity ? translateText(activeCommunity) : defaultComm;
     if (hasUnit && activeVilla) {
       return `${activeVilla} • ${comm}`;
     }
     return comm;
-  }, [hasUnit, activeVilla, activeCommunity]);
+  }, [hasUnit, activeVilla, activeCommunity, language, t, translateText]);
 
   const insets = useSafeAreaInsets();
 
@@ -205,7 +206,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                   ellipsizeMode="tail"
                   className="text-[13px] font-medium font-sans text-muted-foreground flex-1 ms-1"
                 >
-                  • {activeCommunity || 'Community'}
+                  • {activeCommunity ? translateText(activeCommunity) : t('community', 'Community')}
                 </Text>
               </>
             ) : (
@@ -214,7 +215,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                 ellipsizeMode="tail"
                 className="text-[14.5px] font-bold font-sans text-foreground flex-1"
               >
-                {activeCommunity || 'Community Workspace'}
+                {activeCommunity ? translateText(activeCommunity) : t('community_workspace', 'Community Workspace')}
               </Text>
             )}
           </View>

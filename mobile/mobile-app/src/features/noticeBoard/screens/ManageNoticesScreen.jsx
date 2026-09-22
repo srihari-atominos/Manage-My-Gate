@@ -25,17 +25,19 @@ import {
 } from '../components';
 import { debounce } from '../utils/debounce';
 import { Plus, CheckCircle, FileText, Clock, AlertTriangle, AlertCircle } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 const SORT_OPTIONS = [
   { label: 'Newest First', value: 'createdAt_desc' },
   { label: 'Oldest First', value: 'createdAt_asc' },
-  { label: 'Highest Priority', value: 'priority_desc' },
+  { label: 'Priority', value: 'priority_desc' },
 ];
 
-function ManageNoticesContent() {
+export default function ManageNoticesScreen() {
   const router = useRouter();
+  const { t, language } = useTranslation();
 
-  // Connect to real-time events
+  // Real-time socket events
   useNoticeSocket();
 
   const {
@@ -152,6 +154,7 @@ function ManageNoticesContent() {
 
   const renderNoticeItem = useCallback((notice) => (
     <NoticeCard
+      key={`${notice._id || notice.id}-${language}`}
       notice={notice}
       onPress={handleCardPress}
       onPinToggle={handlePinToggle}
@@ -163,7 +166,7 @@ function ManageNoticesContent() {
       canUpdate={canUpdate}
       canDelete={canDelete}
     />
-  ), [handleCardPress, handlePinToggle, handleStatusChange, handleEditPress, handleDeletePress, canPin, canUpdate, canDelete]);
+  ), [handleCardPress, handlePinToggle, handleStatusChange, handleEditPress, handleDeletePress, canPin, canUpdate, canDelete, language]);
 
   const activeSortOption = SORT_OPTIONS.find((opt) => opt.value === `${sort.sortBy}_${sort.sortOrder}`) || SORT_OPTIONS[0];
   const stats = dashboardStats?.kpis || {};
@@ -253,8 +256,9 @@ function ManageNoticesContent() {
           ) : (
             <PaginatedList
               data={notices}
+              extraData={language}
               renderItem={renderNoticeItem}
-              keyExtractor={(item) => item._id}
+              keyExtractor={(item) => `${item._id}-${language}`}
               loading={loading}
               onRefresh={handleRefresh}
               onLoadMore={handleLoadMore}

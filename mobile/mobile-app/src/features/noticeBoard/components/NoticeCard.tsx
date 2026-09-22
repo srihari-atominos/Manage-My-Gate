@@ -18,6 +18,7 @@ import {
 import { Text } from '@/components/ui/text';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { formatRelativeTime } from '@/components/ui/ListCard';
+import { useTranslation } from '@/src/utils/i18n';
 
 const CATEGORY_CONFIG = {
   Emergency: { icon: ShieldAlert, bg: 'bg-rose-500/15', color: '#f43f5e' },
@@ -75,6 +76,7 @@ export function NoticeCard({
   canUpdate,
   canDelete,
 }: NoticeCardProps) {
+  const { t, translateText, tCategoryName, language } = useTranslation();
   const isBookmarked = notice?.isBookmarkedByUser;
   const isPinned = notice?.isPinned;
   const status = notice?.status || 'Published';
@@ -111,12 +113,12 @@ export function NoticeCard({
         <View className="flex-1 justify-center">
           <View className="flex-row items-center gap-1.5 flex-wrap">
             <Text className="text-[11.5px] font-bold uppercase tracking-wider text-muted-foreground font-sans">
-              {category}
+              {tCategoryName(category, category)}
             </Text>
             {priority && priority !== 'Normal' && priority !== 'Low' && (
               <View className="bg-rose-500/15 px-1.5 py-0.2 rounded">
                 <Text className="text-[10px] font-extrabold text-rose-600 dark:text-rose-400 uppercase font-sans">
-                  {priority}
+                  {t(`priority_${priority.toLowerCase()}`, priority)}
                 </Text>
               </View>
             )}
@@ -126,7 +128,7 @@ export function NoticeCard({
             className="text-[15px] font-bold text-foreground font-sans tracking-tight mt-0.5"
             numberOfLines={2}
           >
-            {notice?.title || 'Notice Title'}
+            {translateText(notice?.title) || t('notice_title', 'Notice Title')}
           </Text>
         </View>
 
@@ -136,7 +138,7 @@ export function NoticeCard({
             <View className="flex-row items-center gap-1 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
               <Pin size={10} color="#d97706" />
               <Text className="text-[9.5px] font-bold text-amber-600 dark:text-amber-400 font-sans">
-                PINNED
+                {t('pinned', 'PINNED')}
               </Text>
             </View>
           )}
@@ -154,12 +156,12 @@ export function NoticeCard({
       </View>
 
       {/* Description Snippet */}
-      {notice?.description && (
+      {(notice?.description || notice?.content) && (
         <Text
           className="text-[13px] text-muted-foreground font-sans font-medium mt-2 leading-relaxed"
           numberOfLines={2}
         >
-          {notice.description}
+          {translateText(notice.description || notice.content)}
         </Text>
       )}
 
@@ -169,7 +171,7 @@ export function NoticeCard({
         <View className="flex-row items-center gap-1.5">
           <Clock size={12} className="text-muted-foreground/70" />
           <Text className="text-[11.5px] font-medium text-muted-foreground font-sans">
-            {formatRelativeTime(notice?.createdAt || '')}
+            {formatRelativeTime(notice?.createdAt || '', t)}
           </Text>
         </View>
 
@@ -194,7 +196,7 @@ export function NoticeCard({
                 isBookmarked ? 'text-rose-500' : 'text-muted-foreground'
               }`}
             >
-              {isBookmarked ? 'Saved' : 'Save'}
+              {isBookmarked ? t('saved', 'Saved') : t('save', 'Save')}
             </Text>
           </TouchableOpacity>
         )}
@@ -234,7 +236,7 @@ export function NoticeCard({
               >
                 <Archive size={12} color="#64748b" />
                 <Text className="text-[10.5px] font-semibold text-muted-foreground font-sans">
-                  Archive
+                  {t('archive', 'Archive')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -251,7 +253,7 @@ export function NoticeCard({
               >
                 <Globe size={12} color="#0284c7" />
                 <Text className="text-[10.5px] font-bold text-primary font-sans">
-                  Publish
+                  {t('publish', 'Publish')}
                 </Text>
               </TouchableOpacity>
             )}

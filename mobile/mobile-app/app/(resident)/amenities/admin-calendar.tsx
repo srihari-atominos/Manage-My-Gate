@@ -191,8 +191,8 @@ export default function AdminAmenityCalendarScreen() {
 
   return (
     <ScreenShell
-      title="Facility Schedule & Occupancy"
-      subtitle="Track occupancy & block reserved slots"
+      title="Facility Schedule"
+      subtitle="Track occupancy & slot bookings"
       iconName="Calendar"
       loading={loading && adminBookings.length === 0}
       error={error}
@@ -202,7 +202,7 @@ export default function AdminAmenityCalendarScreen() {
             variant="outline"
             size="sm"
             onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
-            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7 bg-amber-500/10 border-amber-500/30"
+            className="flex-row items-center gap-1 rounded-full px-2.5 h-8 bg-amber-500/10 border-amber-500/30 active:bg-amber-500/20"
             accessibilityLabel="Maintenance Schedule"
           >
             <Wrench size={12} className="text-amber-600 dark:text-amber-400" />
@@ -211,11 +211,11 @@ export default function AdminAmenityCalendarScreen() {
           <Button
             size="sm"
             onPress={handleOpenManualModal}
-            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7 bg-emerald-600 active:bg-emerald-700"
+            className="flex-row items-center gap-1 rounded-full px-3 h-8 bg-emerald-600 active:bg-emerald-700"
             accessibilityLabel="Reserve manual slot"
           >
             <Plus size={13} color="#FFFFFF" />
-            <Text className="text-white font-bold text-[11px]">Reserve</Text>
+            <Text className="text-white font-bold text-xs">Reserve</Text>
           </Button>
         </View>
       }

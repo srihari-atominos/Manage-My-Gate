@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from '../ui/text';
 import { X, Plus, ChevronLeft, ChevronRight, ArrowDown } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import FeatureIcon from '../ui/FeatureIcon';
 import { ALL_AVAILABLE_FEATURES } from '../../src/features/dashboard/dashboardCatalog';
 import { useTranslation } from '../../src/utils/i18n';
@@ -29,7 +30,9 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
   onReorderItem,
   isDropTargetActive = false,
 }) => {
-  const { t, tFeatureName } = useTranslation();
+  const { t, tFeatureName, language } = useTranslation();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const emptySlotsCount = Math.max(0, maxCapacity - activeItems.length);
 
   const handleMoveLeft = (index: number) => {
@@ -46,10 +49,15 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
 
   return (
     <View
+      style={{
+        backgroundColor: isDropTargetActive
+          ? (isDark ? 'rgba(194, 65, 12, 0.2)' : 'rgba(194, 65, 12, 0.1)')
+          : (isDark ? '#262626' : '#F5F5F4'),
+      }}
       className={`p-3.5 border-b transition-colors duration-200 ${
         isDropTargetActive
-          ? 'bg-primary/15 border-primary shadow-lg shadow-primary/20'
-          : 'bg-secondary/40 border-border/70'
+          ? 'border-primary shadow-lg'
+          : 'border-border/70'
       }`}
     >
       <View className="flex-row items-center justify-between mb-3">
@@ -79,10 +87,13 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
 
           return (
             <View key={item.id} className="w-1/3 px-1">
-              <View className="items-center justify-start gap-1 w-full py-1 bg-card/60 rounded-2xl border border-border/40 p-2">
+              <View
+                style={{ backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }}
+                className="items-center justify-start gap-1 w-full py-1 rounded-2xl border border-border/70 p-2 shadow-xs"
+              >
                 <View className="relative">
-                  <View className={`w-[48px] h-[48px] items-center justify-center rounded-[16px] border border-border/50 ${colorBg}`}>
-                    <FeatureIcon iconName={iconName} color={colorIcon} size={22} />
+                  <View className={`w-[54px] h-[54px] items-center justify-center rounded-[18px] border border-border/50 ${colorBg}`}>
+                    <FeatureIcon iconName={iconName} color={colorIcon} size={24} strokeWidth={1.9} />
                   </View>
 
                   {/* Red X Badge to remove */}
@@ -145,10 +156,15 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
         {Array.from({ length: emptySlotsCount }).map((_, index) => (
           <View key={`empty_${index}`} className="w-1/3 px-1">
             <View
+              style={{
+                backgroundColor: isDropTargetActive
+                  ? (isDark ? 'rgba(194, 65, 12, 0.2)' : 'rgba(194, 65, 12, 0.1)')
+                  : (isDark ? '#262626' : '#F5F5F4'),
+              }}
               className={`w-full h-[98px] border border-dashed rounded-[18px] items-center justify-center p-2 transition-colors ${
                 isDropTargetActive
-                  ? 'border-primary/80 bg-primary/10'
-                  : 'border-border/70 bg-muted/10'
+                  ? 'border-primary/80'
+                  : 'border-border/70'
               }`}
             >
               <Plus size={16} className={isDropTargetActive ? 'text-primary' : 'text-muted-foreground/50'} />

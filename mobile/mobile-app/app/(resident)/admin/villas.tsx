@@ -147,12 +147,12 @@ export default function VillaManagementScreen() {
       headerRight={
         <TouchableOpacity
           onPress={handleOpenCreateForm}
-          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
+          className="flex-row items-center gap-1 bg-emerald-600 active:bg-emerald-700 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
           accessibilityLabel="Add Unit"
         >
           <Plus size={14} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">{t('create_unit', 'Add Unit')}</Text>
+          <Text className="text-xs font-bold text-white">{t('create_unit', 'Add Unit')}</Text>
         </TouchableOpacity>
       }
     >

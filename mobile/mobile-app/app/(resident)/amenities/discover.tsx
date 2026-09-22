@@ -17,7 +17,7 @@ import { useTranslation } from '@/src/utils/i18n';
 
 export default function DiscoverAmenitiesScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, translateText, language } = useTranslation();
   const {
     amenities,
     categories,
@@ -38,8 +38,11 @@ export default function DiscoverAmenitiesScreen() {
   } = useResidentDiscover();
 
   const categorySortOptions = React.useMemo(() => {
-    return categories.map((cat) => ({ label: cat, value: cat }));
-  }, [categories]);
+    return categories.map((cat) => ({
+      label: cat.toLowerCase() === 'all' ? t('all', 'All') : translateText(cat),
+      value: cat,
+    }));
+  }, [categories, language, t, translateText]);
 
   const renderHeader = () => (
     <View className="mb-3 gap-3">
@@ -81,7 +84,7 @@ export default function DiscoverAmenitiesScreen() {
 
   const renderAmenityItem = (item: Amenity) => (
     <AmenityCatalogCard
-      key={item._id}
+      key={`${item._id}-${language}`}
       amenity={item}
       onPress={setSelectedAmenityPreview}
       onBookClick={navigateToBooking}
@@ -115,6 +118,8 @@ export default function DiscoverAmenitiesScreen() {
         <PaginatedList
           data={amenities}
           renderItem={renderAmenityItem}
+          extraData={language}
+          keyExtractor={(item) => `${item._id}-${language}`}
           pagination={pagination}
           onLoadMore={handleLoadMore}
           onRefresh={handleRefresh}

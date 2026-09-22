@@ -234,12 +234,12 @@ export default function UserManagementScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setShowInviteModal(true)}
-            className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
+            className="flex-row items-center gap-1 bg-emerald-600 active:bg-emerald-700 px-3 py-1.5 rounded-full"
             accessibilityRole="button"
             accessibilityLabel="Invite User"
           >
             <Plus size={14} color="#ffffff" />
-            <Text className="text-xs font-bold text-primary-foreground">{t('invite_user', 'Invite')}</Text>
+            <Text className="text-xs font-bold text-white">{t('invite_user', 'Invite')}</Text>
           </TouchableOpacity>
         </View>
       }

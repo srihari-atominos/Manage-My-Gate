@@ -6,6 +6,7 @@ import { Text } from '@/components/ui/text';
 import { Amenity } from '../store/amenitySlice';
 import { cn } from '@/lib/utils';
 import { MapPin, Users, Clock, Timer, CalendarCheck, Building2, Sparkles } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface AmenityCatalogCardProps {
   amenity: Amenity;
@@ -23,6 +24,7 @@ export function AmenityCatalogCard({
   onPress,
   onBookClick,
 }: AmenityCatalogCardProps) {
+  const { t, translateText, language } = useTranslation();
   const itemStatus = (amenity.status || 'active').toLowerCase();
   const currentStatus = (amenity.currentStatus || '').toLowerCase();
   const isMaintenance = itemStatus === 'maintenance' || currentStatus === 'under maintenance';
@@ -37,9 +39,9 @@ export function AmenityCatalogCard({
   const category = amenity.category || amenity.type || 'Facility';
   const imageUrl = amenity.imageUrl || (Array.isArray(amenity.images) && amenity.images.length > 0 ? amenity.images[0] : '');
 
-  const statusLabel = isMaintenance ? 'Under Maintenance' : isInactive ? 'Inactive' : 'Available';
+  const statusLabel = isMaintenance ? t('under_maintenance', 'Under Maintenance') : isInactive ? t('inactive', 'Inactive') : t('available', 'Available');
   const statusVariant: StatusVariant = isMaintenance ? 'warning' : isInactive ? 'neutral' : 'success';
-  const priceDisplay = baseRate ? `₹${baseRate}/${pricingType === 'daily' ? 'day' : 'slot'}` : 'Free Access';
+  const priceDisplay = baseRate ? `₹${baseRate}/${pricingType === 'daily' ? t('day', 'day') : t('slot', 'slot')}` : t('free_access', 'Free Access');
 
   return (
     <View className="bg-card rounded-3xl border border-border/80 overflow-hidden mb-4 shadow-sm">
@@ -70,7 +72,7 @@ export function AmenityCatalogCard({
             <View className="bg-black/60 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20 shadow-xs">
               <Sparkles size={11} color="#f59e0b" />
               <Text className="text-xs font-bold text-white uppercase tracking-wider">
-                {category}
+                {translateText(category)}
               </Text>
             </View>
 
@@ -85,7 +87,7 @@ export function AmenityCatalogCard({
           {/* Bottom-Right Price Tag Pill on Image */}
           <View className="absolute bottom-3 right-3 z-10">
             <View className="bg-card/95 px-3 py-1.5 rounded-xl border border-border/70 shadow-sm flex-row items-center gap-1">
-              <Text className="text-[11px] font-semibold text-muted-foreground">Fee:</Text>
+              <Text className="text-[11px] font-semibold text-muted-foreground">{t('fee', 'Fee')}:</Text>
               <Text className="text-xs font-extrabold text-primary">
                 {priceDisplay}
               </Text>
@@ -98,12 +100,12 @@ export function AmenityCatalogCard({
           {/* Title & Location */}
           <View className="mb-2">
             <Text className="text-lg font-extrabold text-foreground tracking-tight">
-              {amenity.name}
+              {translateText(amenity.name)}
             </Text>
             <View className="flex-row items-center gap-1 mt-1">
               <MapPin size={13} className="text-muted-foreground" />
               <Text className="text-xs font-medium text-muted-foreground">
-                {amenity.location || 'Clubhouse & Community Zone'}
+                {translateText(amenity.location || 'Clubhouse & Community Zone')}
               </Text>
             </View>
           </View>
@@ -111,7 +113,7 @@ export function AmenityCatalogCard({
           {/* Optional Description Snippet */}
           {amenity.description ? (
             <Text numberOfLines={2} className="text-xs text-muted-foreground/90 leading-relaxed mb-3">
-              {amenity.description}
+              {translateText(amenity.description)}
             </Text>
           ) : null}
 
@@ -120,7 +122,7 @@ export function AmenityCatalogCard({
             <View className="flex-row items-center gap-1.5 bg-secondary/80 px-2.5 py-1 rounded-lg">
               <Users size={12} className="text-muted-foreground" />
               <Text className="text-[11px] font-semibold text-foreground">
-                Max {amenity.capacity || 20} persons
+                {t('max', 'Max')} {amenity.capacity || 20} {t('persons', 'persons')}
               </Text>
             </View>
 
@@ -134,7 +136,7 @@ export function AmenityCatalogCard({
             <View className="flex-row items-center gap-1.5 bg-secondary/80 px-2.5 py-1 rounded-lg">
               <Timer size={12} className="text-muted-foreground" />
               <Text className="text-[11px] font-semibold text-foreground">
-                {pricingType === 'daily' ? 'Full Day Access' : `${slotDuration}m slots`}
+                {pricingType === 'daily' ? t('full_day_access', 'Full Day Access') : `${slotDuration}${t('mins_unit', 'm')} ${t('slots', 'slots')}`}
               </Text>
             </View>
           </View>
@@ -160,7 +162,7 @@ export function AmenityCatalogCard({
                 isAvailable ? 'text-primary-foreground' : 'text-muted-foreground'
               )}
             >
-              {isMaintenance ? 'Under Maintenance' : isInactive ? 'Facility Inactive' : 'Reserve & Book Slot'}
+              {isMaintenance ? t('under_maintenance', 'Under Maintenance') : isInactive ? t('facility_inactive', 'Facility Inactive') : t('reserve_book_slot', 'Reserve & Book Slot')}
             </Text>
           </Button>
         </View>

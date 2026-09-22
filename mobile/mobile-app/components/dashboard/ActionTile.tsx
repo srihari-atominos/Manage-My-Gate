@@ -31,6 +31,8 @@ export interface ActionTileProps {
   iconShapeClass?: string;
   containerClassName?: string;
   showArrow?: boolean;
+  isAccent?: boolean;
+  accentBg?: string;
 }
 
 export const ActionTile: React.FC<ActionTileProps> = ({
@@ -43,10 +45,12 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   badgeColor,
   iconBgColor,
   iconShapeClass,
-  containerClassName = 'w-[22.8%]',
+  containerClassName = 'w-[23%]',
   showArrow = false,
+  isAccent = false,
+  accentBg,
 }) => {
-  const { t } = useTranslation();
+  const { translateText, language } = useTranslation();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isAndroid = Platform.OS === 'android';
@@ -57,7 +61,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   }));
 
   const handlePressIn = () => {
-    scale.value = withTiming(0.95, { duration: 90 });
+    scale.value = withTiming(0.94, { duration: 90 });
   };
 
   const handlePressOut = () => {
@@ -65,79 +69,92 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   };
 
   const displaySubtitle = metaValue || subtitle;
-  const translatedLabel = i18n.translateText(label);
-  const translatedSubtitle = displaySubtitle ? i18n.translateText(displaySubtitle) : '';
+  const translatedLabel = translateText(label);
+  const translatedSubtitle = displaySubtitle ? translateText(displaySubtitle) : '';
+
+  const isNumericBadge = Boolean(badge && badge.length <= 2 && /^\d+$/.test(badge));
 
   return (
-    <View className={containerClassName}>
+    <View className={`items-center justify-start ${containerClassName}`}>
       <AnimatedPressable
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[
-          animatedStyle,
-          {
-            backgroundColor: isDark ? '#181A20' : '#FFFFFF',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+        style={[animatedStyle, { alignItems: 'center', width: '100%' }]}
+        accessibilityRole="button"
+        accessibilityLabel={`${translatedLabel}${translatedSubtitle ? ` ${translatedSubtitle}` : ''}`}
+      >
+        {/* Squircle Icon Box */}
+        <View
+          style={{
+            width: 58,
+            height: 58,
+            borderRadius: 18,
+            backgroundColor: isAccent
+              ? accentBg || (isDark ? '#FF8A3D' : '#C2410C')
+              : isDark
+              ? '#242424'
+              : '#FFFFFF',
+            borderColor: isAccent
+              ? isDark ? 'rgba(255, 138, 61, 0.4)' : 'rgba(194, 65, 12, 0.4)'
+              : isDark
+              ? 'rgba(255, 255, 255, 0.1)'
+              : 'rgba(0, 0, 0, 0.08)',
             borderWidth: 1,
-            borderRadius: 16,
-            minHeight: 96,
-            paddingHorizontal: 4,
-            paddingVertical: 8,
             alignItems: 'center',
             justifyContent: 'center',
+            position: 'relative',
             ...(isAndroid
               ? {
-                  elevation: 2,
+                  elevation: 1.5,
                   shadowColor: '#000000',
                 }
               : {
                   shadowColor: '#000000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: isDark ? 0.3 : 0.05,
-                  shadowRadius: 4,
+                  shadowOffset: { width: 0, height: 1.5 },
+                  shadowOpacity: isDark ? 0.25 : 0.05,
+                  shadowRadius: 3,
                 }),
-          },
-        ]}
-        className="w-full relative overflow-hidden active:bg-secondary/70 items-center justify-center"
-        accessibilityRole="button"
-        accessibilityLabel={`${translatedLabel}${translatedSubtitle ? ` ${translatedSubtitle}` : ''}`}
-      >
-        {/* Top-Right Anchored Badge / Arrow */}
-        {badge ? (
-          <View
-            style={badgeColor ? { backgroundColor: badgeColor } : undefined}
-            className={`absolute top-1.5 right-1.5 px-1.5 py-0.2 rounded-full ${
-              !badgeColor ? 'bg-primary' : ''
-            } items-center justify-center z-10`}
-          >
-            <Text className="text-[7.5px] font-black font-sans text-white tracking-wide uppercase">
-              {badge}
-            </Text>
-          </View>
-        ) : showArrow ? (
-          <View className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-secondary items-center justify-center border border-border/40 z-10">
-            <ArrowUpRight size={8} className="text-muted-foreground" />
-          </View>
-        ) : null}
-
-        {/* Centered Line-Style Feature Icon */}
-        <View
-          className={`w-9 h-9 items-center justify-center mb-1.5 ${
-            iconShapeClass || 'rounded-xl'
-          } ${
-            iconBgColor || 'bg-secondary'
-          }`}
+          }}
         >
-          {icon}
+          {/* Circular Count Badge (e.g. "1") on Top-Right Corner */}
+          {badge && isNumericBadge ? (
+            <View
+              style={badgeColor ? { backgroundColor: badgeColor } : undefined}
+              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive border-2 border-card items-center justify-center z-20 shadow-xs"
+            >
+              <Text className="text-[9.5px] font-bold text-destructive-foreground font-sans leading-none">
+                {badge}
+              </Text>
+            </View>
+          ) : badge ? (
+            /* Pill Text Badge (e.g. "New", "FAST") Anchored to Top */
+            <View
+              style={badgeColor ? { backgroundColor: badgeColor } : undefined}
+              className="absolute -top-2 px-1.5 py-0.2 rounded-full bg-primary items-center justify-center z-20 shadow-xs"
+            >
+              <Text className="text-[8px] font-black font-sans text-primary-foreground tracking-wider uppercase leading-none">
+                {badge}
+              </Text>
+            </View>
+          ) : showArrow ? (
+            <View className="absolute top-1 right-1 w-4 h-4 rounded-full bg-secondary items-center justify-center border border-border/40 z-10">
+              <ArrowUpRight size={9} className="text-muted-foreground" />
+            </View>
+          ) : null}
+
+          {/* Centered Line Icon */}
+          <View className="items-center justify-center">
+            {icon}
+          </View>
         </View>
 
-        {/* Centered Label */}
-        <View className="w-full items-center justify-center px-0.5">
+        {/* Clean Label Container Below Squircle */}
+        <View className="w-full mt-1.5 min-h-[30px] justify-start items-center px-0.5">
           <Text
             numberOfLines={2}
-            style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 11, lineHeight: 14 } : undefined}
-            className="text-[10.5px] font-semibold font-sans text-foreground text-center leading-[13px] tracking-tight"
+            style={language === 'ar' ? { fontSize: 11, lineHeight: 14 } : undefined}
+            className="text-[11.5px] font-medium font-sans text-foreground text-center leading-[14px] tracking-tight"
           >
             {translatedLabel}
           </Text>

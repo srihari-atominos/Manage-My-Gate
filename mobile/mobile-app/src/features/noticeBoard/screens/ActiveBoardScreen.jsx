@@ -21,7 +21,7 @@ import { AlertTriangle } from 'lucide-react-native';
 export default function ActiveBoardScreen() {
   const router = useRouter();
   const { openNoticeId } = useLocalSearchParams();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   // Real-time socket sync
   useNoticeSocket();
@@ -129,11 +129,13 @@ export default function ActiveBoardScreen() {
 
   const renderNoticeItem = useCallback((notice) => (
     <MemoizedNoticeCard
+      key={`${notice._id || notice.id}-${language}`}
       notice={notice}
+      language={language}
       onPress={handleCardPress}
       onBookmarkToggle={handleBookmarkPress}
     />
-  ), [handleCardPress, handleBookmarkPress]);
+  ), [handleCardPress, handleBookmarkPress, language]);
 
   return (
     <ErrorBoundary>
@@ -149,8 +151,9 @@ export default function ActiveBoardScreen() {
           ) : (
             <PaginatedList
               data={notices}
+              extraData={language}
               renderItem={renderNoticeItem}
-              keyExtractor={(item) => item._id}
+              keyExtractor={(item) => `${item._id || item.id}-${language}`}
               loading={loading}
               onRefresh={handleRefresh}
               onLoadMore={handleLoadMore}

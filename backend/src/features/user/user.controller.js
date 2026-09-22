@@ -139,10 +139,17 @@ export class UserController {
   async updateProfile(req, res, next) {
     try {
       const userId = req.user.id;
-      const { name, phone, email, emailOtp } = req.body;
+      const { name, phone, email, emailOtp, removeAvatar } = req.body;
       const avatarFilename = req.file ? req.file.filename : undefined;
 
-      const updatedUser = await userService.updateProfile(userId, { name, phone, email, emailOtp, avatarFilename });
+      const updatedUser = await userService.updateProfile(userId, {
+        name,
+        phone,
+        email,
+        emailOtp,
+        avatarFilename,
+        removeAvatar: removeAvatar === 'true' || removeAvatar === true || removeAvatar === '1',
+      });
       
       res.success({
         id: updatedUser._id,
@@ -150,7 +157,7 @@ export class UserController {
         email: updatedUser.email,
         name: updatedUser.name,
         phone: updatedUser.phone,
-        avatar: updatedUser.avatar,
+        avatar: updatedUser.avatar || null,
       }, 'Profile updated successfully');
     } catch (error) {
       if (req.file && req.file.path) {

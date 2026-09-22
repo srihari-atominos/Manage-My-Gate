@@ -98,7 +98,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 }) => {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { translateText } = useTranslation();
+  const { translateText, language } = useTranslation();
 
   // Resolve dynamic icon component
   let IconComponent: React.ComponentType<any> | null = null;
@@ -140,7 +140,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             accessibilityLabel={localizedActionLabel}
           >
             <Text className="text-xs font-bold text-primary font-sans">{localizedActionLabel}</Text>
-            <ChevronRight size={13} color="#FF6A00" />
+            <ChevronRight size={13} className="text-primary" color={isDark ? '#FF8A3D' : '#C2410C'} />
           </Pressable>
         )}
       </View>
@@ -167,7 +167,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           >
             <IconComponent
               size={16}
-              color={iconColor || (isDark ? '#FF8A3D' : '#FF6A00')}
+              color={iconColor || (isDark ? '#FF8A3D' : '#C2410C')}
               strokeWidth={2.3}
             />
           </View>
@@ -176,7 +176,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         <View className="flex-1 min-w-0 justify-center">
           <Text
             numberOfLines={1}
-            className="text-[14.5px] font-bold font-sans text-foreground tracking-tight"
+            className="text-[15px] font-bold font-sans text-foreground tracking-tight"
           >
             {localizedTitle}
           </Text>
@@ -184,7 +184,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           {displaySubtitle ? (
             <Text
               numberOfLines={1}
-              className="text-[11px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
+              className="text-[11.5px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
             >
               {localizedSubtitle}
             </Text>
@@ -206,14 +206,15 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           {isExpanded !== undefined ? (
             <ChevronRight
               size={12}
-              color="#FF6A00"
+              className="text-primary"
+              color={isDark ? '#FF8A3D' : '#C2410C'}
               strokeWidth={2.4}
               style={{
                 transform: [{ rotate: isExpanded ? '90deg' : '0deg' }],
               }}
             />
           ) : (
-            <ArrowRight size={11} color="#FF6A00" strokeWidth={2.4} />
+            <ArrowRight size={11} className="text-primary" color={isDark ? '#FF8A3D' : '#C2410C'} strokeWidth={2.4} />
           )}
         </Pressable>
       )}

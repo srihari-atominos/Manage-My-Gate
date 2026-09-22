@@ -159,15 +159,14 @@ export default function PollDashboardScreen() {
       iconName="BarChart2"
       headerRight={
         <Button
-          variant="default"
           size="sm"
           onPress={() => router.push('/(resident)/polls/create')}
-          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 active:bg-emerald-700"
           accessibilityRole="button"
           accessibilityLabel="Create Poll"
         >
           <Plus size={15} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">Create Poll</Text>
+          <Text className="text-xs font-bold text-white">Create Poll</Text>
         </Button>
       }
     >

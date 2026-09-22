@@ -28,6 +28,7 @@ import {
   BarChart3,
   ChartBar,
   ChartPie,
+  Plus,
   PlusCircle,
   ListOrdered,
   Kanban,
@@ -171,6 +172,8 @@ export const FeatureIcon: React.FC<FeatureIconProps> = ({
       return <ChartBar size={size} color={effectiveColor} strokeWidth={strokeWidth} />;
     case 'TicketPlus':
       return <TicketPlus size={size} color={effectiveColor} strokeWidth={strokeWidth} />;
+    case 'Plus':
+      return <Plus size={size} color={effectiveColor} strokeWidth={strokeWidth} />;
     case 'PlusCircle':
       return <PlusCircle size={size} color={effectiveColor} strokeWidth={strokeWidth} />;
     case 'Route':

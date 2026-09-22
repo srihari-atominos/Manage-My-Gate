@@ -6,6 +6,7 @@ import { Text } from '@/components/ui/text';
 import { Amenity } from '../store/amenitySlice';
 import { Users, Clock, Edit2, Power, Trash2, Building2, MapPin, Sparkles, Timer } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface AmenityMasterCardProps {
   item: Amenity;
@@ -33,6 +34,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
   onToggleStatus,
   onDelete,
 }) => {
+  const { t, translateText, language } = useTranslation();
   const statusMeta = mapAmenityStatus(item.status);
   const isActive = statusMeta.label === 'ACTIVE';
 
@@ -43,7 +45,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
   const slotDuration = item.bookingRules?.slotDurationMinutes || 60;
   const category = item.category || item.type || 'Facility';
   const imageUrl = item.imageUrl || (Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : '');
-  const priceDisplay = baseRate ? `₹${baseRate}/${pricingType === 'daily' ? 'day' : 'slot'}` : 'Free Access';
+  const priceDisplay = baseRate ? `₹${baseRate}/${pricingType === 'daily' ? t('day', 'day') : t('slot', 'slot')}` : t('free_access', 'Free Access');
 
   return (
     <Pressable
@@ -72,13 +74,13 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
           <View className="bg-black/60 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20 shadow-xs max-w-[65%] shrink">
             <Sparkles size={11} color="#f59e0b" />
             <Text className="text-xs font-bold text-white uppercase tracking-wider shrink truncate" numberOfLines={1}>
-              {category}
+              {translateText(category)}
             </Text>
           </View>
 
           {/* Status Badge */}
           <StatusBadge
-            label={statusMeta.label}
+            label={translateText(statusMeta.label)}
             variant={statusMeta.variant}
             dot={isActive}
           />
@@ -87,7 +89,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
         {/* Bottom-Right Price Tag Pill on Image */}
         <View className="absolute bottom-3 right-3 z-10">
           <View className="bg-card/95 px-3 py-1.5 rounded-xl border border-border/70 shadow-sm flex-row items-center gap-1">
-            <Text className="text-[11px] font-semibold text-muted-foreground">Fee:</Text>
+            <Text className="text-[11px] font-semibold text-muted-foreground">{t('fee', 'Fee')}:</Text>
             <Text className="text-xs font-extrabold text-primary">
               {priceDisplay}
             </Text>
@@ -100,12 +102,12 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
         {/* Title & Location */}
         <View className="mb-2 min-w-0">
           <Text className="text-lg font-extrabold text-foreground tracking-tight shrink truncate" numberOfLines={1}>
-            {item.name}
+            {translateText(item.name)}
           </Text>
           <View className="flex-row items-center gap-1 mt-1">
             <MapPin size={13} className="text-muted-foreground shrink-0" />
             <Text className="text-xs font-medium text-muted-foreground shrink truncate" numberOfLines={1}>
-              {item.location || 'Community Center'}
+              {translateText(item.location || 'Community Center')}
             </Text>
           </View>
         </View>
@@ -115,7 +117,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
           <View className="flex-row items-center gap-1.5 bg-secondary/80 px-2.5 py-1 rounded-lg">
             <Users size={12} className="text-muted-foreground" />
             <Text className="text-[11px] font-semibold text-foreground">
-              Cap: {item.capacity || 20}
+              {t('cap', 'Cap')}: {item.capacity || 20}
             </Text>
           </View>
 
@@ -129,7 +131,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
           <View className="flex-row items-center gap-1.5 bg-secondary/80 px-2.5 py-1 rounded-lg">
             <Timer size={12} className="text-muted-foreground" />
             <Text className="text-[11px] font-semibold text-foreground">
-              {pricingType === 'daily' ? 'Full Day' : `${slotDuration}m`}
+              {pricingType === 'daily' ? t('full_day', 'Full Day') : `${slotDuration}${t('mins_unit', 'm')}`}
             </Text>
           </View>
         </View>
@@ -147,7 +149,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
             accessibilityLabel={`Edit ${item.name}`}
           >
             <Edit2 size={13} color="#059669" />
-            <Text>Edit</Text>
+            <Text>{t('edit', 'Edit')}</Text>
           </Button>
 
           <Button
@@ -161,7 +163,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
             accessibilityLabel={isActive ? `Deactivate ${item.name}` : `Activate ${item.name}`}
           >
             <Power size={13} color={isActive ? '#d97706' : '#245fa8'} />
-            <Text>{isActive ? 'Deactivate' : 'Activate'}</Text>
+            <Text>{isActive ? t('deactivate', 'Deactivate') : t('activate', 'Activate')}</Text>
           </Button>
 
           <Button
@@ -175,7 +177,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
             accessibilityLabel={`Delete ${item.name}`}
           >
             <Trash2 size={13} color="#e11d48" />
-            <Text>Delete</Text>
+            <Text>{t('delete', 'Delete')}</Text>
           </Button>
         </View>
       </View>

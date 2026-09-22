@@ -6,6 +6,7 @@ import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Amenity } from '../store/amenitySlice';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface ResidentAmenityDetailSheetProps {
   visible: boolean;
@@ -22,6 +23,7 @@ export function ResidentAmenityDetailSheet({
   amenity,
   onBookClick,
 }: ResidentAmenityDetailSheetProps) {
+  const { t, translateText } = useTranslation();
   if (!visible || !amenity) return null;
 
   const category = amenity.category || amenity.type || 'General';
@@ -49,7 +51,7 @@ export function ResidentAmenityDetailSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Amenity Details & Reservation">
+    <BottomSheet visible={visible} onClose={onClose} title={t('amenity_details_reservation', 'Amenity Details & Reservation')}>
       <View className="py-1 pb-4">
         {/* Cover Image Header */}
         {imageUrl ? (
@@ -61,13 +63,13 @@ export function ResidentAmenityDetailSheet({
         {/* Title Header */}
         <View className="flex-row items-center justify-between mb-3 bg-card p-3 rounded-xl border border-border">
           <View className="flex-1 me-2">
-            <Text className="text-base font-bold text-foreground">{amenity.name}</Text>
+            <Text className="text-base font-bold text-foreground">{translateText(amenity.name)}</Text>
             <Text variant="muted" className="text-xs text-muted-foreground">
-              {category} • {amenity.location || 'Community Zone'}
+              {translateText(category)} • {translateText(amenity.location || 'Community Zone')}
             </Text>
           </View>
           <StatusBadge
-            label={isMaintenance ? 'Under Maintenance' : isInactive ? 'Inactive' : 'Available'}
+            label={isMaintenance ? t('under_maintenance', 'Under Maintenance') : isInactive ? t('inactive', 'Inactive') : t('available', 'Available')}
             variant={statusVariantMap[itemStatus] || 'neutral'}
           />
         </View>
@@ -75,40 +77,40 @@ export function ResidentAmenityDetailSheet({
         {/* Amenity Specifications List */}
         <View className="bg-muted/20 p-3.5 rounded-2xl border border-border/40 mb-4">
           <DetailRow
-            label="Booking Rate"
-            value={`₹${baseRate} / ${pricingType === 'daily' ? 'day' : 'slot'}`}
+            label={t('booking_rate', 'Booking Rate')}
+            value={baseRate ? `₹${baseRate} / ${pricingType === 'daily' ? t('day', 'day') : t('slot', 'slot')}` : t('free_access', 'Free Access')}
             iconName="DollarSign"
           />
           <DetailRow
-            label="Security Deposit"
-            value={securityDeposit ? `₹${securityDeposit} (${securityDepositDescription || 'Refundable'})` : 'None (₹0)'}
+            label={t('security_deposit', 'Security Deposit')}
+            value={securityDeposit ? `₹${securityDeposit} (${securityDepositDescription ? translateText(securityDepositDescription) : t('refundable', 'Refundable')})` : `${t('none', 'None')} (₹0)`}
             iconName="Shield"
           />
-          <DetailRow label="Max Capacity" value={`${amenity.capacity || 20} Persons`} iconName="Users" />
+          <DetailRow label={t('max_capacity', 'Max Capacity')} value={`${amenity.capacity || 20} ${t('persons', 'Persons')}`} iconName="Users" />
           <DetailRow
-            label="Operating Hours"
+            label={t('operating_hours', 'Operating Hours')}
             value={`${amenity.bookingRules?.openTime || amenity.openTime || '08:00'} - ${amenity.bookingRules?.closeTime || amenity.closeTime || '21:00'}`}
             iconName="Clock"
           />
           <DetailRow
-            label="Slot Duration"
-            value={pricingType === 'daily' ? 'Full Day' : `${slotDuration} Minutes`}
+            label={t('slot_duration', 'Slot Duration')}
+            value={pricingType === 'daily' ? t('full_day', 'Full Day') : `${slotDuration} ${t('minutes', 'Minutes')}`}
             iconName="Timer"
           />
           <DetailRow
-            label="Advance Booking Window"
-            value={`Up to ${advanceDays} Days in Advance`}
+            label={t('advance_booking_window', 'Advance Booking Window')}
+            value={`${t('up_to', 'Up to')} ${advanceDays} ${t('days_in_advance', 'Days in Advance')}`}
             iconName="Calendar"
           />
           <DetailRow
-            label="Max Per Resident"
-            value={`${maxPerUser} Reservation(s) per slot`}
+            label={t('max_per_resident', 'Max Per Resident')}
+            value={`${maxPerUser} ${t('reservations_per_slot', 'Reservation(s) per slot')}`}
             iconName="UserCheck"
           />
 
           {/* Operating Days */}
           <View className="py-2 border-b border-border/40">
-            <Text className="text-xs text-muted-foreground mb-1 font-medium">Available Operating Days</Text>
+            <Text className="text-xs text-muted-foreground mb-1 font-medium">{t('available_operating_days', 'Available Operating Days')}</Text>
             <View className="flex-row flex-wrap gap-1">
               {DAYS_NAMES.map((dayName, idx) => {
                 const isOpen = openDays.includes(idx);
@@ -124,7 +126,7 @@ export function ResidentAmenityDetailSheet({
                         isOpen ? 'text-primary' : 'text-muted-foreground line-through'
                       }`}
                     >
-                      {dayName}
+                      {t(dayName.toLowerCase(), dayName)}
                     </Text>
                   </View>
                 );
@@ -134,28 +136,28 @@ export function ResidentAmenityDetailSheet({
 
           {/* Cancellation Policy Details */}
           <View className="py-2">
-            <Text className="text-xs text-muted-foreground mb-1 font-medium">Cancellation & Refund Policy</Text>
+            <Text className="text-xs text-muted-foreground mb-1 font-medium">{t('cancellation_refund_policy', 'Cancellation & Refund Policy')}</Text>
             {isCancellationEnabled ? (
               refundRules.length > 0 ? (
                 refundRules.map((rule: { cancelBeforeHours: number; refundPercentage: number }, i: number) => (
                   <Text key={i} className="text-xs font-semibold text-foreground">
-                    • Cancel ≥ {rule.cancelBeforeHours}h before slot: {rule.refundPercentage}% refund
+                    • {t('cancel', 'Cancel')} ≥ {rule.cancelBeforeHours}h {t('before_slot', 'before slot')}: {rule.refundPercentage}% {t('refund', 'refund')}
                   </Text>
                 ))
               ) : (
                 <Text className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                  Cancellation enabled (100% loss - no refund tiers configured)
+                  {t('cancellation_enabled_no_refund_tiers', 'Cancellation enabled (100% loss - no refund tiers configured)')}
                 </Text>
               )
             ) : (
-              <Text className="text-xs text-red-500 font-medium">Cancellation Disabled (No Refunds on cancellation)</Text>
+              <Text className="text-xs text-red-500 font-medium">{t('cancellation_disabled_no_refunds', 'Cancellation Disabled (No Refunds on cancellation)')}</Text>
             )}
           </View>
 
           {amenity.description ? (
             <DetailRow
-              label="House Rules & Description"
-              value={amenity.description}
+              label={t('house_rules_description', 'House Rules & Description')}
+              value={translateText(amenity.description)}
               iconName="FileText"
               isLast={true}
             />
@@ -166,7 +168,7 @@ export function ResidentAmenityDetailSheet({
       {/* Action CTAs */}
       <View className="flex-row gap-3 pt-3 pb-2 border-t border-border mt-2">
         <Button variant="outline" onPress={onClose} className="flex-1 bg-muted/30 border-border min-h-[48px] justify-center">
-          <Text className="text-foreground font-bold text-sm">Close</Text>
+          <Text className="text-foreground font-bold text-sm">{t('close', 'Close')}</Text>
         </Button>
         <Button
           variant="default"
@@ -178,7 +180,7 @@ export function ResidentAmenityDetailSheet({
           className={`flex-1 min-h-[48px] justify-center ${isAvailable ? 'bg-primary' : 'bg-muted'}`}
         >
           <Text className={`font-bold text-sm ${isAvailable ? 'text-white' : 'text-muted-foreground'}`}>
-            {isMaintenance ? 'Under Maintenance' : isInactive ? 'Facility Inactive' : 'Reserve Space'}
+            {isMaintenance ? t('under_maintenance', 'Under Maintenance') : isInactive ? t('facility_inactive', 'Facility Inactive') : t('reserve_space', 'Reserve Space')}
           </Text>
         </Button>
       </View>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Modal, Pressable, Image, Alert, ScrollView, KeyboardAvoidingView, Platform, ActionSheetIOS } from 'react-native';
+import { View, Modal, Pressable, Image, Alert, ScrollView, KeyboardAvoidingView, Platform, ActionSheetIOS, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, X, User as UserIcon, Check, Activity, Heart, Sparkles, Plus, ImageIcon } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { Camera, X, User as UserIcon, Check, Activity, Heart, Sparkles, Plus, ImageIcon, FileUp, Trash2 } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { updateProfileThunk, User } from '@/src/features/auth/store/authSlice';
 import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
 import { ThemeToggleSwitch } from '@/components/settings/ThemeToggleSwitch';
 import { useSettings } from '@/src/features/settings/hooks/useSettings';
+import { getImageUrl } from '@/src/utils/imageUrl';
 
 export interface EditProfileModalProps {
   visible: boolean;
@@ -46,6 +48,7 @@ export const EditProfileModal = ({
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (visible && user) {
@@ -97,7 +100,7 @@ export const EditProfileModal = ({
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -110,17 +113,56 @@ export const EditProfileModal = ({
     }
   };
 
+  // Choose from Device files
+  const handlePickDocument = async () => {
+    setShowPhotoOptions(false);
+    try {
+      if (Platform.OS === 'web') {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/jpeg,image/png,image/webp';
+        input.onchange = (e: any) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            const objectUrl = URL.createObjectURL(file);
+            setAvatarUri(objectUrl);
+          }
+        };
+        input.click();
+        return;
+      }
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/jpeg', 'image/png', 'image/webp'],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setAvatarUri(result.assets[0].uri);
+      }
+    } catch (err) {
+      console.warn('Error picking document file:', err);
+    }
+  };
+
+  // Remove photo and restore default
+  const handleRemovePhoto = () => {
+    setShowPhotoOptions(false);
+    setAvatarUri(null);
+  };
+
   // Show photo source picker
   const handleChangePhoto = () => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo', 'Choose from Gallery'],
+          options: ['Cancel', 'Take Photo', 'Choose from Gallery', 'Upload from device', 'Remove photo'],
+          destructiveButtonIndex: 4,
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex === 1) handleTakePhoto();
           else if (buttonIndex === 2) handleChooseFromGallery();
+          else if (buttonIndex === 3) handlePickDocument();
+          else if (buttonIndex === 4) handleRemovePhoto();
         }
       );
     } else {
@@ -140,28 +182,41 @@ export const EditProfileModal = ({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!username.trim()) {
       Alert.alert('Validation Error', 'Please enter your name.');
       return;
     }
-    dispatch(
-      updateProfileThunk({
-        username: username.trim(),
-        name: username.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        avatar: avatarUri || undefined,
-      }) as any
-    );
-    if (onSaveInterests) {
-      onSaveInterests(selectedInterests);
+    setIsSaving(true);
+    try {
+      const res = await dispatch(
+        updateProfileThunk({
+          username: username.trim(),
+          name: username.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          avatar: avatarUri || undefined,
+          removeAvatar: avatarUri === null,
+        }) as any
+      );
+      if (res.meta?.requestStatus === 'fulfilled') {
+        if (onSaveInterests) {
+          onSaveInterests(selectedInterests);
+        }
+        Alert.alert(
+          translate('success', 'Success'),
+          translate('profile_updated', 'Profile updated successfully!')
+        );
+        onClose();
+      } else {
+        const msg = res.payload || 'Failed to update profile';
+        Alert.alert(translate('error', 'Error'), String(msg));
+      }
+    } catch (err: any) {
+      Alert.alert(translate('error', 'Error'), err?.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
     }
-    Alert.alert(
-      translate('success', 'Success'),
-      translate('profile_updated', 'Profile updated successfully!')
-    );
-    onClose();
   };
 
   if (!visible) return null;
@@ -203,7 +258,7 @@ export const EditProfileModal = ({
               <Pressable onPress={handleChangePhoto} className="relative">
                 <View className="h-20 w-20 rounded-full bg-muted/40 border-2 border-primary overflow-hidden items-center justify-center">
                   {avatarUri ? (
-                    <Image source={{ uri: avatarUri }} className="h-full w-full" />
+                    <Image source={{ uri: getImageUrl(avatarUri) }} className="h-full w-full" />
                   ) : (
                     <UserIcon size={36} className="text-primary" />
                   )}
@@ -325,11 +380,16 @@ export const EditProfileModal = ({
               {/* Save Button */}
               <Button
                 onPress={handleSave}
-                className="h-12 bg-primary rounded-xl flex-row items-center justify-center gap-2 mt-2"
+                disabled={isSaving}
+                className={`h-12 bg-primary rounded-xl flex-row items-center justify-center gap-2 mt-2 ${isSaving ? 'opacity-70' : ''}`}
               >
-                <Check size={18} className="text-primary-foreground" />
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Check size={18} className="text-primary-foreground" />
+                )}
                 <Text className="text-primary-foreground font-bold">
-                  {translate('save_changes', 'Save Changes')}
+                  {isSaving ? translate('saving', 'Saving...') : translate('save_changes', 'Save Changes')}
                 </Text>
               </Button>
             </View>
@@ -370,6 +430,32 @@ export const EditProfileModal = ({
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-foreground">Choose from Gallery</Text>
                   <Text className="text-xs text-muted-foreground mt-0.5">Select from saved photos</Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                onPress={handlePickDocument}
+                className="flex-row items-center gap-3 px-4 py-3.5 bg-muted/20 rounded-2xl border border-border active:bg-muted/40"
+              >
+                <View className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 items-center justify-center">
+                  <FileUp size={20} className="text-emerald-500" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-foreground">Upload from device</Text>
+                  <Text className="text-xs text-muted-foreground mt-0.5">Browse image files on device</Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                onPress={handleRemovePhoto}
+                className="flex-row items-center gap-3 px-4 py-3.5 bg-rose-500/10 rounded-2xl border border-rose-500/20 active:bg-rose-500/20"
+              >
+                <View className="h-10 w-10 rounded-xl bg-rose-500/15 border border-rose-500/30 items-center justify-center">
+                  <Trash2 size={20} className="text-rose-500" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-rose-600 dark:text-rose-400">Remove photo</Text>
+                  <Text className="text-xs text-rose-500/80 mt-0.5">Remove custom photo and use default</Text>
                 </View>
               </Pressable>
 

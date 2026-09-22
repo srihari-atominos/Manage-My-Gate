@@ -16,7 +16,7 @@ import { useTranslation } from '@/src/utils/i18n';
 
 export default function MyBookingsScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const {
     myBookings,
     filteredBookings,
@@ -63,7 +63,7 @@ export default function MyBookingsScreen() {
 
   const renderBookingItem = (item: AmenityBooking) => (
     <AmenityBookingCard
-      key={item._id}
+      key={`${item._id}-${language}`}
       booking={item}
       onPress={setSelectedPassForQR}
       onViewPassQR={setSelectedPassForQR}
@@ -114,6 +114,8 @@ export default function MyBookingsScreen() {
         <PaginatedList
           data={displayedBookings}
           renderItem={renderBookingItem}
+          extraData={language}
+          keyExtractor={(item) => `${item._id}-${language}`}
           pagination={pagination}
           onLoadMore={handleLoadMore}
           onRefresh={handleRefresh}

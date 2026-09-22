@@ -14,7 +14,6 @@ import { useColorScheme } from 'nativewind';
 import {
   Home,
   Users,
-  LayoutGrid,
   ShieldCheck,
   User,
 } from 'lucide-react-native';
@@ -34,7 +33,7 @@ import Animated, {
 import { cn } from '../../lib/utils';
 import { useBottomNavScroll } from './BottomNavScrollContext';
 
-export type MainTabKey = 'dashboard' | 'community' | 'all-features' | 'security' | 'profile';
+export type MainTabKey = 'dashboard' | 'community' | 'security' | 'profile';
 
 interface TabItem {
   key: MainTabKey;
@@ -57,12 +56,6 @@ const TAB_ITEMS: TabItem[] = [
     icon: Users,
   },
   {
-    key: 'all-features',
-    label: 'View All',
-    route: '/(resident)/all-features',
-    icon: LayoutGrid,
-  },
-  {
     key: 'security',
     label: 'Security',
     route: '/(resident)/visitor',
@@ -76,8 +69,9 @@ const TAB_ITEMS: TabItem[] = [
   },
 ];
 
-// Nahom Brand Orange Accent Color
-const NAHOM_ORANGE = '#FF6A00';
+// Brand Theme Accent Active Color (matches global.css Ventorex theme)
+const THEME_ACTIVE_LIGHT = '#C2410C';
+const THEME_ACTIVE_DARK = '#FF8A3D';
 
 export interface BottomNavigationBarProps {
   scrollY?: SharedValue<number> | any;
@@ -102,12 +96,13 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
 }) => {
   const { t, language } = useTranslation();
   const IconComponent = item.icon;
-  const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
-  const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
+  const activeColor = isDark ? THEME_ACTIVE_DARK : THEME_ACTIVE_LIGHT;
+  const iconColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
+  const labelColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
   const isArabic = language === 'ar';
   const tabFontSize = isArabic ? 13.5 : 12;
   const tabLineHeight = isArabic ? 17 : 15;
-  const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key === 'all-features' ? 'view_all' : item.key, item.label);
+  const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key, item.label);
 
   return (
     <Pressable
@@ -221,10 +216,11 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
     }
   }, [isActive, pressScale, pressBlur]);
 
-  // Icons & labels: Active uses Nahom Orange; inactive uses clear readable neutral
-  const iconColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
-  const labelColor = isActive ? NAHOM_ORANGE : (isDark ? '#94A3B8' : '#64748B');
-  const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key === 'all-features' ? 'view_all' : item.key, item.label);
+  // Icons & labels: Active uses theme active color; inactive uses clear readable neutral
+  const activeColor = isDark ? THEME_ACTIVE_DARK : THEME_ACTIVE_LIGHT;
+  const iconColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
+  const labelColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
+  const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key, item.label);
 
   return (
     <Pressable
@@ -242,15 +238,15 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
             animatedHaloStyle,
             {
               position: 'absolute',
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              backgroundColor: isDark ? 'rgba(255, 106, 0, 0.20)' : 'rgba(255, 106, 0, 0.12)',
-              shadowColor: NAHOM_ORANGE,
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: activeColor,
+              shadowColor: activeColor,
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-              elevation: 1,
+              shadowOpacity: isDark ? 0.75 : 0.45,
+              shadowRadius: 10,
+              elevation: 4,
             },
           ]}
           pointerEvents="none"
@@ -328,7 +324,6 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     if (pathname.includes('/visitor')) return 'security';
     if (pathname.includes('/notices') || pathname.includes('/directory') || pathname.includes('/polls') || pathname.includes('/notes')) return 'community';
     if (pathname.includes('/profile') || pathname.includes('/settings') || pathname.includes('/account')) return 'profile';
-    if (pathname.includes('/all-features') || pathname.includes('/amenities') || pathname.includes('/billing') || pathname.includes('/complaints') || pathname.includes('/admin')) return 'all-features';
     return 'dashboard';
   }, [pathname]);
 

@@ -273,11 +273,11 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
   unitName,
 }) => {
   const { user } = useAuth();
-  const { t, translateText } = useTranslation();
+  const { t, translateText, language } = useTranslation();
   const [villaModalVisible, setVillaModalVisible] = React.useState(false);
 
   // 1. Time of day calculation
-  const timeGreeting = React.useMemo(() => getTimeOfDayGreeting(), []);
+  const timeGreeting = React.useMemo(() => getTimeOfDayGreeting(), [language]);
 
   // 2. Resolve personal display name (strictly the user's name, not role string)
   const displayName = React.useMemo(() => {
@@ -291,7 +291,7 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 
   const localizedLocation = React.useMemo(() => {
     return translateText(dynamicLocation);
-  }, [dynamicLocation, translateText]);
+  }, [dynamicLocation, translateText, language]);
 
   return (
     <>
