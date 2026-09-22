@@ -183,11 +183,31 @@ export const createPoll = async (pollData) => {
       votesCount: 0
     }));
 
+    const scheduleDate = pollData.scheduleDate ? new Date(pollData.scheduleDate) : null;
+    let initialStatus = pollData.status;
+    if (!initialStatus) {
+      initialStatus = scheduleDate && scheduleDate > new Date() ? 'Scheduled' : 'Active';
+    }
+
+    if (initialStatus === 'Scheduled') {
+      if (!scheduleDate) {
+        throw new HttpError(400, 'scheduleDate is required when poll status is Scheduled');
+      }
+      if (scheduleDate <= new Date()) {
+        initialStatus = 'Active';
+      }
+    }
+
+    if (scheduleDate && pollData.endDate && new Date(pollData.endDate) <= scheduleDate) {
+      throw new HttpError(400, 'End date must be after schedule date');
+    }
+
     const data = {
       ...pollData,
       options,
       totalVotes: 0,
-      status: pollData.status || 'Active',
+      status: initialStatus,
+      scheduleDate,
       choiceType: pollData.choiceType || 'SINGLE_CHOICE',
       maxChoices: pollData.choiceType === 'MULTIPLE_CHOICE' ? (pollData.maxChoices || 2) : 1,
       votingMode: pollData.votingMode || 'ONE_PER_USER',
@@ -238,6 +258,13 @@ export const getPollById = async (pollId, orgId, userId = null, isCommunityAdmin
     throw new HttpError(404, 'Poll not found');
   }
 
+  // Auto-activate if scheduled date has passed
+  if (poll.status === 'Scheduled' && poll.scheduleDate && poll.scheduleDate <= new Date()) {
+    poll.status = 'Active';
+    await pollRepo.updatePoll(pollId, orgId, { status: 'Active' });
+    pollEvents.emit('poll_published', poll);
+  }
+
   // Audience eligibility verification
   if (userId && !isCommunityAdmin && poll.targetAudience) {
     const isEligible = await audienceService.checkEligibility(userId, poll.targetAudience, orgId);
@@ -271,8 +298,8 @@ export const getPollById = async (pollId, orgId, userId = null, isCommunityAdmin
 export const updatePoll = async (pollId, orgId, userId, updateData, isCommunityAdmin) => {
   const poll = await getPollById(pollId, orgId, userId, isCommunityAdmin);
 
-  if (poll.status !== 'Draft') {
-    throw new HttpError(400, 'Only Draft polls can be edited');
+  if (poll.status !== 'Draft' && poll.status !== 'Scheduled') {
+    throw new HttpError(400, 'Only Draft or Scheduled polls can be edited');
   }
 
   if (poll.createdBy.toString() !== userId.toString() && !isCommunityAdmin) {
@@ -283,6 +310,18 @@ export const updatePoll = async (pollId, orgId, userId, updateData, isCommunityA
   session.startTransaction();
   try {
     const dataToUpdate = { ...updateData };
+
+    if (updateData.scheduleDate) {
+      const scheduleDate = new Date(updateData.scheduleDate);
+      const effectiveEndDate = updateData.endDate ? new Date(updateData.endDate) : new Date(poll.endDate);
+      if (effectiveEndDate <= scheduleDate) {
+        throw new HttpError(400, 'End date must be after schedule date');
+      }
+      dataToUpdate.scheduleDate = scheduleDate;
+      if (scheduleDate <= new Date()) {
+        dataToUpdate.status = 'Active';
+      }
+    }
 
     if (updateData.choiceType) {
       dataToUpdate.choiceType = updateData.choiceType;
@@ -505,6 +544,12 @@ const populateHasVoted = async (data, orgId, userId, isCommunityAdmin = false) =
 };
 
 export const getActivePolls = async (orgId, userId, page, limit, search, sort, userContext = null) => {
+  try {
+    await processScheduledPolls(new Date(), orgId);
+  } catch (schedErr) {
+    // Non-blocking fallback
+  }
+
   let audienceOr = null;
   if (userId && orgId) {
     const audienceFilter = await audienceService.buildFeedFilter(userId, orgId, 'targetAudience');
@@ -873,6 +918,46 @@ export const exportPollJSON = async (pollId, orgId, userId, isCommunityAdmin) =>
       selectedOptions: v.selectedOptions,
       votedAt: v.createdAt
     }))
+  };
+};
+
+/**
+ * Scans and auto-activates scheduled polls whose scheduleDate has arrived.
+ * Idempotent, tenant-aware, emits poll_published, and enqueues outbox event.
+ */
+export const processScheduledPolls = async (now = new Date(), orgId = null) => {
+  const Poll = mongoose.model('Poll');
+  const query = {
+    status: 'Scheduled',
+    scheduleDate: { $lte: now }
+  };
+  if (orgId) {
+    query.orgId = new mongoose.Types.ObjectId(orgId);
+  }
+
+  const scheduledPolls = await Poll.find(query);
+  const activatedPolls = [];
+
+  for (const poll of scheduledPolls) {
+    try {
+      const updatedPoll = await Poll.findOneAndUpdate(
+        { _id: poll._id, status: 'Scheduled', scheduleDate: { $lte: now } },
+        { $set: { status: 'Active' } },
+        { new: true }
+      );
+
+      if (updatedPoll) {
+        pollEvents.emit('poll_published', updatedPoll);
+        activatedPolls.push(updatedPoll);
+      }
+    } catch (pollError) {
+      // Continue processing other scheduled polls
+    }
+  }
+
+  return {
+    activatedCount: activatedPolls.length,
+    polls: activatedPolls
   };
 };
 

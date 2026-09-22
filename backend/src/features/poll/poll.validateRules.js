@@ -35,9 +35,29 @@ export const createPollRules = () => {
         }
         return true;
       }),
+    body('scheduleDate')
+      .optional({ nullable: true })
+      .isISO8601().withMessage('Must be a valid date format')
+      .custom((value, { req }) => {
+        if (!value) return true;
+        const schedule = new Date(value);
+        if (schedule <= new Date()) {
+          throw new Error('Schedule date must be in the future');
+        }
+        if (req.body?.endDate && new Date(req.body.endDate) <= schedule) {
+          throw new Error('End date must be after schedule date');
+        }
+        return true;
+      }),
     body('status')
       .optional()
-      .isIn(['Draft', 'Active', 'Closed']).withMessage('Invalid poll status'),
+      .isIn(['Draft', 'Scheduled', 'Active', 'Closed']).withMessage('Invalid poll status')
+      .custom((status, { req }) => {
+        if (status === 'Scheduled' && !req.body?.scheduleDate) {
+          throw new Error('scheduleDate is required when poll status is Scheduled');
+        }
+        return true;
+      }),
     body('choiceType')
       .optional()
       .isIn(['SINGLE_CHOICE', 'MULTIPLE_CHOICE']).withMessage('Invalid choice type'),
@@ -104,6 +124,23 @@ export const updatePollRules = () => {
     body('targetAudience')
       .optional()
       .isObject().withMessage('targetAudience must be an object'),
+    body('scheduleDate')
+      .optional({ nullable: true })
+      .isISO8601().withMessage('Must be a valid date format')
+      .custom((value, { req }) => {
+        if (!value) return true;
+        const schedule = new Date(value);
+        if (schedule <= new Date()) {
+          throw new Error('Schedule date must be in the future');
+        }
+        if (req.body?.endDate && new Date(req.body.endDate) <= schedule) {
+          throw new Error('End date must be after schedule date');
+        }
+        return true;
+      }),
+    body('status')
+      .optional()
+      .isIn(['Draft', 'Scheduled', 'Active', 'Closed']).withMessage('Invalid poll status'),
   ];
 };
 

@@ -12,35 +12,30 @@ import logger from '../../utils/logger.utils.js';
 import OrgMembership from '../orgMembership/orgMembership.model.js';
 import notificationService from '../notification/notification.service.js';
 
-import outboxService from '../outbox/outbox.service.js';
+import { enqueueCommunityEngagementOutbox } from '../communityEngagement/communityEngagement.outbox.js';
 
 // Core native event emitter for the notice board feature domain
 export const noticeEvents = new EventEmitter();
 
 // Helper function to reliably enqueue governance notice outbox events
 const enqueueNoticeOutbox = async (eventType, notice, extraPayload = {}) => {
-  if (!mongoose.connection || mongoose.connection.readyState !== 1) return;
-  try {
-    await outboxService.enqueueEvent({
-      aggregateType: 'NOTICE',
-      aggregateId: notice._id || notice.id,
-      eventType,
-      payload: {
-        noticeId: notice._id || notice.id,
-        orgId: notice.orgId,
-        title: notice.title,
-        description: notice.description,
-        isCritical: notice.isCritical,
-        targetAudience: notice.targetAudience,
-        createdBy: notice.createdBy,
-        scheduleDate: notice.scheduleDate,
-        expiryDate: notice.expiryDate,
-        ...extraPayload,
-      },
-    });
-  } catch (err) {
-    logger.error(`[Notice Events] Failed to enqueue outbox event ${eventType}: ${err.message}`);
-  }
+  return await enqueueCommunityEngagementOutbox({
+    aggregateType: 'NOTICE',
+    aggregateId: notice._id || notice.id,
+    eventType,
+    payload: {
+      noticeId: notice._id || notice.id,
+      orgId: notice.orgId,
+      title: notice.title,
+      description: notice.description,
+      isCritical: notice.isCritical,
+      targetAudience: notice.targetAudience,
+      createdBy: notice.createdBy,
+      scheduleDate: notice.scheduleDate,
+      expiryDate: notice.expiryDate,
+      ...extraPayload,
+    },
+  });
 };
 
 // Hook events to Socket dispatcher and asynchronous outbox pipeline

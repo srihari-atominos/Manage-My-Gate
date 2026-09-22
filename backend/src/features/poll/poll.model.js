@@ -57,8 +57,13 @@ const pollSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Draft', 'Active', 'Closed'],
+      enum: ['Draft', 'Scheduled', 'Active', 'Closed'],
       default: 'Draft',
+      index: true
+    },
+    scheduleDate: {
+      type: Date,
+      default: null,
       index: true
     },
     endDate: {
