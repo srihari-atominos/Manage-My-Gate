@@ -18,6 +18,7 @@ import {
   NoticeBoardEmptyState,
   NoticeBoardLoadingSkeleton
 } from '../components';
+import { CommunityEngagementTypeSheet } from '@/src/features/communityEngagement';
 import { debounce } from '../utils/debounce';
 import {
   Plus,
@@ -93,6 +94,7 @@ function ManageNoticesContent() {
   const [filterType, setFilterType] = useState('STATUS'); // 'STATUS' | 'PRIORITY' | 'CATEGORY'
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [localSearch, setLocalSearch] = useState(search);
+  const [typeSheetOpen, setTypeSheetOpen] = useState(false);
 
   // Re-fetch data on active screen focus (e.g. returning from Create / Edit notice screen)
   useFocusEffect(
@@ -347,14 +349,23 @@ function ManageNoticesContent() {
           />
         )}
 
-        {/* Floating Action Button for Notice Creation */}
+        {/* Floating Action Button for Community Engagement Creation */}
         {canCreate && (
           <FAB
             icon={Plus}
-            onPress={() => router.push('/(resident)/notices/create')}
-            accessibilityLabel="Create Notice"
+            onPress={() => setTypeSheetOpen(true)}
+            accessibilityLabel="Create Community Engagement Content"
           />
         )}
+
+        {/* Stage 1 Selection Sheet for Community Engagement Archetypes */}
+        <CommunityEngagementTypeSheet
+          visible={typeSheetOpen}
+          onClose={() => setTypeSheetOpen(false)}
+          onSelectType={(type) => {
+            router.push(`/(resident)/community-engagement/create?type=${type}`);
+          }}
+        />
 
         {/* Force Delete Confirmation Modal */}
         <ConfirmationModal

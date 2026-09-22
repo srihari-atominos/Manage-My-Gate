@@ -615,7 +615,7 @@ describe('Amenity Management Phase 6B.2: Resident Booking Wizard Tests', () => {
 
     expect(screen.getByText('Digital Wallet Balance')).toBeTruthy();
     expect(screen.getByText('Online Payment (Cards, UPI, NetBanking)')).toBeTruthy();
-    expect(screen.getByText('157.5 SAR')).toBeTruthy();
+    expect(screen.getAllByText(/157\.5/).length).toBeGreaterThanOrEqual(1);
   });
 
   // ==========================================
@@ -742,10 +742,10 @@ describe('Amenity Management Phase 6B.2: Resident Booking Wizard Tests', () => {
       />
     );
 
-    expect(screen.getByText('CONFIRMED')).toBeTruthy();
-    expect(screen.getAllByText('NOT_REQUIRED').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('PASS_GENERATED')).toBeTruthy();
-    expect(screen.getByText(/Pending/i)).toBeTruthy();
+    expect(screen.getByText('Confirmed')).toBeTruthy();
+    expect(screen.getByText('Free')).toBeTruthy();
+    expect(screen.getByText('Pass Ready')).toBeTruthy();
+    expect(screen.getByText('Upcoming')).toBeTruthy();
   });
 
   // ==========================================

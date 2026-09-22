@@ -109,7 +109,7 @@ export function AdminReservationCard({
 
   const title = resourceName ? `${facilityName} • ${resourceName}` : facilityName;
   const subtitle = isMaintenance
-    ? `${timeSlot} • ${booking.subtitle || 'Maintenance Closure'}`
+    ? `${timeSlot} • ${(booking as any).subtitle || 'Maintenance Closure'}`
     : `${timeSlot} • ${residentName} (${villaNum})`;
 
   const refId =

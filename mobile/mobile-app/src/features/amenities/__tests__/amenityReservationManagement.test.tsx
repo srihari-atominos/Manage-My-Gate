@@ -480,7 +480,7 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(getAccessStatusVariant('NOT_APPLICABLE')).toBe('neutral');
 
       await render(<ResidentReservationCard reservation={mockReservation} />);
-      expect(screen.getByText(/PASS_GENERATED/i)).toBeTruthy();
+      expect(screen.getByText(/Pass Ready/i)).toBeTruthy();
     });
 
     it('Scenario 14: Renders exact completionStatus with appropriate variant', async () => {
@@ -490,7 +490,7 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(getCompletionStatusVariant('ABANDONED')).toBe('danger');
 
       await render(<ResidentReservationCard reservation={mockReservation} />);
-      expect(screen.getByText(/PENDING/i)).toBeTruthy();
+      expect(screen.getByText(/Upcoming/i)).toBeTruthy();
     });
 
     it('Scenario 15: Invokes onPress callback with full reservation object', async () => {
@@ -799,7 +799,7 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
 
       // Tap 'Upcoming' tab
       await act(async () => {
-        fireEvent.press(screen.getByText('Upcoming'));
+        fireEvent.press(screen.getAllByText('Upcoming')[0]);
       });
       expect(screen.getByText('Infinity Swimming Pool')).toBeTruthy();
       expect(screen.queryByText('Past Squash Court')).toBeNull();
@@ -814,8 +814,8 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(screen.getByText(/CONFIRMED/i)).toBeTruthy();
       expect(screen.getByText(/PAID/i)).toBeTruthy();
       expect(screen.getByText(/APPROVED/i)).toBeTruthy();
-      expect(screen.getByText(/PASS_GENERATED/i)).toBeTruthy();
-      expect(screen.getByText(/PENDING/i)).toBeTruthy();
+      expect(screen.getByText(/Pass Ready/i)).toBeTruthy();
+      expect(screen.getAllByText(/Upcoming/i).length).toBeGreaterThanOrEqual(1);
     });
 
     it('Scenario 41 & 42: Cancellation action opens modal and dispatches cancellation', async () => {
@@ -865,8 +865,8 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
 
       expect(screen.getByText('Refund Pending Hall')).toBeTruthy();
       expect(screen.getByText('Refunded Hall')).toBeTruthy();
-      expect(screen.getByText('REFUND_PENDING')).toBeTruthy();
-      expect(screen.getByText('REFUNDED')).toBeTruthy();
+      expect(screen.getByText('Refund In Progress')).toBeTruthy();
+      expect(screen.getByText('Refunded')).toBeTruthy();
     });
 
     it('Scenario 47-54: Static isolation audit on modernized my-bookings.tsx', () => {

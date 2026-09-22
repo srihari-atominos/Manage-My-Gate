@@ -135,12 +135,12 @@ describe('Navigation Forensic Audit & Feature Cutover', () => {
       expect(visible.map((v) => v.id)).toEqual(['a-scanner']);
     });
 
-    it('Admin sees exactly the 6 admin items and zero resident/guard items', () => {
+    it('Admin sees exactly the 5 admin items and zero resident/guard items', () => {
       const visible = rawAmenityNavItems.filter((item) =>
         isFeatureAllowedForUser({ id: item.id, permission: item.permission }, adminUser)
       );
       expect(visible.map((v) => v.id).sort()).toEqual(
-        ['a-dashboard', 'a-calendar', 'a-master', 'a-maintenance', 'a-ledgers', 'a-settings'].sort()
+        ['a-dashboard', 'a-calendar', 'a-master', 'a-maintenance', 'a-ledgers'].sort()
       );
     });
 

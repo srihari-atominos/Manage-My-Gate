@@ -225,7 +225,7 @@ export default function PollDashboardScreen() {
       iconName: 'Plus',
       colorBg: 'bg-emerald-500/10',
       colorIcon: '#10b981',
-      onPress: () => setCreateModalOpen(true),
+      onPress: () => router.push('/(resident)/community-engagement/create?type=POLL'),
     },
     {
       id: 'active_polls',
@@ -274,7 +274,7 @@ export default function PollDashboardScreen() {
       <SectionHeader
         title={!isCommunityAdmin || activeTab === 'active' ? 'Active Polls' : activeTab === 'closed' ? 'Closed Polls' : 'My Created Polls'}
         actionLabel={isCommunityAdmin && canCreate ? 'Create Poll' : undefined}
-        onAction={isCommunityAdmin && canCreate ? () => setCreateModalOpen(true) : undefined}
+        onAction={isCommunityAdmin && canCreate ? () => router.push('/(resident)/community-engagement/create?type=POLL') : undefined}
         className="px-0 bg-transparent dark:bg-transparent"
       />
     </View>
@@ -290,7 +290,7 @@ export default function PollDashboardScreen() {
           <Button
             variant="default"
             size="sm"
-            onPress={() => setCreateModalOpen(true)}
+            onPress={() => router.push('/(resident)/community-engagement/create?type=POLL')}
             className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
             accessibilityRole="button"
             accessibilityLabel="Create Poll"
@@ -342,7 +342,7 @@ export default function PollDashboardScreen() {
           <FAB
             iconName="Plus"
             label="Create Poll"
-            onPress={() => setCreateModalOpen(true)}
+            onPress={() => router.push('/(resident)/community-engagement/create?type=POLL')}
             accessibilityLabel="Create Poll"
           />
         )}

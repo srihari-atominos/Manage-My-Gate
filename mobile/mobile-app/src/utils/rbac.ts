@@ -416,7 +416,7 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
     'complaints_track_requests',
     'amenities_discover',
     'notices_active_board',
-    'visitor_gate_console',
+    'complaints_raise_ticket',
   ];
 };
 

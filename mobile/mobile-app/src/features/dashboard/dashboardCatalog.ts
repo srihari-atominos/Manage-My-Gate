@@ -76,7 +76,7 @@ export const DEFAULT_6_QUICK_ACTIONS = [
   'complaints_track_requests',
   'amenities_discover',
   'notices_active_board',
-  'visitor_gate_console',
+  'complaints_raise_ticket',
 ];
 
 export const DEFAULT_5_QUICK_ACTIONS = DEFAULT_6_QUICK_ACTIONS;
@@ -104,7 +104,7 @@ export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
     'complaints_track_requests',
     'amenities_discover',
     'notices_active_board',
-    'visitor_gate_console',
+    'complaints_raise_ticket',
   ],
 };
 
