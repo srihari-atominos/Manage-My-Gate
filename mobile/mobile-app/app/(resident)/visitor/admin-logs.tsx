@@ -11,8 +11,10 @@ import { VisitorLogDetailsModal } from '@/src/features/visitor/components/histor
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
 import { mapBackendPassToHistoryItem } from '@/src/features/visitor/utils/mapBackendPassToHistoryItem';
 import { downloadCSVFile } from '@/src/utils/downloadHelper';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function AdminGateLogsScreen() {
+  const { t } = useTranslation();
   const {
     communityPasses,
     pagination,
@@ -197,12 +199,12 @@ export default function AdminGateLogsScreen() {
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search visitor, vehicle plate, guard or villa..."
+        searchPlaceholder={t('search_visitor_vehicle_plate_guard_or_villa', 'Search visitor, vehicle plate, guard or villa...')}
         sortOptions={[
-          { label: 'All Logs', value: 'ALL' },
-          { label: 'Inside Now', value: 'ACTIVE' },
-          { label: 'Completed', value: 'EXPIRED' },
-          { label: 'Revoked/Denied', value: 'REVOKED' },
+          { label: t('all_logs', 'All Logs'), value: 'ALL' },
+          { label: t('inside_now', 'Inside Now'), value: 'ACTIVE' },
+          { label: t('completed', 'Completed'), value: 'EXPIRED' },
+          { label: t('revoked_denied', 'Revoked/Denied'), value: 'REVOKED' },
         ]}
         currentSort={activeTab}
         onSortChange={(tabKey) => {
@@ -226,8 +228,8 @@ export default function AdminGateLogsScreen() {
 
   return (
     <ScreenShell
-      title="Admin Gate Audit Logs"
-      subtitle="Complete community entry/exit logs & timestamp security audit"
+      title={t('admin_gate_audit_logs', 'Admin Gate Audit Logs')}
+      subtitle={t('complete_community_entry_exit_logs_times', 'Complete community entry/exit logs & timestamp security audit')}
       iconName="ShieldCheck"
       headerRight={
         <ExportReportButton onExport={handleExportCSV} loading={exporting} />
@@ -249,8 +251,8 @@ export default function AdminGateLogsScreen() {
           loading={status === 'loading' && !refreshing && !loadingMore && communityPasses.length === 0}
           ListHeaderComponent={renderHeader()}
           emptyIcon="ClipboardList"
-          emptyTitle="No Audit Logs Found"
-          emptySubtitle="No visitor entry/exit records match your filter criteria."
+          emptyTitle={t('no_audit_logs_found', 'No Audit Logs Found')}
+          emptySubtitle={t('no_visitor_entry_exit_records_match_your_filt', 'No visitor entry/exit records match your filter criteria.')}
           contentContainerClassName="px-4 pt-2 pb-28"
           renderItem={(log) => (
             <AdminGateLogCard

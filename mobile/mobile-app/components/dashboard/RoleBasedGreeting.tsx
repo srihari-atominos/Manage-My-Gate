@@ -273,21 +273,25 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
   unitName,
 }) => {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, translateText, language } = useTranslation();
   const [villaModalVisible, setVillaModalVisible] = React.useState(false);
 
   // 1. Time of day calculation
-  const timeGreeting = React.useMemo(() => getTimeOfDayGreeting(), []);
+  const timeGreeting = React.useMemo(() => getTimeOfDayGreeting(), [language]);
 
   // 2. Resolve personal display name (strictly the user's name, not role string)
   const displayName = React.useMemo(() => {
     return getUserDisplayName(user);
   }, [user]);
 
-  // 3. Dynamic unit / location pill: always accurately resolved
+  // 3. Dynamic unit / location pill: always accurately resolved and localized
   const dynamicLocation = React.useMemo(() => {
     return formatUnitLocation(user, unitName);
   }, [unitName, user]);
+
+  const localizedLocation = React.useMemo(() => {
+    return translateText(dynamicLocation);
+  }, [dynamicLocation, translateText, language]);
 
   return (
     <>
@@ -306,17 +310,17 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
         </View>
 
         {/* Right: Location / Villa Badge Pill adopting existing theme color with location symbol */}
-        {dynamicLocation ? (
+        {localizedLocation ? (
           <TouchableOpacity
             onPress={() => setVillaModalVisible(true)}
             activeOpacity={0.75}
             className="flex-row items-center gap-1 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-2.5 py-1 rounded-full shadow-2xs shrink-0"
             accessibilityRole="button"
-            accessibilityLabel={`Current location: ${dynamicLocation}`}
+            accessibilityLabel={`Current location: ${localizedLocation}`}
           >
-            <MapPin size={12} color="#FF6A00" strokeWidth={2.4} />
-            <Text className="text-[11.5px] font-bold font-sans text-primary dark:text-primary">
-              {dynamicLocation}
+            <MapPin size={13} color="#FF6A00" strokeWidth={2.4} />
+            <Text className="text-[12px] font-bold font-sans text-primary dark:text-primary">
+              {localizedLocation}
             </Text>
           </TouchableOpacity>
         ) : null}

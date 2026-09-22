@@ -17,6 +17,7 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface AdminGateLogItem {
   _id: string;
@@ -53,6 +54,7 @@ export const AdminGateLogCard: React.FC<AdminGateLogCardProps> = ({
   onForceCheckout,
   className,
 }) => {
+  const { t } = useTranslation();
   const visitorName = log.visitorName || log.rawPass?.visitorName || 'Visitor';
   const passType = (log.passType || log.category || log.rawPass?.passType || 'GUEST').toUpperCase();
   const shortKey = log.code || log.shortKey || log.rawPass?.shortKey || log.rawPass?.code || 'N/A';
@@ -137,7 +139,7 @@ export const AdminGateLogCard: React.FC<AdminGateLogCardProps> = ({
 
           {vehicleNo ? (
             <View className="w-full flex-row items-center justify-between pt-1 border-t border-border/20">
-              <Text className="text-[11px] text-muted-foreground">Vehicle Plate:</Text>
+              <Text className="text-[11px] text-muted-foreground">{t('vehicle_plate', 'Vehicle Plate:')}</Text>
               <Text className="text-[11px] font-mono font-bold text-foreground">{vehicleNo}</Text>
             </View>
           ) : null}
@@ -146,7 +148,7 @@ export const AdminGateLogCard: React.FC<AdminGateLogCardProps> = ({
             <View className="w-full flex-row items-center justify-between pt-1 border-t border-border/20">
               <View className="flex-row items-center gap-1">
                 <Clock size={12} className="text-status-success" />
-                <Text className="text-[11px] font-medium text-status-success">Duration Inside:</Text>
+                <Text className="text-[11px] font-medium text-status-success">{t('duration_inside', 'Duration Inside:')}</Text>
               </View>
               <Text className="text-[11px] font-bold text-foreground">{durationStr}</Text>
             </View>
@@ -163,7 +165,7 @@ export const AdminGateLogCard: React.FC<AdminGateLogCardProps> = ({
               className="h-8 px-3 rounded-lg flex-row items-center gap-1"
             >
               <LogOut size={13} color="#fff" />
-              <Text className="text-xs font-bold text-destructive-foreground">Force Check-Out</Text>
+              <Text className="text-xs font-bold text-destructive-foreground">{t('force_check_out', 'Force Check-Out')}</Text>
             </Button>
           ) : null}
 
@@ -173,7 +175,7 @@ export const AdminGateLogCard: React.FC<AdminGateLogCardProps> = ({
             onPress={() => onPress?.(log)}
             className="h-8 px-3 rounded-lg flex-row items-center gap-1"
           >
-            <Text className="text-xs font-semibold text-foreground">Inspect Trail</Text>
+            <Text className="text-xs font-semibold text-foreground">{t('inspect_trail', 'Inspect Trail')}</Text>
             <ChevronRight size={13} className="text-muted-foreground" />
           </Button>
         </View>

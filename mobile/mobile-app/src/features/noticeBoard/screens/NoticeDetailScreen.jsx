@@ -22,10 +22,12 @@ import {
 } from '../components';
 import { Divider } from '@/components/common/Divider';
 import { Pin, FileText, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 function NoticeDetailContent() {
   const { id } = useLocalSearchParams();
   const [showMetadata, setShowMetadata] = useState(false);
+  const { t, translateText, tCategoryName } = useTranslation();
 
   const {
     selectedNotice,
@@ -195,12 +197,12 @@ function NoticeDetailContent() {
             {selectedNotice.isPinned && (
               <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-md">
                 <Icon as={Pin} size={12} className="text-primary me-1" />
-                <Text className="text-primary text-xs font-semibold">Pinned</Text>
+                <Text className="text-primary text-xs font-semibold">{t('pinned', 'Pinned')}</Text>
               </View>
             )}
-            <StatusBadge label={selectedNotice.category || 'General'} variant="neutral" size="sm" />
+            <StatusBadge label={tCategoryName(selectedNotice.category || 'General')} variant="neutral" size="sm" />
             <StatusBadge
-              label={selectedNotice.status || 'Published'}
+              label={t(`status_${(selectedNotice.status || 'published').toLowerCase()}`, selectedNotice.status || 'Published')}
               variant={getStatusVariant(selectedNotice.status || 'Published')}
               size="sm"
             />
@@ -208,7 +210,7 @@ function NoticeDetailContent() {
 
           {/* 2. Notice Title */}
           <Text className="text-foreground text-2xl font-bold mb-1.5 text-start">
-            {selectedNotice.title}
+            {translateText(selectedNotice.title)}
           </Text>
 
           {/* 3. Subtitle / Timestamp & Author */}
@@ -217,7 +219,7 @@ function NoticeDetailContent() {
               formattedPostedDate && formattedPostedTime
                 ? `${formattedPostedDate} • ${formattedPostedTime}`
                 : formattedPostedDate,
-              `Posted by ${creatorName}`,
+              `${t('posted_by', 'Posted by')} ${creatorName}`,
             ]
               .filter(Boolean)
               .join(' • ')}
@@ -229,14 +231,14 @@ function NoticeDetailContent() {
           {/* 5. Notice Announcement Body Content */}
           <View className="py-3">
             <Text className="text-foreground text-base leading-relaxed text-start">
-              {selectedNotice.description}
+              {translateText(selectedNotice.description || selectedNotice.content)}
             </Text>
           </View>
 
           {/* 6. Attachments (PDF / Document cards & Image Gallery) */}
           {attachments.length > 0 && (
             <View className="my-3 gap-2">
-              <Text className="text-foreground font-semibold text-sm">Attachments</Text>
+              <Text className="text-foreground font-semibold text-sm">{t('attachments', 'Attachments')}</Text>
               {attachments.map((att, idx) => {
                 const attUrl = typeof att === 'string' ? att : att.url || att.filename;
                 const attName =
@@ -305,41 +307,41 @@ function NoticeDetailContent() {
               className="flex-row items-center justify-between px-4 py-3 w-full"
             >
               <Text className="text-muted-foreground font-semibold text-xs uppercase tracking-wider">
-                {showMetadata ? 'Hide Notice Details' : 'View Notice Details & Audience'}
+                {showMetadata ? t('hide_notice_details', 'Hide Notice Details') : t('view_notice_details', 'View Notice Details & Audience')}
               </Text>
               {showMetadata ? <ChevronUp size={16} color="#737373" /> : <ChevronDown size={16} color="#737373" />}
             </Button>
 
             {showMetadata && (
               <View className="p-4 pt-0">
-                <DetailRow label="Posted by" value={creatorName} iconName="User" />
-                <DetailRow label="Posted On" value={formattedPostedDate || 'N/A'} iconName="Calendar" />
-                <DetailRow label="Expiry" value={formattedExpiryDate || 'N/A'} iconName="CalendarOff" />
+                <DetailRow label={t('posted_by', 'Posted By')} value={creatorName} iconName="User" />
+                <DetailRow label={t('posted_on', 'Posted On')} value={formattedPostedDate || t('n_a', 'N/A')} iconName="Calendar" />
+                <DetailRow label={t('expiry', 'Expiry')} value={formattedExpiryDate || t('n_a', 'N/A')} iconName="CalendarOff" />
                 <DetailRow
-                  label="Audience"
+                  label={t('audience', 'Audience')}
                   value={(() => {
                     const aud = selectedNotice.targetAudience;
                     if (!aud || aud.targetType === 'ALL') {
-                      return 'All Community Members';
+                      return t('all_community_members', 'All Community Members');
                     }
                     if (aud.targetType === 'ROLES') {
                       const rolesList = (aud.targetRoles || [])
                         .map((r) => (typeof r === 'string' ? r : r.name || r._id))
                         .filter(Boolean);
-                      return rolesList.length > 0 ? `Roles: ${rolesList.join(', ')}` : 'Specific Roles';
+                      return rolesList.length > 0 ? `${t('roles', 'Roles')}: ${rolesList.join(', ')}` : t('specific_roles', 'Specific Roles');
                     }
                     if (aud.targetType === 'RESIDENCY_TYPES') {
-                      return (aud.targetResidencyTypes || []).join(', ') || 'Specific Residents';
+                      return (aud.targetResidencyTypes || []).join(', ') || t('specific_residents', 'Specific Residents');
                     }
                     if (aud.targetType === 'CUSTOM') {
                       const userNames = (aud.targetUsers || [])
                         .map((u) => (typeof u === 'string' ? u : u.name || u.username || u.email))
                         .filter(Boolean);
                       return userNames.length > 0
-                        ? `Specific Member(s): ${userNames.join(', ')}`
-                        : 'Specific Member';
+                        ? `${t('specific_members', 'Specific Member(s)')}: ${userNames.join(', ')}`
+                        : t('specific_member', 'Specific Member');
                     }
-                    return aud.targetType || 'Community';
+                    return aud.targetType || t('community', 'Community');
                   })()}
                   iconName="Users"
                   isLast
@@ -354,11 +356,11 @@ function NoticeDetailContent() {
       <View className="absolute bottom-0 left-0 right-0">
         <ActionBar
           primaryAction={{
-            label: isBookmarked ? 'Bookmarked' : 'Add to Bookmarks',
+            label: isBookmarked ? t('bookmarked', 'Bookmarked') : t('add_to_bookmarks', 'Add to Bookmarks'),
             onPress: handleBookmarkToggle,
           }}
           secondaryAction={{
-            label: 'Share',
+            label: t('share', 'Share'),
             onPress: handleShare,
           }}
         />
@@ -371,11 +373,12 @@ export default function NoticeDetailScreen() {
   const { canUpdate, isAdmin } = useNoticeBoard();
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { t } = useTranslation();
 
   return (
     <ErrorBoundary>
       <ScreenShell 
-        title="Notice Detail"
+        title={t('notice_details', 'Notice Details')}
         headerRight={
           (canUpdate || isAdmin) ? (
             <Button
@@ -387,7 +390,7 @@ export default function NoticeDetailScreen() {
               })}
               accessibilityLabel="Edit Notice"
             >
-              Edit
+              {t('edit', 'Edit')}
             </Button>
           ) : null
         }

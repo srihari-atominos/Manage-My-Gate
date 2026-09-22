@@ -35,7 +35,7 @@ import {
   HankenGrotesk_700Bold,
 } from '@expo-google-fonts/hanken-grotesk';
 import storage from '../src/utils/storage';
-import i18n from '../src/utils/i18n';
+import i18n, { I18nProvider } from '../src/utils/i18n';
 import * as SplashScreen from 'expo-splash-screen';
 import useAutoUpdate from '../src/hooks/useAutoUpdate';
 import usePushNotifications from '../src/features/notification/hooks/usePushNotifications';
@@ -242,13 +242,15 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View className={colorScheme === 'dark' ? 'dark flex-1 bg-background' : 'flex-1 bg-background'}>
           <Provider store={store}>
-            <BottomSheetModalProvider>
-              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-              <Stack screenOptions={{ headerShown: false }} />
-              <AuthRouteGuard />
-              <GlobalNotificationPresenter />
-              <PortalHost />
-            </BottomSheetModalProvider>
+            <I18nProvider>
+              <BottomSheetModalProvider>
+                <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+                <Stack screenOptions={{ headerShown: false }} />
+                <AuthRouteGuard />
+                <GlobalNotificationPresenter />
+                <PortalHost />
+              </BottomSheetModalProvider>
+            </I18nProvider>
           </Provider>
         </View>
       </GestureHandlerRootView>

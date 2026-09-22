@@ -154,7 +154,7 @@ const StatusBadge = React.forwardRef<View, StatusBadgeProps>(
   ({ label, variant = 'neutral', size = 'md', dot = false, className, style, ...props }, ref) => {
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === 'dark';
-    const { t } = useTranslation();
+    const { t, hasKey, translateText, language } = useTranslation();
 
     const validVariant = STATUS_COLORS[variant] ? variant : 'neutral';
     const colorConfig = isDark ? STATUS_COLORS[validVariant].dark : STATUS_COLORS[validVariant].light;
@@ -164,12 +164,13 @@ const StatusBadge = React.forwardRef<View, StatusBadgeProps>(
       return null;
     }
 
-    const normalizedKey = `status_${rawLabel.toLowerCase().replace(/[\s\/-]+/g, '_')}`;
-    const i18nResult = t(normalizedKey, t(rawLabel.toLowerCase(), rawLabel));
-    const displayLabel =
-      i18nResult && i18nResult !== normalizedKey && !i18nResult.startsWith('status_')
-        ? i18nResult
-        : rawLabel;
+    const cleanUnder = rawLabel.toLowerCase().replace(/[\s\/-]+/g, '_');
+    const normalizedKey = `status_${cleanUnder}`;
+    const displayLabel = hasKey(normalizedKey)
+      ? t(normalizedKey)
+      : hasKey(cleanUnder)
+      ? t(cleanUnder)
+      : translateText(rawLabel);
 
     return (
       <View

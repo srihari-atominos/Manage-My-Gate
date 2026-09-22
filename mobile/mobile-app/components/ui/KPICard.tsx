@@ -5,6 +5,7 @@ import * as LucideIcons from 'lucide-react-native';
 import { TrendingDown, TrendingUp } from 'lucide-react-native';
 import * as React from 'react';
 import { Platform, Pressable, View } from 'react-native';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface KPICardProps {
   title: string;
@@ -102,6 +103,8 @@ const KPICard = React.forwardRef<View, KPICardProps>(
     },
     ref
   ) => {
+    const { translateText } = useTranslation();
+
     // Safe Dynamic Lucide icon lookup
     const IconComponent = React.useMemo(() => {
       if (!iconName) return null;
@@ -158,7 +161,7 @@ const KPICard = React.forwardRef<View, KPICardProps>(
                     : 'text-red-600 dark:text-red-400'
                 )}
               >
-                {trend.value}
+                {translateText(trend.value)}
               </Text>
             </View>
           ) : null}
@@ -179,7 +182,7 @@ const KPICard = React.forwardRef<View, KPICardProps>(
           className="text-[12px] text-muted-foreground mt-0.5 font-medium font-sans"
           numberOfLines={1}
         >
-          {title}
+          {translateText(title)}
         </Text>
 
         {/* Optional Subtitle */}
@@ -188,7 +191,7 @@ const KPICard = React.forwardRef<View, KPICardProps>(
             className="text-[11px] text-muted-foreground/80 mt-0.5 font-sans"
             numberOfLines={1}
           >
-            {subtitle}
+            {translateText(subtitle)}
           </Text>
         ) : null}
       </Pressable>

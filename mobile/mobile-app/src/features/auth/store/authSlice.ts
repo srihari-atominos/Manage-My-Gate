@@ -1198,6 +1198,9 @@ const authSlice = createSlice({
             ...state.user,
             ...action.payload,
           };
+          if (action.payload && (action.payload.avatar === null || action.payload.avatar === '')) {
+            updated.avatar = null;
+          }
           state.user = updated;
           storage.setItem('user', JSON.stringify(updated)).catch(() => {});
         }

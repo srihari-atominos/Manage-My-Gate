@@ -4,6 +4,7 @@ import { Text } from '../ui/text';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, Clock, ShieldCheck, Zap } from 'lucide-react-native';
 import FeatureIcon from '../ui/FeatureIcon';
+import { useTranslation, translateText } from '@/src/utils/i18n';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenShell } from '../ui/ScreenShell';
@@ -32,14 +33,20 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
   iconColor = '#0f172a',
   description,
   actionButton,
-  noticeBadge = 'Active Sub-Feature',
+  noticeBadge,
 }) => {
   const router = useRouter();
+  const { t } = useTranslation();
+
+  const translatedTitle = translateText(title);
+  const translatedCategory = translateText(categoryName);
+  const translatedDesc = translateText(description);
+  const badgeLabel = noticeBadge ? translateText(noticeBadge) : t('active_sub_feature', 'Active Sub-Feature');
 
   return (
     <ScreenShell
-      title={title}
-      subtitle={categoryName}
+      title={translatedTitle}
+      subtitle={translatedCategory}
       iconName={iconName as any}
       showBackButton={true}
     >
@@ -53,13 +60,13 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
               </View>
               <View className="flex-1">
                 <View className="flex-row items-center gap-2 flex-wrap">
-                  <Text className="text-base font-extrabold text-foreground">{title}</Text>
+                  <Text className="text-base font-extrabold text-foreground">{translatedTitle}</Text>
                   <View className="bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                    <Text className="text-[10px] font-bold text-emerald-600">{noticeBadge}</Text>
+                    <Text className="text-[10px] font-bold text-emerald-600">{badgeLabel}</Text>
                   </View>
                 </View>
                 <Text className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                  {description}
+                  {translatedDesc}
                 </Text>
               </View>
             </View>
@@ -69,12 +76,12 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
               <View className="flex-row items-center gap-1.5">
                 <Zap size={13} className="text-primary" />
                 <Text className="text-[11px] font-semibold text-foreground">
-                  Domain: <Text className="font-extrabold text-primary">{categoryName}</Text>
+                  {t('domain_label', 'Domain')}: <Text className="font-extrabold text-primary">{translatedCategory}</Text>
                 </Text>
               </View>
               <View className="bg-muted/60 px-2.5 py-1 rounded-lg border border-border">
                 <Text className="text-[10px] font-mono text-muted-foreground">
-                  Store: {sharedSlice}
+                  {t('store_label', 'Store')}: {sharedSlice}
                 </Text>
               </View>
             </View>
@@ -86,11 +93,11 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
               <View className="flex-row items-center gap-2">
                 <ShieldCheck size={16} color="#6366f1" />
                 <Text className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
-                  Required Permission: <Text className="font-mono text-indigo-600">{permission}</Text>
+                  {t('required_permission', 'Required Permission')}: <Text className="font-mono text-indigo-600">{permission}</Text>
                 </Text>
               </View>
               <View className="bg-indigo-600 px-2 py-0.5 rounded-full">
-                <Text className="text-[9px] font-bold text-white">Granted</Text>
+                <Text className="text-[9px] font-bold text-white">{t('granted', 'Granted')}</Text>
               </View>
             </View>
           ) : null}
@@ -99,27 +106,27 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
           <View className="flex-row gap-3">
             <View className="flex-1 bg-card border border-border rounded-2xl p-3 shadow-xs">
               <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-[10px] font-bold text-muted-foreground uppercase">Status</Text>
+                <Text className="text-[10px] font-bold text-muted-foreground uppercase">{t('status_label', 'Status')}</Text>
                 <CheckCircle2 size={14} color="#10b981" />
               </View>
-              <Text className="text-base font-extrabold text-foreground">Live & Synced</Text>
-              <Text className="text-[10px] text-muted-foreground mt-0.5">Updated just now</Text>
+              <Text className="text-base font-extrabold text-foreground">{t('live_synced', 'Live & Synced')}</Text>
+              <Text className="text-[10px] text-muted-foreground mt-0.5">{t('updated_just_now', 'Updated just now')}</Text>
             </View>
 
             <View className="flex-1 bg-card border border-border rounded-2xl p-3 shadow-xs">
               <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-[10px] font-bold text-muted-foreground uppercase">Activity</Text>
+                <Text className="text-[10px] font-bold text-muted-foreground uppercase">{t('activity_label', 'Activity')}</Text>
                 <Clock size={14} color="#03A9F4" />
               </View>
-              <Text className="text-base font-extrabold text-foreground">Connected</Text>
-              <Text className="text-[10px] text-muted-foreground mt-0.5">Real-time WebSocket</Text>
+              <Text className="text-base font-extrabold text-foreground">{t('connected', 'Connected')}</Text>
+              <Text className="text-[10px] text-muted-foreground mt-0.5">{t('realtime_ws', 'Real-time WebSocket')}</Text>
             </View>
           </View>
 
           {/* Action Console Panel */}
           <View className="bg-card border border-border rounded-2xl p-4 gap-3 shadow-xs">
             <Text className="text-xs font-extrabold text-foreground uppercase tracking-wider">
-              Sub-Feature Console
+              {t('subfeature_console', 'Sub-Feature Console')}
             </Text>
             
             <View className="bg-muted/40 border border-dashed border-border rounded-xl p-6 items-center justify-center gap-3">
@@ -127,10 +134,10 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
                 <FeatureIcon iconName={iconName} color={iconColor} size={20} />
               </View>
               <Text className="text-sm font-extrabold text-foreground text-center">
-                {title} Active View
+                {translatedTitle} {t('active_view', 'Active View')}
               </Text>
               <Text className="text-xs text-muted-foreground text-center max-w-[260px]">
-                This view is connected to <Text className="font-bold">{sharedSlice}</Text> and ready for interactive sub-feature operations.
+                {t('subfeature_ready_desc', 'This view is connected to state and ready for interactive sub-feature operations.')}
               </Text>
 
               {actionButton ? (
@@ -140,7 +147,7 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
                   className="mt-2 bg-blue-600 active:bg-blue-700 px-4 py-2.5 rounded-xl items-center justify-center"
                 >
                   <Text className="text-xs font-bold text-white">
-                    {actionButton.label}
+                    {translateText(actionButton.label)}
                   </Text>
                 </TouchableOpacity>
               ) : null}

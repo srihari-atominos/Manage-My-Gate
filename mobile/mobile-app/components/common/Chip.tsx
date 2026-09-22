@@ -3,6 +3,7 @@ import { Pressable, View, PressableProps } from 'react-native';
 import { Text } from '../ui/text';
 import { LucideIcon, X } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface ChipProps extends PressableProps {
   label: string;
@@ -22,6 +23,7 @@ export const Chip = ({
   labelClassName,
   ...props
 }: ChipProps) => {
+  const { translateText } = useTranslation();
   return (
     <Pressable
       className={cn(
@@ -49,7 +51,7 @@ export const Chip = ({
           labelClassName
         )}
       >
-        {label}
+        {translateText(label)}
       </Text>
       {onRemove && (
         <Pressable onPress={onRemove} className="ms-1.5 p-0.5" accessibilityLabel="Remove">

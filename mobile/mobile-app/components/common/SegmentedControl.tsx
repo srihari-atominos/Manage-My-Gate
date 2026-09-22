@@ -37,41 +37,52 @@ export const SegmentedControl = ({
   return (
     <View
       className={cn(
-        'flex-row items-center rounded-xl bg-secondary border border-border p-1',
+        'rounded-xl bg-secondary border border-border p-1',
         className
       )}
     >
-      <Animated.View
-        className="absolute bottom-1 top-1 rounded-lg bg-card border border-border shadow-xs"
-        style={animatedStyle}
-      />
-      {segments.map((segment) => {
-        const isActive = segment.key === activeSegment;
-        const semantic = getStatusSemanticType(segment.key || segment.label);
-        const isStatusSegment = semantic !== 'default';
-        const statusStyle = isStatusSegment ? getStatusTabStyle(segment.key || segment.label, isActive) : null;
+      <View className="relative flex-row items-center w-full" style={{ position: 'relative' }}>
+        <Animated.View
+          className="rounded-lg bg-card border border-border shadow-xs"
+          style={[
+            {
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              zIndex: 0,
+            },
+            animatedStyle,
+          ]}
+        />
+        {segments.map((segment) => {
+          const isActive = segment.key === activeSegment;
+          const semantic = getStatusSemanticType(segment.key || segment.label);
+          const isStatusSegment = semantic !== 'default';
+          const statusStyle = isStatusSegment ? getStatusTabStyle(segment.key || segment.label, isActive) : null;
 
-        return (
-          <Pressable
-            key={segment.key}
-            onPress={() => onChange(segment.key)}
-            className="flex-1 items-center justify-center py-2"
-          >
-            <Text
-              className={cn(
-                'text-[13px] font-semibold font-sans',
-                isActive
-                  ? isStatusSegment && statusStyle
-                    ? statusStyle.textClass
-                    : 'text-foreground'
-                  : 'text-muted-foreground'
-              )}
+          return (
+            <Pressable
+              key={segment.key}
+              onPress={() => onChange(segment.key)}
+              className="flex-1 items-center justify-center py-2 z-10"
+              style={{ zIndex: 1 }}
             >
-              {segment.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+              <Text
+                className={cn(
+                  'text-[13px] font-semibold font-sans',
+                  isActive
+                    ? isStatusSegment && statusStyle
+                      ? statusStyle.textClass
+                      : 'text-foreground'
+                    : 'text-muted-foreground'
+                )}
+              >
+                {segment.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 };

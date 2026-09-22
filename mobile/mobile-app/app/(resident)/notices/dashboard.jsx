@@ -128,15 +128,14 @@ export default function NoticeDashboardScreen() {
             <Text className="text-xs font-semibold text-foreground">Manage</Text>
           </Button>
           <Button
-            variant="default"
             size="sm"
             onPress={() => router.push('/(resident)/notices/create')}
-            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 active:bg-emerald-700"
             accessibilityRole="button"
             accessibilityLabel="Create New Notice"
           >
             <Plus size={14} color="#ffffff" />
-            <Text className="text-xs font-bold text-primary-foreground">New Notice</Text>
+            <Text className="text-xs font-bold text-white">New Notice</Text>
           </Button>
         </View>
       }

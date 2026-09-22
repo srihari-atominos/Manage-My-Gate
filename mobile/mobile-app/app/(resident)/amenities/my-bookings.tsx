@@ -22,10 +22,12 @@ import { ResidentCancelModal } from '@/src/features/amenities/components/Residen
 import { AmenityReservation } from '@/src/features/amenities/types/amenityDomain.types';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { isFeatureAllowedForUser } from '@/src/utils/rbac';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function MyBookingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t, language } = useTranslation();
 
   // Guard: Users without resident booking permissions are redirected
   const hasBookingsAccess =
@@ -62,13 +64,13 @@ export default function MyBookingsScreen() {
   // Canonical presentation category tabs
   const sortOptions: SortOption[] = useMemo(
     () => [
-      { label: 'All', value: 'All' },
-      { label: 'Upcoming', value: 'Upcoming' },
-      { label: 'Awaiting Approval', value: 'Awaiting Approval' },
-      { label: 'Past', value: 'Past' },
-      { label: 'Cancelled', value: 'Cancelled' },
+      { label: t('all', 'All'), value: 'All' },
+      { label: t('upcoming', 'Upcoming'), value: 'Upcoming' },
+      { label: t('awaiting_approval', 'Awaiting Approval'), value: 'Awaiting Approval' },
+      { label: t('past', 'Past'), value: 'Past' },
+      { label: t('cancelled', 'Cancelled'), value: 'Cancelled' },
     ],
-    []
+    [t]
   );
 
   const handleCardPress = (reservation: AmenityReservation) => {
@@ -86,7 +88,7 @@ export default function MyBookingsScreen() {
 
   const renderReservationItem = (item: AmenityReservation) => (
     <ResidentReservationCard
-      key={item._id}
+      key={`${item._id}-${language}`}
       reservation={item}
       onPress={handleCardPress}
       onCancelPress={setCancelTarget}
@@ -100,7 +102,7 @@ export default function MyBookingsScreen() {
       <SearchFilterBar
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search by facility name or reservation number..."
+        searchPlaceholder={t('search_facility_pass', 'Search by facility name or reservation number...')}
         sortOptions={sortOptions}
         currentSort={selectedTab}
         onSortChange={(value) => setSelectedTab(value as ReservationFilterTab)}
@@ -112,8 +114,8 @@ export default function MyBookingsScreen() {
 
   return (
     <ScreenShell
-      title="My Amenity Bookings"
-      subtitle="View, manage & access your digital reservation passes"
+      title={t('my_amenity_bookings', 'My Amenity Bookings')}
+      subtitle={t('my_amenity_bookings_sub', 'View, manage & access your digital reservation passes')}
       iconName="CalendarCheck"
       loading={loading && reservations.length === 0}
       error={error?.message || null}
@@ -128,7 +130,7 @@ export default function MyBookingsScreen() {
           accessibilityLabel="Book Amenity"
         >
           <Plus size={15} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">Book Amenity</Text>
+          <Text className="text-xs font-bold text-primary-foreground">{t('book_amenity', 'Book Amenity')}</Text>
         </Button>
       }
     >
@@ -137,6 +139,8 @@ export default function MyBookingsScreen() {
         <PaginatedList
           data={filteredReservations}
           renderItem={renderReservationItem}
+          extraData={language}
+          keyExtractor={(item) => `${item._id}-${language}`}
           pagination={pagination || { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 }}
           onLoadMore={loadMore}
           onRefresh={refresh}
@@ -144,8 +148,8 @@ export default function MyBookingsScreen() {
           refreshing={isRefreshing}
           ListHeaderComponent={renderHeader()}
           emptyIcon="CalendarX"
-          emptyTitle="No Bookings Found"
-          emptySubtitle="You have no reservations matching this filter."
+          emptyTitle={t('no_bookings_found', 'No Bookings Found')}
+          emptySubtitle={t('no_bookings_matching_filter', 'You have no reservations matching this filter.')}
           contentContainerClassName="px-4 pt-3 pb-28"
         />
       </View>

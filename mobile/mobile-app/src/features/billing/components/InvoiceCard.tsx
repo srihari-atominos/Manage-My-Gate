@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/text';
 import { ListCard, formatDate } from '@/components/ui/ListCard';
 import { getStatusVariant } from '@/components/ui/StatusBadge';
 import { Invoice } from '../types';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface InvoiceCardProps {
   invoice: Invoice;
@@ -12,9 +13,10 @@ export interface InvoiceCardProps {
 }
 
 export function InvoiceCard({ invoice, onPress, className = '' }: InvoiceCardProps) {
+  const { t, translateText } = useTranslation();
   const invNo = invoice.invoiceNumber || invoice._id || '—';
-  const unitStr = invoice.unitNumber ? `Villa ${invoice.unitNumber}` : '—';
-  const residentStr = invoice.targetUser || 'Resident';
+  const unitStr = invoice.unitNumber ? `${t('villa_label', 'Villa')} ${invoice.unitNumber}` : '—';
+  const residentStr = invoice.targetUser ? translateText(invoice.targetUser) : t('resident', 'Resident');
   const subtitle = `${unitStr} • ${residentStr}`;
 
   const totalAmount =

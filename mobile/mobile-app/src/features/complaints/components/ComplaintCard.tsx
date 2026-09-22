@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { MapPin, ChevronRight, UserCheck, AlertTriangle, Sparkles, UserPlus } from 'lucide-react-native';
 import { Complaint, ComplaintStatus, ComplaintPriority } from '../types';
+import { useTranslation } from '@/src/utils/i18n';
 
 interface ComplaintCardProps {
   complaint: Complaint;
@@ -65,17 +66,18 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
   showAssignButton = false,
   actionButtons,
 }) => {
+  const { t, translateText } = useTranslation();
   const isPendingConfirmation =
     complaint.status === 'Work Completed' || complaint.status === 'Waiting For Resident Confirmation';
   const isOpenState = ['Submitted', 'Open', 'Waiting For Assignment'].includes(complaint.status);
   const isUnassigned = !complaint.assignedTechnicianName && !complaint.vendor;
 
   const locationStr = [
-    complaint.location?.flat ? `Flat ${complaint.location.flat}` : null,
-    complaint.location?.floor ? `Floor ${complaint.location.floor}` : null,
+    complaint.location?.flat ? `${t('flat_label', 'Flat')} ${complaint.location.flat}` : null,
+    complaint.location?.floor ? `${t('floor_label', 'Floor')} ${complaint.location.floor}` : null,
     complaint.location?.building,
-    complaint.location?.tower ? `Tower ${complaint.location.tower}` : null,
-    complaint.location?.commonArea,
+    complaint.location?.tower ? `${t('tower_label', 'Tower')} ${complaint.location.tower}` : null,
+    complaint.location?.commonArea ? translateText(complaint.location.commonArea) : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -99,7 +101,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
       const nowTime = Date.now();
       const diffHours = Math.round((dueTime - nowTime) / (1000 * 60 * 60));
       if (diffHours < 0) {
-        return { label: 'SLA Breached', isBreached: true };
+        return { label: t('sla_breached', 'SLA Breached'), isBreached: true };
       }
     }
     return null;
@@ -162,7 +164,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
           {/* Category & Location Row */}
           <View className="flex-row items-center flex-wrap gap-1.5 mb-1">
             <Text className="text-xs font-medium text-muted-foreground text-start">
-              Category: <Text className="font-semibold text-foreground">{complaint.category}</Text>
+              {t('category', 'Category')}: <Text className="font-semibold text-foreground">{translateText(complaint.category)}</Text>
             </Text>
 
             {locationStr ? (
@@ -178,7 +180,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
           {/* Resident Info Row */}
           {complaint.residentName ? (
             <Text className="text-xs font-medium text-muted-foreground text-start">
-              Resident: <Text className="font-semibold text-foreground">{complaint.residentName}</Text>
+              {t('resident', 'Resident')}: <Text className="font-semibold text-foreground">{complaint.residentName}</Text>
             </Text>
           ) : null}
         </View>
@@ -192,7 +194,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
           <View className="flex-row items-center flex-1 me-2">
             <Icon as={Sparkles} size={12} className="text-amber-600 dark:text-amber-400 me-1.5" />
             <Text className="text-xs font-semibold text-amber-900 dark:text-amber-200 flex-1 text-start">
-              Work Completed • Rate & Confirm
+              {t('work_completed_rate_confirm', 'Work Completed • Rate & Confirm')}
             </Text>
           </View>
           {onConfirmPress ? (
@@ -205,7 +207,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
                 onConfirmPress();
               }}
             >
-              Rate ⭐
+              {t('rate_action', 'Rate')} ⭐
             </Button>
           ) : null}
         </View>
@@ -216,9 +218,9 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
         <View className="flex-1 me-2 flex-row items-center">
           <Icon as={UserCheck} size={12} className="text-muted-foreground me-1.5" />
           <Text className="text-xs font-medium text-muted-foreground text-start" numberOfLines={1}>
-            Assigned: {' '}
+            {t('assigned', 'Assigned')}: {' '}
             <Text className={`font-semibold ${isUnassigned ? 'text-muted-foreground' : 'text-foreground'}`}>
-              {complaint.assignedTechnicianName || complaint.vendor || 'Unassigned'}
+              {complaint.assignedTechnicianName || complaint.vendor || t('unassigned', 'Unassigned')}
             </Text>
           </Text>
         </View>
@@ -240,7 +242,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
           >
             <Icon as={UserPlus} size={12} className={`me-1 ${isUnassigned ? 'text-primary-foreground' : 'text-foreground'}`} />
             <Text className={`text-xs font-bold ${isUnassigned ? 'text-primary-foreground' : 'text-foreground'}`}>
-              {isUnassigned ? 'Assign Staff' : 'Reassign'}
+              {isUnassigned ? t('assign_staff', 'Assign Staff') : t('reassign', 'Reassign')}
             </Text>
           </TouchableOpacity>
         ) : isOpenState && onCancelPress ? (
@@ -252,7 +254,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
             }}
             className="bg-card border border-red-500/40 px-2.5 py-1 rounded-lg flex-row items-center justify-center"
           >
-            <Text className="text-xs font-semibold text-red-600 dark:text-red-400">Cancel</Text>
+            <Text className="text-xs font-semibold text-red-600 dark:text-red-400">{t('cancel', 'Cancel')}</Text>
           </TouchableOpacity>
         ) : (
           <Text className="text-[11px] font-semibold text-muted-foreground">{dateStr}</Text>

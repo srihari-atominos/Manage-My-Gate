@@ -35,15 +35,16 @@ import {
   Camera,
 } from 'lucide-react-native';
 import { parseAndValidateAppBarcode } from '@/src/utils/appBarcodeProtocol';
-
-const GATE_TABS = [
-  { key: 'CONSOLE', label: 'Console' },
-  { key: 'WALK_INS', label: 'Walk-Ins' },
-  { key: 'INSIDE', label: 'Inside' },
-  { key: 'DIRECTORY', label: 'Directory' },
-];
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function GateConsoleScreen() {
+  const { t } = useTranslation();
+  const GATE_TABS = [
+    { key: 'CONSOLE', label: t('console', 'Console') },
+    { key: 'WALK_INS', label: t('walk_ins', 'Walk-Ins') },
+    { key: 'INSIDE', label: t('inside', 'Inside') },
+    { key: 'DIRECTORY', label: t('directory', 'Directory') },
+  ];
   const activeOrgId = useSelector(selectActiveOrgId);
   const authUser = useSelector(selectAuthUser);
   const {
@@ -440,7 +441,7 @@ export default function GateConsoleScreen() {
               <View className="flex-row items-center justify-between border-b border-border/40 pb-2.5">
                 <View className="flex-row items-center gap-2">
                   <Barcode size={18} className="text-emerald-500" />
-                  <Text className="text-sm font-bold text-foreground">Barcode & QR Gate Scanner</Text>
+                  <Text className="text-sm font-bold text-foreground">{t('barcode_qr_gate_scanner', 'Barcode & QR Gate Scanner')}</Text>
                 </View>
 
                 {/* Top Controls: Light / Torch, Minimize/Expand, Fullscreen */}
@@ -453,7 +454,7 @@ export default function GateConsoleScreen() {
                           ? 'bg-amber-400 border-amber-300'
                           : 'bg-muted border-border'
                       }`}
-                      accessibilityLabel="Toggle Scanner Light"
+                      accessibilityLabel={t('toggle_scanner_light', 'Toggle Scanner Light')}
                     >
                       {inlineTorchOn ? (
                         <Zap size={14} color="#000000" fill="#000000" />
@@ -466,7 +467,7 @@ export default function GateConsoleScreen() {
                   <TouchableOpacity
                     onPress={() => setIsScannerMinimized((prev) => !prev)}
                     className="p-1.5 rounded-lg border border-border bg-muted"
-                    accessibilityLabel={isScannerMinimized ? 'Expand scanner' : 'Minimize scanner'}
+                    accessibilityLabel={isScannerMinimized ? t('expand_scanner', 'Expand scanner') : t('minimize_scanner', 'Minimize scanner')}
                   >
                     {isScannerMinimized ? (
                       <Maximize2 size={14} className="text-foreground" />
@@ -478,7 +479,7 @@ export default function GateConsoleScreen() {
                   <TouchableOpacity
                     onPress={() => setQrScannerOpen(true)}
                     className="p-1.5 rounded-lg border border-border bg-muted"
-                    accessibilityLabel="Open Fullscreen Scanner"
+                    accessibilityLabel={t('open_fullscreen_scanner', 'Open Fullscreen Scanner')}
                   >
                     <Maximize2 size={14} className="text-foreground" />
                   </TouchableOpacity>
@@ -491,7 +492,7 @@ export default function GateConsoleScreen() {
                   <View className="h-44 w-full rounded-xl bg-black/90 items-center justify-center p-4 border border-border/40 gap-2">
                     <Camera size={28} color="#94a3b8" />
                     <Text className="text-xs text-white/80 font-semibold text-center">
-                      Camera access required to scan barcodes
+                      {t('camera_access_required_to_scan_barcodes', 'Camera access required to scan barcodes')}
                     </Text>
                     <Button
                       size="sm"
@@ -499,7 +500,7 @@ export default function GateConsoleScreen() {
                       onPress={requestCameraPermission}
                       className="bg-emerald-600 px-4 py-1.5 rounded-lg mt-1"
                     >
-                      <Text className="text-xs font-bold text-white">Enable Camera</Text>
+                      <Text className="text-xs font-bold text-white">{t('enable_camera', 'Enable Camera')}</Text>
                     </Button>
                   </View>
                 ) : (
@@ -517,7 +518,7 @@ export default function GateConsoleScreen() {
                       mode="barcode"
                       frameHeight={120}
                       frameWidth={260}
-                      instruction="Fit Barcode inside Box"
+                      instruction={t('fit_barcode_inside_box', 'Fit Barcode inside Box')}
                     />
                   </View>
                 )
@@ -528,9 +529,9 @@ export default function GateConsoleScreen() {
                 >
                   <View className="flex-row items-center gap-2">
                     <Barcode size={16} className="text-emerald-600 dark:text-emerald-400" />
-                    <Text className="text-xs font-semibold text-foreground">Scanner Minimized</Text>
+                    <Text className="text-xs font-semibold text-foreground">{t('scanner_minimized', 'Scanner Minimized')}</Text>
                   </View>
-                  <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Expand Camera</Text>
+                  <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{t('expand_camera', 'Expand Camera')}</Text>
                 </TouchableOpacity>
               )}
 
@@ -540,7 +541,7 @@ export default function GateConsoleScreen() {
                   <TextInput
                     value={passCode}
                     onChangeText={setPassCode}
-                    placeholder="Enter 6-digit PIN, Plate, or Name..."
+                    placeholder={t('enter_6_digit_pin_plate_or_name', 'Enter 6-digit PIN, Plate, or Name...')}
                     keyboardType="default"
                     leftIcon={Search}
                     inputClassName="font-mono text-sm tracking-wider"
@@ -552,7 +553,7 @@ export default function GateConsoleScreen() {
                   onPress={() => handleVerifyPass()}
                   disabled={loading || !passCode.trim()}
                   className="h-12 px-4 rounded-xl bg-emerald-600 active:bg-emerald-700"
-                  accessibilityLabel="Search Pass Code"
+                  accessibilityLabel={t('search_pass_code', 'Search Pass Code')}
                 >
                   <Search size={18} color="#FFFFFF" strokeWidth={2.5} />
                 </Button>
@@ -563,29 +564,29 @@ export default function GateConsoleScreen() {
                 variant="outline"
                 className="flex-row items-center justify-center gap-2 h-11 rounded-xl border-emerald-500/30 bg-emerald-500/10 active:bg-emerald-500/20"
                 onPress={() => setQrScannerOpen(true)}
-                accessibilityLabel="Open Fullscreen Barcode Scanner"
+                accessibilityLabel={t('open_fullscreen_barcode_scanner', 'Open Fullscreen Barcode Scanner')}
               >
                 <Barcode size={18} className="text-emerald-600 dark:text-emerald-400" />
                 <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  Open Fullscreen Scanner
+                  {t('open_fullscreen_scanner', 'Open Fullscreen Scanner')}
                 </Text>
               </Button>
             </View>
 
             {/* Guard Quick Actions */}
             <View className="bg-card border border-border rounded-2xl p-4 gap-3">
-              <Text className="text-sm font-bold text-foreground">Guard Gate Actions</Text>
+              <Text className="text-sm font-bold text-foreground">{t('guard_gate_actions', 'Guard Gate Actions')}</Text>
 
               <View className="flex-row gap-3">
                 <Button
                   variant="outline"
                   onPress={() => setWalkInModalOpen(true)}
                   className="flex-1 h-auto py-3.5 rounded-xl flex-col items-center justify-center gap-1.5 bg-amber-500/10 border-amber-500/20"
-                  accessibilityLabel="Initiate Walk-In"
+                  accessibilityLabel={t('initiate_walk_in', 'Initiate Walk-In')}
                 >
                   <ShieldAlert size={22} className="text-amber-600 dark:text-amber-400" />
                   <Text className="text-xs font-bold text-amber-600 dark:text-amber-400 text-center">
-                    Initiate Walk-In
+                    {t('initiate_walk_in', 'Initiate Walk-In')}
                   </Text>
                 </Button>
 
@@ -593,11 +594,11 @@ export default function GateConsoleScreen() {
                   variant="outline"
                   onPress={() => setActiveTab('DIRECTORY')}
                   className="flex-1 h-auto py-3.5 rounded-xl flex-col items-center justify-center gap-1.5 bg-primary/10 border-primary/20"
-                  accessibilityLabel="Villa Intercom Directory"
+                  accessibilityLabel={t('villa_directory', 'Villa Directory')}
                 >
                   <Search size={22} className="text-primary" />
                   <Text className="text-xs font-bold text-primary text-center">
-                    Villa Directory
+                    {t('villa_directory', 'Villa Directory')}
                   </Text>
                 </Button>
 
@@ -605,11 +606,11 @@ export default function GateConsoleScreen() {
                   variant="outline"
                   onPress={() => setActiveTab('INSIDE')}
                   className="flex-1 h-auto py-3.5 rounded-xl flex-col items-center justify-center gap-1.5 bg-red-500/10 border-red-500/20"
-                  accessibilityLabel="Gate Check-Out"
+                  accessibilityLabel={t('gate_check_out', 'Gate Check-Out')}
                 >
                   <LogOut size={22} className="text-red-600 dark:text-red-400" />
                   <Text className="text-xs font-bold text-red-600 dark:text-red-400 text-center">
-                    Gate Check-Out
+                    {t('gate_check_out', 'Gate Check-Out')}
                   </Text>
                 </Button>
               </View>
@@ -623,8 +624,8 @@ export default function GateConsoleScreen() {
         visible={scanResultSheetOpen}
         result={scanResult}
         loading={admitLoading}
-        primaryActionLabel={isInsideAction ? 'Gate Check-Out' : 'Confirm Gate Entry'}
-        secondaryActionLabel="Dismiss"
+        primaryActionLabel={isInsideAction ? t('gate_check_out', 'Gate Check-Out') : t('confirm_gate_entry', 'Confirm Gate Entry')}
+        secondaryActionLabel={t('dismiss', 'Dismiss')}
         onPrimaryAction={isInsideAction ? handleCheckOutFromConsole : handleAdmitVisitor}
         onSecondaryAction={() => setScanResultSheetOpen(false)}
         onClose={() => setScanResultSheetOpen(false)}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Avatar } from '@/components/common/Avatar';
@@ -21,6 +21,7 @@ export interface ProfileHeaderCardProps {
   className?: string;
   onAvatarPress?: () => void;
   showCameraBadge?: boolean;
+  isAvatarLoading?: boolean;
 }
 
 export const ProfileHeaderCard = ({
@@ -36,6 +37,7 @@ export const ProfileHeaderCard = ({
   className,
   onAvatarPress,
   showCameraBadge = false,
+  isAvatarLoading = false,
 }: ProfileHeaderCardProps) => {
   const { t, tRole } = useTranslation();
   const initialLetter = avatarFallback || (name ? name.charAt(0).toUpperCase() : 'U');
@@ -53,7 +55,7 @@ export const ProfileHeaderCard = ({
       {/* Avatar with Ring & Camera Badge */}
       <TouchableOpacity
         onPress={onAvatarPress}
-        disabled={!onAvatarPress}
+        disabled={!onAvatarPress || isAvatarLoading}
         activeOpacity={0.85}
         className="relative items-center justify-center"
         accessibilityRole={onAvatarPress ? 'button' : 'none'}
@@ -65,7 +67,12 @@ export const ProfileHeaderCard = ({
           size="xl"
           className="border-2 border-primary/40 bg-primary/10 h-20 w-20"
         />
-        {showCameraBadge && (
+        {isAvatarLoading && (
+          <View className="absolute inset-0 rounded-full bg-black/50 items-center justify-center">
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          </View>
+        )}
+        {showCameraBadge && !isAvatarLoading && (
           <View className="absolute -bottom-1 -right-1 size-7 rounded-full bg-primary border-2 border-card items-center justify-center shadow-xs">
             <Camera size={13} color="#FFFFFF" />
           </View>
@@ -75,12 +82,17 @@ export const ProfileHeaderCard = ({
       {onAvatarPress && (
         <TouchableOpacity
           onPress={onAvatarPress}
+          disabled={isAvatarLoading}
           activeOpacity={0.8}
           className="flex-row items-center gap-1.5 py-1 px-3 rounded-full bg-primary/10 border border-primary/20 -mt-1"
         >
-          <Camera size={12} className="text-primary" />
+          {isAvatarLoading ? (
+            <ActivityIndicator size={12} color="#0284c7" />
+          ) : (
+            <Camera size={12} className="text-primary" />
+          )}
           <Text className="text-xs font-bold text-primary">
-            {t('change_photo', 'Change Photo')}
+            {isAvatarLoading ? t('saving_photo', 'Saving Photo...') : t('change_photo', 'Change Photo')}
           </Text>
         </TouchableOpacity>
       )}

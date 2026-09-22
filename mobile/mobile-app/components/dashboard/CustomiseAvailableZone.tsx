@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { Text } from '../ui/text';
 import { Check, Plus } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import FeatureIcon from '../ui/FeatureIcon';
 import { ALL_AVAILABLE_FEATURES, AppFeatureItem } from '../../src/features/dashboard/dashboardCatalog';
 import { useTranslation } from '../../src/utils/i18n';
@@ -35,7 +36,9 @@ const AvailableFeatureCard: React.FC<AvailableFeatureCardProps> = React.memo(({
   onDragMove,
   onDragEnd,
 }) => {
-  const { t, tFeatureName } = useTranslation();
+  const { t, tFeatureName, language } = useTranslation();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === feature.id);
   const iconName = meta?.iconName || feature.iconName;
   const colorIcon = meta?.colorIcon || feature.colorIcon || '#245FA8';
@@ -80,16 +83,21 @@ const AvailableFeatureCard: React.FC<AvailableFeatureCardProps> = React.memo(({
     <View className="w-1/3 px-1">
       <GestureDetector gesture={composedGesture}>
         <View
+          style={{
+            backgroundColor: isSelected
+              ? (isDark ? '#2A1F1B' : '#FFF7ED')
+              : (isDark ? '#262626' : '#FFFFFF'),
+          }}
           className={`p-2.5 rounded-2xl border items-center justify-between min-h-[114px] gap-1.5 ${
             isSelected
-              ? 'bg-primary/10 border-primary/40'
-              : 'bg-card border-border/80 shadow-xs'
+              ? 'border-primary/60 shadow-xs'
+              : 'border-border/80 shadow-xs'
           }`}
           accessibilityRole="button"
           accessibilityLabel={`${meta?.name || feature.name}, ${isSelected ? 'Added' : 'Tap or Drag to Add'}`}
         >
-          <View className={`w-[46px] h-[46px] items-center justify-center rounded-[16px] border border-border/40 ${colorBg}`}>
-            <FeatureIcon iconName={iconName} color={colorIcon} size={22} />
+          <View className={`w-[52px] h-[52px] items-center justify-center rounded-[18px] border border-border/40 ${colorBg}`}>
+            <FeatureIcon iconName={iconName} color={colorIcon} size={24} strokeWidth={1.9} />
           </View>
 
           <View className="items-center w-full px-0.5">
@@ -129,7 +137,7 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
   onDragMove,
   onDragEnd,
 }) => {
-  const { t, tCategoryName } = useTranslation();
+  const { t, tCategoryName, language } = useTranslation();
 
   // Group features by categoryKey/categoryName
   const groupedCategories = useMemo(() => {
@@ -145,7 +153,7 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
     });
 
     return Array.from(map.values());
-  }, [features]);
+  }, [features, language]);
 
   return (
     <View className="p-3.5 gap-4">

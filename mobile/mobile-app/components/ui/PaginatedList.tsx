@@ -8,6 +8,7 @@ import * as React from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, View, StyleProp, ViewStyle } from 'react-native';
 
 import { useBottomNavScroll } from '../navigation/BottomNavScrollContext';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface PaginatedListProps<T> {
   data: T[];
@@ -26,6 +27,7 @@ export interface PaginatedListProps<T> {
   contentContainerClassName?: string;
   contentContainerStyle?: StyleProp<ViewStyle>;
   onScroll?: (event: any) => void;
+  extraData?: any;
 }
 
 const getEmptyIconComponent = (iconName?: string): LucideIcons.LucideIcon => {
@@ -55,7 +57,9 @@ export function PaginatedList<T>({
   contentContainerClassName,
   contentContainerStyle,
   onScroll: onScrollProp,
+  extraData: extraDataProp,
 }: PaginatedListProps<T>) {
+  const { language } = useTranslation();
   const { handleScroll } = useBottomNavScroll();
   const onEndReachedCalledDuringMomentum = React.useRef(false);
 
@@ -164,6 +168,7 @@ export function PaginatedList<T>({
       className="flex-1"
       style={{ flex: 1 }}
       data={data}
+      extraData={extraDataProp !== undefined ? extraDataProp : language}
       renderItem={({ item, index }) => renderItemProp(item, index) as React.ReactElement | null}
       keyExtractor={keyExtractor || defaultKeyExtractor}
       onEndReached={handleEndReached}

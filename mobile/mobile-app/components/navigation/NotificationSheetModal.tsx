@@ -20,6 +20,7 @@ import { useNotifications } from '@/src/features/notification/hooks/useNotificat
 import { NotificationItemData } from '@/src/features/notification/services/notificationService';
 import { mapActionUrlToMobileRoute } from '@/src/features/notification/utils/notificationNavigation';
 import { getStatusTabStyle } from '@/components/ui/statusTabColors';
+import { useTranslation } from '@/src/utils/i18n';
 
 interface NotificationSheetModalProps {
   visible: boolean;
@@ -31,6 +32,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
   onClose,
 }) => {
   const router = useRouter();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
 
   const {
@@ -82,13 +84,13 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
   };
 
   const formatTimeAgo = (createdAtString?: string) => {
-    if (!createdAtString) return 'Just now';
+    if (!createdAtString) return t('just_now', 'Just now');
     const date = new Date(createdAtString);
     if (isNaN(date.getTime())) return createdAtString;
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return t('just_now', 'Just now');
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
@@ -109,10 +111,10 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
               <View className="bg-primary/15 p-2 rounded-xl border border-primary/25">
                 <Bell size={18} className="text-primary" />
               </View>
-              <Text className="text-base font-extrabold text-foreground">Notifications</Text>
+              <Text className="text-base font-extrabold text-foreground">{t('notifications', 'Notifications')}</Text>
               {unreadCount > 0 && (
                 <View className="bg-rose-500 px-2 py-0.5 rounded-full">
-                  <Text className="text-[10px] font-bold text-white">{unreadCount} New</Text>
+                  <Text className="text-[10px] font-bold text-white">{unreadCount} {t('new', 'New')}</Text>
                 </View>
               )}
             </View>
@@ -125,7 +127,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
                   className="flex-row items-center gap-1 bg-secondary px-2.5 py-1.5 rounded-full border border-border/70"
                 >
                   <CheckCheck size={13} className="text-primary" />
-                  <Text className="text-[10px] font-bold text-primary">Read all</Text>
+                  <Text className="text-[10px] font-bold text-primary">{t('read_all', 'Read all')}</Text>
                 </TouchableOpacity>
               )}
 
@@ -144,7 +146,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
               <Text
                 className={`text-xs ${getStatusTabStyle('all', activeTab === 'all').textClass}`}
               >
-                All ({items.length})
+                {t('all', 'All')} ({items.length})
               </Text>
             </TouchableOpacity>
 
@@ -155,7 +157,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
               <Text
                 className={`text-xs ${getStatusTabStyle('warning', activeTab === 'unread').textClass}`}
               >
-                Unread ({unreadCount})
+                {t('unread', 'Unread')} ({unreadCount})
               </Text>
             </TouchableOpacity>
           </View>
@@ -165,7 +167,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
             {loading && items.length === 0 ? (
               <View className="py-12 items-center justify-center">
                 <ActivityIndicator size="small" color="#03A9F4" />
-                <Text className="text-xs text-muted-foreground mt-2">Loading notifications...</Text>
+                <Text className="text-xs text-muted-foreground mt-2">{t('loading_notifications', 'Loading notifications...')}</Text>
               </View>
             ) : filteredItems.length > 0 ? (
               <View className="gap-2.5 pb-8">
@@ -182,7 +184,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
                           : 'bg-card border-border/80'
                       }`}
                     >
-                      {/* Unread Amber/Gold Indicator Dot */}
+                      {/* Unread Indicator Dot */}
                       {!notification.isRead && (
                         <View className="size-2 rounded-full bg-primary absolute top-3 right-3" />
                       )}
@@ -201,7 +203,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
                             }`}
                             numberOfLines={1}
                           >
-                            {notification.title || 'System Notification'}
+                            {notification.title || t('system_notification', 'System Notification')}
                           </Text>
                           <Text className="text-[10px] text-muted-foreground font-medium">
                             {formatTimeAgo(notification.createdAt)}
@@ -218,7 +220,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
                         {/* Direct Link Tag if actionUrl exists */}
                         {notification.actionUrl && (
                           <View className="flex-row items-center gap-0.5 mt-2">
-                            <Text className="text-[10px] font-bold text-primary">View details</Text>
+                            <Text className="text-[10px] font-bold text-primary">{t('view_details', 'View details')}</Text>
                             <ChevronRight size={10} className="text-primary" />
                           </View>
                         )}
@@ -244,11 +246,11 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
                 <View className="size-12 rounded-full bg-muted items-center justify-center">
                   <Bell size={24} color="#a1a1aa" />
                 </View>
-                <Text className="text-sm font-bold text-foreground">No notifications</Text>
+                <Text className="text-sm font-bold text-foreground">{t('no_notifications', 'No notifications')}</Text>
                 <Text className="text-xs text-muted-foreground text-center px-6">
                   {activeTab === 'unread'
-                    ? 'You have caught up with all unread notifications!'
-                    : 'No notifications available at this time.'}
+                    ? t('all_caught_up', 'You have caught up with all unread notifications!')
+                    : t('no_notifications_available', 'No notifications available at this time.')}
                 </Text>
               </View>
             )}

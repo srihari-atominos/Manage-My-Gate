@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert, X } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 interface AdminBlacklistModalProps {
   visible: boolean;
@@ -18,6 +19,7 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const { t } = useTranslation();
   const [visitorName, setVisitorName] = useState('');
   const [phone, setPhone] = useState('');
   const [idProofNumber, setIdProofNumber] = useState('');
@@ -26,18 +28,18 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
 
   const handleSubmit = async () => {
     if (!visitorName.trim()) {
-      setError('Please enter visitor full name');
+      setError(t('please_enter_visitor_full_name', 'Please enter visitor full name'));
       return;
     }
     if (!reason.trim()) {
-      setError('Please specify reason for blacklisting');
+      setError(t('please_specify_reason_for_blacklisting', 'Please specify reason for blacklisting'));
       return;
     }
     
     if (phone && phone.trim()) {
       const digits = phone.replace(/\D/g, '');
       if (digits.length !== 10) {
-        setError('Contact number must be exactly 10 digits');
+        setError(t('contact_number_must_be_exactly_10_digits', 'Contact number must be exactly 10 digits'));
         return;
       }
     }
@@ -51,7 +53,7 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
       setReason('');
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to blacklist visitor');
+      setError(err?.message || t('failed_to_blacklist_visitor', 'Failed to blacklist visitor'));
     }
   };
 
@@ -68,7 +70,7 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
             <View className="flex-row items-center justify-between border-b border-border pb-3">
               <View className="flex-row items-center gap-2">
                 <ShieldAlert size={20} className="text-destructive" />
-                <Text className="text-base font-bold text-foreground">Blacklist Visitor</Text>
+                <Text className="text-base font-bold text-foreground">{t('blacklist_visitor', 'Blacklist Visitor')}</Text>
               </View>
               <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-muted">
                 <X size={16} className="text-muted-foreground" />
@@ -85,15 +87,15 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
               {/* Form */}
               <View className="gap-2.5">
                 <TextInput
-                  label="Visitor Name"
+                  label={t('visitor_name', 'Visitor Name')}
                   required
                   value={visitorName}
                   onChangeText={setVisitorName}
-                  placeholder="e.g. John Doe"
+                  placeholder={t('eg_alexander_wright', 'e.g. John Doe')}
                 />
 
                 <TextInput
-                  label="Phone Number"
+                  label={t('phone_number', 'Phone Number')}
                   value={phone}
                   onChangeText={setPhone}
                   placeholder="e.g. 9876543210"
@@ -102,18 +104,18 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
                 />
 
                 <TextInput
-                  label="National ID / Govt ID"
+                  label={t('national_id_govt_id', 'National ID / Govt ID')}
                   value={idProofNumber}
                   onChangeText={setIdProofNumber}
-                  placeholder="e.g. AADHAAR / DL Number"
+                  placeholder={t('eg_aadhaar_dl_number', 'e.g. AADHAAR / DL Number')}
                 />
 
                 <TextInput
-                  label="Blacklist Reason"
+                  label={t('blacklist_reason', 'Blacklist Reason')}
                   required
                   value={reason}
                   onChangeText={setReason}
-                  placeholder="Describe reason for restricting entry..."
+                  placeholder={t('describe_reason_for_restricting_entry', 'Describe reason for restricting entry...')}
                   multiline
                   numberOfLines={3}
                   inputClassName="min-h-[70px]"
@@ -124,7 +126,7 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
             {/* Actions */}
             <View className="flex-row gap-2 pt-2 border-t border-border">
               <Button variant="outline" className="flex-1" onPress={onClose} disabled={loading}>
-                <Text className="text-xs font-semibold">Cancel</Text>
+                <Text className="text-xs font-semibold">{t('cancel', 'Cancel')}</Text>
               </Button>
               <Button
                 variant="destructive"
@@ -133,7 +135,7 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
                 disabled={loading}
                 loading={loading}
               >
-                <Text className="text-xs font-semibold text-destructive-foreground">Add to Blacklist</Text>
+                <Text className="text-xs font-semibold text-destructive-foreground">{t('add_to_blacklist', 'Add to Blacklist')}</Text>
               </Button>
             </View>
           </View>

@@ -135,8 +135,8 @@ export default function VillaManagementScreen() {
 
   return (
     <ScreenShell
-      title="Unit & Villa Management"
-      subtitle="Configure community blocks, unit statuses, and occupants"
+      title={t('unit_villa_management', 'Unit & Villa Management')}
+      subtitle={t('unit_villa_management_sub', 'Configure community blocks, unit statuses, and occupants')}
       iconName="Home"
       permission="villas:read"
       error={error}
@@ -147,12 +147,12 @@ export default function VillaManagementScreen() {
       headerRight={
         <TouchableOpacity
           onPress={handleOpenCreateForm}
-          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
+          className="flex-row items-center gap-1 bg-emerald-600 active:bg-emerald-700 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
           accessibilityLabel="Add Unit"
         >
           <Plus size={14} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">{t('create_unit', 'Add Unit')}</Text>
+          <Text className="text-xs font-bold text-white">{t('create_unit', 'Add Unit')}</Text>
         </TouchableOpacity>
       }
     >
@@ -228,7 +228,7 @@ export default function VillaManagementScreen() {
                   className="px-2.5 py-1.5 rounded-full bg-destructive/10 border border-destructive/20 flex-row items-center gap-1"
                 >
                   <Icon as={FilterX} size={13} className="text-destructive" />
-                  <Text className="text-xs font-bold text-destructive">Clear ({activeFilterCount})</Text>
+                  <Text className="text-xs font-bold text-destructive">{t('clear', 'Clear')} ({activeFilterCount})</Text>
                 </TouchableOpacity>
               )}
 
@@ -239,7 +239,7 @@ export default function VillaManagementScreen() {
                 }`}
               >
                 <Text className={`text-xs font-semibold ${!filters.status ? 'text-white' : 'text-foreground'}`}>
-                  All Statuses
+                  {t('all_statuses', 'All Statuses')}
                 </Text>
               </TouchableOpacity>
 
@@ -253,7 +253,7 @@ export default function VillaManagementScreen() {
                     className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${statusStyle.containerClass}`}
                   >
                     <Text className={`text-xs ${statusStyle.textClass}`}>
-                      {st}
+                      {t(st, st)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -283,15 +283,15 @@ export default function VillaManagementScreen() {
         {loading && villas.length === 0 ? (
           <View className="flex-1 items-center justify-center py-12">
             <ActivityIndicator size="large" color="#0d9488" />
-            <Text variant="muted" className="text-xs mt-2">Loading units directory...</Text>
+            <Text variant="muted" className="text-xs mt-2">{t('loading_units_directory', 'Loading units directory...')}</Text>
           </View>
         ) : villas.length === 0 ? (
           <View className="flex-1 items-center justify-center p-6">
             <EmptyState
               icon={Building2}
-              title="No Units Found"
-              description="No community units match the active search or filters. You can batch generate, bulk upload, or manually create new units."
-              actionLabel="Batch Generate 54 Units"
+              title={t('no_units_found', 'No Units Found')}
+              description={t('no_units_match_desc', 'No community units match the active search or filters. You can batch generate, bulk upload, or manually create new units.')}
+              actionLabel={t('batch_generate', 'Batch Generate')}
               onAction={() => setBatchModalVisible(true)}
             />
           </View>
@@ -304,7 +304,7 @@ export default function VillaManagementScreen() {
             {/* Top Directory Header */}
             <View className="flex-row items-center justify-between mb-3">
               <Text className="text-xs font-bold text-muted-foreground uppercase">
-                Unit Directory ({villas.length})
+                {t('unit_directory', 'Unit Directory')} ({villas.length})
               </Text>
             </View>
 

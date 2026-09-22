@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Modal, Pressable, Alert, Image, Platform } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, ScrollView, Modal, Pressable, Alert, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
-import { LanguageSelector } from '@/components/settings/LanguageSelector';
+import {
+  SettingsRow,
+  SettingsCard,
+  SettingsPlanBanner,
+  SettingsProfileBlock,
+  SettingsNudgeRow,
+  SettingsCtaRow,
+  LanguageSelector,
+  ThemeToggleSwitch,
+  AppVersionFooter,
+} from '@/components/settings';
 import { ResidentDirectoryModal } from '@/components/settings/ResidentDirectoryModal';
 import { SettingToggleRow } from '@/src/features/settings/components/SettingToggleRow';
 import { useSettings } from '@/src/features/settings/hooks/useSettings';
@@ -17,33 +26,81 @@ import { useTranslation, LANGUAGE_OPTIONS } from '@/src/utils/i18n';
 import { useCommunityPulse } from '@/src/features/communityPulse/hooks/useCommunityPulse';
 import { InterestSelectorModal } from '@/src/features/communityPulse/components/InterestSelectorModal';
 import { CreatePulseBottomSheet } from '@/src/features/communityPulse/components/CreatePulseBottomSheet';
+import { VillaSwitchModal } from '@/components/navigation/VillaSwitchModal';
+import { OrgSwitchModal } from '@/components/navigation/OrgSwitchModal';
+import { RoleSwitchModal } from '@/components/navigation/RoleSwitchModal';
 import {
   Bell,
   Check,
   LogOut,
   Trash2,
-  Pencil,
   Users,
-  User as UserIcon,
   ChevronLeft,
-  ChevronRight,
   Globe,
-  Settings,
   Shield,
   UserX,
   ExternalLink,
+  HelpCircle,
+  Building2,
+  Home,
+  UserCheck,
 } from 'lucide-react-native';
+import { getImageUrl } from '@/src/utils/imageUrl';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
-  const { tRole } = useTranslation();
+  const { t, tRole } = useTranslation();
   const [createPulseOpen, setCreatePulseOpen] = useState(false);
   const [interestsOpen, setInterestsOpen] = useState(false);
   const [directoryOpen, setDirectoryOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [villaModalVisible, setVillaModalVisible] = useState(false);
+  const [orgModalVisible, setOrgModalVisible] = useState(false);
+  const [roleModalVisible, setRoleModalVisible] = useState(false);
+
+  const userAny = user as any;
+
+  // Active villa & community info
+  const dynamicUnit =
+    userAny?.villaNumber ||
+    userAny?.activeVillaNumber ||
+    userAny?.unitNumber ||
+    '#104';
+
+  const dynamicCommunity = React.useMemo(() => {
+    const userOrg =
+      userAny?.organizationName ||
+      userAny?.activeOrganizationName ||
+      userAny?.orgName ||
+      userAny?.communityName ||
+      userAny?.communityOrg ||
+      userAny?.organization?.name;
+
+    if (userOrg) return userOrg;
+
+    const workspaces = userAny?.availableWorkspaces || [];
+    if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.name) {
+      return workspaces[0].name;
+    }
+
+    return t('community_workspace', 'Community Workspace');
+  }, [userAny, t]);
+
+  const dynamicRole =
+    user?.role ||
+    (userAny?.roles && userAny?.roles.length > 0 ? userAny?.roles[0] : 'Resident');
+
+  // Avatar resolution
+  const userAvatar = user?.avatar || userAny?.avatarUrl;
+  const resolvedAvatarUrl = userAvatar ? getImageUrl(userAvatar) : null;
+  const avatarLetter = React.useMemo(() => {
+    if (user?.name) return user.name.charAt(0).toUpperCase();
+    if (user?.email) return user.email.charAt(0).toUpperCase();
+    return 'U';
+  }, [user]);
 
   const handleOpenPrivacyPolicy = async () => {
     try {
@@ -61,28 +118,39 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleOpenSupport = () => {
+    if (Platform.OS === 'web') {
+      window.alert(t('support_alert', 'Nahom Help Center & 24/7 Security Desk: support@managemygate.com'));
+    } else {
+      Alert.alert(
+        t('support_help', 'Help & Support'),
+        t('support_alert', 'Nahom Help Center & 24/7 Security Desk: support@managemygate.com'),
+        [{ text: t('close', 'Close'), style: 'cancel' }]
+      );
+    }
+  };
+
   const handleDeleteAccount = async () => {
     try {
       setIsDeleting(true);
       const result = await deleteAccount();
-      // Redux thunks don't throw on rejection — check requestStatus
       if (result?.meta?.requestStatus === 'rejected') {
-        const msg = (result as any)?.payload || 'Failed to delete account. Please try again.';
+        const msg = (result as any)?.payload || t('error', 'Failed to delete account. Please try again.');
         if (Platform.OS === 'web') {
           window.alert(msg);
         } else {
-          Alert.alert('Error', String(msg));
+          Alert.alert(t('error', 'Error'), String(msg));
         }
         return;
       }
       setDeleteModalOpen(false);
       router.replace('/(auth)/login');
     } catch (e: any) {
-      const msg = e?.message || 'Failed to delete account. Please try again.';
+      const msg = e?.message || t('error', 'Failed to delete account. Please try again.');
       if (Platform.OS === 'web') {
         window.alert(msg);
       } else {
-        Alert.alert('Error', msg);
+        Alert.alert(t('error', 'Error'), msg);
       }
     } finally {
       setIsDeleting(false);
@@ -100,7 +168,7 @@ export default function SettingsScreen() {
     preferences,
     updatePreference,
     handleClearCache,
-    t,
+    t: tSettings,
   } = useSettings();
 
   const {
@@ -145,27 +213,40 @@ export default function SettingsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      {/* Native Mobile Status Bar Header */}
+      {/* 1. Header: Back (left), Title (center), Help (right) */}
       <View
         style={{ paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 28 : 20) }}
-        className="bg-card border-b border-border"
+        className="bg-card border-b border-border shadow-2xs"
       >
-        <View className="flex-row items-center px-4 pb-3 min-h-[48px]">
+        <View className="flex-row items-center justify-between px-4 pb-3 min-h-[48px]">
           <Pressable
             onPress={() => {
               if (router.canGoBack()) router.back();
               else router.replace('/(resident)/dashboard' as any);
             }}
-            className="p-1 rounded-full active:bg-muted/60 -ms-1 me-2"
+            className="p-2 rounded-full active:bg-muted/60 -ms-2"
             hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={t('back', 'Back')}
           >
-            <Icon as={ChevronLeft} size={24} className="text-foreground" />
+            <Icon as={ChevronLeft} size={22} className="text-foreground" />
           </Pressable>
-          <View className="flex-1">
-            <Text className="text-lg font-bold text-foreground">
-              {t('app_settings', 'Settings')}
+
+          <View className="flex-1 items-center">
+            <Text className="text-base font-bold text-foreground font-sans">
+              {t('settings', 'Settings')}
             </Text>
           </View>
+
+          <Pressable
+            onPress={handleOpenSupport}
+            className="p-2 rounded-full active:bg-muted/60 -me-2"
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={t('support_help', 'Help & Support')}
+          >
+            <Icon as={HelpCircle} size={20} className="text-muted-foreground" />
+          </Pressable>
         </View>
       </View>
 
@@ -174,182 +255,163 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 80 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Profile Card ─── */}
-        <Pressable
-          onPress={() => router.push('/(resident)/profile' as any)}
-          className="mx-4 mt-4 bg-card rounded-2xl border border-border overflow-hidden active:opacity-90"
-        >
-          <View className="p-4 flex-row items-center gap-3">
-            <View className="h-14 w-14 rounded-full bg-primary/10 border-2 border-primary/20 items-center justify-center overflow-hidden shrink-0">
-              {user?.avatar && user.avatar.trim() ? (
-                <Image source={{ uri: user.avatar }} className="h-full w-full" />
-              ) : (
-                <UserIcon size={26} className="text-primary" />
-              )}
-            </View>
-            <View className="flex-1 min-w-0">
-              <Text className="text-base font-bold text-foreground" numberOfLines={1}>
-                {user?.username || user?.name || user?.email || t('logged_in_resident', 'Logged In Resident')}
-              </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                {user?.role ? tRole(user.role) : t('member', 'Member')}
-              </Text>
-              {user?.email ? (
-                <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                  {user.email}
-                </Text>
-              ) : null}
-            </View>
-            <ChevronRight size={20} className="text-muted-foreground shrink-0" />
-          </View>
-        </Pressable>
+        {/* 2. Status / Plan Banner */}
+        <SettingsPlanBanner
+          title={t('plan_status_active', 'Active Community Membership')}
+          description={t(
+            'plan_banner_desc',
+            'All premium gate & community features are fully unlocked for your residence.'
+          )}
+          actionLabel={t('learn_more', 'Learn more')}
+          onActionPress={() => router.push('/(resident)/profile' as any)}
+        />
 
-        {/* ─── Appearance ─── */}
-        <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-4 mb-2">
-          {t('appearance_language', 'Appearance & Language')}
-        </Text>
-        <View className="mx-4 bg-card rounded-2xl border border-border overflow-hidden">
-          {/* Language Row */}
-          <Pressable
-            onPress={() => setLanguageModalOpen(true)}
-            className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
-          >
-            <View className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
-              <Icon as={Globe} size={18} className="text-primary" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-foreground">
-                {t('language', 'Language')}
-              </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">{currentLanguageLabel}</Text>
-            </View>
-            <Icon as={ChevronRight} size={18} className="text-muted-foreground shrink-0" />
-          </Pressable>
-        </View>
+        {/* 3. Profile Block */}
+        <SettingsProfileBlock
+          name={user?.name || user?.username || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident Member'))}
+          unitId={dynamicUnit}
+          roleLabel={tRole(dynamicRole, dynamicRole)}
+          avatarUrl={resolvedAvatarUrl}
+          avatarLetter={avatarLetter}
+          onPressProfile={() => router.push('/(resident)/profile' as any)}
+          onPressQr={() => router.push('/(resident)/visitor' as any)}
+        />
 
-        {/* ─── Notifications ─── */}
-        <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-5 mb-2">
-          {t('notifications', 'Notifications')}
-        </Text>
-        <View className="mx-4 bg-card rounded-2xl border border-border overflow-hidden px-4 py-1">
-          <SettingToggleRow
-            label={t('push_notifications', 'Push Notifications')}
-            description={t('push_desc', 'Gate arrival & security alerts')}
-            icon={Bell}
-            value={preferences.gateAlerts}
-            onValueChange={(val) => updatePreference('gateAlerts', val)}
-            isLastItem={true}
+        {/* 4. Nudge Row */}
+        <SettingsNudgeRow
+          title={t('profile_nudge_title', 'Profile Completion')}
+          percentage={85}
+          description={t('profile_nudge_desc', 'Complete emergency contacts & vehicle info.')}
+          actionLabel={t('update_details', 'Update')}
+          onActionPress={() => router.push('/(resident)/profile' as any)}
+        />
+
+        {/* 5. Update / CTA Row */}
+        <SettingsCtaRow
+          label={t('workspace_context_cta', 'Active Workspace Context')}
+          subLabel={dynamicCommunity}
+          buttonLabel={t('switch_context', 'Switch')}
+          onPress={() => setOrgModalVisible(true)}
+        />
+
+        {/* 6. Section Groups */}
+
+        {/* Group A: Household & Access */}
+        <SettingsCard title={t('household_group', 'Household & Access')}>
+          <SettingsRow
+            icon={Building2}
+            iconColor="#6366f1"
+            iconBgColor="rgba(99, 102, 241, 0.12)"
+            title={t('switch_community', 'Switch Community')}
+            subtitle={dynamicCommunity}
+            onPress={() => setOrgModalVisible(true)}
           />
-        </View>
+          <SettingsRow
+            icon={Home}
+            iconColor="#10b981"
+            iconBgColor="rgba(16, 185, 129, 0.12)"
+            title={t('switch_unit', 'Switch Villa Unit')}
+            subtitle={dynamicUnit}
+            onPress={() => setVillaModalVisible(true)}
+          />
+          <SettingsRow
+            icon={Users}
+            iconColor="#0ea5e9"
+            iconBgColor="rgba(14, 165, 233, 0.12)"
+            title={t('community_directory', 'Community Directory')}
+            subtitle={t('find_residents_security', 'Find residents, security & staff')}
+            onPress={() => router.push('/(resident)/directory' as any)}
+            isLast={true}
+          />
+        </SettingsCard>
 
-        {/* ─── Legal & Privacy ─── */}
-        <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-5 mb-2">
-          {t('legal_and_privacy', 'Legal & Privacy')}
-        </Text>
-        <View className="mx-4 bg-card rounded-2xl border border-border overflow-hidden">
-          <Pressable
+        {/* Group B: General Settings & Preferences */}
+        <SettingsCard title={t('general_settings_group', 'General Settings & Preferences')}>
+          <ThemeToggleSwitch
+            themeMode={themeMode}
+            onSelectMode={setThemeMode}
+            t={t}
+          />
+          <View className="h-px bg-border/60 mx-4" />
+          <LanguageSelector
+            currentLanguage={currentLanguageLabel}
+            onPress={() => setLanguageModalOpen(true)}
+          />
+          <View className="px-4 py-1">
+            <SettingToggleRow
+              label={t('push_notifications', 'Push Notifications')}
+              description={t('push_desc', 'Gate arrival & security alerts')}
+              icon={Bell}
+              value={preferences.gateAlerts}
+              onValueChange={(val) => updatePreference('gateAlerts', val)}
+              isLastItem={true}
+            />
+          </View>
+        </SettingsCard>
+
+        {/* Group C: Legal & Information */}
+        <SettingsCard title={t('legal_privacy_group', 'Legal & Information')}>
+          <SettingsRow
+            icon={Shield}
+            title={t('privacy_policy', 'Privacy Policy')}
+            subtitle={t('privacy_policy_desc', 'View data collection & protection policy')}
+            rightElement={<Icon as={ExternalLink} size={16} className="text-muted-foreground" />}
             onPress={handleOpenPrivacyPolicy}
-            className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
-          >
-            <View className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
-              <Icon as={Shield} size={18} className="text-primary" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-foreground">
-                {t('privacy_policy', 'Privacy Policy')}
-              </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">
-                {t('privacy_policy_desc', 'View data collection & protection policy')}
-              </Text>
-            </View>
-            <Icon as={ExternalLink} size={16} className="text-muted-foreground shrink-0" />
-          </Pressable>
-
-          <View className="h-px bg-border mx-4" />
-
-          <Pressable
+          />
+          <SettingsRow
+            icon={Shield}
+            title={t('terms_conditions', 'Terms & Conditions')}
+            subtitle={t('terms_conditions_desc', 'View terms of service & user agreement')}
+            rightElement={<Icon as={ExternalLink} size={16} className="text-muted-foreground" />}
             onPress={handleOpenTerms}
-            className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
-          >
-            <View className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
-              <Icon as={Shield} size={18} className="text-primary" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-foreground">
-                {t('terms_conditions', 'Terms & Conditions')}
-              </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">
-                {t('terms_conditions_desc', 'View terms of service & user agreement')}
-              </Text>
-            </View>
-            <Icon as={ExternalLink} size={16} className="text-muted-foreground shrink-0" />
-          </Pressable>
-        </View>
+            isLast={true}
+          />
+        </SettingsCard>
 
-        {/* ─── Account ─── */}
-        <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-5 mb-2">
-          {t('account_actions', 'Account')}
-        </Text>
-        <View className="mx-4 bg-card rounded-2xl border border-border overflow-hidden">
-          <Pressable
+        {/* Group D: Account Management */}
+        <SettingsCard title={t('account_actions_group', 'Account Management')}>
+          <SettingsRow
+            icon={Trash2}
+            iconColor="#d97706"
+            iconBgColor="rgba(217, 119, 6, 0.12)"
+            title={t('clear_cache', 'Clear Application Cache')}
+            subtitle={t('free_storage', 'Free up temporary storage')}
+            showChevron={false}
             onPress={handleClearCache}
-            className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
-          >
-            <View className="h-9 w-9 rounded-xl bg-amber-500/10 border border-amber-500/20 items-center justify-center me-3 shrink-0">
-              <Icon as={Trash2} size={18} className="text-amber-600" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-foreground">
-                {t('clear_cache', 'Clear Application Cache')}
-              </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">{t('free_storage', 'Free up temporary storage')}</Text>
-            </View>
-          </Pressable>
-
-          <View className="h-px bg-border mx-4" />
-
-          <Pressable
+          />
+          <SettingsRow
+            icon={LogOut}
+            iconColor="#ef4444"
+            iconBgColor="rgba(239, 68, 68, 0.12)"
+            title={t('sign_out', 'Sign Out')}
+            subtitle={t('log_out_desc', 'Log out of your account')}
+            isDestructive={true}
+            showChevron={false}
             onPress={handleSignOut}
-            className="flex-row items-center px-4 py-3.5 active:bg-destructive/10"
-          >
-            <View className="h-9 w-9 rounded-xl bg-destructive/10 border border-destructive/20 items-center justify-center me-3 shrink-0">
-              <Icon as={LogOut} size={18} className="text-destructive" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-destructive">
-                {t('sign_out', 'Sign Out')}
-              </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">{t('log_out_desc', 'Log out of your account')}</Text>
-            </View>
-          </Pressable>
-
-          <View className="h-px bg-border mx-4" />
-
-          <Pressable
+          />
+          <SettingsRow
+            icon={UserX}
+            iconColor="#ef4444"
+            iconBgColor="rgba(239, 68, 68, 0.12)"
+            title={t('delete_account', 'Delete Account')}
+            subtitle={t('delete_account_desc', 'Permanently delete your account & data')}
+            isDestructive={true}
+            showChevron={false}
             onPress={() => setDeleteModalOpen(true)}
-            className="flex-row items-center px-4 py-3.5 active:bg-destructive/10"
-          >
-            <View className="h-9 w-9 rounded-xl bg-destructive/10 border border-destructive/20 items-center justify-center me-3 shrink-0">
-              <Icon as={UserX} size={18} className="text-destructive" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-destructive">
-                {t('delete_account', 'Delete Account')}
-              </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">
-                {t('delete_account_desc', 'Permanently delete your account & data')}
-              </Text>
-            </View>
-          </Pressable>
-        </View>
+            isLast={true}
+          />
+        </SettingsCard>
 
-        {/* Version Footer */}
-        <Text className="text-center text-xs text-muted-foreground mt-6 mb-2">
-          Nahom v1.0.0
-        </Text>
+        {/* 7. Footer: App Logo, Legal links, Version */}
+        <AppVersionFooter
+          onPressPrivacy={handleOpenPrivacyPolicy}
+          onPressTerms={handleOpenTerms}
+        />
       </ScrollView>
 
-      {/* ─── Language Selection Bottom Sheet ─── */}
+      {/* ─── Modals & Bottom Sheets ─── */}
+
+      {/* Language Selection Bottom Sheet */}
       {languageModalOpen ? (
         <Modal
           visible={languageModalOpen}
@@ -364,7 +426,7 @@ export default function SettingsScreen() {
             />
             <View className="bg-card rounded-t-3xl overflow-hidden">
               <SheetGrabHandle onClose={() => setLanguageModalOpen(false)} />
-              <Text className="text-base font-bold text-foreground text-center py-2">
+              <Text className="text-base font-bold text-foreground text-center py-2 font-sans">
                 {t('select_language', 'Select Language')}
               </Text>
               <View className="px-5 pb-6 gap-2">
@@ -384,7 +446,7 @@ export default function SettingsScreen() {
                       }`}
                     >
                       <Text
-                        className={`text-sm ${
+                        className={`text-sm font-sans ${
                           isSelected ? 'font-bold text-primary' : 'font-medium text-foreground'
                         }`}
                       >
@@ -401,7 +463,37 @@ export default function SettingsScreen() {
         </Modal>
       ) : null}
 
-      {/* ─── Community Directory Modal ─── */}
+      {/* Interactive Villa Switcher Modal */}
+      {villaModalVisible && (
+        <VillaSwitchModal
+          visible={villaModalVisible}
+          onClose={() => setVillaModalVisible(false)}
+          activeVilla={dynamicUnit}
+          onSelectVilla={(_villaNum) => setVillaModalVisible(false)}
+          communityName={dynamicCommunity}
+          onOpenOrgModal={() => setOrgModalVisible(true)}
+        />
+      )}
+
+      {/* Interactive Organization / Community Switcher Modal */}
+      {orgModalVisible && (
+        <OrgSwitchModal
+          visible={orgModalVisible}
+          onClose={() => setOrgModalVisible(false)}
+          activeCommunity={dynamicCommunity}
+          onSelectCommunity={(_orgName) => setOrgModalVisible(false)}
+        />
+      )}
+
+      {/* Interactive Role Switcher Modal */}
+      {roleModalVisible && (
+        <RoleSwitchModal
+          visible={roleModalVisible}
+          onClose={() => setRoleModalVisible(false)}
+        />
+      )}
+
+      {/* Community Directory Modal */}
       {directoryOpen ? (
         <ResidentDirectoryModal
           visible={directoryOpen}
@@ -410,7 +502,7 @@ export default function SettingsScreen() {
         />
       ) : null}
 
-      {/* ─── Interests Modal ─── */}
+      {/* Interests Modal */}
       {interestsOpen ? (
         <InterestSelectorModal
           visible={interestsOpen}
@@ -421,7 +513,7 @@ export default function SettingsScreen() {
         />
       ) : null}
 
-      {/* ─── Create Pulse Sheet ─── */}
+      {/* Create Pulse Sheet */}
       {createPulseOpen ? (
         <CreatePulseBottomSheet
           visible={createPulseOpen}
@@ -433,14 +525,14 @@ export default function SettingsScreen() {
         />
       ) : null}
 
-      {/* ─── Account Deletion Confirmation Modal ─── */}
+      {/* Account Deletion Confirmation Modal */}
       <ConfirmationModal
         visible={deleteModalOpen}
         variant="danger"
         title={t('confirm_delete_account_title', 'Delete Account?')}
         message={t(
           'confirm_delete_account_message',
-          'Are you sure you want to delete your account? This will permanently remove your profile, memberships, and personal data from Nahom. This action cannot be undone.'
+          'Are you sure you want to delete your account? This action cannot be undone.'
         )}
         confirmLabel={t('confirm_delete_account_action', 'Delete Permanently')}
         cancelLabel={t('cancel', 'Cancel')}

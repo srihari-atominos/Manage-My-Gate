@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { ChevronDown, Check, AlertCircle, Search } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface DropdownOption {
   label: string;
@@ -47,6 +48,7 @@ export const DropdownSelect = ({
   accordion = false,
   searchable = true,
 }: DropdownSelectProps) => {
+  const { translateText, t } = useTranslation();
   const [modalVisible, setModalVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,9 +65,14 @@ export const DropdownSelect = ({
     }
   };
 
-  const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredOptions = options.filter((opt) => {
+    const rawLabel = opt.label || '';
+    const localizedLabel = translateText(rawLabel);
+    return (
+      rawLabel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      localizedLabel.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   return (
     <View
@@ -74,7 +81,7 @@ export const DropdownSelect = ({
     >
       {Boolean(label) && (
         <Text className="mb-1.5 text-sm font-medium text-foreground">
-          {label}
+          {translateText(label)}
           {required && !label?.includes('*') && (
             <Text className="text-destructive font-bold"> *</Text>
           )}
@@ -89,7 +96,7 @@ export const DropdownSelect = ({
         )}
         onPress={handlePress}
         accessibilityRole="button"
-        accessibilityLabel={label ? `${label}: ${selectedOption?.label || placeholder}` : placeholder}
+        accessibilityLabel={label ? `${translateText(label)}: ${translateText(selectedOption?.label || placeholder)}` : translateText(placeholder)}
       >
         <Text
           numberOfLines={1}
@@ -98,7 +105,7 @@ export const DropdownSelect = ({
             selectedOption ? 'text-foreground font-medium' : 'text-muted-foreground'
           )}
         >
-          {selectedOption ? selectedOption.label : placeholder}
+          {selectedOption ? translateText(selectedOption.label) : translateText(placeholder)}
         </Text>
         <ChevronDown size={16} className="text-muted-foreground shrink-0" />
       </Pressable>
@@ -106,12 +113,12 @@ export const DropdownSelect = ({
       {Boolean(error) && (
         <View className="flex-row items-center mt-1 ms-1 gap-1">
           <AlertCircle size={12} className="text-destructive shrink-0" />
-          <Text className="text-xs text-destructive font-semibold">{error}</Text>
+          <Text className="text-xs text-destructive font-semibold">{translateText(error)}</Text>
         </View>
       )}
 
       {!error && Boolean(helperText) && (
-        <Text className="mt-1 text-[11px] text-muted-foreground ms-1">{helperText}</Text>
+        <Text className="mt-1 text-[11px] text-muted-foreground ms-1">{translateText(helperText)}</Text>
       )}
 
       {/* Inline Dropdown List overlay */}
@@ -127,7 +134,7 @@ export const DropdownSelect = ({
           <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
             {options.length === 0 ? (
               <View className="px-4 py-4 items-center justify-center">
-                <Text className="text-sm text-muted-foreground italic">No options available</Text>
+                <Text className="text-sm text-muted-foreground italic">{t('no_options_available', 'No options available')}</Text>
               </View>
             ) : (
               options.map((item) => {
@@ -150,7 +157,7 @@ export const DropdownSelect = ({
                         isSelected ? 'font-bold text-primary' : 'text-foreground'
                       )}
                     >
-                      {item.label}
+                      {translateText(item.label)}
                     </Text>
                     {isSelected && <Check size={16} className="text-primary" />}
                   </Pressable>
@@ -180,7 +187,7 @@ export const DropdownSelect = ({
             />
             <View className="max-h-[75%] rounded-t-3xl bg-card border-t border-border p-4 shadow-xl">
               <Text className="mb-3 text-center text-lg font-bold font-sans text-foreground">
-                {label || 'Select Option'}
+                {label ? translateText(label) : t('select_option', 'Select Option')}
               </Text>
 
               {/* In-modal search bar when options > 5 */}
@@ -190,7 +197,7 @@ export const DropdownSelect = ({
                   <RNTextInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    placeholder="Search options..."
+                    placeholder={t('search_options', 'Search options...')}
                     placeholderTextColor="#737c88"
                     className="flex-1 text-sm font-sans text-foreground p-0 min-h-[22px]"
                     style={{ outlineStyle: 'none' } as any}
@@ -214,7 +221,7 @@ export const DropdownSelect = ({
                 keyboardShouldPersistTaps="handled"
                 ListEmptyComponent={() => (
                   <View className="py-6 items-center justify-center">
-                    <Text className="text-base text-muted-foreground italic">No options found</Text>
+                    <Text className="text-base text-muted-foreground italic">{t('no_options_found', 'No options found')}</Text>
                   </View>
                 )}
                 renderItem={({ item }) => {
@@ -236,7 +243,7 @@ export const DropdownSelect = ({
                           isSelected ? 'font-bold text-primary' : 'text-foreground'
                         )}
                       >
-                        {item.label}
+                        {translateText(item.label)}
                       </Text>
                       {isSelected && <Check size={18} className="text-primary" />}
                     </Pressable>

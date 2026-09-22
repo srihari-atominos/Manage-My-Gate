@@ -198,12 +198,12 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                           </Text>
                           {ws.isPlatform && (
                             <View className="bg-primary/15 border border-primary/25 px-1.5 py-0.5 rounded-md">
-                              <Text className="text-primary text-[9px] font-bold">Platform</Text>
+                              <Text className="text-primary text-[9px] font-bold">{t('platform_badge', 'Platform')}</Text>
                             </View>
                           )}
                         </View>
                         <Text className="text-[10px] text-muted-foreground mt-0.5">
-                          {t('role_persona_label', 'Role')}: {tRole(ws.roleName, ws.roleName || 'Member')}{ws.villaNumber ? ` • ${t('unit_label', 'Unit')} ${ws.villaNumber}` : ''}
+                          {t('role_label_prefix', 'Role:')} {tRole(ws.roleName, ws.roleName || 'Member')}{ws.villaNumber ? ` • ${t('unit_label', 'Unit')} ${ws.villaNumber}` : ''}
                         </Text>
                       </View>
                     </View>

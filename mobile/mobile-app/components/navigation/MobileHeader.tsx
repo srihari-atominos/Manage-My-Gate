@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, Home, Building2, ChevronDown, Sun, Moon } from 'lucide-react-native';
+import { Bell, Home, Building2, ChevronDown, Sun, Moon, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import storage from '../../src/utils/storage';
@@ -37,7 +37,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 }) => {
   const { user } = useAuth();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, translateText, language } = useTranslation();
   
   // Real-time notification hook initialization to ensure unread badge remains active
   const { unreadCount: hookUnreadCount } = useNotifications();
@@ -81,8 +81,8 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
       }
     }
 
-    return 'Community Workspace';
-  }, [communityName, user, reduxWorkspaces]);
+    return t('community_workspace', 'Community Workspace');
+  }, [communityName, user, reduxWorkspaces, language, t]);
 
   const [activeVilla, setActiveVilla] = useState<string | null>(dynamicVilla);
   const [activeCommunity, setActiveCommunity] = useState<string>(dynamicCommunity);
@@ -156,12 +156,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   // Formatted header string preventing nested Text styling glitches
   const headerTextString = React.useMemo(() => {
-    const comm = activeCommunity || 'Green Meadows';
+    const defaultComm = t('green_meadows', 'Green Meadows');
+    const comm = activeCommunity ? translateText(activeCommunity) : defaultComm;
     if (hasUnit && activeVilla) {
       return `${activeVilla} • ${comm}`;
     }
     return comm;
-  }, [hasUnit, activeVilla, activeCommunity]);
+  }, [hasUnit, activeVilla, activeCommunity, language, t, translateText]);
 
   const insets = useSafeAreaInsets();
 
@@ -205,7 +206,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                   ellipsizeMode="tail"
                   className="text-[11.5px] font-medium font-sans text-muted-foreground flex-1 ms-1 shrink"
                 >
-                  • {activeCommunity || 'Community'}
+                  • {activeCommunity ? translateText(activeCommunity) : t('community', 'Community')}
                 </Text>
               </>
             ) : (
@@ -214,7 +215,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                 ellipsizeMode="tail"
                 className="text-[13px] font-bold font-sans text-foreground flex-1"
               >
-                {activeCommunity || 'Community Workspace'}
+                {activeCommunity ? translateText(activeCommunity) : t('community_workspace', 'Community Workspace')}
               </Text>
             )}
           </View>
@@ -259,15 +260,15 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             ) : null}
           </TouchableOpacity>
 
-          {/* Account Avatar Button */}
+          {/* App Settings Icon Button */}
           <TouchableOpacity
-            onPress={() => router.push('/(resident)/account' as any)}
-            activeOpacity={0.85}
-            className="size-9 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
+            onPress={() => router.push('/(resident)/settings' as any)}
+            activeOpacity={0.7}
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
             accessibilityRole="button"
-            accessibilityLabel="User Account"
+            accessibilityLabel={t('app_settings', 'Settings')}
           >
-            <Text className="text-white font-bold font-sans text-[13px]">{avatarLetter}</Text>
+            <Settings size={18} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
           </TouchableOpacity>
         </View>
       </View>

@@ -39,7 +39,7 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   villaBadge,
   isInside,
 }) => {
-  const { t } = useTranslation();
+  const { t, translateText } = useTranslation();
   const vObj = (pass as any).villaId;
   const unitNum = vObj?.unitNumber || vObj?.villaNumber || (pass as any).villaNumber || (pass as any).villaName || (pass as any).villaId?.name || (pass as any).villaId?.number;
   const block = vObj?.blockOrBuilding || vObj?.block ? ` (${vObj.blockOrBuilding || vObj.block})` : '';
@@ -49,7 +49,7 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   const subtitleParts = [];
   if (displayVilla) subtitleParts.push(displayVilla);
   if (pass.phone) subtitleParts.push(`Ph: ${pass.phone}`);
-  else if (pass.purpose) subtitleParts.push(`${t('for_purpose', 'For:')} ${pass.purpose}`);
+  else if (pass.purpose) subtitleParts.push(`${t('for_purpose', 'For:')} ${translateText(pass.purpose)}`);
   else subtitleParts.push(`${t('code_label', 'Code:')} ${pass.code || (typeof pass._id === 'string' ? pass._id.slice(-6) : 'PASS')}`);
 
   const subtitle = subtitleParts.join(' • ');
@@ -59,7 +59,7 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
 
   return (
     <ListCard
-      title={pass.visitorName || 'Guest Visitor'}
+      title={pass.visitorName || t('guest_visitor', 'Guest Visitor')}
       subtitle={subtitle}
       leftIcon="QrCode"
       leftIconBgColor="rgba(23, 43, 112, 0.12)"

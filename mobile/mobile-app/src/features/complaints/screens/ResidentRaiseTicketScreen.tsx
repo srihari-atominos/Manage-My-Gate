@@ -24,6 +24,7 @@ import {
 } from 'lucide-react-native';
 import { useComplaints } from '../hooks/useComplaints';
 import complaintService from '../services/complaintService';
+import { useTranslation } from '@/src/utils/i18n';
 
 interface PhotoAttachment {
   uri: string;
@@ -122,6 +123,7 @@ const SUGGESTED_ISSUES_MAP: Record<string, string[]> = {
 
 export function ResidentRaiseTicketScreen() {
   const router = useRouter();
+  const { t, translateText } = useTranslation();
   const { createComplaint, error, clearErrors } = useComplaints();
 
   // Auto-populate resident location from Redux auth user profile
@@ -464,38 +466,38 @@ export function ResidentRaiseTicketScreen() {
   if (submittedTicket) {
     const slaLabel =
       submittedTicket.priority === 'Critical'
-        ? 'Immediate Response (Emergency SLA)'
+        ? t('sla_immediate_emergency', 'Immediate Response (Emergency SLA)')
         : submittedTicket.priority === 'High'
-        ? 'Within 24 Hours (High SLA)'
-        : 'Within 48 Hours (Standard SLA)';
+        ? t('sla_within_24h', 'Within 24 Hours (High SLA)')
+        : t('sla_within_48h', 'Within 48 Hours (Standard SLA)');
 
     return (
-      <ScreenShell title="Ticket Submitted" subtitle="Request routed to maintenance" iconName="CheckCircle2">
+      <ScreenShell title={t('ticket_submitted', 'Ticket Submitted')} subtitle={t('request_routed_maintenance', 'Request routed to maintenance')} iconName="CheckCircle2">
         <View className="flex-1 bg-background px-4 py-6 items-center justify-center">
           <View className="w-16 h-16 rounded-full bg-emerald-500/10 items-center justify-center mb-4">
             <Icon as={CheckCircle2} size={36} className="text-emerald-500" />
           </View>
           <Text className="text-2xl font-black text-foreground text-center mb-1">
-            Ticket Submitted!
+            {t('ticket_submitted_success', 'Ticket Submitted!')}
           </Text>
           <Text className="text-xs text-muted-foreground text-center mb-4">
-            Your request has been logged and assigned to the maintenance team.
+            {t('ticket_assigned_desc', 'Your request has been logged and assigned to the maintenance team.')}
           </Text>
 
           <View className="bg-primary/10 border border-primary/30 rounded-full px-4 py-1.5 mb-6">
             <Text className="text-xs font-black text-primary">
-              Ticket ID: #{submittedTicket.complaintNumber || 'TKT-10098'}
+              {`${t('ticket_id', 'Ticket ID')}: #${submittedTicket.complaintNumber || 'TKT-10098'}`}
             </Text>
           </View>
 
           <Card className="w-full bg-card border border-border rounded-2xl p-4 gap-3 mb-6 shadow-xs">
             <View className="flex-row items-center justify-between pb-2.5 border-b border-border/40">
-              <Text className="text-xs text-muted-foreground font-medium">Category</Text>
-              <Text className="text-xs font-bold text-foreground">{category === 'Others' ? customCategory : category}</Text>
+              <Text className="text-xs text-muted-foreground font-medium">{t('category', 'Category')}</Text>
+              <Text className="text-xs font-bold text-foreground">{translateText(category === 'Others' ? customCategory : category)}</Text>
             </View>
 
             <View className="flex-row items-center justify-between pb-2.5 border-b border-border/40">
-              <Text className="text-xs text-muted-foreground font-medium">Priority Level</Text>
+              <Text className="text-xs text-muted-foreground font-medium">{t('priority_level', 'Priority Level')}</Text>
               <StatusBadge
                 label={submittedTicket.priority || priority}
                 variant={priority === 'Critical' ? 'danger' : priority === 'High' ? 'warning' : 'info'}
@@ -503,7 +505,7 @@ export function ResidentRaiseTicketScreen() {
             </View>
 
             <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-muted-foreground font-medium">Expected SLA</Text>
+              <Text className="text-xs text-muted-foreground font-medium">{t('expected_sla', 'Expected SLA')}</Text>
               <Text className="text-xs font-extrabold text-amber-600 dark:text-amber-400">{slaLabel}</Text>
             </View>
           </Card>
@@ -514,14 +516,14 @@ export function ResidentRaiseTicketScreen() {
               size="lg"
               onPress={() => router.replace('/(resident)/complaints/my-tickets' as any)}
             >
-              Track Request Status
+              {t('track_request_status', 'Track Request Status')}
             </Button>
             <Button
               variant="outline"
               size="lg"
               onPress={resetForm}
             >
-              Raise Another Ticket
+              {t('raise_another_ticket', 'Raise Another Ticket')}
             </Button>
           </View>
         </View>
@@ -530,15 +532,15 @@ export function ResidentRaiseTicketScreen() {
   }
 
   const stepTitles = {
-    1: 'Issue Category & Details',
-    2: 'Evidence & Visit Schedule',
-    3: 'Urgency & Review Summary',
+    1: t('issue_category_details', 'Issue Category & Details'),
+    2: t('evidence_visit_schedule', 'Evidence & Visit Schedule'),
+    3: t('urgency_review_summary', 'Urgency & Review Summary'),
   };
 
   return (
     <ScreenShell
-      title="Raise Maintenance Ticket"
-      subtitle="Report plumbing, electrical, carpentry or common area issues"
+      title={t('raise_maintenance_ticket', 'Raise Maintenance Ticket')}
+      subtitle={t('raise_maintenance_ticket_subtitle', 'Report plumbing, electrical, carpentry or common area issues')}
       iconName="PlusCircle"
     >
       <View className="flex-1 bg-background">
@@ -548,18 +550,22 @@ export function ResidentRaiseTicketScreen() {
             activeOpacity={0.7}
             onPress={step > 1 ? handlePrevStep : () => router.back()}
             className="w-9 h-9 rounded-full bg-muted/60 items-center justify-center"
+            accessibilityRole="button"
+            accessibilityLabel={t('go_back', 'Go back')}
           >
             <Icon as={ArrowLeft} size={18} className="text-foreground" />
           </TouchableOpacity>
 
           <View className="bg-primary/10 px-3.5 py-1.5 rounded-full border border-primary/20">
-            <Text className="text-xs font-bold text-primary">Maintenance Ticket</Text>
+            <Text className="text-xs font-bold text-primary">{t('maintenance_ticket', 'Maintenance Ticket')}</Text>
           </View>
 
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.back()}
             className="w-9 h-9 rounded-full bg-muted/60 items-center justify-center"
+            accessibilityRole="button"
+            accessibilityLabel={t('close', 'Close')}
           >
             <Icon as={X} size={18} className="text-foreground" />
           </TouchableOpacity>
@@ -569,7 +575,7 @@ export function ResidentRaiseTicketScreen() {
         <View className="px-4 pt-3 pb-3 bg-card border-b border-border/60">
           <View className="mb-2">
             <Text className="text-xs font-black text-foreground">
-              Step {step} of 3: {stepTitles[step]}
+              {`${t('step', 'Step')} ${step} ${t('of', 'of')} 3: ${stepTitles[step]}`}
             </Text>
           </View>
 

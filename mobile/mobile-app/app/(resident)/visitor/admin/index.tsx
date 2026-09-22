@@ -15,9 +15,11 @@ import { VisitorLogDetailsModal } from '@/src/features/visitor/components/histor
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
 import { mapBackendPassToHistoryItem } from '@/src/features/visitor/utils/mapBackendPassToHistoryItem';
 import { History, ShieldCheck, Plus } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function AdminVisitorDashboardScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPass, setSelectedPass] = useState<any | null>(null);
 
@@ -115,8 +117,8 @@ export default function AdminVisitorDashboardScreen() {
 
   return (
     <ScreenShell
-      title="Community Visitor Management"
-      subtitle="Admin master security console & entry audit"
+      title={t('community_visitor_management', 'Community Visitor Management')}
+      subtitle={t('admin_master_security_console_entry_audi', 'Admin master security console & entry audit')}
       iconName="ShieldCheck"
       scrollable={false}
       loading={isLoading}
@@ -124,15 +126,14 @@ export default function AdminVisitorDashboardScreen() {
       onRetry={loadData}
       headerRight={
         <Button
-          variant="default"
           size="sm"
           onPress={() => router.push('/(resident)/visitor/admin/create-pass' as any)}
-          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1 px-2.5 py-1 h-8 rounded-full bg-emerald-600 active:bg-emerald-700"
           accessibilityRole="button"
-          accessibilityLabel="Create Community Pass"
+          accessibilityLabel={t('create_pass', 'Create Pass')}
         >
-          <Plus size={15} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">Create Pass</Text>
+          <Plus size={14} color="#ffffff" />
+          <Text className="text-xs font-bold text-white">{t('create_pass', 'Create Pass')}</Text>
         </Button>
       }
     >

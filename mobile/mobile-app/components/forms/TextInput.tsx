@@ -11,6 +11,7 @@ import {
 import { cn } from '../../lib/utils';
 import { LucideIcon, CheckCircle2, AlertCircle, XCircle, X } from 'lucide-react-native';
 import { ValidationStatus } from '../../src/utils/validation';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface TextInputProps extends RNTextInputProps {
   label?: string;
@@ -62,6 +63,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
     },
     ref
   ) => {
+    const { translateText, t } = useTranslation();
     const [isFocused, setIsFocused] = useState(false);
 
     const handleFocus = (e: any) => {
@@ -115,28 +117,31 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
     let feedbackType: 'error' | 'incomplete' | 'success' | 'validating' | 'helper' = 'helper';
 
     if (error) {
-      feedbackText = error;
+      feedbackText = translateText(error);
       feedbackType = 'error';
     } else if (effectiveStatus === 'incomplete' && helperText) {
-      feedbackText = helperText;
+      feedbackText = translateText(helperText);
       feedbackType = 'incomplete';
     } else if (effectiveStatus === 'validating') {
-      feedbackText = helperText || 'Verifying...';
+      feedbackText = helperText ? translateText(helperText) : t('verifying', 'Verifying...');
       feedbackType = 'validating';
     } else if (effectiveStatus === 'valid' && successMessage) {
-      feedbackText = successMessage;
+      feedbackText = translateText(successMessage);
       feedbackType = 'success';
     } else if (helperText) {
-      feedbackText = helperText;
+      feedbackText = translateText(helperText);
       feedbackType = 'helper';
     }
 
+    const translatedPlaceholder = props.placeholder ? translateText(props.placeholder) : undefined;
+    const translatedLabel = label ? translateText(label) : undefined;
+
     return (
       <View className={cn('w-full', containerClassName)}>
-        {Boolean(label) && (
+        {Boolean(translatedLabel) && (
           <View className="flex-row items-center justify-between mb-1.5">
             <Text className={cn('text-sm font-medium text-foreground', labelClassName)}>
-              {label}
+              {translatedLabel}
               {required && !label?.includes('*') && (
                 <Text className="text-destructive font-bold"> *</Text>
               )}
@@ -145,7 +150,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
               <View className="flex-row items-center gap-1">
                 <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
                 <Text className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  Valid
+                  {t('valid', 'Valid')}
                 </Text>
               </View>
             )}
@@ -194,11 +199,12 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
               props.style,
             ]}
             placeholderTextColor="#737c88"
-            accessibilityLabel={label || props.placeholder}
+            accessibilityLabel={translatedLabel || translatedPlaceholder}
             accessibilityState={{
               disabled: props.editable === false,
             }}
             {...props}
+            placeholder={translatedPlaceholder}
           />
 
           {/* Quick Clear Icon */}

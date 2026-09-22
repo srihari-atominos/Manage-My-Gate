@@ -109,10 +109,19 @@ app.use(cookieParser());
 // Attach standard response helper
 app.use(responseHandler);
 
-// Static public folder
+// Static public folder with explicit cross-origin headers
+const staticOptions = {
+  setHeaders: (res) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+};
+
 app.use('/.well-known', express.static(path.join(__dirname, 'public', '.well-known')));
-app.use('/public', express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/public/uploads', express.static(path.join(__dirname, 'uploads'), staticOptions));
+app.use('/public', express.static(path.join(__dirname, 'public'), staticOptions));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), staticOptions));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), staticOptions));
 
 // Ensure dynamic API responses are not cached by intermediate proxies or browsers
 app.use(['/api', '/api/v1', '/api/v2'], (req, res, next) => {

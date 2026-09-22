@@ -10,6 +10,7 @@ import { AdminWalkInRegistrationCard } from '@/src/features/visitor/components/a
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { useSelector } from 'react-redux';
 import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
+import { useTranslation } from '@/src/utils/i18n';
 
 const ADMIN_WALK_IN_TABS = [
   { key: 'PENDING', label: 'Pending Approvals' },
@@ -18,6 +19,7 @@ const ADMIN_WALK_IN_TABS = [
 ];
 
 export default function AdminWalkInConsoleScreen() {
+  const { t } = useTranslation();
   const activeOrgId = useSelector(selectActiveOrgId);
   const authUser = useSelector(selectAuthUser);
   const {
@@ -109,8 +111,8 @@ export default function AdminWalkInConsoleScreen() {
 
   return (
     <ScreenShell
-      title="Master Gate Walk-In Console"
-      subtitle="Override & monitor pending gate verification requests"
+      title={t('master_gate_walk_in_console', 'Master Gate Walk-In Console')}
+      subtitle={t('override_monitor_pending_gate_verificati', 'Override & monitor pending gate verification requests')}
       iconName="ShieldAlert"
     >
       <View className="flex-1 bg-background">

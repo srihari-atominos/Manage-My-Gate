@@ -4,6 +4,7 @@ import { Text } from '../ui/text';
 import { LucideIcon } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface EmptyStateProps {
   icon?: LucideIcon;
@@ -22,6 +23,8 @@ export const EmptyState = ({
   onAction,
   className,
 }: EmptyStateProps) => {
+  const { translateText } = useTranslation();
+
   return (
     <View className={cn('items-center justify-center py-10 px-4', className)}>
       {Icon && (
@@ -30,16 +33,16 @@ export const EmptyState = ({
         </View>
       )}
       <Text className="mb-1 text-center text-lg font-bold font-sans text-foreground">
-        {title}
+        {translateText(title)}
       </Text>
       {description && (
         <Text className="mb-6 text-center text-sm font-sans text-muted-foreground max-w-xs">
-          {description}
+          {translateText(description)}
         </Text>
       )}
       {actionLabel && onAction && (
         <Button onPress={onAction} className="px-6">
-          <Text className="font-semibold text-primary-foreground">{actionLabel}</Text>
+          <Text className="font-semibold text-primary-foreground">{translateText(actionLabel)}</Text>
         </Button>
       )}
     </View>

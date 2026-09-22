@@ -108,6 +108,8 @@ export const updateProfileRules = [
     .trim()
     .isLength({ min: 6, max: 6 })
     .withMessage('OTP must be 6 digits'),
+  body('removeAvatar')
+    .optional(),
 ];
 
 export const bulkInviteUserRules = [

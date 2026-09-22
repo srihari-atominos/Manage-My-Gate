@@ -8,17 +8,11 @@ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { PaymentReceiptCard } from '../components/PaymentReceiptCard';
-
-const FILTER_PILLS = [
-  { key: 'ALL', label: 'All History' },
-  { key: 'PAID', label: 'Paid' },
-  { key: 'PARTIALLY_PAID', label: 'Partial' },
-  { key: 'VERIFICATION_PENDING', label: 'Pending Clearance' },
-  { key: 'UNPAID', label: 'Unpaid' },
-];
+import { useTranslation } from '@/src/utils/i18n';
 
 export function ResidentPaymentHistoryScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const {
     activeDues,
     loadingStates,
@@ -31,6 +25,17 @@ export function ResidentPaymentHistoryScreen() {
   useBillingSocket();
 
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  const filterPills = useMemo(
+    () => [
+      { key: 'ALL', label: t('all_history', 'All History') },
+      { key: 'PAID', label: t('paid', 'Paid') },
+      { key: 'PARTIALLY_PAID', label: t('partial', 'Partial') },
+      { key: 'VERIFICATION_PENDING', label: t('pending_clearance', 'Pending Clearance') },
+      { key: 'UNPAID', label: t('unpaid', 'Unpaid') },
+    ],
+    [t]
+  );
 
   useEffect(() => {
     loadResidentDues();
@@ -63,8 +68,8 @@ export function ResidentPaymentHistoryScreen() {
 
   return (
     <ScreenShell
-      title="Payment History"
-      subtitle="View your past settled maintenance fees & receipts"
+      title={t('payment_history', 'Payment History')}
+      subtitle={t('payment_history_sub', 'View your past settled maintenance fees & receipts')}
       iconName="Receipt"
       loading={loadingStates.fetchDues && recentInvoices.length === 0}
     >
@@ -103,7 +108,7 @@ export function ResidentPaymentHistoryScreen() {
             {/* Canonical TabBar: Filter Pills */}
             <View className="bg-card border border-border rounded-2xl p-1 shadow-xs">
               <TabBar
-                tabs={FILTER_PILLS}
+                tabs={filterPills}
                 activeTab={statusFilter}
                 onTabChange={setStatusFilter}
                 variant="pill"
@@ -112,11 +117,11 @@ export function ResidentPaymentHistoryScreen() {
           </View>
         }
         emptyIcon="Receipt"
-        emptyTitle="No Payment History Found"
+        emptyTitle={t('no_payment_history_found', 'No Payment History Found')}
         emptySubtitle={
           statusFilter === 'ALL'
-            ? 'You currently have no historical billing payment records.'
-            : `No invoice records match status filter "${statusFilter.replace(/_/g, ' ')}".`
+            ? t('no_payment_history_desc', 'You currently have no historical billing payment records.')
+            : `${t('no_invoices_matching_filter', 'No invoice records match status filter')} "${statusFilter.replace(/_/g, ' ')}".`
         }
         contentContainerClassName="px-4 pt-3 pb-28"
       />

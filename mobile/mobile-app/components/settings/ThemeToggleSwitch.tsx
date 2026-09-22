@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
 import { ThemeMode } from '@/src/features/settings/hooks/useSettings';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface ThemeToggleSwitchProps {
   themeMode: ThemeMode;
@@ -17,27 +18,28 @@ export const ThemeToggleSwitch = ({
   themeMode,
   onSelectMode,
   className,
-  t,
+  t: customT,
 }: ThemeToggleSwitchProps) => {
-  const translate = t || ((_, fb) => fb || '');
+  const { t: hookT } = useTranslation();
+  const t = customT || hookT;
 
   const activeLabel =
     themeMode === 'system'
-      ? 'Phone Default'
+      ? t('system_default', 'Phone Default')
       : themeMode === 'dark'
-      ? 'Dark'
-      : 'Light';
+      ? t('dark_mode', 'Dark Mode')
+      : t('light_mode', 'Light Mode');
 
-  const OPTIONS: Array<{ mode: ThemeMode; label: string; icon: any }> = [
-    { mode: 'light', label: 'Light', icon: Sun },
-    { mode: 'system', label: 'Auto', icon: Smartphone },
-    { mode: 'dark', label: 'Dark', icon: Moon },
+  const OPTIONS: Array<{ mode: ThemeMode; labelKey: string; fallback: string; icon: any }> = [
+    { mode: 'light', labelKey: 'light', fallback: 'Light', icon: Sun },
+    { mode: 'system', labelKey: 'auto', fallback: 'Auto', icon: Smartphone },
+    { mode: 'dark', labelKey: 'dark', fallback: 'Dark', icon: Moon },
   ];
 
   return (
-    <View className={cn('bg-card border border-border rounded-2xl p-4 gap-3 shadow-xs', className)}>
-      <View className="flex-row items-center gap-2.5">
-        <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shrink-0">
+    <View className={cn('p-4 gap-3', className)}>
+      <View className="flex-row items-center gap-3">
+        <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10 border border-primary/20 shrink-0">
           {themeMode === 'system' ? (
             <Icon as={Smartphone} size={18} className="text-primary" />
           ) : themeMode === 'dark' ? (
@@ -47,10 +49,10 @@ export const ThemeToggleSwitch = ({
           )}
         </View>
         <View className="flex-1 min-w-0">
-          <Text className="text-sm font-bold text-foreground">
-            {translate('theme_mode', 'Theme Mode')}
+          <Text className="text-sm font-semibold text-foreground font-sans">
+            {t('theme_mode', 'Theme Mode')}
           </Text>
-          <Text className="text-[11px] text-muted-foreground mt-0.5">
+          <Text className="text-xs text-muted-foreground mt-0.5">
             {activeLabel}
           </Text>
         </View>
@@ -67,22 +69,24 @@ export const ThemeToggleSwitch = ({
               className={cn(
                 'flex-1 flex-row items-center justify-center py-2.5 rounded-lg gap-1.5',
                 isSelected
-                  ? 'bg-card border border-border shadow-xs'
+                  ? 'bg-card border border-border shadow-2xs'
                   : 'bg-transparent active:bg-muted/60'
               )}
+              accessibilityRole="button"
+              accessibilityLabel={t(opt.labelKey, opt.fallback)}
             >
               <Icon
                 as={opt.icon}
                 size={14}
-                color={isSelected ? '#0284c7' : '#94a3b8'}
+                color={isSelected ? '#FF6A00' : '#94a3b8'}
               />
               <Text
                 className={cn(
-                  'text-xs',
+                  'text-xs font-sans',
                   isSelected ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'
                 )}
               >
-                {opt.label}
+                {t(opt.labelKey, opt.fallback)}
               </Text>
             </Pressable>
           );

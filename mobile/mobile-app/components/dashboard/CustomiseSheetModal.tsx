@@ -49,7 +49,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   onSave,
 }) => {
   const { user } = useAuth();
-  const { t, tFeatureName } = useTranslation();
+  const { t, tFeatureName, language } = useTranslation();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -205,12 +205,21 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
 
           {/* Bottom Sheet Container with guaranteed height */}
           <Animated.View
-            style={[{ height: SHEET_HEIGHT }, animatedSheetStyle]}
-            className="bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-hidden flex-col"
+            style={[
+              {
+                height: SHEET_HEIGHT,
+                backgroundColor: isDark ? '#1C1917' : '#FFFFFF',
+              },
+              animatedSheetStyle,
+            ]}
+            className="border-t border-border rounded-t-3xl shadow-2xl overflow-hidden flex-col"
           >
             {/* Top Pill Handle & Header with Pull-Down Pan Gesture */}
             <GestureDetector gesture={headerPanGesture}>
-              <View className="bg-card">
+              <View
+                style={{ backgroundColor: isDark ? '#1C1917' : '#FFFFFF' }}
+                className="bg-card"
+              >
                 <View className="items-center pt-2.5 pb-1">
                   <View className="w-10 h-1.5 rounded-full bg-muted-foreground/30" />
                 </View>
@@ -231,7 +240,10 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
             </GestureDetector>
 
             {/* Pinned Active Selection Zone (The Deck - 6 Slots, always visible at top) */}
-            <View onLayout={(e) => setDeckHeight(e.nativeEvent.layout.height)}>
+            <View
+              style={{ backgroundColor: isDark ? '#292524' : '#F5F5F4' }}
+              onLayout={(e) => setDeckHeight(e.nativeEvent.layout.height)}
+            >
               <CustomiseDeckZone
                 activeItems={activeItems}
                 maxCapacity={6}
@@ -242,17 +254,20 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
             </View>
 
             {/* Divider Sub-header */}
-            <View className="px-5 py-2.5 bg-muted/30 border-b border-border flex-row items-center justify-between">
+            <View
+              style={{ backgroundColor: isDark ? '#292524' : '#F5F5F4' }}
+              className="px-5 py-2.5 border-b border-border flex-row items-center justify-between"
+            >
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                {t('available_actions', 'Available Actions')} ({selectedIds.length}/6 Selected)
+                {t('available_actions', 'Available Actions')} ({selectedIds.length}/6 {t('selected', 'Selected')})
               </Text>
-              <Sparkles size={14} color="#0284c7" />
+              <Sparkles size={14} color="#C2410C" />
             </View>
 
             {/* Scrollable Available Features Body */}
             <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingBottom: 60 }}
+              style={{ flex: 1, backgroundColor: isDark ? '#1C1917' : '#FFFFFF' }}
+              contentContainerStyle={{ paddingBottom: 60, backgroundColor: isDark ? '#1C1917' : '#FFFFFF' }}
               showsVerticalScrollIndicator={false}
               scrollEnabled={!draggingFeature}
             >

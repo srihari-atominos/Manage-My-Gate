@@ -13,6 +13,7 @@ import {
   formatFacilityOperatingHours,
 } from '../utils/amenityPresentation';
 import { Sparkles, Users, Timer, DoorOpen, Wrench } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface AmenityDetailSheetProps {
   visible: boolean;
@@ -31,6 +32,7 @@ export function AmenityDetailSheet({
   onEditClick,
   onScheduleMaintenanceClick,
 }: AmenityDetailSheetProps) {
+  const { t, translateText } = useTranslation();
   if (!visible || !amenity) return null;
 
   const archetypeMeta = getArchetypeMeta(amenity.archetype || amenity.type || amenity.category);
@@ -111,7 +113,7 @@ export function AmenityDetailSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Facility Master Specifications">
+    <BottomSheet visible={visible} onClose={onClose} title={t('facility_master_specifications', 'Facility Master Specifications')}>
       <View className="py-1">
         {/* Amenity Cover Image Banner */}
         {imageUrl ? (
@@ -123,11 +125,11 @@ export function AmenityDetailSheet({
         {/* Header Summary Pill */}
         <View className="flex-row items-center justify-between mb-3 bg-card p-3 rounded-xl border border-border">
           <View className="flex-1 me-2">
-            <Text className="text-base font-bold text-foreground">{amenity.name}</Text>
+            <Text className="text-base font-bold text-foreground">{translateText(amenity.name)}</Text>
             <View className="flex-row items-center gap-1.5 mt-0.5">
               {renderArchetypeIcon()}
               <Text className="text-xs font-semibold text-muted-foreground">
-                {archetypeMeta.label} • {amenity.location || 'Community Facilities'}
+                {translateText(archetypeMeta.label)} • {translateText(amenity.location || 'Community Facilities')}
               </Text>
             </View>
           </View>
@@ -249,8 +251,8 @@ export function AmenityDetailSheet({
 
           {amenity.description ? (
             <DetailRow
-              label="House Rules & Description"
-              value={amenity.description}
+              label={t('house_rules_description', 'House Rules & Description')}
+              value={translateText(amenity.description)}
               iconName="FileText"
               isLast={true}
             />

@@ -24,6 +24,7 @@ import {
   ShieldCheck,
 } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface AmenityMasterCardProps {
   item: AmenityFacility | any;
@@ -40,6 +41,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
   onToggleStatus,
   onDelete,
 }) => {
+  const { t, translateText } = useTranslation();
   const archetypeMeta = getArchetypeMeta(item.archetype || item.type || item.category);
   const statusMeta = getFacilityStatusMeta(item.status);
   const isActive = statusMeta.status === 'ACTIVE' || item.isActive === true;
@@ -119,13 +121,13 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
             <View className="bg-black/75 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20 shadow-xs">
               {renderArchetypeIcon()}
               <Text className="text-xs font-bold text-white uppercase tracking-wider">
-                {archetypeMeta.label}
+                {translateText(archetypeMeta.label)}
               </Text>
             </View>
 
             {/* Status Badge with Live Pulsing Dot */}
             <StatusBadge
-              label={statusMeta.label}
+              label={translateText(statusMeta.label)}
               variant={statusMeta.variant}
               dot={statusMeta.pulseDot}
             />
@@ -145,7 +147,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
           {/* Bottom-Right Price Tag Pill on Image */}
           <View className="absolute bottom-3 right-3 z-10">
             <View className="bg-card/95 px-3 py-1.5 rounded-xl border border-border/70 shadow-sm flex-row items-center gap-1">
-              <Text className="text-[11px] font-semibold text-muted-foreground">Fee:</Text>
+              <Text className="text-[11px] font-semibold text-muted-foreground">{t('fee', 'Fee')}:</Text>
               <Text className="text-xs font-extrabold text-primary">
                 {pricingInfo.displayRate}
               </Text>
@@ -157,13 +159,13 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
         <View className="p-4 pb-3">
           {/* Title & Location */}
           <View className="mb-2">
-            <Text className="text-lg font-extrabold text-foreground tracking-tight">
-              {item.name}
+            <Text className="text-lg font-extrabold text-foreground tracking-tight shrink truncate" numberOfLines={1}>
+              {translateText(item.name)}
             </Text>
             <View className="flex-row items-center gap-1 mt-1">
-              <MapPin size={13} className="text-muted-foreground" />
-              <Text className="text-xs font-medium text-muted-foreground">
-                {item.location || 'Community Facilities'}
+              <MapPin size={13} className="text-muted-foreground shrink-0" />
+              <Text className="text-xs font-medium text-muted-foreground shrink truncate" numberOfLines={1}>
+                {translateText(item.location || 'Community Facilities')}
               </Text>
             </View>
           </View>
@@ -173,7 +175,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
             {/* Archetype Short Pill */}
             <View className={cn('flex-row items-center gap-1 px-2 py-1 rounded-lg', archetypeMeta.badgeBg)}>
               <Text className={cn('text-[11px] font-bold', archetypeMeta.badgeText)}>
-                {archetypeMeta.shortLabel}
+                {translateText(archetypeMeta.shortLabel)}
               </Text>
             </View>
 
@@ -181,7 +183,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
             <View className="flex-row items-center gap-1.5 bg-secondary/80 px-2.5 py-1 rounded-lg">
               <Users size={12} className="text-muted-foreground" />
               <Text className="text-[11px] font-semibold text-foreground">
-                Cap: {capacity} (Max: {maxHeadcount})
+                {t('cap', 'Cap')}: {capacity} ({t('max', 'Max')}: {maxHeadcount})
               </Text>
             </View>
 
@@ -197,8 +199,8 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
             <View className="flex-row items-center gap-1.5 bg-secondary/80 px-2.5 py-1 rounded-lg">
               <Timer size={12} className="text-muted-foreground" />
               <Text className="text-[11px] font-semibold text-foreground">
-                {item.pricingConfig?.type === 'DAILY' ? 'Full Day' : `${slotDuration}m`}
-                {bufferTime > 0 ? ` (+${bufferTime}m)` : ''}
+                {item.pricingConfig?.type === 'DAILY' ? t('full_day', 'Full Day') : `${slotDuration}${t('mins_unit', 'm')}`}
+                {bufferTime > 0 ? ` (+${bufferTime}${t('mins_unit', 'm')})` : ''}
               </Text>
             </View>
 
@@ -207,7 +209,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
               <View className="flex-row items-center gap-1 bg-amber-500/10 px-2 py-1 rounded-lg">
                 <ShieldCheck size={11} className="text-amber-600 dark:text-amber-400" />
                 <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                  Approval Req.
+                  {t('approval_req', 'Approval Req.')}
                 </Text>
               </View>
             ) : null}
@@ -225,7 +227,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
           accessibilityLabel={`Edit ${item.name}`}
         >
           <Edit2 size={13} color="#059669" />
-          <Text>Edit</Text>
+          <Text>{t('edit', 'Edit')}</Text>
         </Button>
 
         <Button
@@ -236,7 +238,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
           accessibilityLabel={isActive ? `Deactivate ${item.name}` : `Activate ${item.name}`}
         >
           <Power size={13} color={isActive ? '#d97706' : '#245fa8'} />
-          <Text>{isActive ? 'Deactivate' : 'Activate'}</Text>
+          <Text>{isActive ? t('deactivate', 'Deactivate') : t('activate', 'Activate')}</Text>
         </Button>
 
         <Button
@@ -247,7 +249,7 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
           accessibilityLabel={`Delete ${item.name}`}
         >
           <Trash2 size={13} color="#e11d48" />
-          <Text>Delete</Text>
+          <Text>{t('delete', 'Delete')}</Text>
         </Button>
       </View>
     </View>

@@ -166,30 +166,30 @@ export default function InvitationsScreen() {
           {item.role?.name ? (
             <View className="flex-row items-center">
               <Shield size={13} className="text-muted-foreground me-1.5" />
-              <Text className="text-xs text-muted-foreground me-1">Role:</Text>
+              <Text className="text-xs text-muted-foreground me-1">{t('role_label', 'Role:')}</Text>
               <Text className="text-xs font-medium text-foreground">{item.role.name}</Text>
             </View>
           ) : null}
 
           <View className="flex-row items-center">
             <User size={13} className="text-muted-foreground me-1.5" />
-            <Text className="text-xs text-muted-foreground me-1">Inviter:</Text>
+            <Text className="text-xs text-muted-foreground me-1">{t('inviter_label', 'Inviter:')}</Text>
             <Text className="text-xs text-foreground">
-              {item.inviter?.name || item.inviter?.email || 'System Admin'}
+              {item.inviter?.name || item.inviter?.email || t('system_admin', 'System Admin')}
             </Text>
           </View>
 
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <Calendar size={13} className="text-muted-foreground me-1.5" />
-              <Text className="text-xs text-muted-foreground me-1">Sent:</Text>
+              <Text className="text-xs text-muted-foreground me-1">{t('sent_label', 'Sent:')}</Text>
               <Text className="text-xs text-foreground">
                 {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—'}
               </Text>
             </View>
             <View className="flex-row items-center">
               <Clock size={13} className="text-muted-foreground me-1.5" />
-              <Text className="text-xs text-muted-foreground me-1">Expires:</Text>
+              <Text className="text-xs text-muted-foreground me-1">{t('expires_label', 'Expires:')}</Text>
               <Text className="text-xs text-foreground">
                 {item.expiresAt ? new Date(item.expiresAt).toLocaleDateString() : '—'}
               </Text>
@@ -208,7 +208,7 @@ export default function InvitationsScreen() {
               onPress={() => handleResend(item)}
               className="px-3"
             >
-              Resend
+              {t('resend', 'Resend')}
             </Button>
 
             {/* Revoke: PENDING only */}
@@ -219,7 +219,7 @@ export default function InvitationsScreen() {
                 onPress={() => setRevokeTarget(item)}
                 className="px-3"
               >
-                Revoke
+                {t('revoke', 'Revoke')}
               </Button>
             )}
           </View>
@@ -230,8 +230,8 @@ export default function InvitationsScreen() {
 
   return (
     <ScreenShell
-      title="Invitations"
-      subtitle={`${totalRecords} invitations registered`}
+      title={t('invitations', 'Invitations')}
+      subtitle={`${totalRecords} ${t('invitations_registered', 'invitations registered')}`}
       onBackPress={() => router.back()}
     >
       <View className="flex-1 px-4 pt-2">
@@ -261,7 +261,7 @@ export default function InvitationsScreen() {
                     isSelected ? 'text-primary-foreground' : 'text-foreground'
                   }`}
                 >
-                  {s}
+                  {t(s, s)}
                 </Text>
               </TouchableOpacity>
             );
@@ -273,8 +273,8 @@ export default function InvitationsScreen() {
           <SkeletonLoader count={4} />
         ) : invitations.length === 0 ? (
           <EmptyState
-            title="No Invitations Found"
-            description="No invitations match the selected criteria."
+            title={t('no_invitations_found', 'No Invitations Found')}
+            description={t('no_invitations_desc', 'No invitations match the selected criteria.')}
           />
         ) : (
           <FlatList

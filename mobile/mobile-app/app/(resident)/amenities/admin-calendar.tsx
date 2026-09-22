@@ -266,6 +266,29 @@ export default function AdminAmenityCalendarScreen() {
       iconName="Calendar"
       loading={loading && adminBookings.length === 0}
       error={error}
+      headerRight={
+        <View className="flex-row items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
+            className="flex-row items-center gap-1 rounded-full px-2.5 h-8 bg-amber-500/10 border-amber-500/30 active:bg-amber-500/20"
+            accessibilityLabel="Maintenance Schedule"
+          >
+            <Wrench size={12} className="text-amber-600 dark:text-amber-400" />
+            <Text className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">Maintenance</Text>
+          </Button>
+          <Button
+            size="sm"
+            onPress={handleOpenManualModal}
+            className="flex-row items-center gap-1 rounded-full px-3 h-8 bg-emerald-600 active:bg-emerald-700"
+            accessibilityLabel="Reserve manual slot"
+          >
+            <Plus size={13} color="#FFFFFF" />
+            <Text className="text-white font-bold text-xs">Reserve</Text>
+          </Button>
+        </View>
+      }
     >
       <View className="flex-1 bg-background">
         <PaginatedList<{ date: string; formattedDate: string; bookings: AmenityBooking[] }>

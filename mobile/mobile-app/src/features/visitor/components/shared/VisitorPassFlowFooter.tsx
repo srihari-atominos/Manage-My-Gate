@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface VisitorPassFlowFooterProps {
   onBack?: () => void;
@@ -25,8 +26,9 @@ export const VisitorPassFlowFooter: React.FC<VisitorPassFlowFooterProps> = ({
   disabled = false,
 }) => {
   const insets = useSafeAreaInsets();
-  const defaultNextLabel = isLastStep ? 'Generate Visitor Pass' : 'Continue';
-  const labelText = nextLabel || defaultNextLabel;
+  const { t, translateText } = useTranslation();
+  const defaultNextLabel = isLastStep ? t('generate_visitor_pass', 'Generate Visitor Pass') : t('continue', 'Continue');
+  const labelText = nextLabel ? translateText(nextLabel) : defaultNextLabel;
 
   return (
     <View
@@ -41,7 +43,7 @@ export const VisitorPassFlowFooter: React.FC<VisitorPassFlowFooterProps> = ({
           className="h-12 px-4 rounded-xl flex-row items-center gap-1.5"
         >
           <ArrowLeft size={16} className="text-foreground" />
-          <Text className="font-semibold text-foreground">Back</Text>
+          <Text className="font-semibold text-foreground">{t('back', 'Back')}</Text>
         </Button>
       ) : null}
 

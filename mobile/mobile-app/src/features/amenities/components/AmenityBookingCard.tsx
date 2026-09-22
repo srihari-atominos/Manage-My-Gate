@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { AmenityBooking } from '../store/amenityBookingSlice';
 import { formatTimeRange12Hour } from '../utils/amenityStateHelpers';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface AmenityBookingCardProps {
   booking: AmenityBooking;
@@ -25,6 +26,7 @@ export function AmenityBookingCard({
   onViewPassQR,
   onCancelPress,
 }: AmenityBookingCardProps) {
+  const { t, translateText, language } = useTranslation();
   const amenityObj = typeof booking.amenityId === 'object' && booking.amenityId ? booking.amenityId : null;
   const amenityName = amenityObj?.name || booking.amenityName || 'Amenity Pass';
   const coverImage = amenityObj?.images?.[0];
@@ -131,35 +133,38 @@ export function AmenityBookingCard({
 
   return (
     <ListCard
-      title={amenityName}
-      subtitle={timeWindowSubtitle || 'Amenity Reservation'}
+      title={translateText(amenityName)}
+      subtitle={timeWindowSubtitle || t('amenity_reservation', 'Amenity Reservation')}
       leftImage={coverImage || undefined}
       leftIcon={!coverImage ? 'CalendarCheck' : undefined}
       onPress={() => onPress(booking)}
       status={{
-        label: displayStatus,
+        label: translateText(displayStatus),
         variant: getBookingStatusVariant(displayStatus),
       }}
-      secondaryBadge={paymentStatus}
+      secondaryBadge={{
+        label: translateText(paymentStatus.label),
+        variant: paymentStatus.variant,
+      }}
     >
       {/* Compact Details & Multi-state Pill Strip */}
       <View className="pt-2 border-t border-border/40 flex-col gap-2">
         <View className="flex-row justify-between items-center">
           <Text variant="muted" className="text-xs font-medium">
-            Booking ID: <Text className="font-bold text-foreground text-xs">{bookingIdDisplay}</Text>
+            {t('booking_id', 'Booking ID')}: <Text className="font-bold text-foreground text-xs">{bookingIdDisplay}</Text>
           </Text>
           <Text variant="muted" className="text-xs font-medium">
-            Guests: <Text className="font-semibold text-foreground text-xs">{booking.numberOfPersons || booking.guestsCount || 1} Person(s)</Text>
+            {t('guests', 'Guests')}: <Text className="font-semibold text-foreground text-xs">{booking.numberOfPersons || booking.guestsCount || 1} {t('persons_count', 'Person(s)')}</Text>
           </Text>
         </View>
         <View className="flex-row justify-between items-center pt-1.5 border-t border-border/20">
           <View className="flex-row items-center gap-1.5">
-            <Text variant="muted" className="text-xs">Entry:</Text>
-            <StatusBadge label={entryStatus.label} variant={entryStatus.variant} size="sm" />
+            <Text variant="muted" className="text-xs">{t('entry', 'Entry')}:</Text>
+            <StatusBadge label={translateText(entryStatus.label)} variant={entryStatus.variant} size="sm" />
           </View>
           <View className="flex-row items-center gap-1.5">
-            <Text variant="muted" className="text-xs">Pass QR:</Text>
-            <StatusBadge label={qrStatus.label} variant={qrStatus.variant} size="sm" />
+            <Text variant="muted" className="text-xs">{t('pass_qr', 'Pass QR')}:</Text>
+            <StatusBadge label={translateText(qrStatus.label)} variant={qrStatus.variant} size="sm" />
           </View>
         </View>
       </View>
@@ -178,7 +183,7 @@ export function AmenityBookingCard({
             accessibilityRole="button"
             accessibilityLabel="View digital pass QR"
           >
-            <Text className="text-blue-600 dark:text-blue-400 text-xs font-semibold">View Pass QR</Text>
+            <Text className="text-blue-600 dark:text-blue-400 text-xs font-semibold">{t('view_pass_qr', 'View Pass QR')}</Text>
           </Button>
           {isCancelable && onCancelPress && (
             <Button
@@ -193,7 +198,7 @@ export function AmenityBookingCard({
               accessibilityLabel="Cancel booking"
             >
               <Text className="text-muted-foreground text-xs font-semibold">
-                Cancel Booking
+                {t('cancel_booking', 'Cancel Booking')}
               </Text>
             </Button>
           )}

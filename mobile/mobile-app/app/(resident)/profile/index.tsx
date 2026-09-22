@@ -14,7 +14,7 @@ import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollConte
 import authService from '@/src/features/auth/services/authService';
 import { updateProfileThunk } from '@/src/features/auth/store/authSlice';
 import { useTranslation } from '@/src/utils/i18n';
-import { Save, Camera, Image as ImageIcon, FileUp } from 'lucide-react-native';
+import { Save, Camera, Image as ImageIcon, FileUp, Trash2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { validateEmail, validatePhone, parseBackendError } from '@/src/utils/validation';
@@ -45,6 +45,7 @@ export default function ProfileScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<SelectedAvatarFile | null>(null);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
@@ -67,9 +68,71 @@ export default function ProfileScreen() {
       setPhone(user.phone || uAny.phoneNumber || uAny.mobile || '');
       if (user.avatar || uAny.avatarUrl) {
         setAvatarUri(user.avatar || uAny.avatarUrl);
+      } else {
+        setAvatarUri(null);
       }
     }
   }, [user]);
+
+  // Immediate auto-upload and persistence when photo is chosen
+  const uploadAvatarDirectly = async (fileObj: SelectedAvatarFile) => {
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      if (name.trim()) formData.append('name', name.trim());
+      if (phone.trim()) formData.append('phone', phone.trim());
+
+      if (Platform.OS === 'web') {
+        if (fileObj.file) {
+          formData.append('avatar', fileObj.file, fileObj.name || 'avatar.jpg');
+        } else {
+          try {
+            const response = await fetch(fileObj.uri);
+            const blob = await response.blob();
+            const file = new File([blob], fileObj.name || 'avatar.jpg', {
+              type: fileObj.type || blob.type || 'image/jpeg',
+            });
+            formData.append('avatar', file);
+          } catch (fetchErr) {
+            console.warn('Fallback web blob append:', fetchErr);
+            formData.append('avatar', fileObj.uri);
+          }
+        }
+      } else {
+        formData.append('avatar', {
+          uri: fileObj.uri,
+          name: fileObj.name || `avatar_${Date.now()}.jpg`,
+          type: fileObj.type || 'image/jpeg',
+        } as any);
+      }
+
+      const res = await dispatch(updateProfileThunk(formData) as any);
+      if (res.meta.requestStatus === 'fulfilled') {
+        setSelectedAvatarFile(null);
+        const updatedAvatar = res.payload?.avatar;
+        if (updatedAvatar) {
+          setAvatarUri(updatedAvatar);
+        }
+        setProfileSuccess(t('profile_photo_saved', 'Profile photo updated successfully!'));
+        setTimeout(() => setProfileSuccess(null), 3500);
+      } else {
+        const parsed = parseBackendError(res.payload, t('failed_to_save_photo', 'Failed to save profile photo.'));
+        Alert.alert(t('error', 'Error'), parsed.userMessage);
+      }
+    } catch (err: any) {
+      console.error('Error auto-uploading avatar:', err);
+      const parsed = parseBackendError(err, t('failed_to_save_photo', 'Failed to save profile photo.'));
+      Alert.alert(t('error', 'Error'), parsed.userMessage);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handlePhotoSelected = async (fileObj: SelectedAvatarFile) => {
+    setSelectedAvatarFile(fileObj);
+    setAvatarUri(fileObj.uri);
+    await uploadAvatarDirectly(fileObj);
+  };
 
   // 1. Live Camera Access
   const handleTakePhoto = async () => {
@@ -83,8 +146,7 @@ export default function ProfileScreen() {
         });
         if (!result.canceled && result.assets && result.assets.length > 0) {
           const asset = result.assets[0];
-          setAvatarUri(asset.uri);
-          setSelectedAvatarFile({
+          await handlePhotoSelected({
             uri: asset.uri,
             name: asset.fileName || `camera_${Date.now()}.jpg`,
             type: asset.mimeType || 'image/jpeg',
@@ -109,8 +171,7 @@ export default function ProfileScreen() {
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        setAvatarUri(asset.uri);
-        setSelectedAvatarFile({
+        await handlePhotoSelected({
           uri: asset.uri,
           name: asset.fileName || `camera_${Date.now()}.jpg`,
           type: asset.mimeType || 'image/jpeg',
@@ -134,15 +195,14 @@ export default function ProfileScreen() {
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.85,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        setAvatarUri(asset.uri);
-        setSelectedAvatarFile({
+        await handlePhotoSelected({
           uri: asset.uri,
           name: asset.fileName || `avatar_${Date.now()}.jpg`,
           type: asset.mimeType || 'image/jpeg',
@@ -162,12 +222,11 @@ export default function ProfileScreen() {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/jpeg,image/png,image/webp';
-        input.onchange = (e: any) => {
+        input.onchange = async (e: any) => {
           const file = e.target.files?.[0];
           if (file) {
             const objectUrl = URL.createObjectURL(file);
-            setAvatarUri(objectUrl);
-            setSelectedAvatarFile({
+            await handlePhotoSelected({
               uri: objectUrl,
               name: file.name,
               type: file.type || 'image/jpeg',
@@ -185,8 +244,7 @@ export default function ProfileScreen() {
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        setAvatarUri(asset.uri);
-        setSelectedAvatarFile({
+        await handlePhotoSelected({
           uri: asset.uri,
           name: asset.name || `doc_${Date.now()}.jpg`,
           type: asset.mimeType || 'image/jpeg',
@@ -194,6 +252,35 @@ export default function ProfileScreen() {
       }
     } catch (err) {
       console.warn('Error picking document file:', err);
+    }
+  };
+
+  // 4. Remove Photo & Restore Default
+  const handleRemovePhoto = async () => {
+    setShowPhotoOptions(false);
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('removeAvatar', 'true');
+      if (name.trim()) formData.append('name', name.trim());
+      if (phone.trim()) formData.append('phone', phone.trim());
+
+      const res = await dispatch(updateProfileThunk(formData) as any);
+      if (res.meta.requestStatus === 'fulfilled') {
+        setSelectedAvatarFile(null);
+        setAvatarUri(null);
+        setProfileSuccess(t('profile_photo_removed', 'Profile photo removed. Default avatar restored.'));
+        setTimeout(() => setProfileSuccess(null), 3500);
+      } else {
+        const parsed = parseBackendError(res.payload, t('failed_to_remove_photo', 'Failed to remove profile photo.'));
+        Alert.alert(t('error', 'Error'), parsed.userMessage);
+      }
+    } catch (err: any) {
+      console.error('Error removing avatar:', err);
+      const parsed = parseBackendError(err, t('failed_to_remove_photo', 'Failed to remove profile photo.'));
+      Alert.alert(t('error', 'Error'), parsed.userMessage);
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -413,6 +500,7 @@ export default function ProfileScreen() {
           communityName={dynamicCommunity}
           avatarUrl={avatarUri}
           showCameraBadge={true}
+          isAvatarLoading={avatarUploading}
           onAvatarPress={() => setShowPhotoOptions(true)}
         />
 
@@ -562,7 +650,7 @@ export default function ProfileScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-foreground">
-                    {t('take_photo', 'Take Photo')}
+                    {t('take_photo', 'Take photo')}
                   </Text>
                   <Text className="text-xs text-muted-foreground mt-0.5">
                     {t('take_photo_desc', 'Capture an image with live camera')}
@@ -580,15 +668,15 @@ export default function ProfileScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-foreground">
-                    {t('choose_from_gallery', 'Choose from Photos')}
+                    {t('choose_from_gallery', 'Choose from Gallery')}
                   </Text>
                   <Text className="text-xs text-muted-foreground mt-0.5">
-                    {t('choose_from_gallery_desc', 'Select from photo library')}
+                    {t('choose_from_gallery_desc', 'Select an existing image from your device')}
                   </Text>
                 </View>
               </Pressable>
 
-              {/* Option 3: Document / File Picker */}
+              {/* Option 3: Upload from device */}
               <Pressable
                 onPress={handlePickDocument}
                 className="flex-row items-center gap-3 px-4 py-3.5 bg-muted/20 rounded-2xl border border-border active:bg-muted/40"
@@ -598,10 +686,28 @@ export default function ProfileScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-foreground">
-                    {t('upload_file', 'Upload Photo File')}
+                    {t('upload_from_device', 'Upload from device')}
                   </Text>
                   <Text className="text-xs text-muted-foreground mt-0.5">
-                    {t('upload_file_desc', 'Browse image files on device')}
+                    {t('upload_from_device_desc', 'Browse image files on device')}
+                  </Text>
+                </View>
+              </Pressable>
+
+              {/* Option 4: Remove photo (Restore Default) */}
+              <Pressable
+                onPress={handleRemovePhoto}
+                className="flex-row items-center gap-3 px-4 py-3.5 bg-rose-500/10 rounded-2xl border border-rose-500/20 active:bg-rose-500/20"
+              >
+                <View className="size-11 rounded-xl bg-rose-500/15 border border-rose-500/30 items-center justify-center">
+                  <Trash2 size={20} className="text-rose-500" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-rose-600 dark:text-rose-400">
+                    {t('remove_photo', 'Remove photo')}
+                  </Text>
+                  <Text className="text-xs text-rose-500/80 mt-0.5">
+                    {t('remove_photo_desc', 'Remove custom photo and use default avatar')}
                   </Text>
                 </View>
               </Pressable>

@@ -6,7 +6,7 @@ import storage from './storage';
 try {
   I18nManager.allowRTL(false);
   I18nManager.forceRTL(false);
-} catch (e) {}
+} catch (e) { }
 
 export type LanguageCode = 'en' | 'ta' | 'hi' | 'ml' | 'te' | 'kn' | 'ar';
 
@@ -287,6 +287,27 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     status_in_progress: 'In Progress',
     status_resolved: 'Resolved',
     status_closed: 'Closed',
+    plan_status_active: 'Active Community Membership',
+    plan_banner_desc: 'All premium gate & community features are fully unlocked for your residence.',
+    learn_more: 'Learn more',
+    profile_nudge_title: 'Profile Completion',
+    profile_nudge_desc: 'Complete emergency contacts & vehicle info.',
+    update_details: 'Update',
+    workspace_context_cta: 'Active Workspace Context',
+    switch_context: 'Switch',
+    household_group: 'Household & Access',
+    general_settings_group: 'General Settings & Preferences',
+    preferences_group: 'Preferences & Alerts',
+    legal_privacy_group: 'Legal & Information',
+    account_actions_group: 'Account Management',
+    quick_qr_pass: 'Quick Pass QR',
+    support_help: 'Help & Support',
+    support_alert: 'Nahom Help Center & 24/7 Security Desk: support@managemygate.com',
+    build: 'Build',
+    smart_gate_os: 'Smart Gate OS',
+    permission_required: 'Permission Required',
+    camera_perm_desc: 'Camera access is needed to capture a profile photo.',
+    feature_admin_workspace_settings_name: 'Workspace Settings',
   },
   ta: {
     app_settings: 'பயன்பாட்டு அமைப்புகள்',
@@ -548,6 +569,27 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     status_in_progress: 'செயலில் உள்ளது',
     status_resolved: 'தீர்க்கப்பட்டது',
     status_closed: 'மூடப்பட்டது',
+    plan_status_active: 'செயலில் உள்ள சமூக உறுப்பினர்',
+    plan_banner_desc: 'உங்கள் இல்லத்திற்கான அனைத்து பிரீமியம் கேட் & சமூக வசதிகளும் முழுமையாக திறக்கப்பட்டுள்ளன.',
+    learn_more: 'மேலும் அறிய',
+    profile_nudge_title: 'சுயவிவர நிறைவு',
+    profile_nudge_desc: 'அவசர தொடர்புகள் மற்றும் வாகன தகவல்களை முடிக்கவும்.',
+    update_details: 'புதுப்பிக்கவும்',
+    workspace_context_cta: 'செயலில் உள்ள பணியிட சூழல்',
+    switch_context: 'மாற்றுக',
+    household_group: 'குடும்பம் & அணுகல்',
+    general_settings_group: 'பொது அமைப்புகள் & விருப்பங்கள்',
+    preferences_group: 'விருப்பங்கள் & எச்சரிக்கைகள்',
+    legal_privacy_group: 'சட்டம் & தகவல்',
+    account_actions_group: 'கணக்கு மேலாண்மை',
+    quick_qr_pass: 'விரைவு பாஸ் QR',
+    support_help: 'உதவி & ஆதரவு',
+    support_alert: 'நஹோம் உதவி மையம் & 24/7 பாதுகாப்பு மேசை: support@managemygate.com',
+    build: 'பில்ட்',
+    smart_gate_os: 'ஸ்மார்ட் கேட் OS',
+    permission_required: 'அனுமதி தேவை',
+    camera_perm_desc: 'சுயவிவரப் புகைப்படத்தைப் பிடிக்க கேமரா அணுகல் தேவை.',
+    feature_admin_workspace_settings_name: 'பணியிட அமைப்புகள்',
   },
   ar: {
     app_settings: 'إعدادات التطبيق',
@@ -715,6 +757,7 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     assigned_role: 'الدور المعين',
     unit_villa: 'الوحدة / الفيلا',
     invited_by: 'تمت الدعوة بواسطة',
+    expires: 'تنتهي الصلاحية',
     accept_and_join: 'قبول والانضمام',
     reject_invitation: 'رفض الدعوة',
     switch_to_community: 'التبديل إلى هذا المجتمع',
@@ -808,6 +851,27 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     status_in_progress: 'قيد التنفيذ',
     status_resolved: 'تم الحل',
     status_closed: 'مغلق',
+    plan_status_active: 'عضوية المجتمع النشطة',
+    plan_banner_desc: 'جميع ميزات البوابة والمجتمع المتميزة مفتوحة بالكامل لمقر إقامتك.',
+    learn_more: 'معرفة المزيد',
+    profile_nudge_title: 'اكتمال الملف الشخصي',
+    profile_nudge_desc: 'أكمل جهات اتصال الطوارئ ومعلومات المركبة.',
+    update_details: 'تحديث',
+    workspace_context_cta: 'سياق مساحة العمل النشطة',
+    switch_context: 'تبديل',
+    household_group: 'المنزل والوصول',
+    general_settings_group: 'الإعدادات العامة والتفضيلات',
+    preferences_group: 'التفضيلات والتنبيهات',
+    legal_privacy_group: 'القانونية والمعلومات',
+    account_actions_group: 'إدارة الحساب',
+    quick_qr_pass: 'رمز المرور السريع QR',
+    support_help: 'المساعدة والدعم',
+    support_alert: 'مركز مساعدة ناهوم ومكتب الأمن على مدار 24/7: support@managemygate.com',
+    build: 'البناء',
+    smart_gate_os: 'نظام تشغيل البوابة الذكية',
+    permission_required: 'الإذن مطلوب',
+    camera_perm_desc: 'مطلوب إذن الوصول إلى الكاميرا لالتقاط صورة الملف الشخصي.',
+    feature_admin_workspace_settings_name: 'إعدادات مساحة العمل',
   },
   hi: {
     app_settings: 'ऐप सेटिंग्स',
@@ -974,6 +1038,8 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     organization: 'संगठन',
     assigned_role: 'सौंपी गई भूमिका',
     unit_villa: 'इकाई / विला',
+    invited_by: 'द्वारा आमंत्रित',
+    expires: 'समाप्त होता है',
     accept_and_join: 'स्वीकार करें और जुड़ें',
     reject_invitation: 'निमंत्रण अस्वीकार करें',
     switch_to_community: 'इस समुदाय पर स्विच करें',
@@ -1067,6 +1133,27 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     status_in_progress: 'प्रगति में',
     status_resolved: 'हल हो गया',
     status_closed: 'बंद',
+    plan_status_active: 'सक्रिय समुदाय सदस्यता',
+    plan_banner_desc: 'आपके निवास के लिए सभी प्रीमियम गेट और समुदाय सुविधाएं पूरी तरह से अनलॉक हैं।',
+    learn_more: 'अधिक जानें',
+    profile_nudge_title: 'प्रोफ़ाइल पूर्णता',
+    profile_nudge_desc: 'आपातकालीन संपर्क और वाहन विवरण पूरे करें।',
+    update_details: 'अपडेट करें',
+    workspace_context_cta: 'सक्रिय कार्यक्षेत्र संदर्भ',
+    switch_context: 'बदलें',
+    household_group: 'घर और पहुंच',
+    general_settings_group: 'सामान्य सेटिंग्स और प्राथमिकताएं',
+    preferences_group: 'प्राथमिकताएं और अलर्ट',
+    legal_privacy_group: 'कानूनी और जानकारी',
+    account_actions_group: 'खाता प्रबंधन',
+    quick_qr_pass: 'त्वरित पास QR',
+    support_help: 'सहायता और समर्थन',
+    support_alert: 'नाहोम सहायता केंद्र और 24/7 सुरक्षा डेस्क: support@managemygate.com',
+    build: 'बिल्ड',
+    smart_gate_os: 'स्मार्ट गेट OS',
+    permission_required: 'अनुमति आवश्यक है',
+    camera_perm_desc: 'प्रोफ़ाइल फ़ोटो खींचने के लिए कैमरा एक्सेस की आवश्यकता है।',
+    feature_admin_workspace_settings_name: 'कार्यक्षेत्र सेटिंग्स',
   },
   ml: {
     app_settings: 'ആപ്പ് ക്രമീകരണങ്ങൾ',
@@ -1233,6 +1320,8 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     organization: 'ഓർഗനൈസേഷൻ',
     assigned_role: 'നിയോഗിച്ച റോൾ',
     unit_villa: 'യൂണിറ്റ് / വില്ല',
+    invited_by: 'ക്ഷണിച്ചത്',
+    expires: 'കാലഹരണപ്പെടുന്നു',
     accept_and_join: 'സ്വീകരിച്ച് ചേരുക',
     reject_invitation: 'ക്ഷണം നിരസിക്കുക',
     switch_to_community: 'ഈ കമ്മ്യൂണിറ്റിയിലേക്ക് മാറുക',
@@ -1326,6 +1415,27 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     status_in_progress: 'പുരോഗതിയിൽ',
     status_resolved: 'പരിഹരിച്ചു',
     status_closed: 'അടച്ചു',
+    plan_status_active: 'സജീവ കമ്മ്യൂണിറ്റി അംഗത്വം',
+    plan_banner_desc: 'നിങ്ങളുടെ താമസസ്ഥലത്തിനായി എല്ലാ പ്രീമിയം ഗേറ്റ് & കമ്മ്യൂണിറ്റി സവിശേഷതകളും പൂർണ്ണമായും അൺലോക്ക് ചെയ്‌തിരിക്കുന്നു.',
+    learn_more: 'കൂടുതലറിയാൻ',
+    profile_nudge_title: 'പ്രൊഫൈൽ പൂർത്തീകരണം',
+    profile_nudge_desc: 'അടിയന്തിര കോൺടാക്റ്റുകളും വാഹന വിവരങ്ങളും പൂർത്തിയാക്കുക.',
+    update_details: 'അപ്ഡേറ്റ് ചെയ്യുക',
+    workspace_context_cta: 'സജീവ വർക്ക്‌സ്‌പേസ് സന്ദർഭം',
+    switch_context: 'മാറുക',
+    household_group: 'ഭവനവും ആക്സസും',
+    general_settings_group: 'പൊതുവായ ക്രമീകരണങ്ങളും മുൻഗണനകളും',
+    preferences_group: 'മുൻഗണനകളും അലേർട്ടുകളും',
+    legal_privacy_group: 'നിയമവും വിവരങ്ങളും',
+    account_actions_group: 'അക്കൗണ്ട് മാനേജ്മെന്റ്',
+    quick_qr_pass: 'ക്വിക്ക് പാസ് QR',
+    support_help: 'സഹായവും പിന്തുണയും',
+    support_alert: 'നഹോം ഹെൽപ്പ് സെന്റർ & 24/7 സെക്യൂരിറ്റി ഡെസ്ക്: support@managemygate.com',
+    build: 'ബിൽഡ്',
+    smart_gate_os: 'സ്മാർട്ട് ഗേറ്റ് OS',
+    permission_required: 'അനുമതി ആവശ്യമാണ്',
+    camera_perm_desc: 'പ്രൊഫൈൽ ഫോട്ടോ എടുക്കുന്നതിന് ക്യാമറ ആക്സസ് ആവശ്യമാണ്.',
+    feature_admin_workspace_settings_name: 'വർക്ക്‌സ്‌പേസ് ക്രമീകരണങ്ങൾ',
   },
   te: {
     app_settings: 'యాప్ సెట్టింగ్‌లు',
@@ -1492,6 +1602,8 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     organization: 'సంస్థ',
     assigned_role: 'కేటాయించిన పాత్ర',
     unit_villa: 'యూనిట్ / విల్లా',
+    invited_by: 'ద్వారా ఆహ్వానించబడ్డారు',
+    expires: 'గడువు ముగుస్తుంది',
     accept_and_join: 'ఆమోదించండి మరియు చేరండి',
     reject_invitation: 'ఆహ్వానాన్ని తిరస్కరించండి',
     switch_to_community: 'ఈ కమ్యూనిటీకి మారండి',
@@ -1585,6 +1697,27 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     status_in_progress: 'పురోగతిలో ఉంది',
     status_resolved: 'పరిష్కరించబడింది',
     status_closed: 'మూసివేయబడింది',
+    plan_status_active: 'క్రియాశీల కమ్యూనిటీ సభ్యత్వం',
+    plan_banner_desc: 'మీ నివాసం కోసం అన్ని ప్రీమియం గేట్ & కమ్యూనిటీ ఫీచర్లు పూర్తిగా అన్‌లాక్ చేయబడ్డాయి.',
+    learn_more: 'మరింత తెలుసుకోండి',
+    profile_nudge_title: 'ప్రొఫైల్ పూర్తి',
+    profile_nudge_desc: 'అత్యవసర పరిచయాలు మరియు వాహన వివరాలను పూర్తి చేయండి.',
+    update_details: 'అప్‌డేట్ చేయండి',
+    workspace_context_cta: 'క్రియాశీల వర్క్‌స్పేస్ సందర్భం',
+    switch_context: 'మార్చండి',
+    household_group: 'గృహం & యాక్సెస్',
+    general_settings_group: 'సాధారణ సెట్టింగ్‌లు & ప్రాధాన్యతలు',
+    preferences_group: 'ప్రాధాన్యతలు & హెచ్చరికలు',
+    legal_privacy_group: 'చట్టపరమైన & సమాచారం',
+    account_actions_group: 'ఖాతా నిర్వహణ',
+    quick_qr_pass: 'త్వరిత పాస్ QR',
+    support_help: 'సహాయం & మద్దతు',
+    support_alert: 'నహోమ్ హెల్ప్ సెంటర్ & 24/7 సెక్యూరిటీ డెస్క్: support@managemygate.com',
+    build: 'బిల్డ్',
+    smart_gate_os: 'స్మార్ట్ గేట్ OS',
+    permission_required: 'అనుమతి అవసరం',
+    camera_perm_desc: 'ప్రొఫైల్ ఫోటో తీయడానికి కెమెరా యాక్సెస్ అవసరం.',
+    feature_admin_workspace_settings_name: 'వర్క్‌స్పేస్ సెట్టింగ్‌లు',
   },
   kn: {
     app_settings: 'ಅಪ್ಲಿಕೇಶನ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
@@ -1751,6 +1884,8 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     organization: 'ಸಂಸ್ಥೆ',
     assigned_role: 'ನಿಯೋಜಿಸಲಾದ ಪಾತ್ರ',
     unit_villa: 'ಘಟಕ / ವಿಲ್ಲಾ',
+    invited_by: 'ಇವರಿಂದ ಆಹ್ವಾನಿಸಲಾಗಿದೆ',
+    expires: 'ಅವಧಿ ಮುಕ್ತಾಯಗೊಳ್ಳುತ್ತದೆ',
     accept_and_join: 'ಸ್ವೀಕರಿಸಿ ಮತ್ತು ಸೇರಿ',
     reject_invitation: 'ಆಹ್ವಾನ ತಿರಸ್ಕರಿಸಿ',
     switch_to_community: 'ಈ ಸಮುದಾಯಕ್ಕೆ ಬದಲಿಸಿ',
@@ -1844,6 +1979,27 @@ const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     status_in_progress: 'ಪ್ರಗತಿಯಲ್ಲಿದೆ',
     status_resolved: 'ಪರಿಹರಿಸಲಾಗಿದೆ',
     status_closed: 'ಮುಚ್ಚಲಾಗಿದೆ',
+    plan_status_active: 'ಸಕ್ರಿಯ ಸಮುದಾಯ ಸದಸ್ಯತ್ವ',
+    plan_banner_desc: 'ನಿಮ್ಮ ನಿವಾಸಕ್ಕಾಗಿ ಎಲ್ಲಾ ಪ್ರೀಮಿಯಂ ಗೇಟ್ & ಸಮುದಾಯ ವೈಶಿಷ್ಟ್ಯಗಳನ್ನು ಸಂಪೂರ್ಣವಾಗಿ ಅನ್‌ಲಾಕ್ ಮಾಡಲಾಗಿದೆ.',
+    learn_more: 'ಇನ್ನಷ್ಟು ತಿಳಿಯಿರಿ',
+    profile_nudge_title: 'ಪ್ರೊಫೈಲ್ ಪೂರ್ಣಗೊಳಿಸುವಿಕೆ',
+    profile_nudge_desc: 'ತುರ್ತು ಸಂಪರ್ಕಗಳು ಮತ್ತು ವಾಹನದ ವಿವರಗಳನ್ನು ಪೂರ್ಣಗೊಳಿಸಿ.',
+    update_details: 'ಅಪ್‌ಡೇಟ್ ಮಾಡಿ',
+    workspace_context_cta: 'ಸಕ್ರಿಯ ಕಾರ್ಯಕ್ಷೇತ್ರ ಸಂದರ್ಭ',
+    switch_context: 'ಬದಲಾಯಿಸಿ',
+    household_group: 'ಮನೆ & ಪ್ರವೇಶ',
+    general_settings_group: 'ಸಾಮಾನ್ಯ ಸೆಟ್ಟಿಂಗ್‌ಗಳು & ಆದ್ಯತೆಗಳು',
+    preferences_group: 'ಆದ್ಯತೆಗಳು & ಎಚ್ಚರಿಕೆಗಳು',
+    legal_privacy_group: 'ಕಾನೂನು & ಮಾಹಿತಿ',
+    account_actions_group: 'ಖಾತೆ ನಿರ್ವಹಣೆ',
+    quick_qr_pass: 'ತ್ವರಿತ ಪಾಸ್ QR',
+    support_help: 'ಸಹಾಯ & ಬೆಂಬಲ',
+    support_alert: 'ನಹೋಮ್ ಸಹಾಯ ಕೇಂದ್ರ & 24/7 ಭದ್ರತಾ ಡೆಸ್ಕ್: support@managemygate.com',
+    build: 'ಬಿಲ್ಡ್',
+    smart_gate_os: 'ಸ್ಮಾರ್ಟ್ ಗೇಟ್ OS',
+    permission_required: 'ಅನುಮತಿ ಅಗತ್ಯವಿದೆ',
+    camera_perm_desc: 'ಪ್ರೊಫೈಲ್ ಫೋಟೋ ಸೆರೆಹಿಡಿಯಲು ಕ್ಯಾಮೆರಾ ಪ್ರವೇಶದ ಅಗತ್ಯವಿದೆ.',
+    feature_admin_workspace_settings_name: 'ಕಾರ್ಯಕ್ಷೇತ್ರ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
   },
 };
 
@@ -2779,7 +2935,7 @@ export const i18n = {
     try {
       I18nManager.allowRTL(false);
       I18nManager.forceRTL(false);
-    } catch (e) {}
+    } catch (e) { }
     if (typeof document !== 'undefined') {
       try {
         document.documentElement.setAttribute('dir', 'ltr');
@@ -2792,7 +2948,7 @@ export const i18n = {
           document.body.setAttribute('data-lang', code);
           document.body.style.direction = 'ltr';
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     try {
       await storage.setItem('language_preference', code);
@@ -2806,7 +2962,7 @@ export const i18n = {
     try {
       I18nManager.allowRTL(false);
       I18nManager.forceRTL(false);
-    } catch (e) {}
+    } catch (e) { }
     try {
       const saved = await storage.getItem('language_preference');
       if (
@@ -2830,16 +2986,49 @@ export const i18n = {
           document.body.setAttribute('data-lang', currentLanguageCode);
           document.body.style.direction = 'ltr';
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     return currentLanguageCode;
   },
 
-  t: (key: string, fallback?: string): string => {
+  t: (
+    key: string,
+    fallbackOrParams?: string | Record<string, any>,
+    params?: Record<string, any>
+  ): string => {
+    let fallback: string | undefined;
+    let interpolationParams: Record<string, any> | undefined;
+
+    if (typeof fallbackOrParams === 'object' && fallbackOrParams !== null) {
+      interpolationParams = fallbackOrParams;
+      fallback = undefined;
+    } else {
+      fallback = fallbackOrParams;
+      interpolationParams = params;
+    }
+
     const dict = TRANSLATIONS[currentLanguageCode] || TRANSLATIONS.en;
-    if (dict[key]) return dict[key];
-    if (fallback) return i18n.translateText(fallback);
-    return TRANSLATIONS.en[key] || key;
+    let text = dict[key];
+
+    if (!text) {
+      if (typeof __DEV__ !== 'undefined' && __DEV__ && currentLanguageCode !== 'en') {
+        console.warn(`[i18n] Missing translation key "${key}" for language "${currentLanguageCode}"`);
+      }
+      if (fallback) {
+        text = i18n.translateText(fallback);
+      } else {
+        text = TRANSLATIONS.en[key] || key;
+      }
+    }
+
+    if (interpolationParams && text) {
+      Object.keys(interpolationParams).forEach((pKey) => {
+        const val = interpolationParams[pKey];
+        text = text.replace(new RegExp(`\\{${pKey}\\}|\\{\\{${pKey}\\}\\}`, 'g'), String(val));
+      });
+    }
+
+    return text;
   },
 
   tRole: (role?: string, fallback?: string): string => {
@@ -2917,7 +3106,11 @@ export const useTranslation = () => {
     });
   }, []);
 
-  const t = (key: string, fallback?: string): string => i18n.t(key, fallback);
+  const t = (
+    key: string,
+    fallbackOrParams?: string | Record<string, any>,
+    params?: Record<string, any>
+  ): string => i18n.t(key, fallbackOrParams, params);
   const tRole = (role?: string, fallback?: string): string => i18n.tRole(role, fallback);
   const tFeatureName = (id?: string, fallback?: string): string => i18n.translateText(fallback || id || '');
   const tFeatureSubtitle = (id?: string, fallback?: string): string => i18n.translateText(fallback || '');

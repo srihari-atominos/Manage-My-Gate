@@ -39,9 +39,14 @@ export function ActionGrid({
 
   const filteredItems = React.useMemo(() => {
     if (!searchQuery.trim()) return items;
-    return items.filter((item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
-    );
+    const query = searchQuery.toLowerCase().trim();
+    return items.filter((item) => {
+      const translated = i18n.t(item.id, item.name) || i18n.translateText(item.name);
+      return (
+        item.name.toLowerCase().includes(query) ||
+        translated.toLowerCase().includes(query)
+      );
+    });
   }, [items, searchQuery]);
 
   return (
@@ -50,7 +55,7 @@ export function ActionGrid({
       {title ? (
         <View className="flex-row items-center justify-between mt-1 mb-3 px-1">
           <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            {title}
+            {i18n.translateText(title)}
           </Text>
           {headerRight}
         </View>
@@ -73,13 +78,15 @@ export function ActionGrid({
               }
             };
 
+            const displayName = i18n.t(item.id, item.name) || i18n.translateText(item.name);
+
             return (
               <Pressable
                 key={item.id}
                 onPress={handlePress}
                 disabled={item.disabled}
                 accessibilityRole="button"
-                accessibilityLabel={item.name}
+                accessibilityLabel={displayName}
                 className={cn(
                   'w-[31.4%] bg-card p-2.5 rounded-xl border border-border items-center justify-center active:opacity-75 shadow-xs relative min-h-[86px]',
                   item.disabled && 'opacity-50'
@@ -120,7 +127,7 @@ export function ActionGrid({
                   numberOfLines={2}
                   ellipsizeMode="tail"
                 >
-                  {item.name}
+                  {displayName}
                 </Text>
               </Pressable>
             );
@@ -129,7 +136,7 @@ export function ActionGrid({
       ) : (
         <View className="bg-card p-4 rounded-xl border border-border items-center">
           <Text className="text-xs font-semibold text-muted-foreground">
-            No matching features found for "{searchQuery}"
+            {i18n.t('no_matching_features', `No matching features found for "${searchQuery}"`)}
           </Text>
         </View>
       )}

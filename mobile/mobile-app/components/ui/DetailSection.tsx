@@ -13,6 +13,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface DetailSectionProps {
   title: string;
@@ -50,6 +51,7 @@ const DetailSection = React.forwardRef<View, DetailSectionProps>(
     },
     ref
   ) => {
+    const { translateText, language } = useTranslation();
     const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
     const rotation = useSharedValue(defaultExpanded ? 0 : -180);
 
@@ -90,7 +92,7 @@ const DetailSection = React.forwardRef<View, DetailSectionProps>(
           ) : null}
 
           <Text variant="default" className="font-semibold text-base flex-1">
-            {title}
+            {translateText(title)}
           </Text>
 
           {collapsible ? (

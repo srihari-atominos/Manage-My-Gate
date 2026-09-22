@@ -6,9 +6,12 @@ import { useTranslation } from '../../src/utils/i18n';
 
 export interface BannerItem {
   id: string;
-  title: string;
-  subtitle: string;
-  tag: string;
+  tagKey: string;
+  titleKey: string;
+  subtitleKey: string;
+  defaultTag: string;
+  defaultTitle: string;
+  defaultSubtitle: string;
   icon: React.ReactNode;
   bgClass: string;
   borderClass: string;
@@ -22,9 +25,12 @@ export interface BannerItem {
 const BANNERS: BannerItem[] = [
   {
     id: '1',
-    title: 'Welcome to NAHOM',
-    subtitle: 'Nexus Around Home — Connected Harmony & Security.',
-    tag: 'Community',
+    tagKey: 'tag_community',
+    titleKey: 'banner_welcome_title',
+    subtitleKey: 'banner_welcome_sub',
+    defaultTag: 'Community',
+    defaultTitle: 'Welcome to NAHOM',
+    defaultSubtitle: 'Nexus Around Home — Connected Harmony & Security.',
     icon: <Megaphone size={12} color="#60A5FA" />,
     bgClass: 'bg-[#0B1437] border-[#245FA8]/50',
     borderClass: 'border-[#245FA8]/40',
@@ -36,9 +42,12 @@ const BANNERS: BannerItem[] = [
   },
   {
     id: '2',
-    title: 'Instant QR Visitor Passes',
-    subtitle: 'Generate guest passes for seamless touchless gate validation.',
-    tag: 'Security Gate',
+    tagKey: 'tag_security_gate',
+    titleKey: 'banner_qr_title',
+    subtitleKey: 'banner_qr_sub',
+    defaultTag: 'Security Gate',
+    defaultTitle: 'Instant QR Visitor Passes',
+    defaultSubtitle: 'Generate guest passes for seamless touchless gate validation.',
     icon: <ShieldCheck size={12} color="#34D399" />,
     bgClass: 'bg-[#061C24] border-emerald-500/40',
     borderClass: 'border-emerald-500/40',
@@ -50,9 +59,12 @@ const BANNERS: BannerItem[] = [
   },
   {
     id: '3',
-    title: 'Clubhouse & Facility Booking',
-    subtitle: 'Reserve community amenities, tennis courts, and slots in seconds.',
-    tag: 'Amenities',
+    tagKey: 'tag_amenities',
+    titleKey: 'banner_amenities_title',
+    subtitleKey: 'banner_amenities_sub',
+    defaultTag: 'Amenities',
+    defaultTitle: 'Clubhouse & Facility Booking',
+    defaultSubtitle: 'Reserve community amenities, tennis courts, and slots in seconds.',
     icon: <Building2 size={12} color="#A78BFA" />,
     bgClass: 'bg-[#140F2E] border-[#51418F]/50',
     borderClass: 'border-[#51418F]/40',
@@ -64,9 +76,12 @@ const BANNERS: BannerItem[] = [
   },
   {
     id: '4',
-    title: 'Zero-Hassle Bill Payments',
-    subtitle: 'Pay maintenance dues and top up your digital prepaid wallet.',
-    tag: 'Financial Suite',
+    tagKey: 'tag_financial',
+    titleKey: 'banner_billing_title',
+    subtitleKey: 'banner_billing_sub',
+    defaultTag: 'Financial Suite',
+    defaultTitle: 'Zero-Hassle Bill Payments',
+    defaultSubtitle: 'Pay maintenance dues and top up your digital prepaid wallet.',
     icon: <Coins size={12} color="#FBBF24" />,
     bgClass: 'bg-[#181528] border-amber-500/40',
     borderClass: 'border-amber-500/40',
@@ -102,7 +117,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         });
         return nextIndex;
       });
-    }, 5000);
+    }, 4500);
 
     return () => {
       isMounted = false;
@@ -112,30 +127,33 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
 
   const handleScrollEnd = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffsetX / bannerWidth);
+    const index = Math.round(contentOffsetX / (bannerWidth + 12));
     if (index >= 0 && index < BANNERS.length) {
       setActiveIndex(index);
     }
   };
 
   return (
-    <View className="gap-2.5 my-2">
+    <View className="w-full py-1">
       <ScrollView
         ref={scrollViewRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScrollEnd}
-        snapToInterval={bannerWidth}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
         decelerationRate="fast"
+        snapToInterval={bannerWidth + 12}
+        snapToAlignment="start"
       >
         {BANNERS.map((banner) => (
-          <TouchableOpacity
+          <Pressable
             key={banner.id}
-            activeOpacity={0.9}
-            onPress={() => onBannerPress && onBannerPress(banner)}
-            style={{ width: bannerWidth }}
-            className="px-1"
+            onPress={() => onBannerPress?.(banner.id)}
+            style={{ width: bannerWidth, marginRight: 12 }}
+            className="active:opacity-95"
+            accessibilityRole="button"
+            accessibilityLabel={`${banner.defaultTitle} banner`}
           >
             <View
               className={`${banner.bgClass} border ${banner.borderClass} rounded-2xl p-3 gap-1.5 relative overflow-hidden min-h-[120px] justify-between`}
@@ -152,8 +170,8 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
               <View className="flex-row items-center justify-between z-10">
                 <View className={`${banner.pillBg} border px-2 py-0.5 rounded-full flex-row items-center gap-1`}>
                   {banner.icon}
-                  <Text className="text-white text-[9px] font-bold uppercase tracking-wider font-sans">
-                    {t(`tag_${banner.id === '1' ? 'community' : banner.id === '2' ? 'security_gate' : banner.id === '3' ? 'amenities' : 'financial'}`, banner.tag)}
+                  <Text className="text-white text-[10.5px] font-bold uppercase tracking-wider font-sans">
+                    {t(banner.tagKey, banner.defaultTag)}
                   </Text>
                 </View>
 
@@ -161,12 +179,12 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
               </View>
 
               {/* Title & Subtitle */}
-              <View className="gap-0.5 pe-2 z-10">
-                <Text className={`${banner.textColor} text-[14px] font-extrabold tracking-tight font-sans leading-tight`}>
-                  {t(banner.id === '1' ? 'banner_welcome_title' : banner.id === '2' ? 'banner_qr_title' : banner.id === '3' ? 'banner_amenities_title' : 'banner_billing_title', banner.title)}
+              <View className="gap-1 pe-2 z-10">
+                <Text className={`${banner.textColor} text-[16px] font-extrabold tracking-tight font-sans leading-tight`}>
+                  {t(banner.titleKey, banner.defaultTitle)}
                 </Text>
-                <Text className={`${banner.subtextColor} text-[10.5px] font-medium font-sans leading-snug`}>
-                  {t(banner.id === '1' ? 'banner_welcome_sub' : banner.id === '2' ? 'banner_qr_sub' : banner.id === '3' ? 'banner_amenities_sub' : 'banner_billing_sub', banner.subtitle)}
+                <Text className={`${banner.subtextColor} text-[12px] font-medium font-sans leading-snug`}>
+                  {t(banner.subtitleKey, banner.defaultSubtitle)}
                 </Text>
               </View>
 

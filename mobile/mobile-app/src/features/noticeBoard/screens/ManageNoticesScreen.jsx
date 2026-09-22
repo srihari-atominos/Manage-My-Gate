@@ -32,6 +32,8 @@ import {
   ChevronDown,
   Check,
 } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
+
 const STATUS_FILTER_OPTIONS = [
   { label: 'All', value: 'ALL' },
   { label: 'Published', value: 'Published' },
@@ -59,8 +61,9 @@ const CATEGORY_FILTER_OPTIONS = [
 
 function ManageNoticesContent() {
   const router = useRouter();
+  const { t, language } = useTranslation();
 
-  // Connect to real-time events
+  // Real-time socket events
   useNoticeSocket();
 
   const {
@@ -202,6 +205,7 @@ function ManageNoticesContent() {
 
   const renderNoticeItem = useCallback((notice) => (
     <NoticeCard
+      key={`${notice._id || notice.id}-${language}`}
       notice={notice}
       onPress={handleCardPress}
       onPinToggle={handlePinToggle}
@@ -213,7 +217,7 @@ function ManageNoticesContent() {
       canUpdate={canUpdate}
       canDelete={canDelete}
     />
-  ), [handleCardPress, handlePinToggle, handleStatusChange, handleEditPress, handleDeletePress, canPin, canUpdate, canDelete]);
+  ), [handleCardPress, handlePinToggle, handleStatusChange, handleEditPress, handleDeletePress, canPin, canUpdate, canDelete, language]);
 
   // Visitor Management style ListHeaderComponent
   const renderHeader = () => (
@@ -332,8 +336,9 @@ function ManageNoticesContent() {
         ) : (
           <PaginatedList
             data={notices}
+            extraData={language}
             renderItem={renderNoticeItem}
-            keyExtractor={(item) => item._id}
+            keyExtractor={(item) => `${item._id || item.id}-${language}`}
             loading={loading}
             onRefresh={handleRefresh}
             onLoadMore={handleLoadMore}
@@ -343,8 +348,8 @@ function ManageNoticesContent() {
             }}
             ListHeaderComponent={renderHeader()}
             emptyIcon="Megaphone"
-            emptyTitle="No Community Notices Found"
-            emptySubtitle="No notices matched your search or status filter parameters."
+            emptyTitle={t('no_notices', 'No Community Notices Found')}
+            emptySubtitle={t('no_matching_notices', 'No notices matched your search or status filter parameters.')}
             contentContainerClassName="px-4 pt-3 pb-28"
           />
         )}

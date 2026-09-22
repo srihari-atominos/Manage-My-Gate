@@ -5,11 +5,12 @@
  */
 
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { AmenityFacility, AmenityResource } from '../types/amenityDomain.types';
 import { Amenity } from '../store/amenitySlice';
 import { ResidentAmenityDetailView } from './ResidentAmenityDetailView';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface ResidentAmenityDetailSheetProps {
   visible: boolean;
@@ -26,6 +27,7 @@ export function ResidentAmenityDetailSheet({
   resources = [],
   onBookClick,
 }: ResidentAmenityDetailSheetProps) {
+  const { t } = useTranslation();
   if (!visible || !amenity) return null;
 
   // Adapt legacy Amenity to AmenityFacility structure if needed
@@ -76,7 +78,7 @@ export function ResidentAmenityDetailSheet({
       };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Amenity Details">
+    <BottomSheet visible={visible} onClose={onClose} title={t('amenity_details_reservation', 'Amenity Details & Reservation')}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         className="max-h-[75vh]"

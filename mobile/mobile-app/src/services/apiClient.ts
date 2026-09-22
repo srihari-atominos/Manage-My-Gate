@@ -282,13 +282,16 @@ apiClient.interceptors.request.use(
     }
 
     // Handle multipart form data Content-Type override for FormData payloads
-    if (config.data && config.data instanceof FormData) {
-      if (Platform.OS === 'web') {
-        // Let browser set the header with boundary
-        delete config.headers['Content-Type'];
-      } else {
-        config.headers['Content-Type'] = 'multipart/form-data';
-      }
+    const isFormData =
+      config.data &&
+      (config.data instanceof FormData ||
+        typeof (config.data as any)?._parts !== 'undefined' ||
+        typeof (config.data as any)?.getParts === 'function');
+
+    if (isFormData) {
+      // In both Web and React Native, deleting Content-Type allows the runtime (browser/XHR)
+      // to automatically set "multipart/form-data; boundary=..." with the correct boundary string.
+      delete config.headers['Content-Type'];
     }
 
     config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';

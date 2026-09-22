@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface StepItem {
   key: string;
@@ -16,14 +17,21 @@ export const VisitorPassStepIndicator: React.FC<VisitorPassStepIndicatorProps> =
   steps,
   currentStepIndex,
 }) => {
+  const { t, translateText } = useTranslation();
   const currentStep = steps[currentStepIndex] || steps[0];
   const totalSteps = steps.length;
+  const stepNumber = currentStepIndex + 1;
+  const translatedTitle = translateText(currentStep.title);
 
   return (
     <View className="bg-card px-4 py-2.5 border-b border-border gap-2">
       <View className="flex-row items-center justify-between">
         <Text variant="small" className="text-foreground font-semibold">
-          Step {currentStepIndex + 1} of {totalSteps}: {currentStep.title}
+          {t('step_indicator_format', `Step ${stepNumber} of ${totalSteps}: ${translatedTitle}`, {
+            current: stepNumber,
+            total: totalSteps,
+            title: translatedTitle,
+          })}
         </Text>
         <Text variant="muted" className="text-xs font-mono">
           {Math.round(((currentStepIndex + 1) / totalSteps) * 100)}%

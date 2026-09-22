@@ -679,6 +679,7 @@ export class UserService {
     };
   }
 
+<<<<<<< HEAD
   async requestPhoneOtp(userId, newPhone) {
     if (!newPhone || typeof newPhone !== 'string' || !newPhone.trim()) {
       throw new HttpError(400, 'New phone number is required.');
@@ -718,7 +719,7 @@ export class UserService {
     };
   }
 
-  async updateProfile(id, { name, phone, phoneOtp, email, emailOtp, avatarFilename }) {
+  async updateProfile(id, { name, phone, phoneOtp, email, emailOtp, avatarFilename, removeAvatar }) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -771,8 +772,8 @@ export class UserService {
         }
       }
 
-      if (avatarFilename !== undefined) {
-        payload.$set.avatar = `public/uploads/avatars/${avatarFilename}`;
+      if (removeAvatar) {
+        payload.$unset.avatar = 1;
 
         // Delete old avatar from disk if it exists
         if (user.avatar) {
@@ -781,6 +782,47 @@ export class UserService {
           if (fs.existsSync(oldFilePath)) {
             fs.unlink(oldFilePath, (err) => {
               if (err) console.error('Error deleting old avatar file:', err);
+            });
+          }
+          const publicAvatarDir = path.resolve(projectRoot, 'public/uploads/avatars');
+          const oldPublicFilePath = path.join(publicAvatarDir, oldFilename);
+          if (fs.existsSync(oldPublicFilePath)) {
+            fs.unlink(oldPublicFilePath, (err) => {
+              if (err) console.error('Error deleting old public avatar file:', err);
+            });
+          }
+        }
+      } else if (avatarFilename !== undefined) {
+        payload.$set.avatar = `uploads/avatars/${avatarFilename}`;
+
+        // Ensure public/uploads/avatars directory has a synced copy as well
+        const publicAvatarDir = path.resolve(projectRoot, 'public/uploads/avatars');
+        if (!fs.existsSync(publicAvatarDir)) {
+          try {
+            fs.mkdirSync(publicAvatarDir, { recursive: true });
+          } catch (e) {}
+        }
+        const sourcePath = path.join(uploadDir, avatarFilename);
+        const publicDestPath = path.join(publicAvatarDir, avatarFilename);
+        if (fs.existsSync(sourcePath) && !fs.existsSync(publicDestPath)) {
+          try {
+            fs.copyFileSync(sourcePath, publicDestPath);
+          } catch (e) {}
+        }
+
+        // Delete old avatar from disk if it exists
+        if (user.avatar) {
+          const oldFilename = path.basename(user.avatar);
+          const oldFilePath = path.join(uploadDir, oldFilename);
+          if (fs.existsSync(oldFilePath)) {
+            fs.unlink(oldFilePath, (err) => {
+              if (err) console.error('Error deleting old avatar file:', err);
+            });
+          }
+          const oldPublicFilePath = path.join(publicAvatarDir, oldFilename);
+          if (fs.existsSync(oldPublicFilePath)) {
+            fs.unlink(oldPublicFilePath, (err) => {
+              if (err) console.error('Error deleting old public avatar file:', err);
             });
           }
         }

@@ -2,6 +2,7 @@ import React from 'react';
 import { ListCard } from '@/components/ui/ListCard';
 import { IconButton } from '@/components/common/IconButton';
 import { Trash2 } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface BlacklistEntry {
   _id: string;
@@ -26,10 +27,11 @@ export function BlacklistEntryCard({
   entry,
   onRemovePress,
 }: BlacklistEntryCardProps) {
+  const { t } = useTranslation();
   const subtitleParts: string[] = [];
-  if (entry.reason) subtitleParts.push(`Reason: ${entry.reason}`);
-  if (entry.phone) subtitleParts.push(`Ph: ${entry.phone}`);
-  if (entry.idProofNumber) subtitleParts.push(`ID: ${entry.idProofNumber}`);
+  if (entry.reason) subtitleParts.push(`${t('reason', 'Reason')}: ${entry.reason}`);
+  if (entry.phone) subtitleParts.push(`${t('ph', 'Ph')}: ${entry.phone}`);
+  if (entry.idProofNumber) subtitleParts.push(`${t('id', 'ID')}: ${entry.idProofNumber}`);
 
   return (
     <ListCard
@@ -38,7 +40,7 @@ export function BlacklistEntryCard({
       timestamp={entry.createdAt}
       leftIcon="ShieldAlert"
       leftIconBgColor="bg-destructive/15"
-      status={{ label: 'RESTRICTED', variant: 'danger' }}
+      status={{ label: t('restricted', 'RESTRICTED'), variant: 'danger' }}
       rightContent={
         <IconButton
           icon={Trash2}

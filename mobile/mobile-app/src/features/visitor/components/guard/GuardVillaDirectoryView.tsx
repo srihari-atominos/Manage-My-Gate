@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { useVilla } from '@/src/features/villa/hooks/useVilla';
 import { Villa } from '@/src/features/villa/store/villaSlice';
 import { Phone, Search, Building2, User, Home } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export const GuardVillaDirectoryView: React.FC = () => {
+  const { t } = useTranslation();
   const { villas, pagination, loading, fetchVillas } = useVilla();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'Occupied' | 'Vacant'>('ALL');
@@ -72,7 +74,7 @@ export const GuardVillaDirectoryView: React.FC = () => {
       <TextInput
         value={search}
         onChangeText={setSearch}
-        placeholder="Search villa, block, or resident name..."
+        placeholder={t('search_villa_block_or_resident_name', 'Search villa, block, or resident name...')}
         leftIcon={<Search size={16} className="text-muted-foreground" />}
         inputClassName="text-xs"
       />
@@ -95,7 +97,7 @@ export const GuardVillaDirectoryView: React.FC = () => {
                 statusFilter === st ? 'text-primary-foreground' : 'text-foreground'
               }`}
             >
-              {st === 'ALL' ? 'All Units' : st}
+              {st === 'ALL' ? t('all_units', 'All Units') : st === 'Occupied' ? t('occupied', 'Occupied') : t('vacant', 'Vacant')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -151,7 +153,7 @@ export const GuardVillaDirectoryView: React.FC = () => {
               leftIcon="Home"
               leftIconBgColor="bg-primary/10"
               status={{
-                label: isOccupied ? 'OCCUPIED' : 'VACANT',
+                label: isOccupied ? t('occupied', 'OCCUPIED').toUpperCase() : t('vacant', 'VACANT').toUpperCase(),
                 variant: isOccupied ? 'success' : 'neutral',
               }}
               rightContent={
@@ -161,10 +163,10 @@ export const GuardVillaDirectoryView: React.FC = () => {
                     size="sm"
                     onPress={() => handleCallResident(residentPhone)}
                     className="flex-row items-center gap-1 h-8 px-2.5 rounded-xl border-primary/30 bg-primary/10"
-                    accessibilityLabel={`Call resident of Villa ${villa.unitNumber}`}
+                    accessibilityLabel={t('call_resident_villa', 'Call resident of Villa {unit}', { unit: villa.unitNumber })}
                   >
                     <Phone size={13} className="text-primary" />
-                    <Text className="text-xs font-bold text-primary">Dial</Text>
+                    <Text className="text-xs font-bold text-primary">{t('dial', 'Dial')}</Text>
                   </Button>
                 ) : null
               }

@@ -20,6 +20,7 @@ import {
   isFacilityBookable,
 } from '../utils/amenityPresentation';
 import { cn } from '@/lib/utils';
+<<<<<<< HEAD
 import {
   MapPin,
   Users,
@@ -31,6 +32,10 @@ import {
   DoorOpen,
   Sparkles,
 } from 'lucide-react-native';
+=======
+import { MapPin, Users, Clock, Timer, CalendarCheck, Building2, Sparkles } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
+>>>>>>> origin/UI/Fix/Changes
 
 export interface AmenityCatalogCardProps {
   amenity: AmenityFacility | Amenity;
@@ -43,13 +48,23 @@ export function AmenityCatalogCard({
   onPress,
   onBookClick,
 }: AmenityCatalogCardProps) {
+<<<<<<< HEAD
   // Normalize facility fields
   const facility = amenity as AmenityFacility;
   const legacyAmenity = amenity as Amenity;
+=======
+  const { t, translateText, language } = useTranslation();
+  const itemStatus = (amenity.status || 'active').toLowerCase();
+  const currentStatus = (amenity.currentStatus || '').toLowerCase();
+  const isMaintenance = itemStatus === 'maintenance' || currentStatus === 'under maintenance';
+  const isInactive = itemStatus === 'inactive' || currentStatus === 'unavailable';
+  const isAvailable = !isMaintenance && !isInactive && itemStatus === 'active';
+>>>>>>> origin/UI/Fix/Changes
 
   const rawArchetype = facility.archetype || legacyAmenity.type || legacyAmenity.category || 'SHARED_CAPACITY';
   const archetypeMeta = getArchetypeMeta(rawArchetype as AmenityArchetype);
 
+<<<<<<< HEAD
   const rawStatus = String(amenity.status || 'ACTIVE').toUpperCase();
   const statusMeta = getFacilityStatusMeta(rawStatus);
   const bookableCheck = isFacilityBookable(facility);
@@ -123,7 +138,7 @@ export function AmenityCatalogCard({
                 <Sparkles size={11} color="#f59e0b" />
               )}
               <Text className="text-[11px] font-bold text-white uppercase tracking-wider">
-                {archetypeMeta.label}
+                {translateText(archetypeMeta.label)}
               </Text>
             </View>
 
@@ -139,7 +154,7 @@ export function AmenityCatalogCard({
           {/* Bottom-End Price Tag Pill */}
           <View className="absolute bottom-2.5 end-2.5 z-10">
             <View className="bg-card/95 px-2.5 py-1 rounded-lg border border-border/70 shadow-sm flex-row items-center gap-1">
-              <Text className="text-[10.5px] font-semibold text-muted-foreground">Fee:</Text>
+              <Text className="text-[10.5px] font-semibold text-muted-foreground">{t('fee', 'Fee')}:</Text>
               <Text className="text-[11.5px] font-extrabold text-primary">
                 {pricingFormatted.displayRate}
               </Text>
@@ -152,12 +167,12 @@ export function AmenityCatalogCard({
           {/* Title & Location */}
           <View className="mb-1.5">
             <Text className="text-base font-bold text-foreground tracking-tight">
-              {amenity.name}
+              {translateText(amenity.name)}
             </Text>
             <View className="flex-row items-center gap-1 mt-0.5">
               <MapPin size={12} className="text-muted-foreground" />
               <Text className="text-xs font-medium text-muted-foreground">
-                {locationDisplay}
+                {translateText(locationDisplay)}
               </Text>
             </View>
           </View>
@@ -165,7 +180,7 @@ export function AmenityCatalogCard({
           {/* Optional Description Snippet */}
           {amenity.description ? (
             <Text numberOfLines={2} className="text-xs text-muted-foreground/90 leading-relaxed mb-3">
-              {amenity.description}
+              {translateText(amenity.description)}
             </Text>
           ) : null}
 
@@ -175,7 +190,7 @@ export function AmenityCatalogCard({
             <View className="flex-row items-center gap-1.5 bg-secondary/80 px-2.5 py-1 rounded-lg">
               <Users size={12} className="text-muted-foreground" />
               <Text className="text-[11px] font-semibold text-foreground">
-                Max {maxCapacity} {maxHeadcount ? `(Per res: ${maxHeadcount})` : 'persons'}
+                {t('max', 'Max')} {maxCapacity} {maxHeadcount ? `(Per res: ${maxHeadcount})` : t('persons', 'persons')}
               </Text>
             </View>
 
@@ -191,7 +206,7 @@ export function AmenityCatalogCard({
             <View className="flex-row items-center gap-1.5 bg-secondary/80 px-2.5 py-1 rounded-lg">
               <Timer size={12} className="text-muted-foreground" />
               <Text className="text-[11px] font-semibold text-foreground">
-                {slotDuration}m slots
+                {slotDuration}m {t('slots', 'slots')}
               </Text>
             </View>
 
@@ -238,10 +253,10 @@ export function AmenityCatalogCard({
               )}
             >
               {rawStatus === 'MAINTENANCE'
-                ? 'Under Maintenance'
+                ? t('under_maintenance', 'Under Maintenance')
                 : rawStatus === 'INACTIVE' || rawStatus === 'DECOMMISSIONED'
-                ? 'Facility Inactive'
-                : 'Book Now'}
+                ? t('facility_inactive', 'Facility Inactive')
+                : t('reserve_book_slot', 'Reserve & Book Slot')}
             </Text>
           </Button>
         </View>

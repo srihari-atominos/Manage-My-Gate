@@ -104,7 +104,7 @@ export default function RoleBuilderScreen() {
           >
             <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#2563eb'} className="me-1" />
             <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
-              Prev
+              {t('prev_page', 'Prev')}
             </Text>
           </TouchableOpacity>
 
@@ -121,7 +121,7 @@ export default function RoleBuilderScreen() {
             accessibilityLabel="Current page"
           >
             <Text className="text-xs font-bold text-foreground">
-              Page {currentPage} of {totalPages}
+              {t('page_label', 'Page')} {currentPage} {t('of_users', 'of')} {totalPages}
             </Text>
           </TouchableOpacity>
 
@@ -137,7 +137,7 @@ export default function RoleBuilderScreen() {
             accessibilityLabel="Next page"
           >
             <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
-              Next
+              {t('next_page', 'Next')}
             </Text>
             <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#2563eb'} />
           </TouchableOpacity>
@@ -157,12 +157,12 @@ export default function RoleBuilderScreen() {
       headerRight={
         <TouchableOpacity
           onPress={openCreateModal}
-          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
+          className="flex-row items-center gap-1 bg-emerald-600 active:bg-emerald-700 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
           accessibilityLabel="Add role"
         >
           <Plus size={14} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">Add Role</Text>
+          <Text className="text-xs font-bold text-white">{t('add_role', 'Add Role')}</Text>
         </TouchableOpacity>
       }
     >
@@ -171,15 +171,15 @@ export default function RoleBuilderScreen() {
         <SearchFilterBar
           searchValue={searchQuery}
           onSearchChange={handleSearch}
-          searchPlaceholder="Search roles by name or scope..."
+          searchPlaceholder={t('search_roles_placeholder', 'Search roles by name or scope...')}
         />
 
         {/* Scope Filter Chips (below search bar, outside list) */}
         <View className="px-3 py-1.5 flex-row items-center gap-1.5">
           {[
-            { id: 'ALL', label: 'All Roles', count: stats.total, color: 'blue' },
-            { id: 'GLOBAL', label: 'Global', count: stats.global, color: 'blue' },
-            { id: 'TENANT', label: 'Unit Scope', count: stats.unit, color: 'green' },
+            { id: 'ALL', label: t('all_roles', 'All Roles'), count: stats.total, color: 'blue' },
+            { id: 'GLOBAL', label: t('global', 'Global'), count: stats.global, color: 'blue' },
+            { id: 'TENANT', label: t('unit_scope', 'Unit Scope'), count: stats.unit, color: 'green' },
           ].map((tab) => {
             const isActive = scopeFilter === tab.id;
             const activeColorClass = tab.color === 'green' ? 'bg-emerald-600 border-emerald-600' : 'bg-blue-600 border-blue-600';
@@ -210,11 +210,11 @@ export default function RoleBuilderScreen() {
         {/* Summary & Rows-Per-Page Selector (matching User Management exactly) */}
         <View className="px-3 py-1.5 flex-row items-center justify-between border-b border-border/40 bg-muted/20">
           <Text className="text-[11px] font-semibold text-muted-foreground text-start">
-            Showing <Text className="font-bold text-foreground">{startRecord}-{endRecord}</Text> of <Text className="font-bold text-foreground">{totalRecords}</Text> Roles
+            {t('showing_users', 'Showing')} <Text className="font-bold text-foreground">{startRecord}-{endRecord}</Text> {t('of_users', 'of')} <Text className="font-bold text-foreground">{totalRecords}</Text> {t('roles_label', 'Roles')}
           </Text>
 
           <View className="flex-row items-center gap-1">
-            <Text className="text-[10px] font-semibold text-muted-foreground me-0.5">Rows:</Text>
+            <Text className="text-[10px] font-semibold text-muted-foreground me-0.5">{t('rows_label', 'Rows:')}</Text>
             {[10, 20, 50, 100].map((limit) => (
               <TouchableOpacity
                 key={limit}
@@ -241,13 +241,13 @@ export default function RoleBuilderScreen() {
         ) : filteredRoles.length === 0 ? (
           <EmptyState
             icon={ShieldCheck}
-            title={searchQuery ? 'No Matching Roles' : 'No Roles Configured'}
+            title={searchQuery ? t('no_matching_roles', 'No Matching Roles') : t('no_roles_configured', 'No Roles Configured')}
             description={
               searchQuery
-                ? `No roles found matching "${searchQuery}".`
-                : 'No roles configured yet. Tap the button below to create your first role.'
+                ? `${t('no_roles_matching', 'No roles found matching')} "${searchQuery}".`
+                : t('no_roles_desc', 'No roles configured yet. Tap the button below to create your first role.')
             }
-            actionLabel="Create Role"
+            actionLabel={t('create_role', 'Create Role')}
             onAction={openCreateModal}
           />
         ) : (
