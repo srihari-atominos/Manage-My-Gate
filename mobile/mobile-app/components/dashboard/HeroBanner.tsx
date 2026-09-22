@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, useWindowDimensions, TouchableOpacity } from 'react-native';
+import { View, ScrollView, useWindowDimensions, Pressable } from 'react-native';
 import { Text } from '../ui/text';
 import { ArrowRight, Sparkles, Megaphone, ShieldCheck, Building2, Coins } from 'lucide-react-native';
 import { useTranslation } from '../../src/utils/i18n';
@@ -149,7 +149,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         {BANNERS.map((banner) => (
           <Pressable
             key={banner.id}
-            onPress={() => onBannerPress?.(banner.id)}
+            onPress={() => onBannerPress?.(banner)}
             style={{ width: bannerWidth, marginRight: 12 }}
             className="active:opacity-95"
             accessibilityRole="button"
@@ -198,7 +198,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
                 <Text className="text-white/70 text-[9px] font-medium font-sans">{t('swipe', 'Swipe →')}</Text>
               </View>
             </View>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </ScrollView>
 

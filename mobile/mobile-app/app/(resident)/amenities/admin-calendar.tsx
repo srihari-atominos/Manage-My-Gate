@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
-import { Calendar as CalendarIcon } from 'lucide-react-native';
+import { Calendar as CalendarIcon, Wrench } from 'lucide-react-native';
 
 import { useAdminCalendar, formatDateString } from '../../../src/features/amenities/hooks/useAdminCalendar';
 import { AdminCalendarView } from '../../../src/features/amenities/components/AdminCalendarView';
@@ -21,6 +21,7 @@ import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
 export default function AdminAmenityCalendarScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
@@ -277,15 +278,6 @@ export default function AdminAmenityCalendarScreen() {
           >
             <Wrench size={12} className="text-amber-600 dark:text-amber-400" />
             <Text className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">Maintenance</Text>
-          </Button>
-          <Button
-            size="sm"
-            onPress={handleOpenManualModal}
-            className="flex-row items-center gap-1 rounded-full px-3 h-8 bg-emerald-600 active:bg-emerald-700"
-            accessibilityLabel="Reserve manual slot"
-          >
-            <Plus size={13} color="#FFFFFF" />
-            <Text className="text-white font-bold text-xs">Reserve</Text>
           </Button>
         </View>
       }

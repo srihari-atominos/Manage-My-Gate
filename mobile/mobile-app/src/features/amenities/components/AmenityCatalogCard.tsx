@@ -20,7 +20,6 @@ import {
   isFacilityBookable,
 } from '../utils/amenityPresentation';
 import { cn } from '@/lib/utils';
-<<<<<<< HEAD
 import {
   MapPin,
   Users,
@@ -32,10 +31,7 @@ import {
   DoorOpen,
   Sparkles,
 } from 'lucide-react-native';
-=======
-import { MapPin, Users, Clock, Timer, CalendarCheck, Building2, Sparkles } from 'lucide-react-native';
 import { useTranslation } from '@/src/utils/i18n';
->>>>>>> origin/UI/Fix/Changes
 
 export interface AmenityCatalogCardProps {
   amenity: AmenityFacility | Amenity;
@@ -48,23 +44,15 @@ export function AmenityCatalogCard({
   onPress,
   onBookClick,
 }: AmenityCatalogCardProps) {
-<<<<<<< HEAD
+  const { t, translateText } = useTranslation();
+
   // Normalize facility fields
   const facility = amenity as AmenityFacility;
   const legacyAmenity = amenity as Amenity;
-=======
-  const { t, translateText, language } = useTranslation();
-  const itemStatus = (amenity.status || 'active').toLowerCase();
-  const currentStatus = (amenity.currentStatus || '').toLowerCase();
-  const isMaintenance = itemStatus === 'maintenance' || currentStatus === 'under maintenance';
-  const isInactive = itemStatus === 'inactive' || currentStatus === 'unavailable';
-  const isAvailable = !isMaintenance && !isInactive && itemStatus === 'active';
->>>>>>> origin/UI/Fix/Changes
 
   const rawArchetype = facility.archetype || legacyAmenity.type || legacyAmenity.category || 'SHARED_CAPACITY';
   const archetypeMeta = getArchetypeMeta(rawArchetype as AmenityArchetype);
 
-<<<<<<< HEAD
   const rawStatus = String(amenity.status || 'ACTIVE').toUpperCase();
   const statusMeta = getFacilityStatusMeta(rawStatus);
   const bookableCheck = isFacilityBookable(facility);
