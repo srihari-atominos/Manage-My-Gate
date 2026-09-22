@@ -85,11 +85,15 @@ export const connectToDb = async (retries = 5, delayMs = 3000) => {
 
         const originalCreate = mongoose.Model.create;
         mongoose.Model.create = function() {
-          const lastArg = arguments[arguments.length - 1];
+          const args = Array.from(arguments);
+          const lastArg = args[args.length - 1];
           if (lastArg && typeof lastArg === 'object' && lastArg.session && lastArg.session._isMockSession) {
             delete lastArg.session;
           }
-          return originalCreate.apply(this, arguments);
+          if (args.length > 1 && args[1] && args[1].session && args[1].session._isMockSession) {
+            delete args[1].session;
+          }
+          return originalCreate.apply(this, args);
         };
         
         const originalInsertMany = mongoose.Model.insertMany;
@@ -98,15 +102,6 @@ export const connectToDb = async (retries = 5, delayMs = 3000) => {
             delete options.session;
           }
           return originalInsertMany.apply(this, arguments);
-        };
-
-        const originalCreate = mongoose.Model.create;
-        mongoose.Model.create = function() {
-          const args = Array.from(arguments);
-          if (args.length > 1 && args[1] && args[1].session && args[1].session._isMockSession) {
-            delete args[1].session;
-          }
-          return originalCreate.apply(this, args);
         };
       }
 
