@@ -416,12 +416,21 @@
   justify-content: center;
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
   padding: 2.5rem 1rem;
+
+  @media (max-width: 576px) {
+    padding: 1rem 0.5rem;
+    align-items: flex-start;
+  }
 }
 
 .invite-card-container {
   max-width: 520px;
   width: 100%;
   margin-inline: auto;
+
+  @media (max-width: 576px) {
+    max-width: 100%;
+  }
 }
 
 .invite-card {
@@ -429,6 +438,11 @@
   border-radius: 16px !important;
   background: #ffffff;
   border: none;
+
+  @media (max-width: 576px) {
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  }
 }
 
 .invite-hero-banner {
@@ -446,12 +460,13 @@
   border-radius: 10px;
   margin-bottom: 1.5rem;
   border: 1px solid #e2e8f0;
+  gap: 4px;
 }
 
 .invite-tab-btn {
   flex: 1;
-  padding: 9px 14px;
-  font-size: 0.875rem;
+  padding: 9px 10px;
+  font-size: 0.85rem;
   font-weight: 600;
   border: none;
   background: transparent;
@@ -460,6 +475,11 @@
   transition: all 0.2s ease-in-out;
   cursor: pointer;
   text-align: center;
+
+  @media (max-width: 576px) {
+    padding: 8px 6px;
+    font-size: 0.8rem;
+  }
 
   &:hover {
     color: #0f172a;
@@ -568,15 +588,457 @@
 }
 
 .invite-sso-container {
+  width: 100%;
+
   .google-login-wrapper {
     display: flex;
     justify-content: center;
+    align-items: center;
     width: 100%;
 
     > div {
       width: 100% !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+
+      > div {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+      }
+
+      iframe {
+        margin: 0 auto !important;
+        max-width: 100% !important;
+      }
     }
   }
 }
 
+// ─── Modern Workspace Invitation Dark / Phone Night Theme ────────────────────
 
+@mixin invite-dark-theme {
+  .invite-card,
+  .invite-card.card,
+  .invite-status-card,
+  .invite-handoff-card {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5) !important;
+
+    .card-body {
+      background-color: #1e293b !important;
+      color: #f8fafc !important;
+    }
+
+    h1, h2, h3, h4, h5, h6,
+    .text-foreground {
+      color: #f8fafc !important;
+    }
+  }
+
+  .invite-summary-strip {
+    background-color: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #e2e8f0 !important;
+
+    .border-bottom {
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .border-light-subtle {
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .text-dark {
+      color: #f8fafc !important;
+    }
+
+    .text-muted {
+      color: #94a3b8 !important;
+    }
+
+    .text-secondary {
+      color: #94a3b8 !important;
+    }
+  }
+
+  // Mobile App Shortcut Banner
+  .bg-primary-subtle {
+    background-color: rgba(37, 99, 235, 0.15) !important;
+    border-color: rgba(37, 99, 235, 0.35) !important;
+    color: #93c5fd !important;
+
+    .text-primary {
+      color: #93c5fd !important;
+    }
+
+    .btn-outline-primary {
+      color: #93c5fd !important;
+      border-color: #3b82f6 !important;
+
+      &:hover {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+      }
+    }
+  }
+
+  // Tabs
+  .invite-tabs-container {
+    background-color: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .invite-tab-btn {
+    color: #94a3b8 !important;
+
+    &:hover {
+      color: #f8fafc !important;
+    }
+
+    &.active {
+      background-color: #334155 !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4) !important;
+    }
+  }
+
+  // Form Labels & Text
+  .form-label,
+  label {
+    color: #cbd5e1 !important;
+  }
+
+  .text-muted {
+    color: #94a3b8 !important;
+  }
+
+  // Form Inputs
+  .form-control,
+  input.form-control {
+    background-color: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #f8fafc !important;
+
+    &::placeholder {
+      color: #64748b !important;
+    }
+
+    &:focus {
+      background-color: #0f172a !important;
+      border-color: #3b82f6 !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+    }
+
+    &:disabled,
+    &[readonly] {
+      background-color: rgba(15, 23, 42, 0.6) !important;
+      color: #94a3b8 !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+  }
+
+  .input-group-text,
+  .input-group-text.bg-light {
+    background-color: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #94a3b8 !important;
+  }
+
+  // Password eye toggle button
+  .invite-signup-form button[type='button'].position-absolute,
+  .invite-signin-form button[type='button'].position-absolute {
+    color: #94a3b8 !important;
+
+    &:hover {
+      color: #f8fafc !important;
+    }
+  }
+
+  // React Phone Input 2 Dark Theming
+  .invite-phone-container {
+    .invite-phone-input {
+      background-color: #0f172a !important;
+      border-color: rgba(255, 255, 255, 0.15) !important;
+      color: #f8fafc !important;
+
+      &:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+      }
+
+      &:disabled {
+        background-color: rgba(15, 23, 42, 0.6) !important;
+        color: #94a3b8 !important;
+      }
+    }
+
+    .invite-phone-button {
+      background-color: #0f172a !important;
+      border-color: rgba(255, 255, 255, 0.15) !important;
+
+      &:hover,
+      &:focus,
+      &.open {
+        background-color: #334155 !important;
+      }
+    }
+
+    .invite-phone-dropdown {
+      background-color: #1e293b !important;
+      border-color: rgba(255, 255, 255, 0.15) !important;
+      color: #f8fafc !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+
+      .search {
+        background-color: #0f172a !important;
+        border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+
+        .search-box {
+          background-color: #1e293b !important;
+          color: #f8fafc !important;
+          border-color: rgba(255, 255, 255, 0.15) !important;
+
+          &:focus {
+            border-color: #3b82f6 !important;
+          }
+        }
+      }
+
+      .country-list {
+        background-color: #1e293b !important;
+      }
+
+      .country {
+        color: #e2e8f0 !important;
+
+        &:hover,
+        &.highlight {
+          background-color: #334155 !important;
+          color: #60a5fa !important;
+        }
+
+        .country-name {
+          color: #e2e8f0 !important;
+        }
+
+        .dial-code {
+          color: #94a3b8 !important;
+        }
+      }
+    }
+  }
+
+  // Divider lines & Subtitle
+  .border-top,
+  .border-bottom {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  // Microsoft SSO & outline buttons
+  .invite-sso-container {
+    .btn-outline-light,
+    .btn.border,
+    .btn[class*='btn-outline'] {
+      background-color: #0f172a !important;
+      border-color: rgba(255, 255, 255, 0.15) !important;
+      color: #f8fafc !important;
+
+      &:hover {
+        background-color: #334155 !important;
+        border-color: rgba(255, 255, 255, 0.25) !important;
+        color: #ffffff !important;
+      }
+
+      span {
+        color: #f8fafc !important;
+      }
+    }
+  }
+
+  // Alerts
+  .alert-danger {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    color: #fca5a5 !important;
+  }
+
+  .alert-warning {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+    color: #fde68a !important;
+  }
+
+  .alert-success,
+  .bg-success-subtle {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+    color: #6ee7b7 !important;
+  }
+
+  // Authenticated State in SignIn Form
+  .invite-signin-authenticated {
+    .bg-success-subtle {
+      background-color: rgba(16, 185, 129, 0.15) !important;
+      border-color: rgba(16, 185, 129, 0.3) !important;
+
+      .text-success {
+        color: #6ee7b7 !important;
+      }
+    }
+  }
+
+  // Secondary light boxes in mobile handoff & status
+  .bg-light {
+    background-color: #0f172a !important;
+
+    .text-dark {
+      color: #f8fafc !important;
+    }
+  }
+
+  // Interactive link styles
+  .btn-link.text-primary {
+    color: #60a5fa !important;
+
+    &:hover {
+      color: #93c5fd !important;
+    }
+  }
+
+  .btn-link.text-danger {
+    color: #f87171 !important;
+
+    &:hover {
+      color: #fca5a5 !important;
+    }
+  }
+
+  .btn-link.text-muted {
+    color: #94a3b8 !important;
+
+    &:hover {
+      color: #e2e8f0 !important;
+    }
+  }
+}
+
+// ─── Apply Dark Mode Rules ───────────────────────────────────────────────────
+
+// 1. Explicit CoreUI/HTML dark theme attribute
+[data-coreui-theme='dark'] .invite-page-wrapper,
+[data-theme='dark'] .invite-page-wrapper,
+.dark .invite-page-wrapper {
+  @include invite-dark-theme;
+}
+
+// 2. Phone / OS Night Mode (prefers-color-scheme: dark) unless explicitly set to light
+@media (prefers-color-scheme: dark) {
+  :root:not([data-coreui-theme='light']) .invite-page-wrapper {
+    @include invite-dark-theme;
+  }
+}
+
+// ─── Invite Handler Page ─────────────────────────────────────────────────────
+
+.invite-handler-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  background: var(--cui-body-bg, #f8f9fa);
+}
+
+.invite-handler-loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.invite-handler-hero {
+  .invite-handler-emoji {
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  .invite-handler-title {
+    font-size: 1.75rem;
+    color: var(--cui-body-color, #333);
+  }
+
+  .invite-handler-subtitle {
+    font-size: 0.95rem;
+  }
+}
+
+.invite-handler-context-strip {
+  .invite-handler-email-badge {
+    display: inline-block;
+    padding: 0.4rem 1.2rem;
+    border-radius: 2rem;
+    background: var(--cui-primary-bg-subtle, #ede9fe);
+    color: var(--cui-primary, #4f46e5);
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+}
+
+.invite-handler-card {
+  border-radius: 1rem;
+  background: var(--cui-body-bg, #fff);
+}
+
+.invite-handler-tabs {
+  border-bottom: 2px solid var(--cui-border-color, #dee2e6);
+
+  .invite-handler-tab-link {
+    font-weight: 600;
+    color: var(--cui-body-color);
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    padding: 0.6rem 1.25rem;
+    transition: color 0.15s, border-color 0.15s;
+
+    &.active {
+      color: var(--cui-primary, #4f46e5);
+      border-bottom-color: var(--cui-primary, #4f46e5);
+      background: transparent;
+    }
+
+    &:hover:not(.active) {
+      color: var(--cui-primary, #4f46e5);
+    }
+  }
+}
+
+.invite-handler-eye-btn {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--cui-secondary-color, #6c757d);
+  opacity: 0.75;
+  padding-inline-end: 0.75rem;
+  z-index: 10;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.invite-handler-error-icon {
+  font-size: 3rem;
+}

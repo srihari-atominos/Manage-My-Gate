@@ -74,10 +74,10 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
         <div className="h-16 flex items-center justify-between px-4 lg:px-6 border-b border-slate-200 bg-white">
           <div className="flex items-center">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0">
-              M
+              N
             </div>
             <span className="md:hidden lg:block ml-3 font-bold text-slate-800 text-lg whitespace-nowrap overflow-hidden text-ellipsis">
-              Manage My Gate
+              Nahom
             </span>
           </div>
           {/* Close button on mobile */}

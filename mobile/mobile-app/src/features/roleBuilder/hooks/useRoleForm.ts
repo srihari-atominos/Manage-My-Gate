@@ -12,6 +12,44 @@ const schema = yup.object().shape({
   integrationMappings: yup.object().optional().default({}),
 });
 
+export const AMENITY_V2_TIER_PERMISSIONS: Record<string, string[]> = {
+  resident: [
+    'amenities:discover',
+    'amenities:my_booking',
+    'amenities:wallet',
+  ],
+  security_guard: [
+    'amenities:scanner',
+    'amenities:security_logs',
+  ],
+  admin: [
+    'amenities:amenities',
+    'amenities:admin_calander',
+    'amenities:maintenance',
+    'amenities:settings',
+    'amenities:dashboard',
+    'amenities:ledgers',
+  ],
+  none: [],
+};
+
+export const detectInitialAmenityTier = (permissions: string[] = []): string => {
+  const amenityPerms = (permissions || []).filter((p) => String(p).toLowerCase().startsWith('amenities:'));
+  if (amenityPerms.length === 0) return 'none';
+
+  const normalized = amenityPerms.map((p) => String(p).toLowerCase());
+  const hasExact = (tierSet: string[]) =>
+    tierSet.length === normalized.length &&
+    tierSet.every((p) => normalized.includes(p.toLowerCase()));
+
+  if (hasExact(AMENITY_V2_TIER_PERMISSIONS.admin)) return 'admin';
+  if (hasExact(AMENITY_V2_TIER_PERMISSIONS.security_guard)) return 'security_guard';
+  if (hasExact(AMENITY_V2_TIER_PERMISSIONS.resident)) return 'resident';
+
+  // Safe fallback for ambiguous mixtures
+  return 'none';
+};
+
 interface UseRoleFormProps {
   role?: RoleData | null;
   visible: boolean;
@@ -20,6 +58,7 @@ interface UseRoleFormProps {
 
 export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
   const [isIntegrationDrawerOpen, setIsIntegrationDrawerOpen] = useState(false);
+  const [amenityTier, setAmenityTier] = useState<string>('none');
 
   const {
     register,
@@ -47,13 +86,15 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
 
   useEffect(() => {
     if (visible && role) {
+      const rolePerms = role.permissions || [];
       reset({
         name: role.name || '',
         description: role.description || '',
         isTenantRole: role.isTenantRole || false,
-        permissions: role.permissions || [],
+        permissions: rolePerms,
         integrationMappings: role.integrationMappings || {},
       });
+      setAmenityTier(detectInitialAmenityTier(rolePerms));
     } else if (!visible) {
       reset({
         name: '',
@@ -63,6 +104,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
         integrationMappings: {},
       });
       setIsIntegrationDrawerOpen(false);
+      setAmenityTier('none');
     }
   }, [role, visible, reset]);
 
@@ -83,8 +125,25 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     const currentPermissions = getValues('permissions') || [];
     let newValue: string[];
 
+    if (String(permValue).startsWith('amenities_tier:')) {
+      const tier = permValue.replace('amenities_tier:', '');
+      setAmenityTier(tier);
+      const nonAmenity = currentPermissions.filter((p) => !String(p).toLowerCase().startsWith('amenities:'));
+      const tierPermissions = AMENITY_V2_TIER_PERMISSIONS[tier] || [];
+      newValue = [...nonAmenity, ...tierPermissions];
+      setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true });
+      return;
+    }
+
     if (checked) {
-      newValue = Array.from(new Set([...currentPermissions, permValue]));
+      if (String(permValue).toLowerCase().startsWith('visitor:')) {
+        newValue = [
+          ...currentPermissions.filter((p) => !String(p).toLowerCase().startsWith('visitor:')),
+          permValue,
+        ];
+      } else {
+        newValue = Array.from(new Set([...currentPermissions, permValue]));
+      }
     } else {
       newValue = currentPermissions.filter((p) => p !== permValue);
     }
@@ -111,6 +170,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     control,
     isSubmitting,
     selectedPermissions,
+    amenityTier,
     isTenantRole,
     integrationMappings,
     isIntegrationDrawerOpen,

@@ -7,7 +7,7 @@ import { type PropsWithChildren } from 'react';
 // do not have access to the DOM or browser APIs.
 export default function Root({ children }: PropsWithChildren) {
   return (
-    <html lang="en" className="bg-background">
+    <html lang="en" dir="ltr" className="bg-background" style={{ direction: 'ltr' }}>
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -21,7 +21,7 @@ export default function Root({ children }: PropsWithChildren) {
 
         {/* Add any additional <head> elements that you want globally available on web... */}
       </head>
-      <body>{children}</body>
+      <body dir="ltr" style={{ direction: 'ltr' }}>{children}</body>
     </html>
   );
 }

@@ -80,15 +80,26 @@ const AppSidebar = () => {
     const featurePart = perm.split(':')[0]
     if (featurePart === 'workspaces' || featurePart === 'dashboard') return true
 
+    const isModuleEnabled = (key) => {
+      if (allowedFeatures.includes(key)) return true
+      if (activeWorkspace?.modules?.some((m) => m.moduleKey === key && m.enabled !== false)) return true
+      if (activeWorkspace?.workspaceModules?.some((m) => m.moduleKey === key && m.enabled === true)) return true
+      return false
+    }
+
     if (featurePart === 'amenities' || featurePart === 'booking') {
-      return allowedFeatures.some((f) => ['amenities', 'booking', 'amenity', 'amenitiesBooking'].includes(f))
+      return ['amenities', 'booking', 'amenity', 'amenitiesBooking'].some((f) => isModuleEnabled(f))
     }
 
     if (['villas', 'users', 'roles', 'integrations'].includes(featurePart)) {
-      return allowedFeatures.includes('administration_security') || allowedFeatures.includes(featurePart) || allowedFeatures.includes(perm)
+      return (
+        isModuleEnabled('administration_security') ||
+        isModuleEnabled(featurePart) ||
+        allowedFeatures.includes(perm)
+      )
     }
 
-    return allowedFeatures.includes(featurePart) || allowedFeatures.includes(perm)
+    return isModuleEnabled(featurePart) || allowedFeatures.includes(perm)
   }
 
   const isPermitted = (item) => {

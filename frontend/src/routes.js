@@ -185,6 +185,18 @@ export const routes = [
     element: IntegrationHubView,
     requiredPermission: 'integrations:read',
   },
+  {
+    path: '/integration-hub',
+    name: 'Integration Hub',
+    element: IntegrationHubView,
+    requiredPermission: 'integrations:read',
+  },
+  {
+    path: '/integration',
+    name: 'Integration Hub',
+    element: IntegrationHubView,
+    requiredPermission: 'integrations:read',
+  },
   { path: '/workspace-setup', name: 'Workspace Setup', element: FeatureConfigWizard },
   { path: '/workspace/settings', name: 'Workspace Settings', element: WorkspaceDetailsView },
   {

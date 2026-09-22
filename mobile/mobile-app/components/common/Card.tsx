@@ -34,19 +34,19 @@ export interface CardHeaderProps extends ViewProps {
   className?: string;
 }
 export const CardHeader = ({ className, ...props }: CardHeaderProps) => (
-  <View className={cn('p-4 flex-col space-y-1.5', className)} {...props} />
+  <View className={cn('p-3 flex-col space-y-1', className)} {...props} />
 );
 
 export interface CardContentProps extends ViewProps {
   className?: string;
 }
 export const CardContent = ({ className, ...props }: CardContentProps) => (
-  <View className={cn('p-4 pt-0', className)} {...props} />
+  <View className={cn('p-3 pt-0', className)} {...props} />
 );
 
 export interface CardFooterProps extends ViewProps {
   className?: string;
 }
 export const CardFooter = ({ className, ...props }: CardFooterProps) => (
-  <View className={cn('p-4 pt-0 flex-row items-center', className)} {...props} />
+  <View className={cn('p-3 pt-0 flex-row items-center', className)} {...props} />
 );

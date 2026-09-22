@@ -93,8 +93,13 @@ export const errorHandler = (err, req, res, next) => {
     // ignore
   }
 
+  const code = err.code || (details && details.code) || undefined;
+  const reason = err.reason || (details && details.reason) || undefined;
+
   const response = {
     success: false,
+    ...(code && typeof code === 'string' && { code }),
+    ...(reason && typeof reason === 'string' && { reason }),
     message,
     ...(details && { details }),
     ...(config.nodeEnv === 'development' && { stack: err.stack }),

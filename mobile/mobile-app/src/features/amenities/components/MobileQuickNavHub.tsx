@@ -4,12 +4,15 @@ import { RootState } from '../../../store/store';
 import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 export interface QuickNavItem extends ActionGridItem {}
 import { useAmenityDashboard } from '../hooks/useAmenityDashboard';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
 export interface MobileQuickNavHubProps {
   searchQuery?: string;
 }
 
 export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) {
+  const { user } = useAuth();
   const { dashboardStats } = useAmenityDashboard();
 
   const walletState = useSelector((state: RootState) => (state as any).wallet);
@@ -57,9 +60,9 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
     return `₹${amount}`;
   };
 
-  const dynamicNavItems: ActionGridItem[] = [
+  const dynamicNavItems: (ActionGridItem & { permission?: string })[] = [
     {
-      id: 'master',
+      id: 'amenities_master',
       name: 'Amenity Master',
       route: '/(resident)/amenities/admin-master',
       iconName: 'SlidersHorizontal',
@@ -67,9 +70,10 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#EA8A00',
       badge: totalAmenities > 0 ? String(totalAmenities) : undefined,
       badgeColor: 'bg-amber-500',
+      permission: 'amenities:amenities',
     },
     {
-      id: 'calendar',
+      id: 'amenities_admin_calendar',
       name: 'Admin Calendar',
       route: '/(resident)/amenities/admin-calendar',
       iconName: 'CalendarCog',
@@ -77,9 +81,10 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#7C3AED',
       badge: upcomingBookings > 0 ? String(upcomingBookings) : undefined,
       badgeColor: 'bg-purple-500',
+      permission: 'amenities:admin_calander',
     },
     {
-      id: 'ledgers',
+      id: 'amenities_ledgers',
       name: 'Ledgers',
       route: '/(resident)/amenities/ledgers',
       iconName: 'BookOpenCheck',
@@ -87,9 +92,10 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#C0267A',
       badge: monthlyRevenue > 0 ? formatRevenueBadge(monthlyRevenue) : undefined,
       badgeColor: 'bg-pink-500',
+      permission: 'amenities:ledgers',
     },
     {
-      id: 'maint',
+      id: 'amenities_maintenance',
       name: 'Maintenance',
       route: '/(resident)/amenities/maintenance',
       iconName: 'Wrench',
@@ -97,17 +103,19 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#EA8A00',
       badge: activeMaintenance > 0 ? String(activeMaintenance) : undefined,
       badgeColor: 'bg-amber-500',
+      permission: 'amenities:maintenance',
     },
     {
-      id: 'discover',
+      id: 'amenities_discover',
       name: 'Discover',
       route: '/(resident)/amenities/discover',
       iconName: 'Compass',
       colorBg: 'bg-indigo-500/10 dark:bg-indigo-500/20',
       colorIcon: '#6366F1',
+      permission: 'amenities:discover',
     },
     {
-      id: 'bookings',
+      id: 'amenities_my_booking',
       name: 'My Bookings',
       route: '/(resident)/amenities/my-bookings',
       iconName: 'CalendarCheck',
@@ -115,9 +123,10 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#2563EB',
       badge: myBookingsCount > 0 ? String(myBookingsCount) : undefined,
       badgeColor: 'bg-blue-500',
+      permission: 'amenities:my_booking',
     },
     {
-      id: 'wallet',
+      id: 'amenities_wallet',
       name: 'Digital Wallet',
       route: '/(resident)/amenities/wallet',
       iconName: 'WalletCards',
@@ -125,9 +134,10 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       badgeColor: 'bg-emerald-500',
       colorBg: 'bg-emerald-500/10 dark:bg-emerald-500/20',
       colorIcon: '#16A34A',
+      permission: 'amenities:wallet',
     },
     {
-      id: 'scanner',
+      id: 'amenities_scanner',
       name: 'Security Scanner',
       route: '/(resident)/amenities/scanner',
       iconName: 'ScanQrCode',
@@ -135,9 +145,10 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#0F9F8F',
       badge: 'LIVE',
       badgeColor: 'bg-teal-600',
+      permission: 'amenities:scanner',
     },
     {
-      id: 'sec-logs',
+      id: 'amenities_security_logs',
       name: 'Security Logs',
       route: '/(resident)/amenities/security-logs',
       iconName: 'ClipboardList',
@@ -145,13 +156,18 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       colorIcon: '#475569',
       badge: securityLogsCount > 0 ? String(securityLogsCount) : undefined,
       badgeColor: 'bg-slate-600',
+      permission: 'amenities:security_logs',
     },
   ];
+
+  const permittedItems = dynamicNavItems.filter((item) =>
+    user ? isFeatureAllowedForUser({ id: item.id, permission: item.permission }, user) : true
+  );
 
   return (
     <ActionGrid
       title="Quick Actions"
-      items={dynamicNavItems}
+      items={permittedItems}
       searchQuery={searchQuery}
     />
   );

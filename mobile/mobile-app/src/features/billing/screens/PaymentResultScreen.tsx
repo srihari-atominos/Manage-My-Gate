@@ -104,7 +104,7 @@ export function PaymentResultScreen() {
       const formattedAmount = `₹${(isPaid ? totalDue : paidAmount || totalDue).toLocaleString('en-IN')}`;
       await Share.share({
         title: `Payment Receipt #${invNo}`,
-        message: `ManageMyGate Payment Receipt #${invNo}\nUnit: ${unitStr}\nAmount: ${formattedAmount}\nStatus: ${status.replace(/_/g, ' ')}\nMethod: ${methodStr}\nReference: ${refStr}`,
+        message: `Nahom Payment Receipt #${invNo}\nUnit: ${unitStr}\nAmount: ${formattedAmount}\nStatus: ${status.replace(/_/g, ' ')}\nMethod: ${methodStr}\nReference: ${refStr}`,
       });
     } catch (err: any) {
       Alert.alert('Share Failed', err.message || 'Unable to share receipt.');

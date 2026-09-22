@@ -53,8 +53,17 @@ class AmenityDashboardController {
   async getCalendarEvents(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
-      const { startDate, endDate } = req.query; // YYYY-MM-DD
-      const data = await dashboardService.getCalendarEvents(orgId, startDate, endDate);
+      const { startDate, endDate, date, facilityId, amenityId, resourceId, status, paymentStatus, search } = req.query;
+      const filters = {
+        facilityId: facilityId || amenityId,
+        resourceId,
+        status,
+        paymentStatus,
+        search,
+      };
+      const effectiveStart = startDate || date;
+      const effectiveEnd = endDate || date;
+      const data = await dashboardService.getCalendarEvents(orgId, effectiveStart, effectiveEnd, filters);
       res.success(data, 'Calendar events retrieved successfully');
     } catch (error) {
       next(error);

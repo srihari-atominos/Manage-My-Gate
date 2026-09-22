@@ -1,3 +1,8 @@
+import { Platform } from 'react-native';
+import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+
 // Pure JS PNG encoder for QR codes in React Native (Zero canvas/DOM/zlib dependencies)
 const QRCode = require('qrcode');
 
@@ -158,3 +163,121 @@ export function bytesToBase64(bytes: Uint8Array): string {
   }
   return '';
 }
+
+/**
+ * Generates an ISO/IEC 18004 compliant visual QR code using UTF-8 half-block characters,
+ * specifically sized and padded with quiet zones for messaging apps like WhatsApp.
+ * Wrapped in monospace triple backticks in WhatsApp, this displays directly as a visual QR code.
+ */
+export function generateUnicodeQr(text: string): string {
+  try {
+    // If text contains long metadata (like passId and visitorName),
+    // compact to standard MMG:{type}:{code} for the ASCII QR so it stays compact (Version 1, 21x21 modules, 11 text rows)
+    let qrPayload = text;
+    const mmgMatch = text.match(/^MMG:([^:]+):([^:]+)/i);
+    if (mmgMatch) {
+      let passType = mmgMatch[1].toUpperCase();
+      if (passType.includes('GUEST')) passType = 'GUEST';
+      else if (passType.includes('DELIV')) passType = 'DELIVERY';
+      else if (passType.includes('CAB') || passType.includes('TAXI') || passType.includes('AUTO')) passType = 'CAB';
+      else if (passType.includes('SERV') || passType.includes('STAFF')) passType = 'SERVICE';
+      else if (passType.includes('GROUP')) passType = 'GROUP';
+      else passType = passType.replace(/[^A-Z0-9]/g, '');
+
+      qrPayload = 'MMG:' + passType + ':' + mmgMatch[2];
+    }
+
+    const qr = QRCode.create(qrPayload, { errorCorrectionLevel: 'L' });
+    const size = qr.modules.size;
+    const data = qr.modules.data;
+    let out = '';
+    const hPad = ' ';
+    for (let r = 0; r < size; r += 2) {
+      let rowStr = hPad;
+      for (let c = 0; c < size; c++) {
+        const top = data[r * size + c];
+        const bottom = r + 1 < size ? data[(r + 1) * size + c] : 0;
+        if (top && bottom) rowStr += '█';
+        else if (top && !bottom) rowStr += '▀';
+        else if (!top && bottom) rowStr += '▄';
+        else rowStr += ' ';
+      }
+      rowStr += hPad;
+      out += rowStr + '\n';
+    }
+    return out.trimEnd();
+  } catch (err) {
+    console.error('Error generating Unicode QR:', err);
+    return '';
+  }
+}
+
+/**
+ * Saves a high-resolution QR PNG to the device cache and returns the local file URI.
+ */
+export async function exportQrPngFileUri(barcodePayload: string, filenamePrefix: string): Promise<string> {
+  if (Platform.OS === 'web') return '';
+  const pngBytes = generateQrPngBytes(barcodePayload, 10, 4);
+  let targetUri = '';
+
+  try {
+    if (File && Paths && Paths.cache) {
+      const file = new File(Paths.cache, `${filenamePrefix}.png`);
+      if (!file.exists) {
+        file.create();
+      }
+      file.write(pngBytes);
+      targetUri = file.uri;
+    }
+  } catch {
+    // fallback to legacy FileSystem
+  }
+
+  if (!targetUri) {
+    try {
+      const base64 = bytesToBase64(pngBytes);
+      const cacheDir =
+        (FileSystem as any)?.cacheDirectory ||
+        (FileSystem as any)?.documentDirectory ||
+        '';
+      const fallbackUri = `${cacheDir}${filenamePrefix}.png`;
+      if ((FileSystem as any)?.writeAsStringAsync) {
+        await (FileSystem as any).writeAsStringAsync(fallbackUri, base64, {
+          encoding: (FileSystem as any).EncodingType?.Base64 || 'base64',
+        });
+        targetUri = fallbackUri;
+      }
+    } catch (fsErr) {
+      console.log('Error writing barcode PNG to cache:', fsErr);
+    }
+  }
+
+  return targetUri;
+}
+
+/**
+ * Shares the actual QR PNG image file directly using the native share sheet.
+ * Returns true if sharing was opened, false otherwise.
+ */
+export async function shareQrImage(
+  barcodePayload: string,
+  passCode: string,
+  dialogTitle?: string
+): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  try {
+    const targetUri = await exportQrPngFileUri(barcodePayload, `MMG_Pass_${passCode}`);
+    if (targetUri && (await Sharing.isAvailableAsync())) {
+      await Sharing.shareAsync(targetUri, {
+        mimeType: 'image/png',
+        dialogTitle: dialogTitle || `Nahom Pass - ${passCode}`,
+        UTI: 'public.png',
+      });
+      return true;
+    }
+  } catch (err) {
+    console.log('Error sharing QR image:', err);
+  }
+  return false;
+}
+

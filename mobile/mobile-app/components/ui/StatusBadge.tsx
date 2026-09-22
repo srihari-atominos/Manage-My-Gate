@@ -113,8 +113,8 @@ const statusBadgeVariants = cva(
 const statusBadgeTextVariants = cva('font-semibold font-sans', {
   variants: {
     size: {
-      sm: 'text-[11px] uppercase tracking-wider',
-      md: 'text-[13px] tracking-wide',
+      sm: 'text-[10px] uppercase tracking-wider',
+      md: 'text-[12px] tracking-wide',
     },
   },
   defaultVariants: {
@@ -160,8 +160,16 @@ const StatusBadge = React.forwardRef<View, StatusBadgeProps>(
     const colorConfig = isDark ? STATUS_COLORS[validVariant].dark : STATUS_COLORS[validVariant].light;
 
     const rawLabel = String(label || '').trim();
+    if (!rawLabel) {
+      return null;
+    }
+
     const normalizedKey = `status_${rawLabel.toLowerCase().replace(/[\s\/-]+/g, '_')}`;
-    const displayLabel = t(normalizedKey, t(rawLabel.toLowerCase(), rawLabel));
+    const i18nResult = t(normalizedKey, t(rawLabel.toLowerCase(), rawLabel));
+    const displayLabel =
+      i18nResult && i18nResult !== normalizedKey && !i18nResult.startsWith('status_')
+        ? i18nResult
+        : rawLabel;
 
     return (
       <View

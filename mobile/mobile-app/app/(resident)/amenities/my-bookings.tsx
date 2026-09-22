@@ -1,71 +1,96 @@
+/**
+ * My Bookings Screen - Phase 6C.2 Modernization
+ * Resident Amenity Reservation Management List UI.
+ * Consumes Phase 6C.1 useResidentReservations foundation and preserves the five orthogonal backend status dimensions.
+ */
+
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { SearchFilterBar, SortOption } from '@/components/ui/SearchFilterBar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { Plus } from 'lucide-react-native';
-import { useMyBookings } from '@/src/features/amenities/hooks/useMyBookings';
-import { AmenityBookingCard } from '@/src/features/amenities/components/AmenityBookingCard';
-import { PassQRModal } from '@/src/features/amenities/components/PassQRModal';
-import { CancelBookingModal } from '@/src/features/amenities/components/CancelBookingModal';
-import { AmenityBooking } from '@/src/features/amenities/store/amenityBookingSlice';
+import {
+  useResidentReservations,
+  ReservationFilterTab,
+} from '@/src/features/amenities/hooks/useResidentReservations';
+import { ResidentReservationCard } from '@/src/features/amenities/components/ResidentReservationCard';
+import { ResidentCancelModal } from '@/src/features/amenities/components/ResidentCancelModal';
+import { AmenityReservation } from '@/src/features/amenities/types/amenityDomain.types';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
 export default function MyBookingsScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Guard: Users without resident booking permissions are redirected
+  const hasBookingsAccess =
+    isFeatureAllowedForUser({ id: 'amenities_my_booking', permission: 'amenities:my_booking' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user);
+
+  if (user && !hasBookingsAccess) {
+    if (isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
+      return <Redirect href="/(resident)/amenities/scanner" />;
+    }
+    return <Redirect href="/(resident)/dashboard" />;
+  }
+
   const {
-    myBookings,
-    filteredBookings,
+    reservations,
+    filteredReservations,
     loading,
+    isRefreshing,
+    isCancelling,
     error,
     pagination,
-    selectedFilter,
-    filterTabs,
-    selectedPassForQR,
+    selectedTab,
+    setSelectedTab,
+    searchQuery,
+    setSearchQuery,
     cancelTarget,
-    isCancelling,
-    setSelectedFilter,
-    setSelectedPassForQR,
     setCancelTarget,
-    handleRefresh,
-    handleLoadMore,
-    handleConfirmCancel,
-  } = useMyBookings();
+    cancelReservation,
+    refresh,
+    loadMore,
+  } = useResidentReservations();
 
-  const [search, setSearch] = React.useState('');
-
-  const sortOptions = useMemo(
+  // Canonical presentation category tabs
+  const sortOptions: SortOption[] = useMemo(
     () => [
-      { label: 'All Bookings', value: 'All' },
-      { label: 'Confirmed', value: 'CONFIRMED' },
-      { label: 'Completed', value: 'COMPLETED' },
-      { label: 'Cancelled', value: 'CANCELLED' },
+      { label: 'All', value: 'All' },
+      { label: 'Upcoming', value: 'Upcoming' },
+      { label: 'Awaiting Approval', value: 'Awaiting Approval' },
+      { label: 'Past', value: 'Past' },
+      { label: 'Cancelled', value: 'Cancelled' },
     ],
     []
   );
 
-  const displayedBookings = useMemo(() => {
-    let list = filteredBookings;
-    if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      list = list.filter((b) =>
-        (b.amenityName && b.amenityName.toLowerCase().includes(q)) ||
-        (b.passCode && b.passCode.toLowerCase().includes(q)) ||
-        (b._id && b._id.toLowerCase().includes(q))
-      );
-    }
-    return list;
-  }, [filteredBookings, search]);
+  const handleCardPress = (reservation: AmenityReservation) => {
+    router.push(`/(resident)/amenities/reservations/${reservation._id}` as any);
+  };
 
-  const renderBookingItem = (item: AmenityBooking) => (
-    <AmenityBookingCard
+  const handleConfirmCancel = async (reason?: string) => {
+    if (!cancelTarget) return;
+    try {
+      await cancelReservation(cancelTarget._id, reason);
+    } catch {
+      // Error is caught and surfaced in state error
+    }
+  };
+
+  const renderReservationItem = (item: AmenityReservation) => (
+    <ResidentReservationCard
       key={item._id}
-      booking={item}
-      onPress={setSelectedPassForQR}
-      onViewPassQR={setSelectedPassForQR}
+      reservation={item}
+      onPress={handleCardPress}
       onCancelPress={setCancelTarget}
+      testID={`reservation-card-${item._id}`}
     />
   );
 
@@ -73,12 +98,12 @@ export default function MyBookingsScreen() {
     <View className="gap-3 mb-3">
       {/* Real-Time Keyword Search Bar & Moveable Slide Status Filter */}
       <SearchFilterBar
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search by facility name or pass code..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search by facility name or reservation number..."
         sortOptions={sortOptions}
-        currentSort={selectedFilter}
-        onSortChange={setSelectedFilter}
+        currentSort={selectedTab}
+        onSortChange={(value) => setSelectedTab(value as ReservationFilterTab)}
         variant="default"
         className="px-0 py-0 border-0"
       />
@@ -90,9 +115,9 @@ export default function MyBookingsScreen() {
       title="My Amenity Bookings"
       subtitle="View, manage & access your digital reservation passes"
       iconName="CalendarCheck"
-      loading={loading && myBookings.length === 0}
-      error={error}
-      onRetry={handleRefresh}
+      loading={loading && reservations.length === 0}
+      error={error?.message || null}
+      onRetry={refresh}
       headerRight={
         <Button
           variant="default"
@@ -108,14 +133,15 @@ export default function MyBookingsScreen() {
       }
     >
       <View className="flex-1 bg-background">
-        {/* Paginated List of Bookings */}
+        {/* Paginated List of Reservations */}
         <PaginatedList
-          data={displayedBookings}
-          renderItem={renderBookingItem}
-          pagination={pagination}
-          onLoadMore={handleLoadMore}
-          onRefresh={handleRefresh}
+          data={filteredReservations}
+          renderItem={renderReservationItem}
+          pagination={pagination || { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 }}
+          onLoadMore={loadMore}
+          onRefresh={refresh}
           loading={loading}
+          refreshing={isRefreshing}
           ListHeaderComponent={renderHeader()}
           emptyIcon="CalendarX"
           emptyTitle="No Bookings Found"
@@ -124,20 +150,14 @@ export default function MyBookingsScreen() {
         />
       </View>
 
-      {/* Digital Pass QR Viewer Modal */}
-      <PassQRModal
-        visible={!!selectedPassForQR}
-        onClose={() => setSelectedPassForQR(null)}
-        booking={selectedPassForQR}
-      />
-
       {/* Cancel Confirmation Modal */}
-      <CancelBookingModal
+      <ResidentCancelModal
         visible={!!cancelTarget}
+        reservation={cancelTarget}
         onClose={() => setCancelTarget(null)}
         onConfirm={handleConfirmCancel}
-        booking={cancelTarget}
         loading={isCancelling}
+        testID="resident-cancel-modal"
       />
     </ScreenShell>
   );

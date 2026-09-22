@@ -326,7 +326,6 @@ The Financial & Billing module (`src/features/billing/components/` & `src/featur
 | **`OfflineSettleSheet`** | `src/features/billing/components/OfflineSettleSheet.tsx` | `<BottomSheet>`, `<TextInput>`, `<Button>` |
 | **`PaymentCheckoutSheet`** | `src/features/billing/components/PaymentCheckoutSheet.tsx` | `<BottomSheet>`, `<Button>`, `<StatusBadge>` |
 | **`BookingDetailModal`** | `src/features/amenities/components/BookingDetailModal.tsx` | `<BottomSheet>`, `<DetailRow>`, `<Button>`, `<StatusBadge>` |
-| **`AmenityBookingCard`** | `src/features/amenities/components/AmenityBookingCard.tsx` | `<ListCard>`, `<StatusBadge>`, `<Button>`, `<Text>` |
 | **`WalletTopUpModal`** | `src/features/amenities/components/WalletTopUpModal.tsx` | `<BottomSheet>`, `<TextInput>`, `<Button>`, `<Pressable>` |
 | **`AssessmentRuleCard`** | `src/features/billing/components/AssessmentRuleCard.tsx` | `<StatusBadge>`, `<Button>`, `<Icon>`, `<Text>` |
 
@@ -363,6 +362,21 @@ The Detail Inspectors and Interactive Viewers standardize deep-dive inspection v
 | **`PollOptionRow`** | `src/features/poll/components/PollOptionRow.tsx` | `<Pressable>`, `<Text>`, `<Icon>`, `<ProgressBar>` |
 | **`PublicVisitorPassScreen`** | `src/features/visitor/screens/PublicVisitorPassScreen.tsx` | `<ScreenShell>`, `<VisitorQRCode>`, `<DetailSection>`, `<DetailRow>`, `<StatusBadge>`, `<TextInput>`, `<Button>`, `<EmptyState>`, `<ErrorBanner>`, `<SkeletonLoader>` |
 | **`VisitorQRCode`** | `src/features/visitor/components/shared/VisitorQRCode.tsx` | `<Svg>`, `<Rect>`, `<Text>` |
+
+---
+
+## Reference Domain Architecture: Type-Selection-First Creation Wizards & Archetype Onboarding
+
+The multi-step creation wizards standardize archetype selection bottom sheets, dynamic step routers, static locked headers, and step form layouts:
+
+| Domain Component / Wizard | Physical Path | Primary Catalog Primitives Reused |
+| :--- | :--- | :--- |
+| **`VisitorInvitationTypeSheet`** | `src/features/visitor/components/wizard/VisitorInvitationTypeSheet.tsx` | `<BottomSheet>`, `<Card>`, `<StatusBadge>`, `<Icon>`, `<Text>` |
+| **`VisitorPassWizard`** | `src/features/visitor/components/wizard/VisitorPassWizard.tsx` | `<ScreenShell>`, `<VisitorPassFlowHeader>`, `<VisitorPassStepIndicator>`, `<VisitorPassFlowFooter>` |
+| **`AmenityArchetypeSheet`** | `src/features/amenities/components/creation-wizard/AmenityArchetypeSheet.tsx` | `<BottomSheet>`, `<Card>`, `<StatusBadge>`, `<Icon>`, `<Text>` |
+| **`AmenityCreationWizard`** | `src/features/amenities/components/creation-wizard/AmenityCreationWizard.tsx` | `<Modal>`, `<AmenityCreationFlowHeader>`, `<AmenityCreationFlowFooter>`, `<BasicFacilityInfoStep>`, `<ScheduleConfigurationStep>` |
+| **`AmenityCreationFlowHeader`** | `src/features/amenities/components/creation-wizard/AmenityCreationFlowHeader.tsx` | `<StatusBadge>`, `<Button>` (Static read-only type badge, no mid-flow switch dropdown) |
+| **`BasicFacilityInfoStep`** | `src/features/amenities/components/creation-wizard/steps/BasicFacilityInfoStep.tsx` | `<TextInput>`, `<DropdownSelect>`, `<AttachmentPicker>` (Details first, dropzone at bottom, auto system code) |
 
 
 

@@ -4,7 +4,7 @@ import amenityBookingRepository from './amenityBooking.repository.js';
 import notificationService from '../notification/notification.service.js';
 import logger from '../../utils/logger.utils.js';
 import QRCode from 'qrcode';
-import walletRepository from '../wallet/wallet.repository.js';
+import walletService from '../wallet/wallet.service.js';
 
 const generateBookingId = () => `BKG-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
@@ -91,7 +91,7 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_CANCELLED, async (booking) => {
     msg = 'Booking cancelled successfully. No refund is applicable because the cancellation occurred within the configured refund window.';
     // Update debit transaction
     try {
-      await walletRepository.updateTransactionDescription(booking._id, 'Debit', '(Cancelled within the configured refund window. No refund issued.)');
+      await walletService.updateTransactionDescription(booking._id, 'Debit', '(Cancelled within the configured refund window. No refund issued.)');
     } catch (e) {
       logger.error('Failed to update debit transaction description', e);
     }
@@ -148,7 +148,11 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_COMPLETED, async (booking) => {
 // Listen to Payment Events (The async payment flow)
 // ---------------------------------------------------------
 
-paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment) => {
+paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment, options = {}) => {
+  if (options.alreadySettled) {
+    logger.info(`Skipping PAYMENT_SUCCESS listener for AmenityBooking ${payment.referenceId} as it was settled in transaction.`);
+    return;
+  }
   if (payment.referenceType !== 'AmenityBooking') return;
 
   try {
@@ -207,7 +211,7 @@ paymentEventEmitter.on(PAYMENT_REFUNDED, async (payment) => {
     const booking = await amenityBookingRepository.findById(payment.referenceId, payment.orgId);
     if (booking) {
       const amenityName = booking.amenityId?.name || 'Amenity Booking';
-      await walletRepository.createTransaction({
+      await walletService.createTransaction({
         orgId: booking.orgId,
         userId: booking.userId,
         bookingId: booking.bookingId,
@@ -221,7 +225,7 @@ paymentEventEmitter.on(PAYMENT_REFUNDED, async (payment) => {
         description: 'Booking cancelled and refunded'
       });
       if (payment.method === 'wallet' || booking.paymentMethod === 'wallet') {
-        await walletRepository.updateBalance(booking.userId, booking.orgId, (payment.amount || booking.totalPrice));
+        await walletService.updateBalance(booking.userId, booking.orgId, (payment.amount || booking.totalPrice));
       }
       
       await sendBookingNotification(booking, 'info', 'Refund Processed', 'Your refund for the cancelled booking has been processed.');

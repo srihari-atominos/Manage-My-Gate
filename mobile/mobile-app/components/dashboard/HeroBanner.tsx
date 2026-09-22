@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, Dimensions, TouchableOpacity, Text } from 'react-native';
+import { View, ScrollView, useWindowDimensions, TouchableOpacity } from 'react-native';
+import { Text } from '../ui/text';
 import { ArrowRight, Sparkles, Megaphone, ShieldCheck, Building2, Coins } from 'lucide-react-native';
 import { useTranslation } from '../../src/utils/i18n';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 400);
 
 export interface BannerItem {
   id: string;
@@ -88,6 +86,8 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const bannerWidth = Math.max(280, Math.min(windowWidth - 32, 380));
 
   useEffect(() => {
     let isMounted = true;
@@ -97,7 +97,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         if (!isMounted) return prev;
         const nextIndex = (prev + 1) % BANNERS.length;
         scrollViewRef.current?.scrollTo({
-          x: nextIndex * BANNER_WIDTH,
+          x: nextIndex * bannerWidth,
           animated: true,
         });
         return nextIndex;
@@ -108,11 +108,11 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
       isMounted = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [bannerWidth]);
 
   const handleScrollEnd = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffsetX / BANNER_WIDTH);
+    const index = Math.round(contentOffsetX / bannerWidth);
     if (index >= 0 && index < BANNERS.length) {
       setActiveIndex(index);
     }
@@ -126,7 +126,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScrollEnd}
-        snapToInterval={BANNER_WIDTH}
+        snapToInterval={bannerWidth}
         decelerationRate="fast"
       >
         {BANNERS.map((banner) => (
@@ -134,50 +134,50 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
             key={banner.id}
             activeOpacity={0.9}
             onPress={() => onBannerPress && onBannerPress(banner)}
-            style={{ width: BANNER_WIDTH }}
+            style={{ width: bannerWidth }}
             className="px-1"
           >
             <View
-              className={`${banner.bgClass} border ${banner.borderClass} rounded-2xl p-4 gap-2.5 relative overflow-hidden min-h-[148px] justify-between`}
+              className={`${banner.bgClass} border ${banner.borderClass} rounded-2xl p-3 gap-1.5 relative overflow-hidden min-h-[120px] justify-between`}
             >
               {/* Ambient Glowing Background Circles */}
               <View
-                className={`absolute -right-8 -top-8 size-36 rounded-full ${banner.glowColor} pointer-events-none`}
+                className={`absolute -right-8 -top-8 size-28 rounded-full ${banner.glowColor} pointer-events-none`}
               />
               <View
-                className={`absolute -left-10 -bottom-10 size-32 rounded-full ${banner.glowColor} pointer-events-none`}
+                className={`absolute -left-10 -bottom-10 size-24 rounded-full ${banner.glowColor} pointer-events-none`}
               />
 
               {/* Tag Header */}
               <View className="flex-row items-center justify-between z-10">
-                <View className={`${banner.pillBg} border px-2.5 py-1 rounded-full flex-row items-center gap-1.5`}>
+                <View className={`${banner.pillBg} border px-2 py-0.5 rounded-full flex-row items-center gap-1`}>
                   {banner.icon}
-                  <Text className="text-white text-[10.5px] font-bold uppercase tracking-wider font-sans">
+                  <Text className="text-white text-[9px] font-bold uppercase tracking-wider font-sans">
                     {t(`tag_${banner.id === '1' ? 'community' : banner.id === '2' ? 'security_gate' : banner.id === '3' ? 'amenities' : 'financial'}`, banner.tag)}
                   </Text>
                 </View>
 
-                <Sparkles size={16} color="#ffffff" opacity={0.8} />
+                <Sparkles size={13} color="#ffffff" opacity={0.8} />
               </View>
 
               {/* Title & Subtitle */}
-              <View className="gap-1 pr-2 z-10">
-                <Text className={`${banner.textColor} text-[16px] font-extrabold tracking-tight font-sans leading-tight`}>
+              <View className="gap-0.5 pe-2 z-10">
+                <Text className={`${banner.textColor} text-[14px] font-extrabold tracking-tight font-sans leading-tight`}>
                   {t(banner.id === '1' ? 'banner_welcome_title' : banner.id === '2' ? 'banner_qr_title' : banner.id === '3' ? 'banner_amenities_title' : 'banner_billing_title', banner.title)}
                 </Text>
-                <Text className={`${banner.subtextColor} text-[12px] font-medium font-sans leading-snug`}>
+                <Text className={`${banner.subtextColor} text-[10.5px] font-medium font-sans leading-snug`}>
                   {t(banner.id === '1' ? 'banner_welcome_sub' : banner.id === '2' ? 'banner_qr_sub' : banner.id === '3' ? 'banner_amenities_sub' : 'banner_billing_sub', banner.subtitle)}
                 </Text>
               </View>
 
               {/* CTA Link Button */}
-              <View className="flex-row items-center justify-between pt-1 z-10">
-                <View className={`${banner.ctaBg} px-3 py-1 rounded-full flex-row items-center gap-1.5 border`}>
-                  <Text className="text-white text-[11px] font-bold font-sans">{t('explore_module', 'Explore Module')}</Text>
-                  <ArrowRight size={12} color="#ffffff" />
+              <View className="flex-row items-center justify-between pt-0.5 z-10">
+                <View className={`${banner.ctaBg} px-2 py-0.5 rounded-full flex-row items-center gap-1 border`}>
+                  <Text className="text-white text-[9.5px] font-bold font-sans">{t('explore_module', 'Explore Module')}</Text>
+                  <ArrowRight size={10} color="#ffffff" />
                 </View>
 
-                <Text className="text-white/70 text-[10px] font-medium font-sans">{t('swipe', 'Swipe →')}</Text>
+                <Text className="text-white/70 text-[9px] font-medium font-sans">{t('swipe', 'Swipe →')}</Text>
               </View>
             </View>
           </TouchableOpacity>

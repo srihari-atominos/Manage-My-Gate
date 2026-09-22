@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { Text } from '../ui/text';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -48,7 +49,7 @@ const WavingHand: React.FC = () => {
 
   return (
     <Animated.View style={animatedStyle} className="items-center justify-center">
-      <Text className="text-[21px] leading-none">👋</Text>
+      <Text className="text-[18px] leading-none">👋</Text>
     </Animated.View>
   );
 };
@@ -290,16 +291,16 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 
   return (
     <>
-      <View className="flex-row items-center justify-between py-2 px-1">
+      <View className="flex-row items-center justify-between py-1 px-0.5">
         {/* Left: Salutation & Subtitle */}
-        <View className="flex-1 pr-2">
-          <View className="flex-row items-center flex-wrap gap-1.5">
-            <Text className="text-[20px] font-extrabold font-sans text-foreground tracking-tight leading-snug">
+        <View className="flex-1 pe-2">
+          <View className="flex-row items-center flex-wrap gap-1">
+            <Text className="text-[15px] font-extrabold font-sans text-foreground tracking-tight leading-tight">
               {t(timeGreeting.key, timeGreeting.defaultText)}, {displayName}
             </Text>
             <WavingHand />
           </View>
-          <Text className="text-[13px] font-bold font-sans text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
+          <Text className="text-[11.5px] font-medium font-sans text-muted-foreground mt-0.5 tracking-tight">
             {t('welcome_back_sub', 'Welcome back to your community hub')}
           </Text>
         </View>
@@ -309,12 +310,12 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
           <TouchableOpacity
             onPress={() => setVillaModalVisible(true)}
             activeOpacity={0.75}
-            className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-3 py-1.5 rounded-full shadow-2xs shrink-0"
+            className="flex-row items-center gap-1 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-2.5 py-1 rounded-full shadow-2xs shrink-0"
             accessibilityRole="button"
             accessibilityLabel={`Current location: ${dynamicLocation}`}
           >
-            <MapPin size={13} color="#FF6A00" strokeWidth={2.4} />
-            <Text className="text-[12px] font-bold font-sans text-primary dark:text-primary">
+            <MapPin size={12} color="#FF6A00" strokeWidth={2.4} />
+            <Text className="text-[11.5px] font-bold font-sans text-primary dark:text-primary">
               {dynamicLocation}
             </Text>
           </TouchableOpacity>

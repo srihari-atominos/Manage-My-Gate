@@ -154,10 +154,10 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
 
         <View
           className={cn(
-            'flex-row rounded-2xl border bg-white/75 dark:bg-[#292524]/75 px-3.5 min-h-[48px] py-2.5 shadow-2xs transition-colors backdrop-blur-sm',
+            'flex-row rounded-xl border bg-white/75 dark:bg-[#292524]/75 px-3 min-h-[42px] py-1 shadow-2xs transition-colors backdrop-blur-sm',
             props.multiline ? 'items-start' : 'items-center',
             // Default border
-            'border-white/80 dark:border-white/20',
+            'border-border dark:border-white/20',
             // Focused state
             isFocused && !error && 'border-primary ring-2 ring-primary/20',
             // Incomplete status
@@ -179,8 +179,8 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             onFocus={handleFocus}
             onBlur={handleBlur}
             className={cn(
-              'flex-1 text-[15px] font-sans text-foreground self-stretch',
-              props.multiline ? 'py-0 min-h-[60px]' : 'py-3 min-h-[44px]',
+              'flex-1 text-[13.5px] font-sans text-foreground self-stretch',
+              props.multiline ? 'py-0 min-h-[50px]' : 'py-1.5 min-h-[38px]',
               inputClassName
             )}
             style={[
@@ -188,6 +188,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
                 outlineStyle: 'none',
                 paddingHorizontal: 4,
                 paddingVertical: Platform.OS === 'ios' ? 4 : 2,
+                textAlign: (props.style as any)?.textAlign || 'left',
                 ...(props.multiline ? { textAlignVertical: 'top' } : {}),
               } as any,
               props.style,

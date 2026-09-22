@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../ui/text';
 import { Check, Plus } from 'lucide-react-native';
 import FeatureIcon from '../ui/FeatureIcon';
 import { ALL_AVAILABLE_FEATURES, AppFeatureItem } from '../../src/features/dashboard/dashboardCatalog';

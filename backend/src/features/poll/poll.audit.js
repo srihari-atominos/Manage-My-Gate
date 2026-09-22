@@ -29,6 +29,19 @@ pollEvents.on('poll_closed', (poll) => {
   logPollEvent('POLL_CLOSED', poll);
 });
 pollEvents.on('poll_deleted', (pollData) => logPollEvent('POLL_DELETED', pollData, pollData.actorId));
+pollEvents.on('poll_finalized', (poll) => {
+  logPollEvent('POLL_FINALIZED', poll, poll.finalizedBy, {
+    outcome: poll.outcome,
+    winningOption: poll.winningOption
+  });
+});
 pollEvents.on('poll_vote_added', (data) => {
-  logPollEvent('POLL_VOTE_ADDED', { _id: data.pollId, orgId: data.orgId, question: 'Vote Added' }, data.residentId);
+  logPollEvent('POLL_VOTE_ADDED', { _id: data.pollId, orgId: data.orgId, question: 'Vote Added' }, data.residentId, {
+    selectedOptions: data.selectedOptions
+  });
+});
+pollEvents.on('poll_vote_removed', (data) => {
+  logPollEvent('POLL_VOTE_REMOVED', { _id: data.pollId, orgId: data.orgId, question: 'Vote Removed' }, data.residentId, {
+    selectedOptions: data.selectedOptions
+  });
 });

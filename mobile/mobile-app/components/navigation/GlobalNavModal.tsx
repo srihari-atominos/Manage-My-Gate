@@ -24,18 +24,24 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
+
+export interface GlobalNavItem {
+  id: string;
+  labelKey: string;
+  defaultLabel: string;
+  route: string;
+  icon: any;
+  color: string;
+  badge?: string;
+  permission?: string;
+}
+
 export interface GlobalNavCategory {
   titleKey: string;
   defaultTitle: string;
-  items: Array<{
-    id: string;
-    labelKey: string;
-    defaultLabel: string;
-    route: string;
-    icon: any;
-    color: string;
-    badge?: string;
-  }>;
+  items: GlobalNavItem[];
 }
 
 interface GlobalNavModalProps {
@@ -53,7 +59,7 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       titleKey: 'nav_dashboard_overview',
       defaultTitle: 'DASHBOARD & OVERVIEW',
       items: [
-        { id: 'dash-main', labelKey: 'executive_dashboard', defaultLabel: 'Executive Dashboard', route: '/(resident)/amenities/dashboard', icon: Home, color: '#3b82f6' },
+        { id: 'dash-main', labelKey: 'home', defaultLabel: 'Home Dashboard', route: '/(resident)/dashboard', icon: Home, color: '#3b82f6' },
         { id: 'dash-comp', labelKey: 'complaints_dashboard', defaultLabel: 'Complaints Dashboard', route: '/(resident)/complaints/dashboard', icon: Wrench, color: '#f59e0b' },
       ],
     },
@@ -79,10 +85,15 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       titleKey: 'nav_amenities_bookings',
       defaultTitle: 'AMENITIES & BOOKINGS',
       items: [
-        { id: 'a-discover', labelKey: 'feature_amenities_discover_name', defaultLabel: 'Discover Amenities', route: '/(resident)/amenities/discover', icon: Building2, color: '#14b8a6' },
-        { id: 'a-bookings', labelKey: 'feature_amenities_my_booking_name', defaultLabel: 'My Booking Passes', route: '/(resident)/amenities/my-bookings', icon: Calendar, color: '#6366f1' },
-        { id: 'a-wallet', labelKey: 'feature_amenities_wallet_name', defaultLabel: 'Amenity Wallet', route: '/(resident)/amenities/wallet', icon: Wallet, color: '#06b6d4' },
-        { id: 'a-scanner', labelKey: 'feature_amenities_scanner_name', defaultLabel: 'QR Scanner', route: '/(resident)/amenities/scanner', icon: QrCode, color: '#a855f7' },
+        { id: 'a-discover', labelKey: 'feature_amenities_discover_name', defaultLabel: 'Discover Amenities', route: '/(resident)/amenities/discover', icon: Building2, color: '#14b8a6', permission: 'amenities:discover' },
+        { id: 'a-bookings', labelKey: 'feature_amenities_my_booking_name', defaultLabel: 'My Booking Passes', route: '/(resident)/amenities/my-bookings', icon: Calendar, color: '#6366f1', permission: 'amenities:my_booking' },
+        { id: 'a-wallet', labelKey: 'feature_amenities_wallet_name', defaultLabel: 'Amenity Wallet', route: '/(resident)/amenities/wallet', icon: Wallet, color: '#06b6d4', permission: 'amenities:wallet' },
+        { id: 'a-scanner', labelKey: 'feature_amenities_scanner_name', defaultLabel: 'QR Scanner', route: '/(resident)/amenities/scanner', icon: QrCode, color: '#a855f7', permission: 'amenities:scanner' },
+        { id: 'a-dashboard', labelKey: 'feature_amenities_dashboard_name', defaultLabel: 'Amenity Dashboard', route: '/(resident)/amenities/dashboard', icon: Sliders, color: '#2563eb', permission: 'amenities:dashboard' },
+        { id: 'a-calendar', labelKey: 'feature_amenities_admin_calendar_name', defaultLabel: 'Admin Calendar', route: '/(resident)/amenities/admin-calendar', icon: Calendar, color: '#7c3aed', permission: 'amenities:admin_calander' },
+        { id: 'a-master', labelKey: 'feature_amenities_master_name', defaultLabel: 'Amenity Master', route: '/(resident)/amenities/admin-master', icon: Sliders, color: '#ea580c', permission: 'amenities:amenities' },
+        { id: 'a-maintenance', labelKey: 'feature_amenities_maintenance_name', defaultLabel: 'Maintenance Scheduler', route: '/(resident)/amenities/maintenance', icon: Wrench, color: '#f59e0b', permission: 'amenities:maintenance' },
+        { id: 'a-ledgers', labelKey: 'feature_amenities_ledgers_name', defaultLabel: 'Amenity Ledgers', route: '/(resident)/amenities/ledgers', icon: Receipt, color: '#0d9488', permission: 'amenities:ledgers' },
       ],
     },
     {
@@ -97,7 +108,9 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       titleKey: 'nav_visitors_security',
       defaultTitle: 'VISITORS & SECURITY',
       items: [
-        { id: 'v-main', labelKey: 'feature_visitor_resident_passes_name', defaultLabel: 'Visitor Pass Hub', route: '/(resident)/visitor', icon: ShieldCheck, color: '#8b5cf6' },
+        { id: 'v-main', labelKey: 'feature_visitor_resident_passes_name', defaultLabel: 'Visitor Pass Hub', route: '/(resident)/visitor', icon: ShieldCheck, color: '#8b5cf6', permission: 'visitor:resident' },
+        { id: 'v-gate-console', labelKey: 'feature_visitor_gate_console_name', defaultLabel: 'Gate Console', route: '/(resident)/visitor/gate-console', icon: QrCode, color: '#10b981', permission: 'visitor:resident' },
+        { id: 'v-invite', labelKey: 'feature_visitor_invite_name', defaultLabel: 'Invite Visitor', route: '/(resident)/visitor/invite', icon: PlusCircle, color: '#3b82f6', permission: 'visitor:resident' },
       ],
     },
     {
@@ -115,10 +128,16 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
     router.push(route as any);
   };
 
+  const { user } = useAuth();
+
   const filteredCategories = rawCategories
     .map((cat) => {
       const localizedTitle = t(cat.titleKey, cat.defaultTitle);
       const localizedItems = cat.items
+        .filter((item) => {
+          if (!item.permission) return true;
+          return user ? isFeatureAllowedForUser({ id: item.id, permission: item.permission }, user) : true;
+        })
         .map((item) => ({
           ...item,
           label: t(item.labelKey, item.defaultLabel),

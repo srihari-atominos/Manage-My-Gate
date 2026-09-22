@@ -3,8 +3,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Install native build tools for compiling packages if needed (e.g. bcrypt)
+RUN apk add --no-cache python3 make g++
+
 # Copy package files
 COPY package*.json ./
+
+# Avoid downloading unnecessary Chromium binary during npm ci (saves bandwidth and prevents build timeouts)
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 # Install only production dependencies
 RUN npm ci --only=production
@@ -22,6 +28,9 @@ COPY package*.json ./
 COPY index.js server.js ./
 COPY src/ ./src
 COPY public/ ./public
+
+# Ensure uploads and public directories exist
+RUN mkdir -p uploads public
 
 # Expose backend API port
 EXPOSE 5000

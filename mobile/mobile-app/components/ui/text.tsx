@@ -2,12 +2,12 @@ import { cn } from '../../lib/utils';
 import { Slot } from '@rn-primitives/slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-import { Platform, Text as RNText, type Role } from 'react-native';
+import { Platform, Text as RNText, type Role, StyleSheet } from 'react-native';
 import i18n from '../../src/utils/i18n';
 
 const textVariants = cva(
   cn(
-    'text-foreground text-base',
+    'text-foreground text-sm font-normal text-left',
     Platform.select({
       web: 'select-text',
     })
@@ -17,24 +17,24 @@ const textVariants = cva(
       variant: {
         default: '',
         h1: cn(
-          'text-center text-4xl font-extrabold tracking-tight',
+          'text-center text-3xl font-extrabold tracking-tight text-left',
           Platform.select({ web: 'scroll-m-20 text-balance' })
         ),
         h2: cn(
-          'border-border border-b pb-2 text-3xl font-semibold tracking-tight',
+          'border-border border-b pb-1.5 text-2xl font-bold tracking-tight text-left',
           Platform.select({ web: 'scroll-m-20 first:mt-0' })
         ),
-        h3: cn('text-2xl font-semibold tracking-tight', Platform.select({ web: 'scroll-m-20' })),
-        h4: cn('text-xl font-semibold tracking-tight', Platform.select({ web: 'scroll-m-20' })),
-        p: 'mt-3 leading-7 sm:mt-6',
-        blockquote: 'mt-4 border-l-2 pl-3 italic sm:mt-6 sm:pl-6',
+        h3: cn('text-xl font-bold tracking-tight text-left', Platform.select({ web: 'scroll-m-20' })),
+        h4: cn('text-lg font-bold tracking-tight text-left', Platform.select({ web: 'scroll-m-20' })),
+        p: 'mt-2 text-sm leading-relaxed text-left',
+        blockquote: 'mt-3 border-l-2 pl-3 italic sm:pl-6 text-left',
         code: cn(
-          'bg-muted relative rounded px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold'
+          'bg-muted relative rounded px-[0.35rem] py-[0.2rem] font-mono text-xs font-semibold'
         ),
-        lead: 'text-muted-foreground text-xl',
-        large: 'text-lg font-semibold',
-        small: 'text-sm font-medium leading-none',
-        muted: 'text-muted-foreground text-sm',
+        lead: 'text-muted-foreground text-base leading-relaxed text-left',
+        large: 'text-base font-semibold tracking-tight text-left',
+        small: 'text-xs font-medium leading-tight text-left',
+        muted: 'text-muted-foreground text-xs leading-normal text-left',
       },
     },
     defaultVariants: {
@@ -80,6 +80,7 @@ function Text({
   asChild = false,
   variant = 'default',
   children,
+  style,
   ...props
 }: React.ComponentProps<typeof RNText> &
   React.RefAttributes<typeof RNText> &
@@ -94,16 +95,40 @@ function Text({
     return i18n.subscribe((newLang) => setCurrentLang(newLang));
   }, []);
 
+  const isArabic = currentLang === 'ar';
+
   const translatedChildren = React.useMemo(() => {
     return translateChildren(children);
   }, [children, currentLang]);
 
+  const resolvedStyle = React.useMemo(() => {
+    if (!isArabic || !style) return style;
+    const flat = StyleSheet.flatten(style) || {};
+    if (flat.fontSize) {
+      return [
+        style,
+        {
+          fontSize: Math.round(flat.fontSize * 1.15),
+          lineHeight: flat.lineHeight ? Math.round(flat.lineHeight * 1.18) : undefined,
+        },
+      ];
+    }
+    return style;
+  }, [style, isArabic]);
+
   return (
     <Component
-      className={cn(textVariants({ variant }), textClass, className)}
+      dir="ltr"
+      className={cn(
+        textVariants({ variant }),
+        textClass,
+        isArabic && 'tracking-normal text-[1.08em]',
+        className
+      )}
       role={variant ? ROLE[variant] : undefined}
       aria-level={variant ? ARIA_LEVEL[variant] : undefined}
-      {...props}
+      style={resolvedStyle}
+      {...(props as any)}
     >
       {translatedChildren}
     </Component>

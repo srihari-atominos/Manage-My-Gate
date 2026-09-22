@@ -163,6 +163,7 @@ export const InviteSignInForm = ({
   // Case 3: Standard unauthenticated sign-in
   const onFormSubmit = (data) => {
     onSubmit({
+      login: email,
       email,
       password: data.password,
       token,
@@ -189,9 +190,11 @@ export const InviteSignInForm = ({
           <CFormInput
             type="email"
             value={email}
+            title={email}
             readOnly
             disabled
-            className="bg-light text-muted font-monospace"
+            className="bg-light text-muted small"
+            style={{ minWidth: 0, textOverflow: 'ellipsis' }}
           />
         </CInputGroup>
       </div>

@@ -21,6 +21,7 @@ export interface PaginatedListProps<T> {
   emptyTitle?: string;
   emptySubtitle?: string;
   ListHeaderComponent?: React.ReactNode;
+  ListEmptyComponent?: React.ReactNode;
   keyExtractor?: (item: T, index: number) => string;
   contentContainerClassName?: string;
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -49,6 +50,7 @@ export function PaginatedList<T>({
   emptyTitle = 'Nothing here yet',
   emptySubtitle = '',
   ListHeaderComponent,
+  ListEmptyComponent,
   keyExtractor,
   contentContainerClassName,
   contentContainerStyle,
@@ -192,7 +194,11 @@ export function PaginatedList<T>({
       }
       ListHeaderComponent={ListHeaderComponent as React.ReactElement | undefined}
       ListFooterComponent={renderFooter}
-      ListEmptyComponent={renderEmptyOrSkeleton}
+      ListEmptyComponent={
+        (ListEmptyComponent !== undefined
+          ? (ListEmptyComponent as React.ReactElement | null)
+          : renderEmptyOrSkeleton())
+      }
       contentContainerStyle={[{ flexGrow: 1 }, contentContainerStyle]}
       contentContainerClassName={cn(
         data.length === 0 && 'justify-center',

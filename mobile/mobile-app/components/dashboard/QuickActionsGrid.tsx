@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TouchableOpacity, Text } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { Text } from '../ui/text';
 import { SlidersHorizontal } from 'lucide-react-native';
 import FeatureIcon from '../ui/FeatureIcon';
 import ActionTile from './ActionTile';
@@ -58,10 +59,10 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
 
 
   return (
-    <View className="gap-2.5 my-2">
+    <View className="gap-2 my-1.5">
       {/* Section Header with Customise Button only */}
       <View className="flex-row items-center justify-between px-1">
-        <Text className="text-[17px] font-bold font-sans text-foreground tracking-tight">
+        <Text className="text-[13.5px] font-bold font-sans text-foreground tracking-tight">
           {t('quick_actions', 'Quick Actions')}
         </Text>
 
@@ -77,7 +78,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
 
 
       {/* Exactly 6 Feature Cards in Clean 3-Column Grid (2 rows x 3 columns) */}
-      <View className="flex-row flex-wrap gap-2.5 justify-start">
+      <View className="flex-row flex-wrap justify-start gap-x-[2.9%] gap-y-2.5">
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
           const iconName = meta?.iconName || tile.iconName;
@@ -90,10 +91,10 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           return (
             <ActionTile
               key={tile.id}
-              containerClassName="w-[31%]"
+              containerClassName="w-[31.4%]"
               iconBgColor={colorBg}
               iconShapeClass={iconShapeClass}
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={26} />}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={20} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}

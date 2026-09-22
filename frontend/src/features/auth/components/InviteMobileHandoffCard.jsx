@@ -19,12 +19,17 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
   const [redirectingToStore, setRedirectingToStore] = useState(false)
 
   const playStoreFallback = 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom'
-  const appStoreFallback = 'https://apps.apple.com/app/manage-my-gate/id6470000000'
+  const appStoreFallback = 'https://apps.apple.com/app/manage-my-gate/id6746501635'
 
+  const isIos =
+    typeof navigator !== 'undefined' &&
+    (/iphone|ipad|ipod/i.test(navigator.userAgent || '') ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
   const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent || '')
-  const storeUrl = isAndroid
-    ? (handoffData?.playStoreUrl || playStoreFallback)
-    : (handoffData?.appStoreUrl || appStoreFallback)
+
+  const storeUrl = isIos
+    ? (handoffData?.appStoreUrl || appStoreFallback)
+    : (handoffData?.playStoreUrl || playStoreFallback)
   const deepLink = handoffData?.deepLink
 
   useEffect(() => {
@@ -47,10 +52,10 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
     return () => clearTimeout(fallbackTimer)
   }, [deepLink, storeUrl])
 
-  const storeName = isAndroid ? 'Google Play Store' : 'Apple App Store'
+  const storeName = isIos ? 'Apple App Store' : 'Google Play Store'
 
   return (
-    <CCard className="border-0 shadow-lg rounded-4 overflow-hidden text-center p-4 p-md-5">
+    <CCard className="invite-card invite-handoff-card border-0 shadow-lg rounded-4 overflow-hidden text-center p-4 p-md-5">
       <CCardBody className="p-0">
         <div
           className="mb-3 d-inline-flex align-items-center justify-content-center bg-success-subtle text-success rounded-circle p-3"
@@ -73,8 +78,8 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
           <CSpinner color="primary" size="sm" className="me-2 mb-1" />
           <span className="fw-semibold text-dark small">
             {redirectingToStore
-              ? t('auth.handoff.redirectingStore', 'Opening {{storeName}} to install Manage-My-Gate...', { storeName })
-              : t('auth.handoff.connectingApp', 'Launching the Manage-My-Gate mobile app...')}
+              ? t('auth.handoff.redirectingStore', 'Opening {{storeName}} to install Nahom...', { storeName })
+              : t('auth.handoff.connectingApp', 'Launching the Nahom mobile app...')}
           </span>
           <p className="text-muted small mt-2 mb-0" style={{ fontSize: '0.82rem' }}>
             {t('auth.handoff.autoHandoffDesc', 'Your authenticated session is being securely synced to your device.')}

@@ -85,7 +85,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-5 shadow-xl gap-4">
           {/* Header Bar */}
           <View className="flex-row justify-between items-center pb-2.5 border-b border-border/80">
-            <Text className="text-base font-bold text-foreground">{t('user_profile_account', 'User Profile & Account')}</Text>
+            <Text className="text-base font-bold text-foreground">{t('account', 'Account')}</Text>
             <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1 rounded-full bg-secondary">
               <X size={16} className="text-muted-foreground" />
             </TouchableOpacity>

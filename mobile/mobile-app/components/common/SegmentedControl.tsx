@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from '../ui/text';
 import { cn } from '../../lib/utils';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { getStatusSemanticType, getStatusTabStyle } from '@/components/ui/statusTabColors';

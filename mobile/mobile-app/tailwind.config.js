@@ -7,6 +7,17 @@ module.exports = {
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
+      fontSize: {
+        '2xs': ['10px', { lineHeight: '13px' }],
+        xs: ['11.5px', { lineHeight: '16px' }],
+        sm: ['13px', { lineHeight: '18px' }],
+        base: ['14.5px', { lineHeight: '20px' }],
+        lg: ['16.5px', { lineHeight: '22px' }],
+        xl: ['18.5px', { lineHeight: '24px' }],
+        '2xl': ['21px', { lineHeight: '26px' }],
+        '3xl': ['25px', { lineHeight: '30px' }],
+        '4xl': ['30px', { lineHeight: '36px' }],
+      },
       fontFamily: {
         sans: ['HankenGrotesk_400Regular', 'sans-serif'],
         medium: ['HankenGrotesk_500Medium', 'sans-serif'],

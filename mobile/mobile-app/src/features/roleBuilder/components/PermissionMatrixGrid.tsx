@@ -51,9 +51,33 @@ const getCategoryIcon = (category: string) => {
   }
 };
 
+const AMENITY_TIERS = [
+  {
+    id: 'resident',
+    label: 'Resident',
+    description: 'Catalog discovery, booking wizard, wallet & personal digital passes',
+  },
+  {
+    id: 'security_guard',
+    label: 'Security Guard',
+    description: 'Gate QR scanner terminal & entry security logs',
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    description: 'Facility master, calendar, maintenance, ledgers, settings & dashboard',
+  },
+  {
+    id: 'none',
+    label: 'None',
+    description: 'No access to amenity facilities or booking operations',
+  },
+];
+
 interface PermissionMatrixGridProps {
   groupedPermissions: PermissionGroupMap;
   selectedIds: string[];
+  activeAmenityTier?: string;
   onSelectAllGroup: (groupCodes: string[], checked: boolean) => void;
   onTogglePermission: (permValue: string, checked: boolean) => void;
 }
@@ -61,9 +85,12 @@ interface PermissionMatrixGridProps {
 export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
   groupedPermissions,
   selectedIds,
+  activeAmenityTier = 'none',
   onSelectAllGroup,
   onTogglePermission,
 }) => {
+  const [internalTier, setInternalTier] = React.useState<string>('none');
+  const currentAmenityTier = activeAmenityTier || internalTier;
   const categories = Object.keys(groupedPermissions || {});
 
   if (categories.length === 0) {
@@ -78,6 +105,7 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
     <View className="gap-4">
       {categories.map((category) => {
         let perms: PermissionItem[] = groupedPermissions[category] || [];
+        const isAmenities = category.toLowerCase() === 'amenities';
 
         // Filter complaints permissions as per reference domain rule
         if (category.toLowerCase() === 'complaints') {
@@ -102,6 +130,7 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
         const isAllGroupSelected = groupCodes.length > 0 && selectedGroupCount === groupCodes.length;
 
         const CategoryIcon = getCategoryIcon(category);
+        const activeAmenityTier = isAmenities ? currentAmenityTier : null;
 
         return (
           <View key={category} className="gap-2">
@@ -114,56 +143,119 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
                 <Text className="text-xs font-bold text-foreground">
                   {getCategoryDisplayName(category)}
                 </Text>
-                <View className="px-1.5 py-0.2 rounded-full bg-primary/15">
-                  <Text className="text-xs font-extrabold text-primary">
-                    {selectedGroupCount}/{groupCodes.length}
-                  </Text>
-                </View>
+                {isAmenities ? (
+                  <View className="px-2 py-0.5 rounded-full bg-primary/15">
+                    <Text className="text-[11px] font-extrabold text-primary capitalize">
+                      {activeAmenityTier === 'none'
+                        ? 'None'
+                        : activeAmenityTier === 'security_guard'
+                        ? 'Security'
+                        : activeAmenityTier}
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="px-1.5 py-0.2 rounded-full bg-primary/15">
+                    <Text className="text-xs font-extrabold text-primary">
+                      {selectedGroupCount}/{groupCodes.length}
+                    </Text>
+                  </View>
+                )}
               </View>
 
-              <TouchableOpacity
-                onPress={() => onSelectAllGroup(groupCodes, !isAllGroupSelected)}
-                activeOpacity={0.7}
-                className="px-2.5 py-1 bg-primary/10 rounded-full border border-primary/20"
-              >
-                <Text className="text-xs font-bold text-primary">
-                  {isAllGroupSelected ? 'Deselect All' : 'Select All'}
-                </Text>
-              </TouchableOpacity>
+              {!isAmenities && (
+                <TouchableOpacity
+                  onPress={() => onSelectAllGroup(groupCodes, !isAllGroupSelected)}
+                  activeOpacity={0.7}
+                  className="px-2.5 py-1 bg-primary/10 rounded-full border border-primary/20"
+                >
+                  <Text className="text-xs font-bold text-primary">
+                    {isAllGroupSelected ? 'Deselect All' : 'Select All'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Permission Group Container */}
-            <View className="bg-card border border-border/80 rounded-2xl overflow-hidden shadow-xs">
-              {perms.map((perm, idx) => {
-                const permValue = perm.name || perm.code || perm._id || '';
-                const isChecked = (selectedIds || []).includes(permValue);
-                const isLast = idx === perms.length - 1;
-
-                return (
-                  <TouchableOpacity
-                    key={permValue}
-                    onPress={() => onTogglePermission(permValue, !isChecked)}
-                    activeOpacity={0.7}
-                    className={`flex-row items-center justify-between p-3 ${
-                      !isLast ? 'border-b border-border/40' : ''
-                    } ${isChecked ? 'bg-primary/5' : 'bg-card'}`}
-                  >
-                    <Text
-                      className={`text-xs font-semibold flex-1 me-3 text-start ${
-                        isChecked ? 'text-primary font-bold' : 'text-foreground'
+            {isAmenities ? (
+              <View className="gap-2">
+                {AMENITY_TIERS.map((tier) => {
+                  const isChecked = activeAmenityTier === tier.id;
+                  return (
+                    <TouchableOpacity
+                      key={tier.id}
+                      onPress={() => {
+                        setInternalTier(tier.id);
+                        onTogglePermission(`amenities_tier:${tier.id}`, true);
+                      }}
+                      activeOpacity={0.7}
+                      className={`p-3 rounded-2xl border ${
+                        isChecked
+                          ? 'bg-primary/10 border-primary shadow-xs'
+                          : 'bg-card border-border/70'
                       }`}
                     >
-                      {formatPermissionLabel(perm.name || String(permValue))}
-                    </Text>
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-1 me-3">
+                          <Text
+                            className={`text-xs font-bold ${
+                              isChecked ? 'text-primary' : 'text-foreground'
+                            }`}
+                          >
+                            {tier.label}
+                          </Text>
+                          <Text className="text-[11px] text-muted-foreground mt-0.5 leading-tight">
+                            {tier.description}
+                          </Text>
+                        </View>
+                        <View
+                          className={`w-5 h-5 rounded-full border items-center justify-center ${
+                            isChecked
+                              ? 'border-primary bg-primary'
+                              : 'border-muted-foreground/40 bg-transparent'
+                          }`}
+                        >
+                          {isChecked ? (
+                            <View className="w-2 h-2 rounded-full bg-primary-foreground" />
+                          ) : null}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <View className="bg-card border border-border/80 rounded-2xl overflow-hidden shadow-xs">
+                {perms.map((perm, idx) => {
+                  const permValue = perm.name || perm.code || perm._id || '';
+                  const isChecked = (selectedIds || []).includes(permValue);
+                  const isLast = idx === perms.length - 1;
 
-                    <Checkbox
-                      checked={isChecked}
-                      onCheckedChange={(val) => onTogglePermission(permValue, !!val)}
-                    />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                  return (
+                    <TouchableOpacity
+                      key={permValue}
+                      onPress={() => onTogglePermission(permValue, !isChecked)}
+                      activeOpacity={0.7}
+                      className={`flex-row items-center justify-between p-3 ${
+                        !isLast ? 'border-b border-border/40' : ''
+                      } ${isChecked ? 'bg-primary/5' : 'bg-card'}`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold flex-1 me-3 text-start ${
+                          isChecked ? 'text-primary font-bold' : 'text-foreground'
+                        }`}
+                      >
+                        {formatPermissionLabel(perm.name || String(permValue))}
+                      </Text>
+
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={(val) => onTogglePermission(permValue, !!val)}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
         );
       })}

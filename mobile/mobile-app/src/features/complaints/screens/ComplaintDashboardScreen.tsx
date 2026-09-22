@@ -1,7 +1,6 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { View, ScrollView, RefreshControl, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { SearchBar } from '@/components/forms/SearchBar';
@@ -19,7 +18,8 @@ import {
   MessageSquare
 } from 'lucide-react-native';
 import { useComplaints } from '../hooks/useComplaints';
-import { useAmenity } from '@/src/features/amenities/hooks/useAmenity';
+import amenityManagementService from '@/src/features/amenities/services/amenityManagementService';
+import { ApiAmenityFacility } from '@/src/features/amenities/types/amenityApi.types';
 import { ComplaintQuickNavHub } from '../components/ComplaintQuickNavHub';
 import { ComplaintLiveActivityWidget } from '../components/ComplaintLiveActivityWidget';
 
@@ -34,8 +34,7 @@ const showAlert = (title: string, message: string) => {
 export function ComplaintDashboardScreen() {
   const router = useRouter();
   const { complaints, dashboardAnalytics, isLoading, error, fetchComplaints, fetchDashboardAnalytics, createComplaint, clearErrors } = useComplaints();
-  const { amenities, fetchAmenities } = useAmenity();
-  const maintenanceList = useSelector((state: any) => state.amenities?.maintenanceList || []);
+  const [facilities, setFacilities] = useState<ApiAmenityFacility[]>([]);
   const { t } = useTranslation();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,50 +46,38 @@ export function ComplaintDashboardScreen() {
   const loadData = useCallback(() => {
     fetchComplaints();
     fetchDashboardAnalytics();
-    if (fetchAmenities) {
-      fetchAmenities();
-    }
-  }, [fetchComplaints, fetchDashboardAnalytics, fetchAmenities]);
+    amenityManagementService
+      .getFacilities({ page: 1, limit: 50 })
+      .then((res) => {
+        if (res?.data?.items) {
+          setFacilities(res.data.items);
+        }
+      })
+      .catch((err) => {
+        // Silently catch facility fetch failures so complaints dashboard never breaks
+        console.warn('Failed to load facility maintenance notices:', err);
+      });
+  }, [fetchComplaints, fetchDashboardAnalytics]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Comprehensive Amenity & Facility Maintenance Notices Engine (Excludes complaint tickets)
+  // Comprehensive Facility Maintenance Notices Engine (Excludes complaint tickets)
   const maintenanceNotices = useMemo(() => {
     const notices: Array<{ id: string; title: string; message: string; date: string; variant?: 'warning' | 'danger' | 'info' }> = [];
 
-    // 1. Amenity Maintenance Tasks (Linked from Amenities & Booking Module)
-    if (maintenanceList && Array.isArray(maintenanceList) && maintenanceList.length > 0) {
-      maintenanceList.forEach((task: any) => {
-        const rawStatus = String(task.status || 'scheduled').toLowerCase();
-        if (rawStatus !== 'completed' && rawStatus !== 'cancelled') {
-          const dateStr = task.startDate
-            ? `${task.startDate}${task.startTime ? ` • ${task.startTime} - ${task.endTime || ''}` : ''}`
-            : 'Scheduled';
-
-          notices.push({
-            id: `maint-task-${task._id || Math.random()}`,
-            title: task.title ? `${task.amenityName || 'Facility'} • ${task.title}` : `Scheduled ${task.amenityName || 'Facility'} Maintenance`,
-            message: task.description || `Facility upkeep window scheduled for ${task.amenityName || 'community facility'}.`,
-            date: dateStr,
-            variant: rawStatus === 'in_progress' ? 'warning' : 'info',
-          });
-        }
-      });
-    }
-
-    // 2. Active Amenity Maintenance Statuses & Temporary Outages
-    if (amenities && Array.isArray(amenities) && amenities.length > 0) {
-      amenities.forEach((amenity: any) => {
-        const statusRaw = String(amenity.status || amenity.currentStatus || '').toLowerCase();
-        if (statusRaw === 'maintenance') {
-          const alreadyExists = notices.some((n) => n.title.includes(amenity.name));
+    // 1. Active Amenity Maintenance Statuses & Temporary Outages (From v2 Facility Management)
+    if (facilities && Array.isArray(facilities) && facilities.length > 0) {
+      facilities.forEach((facility: ApiAmenityFacility) => {
+        const statusRaw = String(facility.status || '').toUpperCase();
+        if (statusRaw === 'MAINTENANCE') {
+          const alreadyExists = notices.some((n) => n.title.includes(facility.name));
           if (!alreadyExists) {
             notices.push({
-              id: `amn-maint-${amenity._id}`,
-              title: `${amenity.name} Under Maintenance`,
-              message: `The ${amenity.name} is currently undergoing scheduled upkeep and temporary blackout.`,
+              id: `fac-maint-${facility._id}`,
+              title: `${facility.name} Under Maintenance`,
+              message: `The ${facility.name} is currently undergoing scheduled upkeep and temporary blackout.`,
               date: 'Active',
               variant: 'warning',
             });
@@ -99,7 +86,7 @@ export function ComplaintDashboardScreen() {
       });
     }
 
-    // 3. Backend System Facility Notices
+    // 2. Backend System Facility Notices (From Complaint Analytics)
     if (dashboardAnalytics?.notices && Array.isArray(dashboardAnalytics.notices)) {
       dashboardAnalytics.notices.forEach((n: any) => {
         notices.push({
@@ -113,7 +100,7 @@ export function ComplaintDashboardScreen() {
     }
 
     return notices;
-  }, [maintenanceList, amenities, dashboardAnalytics]);
+  }, [facilities, dashboardAnalytics]);
 
   const handleFeedbackSubmit = async () => {
     if (!generalFeedback.trim()) {

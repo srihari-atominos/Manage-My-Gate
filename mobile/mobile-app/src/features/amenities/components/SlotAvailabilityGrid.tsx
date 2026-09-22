@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { AmenitySlot } from '../store/amenitySlice';
+import { formatTimeRange12Hour } from '../utils/amenityStateHelpers';
 import { cn } from '@/lib/utils';
 
 export interface SlotAvailabilityGridProps {
@@ -139,7 +140,7 @@ export function SlotAvailabilityGrid({
                         : 'text-muted-foreground'
                     )}
                   >
-                    {slotStartTime} - {slotEndTime}
+                    {formatTimeRange12Hour(slotStartTime, slotEndTime)}
                   </Text>
                 </View>
 

@@ -15,6 +15,7 @@ import { ProfileModal } from './ProfileModal';
 import { NotificationSheetModal } from './NotificationSheetModal';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
 import { useTranslation } from '@/src/utils/i18n';
+import useSettings from '@/src/features/settings/hooks/useSettings';
 import { cn } from '../../lib/utils';
 
 interface MobileHeaderProps {
@@ -105,9 +106,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   React.useEffect(() => {
     if (params?.openProfile === 'true') {
-      setProfileModalVisible(true);
+      try {
+        router.setParams({ openProfile: undefined });
+      } catch (e) {}
+      router.push('/(resident)/account' as any);
     }
-  }, [params?.openProfile]);
+  }, [params?.openProfile, router]);
 
   // Check if context switching is applicable
   const userUnits = (user as any)?.accessibleUnits || [];
@@ -125,16 +129,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     return 'U';
   }, [user]);
 
-  const { colorScheme, setColorScheme } = useColorScheme();
+  const { themeMode, setThemeMode } = useSettings();
+  const { colorScheme } = useColorScheme();
 
-  const toggleTheme = async () => {
+  const toggleTheme = () => {
     const nextTheme = colorScheme === 'dark' ? 'light' : 'dark';
-    setColorScheme(nextTheme);
-    try {
-      await storage.setItem('theme_preference', nextTheme);
-    } catch (err) {
-      console.warn('Failed to save theme preference:', err);
-    }
+    setThemeMode(nextTheme);
   };
 
   const handleContextPress = () => {
@@ -181,29 +181,29 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-2 flex-1 max-w-[65%] me-2 bg-secondary border border-border/80 px-3 py-2 rounded-full shadow-xs"
+          className="flex-row items-center gap-1.5 flex-1 me-2 bg-secondary border border-border/80 px-2.5 py-1.5 rounded-full shadow-xs min-w-0"
         >
-          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/30 shrink-0">
+          <View className="p-1 rounded-full bg-primary items-center justify-center border border-primary/30 shrink-0">
             {hasUnit ? (
-              <Home size={12} color="#FFFFFF" />
+              <Home size={11} color="#FFFFFF" />
             ) : (
-              <Building2 size={12} color="#FFFFFF" />
+              <Building2 size={11} color="#FFFFFF" />
             )}
           </View>
 
-          <View className="flex-1 flex-row items-center overflow-hidden">
+          <View className="flex-1 flex-row items-center overflow-hidden min-w-0">
             {hasUnit && activeVilla ? (
               <>
                 <Text
                   numberOfLines={1}
-                  className="text-[13px] font-black font-sans text-foreground shrink-0"
+                  className="text-[13px] font-bold font-sans text-foreground shrink-0"
                 >
                   {activeVilla}
                 </Text>
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  className="text-[11.5px] font-medium font-sans text-muted-foreground flex-1 ms-1"
+                  className="text-[11.5px] font-medium font-sans text-muted-foreground flex-1 ms-1 shrink"
                 >
                   • {activeCommunity || 'Community'}
                 </Text>
@@ -220,24 +220,24 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           </View>
 
           {canSwitchContext ? (
-            <ChevronDown size={13} className="text-muted-foreground shrink-0" />
+            <ChevronDown size={12} className="text-muted-foreground shrink-0" />
           ) : null}
         </TouchableOpacity>
 
         {/* Right Section: Theme Toggle, Notification Bell & Profile Avatar */}
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-1.5 shrink-0">
           {/* Theme Shift Toggle Icon Button */}
           <TouchableOpacity
             onPress={toggleTheme}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
+            className="size-9 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
             accessibilityRole="button"
             accessibilityLabel="Toggle Light and Dark Theme"
           >
             {colorScheme === 'dark' ? (
-              <Sun size={18} color="#F59E0B" strokeWidth={2.2} />
+              <Sun size={16} color="#F59E0B" strokeWidth={2.2} />
             ) : (
-              <Moon size={18} color="#334155" strokeWidth={2.2} />
+              <Moon size={16} color="#334155" strokeWidth={2.2} />
             )}
           </TouchableOpacity>
 
@@ -245,29 +245,29 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center relative active:bg-secondary shadow-xs"
+            className="size-9 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center relative active:bg-secondary shadow-xs"
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
-            <Bell size={18} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
+            <Bell size={16} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
             {liveUnreadCount > 0 ? (
-              <View className="absolute -top-0.5 -right-0.5 bg-[#FF6A00] rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card">
-                <Text className="text-[8.5px] font-bold font-sans text-white leading-tight">
+              <View className="absolute -top-0.5 -right-0.5 bg-[#FF6A00] rounded-full min-w-3.5 h-3.5 px-0.5 items-center justify-center border-2 border-card">
+                <Text className="text-[8px] font-bold font-sans text-white leading-tight">
                   {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
                 </Text>
               </View>
             ) : null}
           </TouchableOpacity>
 
-          {/* Profile Avatar Button */}
+          {/* Account Avatar Button */}
           <TouchableOpacity
-            onPress={() => setProfileModalVisible(true)}
+            onPress={() => router.push('/(resident)/account' as any)}
             activeOpacity={0.85}
-            className="size-10 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
+            className="size-9 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
             accessibilityRole="button"
-            accessibilityLabel="User Profile"
+            accessibilityLabel="User Account"
           >
-            <Text className="text-white font-bold font-sans text-[14px]">{avatarLetter}</Text>
+            <Text className="text-white font-bold font-sans text-[13px]">{avatarLetter}</Text>
           </TouchableOpacity>
         </View>
       </View>

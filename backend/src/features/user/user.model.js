@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema(
     },
     phoneVerified: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     notificationPreferences: {
       email: { type: Boolean, default: true },

@@ -17,6 +17,7 @@ import { getStatusTabStyle } from './statusTabColors';
 export interface SortOption {
   label: string;
   value: string;
+  icon?: any;
 }
 
 const searchFilterBarVariants = cva('w-full flex-col px-4 py-2', {
@@ -102,6 +103,7 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
             {sortOptions.map((option) => {
               const isSelected = currentSort === option.value;
               const statusStyle = getStatusTabStyle(option.value || option.label, isSelected);
+              const OptionIcon = option.icon;
               return (
                 <Pressable
                   key={option.value}
@@ -113,6 +115,16 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
                 >
+                  {OptionIcon && (
+                    <Icon
+                      as={OptionIcon}
+                      size={14}
+                      className={cn(
+                        'me-1.5',
+                        isSelected ? 'text-white' : 'text-muted-foreground'
+                      )}
+                    />
+                  )}
                   <Text
                     className={cn(
                       'text-xs font-sans',

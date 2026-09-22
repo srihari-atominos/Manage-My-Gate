@@ -26,6 +26,8 @@ export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeo
   secondaryBadge?: { label: string; variant: StatusVariant };
   timestamp?: string | Date;       // shows relative time (e.g., '2h ago')
   rightContent?: React.ReactNode;  // custom right slot (amount, chevron)
+  titleLines?: number;             // maximum lines for title (default: 1)
+  subtitleLines?: number;          // maximum lines for subtitle (default: 1)
   onPress?: () => void;
   onLongPress?: () => void;
   className?: string;
@@ -69,7 +71,7 @@ export function formatRelativeTime(date: string | Date): string {
 
 const listCardVariants = cva(
   cn(
-    'bg-card rounded-2xl border border-border/80 mb-3 p-3.5 flex-row items-center active:bg-secondary/60',
+    'bg-card rounded-2xl border border-border/80 mb-2.5 p-3 flex-row items-center active:bg-secondary/60',
     Platform.select({
       web: 'transition-all cursor-pointer select-none hover:border-border',
     })
@@ -98,6 +100,8 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       timestamp,
       disableRelativeTime = false,
       rightContent,
+      titleLines = 1,
+      subtitleLines = 1,
       children,
       onPress,
       onLongPress,
@@ -116,35 +120,35 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         {leftAvatar ? (
           <Image
             source={{ uri: leftAvatar }}
-            className="w-10 h-10 rounded-full shrink-0 me-3 border border-border/50"
+            className="w-9 h-9 rounded-full shrink-0 me-3 border border-border/50"
             resizeMode="cover"
           />
         ) : leftAvatarFallback ? (
-          <View className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
+          <View className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
             <Text className="text-xs font-bold text-primary">{leftAvatarFallback}</Text>
           </View>
         ) : leftImage ? (
           <Image
             source={{ uri: leftImage }}
-            className="w-11 h-11 rounded-xl shrink-0 me-3.5"
+            className="w-10 h-10 rounded-xl shrink-0 me-3"
             resizeMode="cover"
           />
         ) : DynamicIcon ? (
           <View
-            className="w-12 h-12 rounded-xl items-center justify-center shrink-0 me-3.5 border border-border/50"
+            className="w-10 h-10 rounded-xl items-center justify-center shrink-0 me-3 border border-border/50"
             style={{ backgroundColor: leftIconBgColor }}
           >
-            <Icon as={DynamicIcon} size={22} color={leftIconColor} />
+            <Icon as={DynamicIcon} size={18} color={leftIconColor} />
           </View>
         ) : null}
 
         {/* Middle Details */}
         <View className="flex-1 shrink min-w-0 justify-center">
-          <Text variant="default" className={cn("font-semibold text-[15px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
+          <Text variant="default" className={cn("font-semibold text-[14px] font-sans tracking-tight shrink", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={titleLines}>
             {title}
           </Text>
           {subtitle ? (
-            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[13px] font-sans font-medium shrink truncate", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
+            <Text variant="muted" numberOfLines={subtitleLines} className={cn("mt-0.5 text-[12px] font-sans font-medium shrink", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
               {subtitle}
             </Text>
           ) : null}
@@ -184,7 +188,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       return (
         <View
           ref={ref}
-          className={cn("bg-card rounded-2xl border border-border/80 mb-3 p-3.5 overflow-hidden", className)}
+          className={cn("bg-card rounded-2xl border border-border/80 mb-2.5 p-3 overflow-hidden", className)}
           style={style as any}
         >
           <Pressable

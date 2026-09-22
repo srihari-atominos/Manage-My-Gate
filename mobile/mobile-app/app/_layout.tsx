@@ -15,7 +15,14 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { store } from '../src/store/store';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, I18nManager } from 'react-native';
+
+// Enforce standard Left-to-Right layout across all languages (including Arabic)
+try {
+  I18nManager.allowRTL(false);
+  I18nManager.forceRTL(false);
+} catch (e) {}
+
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../src/features/auth/hooks/useAuth';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -35,6 +42,7 @@ import usePushNotifications from '../src/features/notification/hooks/usePushNoti
 import { clearPendingRoute } from '../src/features/notification/store/notificationSlice';
 import { useGlobalAppSocket } from '../src/hooks/useGlobalAppSocket';
 import { getDeferredHandoffContext } from '../src/features/auth/services/deferredDeepLinkService';
+import { GlobalNotificationPresenter } from '@/components/feedback/GlobalNotificationPresenter';
 
 // Prevent splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -238,6 +246,7 @@ export default function RootLayout() {
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
               <Stack screenOptions={{ headerShown: false }} />
               <AuthRouteGuard />
+              <GlobalNotificationPresenter />
               <PortalHost />
             </BottomSheetModalProvider>
           </Provider>

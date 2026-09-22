@@ -831,13 +831,13 @@ export class PlatformQuoteService {
             socketTimeout: 2000
           });
           await transporter.sendMail({
-            from: `"${smtpIntegration?.accountLabel || 'Manage My Gate'}" <${authUsername}>`,
+            from: `"${smtpIntegration?.accountLabel || 'Nahom'}" <${authUsername}>`,
             to: recipientEmail,
             subject: `Order & Payment Link Generated — ${orgName}`,
             html: `
               <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
                 <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #3b82f6;">
-                  <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Manage My Gate</h2>
+                  <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Nahom</h2>
                   <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Gated Community & Property Management Platform</p>
                 </div>
                 
@@ -880,13 +880,13 @@ export class PlatformQuoteService {
                 'Authorization': `Bearer ${resendApiKey}`,
               },
               body: JSON.stringify({
-                from: 'ManageMyGate <onboarding@resend.dev>',
+                from: 'Nahom <onboarding@resend.dev>',
                 to: [recipientEmail],
                 subject: `Order & Payment Link Generated — ${orgName}`,
                 html: `
                   <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
                     <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #3b82f6;">
-                      <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Manage My Gate</h2>
+                      <h2 style="color: #1e3a8a; margin: 0; font-size: 24px;">Nahom</h2>
                       <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Gated Community & Property Management Platform</p>
                     </div>
                     

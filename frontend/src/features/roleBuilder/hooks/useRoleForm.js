@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
@@ -13,8 +13,47 @@ const schema = yup.object().shape({
   integrationMappings: yup.object().optional().default({}),
 })
 
+export const AMENITY_V2_TIER_PERMISSIONS = {
+  resident: [
+    'amenities:discover',
+    'amenities:my_booking',
+    'amenities:wallet',
+  ],
+  security_guard: [
+    'amenities:scanner',
+    'amenities:security_logs',
+  ],
+  admin: [
+    'amenities:amenities',
+    'amenities:admin_calander',
+    'amenities:maintenance',
+    'amenities:settings',
+    'amenities:dashboard',
+    'amenities:ledgers',
+  ],
+  none: [],
+}
+
+export const detectInitialAmenityTier = (permissions = []) => {
+  const amenityPerms = (permissions || []).filter((p) => String(p).toLowerCase().startsWith('amenities:'))
+  if (amenityPerms.length === 0) return 'none'
+
+  const normalized = amenityPerms.map((p) => String(p).toLowerCase())
+  const hasExact = (tierSet) =>
+    tierSet.length === normalized.length &&
+    tierSet.every((p) => normalized.includes(p.toLowerCase()))
+
+  if (hasExact(AMENITY_V2_TIER_PERMISSIONS.admin)) return 'admin'
+  if (hasExact(AMENITY_V2_TIER_PERMISSIONS.security_guard)) return 'security_guard'
+  if (hasExact(AMENITY_V2_TIER_PERMISSIONS.resident)) return 'resident'
+
+  // Safe fallback for ambiguous mixtures
+  return 'none'
+}
+
 export const useRoleForm = ({ role, visible, onSave }) => {
   const dispatch = useDispatch()
+  const [amenityTier, setAmenityTier] = useState('none')
 
   const {
     register,
@@ -42,13 +81,15 @@ export const useRoleForm = ({ role, visible, onSave }) => {
 
   useEffect(() => {
     if (visible && role) {
+      const rolePerms = role.permissions || []
       reset({
         name: role.name || '',
         description: role.description || '',
         isTenantRole: role.isTenantRole || false,
-        permissions: role.permissions || [],
+        permissions: rolePerms,
         integrationMappings: role.integrationMappings || {},
       })
+      setAmenityTier(detectInitialAmenityTier(rolePerms))
     } else if (!visible) {
       reset({
         name: '',
@@ -57,6 +98,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
         permissions: [],
         integrationMappings: {},
       })
+      setAmenityTier('none')
     }
   }, [role, visible, reset])
 
@@ -83,6 +125,16 @@ export const useRoleForm = ({ role, visible, onSave }) => {
   const handleTogglePermission = (permValue, checked) => {
     const currentPermissions = getValues('permissions') || []
     let newValue
+
+    if (String(permValue).startsWith('amenities_tier:')) {
+      const tier = permValue.replace('amenities_tier:', '')
+      setAmenityTier(tier)
+      const nonAmenity = currentPermissions.filter((p) => !String(p).toLowerCase().startsWith('amenities:'))
+      const tierPermissions = AMENITY_V2_TIER_PERMISSIONS[tier] || []
+      newValue = [...nonAmenity, ...tierPermissions]
+      setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true })
+      return
+    }
 
     if (checked) {
       if (String(permValue).toLowerCase().startsWith('visitor:')) {
@@ -112,6 +164,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     errors,
     control,
     selectedPermissions,
+    amenityTier,
     integrationMappings,
     activeMappingsCount,
     setValue,

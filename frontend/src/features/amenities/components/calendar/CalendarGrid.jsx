@@ -34,6 +34,7 @@ const CalendarGrid = memo(
         events={events}
         onDateSelect={onDateSelect}
         selectedDate={selectedDate}
+        onEventClick={onEventClick}
       />
     )
   },

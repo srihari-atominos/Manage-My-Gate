@@ -5,6 +5,7 @@ import otpService from '../otp/otp.services.js';
 import { hashPassword } from '../../utils/crypto.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
+import { normalizePhone, maskPhone } from '../../utils/phone.utils.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -40,6 +41,10 @@ export class UserService {
     return await userRepository.findByUsername(emailOrUsername, session);
   }
 
+  async getUserByVillaNumber(villaNumber, orgId, session) {
+    return await userRepository.findByVillaNumber(villaNumber, orgId, session);
+  }
+
   async createUser(userData, session = null) {
     let localSession = null;
     if (!session) {
@@ -52,7 +57,7 @@ export class UserService {
       // Normalization & Validation
       if (userData.email) userData.email = userData.email.trim().toLowerCase();
       if (userData.username) userData.username = userData.username.trim();
-      if (userData.phone) userData.phone = userData.phone.trim();
+      if (userData.phone) userData.phone = normalizePhone(userData.phone) || userData.phone.trim();
 
       // Check uniqueness
       const existingEmail = await userRepository.findByEmail(userData.email, currentSession);
@@ -145,11 +150,13 @@ export class UserService {
         }
         updateData.username = normalizedUsername;
       }
-      if (updateData.phone && updateData.phone.trim()) {
-        const existingPhoneUser = await userRepository.findByPhone(updateData.phone.trim(), currentSession);
+      if (updateData.phone && String(updateData.phone).trim()) {
+        const normalizedPhone = normalizePhone(updateData.phone) || String(updateData.phone).trim();
+        const existingPhoneUser = await userRepository.findByPhone(normalizedPhone, currentSession);
         if (existingPhoneUser && existingPhoneUser._id.toString() !== id.toString()) {
           throw new HttpError(409, `User with phone number '${updateData.phone}' already exists.`);
         }
+        updateData.phone = normalizedPhone;
       }
       const updatedUser = await userRepository.update(id, updateData, currentSession);
       if (localSession) {
@@ -260,20 +267,21 @@ export class UserService {
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const existing = await userRepository.findByEmail(trimmedEmail, session);
-      const isExisting = !!existing && (existing.status === 'Active' || !!(existing.password && existing.password.length > 0));
+      const isExisting = !!existing;
 
       // Check if membership already exists in this organization
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       const existingMembership = existing ? await orgMembershipService.getMembership(existing._id, orgId, session) : null;
 
       if (existing) {
-        // Block re-inviting an already active member of this community
-        if (existingMembership && existingMembership.status === 'Active') {
+        // Block re-inviting an already active member of this community.
+        // A user is only truly an active member if BOTH their global user account is Active AND their organization membership is Active.
+        if (existingMembership && existingMembership.status === 'Active' && existing.status === 'Active') {
           throw new HttpError(409, `User with email '${trimmedEmail}' is already an active member of this community.`);
         }
       }
 
-      let phoneToAssign = phone ? phone.trim() : '';
+      let phoneToAssign = phone ? (normalizePhone(phone) || phone.trim()) : '';
       if (phoneToAssign) {
         const existingPhoneUser = await userRepository.findByPhone(phoneToAssign, session);
         if (existingPhoneUser && (!existing || existingPhoneUser._id.toString() !== existing._id.toString())) {
@@ -317,9 +325,15 @@ export class UserService {
       let role = null;
       if (roleName) {
         const roleService = (await import('../role/role.services.js')).default;
-        role = await roleService.getRoleByName(roleName, orgId, session);
-        if (role) {
-          roleIds.push(role._id);
+        const roleNames = roleName.split(',').map((r) => r.trim()).filter(Boolean);
+        for (const rName of roleNames) {
+          const foundRole = await roleService.getRoleByName(rName, orgId, session);
+          if (foundRole) {
+            roleIds.push(foundRole._id);
+            if (!role) role = foundRole;
+          }
+        }
+        if (roleIds.length > 0) {
           // If residentType is missing or 'None' and user is assigned to a unit, default it to the role name
           if (villaId && (!calculatedResidentType || calculatedResidentType === 'None')) {
             calculatedResidentType = role.name;
@@ -367,8 +381,8 @@ export class UserService {
           existingMembership.roleIds = roleIds;
           existingMembership.roleId = roleIds[0] || null;
         }
-        // Preserve Active status if user is already an active member of this organization
-        if (existingMembership.status !== 'Active') {
+        // Preserve Active status only if user account is truly Active AND membership was Active
+        if (!existing || existing.status !== 'Active' || existingMembership.status !== 'Active') {
           existingMembership.villaId = rootVillaId;
           existingMembership.residentType = rootResidentType;
           existingMembership.units = membershipUnits;
@@ -665,7 +679,46 @@ export class UserService {
     };
   }
 
-  async updateProfile(id, { name, phone, email, emailOtp, avatarFilename }) {
+  async requestPhoneOtp(userId, newPhone) {
+    if (!newPhone || typeof newPhone !== 'string' || !newPhone.trim()) {
+      throw new HttpError(400, 'New phone number is required.');
+    }
+    const normalizedPhone = normalizePhone(newPhone.trim());
+    if (!normalizedPhone) {
+      throw new HttpError(400, 'Invalid phone number format.');
+    }
+
+    // 1. Verify user exists
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new HttpError(404, 'User not found.');
+    }
+
+    if (user.phone && user.phone === normalizedPhone) {
+      throw new HttpError(400, 'The new phone number cannot be the same as your current phone number.');
+    }
+
+    // 2. Check if another user already has this phone number
+    const existingUser = await userRepository.findByPhone(normalizedPhone);
+    if (existingUser && existingUser._id.toString() !== userId.toString()) {
+      throw new HttpError(400, `An account with phone number '${newPhone}' already exists.`);
+    }
+
+    // 3. Generate OTP via otpService (valid for 15 minutes)
+    const plainCode = await otpService.createOTP(normalizedPhone, 'VERIFY', 15);
+
+    // 4. Emit event for logging and SMS dispatch
+    const authEvents = (await import('../auth/auth.events.js')).default;
+    authEvents.emit('OTP_SENT', { identifier: normalizedPhone, code: plainCode, type: 'SMS' });
+
+    return {
+      message: `Verification code sent to ${maskPhone(normalizedPhone)}`,
+      phone: normalizedPhone,
+      ...(process.env.NODE_ENV !== 'production' && { devCode: plainCode }),
+    };
+  }
+
+  async updateProfile(id, { name, phone, phoneOtp, email, emailOtp, avatarFilename }) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -673,17 +726,28 @@ export class UserService {
 
       const payload = { $set: {}, $unset: {} };
       if (name !== undefined) payload.$set.name = name;
-      
+
+      // Phone change verification via OTP
       if (phone !== undefined) {
         if (phone === null || (typeof phone === 'string' && phone.trim() === '')) {
           payload.$unset.phone = 1;
         } else {
-          const trimmedPhone = String(phone).trim();
-          const existingPhoneUser = await userRepository.findByPhone(trimmedPhone, session);
-          if (existingPhoneUser && existingPhoneUser._id.toString() !== id.toString()) {
-            throw new HttpError(400, `User with phone number '${phone}' already exists.`);
+          const normalizedPhone = normalizePhone(String(phone).trim()) || String(phone).trim();
+          if (normalizedPhone !== (user.phone || '')) {
+            const existingPhoneUser = await userRepository.findByPhone(normalizedPhone, session);
+            if (existingPhoneUser && existingPhoneUser._id.toString() !== id.toString()) {
+              throw new HttpError(400, `User with phone number '${phone}' already exists.`);
+            }
+
+            if (!phoneOtp || String(phoneOtp).trim() === '') {
+              throw new HttpError(400, 'Verification OTP code is required to update phone number.');
+            }
+
+            await otpService.verifyOTP(normalizedPhone, String(phoneOtp).trim(), 'VERIFY', session, true);
+
+            payload.$set.phone = normalizedPhone;
+            payload.$set.phoneVerified = true;
           }
-          payload.$set.phone = trimmedPhone;
         }
       }
 
@@ -941,8 +1005,12 @@ export class UserService {
 
       // 8. Verify and maintain membership status
       const membership = await orgMembershipService.getMembership(recipient._id, orgId, session);
-      if (membership && membership.status === 'Active') {
+      if (membership && membership.status === 'Active' && recipient.status === 'Active') {
         throw new HttpError(400, 'User is already an active member of this organization.');
+      }
+      if (membership && recipient.status !== 'Active') {
+        membership.status = 'Pending';
+        await membership.save({ session });
       }
 
       // 9. Generate brand-new cryptographically secure invitation token

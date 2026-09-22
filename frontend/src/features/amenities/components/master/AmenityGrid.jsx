@@ -2,7 +2,7 @@ import React from 'react'
 import { memo } from 'react'
 
 const AmenityGrid = memo(
-  ({ amenities, canManage, canUpdate, canDelete, onEdit, onToggleStatus, onViewDetails }) => {
+  ({ amenities, canManage, canUpdate, canDelete, onEdit, onToggleStatus, onViewDetails, onDelete }) => {
     if (!amenities || amenities.length === 0) {
       return (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
@@ -22,13 +22,21 @@ const AmenityGrid = memo(
             item.images && item.images.length > 0
               ? item.images[0]
               : 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=800&q=80'
-          const rate = item.pricing?.baseRate ?? item.ratePerHour ?? 0
+          const rate = item.pricing?.baseRate ?? item.pricingConfig?.baseRate ?? item.ratePerHour ?? 0
+          const pType = (item.pricing?.pricingType || item.pricingConfig?.pricingType || '').toLowerCase()
           const pricingLabel =
-            item.pricing?.pricingType === 'daily'
+            pType === 'daily'
               ? '/day'
-              : item.pricing?.pricingType === 'session'
+              : pType === 'session'
                 ? '/session'
-                : '/hr'
+                : pType === 'free' || rate === 0
+                  ? ' (Free)'
+                  : '/hr'
+
+          const statusLower = String(item.status || '').toLowerCase()
+          const isMaintenance = item.currentStatus === 'Under Maintenance' || statusLower === 'maintenance'
+          const isActive = statusLower === 'active'
+          const isDraft = statusLower === 'draft' || item.isDraft === true
 
           return (
             <div
@@ -61,14 +69,16 @@ const AmenityGrid = memo(
                     {item.name}
                   </h4>
                   <span
-                    className={`badge ${item.currentStatus === 'Under Maintenance' || item.status === 'maintenance' ? 'badge-warning' : item.status === 'active' ? 'badge-success' : 'badge-secondary'}`}
+                    className={`badge ${isMaintenance ? 'badge-warning' : isActive ? 'badge-success' : isDraft ? 'badge-info' : 'badge-secondary'}`}
                     style={{ flexShrink: 0 }}
                   >
-                    {item.currentStatus === 'Under Maintenance' || item.status === 'maintenance'
+                    {isMaintenance
                       ? 'Maintenance'
-                      : item.status === 'active'
+                      : isActive
                         ? 'Active'
-                        : 'Inactive'}
+                        : isDraft
+                          ? 'Draft'
+                          : 'Inactive'}
                   </span>
                 </div>
 
@@ -93,7 +103,7 @@ const AmenityGrid = memo(
                       className="fa-solid fa-users"
                       style={{ color: 'var(--primary)', width: '14px', textAlign: 'center' }}
                     ></i>
-                    <span>Capacity: {item.capacity || 'N/A'}</span>
+                    <span>Capacity: {item.capacity ?? item.maxCapacity ?? 'N/A'}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <i

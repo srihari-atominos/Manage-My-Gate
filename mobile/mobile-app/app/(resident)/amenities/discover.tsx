@@ -1,53 +1,120 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { SearchFilterBar, SortOption } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CalendarCheck } from 'lucide-react-native';
 
-import { useResidentDiscover } from '../../../src/features/amenities/hooks/useResidentDiscover';
+import { useResidentAmenities } from '../../../src/features/amenities/hooks/useResidentAmenities';
 import { ResidentAmenityDetailSheet } from '../../../src/features/amenities/components/ResidentAmenityDetailSheet';
 import { AmenityCatalogCard } from '../../../src/features/amenities/components/AmenityCatalogCard';
-import { Amenity } from '../../../src/features/amenities/store/amenitySlice';
+import { AmenityFacility, AmenityArchetype } from '../../../src/features/amenities/types/amenityDomain.types';
+import { useAuth } from '../../../src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '../../../src/utils/rbac';
+
+const ARCHETYPE_FILTER_OPTIONS: SortOption[] = [
+  { label: 'All Facilities', value: 'All' },
+  { label: 'Shared Capacity', value: 'SHARED_CAPACITY' },
+  { label: 'Exclusive Hourly', value: 'EXCLUSIVE_HOURLY' },
+  { label: 'Event Space', value: 'EVENT_SPACE' },
+  { label: 'Room Resource', value: 'ROOM_RESOURCE' },
+  { label: 'Inventory & Tools', value: 'INVENTORY_TOOLS' },
+];
 
 export default function DiscoverAmenitiesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Guard: Users without discover/resident amenity permissions are redirected
+  const hasDiscoverAccess =
+    isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user);
+
+  if (user && !hasDiscoverAccess) {
+    if (isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
+      return <Redirect href="/(resident)/amenities/scanner" />;
+    }
+    return <Redirect href="/(resident)/dashboard" />;
+  }
+
   const {
-    amenities,
-    categories,
-    selectedCategory,
+    facilities,
+    selectedFacility,
+    resources,
+    selectedArchetype,
     searchQuery,
     pagination,
-    stats,
-    selectedAmenityPreview,
-    setSelectedAmenityPreview,
     loading,
     error,
-    handleCategorySelect,
-    handleSearchChange,
-    handleRefresh,
+    setSelectedArchetype,
+    setSearchQuery,
+    selectFacility,
     handleLoadMore,
-    handleRetry,
-    navigateToBooking,
-  } = useResidentDiscover();
+    handleRefresh,
+    clearError,
+  } = useResidentAmenities();
 
-  const categorySortOptions = React.useMemo(() => {
-    return categories.map((cat) => ({ label: cat, value: cat }));
-  }, [categories]);
+  const [previewFacility, setPreviewFacility] = useState<AmenityFacility | null>(null);
+
+  const stats = useMemo(() => {
+    let activeCount = 0;
+    let maintenanceCount = 0;
+
+    facilities.forEach((f) => {
+      if (f.status === 'ACTIVE') {
+        activeCount++;
+      } else if (f.status === 'MAINTENANCE') {
+        maintenanceCount++;
+      }
+    });
+
+    return {
+      totalCount: pagination.totalRecords || facilities.length,
+      activeCount,
+      maintenanceCount,
+    };
+  }, [facilities, pagination.totalRecords]);
+
+  const handleArchetypeChange = (value: string) => {
+    if (value === 'All') {
+      setSelectedArchetype(undefined);
+    } else {
+      setSelectedArchetype(value as AmenityArchetype);
+    }
+  };
+
+  const handleCardPress = async (facility: AmenityFacility) => {
+    setPreviewFacility(facility);
+    const targetId = facility?._id || (facility as any)?.id;
+    try {
+      if (targetId) {
+        await selectFacility(String(targetId));
+      }
+    } catch (e) {}
+  };
+
+  const navigateToBooking = (facilityId: string) => {
+    setPreviewFacility(null);
+    router.push({
+      pathname: '/(resident)/amenities/booking/[id]' as any,
+      params: { id: facilityId },
+    });
+  };
 
   const renderHeader = () => (
     <View className="mb-3 gap-3">
-      {/* Unified Search & Category Filter Bar */}
+      {/* Unified Search & Exact v2 Archetype Filter Bar */}
       <SearchFilterBar
         searchValue={searchQuery}
-        onSearchChange={handleSearchChange}
-        searchPlaceholder="Search amenities, clubhouse, pool..."
-        sortOptions={categorySortOptions}
-        currentSort={selectedCategory}
-        onSortChange={handleCategorySelect}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search facilities, gym, courts, tools..."
+        sortOptions={ARCHETYPE_FILTER_OPTIONS}
+        currentSort={selectedArchetype || 'All'}
+        onSortChange={handleArchetypeChange}
         className="px-0 py-0 border-0"
       />
 
@@ -55,7 +122,9 @@ export default function DiscoverAmenitiesScreen() {
       {!loading && stats.totalCount > 0 ? (
         <View className="flex-row items-center gap-2 bg-card p-2.5 rounded-2xl border border-border">
           <View className="bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/30">
-            <Text className="text-xs font-bold text-blue-600 dark:text-blue-400">{stats.totalCount} Facilities</Text>
+            <Text className="text-xs font-bold text-blue-600 dark:text-blue-400">
+              {stats.totalCount} Facilities
+            </Text>
           </View>
           <View className="bg-emerald-500/15 px-2.5 py-1 rounded-full border border-emerald-500/30">
             <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
@@ -74,11 +143,11 @@ export default function DiscoverAmenitiesScreen() {
     </View>
   );
 
-  const renderAmenityItem = (item: Amenity) => (
+  const renderAmenityItem = (item: AmenityFacility) => (
     <AmenityCatalogCard
       key={item._id}
       amenity={item}
-      onPress={setSelectedAmenityPreview}
+      onPress={handleCardPress}
       onBookClick={navigateToBooking}
     />
   );
@@ -88,9 +157,12 @@ export default function DiscoverAmenitiesScreen() {
       title="Discover Amenities"
       subtitle="Browse & reserve community facilities"
       iconName="Search"
-      loading={false}
-      error={error}
-      onRetry={handleRetry}
+      loading={loading && facilities.length === 0}
+      error={error?.message || null}
+      onRetry={() => {
+        clearError();
+        handleRefresh();
+      }}
       headerRight={
         <Button
           variant="outline"
@@ -108,7 +180,7 @@ export default function DiscoverAmenitiesScreen() {
       <View className="flex-1 bg-background">
         {/* Catalog Paginated List */}
         <PaginatedList
-          data={amenities}
+          data={facilities}
           renderItem={renderAmenityItem}
           pagination={pagination}
           onLoadMore={handleLoadMore}
@@ -116,18 +188,23 @@ export default function DiscoverAmenitiesScreen() {
           loading={loading}
           ListHeaderComponent={renderHeader()}
           emptyIcon="Building2"
-          emptyTitle="No Amenities Found"
-          emptySubtitle="Try adjusting your search query or category filter."
+          emptyTitle={searchQuery ? 'No Matching Amenities' : 'No Amenities Found'}
+          emptySubtitle={
+            searchQuery
+              ? 'Try adjusting your search query or filter category.'
+              : 'There are currently no community facilities registered in this estate.'
+          }
           contentContainerClassName="px-4 pt-3 pb-28"
           contentContainerStyle={{ paddingBottom: 110 }}
         />
       </View>
 
-      {/* Resident Amenity Specification & Booking Preview Sheet */}
+      {/* Resident Amenity Specification & Detail Sheet */}
       <ResidentAmenityDetailSheet
-        visible={!!selectedAmenityPreview}
-        onClose={() => setSelectedAmenityPreview(null)}
-        amenity={selectedAmenityPreview}
+        visible={!!previewFacility}
+        onClose={() => setPreviewFacility(null)}
+        amenity={selectedFacility || previewFacility}
+        resources={resources}
         onBookClick={navigateToBooking}
       />
     </ScreenShell>

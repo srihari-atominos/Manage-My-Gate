@@ -31,6 +31,7 @@ const STATUS_SEMANTIC_MAP: Record<string, StatusSemanticType> = {
   CONFIRMED: 'success',
   APPROVED: 'success',
   CHECKED_IN: 'success',
+  AVAILABLE: 'success',
   PAID: 'success',
   CREDIT: 'success',
   ENTRY: 'success',
@@ -45,6 +46,8 @@ const STATUS_SEMANTIC_MAP: Record<string, StatusSemanticType> = {
   ASSIGNED: 'warning',
   'IN PROGRESS': 'warning',
   IN_PROGRESS: 'warning',
+  'PARTIALLY AVAILABLE': 'warning',
+  PARTIALLY_AVAILABLE: 'warning',
   HOLD: 'warning',
   ESCALATE: 'warning',
   WARNING: 'warning',
@@ -56,6 +59,8 @@ const STATUS_SEMANTIC_MAP: Record<string, StatusSemanticType> = {
   DENIED: 'danger',
   CANCELLED: 'danger',
   CANCELED: 'danger',
+  'FULLY BOOKED': 'danger',
+  FULLY_BOOKED: 'danger',
   DEBIT: 'danger',
   EXIT: 'danger',
   UNPAID: 'danger',
@@ -69,6 +74,13 @@ const STATUS_SEMANTIC_MAP: Record<string, StatusSemanticType> = {
   REFUNDED: 'neutral',
   MANUAL: 'neutral',
   LOW: 'neutral',
+  MEDIUM: 'warning',
+  HIGH: 'danger',
+  URGENT: 'danger',
+  ARCHIVED: 'neutral',
+  DRAFT: 'warning',
+  PUBLISHED: 'success',
+  SCHEDULED: 'all',
   // Notice Board Categories
   EMERGENCY: 'danger',
   MAINTENANCE: 'warning',
@@ -94,13 +106,34 @@ export function getStatusSemanticType(keyOrLabel: string): StatusSemanticType {
 
   // Prefix/Sub-string match fallback for composite labels (e.g. "Top-Ups (+)", "Bookings (-)")
   if (normalized.startsWith('ALL') || normalized === 'TOTAL') return 'all';
-  if (normalized.includes('ACTIVE') || normalized.includes('CONFIRM') || normalized.includes('APPROV') || normalized.includes('TOP UP')) {
+  if (
+    (normalized.includes('AVAIL') && !normalized.includes('PARTIAL')) ||
+    normalized.includes('ACTIVE') ||
+    normalized.includes('CONFIRM') ||
+    normalized.includes('APPROV') ||
+    normalized.includes('TOP UP')
+  ) {
     return 'success';
   }
-  if (normalized.includes('PENDING') || normalized.includes('UPCOMING') || normalized.includes('WAIT') || normalized.includes('HOLD')) {
+  if (
+    normalized.includes('PARTIAL') ||
+    normalized.includes('PENDING') ||
+    normalized.includes('UPCOMING') ||
+    normalized.includes('WAIT') ||
+    normalized.includes('HOLD') ||
+    normalized.includes('MAINTENANCE')
+  ) {
     return 'warning';
   }
-  if (normalized.includes('REVOKE') || normalized.includes('BLOCK') || normalized.includes('REJECT') || normalized.includes('DENI') || normalized.includes('CANCEL') || normalized.includes('EMERGENCY')) {
+  if (
+    normalized.includes('FULLY BOOK') ||
+    normalized.includes('REVOKE') ||
+    normalized.includes('BLOCK') ||
+    normalized.includes('REJECT') ||
+    normalized.includes('DENI') ||
+    normalized.includes('CANCEL') ||
+    normalized.includes('EMERGENCY')
+  ) {
     return 'danger';
   }
   if (normalized.includes('EXPIRE') || normalized.includes('COMPLET') || normalized.includes('INACTIVE') || normalized.includes('CLOSE')) {

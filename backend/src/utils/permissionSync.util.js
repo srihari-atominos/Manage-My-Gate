@@ -145,14 +145,35 @@ export const syncPermissions = async () => {
       logger.info('Updated existing Super Admin user membership status to Active.');
     }
 
-    // 6.5 Self-healing: Ensure all existing 'Community Admin' roles get all system permissions mapped
+    // 6.5 Self-healing: Ensure all existing 'Community Admin' roles get their designated administrative baseline permissions mapped
+    const COMMUNITY_ADMIN_BASELINE_PERMISSIONS = [
+      'users:create', 'users:read', 'users:update', 'users:delete',
+      'roles:create', 'roles:read', 'roles:update', 'roles:delete',
+      'villas:create', 'villas:read', 'villas:update', 'villas:delete',
+      'integrations:create', 'integrations:read', 'integrations:update', 'integrations:delete',
+      'amenities:dashboard', 'amenities:admin_calander', 'amenities:ledgers',
+      'amenities:amenities', 'amenities:maintenance', 'amenities:settings',
+      'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
+      'amenities:scanner', 'amenities:security_logs',
+      'complaints:view', 'complaints:create', 'complaints:update', 'complaints:delete',
+      'complaints:assign', 'complaints:dashboard', 'complaints:reports',
+      'complaints:calendar', 'complaints:settings', 'complaints:comments',
+      'complaints:timeline', 'complaints:export', 'complaints:analytics',
+      'complaints:staff', 'complaints:raise_ticket', 'complaints:track_requests',
+      'complaints:complaint_management', 'complaints:assignee',
+      'visitor:admin',
+      'notices:create', 'notices:read', 'notices:update', 'notices:delete',
+      'billing:dashboard', 'billing:assessment_manager', 'billing:action_center',
+      'workspaces:read', 'workspaces:update',
+    ];
+
     const RoleModel = (await import('../features/role/role.model.js')).default;
     const communityAdminRoles = await RoleModel.find({ name: 'Community Admin' });
-    const allSystemPermissions = await PermissionModel.find({});
+    const baselinePermissions = await PermissionModel.find({ name: { $in: COMMUNITY_ADMIN_BASELINE_PERMISSIONS } });
 
     for (const role of communityAdminRoles) {
       let roleModified = false;
-      for (const perm of allSystemPermissions) {
+      for (const perm of baselinePermissions) {
         const mappingExists = await RolePermissionModel.findOne({
           roleId: role._id,
           permissionId: perm._id
@@ -163,7 +184,7 @@ export const syncPermissions = async () => {
             permissionId: perm._id
           });
           roleModified = true;
-          logger.info(`Self-healed role "${role.name}" (${role._id}) with permission "${perm.name}".`);
+          logger.info(`Self-healed role "${role.name}" (${role._id}) with baseline permission "${perm.name}".`);
         }
       }
       if (roleModified) {
@@ -172,10 +193,10 @@ export const syncPermissions = async () => {
       }
     }
 
-    // 6.7 Self-healing: Ensure all existing memberships have status 'Active' (fixes dev/seed data missing status)
+    // 6.7 Self-healing: Ensure existing memberships missing a status field get defaulted to 'Active'
     const OrgMembershipModel = (await import('../features/orgMembership/orgMembership.model.js')).default;
-    await OrgMembershipModel.updateMany({ status: { $ne: 'Active' } }, { $set: { status: 'Active' } });
-    logger.info('Self-healed all memberships to status "Active".');
+    await OrgMembershipModel.updateMany({ $or: [{ status: { $exists: false } }, { status: null }, { status: '' }] }, { $set: { status: 'Active' } });
+    logger.info('Self-healed memberships with missing status to "Active".');
 
     // 6.8 Self-healing: Ensure all existing workspaces have all default modules backfilled
     const WorkspaceModel = (await import('../features/workspace/workspace.model.js')).default;

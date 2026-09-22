@@ -100,38 +100,6 @@ export function ScreenShell({
     !isAuthScreen &&
     !isSubFlowOrCreationScreen;
 
-  // Collapsible Header Animation (moves up on scroll down, moves down on scroll up)
-  const headerTranslateY = useSharedValue(0);
-  const headerMarginTop = useSharedValue(0);
-  const headerOpacity = useSharedValue(1);
-
-  React.useEffect(() => {
-    if (collapsibleHeader) {
-      headerTranslateY.value = withTiming(isCompact ? -80 : 0, {
-        duration: 250,
-        easing: Easing.out(Easing.cubic),
-      });
-      headerMarginTop.value = withTiming(isCompact ? -58 : 0, {
-        duration: 250,
-        easing: Easing.out(Easing.cubic),
-      });
-      headerOpacity.value = withTiming(isCompact ? 0 : 1, {
-        duration: 200,
-        easing: Easing.out(Easing.cubic),
-      });
-    } else {
-      headerTranslateY.value = 0;
-      headerMarginTop.value = 0;
-      headerOpacity.value = 1;
-    }
-  }, [isCompact, collapsibleHeader]);
-
-  const animatedHeaderStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: headerTranslateY.value }],
-    marginTop: headerMarginTop.value,
-    opacity: headerOpacity.value,
-  }));
-
   const [showGlobalNavModal, setShowGlobalNavModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showVillaModal, setShowVillaModal] = useState(false);
@@ -195,17 +163,13 @@ export function ScreenShell({
         className="bg-card z-30"
       />
 
-      {/* Header row (animated collapsible header that moves up on scroll down, and down on scroll up) */}
+      {/* Header row (rock-solid stable header without scroll jiggle or layout bleeding) */}
       {!hideHeader && (
-        <Animated.View
-          style={[
-            animatedHeaderStyle,
-            { overflow: 'hidden' },
-          ]}
+        <View
           className="bg-card border-b border-border px-4 pb-3 shadow-xs z-30"
         >
-          <View className="flex-row items-center justify-between gap-2 min-h-[44px]">
-            <View className="flex-row items-center flex-1 me-2 min-w-0">
+          <View className="flex-row items-center justify-between gap-1.5 min-h-[40px]">
+            <View className="flex-row items-center flex-1 me-1.5 min-w-0">
               {showBackButton && (
                 <Pressable
                   onPress={() => {
@@ -217,18 +181,18 @@ export function ScreenShell({
                       router.replace('/(resident)/dashboard' as any);
                     }
                   }}
-                  className="me-2 p-2 rounded-xl active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"
+                  className="me-1.5 p-1.5 rounded-lg active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Go back"
                 >
-                  <Icon as={ChevronLeft} size={20} className="text-foreground" />
+                  <Icon as={ChevronLeft} size={19} className="text-foreground" />
                 </Pressable>
               )}
 
               {DynamicIcon ? (
-                <View className="me-2.5 size-9 rounded-xl bg-primary/15 items-center justify-center border border-primary/25 shrink-0">
-                  <Icon as={DynamicIcon} size={18} className="text-primary" />
+                <View className="me-2 size-8 rounded-lg bg-primary/10 items-center justify-center border border-primary/20 shrink-0">
+                  <Icon as={DynamicIcon} size={16} className="text-primary" />
                 </View>
               ) : null}
 
@@ -238,11 +202,11 @@ export function ScreenShell({
                 className="flex-1 justify-center active:opacity-80 min-w-0"
                 accessibilityHint="Double tap header title to switch active Role or Villa Unit"
               >
-                <Text variant="large" numberOfLines={1} className="text-foreground font-bold tracking-tight shrink">
+                <Text numberOfLines={1} className="text-[15.5px] font-bold text-foreground tracking-tight shrink">
                   {title}
                 </Text>
                 {subtitle ? (
-                  <Text variant="muted" numberOfLines={1} className="text-xs text-muted-foreground mt-0.5 font-medium shrink">
+                  <Text numberOfLines={1} className="text-[11px] text-muted-foreground mt-0.5 font-medium shrink">
                     {subtitle}
                   </Text>
                 ) : null}
@@ -256,14 +220,14 @@ export function ScreenShell({
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => setShowGlobalNavModal(true)}
-                className="p-2 rounded-xl bg-secondary border border-border/80 items-center justify-center"
+                className="p-1.5 rounded-lg bg-secondary border border-border/80 items-center justify-center"
                 accessibilityLabel="Global Easy Navigation"
               >
-                <Icon as={Compass} size={18} className="text-foreground" />
+                <Icon as={Compass} size={16} className="text-foreground" />
               </TouchableOpacity>
             </View>
           </View>
-        </Animated.View>
+        </View>
       )}
 
       {/* Error banner */}
@@ -307,18 +271,13 @@ export function ScreenShell({
             {...scrollHandlerProps}
             contentContainerStyle={{
               flexGrow: 1,
-              paddingBottom: shouldShowBottomNav ? Math.max(insets.bottom + 95, 120) : Math.max(insets.bottom, 24),
+              paddingBottom: shouldShowBottomNav ? Math.max(insets.bottom + 70, 84) : Math.max(insets.bottom, 20),
             }}
           >
             {children}
           </ScrollView>
         ) : (
-          <View
-            className="flex-1 bg-background"
-            style={{
-              paddingBottom: shouldShowBottomNav ? (Platform.OS === 'ios' ? 84 : Math.max(insets.bottom + 68, 76)) : 0,
-            }}
-          >
+          <View className="flex-1 bg-background">
             {children}
           </View>
         )}

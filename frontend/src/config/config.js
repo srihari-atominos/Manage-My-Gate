@@ -33,7 +33,7 @@ export const config = {
   publicUrl:
     env.VITE_PUBLIC_URL ||
     (typeof window !== 'undefined' ? window.location.origin : ''),
-  appName: env.VITE_APP_NAME || 'Portal',
+  appName: env.VITE_APP_NAME || 'Nahom',
   androidPackage: env.VITE_ANDROID_PACKAGE || 'com.atominosconsulting.nahom',
   playStoreUrl: env.VITE_PLAY_STORE_URL || 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom',
   customScheme: env.VITE_MOBILE_CUSTOM_SCHEME || 'managemygate',

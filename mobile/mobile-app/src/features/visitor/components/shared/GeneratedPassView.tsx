@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, ScrollView, Share, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, ScrollView, Share, Platform, Linking, Clipboard, Alert, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -7,8 +7,10 @@ import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { VisitorQRCode } from './VisitorQRCode';
 import { VisitorPassCode } from './VisitorPassCode';
-import { CheckCircle2, Share2, Home } from 'lucide-react-native';
+import { CheckCircle2, Share2, Home, MessageCircle, Copy, Check } from 'lucide-react-native';
 import { PassTypeKey } from '../../mocks/visitorMocks';
+import { encodeAppBarcode, buildVisitorPassShareMessage } from '@/src/utils/appBarcodeProtocol';
+import { shareQrImage } from '@/src/utils/qrPngGenerator';
 
 export interface GeneratedPassData {
   id: string;
@@ -34,8 +36,10 @@ export interface GeneratedPassViewProps {
   onShare?: () => void;
 }
 
-const PASS_TYPE_NAMES: Record<PassTypeKey, string> = {
+const PASS_TYPE_NAMES: Record<string, string> = {
   GUEST: 'Guest Pass',
+  ADMIN_GUEST: 'Guest Pass',
+  COMMUNITY_GUEST: 'Guest Pass',
   GROUP: 'Group Visit Pass',
   CAB: 'Cab / Taxi Pre-Approval',
   DELIVERY: 'Delivery Entry Pass',
@@ -47,28 +51,86 @@ export const GeneratedPassView: React.FC<GeneratedPassViewProps> = ({
   onDone,
   onShare,
 }) => {
-  const handleSharePass = async () => {
+  const [copied, setCopied] = useState(false);
+  const [sharingImage, setSharingImage] = useState(false);
+
+  const rawType = (passData.passType || 'GUEST').toUpperCase();
+  const barcodePayload = encodeAppBarcode(rawType, passData.code, passData.id, passData.visitorName || 'Guest');
+
+  const handleShareBarcodeImage = async () => {
+    if (sharingImage) return;
+    setSharingImage(true);
+    try {
+      const shared = await shareQrImage(
+        barcodePayload,
+        passData.code,
+        `Nahom Visitor Pass - ${passData.code}`
+      );
+      if (!shared) {
+        // Fallback to WhatsApp text message with embedded visual QR code
+        await handleSharePassMessage();
+      }
+    } finally {
+      setSharingImage(false);
+    }
+  };
+
+  const handleSharePassMessage = async () => {
     if (onShare) {
       onShare();
       return;
     }
 
-    const shareMessage =
-      `*Manage-My-Gate Visitor Pass*\n\n` +
-      `Visitor Name: ${passData.visitorName}\n` +
-      `Pass Type: ${PASS_TYPE_NAMES[passData.passType]}\n` +
-      `Pass Code: ${passData.code}\n` +
-      `Valid Until: ${new Date(passData.validUntil).toLocaleString()}\n\n` +
-      `Please show this code or QR at the security gate for entry.`;
+    const shareMessage = buildVisitorPassShareMessage({
+      passCode: passData.code,
+      visitorName: passData.visitorName || 'Guest',
+      passTypeLabel: PASS_TYPE_NAMES[passData.passType] || rawType,
+      validUntil: passData.validUntil,
+      barcodePayload,
+    });
+
+    const cleanPhone = passData.phone ? passData.phone.replace(/[^0-9]/g, '') : '';
+    const nativeWhatsappUrl = cleanPhone
+      ? `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(shareMessage)}`
+      : `whatsapp://send?text=${encodeURIComponent(shareMessage)}`;
+
+    if (Platform.OS !== 'web') {
+      try {
+        await Linking.openURL(nativeWhatsappUrl);
+        return;
+      } catch (err) {
+        // WhatsApp not installed: fallback to native share sheet
+      }
+
+      try {
+        await Share.share({
+          title: `Nahom Visitor Pass (${passData.code})`,
+          message: shareMessage,
+        });
+        return;
+      } catch (shareErr) {
+        console.log('Error opening native share sheet:', shareErr);
+      }
+    }
 
     try {
       await Share.share({
-        title: 'Visitor Pass Code',
+        title: `Nahom Visitor Pass (${passData.code})`,
         message: shareMessage,
       });
     } catch (err) {
       console.log('Error sharing pass', err);
     }
+  };
+
+  const handleCopyCode = () => {
+    setCopied(true);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(passData.code);
+    } else if (Clipboard && typeof Clipboard.setString === 'function') {
+      Clipboard.setString(passData.code);
+    }
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -174,25 +236,66 @@ export const GeneratedPassView: React.FC<GeneratedPassViewProps> = ({
       </View>
 
       {/* Primary Action Controls */}
-      <View className="gap-3 pt-2">
+      <View className="gap-2.5 pt-2">
+        {/* WhatsApp QR Image Share Button */}
         <Button
-          variant="default"
-          onPress={handleSharePass}
-          className="h-12 rounded-xl bg-primary flex-row items-center justify-center gap-2"
+          onPress={handleShareBarcodeImage}
+          disabled={sharingImage}
+          className="w-full h-12 rounded-xl bg-[#25D366] active:bg-[#1EBE5D] flex-row items-center justify-center gap-2.5 shadow-sm"
+          accessibilityLabel="Share QR Code Image to WhatsApp"
         >
-          <Share2 size={18} color="#fff" />
-          <Text className="font-bold text-primary-foreground text-base">
-            Share Pass Invitation
-          </Text>
+          {sharingImage ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <MessageCircle size={19} color="#FFFFFF" strokeWidth={2.5} />
+              <Text className="font-bold text-white text-sm">
+                Share QR Image to WhatsApp
+              </Text>
+            </>
+          )}
         </Button>
 
+        {/* Action Row: Share Pass Text/QR & Copy Code */}
+        <View className="flex-row gap-2">
+          <Button
+            variant="default"
+            onPress={handleSharePassMessage}
+            className="flex-1 h-11 rounded-xl bg-primary flex-row items-center justify-center gap-2"
+          >
+            <Share2 size={16} color="#fff" />
+            <Text className="font-bold text-primary-foreground text-xs">
+              Share Pass Message
+            </Text>
+          </Button>
+
+          <Button
+            variant="outline"
+            onPress={handleCopyCode}
+            className="h-11 px-4 rounded-xl border-border bg-card active:bg-muted flex-row items-center justify-center gap-1.5"
+          >
+            {copied ? (
+              <>
+                <Check size={15} className="text-emerald-600" />
+                <Text className="font-bold text-emerald-600 text-xs">Copied</Text>
+              </>
+            ) : (
+              <>
+                <Copy size={15} className="text-foreground" />
+                <Text className="font-bold text-foreground text-xs">Copy Code</Text>
+              </>
+            )}
+          </Button>
+        </View>
+
+        {/* Back to Dashboard */}
         <Button
           variant="outline"
           onPress={onDone}
-          className="h-12 rounded-xl flex-row items-center justify-center gap-2"
+          className="h-11 rounded-xl border-border flex-row items-center justify-center gap-2"
         >
-          <Home size={18} className="text-foreground" />
-          <Text className="font-semibold text-foreground">
+          <Home size={16} className="text-foreground" />
+          <Text className="font-semibold text-foreground text-sm">
             Back to Visitors Dashboard
           </Text>
         </Button>

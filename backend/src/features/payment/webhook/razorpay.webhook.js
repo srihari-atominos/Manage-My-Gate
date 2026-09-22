@@ -154,7 +154,7 @@ export const handleRazorpayWebhook = async (req, res, next) => {
         session.endSession();
 
         // Emit decoupled Node events
-        paymentEventEmitter.emit(PAYMENT_SUCCESS, paymentRecord);
+        paymentEventEmitter.emit(PAYMENT_SUCCESS, paymentRecord, { alreadySettled: true });
 
         return res.status(200).json({
           success: true,

@@ -9,10 +9,15 @@ export default function UniversalInviteTokenRedirectScreen() {
   useEffect(() => {
     const inviteToken = params.token;
     if (inviteToken) {
-      Linking.openURL(`https://managemygate.e3esg.com/invite/${inviteToken}`).catch(() => {});
-      router.replace('/(auth)/login');
+      router.replace({
+        pathname: '/(auth)/accept-invite',
+        params: { ...params, token: inviteToken },
+      });
     } else {
-      router.replace('/(auth)/login');
+      router.replace({
+        pathname: '/(auth)/accept-invite',
+        params: params,
+      });
     }
   }, [params, router]);
 

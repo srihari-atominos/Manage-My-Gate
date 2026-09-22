@@ -97,7 +97,7 @@ export default function MobileHandoffScreen() {
               <CheckCircle2 size={32} className="text-success" />
             </View>
             <Text className="text-lg font-bold font-sans text-foreground mb-1 text-center">
-              Welcome to Manage-My-Gate!
+              Welcome to Nahom!
             </Text>
             <Text className="text-sm font-sans text-muted-foreground text-center max-w-xs">
               Handoff complete. Opening your community dashboard...

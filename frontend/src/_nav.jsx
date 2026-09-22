@@ -56,12 +56,14 @@ const _nav = [
         component: CNavItem,
         name: 'Unit Management',
         to: '/villas',
+        icon: <CIcon icon={cilHome} customClassName="nav-icon" />,
         requiredPermission: 'villas:read',
       },
       {
         component: CNavItem,
         name: 'User Management',
         to: '/users',
+        icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
         requiredPermission: 'users:read',
       },
       {
@@ -74,12 +76,14 @@ const _nav = [
         component: CNavItem,
         name: 'Role Builder',
         to: '/role-builder',
+        icon: <CIcon icon={cilLockLocked} customClassName="nav-icon" />,
         requiredPermission: 'roles:read',
       },
       {
         component: CNavItem,
         name: 'Integration Hub',
         to: '/integrations',
+        icon: <CIcon icon={cilApps} customClassName="nav-icon" />,
         requiredPermission: 'integrations:read',
       },
     ]
