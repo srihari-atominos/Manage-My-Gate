@@ -427,21 +427,23 @@ export class AudienceService {
       return false;
     }
 
-    if (userContext.roleIds && userContext.roleIds.length > 0) {
-      const Role = (await import('../role/role.model.js')).default;
-      const adminRoleCount = await Role.countDocuments({
-        _id: { $in: userContext.roleIds },
-        name: { $in: adminRoleNames },
-      }).session(session);
-      if (adminRoleCount > 0) {
-        return true;
+    if (mongoose.connection?.readyState === 1) {
+      if (userContext.roleIds && userContext.roleIds.length > 0) {
+        const Role = (await import('../role/role.model.js')).default;
+        const adminRoleCount = await Role.countDocuments({
+          _id: { $in: userContext.roleIds },
+          name: { $in: adminRoleNames },
+        }).session(session);
+        if (adminRoleCount > 0) {
+          return true;
+        }
       }
-    }
-    if (userContext.userId) {
-      const User = mongoose.model('User');
-      const user = await User.findById(userContext.userId).session(session).lean();
-      if (user && adminRoleNames.includes(user.role)) {
-        return true;
+      if (userContext.userId) {
+        const User = mongoose.model('User');
+        const user = await User.findById(userContext.userId).session(session).lean();
+        if (user && adminRoleNames.includes(user.role)) {
+          return true;
+        }
       }
     }
 
@@ -547,21 +549,23 @@ export class AudienceService {
         isAdmin = true;
       }
     }
-    if (!isAdmin && userContext && userContext.roleIds && userContext.roleIds.length > 0) {
-      const Role = (await import('../role/role.model.js')).default;
-      const adminRoleCount = await Role.countDocuments({
-        _id: { $in: userContext.roleIds },
-        name: { $in: adminRoleNames },
-      }).session(session);
-      if (adminRoleCount > 0) {
-        isAdmin = true;
+    if (mongoose.connection?.readyState === 1) {
+      if (!isAdmin && userContext && userContext.roleIds && userContext.roleIds.length > 0) {
+        const Role = (await import('../role/role.model.js')).default;
+        const adminRoleCount = await Role.countDocuments({
+          _id: { $in: userContext.roleIds },
+          name: { $in: adminRoleNames },
+        }).session(session);
+        if (adminRoleCount > 0) {
+          isAdmin = true;
+        }
       }
-    }
-    if (!isAdmin && userContext && userContext.userId) {
-      const User = mongoose.model('User');
-      const user = await User.findById(userContext.userId).session(session).lean();
-      if (user && adminRoleNames.includes(user.role)) {
-        isAdmin = true;
+      if (!isAdmin && userContext && userContext.userId) {
+        const User = mongoose.model('User');
+        const user = await User.findById(userContext.userId).session(session).lean();
+        if (user && adminRoleNames.includes(user.role)) {
+          isAdmin = true;
+        }
       }
     }
     if (isAdmin) {
