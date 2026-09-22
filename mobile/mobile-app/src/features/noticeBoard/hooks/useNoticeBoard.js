@@ -11,6 +11,13 @@ import {
   markNoticeAsRead,
   bookmarkNotice,
   fetchNoticeStats,
+  acknowledgeNoticeThunk,
+  fetchNoticeAcknowledgements,
+  fetchNoticeComments,
+  addNoticeCommentThunk,
+  deleteNoticeCommentThunk,
+  fetchNoticeReactions,
+  toggleNoticeReactionThunk,
   setSearch as setSearchAction,
   setFilters as setFiltersAction,
   setActiveKpiCard as setActiveKpiCardAction,
@@ -45,21 +52,52 @@ export function useNoticeBoard() {
   const dashboardStats = useSelector((state) => state.noticeBoard.dashboardStats);
   const dashboardLoading = useSelector((state) => state.noticeBoard.dashboardLoading);
   const dashboardError = useSelector((state) => state.noticeBoard.dashboardError);
+  const acknowledging = useSelector((state) => state.noticeBoard.acknowledging);
+  const acknowledgeError = useSelector((state) => state.noticeBoard.acknowledgeError);
+  const acknowledgements = useSelector((state) => state.noticeBoard.acknowledgements);
+  const acknowledgementsLoading = useSelector((state) => state.noticeBoard.acknowledgementsLoading);
+  const comments = useSelector((state) => state.noticeBoard.comments);
+  const commentsLoading = useSelector((state) => state.noticeBoard.commentsLoading);
+  const commentsError = useSelector((state) => state.noticeBoard.commentsError);
+  const addingComment = useSelector((state) => state.noticeBoard.addingComment);
+  const reactions = useSelector((state) => state.noticeBoard.reactions);
+  const reactionsLoading = useSelector((state) => state.noticeBoard.reactionsLoading);
 
   // User authorization selectors
   const user = useSelector((state) => state.auth?.user || null);
 
-  const checkPermission = useCallback((permissionName) => {
-    if (!user) return false;
-    if (user.role === 'Super Admin' || user.role === 'Platform Super Admin') return true;
-    return !!(user.permissions && user.permissions.includes(permissionName));
-  }, [user]);
+  const isAdmin = !!(
+    user &&
+    [
+      'Admin',
+      'Community Admin',
+      'Super Admin',
+      'Platform Super Admin',
+      'SuperAdmin',
+    ].includes(user.role)
+  );
+
+  const checkPermission = useCallback(
+    (permissionName) => {
+      if (!user) return false;
+      if (isAdmin) return true;
+      if (!Array.isArray(user.permissions)) return false;
+      const dotForm = permissionName.replace(':', '.');
+      const colonForm = permissionName.replace('.', ':');
+      return (
+        user.permissions.includes(permissionName) ||
+        user.permissions.includes(dotForm) ||
+        user.permissions.includes(colonForm)
+      );
+    },
+    [user, isAdmin]
+  );
 
   const canCreate = checkPermission('notices:create') || checkPermission('notices:manage_notices');
   const canUpdate = checkPermission('notices:update') || checkPermission('notices:manage_notices');
   const canDelete = checkPermission('notices:delete') || checkPermission('notices:manage_notices');
   const canPin = checkPermission('notices:pin') || checkPermission('notices:manage_notices');
-  const canManage = checkPermission('notices:manage_notices');
+  const canManage = checkPermission('notices:manage_notices') || isAdmin;
 
   // Thunk Dispatchers
   const loadNotices = useCallback(() => {
@@ -97,6 +135,34 @@ export function useNoticeBoard() {
 
   const loadNoticeStats = useCallback(() => {
     dispatch(fetchNoticeStats());
+  }, [dispatch]);
+
+  const acknowledgeNotice = useCallback((id, payload = {}) => {
+    return dispatch(acknowledgeNoticeThunk({ id, payload }));
+  }, [dispatch]);
+
+  const loadNoticeAcknowledgements = useCallback((id, params = {}) => {
+    return dispatch(fetchNoticeAcknowledgements({ id, params }));
+  }, [dispatch]);
+
+  const loadComments = useCallback((id) => {
+    return dispatch(fetchNoticeComments(id));
+  }, [dispatch]);
+
+  const postComment = useCallback((id, content, parentCommentId = null) => {
+    return dispatch(addNoticeCommentThunk({ id, content, parentCommentId }));
+  }, [dispatch]);
+
+  const removeComment = useCallback((id, commentId) => {
+    return dispatch(deleteNoticeCommentThunk({ id, commentId }));
+  }, [dispatch]);
+
+  const loadReactions = useCallback((id) => {
+    return dispatch(fetchNoticeReactions(id));
+  }, [dispatch]);
+
+  const toggleReaction = useCallback((id, reactionType = 'LIKE') => {
+    return dispatch(toggleNoticeReactionThunk({ id, reactionType }));
   }, [dispatch]);
 
   // Synchronous Reducer Dispatchers
@@ -159,11 +225,23 @@ export function useNoticeBoard() {
     dashboardStats,
     dashboardLoading,
     dashboardError,
+    acknowledging,
+    acknowledgeError,
+    acknowledgements,
+    acknowledgementsLoading,
+    comments,
+    commentsLoading,
+    commentsError,
+    addingComment,
+    reactions,
+    reactionsLoading,
     canCreate,
     canUpdate,
     canDelete,
     canPin,
     canManage,
+    isAdmin,
+    user,
 
     // Thunk Dispatchers
     loadNotices,
@@ -175,6 +253,13 @@ export function useNoticeBoard() {
     readNotice,
     toggleBookmark,
     loadNoticeStats,
+    acknowledgeNotice,
+    loadNoticeAcknowledgements,
+    loadComments,
+    postComment,
+    removeComment,
+    loadReactions,
+    toggleReaction,
 
     // Synchronous Reducers
     setSearch,

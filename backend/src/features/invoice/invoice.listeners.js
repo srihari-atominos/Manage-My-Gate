@@ -7,7 +7,11 @@ import Invoice from './invoice.model.js';
  * Register background event listeners for the Invoice module.
  */
 export const registerInvoiceListeners = () => {
-  paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment) => {
+  paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment, options = {}) => {
+    if (options.alreadySettled) {
+      logger.info(`Skipping PAYMENT_SUCCESS listener for Invoice ${payment.referenceId} as it was settled in transaction.`);
+      return;
+    }
     if (payment.referenceType === 'Invoice') {
       try {
         logger.info(`Processing PAYMENT_SUCCESS for Invoice ${payment.referenceId}`);

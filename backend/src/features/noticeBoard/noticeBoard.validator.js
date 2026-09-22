@@ -98,7 +98,57 @@ export const createNoticeRules = [
   body('isPinned')
     .optional()
     .isBoolean()
-    .withMessage('isPinned must be a boolean value'),
+    .withMessage('isPinned must be a boolean value')
+    .toBoolean(),
+
+  body('targetAudience')
+    .optional({ nullable: true })
+    .customSanitizer((val) => {
+      if (typeof val === 'string') {
+        try {
+          return JSON.parse(val);
+        } catch (e) {
+          return val;
+        }
+      }
+      return val;
+    })
+    .custom((val) => {
+      if (val === undefined || val === null || val === '') return true;
+      if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+        return true;
+      }
+      throw new Error('targetAudience must be an object or JSON string');
+    }),
+
+  body('isCritical')
+    .optional()
+    .isBoolean()
+    .withMessage('isCritical must be a boolean')
+    .toBoolean(),
+
+  body('requiresAcknowledgement')
+    .optional()
+    .isBoolean()
+    .withMessage('requiresAcknowledgement must be a boolean')
+    .toBoolean(),
+
+  body('acknowledgementDeadline')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('acknowledgementDeadline must be a valid ISO 8601 date'),
+
+  body('allowComments')
+    .optional()
+    .isBoolean()
+    .withMessage('allowComments must be a boolean')
+    .toBoolean(),
+
+  body('allowReactions')
+    .optional()
+    .isBoolean()
+    .withMessage('allowReactions must be a boolean')
+    .toBoolean(),
 ];
 
 /**
@@ -199,7 +249,57 @@ export const updateNoticeRules = [
   body('isPinned')
     .optional()
     .isBoolean()
-    .withMessage('isPinned must be a boolean value'),
+    .withMessage('isPinned must be a boolean value')
+    .toBoolean(),
+
+  body('targetAudience')
+    .optional({ nullable: true })
+    .customSanitizer((val) => {
+      if (typeof val === 'string') {
+        try {
+          return JSON.parse(val);
+        } catch (e) {
+          return val;
+        }
+      }
+      return val;
+    })
+    .custom((val) => {
+      if (val === undefined || val === null || val === '') return true;
+      if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+        return true;
+      }
+      throw new Error('targetAudience must be an object or JSON string');
+    }),
+
+  body('isCritical')
+    .optional()
+    .isBoolean()
+    .withMessage('isCritical must be a boolean')
+    .toBoolean(),
+
+  body('requiresAcknowledgement')
+    .optional()
+    .isBoolean()
+    .withMessage('requiresAcknowledgement must be a boolean')
+    .toBoolean(),
+
+  body('acknowledgementDeadline')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('acknowledgementDeadline must be a valid ISO 8601 date'),
+
+  body('allowComments')
+    .optional()
+    .isBoolean()
+    .withMessage('allowComments must be a boolean')
+    .toBoolean(),
+
+  body('allowReactions')
+    .optional()
+    .isBoolean()
+    .withMessage('allowReactions must be a boolean')
+    .toBoolean(),
 ];
 
 /**

@@ -5,9 +5,11 @@ export default function NoticesLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="dashboard" />
-      <Stack.Screen name="active-board" />
       <Stack.Screen name="manage" />
-      <Stack.Screen name="polls/index" />
+      <Stack.Screen name="create" />
+      <Stack.Screen name="active-board" />
+      <Stack.Screen name="[id]" />
+      <Stack.Screen name="polls" />
     </Stack>
   );
 }

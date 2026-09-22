@@ -2,21 +2,53 @@ import mongoose from 'mongoose';
 import noticeRepository from './noticeBoard.repository.js';
 import noticeEvents from './noticeBoard.events.js';
 import HttpError from '../../utils/httpError.utils.js';
+import audienceService from '../audience/audience.service.js';
+import noticeVersionService from '../noticeVersion/noticeVersion.service.js';
+import auditLogService from '../auditLog/auditLog.services.js';
+
+const toBoolean = (value, defaultValue = false) => {
+  if (value === undefined || value === null) return defaultValue;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1') return true;
+    if (normalized === 'false' || normalized === '0') return false;
+  }
+  return Boolean(value);
+};
 
 export class NoticeBoardService {
   /**
    * Retrieves a notice by ID.
    */
-  async getNoticeById(id, session) {
+  async getNoticeById(id, session = null, userId = null, orgId = null, currentUser = null) {
     const notice = await noticeRepository.findById(id, session);
     if (!notice) {
       throw new HttpError(404, `Notice with ID ${id} not found.`);
+    }
+
+    if (orgId && notice.orgId.toString() !== orgId.toString()) {
+      throw new HttpError(403, 'Forbidden. Notice belongs to another community.');
     }
 
     // Automatically check expiry if it is Published but current time is past expiryDate
     if (notice.status === 'Published' && notice.expiryDate <= new Date()) {
       notice.status = 'Expired';
       await notice.save({ session });
+    }
+
+    // Audience eligibility verification (Community Admin and Super Admin always have access)
+    const adminRoleNames = ['Community Admin', 'Admin', 'Super Admin', 'Platform Super Admin', 'SuperAdmin'];
+    const callerRole = (currentUser?.role || '').trim();
+    const callerRoles = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
+    const isCallerAdmin = adminRoleNames.includes(callerRole) || callerRoles.some((r) => adminRoleNames.includes(r));
+
+    if (!isCallerAdmin && userId && orgId && notice.targetAudience) {
+      const resolvedUserId = typeof userId === 'object' && userId !== null ? (userId._id || userId.id || userId.userId) : userId;
+      const isEligible = await audienceService.checkEligibility(resolvedUserId, notice.targetAudience, orgId, session);
+      if (!isEligible) {
+        throw new HttpError(403, 'Access denied: You are not eligible to view this notice.');
+      }
     }
 
     return notice;
@@ -40,6 +72,29 @@ export class NoticeBoardService {
         image: noticeData.image || '',
         scheduleDate: noticeData.scheduleDate ? new Date(noticeData.scheduleDate) : null,
       };
+
+      // Validate Target Audience if provided
+      if (noticeData.targetAudience) {
+        data.targetAudience = await audienceService.validateTarget(noticeData.targetAudience, orgId, session);
+      }
+
+      // Governance rules: isCritical is strictly controlled by admin enablement
+      data.isCritical = toBoolean(noticeData.isCritical, false);
+      if (!data.isCritical && data.priority === 'Critical') {
+        data.priority = 'Medium';
+      }
+      data.isPinned = toBoolean(noticeData.isPinned, false);
+      data.requiresAcknowledgement = toBoolean(noticeData.requiresAcknowledgement, false);
+      if (data.requiresAcknowledgement) {
+        if (noticeData.acknowledgementDeadline) {
+          data.acknowledgementDeadline = new Date(noticeData.acknowledgementDeadline);
+        }
+      } else {
+        data.acknowledgementDeadline = null;
+      }
+      data.allowComments = toBoolean(noticeData.allowComments, true);
+      data.allowReactions = toBoolean(noticeData.allowReactions, true);
+      data.currentVersion = 1;
 
       // Set initial status to Published if not specified
       if (!data.status) {
@@ -68,6 +123,24 @@ export class NoticeBoardService {
 
       // Emit event
       noticeEvents.emit('NOTICE_CREATED', notice);
+
+      // Log audit event
+      try {
+        await auditLogService.logEvent({
+          actorId: userId,
+          action: 'NOTICE_CREATED',
+          targetId: orgId,
+          metadata: {
+            noticeId: notice._id.toString(),
+            title: notice.title,
+            status: notice.status,
+            isCritical: notice.isCritical,
+            requiresAcknowledgement: notice.requiresAcknowledgement,
+          },
+        });
+      } catch (auditErr) {
+        // silent fallback for audit logs
+      }
 
       return notice;
     } catch (error) {
@@ -98,20 +171,29 @@ export class NoticeBoardService {
     // 3. Build filters
     const filters = {};
 
+    // Apply audience feed filter for the user ONLY if they are restricted to published notices (residents)
+    let audienceOr = null;
+    if (restrictToPublished && userId && orgId) {
+      const audienceFilter = await audienceService.buildFeedFilter(userId, orgId);
+      if (audienceFilter.$or && audienceFilter.$or.length > 0) {
+        audienceOr = audienceFilter.$or;
+      }
+    }
+
     if (restrictToPublished) {
       filters.status = 'Published';
     } else if (queryParams.status) {
-      // If client requests All, don't filter by status
-      if (queryParams.status !== 'All') {
+      // If client requests All or ALL, don't filter by status
+      if (queryParams.status.toUpperCase() !== 'ALL') {
         filters.status = queryParams.status;
       }
     }
 
-    if (queryParams.category) {
+    if (queryParams.category && queryParams.category.toUpperCase() !== 'ALL') {
       filters.category = queryParams.category;
     }
 
-    if (queryParams.priority) {
+    if (queryParams.priority && queryParams.priority.toUpperCase() !== 'ALL') {
       filters.priority = queryParams.priority;
     }
 
@@ -129,11 +211,23 @@ export class NoticeBoardService {
       filters.readBy = { $ne: typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId };
     }
 
+    let searchOr = null;
     if (queryParams.search) {
-      filters.$or = [
+      searchOr = [
         { title: { $regex: queryParams.search.trim(), $options: 'i' } },
         { description: { $regex: queryParams.search.trim(), $options: 'i' } }
       ];
+    }
+
+    if (audienceOr && searchOr) {
+      filters.$and = [
+        { $or: audienceOr },
+        { $or: searchOr }
+      ];
+    } else if (audienceOr) {
+      filters.$or = audienceOr;
+    } else if (searchOr) {
+      filters.$or = searchOr;
     }
 
     // 4. Define sorting logic
@@ -153,16 +247,50 @@ export class NoticeBoardService {
     const { data, totalRecords } = await noticeRepository.getNotices(orgId, skip, limit, filters, sort);
     const totalPages = Math.ceil(totalRecords / limit);
 
-    // 6. Map results to inject user-specific flags
+    // 6. Bulk fetch acknowledgements for the current user
+    const reqAckNoticeIds = data.filter(n => n.requiresAcknowledgement).map(n => n._id);
+    let userAcks = [];
+    if (reqAckNoticeIds.length > 0 && userId) {
+      const NoticeAcknowledgement = mongoose.model('NoticeAcknowledgement');
+      userAcks = await NoticeAcknowledgement.find({
+        noticeId: { $in: reqAckNoticeIds },
+        userId: typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId
+      }).lean();
+    }
+    const ackMap = userAcks.reduce((acc, ack) => {
+      acc[ack.noticeId.toString()] = ack;
+      return acc;
+    }, {});
+
+    // 7. Map results to inject user-specific flags
     const mappedData = data.map(notice => {
       const readByList = notice.readBy || [];
       const bookmarkedByList = notice.bookmarkedBy || [];
-      return {
+      
+      const mappedNotice = {
         ...notice,
         isReadByUser: readByList.some(uid => uid.toString() === userId.toString()),
         isBookmarkedByUser: bookmarkedByList.some(uid => uid.toString() === userId.toString()),
         readerCount: readByList.length,
+        isCritical: notice.isCritical || false,
+        requiresAcknowledgement: notice.requiresAcknowledgement || false,
+        acknowledgementDeadline: notice.acknowledgementDeadline || null,
+        allowComments: notice.allowComments !== false,
+        allowReactions: notice.allowReactions !== false,
+        currentVersion: notice.currentVersion || 1,
       };
+
+      if (mappedNotice.requiresAcknowledgement) {
+        const ack = ackMap[notice._id.toString()];
+        if (ack) {
+          mappedNotice.hasAcknowledged = true;
+          mappedNotice.userAcknowledgement = ack;
+        } else {
+          mappedNotice.hasAcknowledged = false;
+        }
+      }
+
+      return mappedNotice;
     });
 
     return {
@@ -191,11 +319,46 @@ export class NoticeBoardService {
         throw new HttpError(403, 'Forbidden. Notice does not belong to this organization.');
       }
 
+      // Preserve previous version before applying update
+      await noticeVersionService.createVersion(notice, userId, session);
+
       // Normalize and sanitize inputs
       const data = {
         ...updateData,
         updatedBy: userId,
+        currentVersion: (notice.currentVersion || 1) + 1,
       };
+
+      if (updateData.targetAudience) {
+        data.targetAudience = await audienceService.validateTarget(updateData.targetAudience, orgId, session);
+      }
+
+      // Governance rules: isCritical is strictly controlled by admin enablement
+      if (updateData.requiresAcknowledgement !== undefined) {
+        data.requiresAcknowledgement = toBoolean(updateData.requiresAcknowledgement, false);
+        if (data.requiresAcknowledgement) {
+          if (updateData.acknowledgementDeadline) {
+            data.acknowledgementDeadline = new Date(updateData.acknowledgementDeadline);
+          }
+        } else {
+          data.acknowledgementDeadline = null;
+        }
+      }
+      if (updateData.isCritical !== undefined) {
+        data.isCritical = toBoolean(updateData.isCritical, false);
+        if (!data.isCritical && (data.priority === 'Critical' || (!data.priority && notice.priority === 'Critical'))) {
+          data.priority = 'Medium';
+        }
+      }
+      if (updateData.isPinned !== undefined) {
+        data.isPinned = toBoolean(updateData.isPinned, false);
+      }
+      if (updateData.allowComments !== undefined) {
+        data.allowComments = toBoolean(updateData.allowComments, true);
+      }
+      if (updateData.allowReactions !== undefined) {
+        data.allowReactions = toBoolean(updateData.allowReactions, true);
+      }
 
       if (data.title) data.title = data.title.trim();
       if (data.description) data.description = data.description.trim();
@@ -230,6 +393,22 @@ export class NoticeBoardService {
         noticeEvents.emit('NOTICE_PUBLISHED', updatedNotice);
       } else {
         noticeEvents.emit('NOTICE_UPDATED', updatedNotice);
+      }
+
+      // Log audit event
+      try {
+        await auditLogService.logEvent({
+          actorId: userId,
+          action: 'NOTICE_UPDATED',
+          targetId: orgId,
+          metadata: {
+            noticeId: updatedNotice._id.toString(),
+            version: updatedNotice.currentVersion,
+            title: updatedNotice.title,
+          },
+        });
+      } catch (auditErr) {
+        // silent fallback for audit logs
       }
 
       return updatedNotice;
@@ -501,6 +680,111 @@ export class NoticeBoardService {
       categories,
       recentActivity,
       trends
+    };
+  }
+
+  /**
+   * Automatically transitions scheduled notices to Published once their scheduleDate arrives.
+   * Concurrent-safe: uses atomic conditional findOneAndUpdate.
+   */
+  async processScheduledNotices(now = new Date()) {
+    const Notice = mongoose.model('Notice');
+    const scheduledNotices = await Notice.find({
+      status: 'Scheduled',
+      scheduleDate: { $lte: now }
+    });
+
+    const publishedNotices = [];
+    for (const notice of scheduledNotices) {
+      try {
+        const updated = await Notice.findOneAndUpdate(
+          { _id: notice._id, status: 'Scheduled', scheduleDate: { $lte: now } },
+          { $set: { status: 'Published' } },
+          { new: true }
+        );
+
+        if (updated) {
+          if (updated.isPinned) {
+            await noticeRepository.unpinAllExcept(updated.orgId, updated._id);
+          }
+          noticeEvents.emit('NOTICE_PUBLISHED', updated);
+          publishedNotices.push(updated);
+        }
+      } catch (err) {
+        // Continue processing other scheduled notices
+      }
+    }
+
+    return {
+      processedCount: publishedNotices.length,
+      notices: publishedNotices
+    };
+  }
+
+  /**
+   * Automatically transitions published notices to Expired once their expiryDate passes.
+   * Concurrent-safe: uses atomic conditional findOneAndUpdate and clears pin status.
+   */
+  async processExpiredNotices(now = new Date()) {
+    const Notice = mongoose.model('Notice');
+    const expiredCandidates = await Notice.find({
+      status: 'Published',
+      expiryDate: { $lte: now }
+    });
+
+    const expiredNotices = [];
+    for (const notice of expiredCandidates) {
+      try {
+        const updated = await Notice.findOneAndUpdate(
+          { _id: notice._id, status: 'Published', expiryDate: { $lte: now } },
+          { $set: { status: 'Expired', isPinned: false } },
+          { new: true }
+        );
+
+        if (updated) {
+          noticeEvents.emit('NOTICE_EXPIRED', updated);
+          expiredNotices.push(updated);
+        }
+      } catch (err) {
+        // Continue processing other expired notices
+      }
+    }
+
+    return {
+      expiredCount: expiredNotices.length,
+      notices: expiredNotices
+    };
+  }
+
+  /**
+   * Scans critical notices with upcoming or passed acknowledgement deadlines.
+   * Emits reminder events for unacknowledged eligible recipients.
+   */
+  async processAcknowledgementDeadlines(now = new Date()) {
+    const Notice = mongoose.model('Notice');
+    const twentyFourHoursLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    const criticalNotices = await Notice.find({
+      status: 'Published',
+      requiresAcknowledgement: true,
+      acknowledgementDeadline: { $exists: true, $ne: null, $lte: twentyFourHoursLater }
+    });
+
+    const remindedNotices = [];
+    for (const notice of criticalNotices) {
+      noticeEvents.emit('NOTICE_ACKNOWLEDGEMENT_REMINDER', {
+        noticeId: notice._id,
+        orgId: notice.orgId,
+        notice,
+        deadline: notice.acknowledgementDeadline,
+        isPastDeadline: new Date(notice.acknowledgementDeadline) <= now
+      });
+      remindedNotices.push(notice);
+    }
+
+    return {
+      remindedCount: remindedNotices.length,
+      notices: remindedNotices
     };
   }
 }

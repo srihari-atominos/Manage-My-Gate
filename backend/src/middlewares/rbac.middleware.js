@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import HttpError from '../utils/httpError.utils.js';
-import { mapPermission } from '../utils/permissionMapper.js';
+import { mapPermission, expandUserPermissions } from '../utils/permissionMapper.js';
+import Workspace from '../features/workspace/workspace.model.js';
 
 /**
  * Helper to check if a user is an administrator via token role or live OrgMembership.
@@ -92,7 +93,7 @@ export const getPermissionsForUser = async (user, targetOrgId = null) => {
   
   // Also query live database OrgMembership to dynamically include all user roles
   const userId = user.id || user._id;
-  if (userId && mongoose.isValidObjectId(userId)) {
+  if (userId && mongoose.isValidObjectId(userId) && mongoose.connection?.readyState === 1) {
     try {
       const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
       const filter = { userId, status: 'Active' };
@@ -117,7 +118,7 @@ export const getPermissionsForUser = async (user, targetOrgId = null) => {
   }
 
   // Secondary Fallback: Query roleId by role name if still empty
-  if (roleIds.length === 0 && user.role && (targetOrgId || user.orgId)) {
+  if (roleIds.length === 0 && user.role && (targetOrgId || user.orgId) && mongoose.connection?.readyState === 1) {
     try {
       const roleService = (await import('../features/role/role.services.js')).default;
       const role = await roleService.getRoleByName(user.role, targetOrgId || user.orgId);
@@ -129,18 +130,44 @@ export const getPermissionsForUser = async (user, targetOrgId = null) => {
     }
   }
 
-  if (roleIds.length === 0) return [];
-
-  const rolePermissionService = (await import('../features/rolePermission/rolePermission.services.js')).default;
-  const permissionSet = new Set();
-  for (const rid of roleIds) {
-    const permissionsList = await rolePermissionService.getPermissionsByRoleId(rid);
-    permissionsList.forEach((p) => {
-      if (p && p.name) permissionSet.add(p.name);
-    });
+  // Tertiary Fallback: If no roleIds found in database, provide standard default role permissions
+  // based on user.role string (e.g., 'Admin', 'Resident', 'Guard')
+  if (roleIds.length === 0) {
+    const roleName = user.role;
+    if (roleName === 'Admin' || roleName === 'Community Admin') {
+      return [
+        'notices:dashboard', 'notices:active_board', 'notices:manage_notices', 'notices:polls',
+        'notices:read', 'notices:create', 'notices:update', 'notices:delete', 'notices:publish', 'notices:acknowledge',
+        'polls:read', 'polls:create', 'polls:update', 'polls:delete', 'polls:publish', 'polls:vote', 'polls:view_voters', 'polls:close', 'polls:export'
+      ];
+    }
+    if (roleName === 'Resident') {
+      return [
+        'notices:active_board', 'notices:read', 'notices:acknowledge', 'notices:polls',
+        'polls:read', 'polls:vote'
+      ];
+    }
+    if (roleName === 'Security Guard' || roleName === 'Guard') {
+      return [
+        'notices:active_board', 'notices:read'
+      ];
+    }
+    return [];
   }
 
-  return Array.from(permissionSet);
+  if (mongoose.connection?.readyState === 1) {
+    const rolePermissionService = (await import('../features/rolePermission/rolePermission.services.js')).default;
+    const permissionSet = new Set();
+    for (const rid of roleIds) {
+      const permissionsList = await rolePermissionService.getPermissionsByRoleId(rid);
+      permissionsList.forEach((p) => {
+        if (p && p.name) permissionSet.add(p.name);
+      });
+    }
+    return Array.from(permissionSet);
+  }
+
+  return [];
 };
 
 /**
@@ -179,9 +206,9 @@ export const authorizePermission = (feature, action) => {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
+      // Check if this feature is a dynamic module in the workspace and if it is disabled
       const targetOrgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user?.orgId;
-      if (targetOrgId && mongoose.isValidObjectId(targetOrgId)) {
-        const Workspace = mongoose.model('Workspace');
+      if (targetOrgId && mongoose.isValidObjectId(targetOrgId) && mongoose.connection?.readyState === 1) {
         const workspace = await Workspace.findOne({ organizationId: targetOrgId });
         if (workspace && workspace.modules) {
           const targetModule = workspace.modules.find(m => m.moduleKey === feature);
@@ -197,16 +224,20 @@ export const authorizePermission = (feature, action) => {
         return next();
       }
 
-      // Normalise all user permissions through the mapper before comparing
+      // Normalise all user permissions through the mapper and expand hierarchies
       const permissions = req.tenantPermissions || await getPermissionsForUser(req.user, targetOrgId);
-      const userPermissions = permissions.map(mapPermission);
+      const userPermissions = expandUserPermissions(permissions.map(mapPermission));
 
+      const features = Array.isArray(feature) ? feature : [feature];
       const actions = Array.isArray(action) ? action : [action];
       
-      const hasPermission = actions.some(act => {
-        const requiredPermission = mapPermission(`${feature}:${act}`);
-        return userPermissions.includes(requiredPermission);
-      });
+      const hasPermission = features.some(feat =>
+        actions.some(act => {
+          const permString = act.includes(':') ? act : `${feat}:${act}`;
+          const requiredPermission = mapPermission(permString);
+          return userPermissions.includes(requiredPermission);
+        })
+      );
 
       if (!hasPermission) {
         throw new HttpError(
@@ -250,7 +281,7 @@ export const authorizeAnyPermission = (permissionsArray) => {
 
       const orgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user?.orgId;
       const permissions = await getPermissionsForUser(req.user, orgId);
-      const userPermissions = permissions.map(mapPermission);
+      const userPermissions = expandUserPermissions(permissions.map(mapPermission));
 
       const hasPermission = permissionsArray.some(p => {
         return userPermissions.includes(mapPermission(p));
