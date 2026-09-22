@@ -3,7 +3,7 @@ import { View, Text, Switch } from 'react-native';
 import { cn } from '../../lib/utils';
 
 export interface ToggleSwitchProps {
-  label: string;
+  label?: string;
   description?: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
@@ -21,16 +21,20 @@ export const ToggleSwitch = ({
 }: ToggleSwitchProps) => {
   return (
     <View className={cn('flex-row items-center justify-between py-2', className)}>
-      <View className="flex-1 pe-4">
-        <Text className={cn('text-base font-medium text-foreground', disabled && 'opacity-50')}>
-          {label}
-        </Text>
-        {description && (
-          <Text className={cn('mt-0.5 text-sm text-muted-foreground', disabled && 'opacity-50')}>
-            {description}
-          </Text>
-        )}
-      </View>
+      {(label || description) ? (
+        <View className="flex-1 pe-4">
+          {label && (
+            <Text className={cn('text-base font-medium text-foreground', disabled && 'opacity-50')}>
+              {label}
+            </Text>
+          )}
+          {description && (
+            <Text className={cn('mt-0.5 text-sm text-muted-foreground', disabled && 'opacity-50')}>
+              {description}
+            </Text>
+          )}
+        </View>
+      ) : null}
       <Switch
         value={value}
         onValueChange={onValueChange}

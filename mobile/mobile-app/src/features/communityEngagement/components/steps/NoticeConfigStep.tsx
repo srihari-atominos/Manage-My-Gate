@@ -186,9 +186,9 @@ export const NoticeConfigStep: React.FC<NoticeConfigStepProps> = ({
           </Text>
 
           <AttachmentPicker
-            attachments={images}
-            onAddAttachments={handleAddAttachments}
-            onRemoveAttachment={handleRemoveAttachment}
+            attachments={images as any}
+            onAdd={handleAddAttachments}
+            onRemove={handleRemoveAttachment}
             maxFiles={5}
           />
         </View>

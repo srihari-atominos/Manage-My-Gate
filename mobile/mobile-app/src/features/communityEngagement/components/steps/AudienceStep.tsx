@@ -196,8 +196,8 @@ export const AudienceStep: React.FC<AudienceStepProps> = ({
               label="Role"
               placeholder={loadingRoles ? 'Loading roles...' : 'Choose a role'}
               options={roles}
-              value={selectedRoleId}
-              onChange={(val) => onChangeField('selectedRoleId', val)}
+              value={selectedRoleId || null}
+              onValueChange={(val: string) => onChangeField('selectedRoleId', val)}
             />
           </View>
         )}
@@ -210,8 +210,8 @@ export const AudienceStep: React.FC<AudienceStepProps> = ({
               label="Resident Account"
               placeholder={loadingUsers ? 'Loading residents...' : 'Choose a resident'}
               options={users}
-              value={selectedUserId}
-              onChange={(val) => onChangeField('selectedUserId', val)}
+              value={selectedUserId || null}
+              onValueChange={(val: string) => onChangeField('selectedUserId', val)}
             />
           </View>
         )}
