@@ -26,6 +26,7 @@ export function useAdminMaintenance() {
   const [editingTask, setEditingTask] = useState<MaintenanceTask | null>(null);
   const [selectedAmenityId, setSelectedAmenityId] = useState<string | null>(null);
   const [deleteTargetTask, setDeleteTargetTask] = useState<MaintenanceTask | null>(null);
+  const [deleteTargetAmenity, setDeleteTargetAmenity] = useState<{ amenityId: string; amenityName: string } | null>(null);
   const [scheduling, setScheduling] = useState<boolean>(false);
 
   const { amenities, maintenanceList, loading, error } = useSelector(
@@ -161,77 +162,30 @@ export function useAdminMaintenance() {
     setScheduling(true);
 
     try {
+      let finalAmenityId = amenityId;
+
       if (editingTask) {
-        if (formData.isRecurring) {
-          // Convert / reschedule as recurring series
+        finalAmenityId = editingTask.amenityId || amenityId;
+        // 1. Remove old task to avoid overlap and update cleanly
+        try {
+          await amenityManagementService.deleteMaintenanceBlock(editingTask._id);
+        } catch (_) {
           try {
-            // Cancel old single task
-            try {
-              await amenityManagementService.updateMaintenanceStatus(editingTask._id, 'CANCELLED');
-            } catch (_) {}
-            try {
-              await dispatch(
-                deleteMaintenanceTaskThunk({
-                  amenityId: editingTask.amenityId || amenityId,
-                  maintenanceId: editingTask._id,
-                  blockId: editingTask._id,
-                })
-              ).unwrap();
-            } catch (_) {}
-
-            const startDt = new Date(`${formData.startDate}T${formData.startTime || '08:00'}:00`);
-            const endDt = new Date(`${formData.startDate}T${formData.endTime || '18:00'}:00`);
-
-            const recurringPayload: any = {
-              facilityId: editingTask.amenityId || amenityId,
-              title: formData.title.trim(),
-              reason: (formData.description || formData.title).trim(),
-              maintenanceType: formData.maintenanceType || 'CLEANING',
-              internalNotes: formData.description?.trim() || undefined,
-              startDateTime: isNaN(startDt.getTime()) ? new Date().toISOString() : startDt.toISOString(),
-              endDateTime: isNaN(endDt.getTime()) ? new Date(Date.now() + 86400000).toISOString() : endDt.toISOString(),
-              bufferBeforeMinutes: 0,
-              bufferAfterMinutes: 0,
-              isCompleteClosure: true,
-              degradedCapacity: 0,
-              recurrence: {
-                frequency: formData.frequency || 'WEEKLY',
-                interval: Number(formData.interval) || 1,
-                occurrenceCount: Math.min(
-                  Math.max(
-                    Number(formData.occurrenceCount) ||
-                      (formData.frequency === 'YEARLY' ? 5 : formData.frequency === 'DAILY' ? 14 : 8),
-                    1
-                  ),
-                  60
-                ),
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-                ...(formData.frequency === 'WEEKLY'
-                  ? { daysOfWeek: formData.selectedDays?.length ? formData.selectedDays : [1] }
-                  : {}),
-                ...(formData.frequency === 'MONTHLY'
-                  ? { dayOfMonth: Number(formData.dayOfMonth) || 1 }
-                  : {}),
-              },
-              conflictAction: formData.autoCancelBookings ? 'CANCEL_AND_PROCEED' : undefined,
-            };
-
-            await amenityManagementService.scheduleRecurringMaintenance(recurringPayload);
-          } catch (recErr: any) {
-            const lastErrorMsg = recErr?.response?.data?.message || recErr?.message || 'Failed to update recurring series';
-            setScheduling(false);
-            Alert.alert('Recurring Schedule Error', lastErrorMsg);
-            return;
-          }
-        } else {
-          // Standard one-off update
-          try {
-            await amenityManagementService.updateMaintenanceStatus(editingTask._id, 'SCHEDULED');
+            await amenityManagementService.updateMaintenanceStatus(editingTask._id, 'CANCELLED');
           } catch (_) {}
         }
-      } else {
-        let finalAmenityId = amenityId;
-        if (amenityId === 'OTHER' && formData.customAmenityName) {
+        try {
+          await dispatch(
+            deleteMaintenanceTaskThunk({
+              amenityId: finalAmenityId,
+              maintenanceId: editingTask._id,
+              blockId: editingTask._id,
+            })
+          ).unwrap();
+        } catch (_) {}
+      }
+
+      if (amenityId === 'OTHER' && formData.customAmenityName) {
           const createResult: any = await dispatch(
             createAmenityThunk({
               name: formData.customAmenityName,
@@ -280,14 +234,22 @@ export function useAdminMaintenance() {
               recurrence: {
                 frequency: formData.frequency || 'WEEKLY',
                 interval: Number(formData.interval) || 1,
-                occurrenceCount: Math.min(
-                  Math.max(
-                    Number(formData.occurrenceCount) ||
-                      (formData.frequency === 'YEARLY' ? 5 : formData.frequency === 'DAILY' ? 14 : 8),
-                    1
-                  ),
-                  60
-                ),
+                occurrenceCount: formData.isOngoing
+                  ? formData.frequency === 'YEARLY'
+                    ? 5
+                    : formData.frequency === 'MONTHLY'
+                    ? 12
+                    : formData.frequency === 'DAILY'
+                    ? 30
+                    : 52
+                  : Math.min(
+                      Math.max(
+                        Number(formData.occurrenceCount) ||
+                          (formData.frequency === 'YEARLY' ? 5 : formData.frequency === 'DAILY' ? 14 : 8),
+                        1
+                      ),
+                      60
+                    ),
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
                 ...(formData.frequency === 'WEEKLY'
                   ? { daysOfWeek: formData.selectedDays?.length ? formData.selectedDays : [1] }
@@ -378,7 +340,6 @@ export function useAdminMaintenance() {
           Alert.alert('Scheduling Error', lastErrorMsg);
           return;
         }
-      }
 
       setScheduling(false);
       handleCloseModal();
@@ -390,27 +351,32 @@ export function useAdminMaintenance() {
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deleteTargetTask) return;
-    const targetId = String(deleteTargetTask._id);
-    const targetAmenityId = deleteTargetTask.amenityId;
+  const handleConfirmDelete = async (overrideTask?: MaintenanceTask) => {
+    const targetTask = overrideTask || deleteTargetTask;
+    if (!targetTask) return;
+    const targetId = String(targetTask._id);
+    const targetAmenityId = targetTask.amenityId;
 
     // 1. Optimistically remove from Redux state immediately so UI updates instantly
     dispatch(removeMaintenanceTask(targetId));
-    setDeleteTargetTask(null);
+    if (deleteTargetTask) setDeleteTargetTask(null);
 
     let deleted = false;
+    let lastError: any = null;
     try {
       // 2. Try V2 direct delete
       try {
         await amenityManagementService.deleteMaintenanceBlock(targetId);
         deleted = true;
       } catch (v2DelErr: any) {
+        lastError = v2DelErr;
         // 3. Fall back to V2 status cancellation if direct delete fails
         try {
           await amenityManagementService.updateMaintenanceStatus(targetId, 'CANCELLED');
           deleted = true;
-        } catch (_) {}
+        } catch (v2StatErr: any) {
+          lastError = v2StatErr;
+        }
       }
 
       // 4. Only attempt V1 delete if not resolved in V2 and amenityId exists
@@ -424,10 +390,76 @@ export function useAdminMaintenance() {
             })
           ).unwrap();
           deleted = true;
-        } catch (_) {}
+        } catch (v1Err: any) {
+          lastError = v1Err;
+        }
+      }
+
+      if (!deleted && lastError) {
+        const errorMsg =
+          lastError?.response?.data?.message ||
+          lastError?.message ||
+          'Failed to cancel maintenance window. Please check server connectivity.';
+        Alert.alert('Cancellation Error', errorMsg);
       }
     } catch (err: any) {
       console.warn('[useAdminMaintenance] Delete task note:', err);
+    } finally {
+      await loadData();
+    }
+  };
+
+  const handleConfirmDeleteAll = async () => {
+    if (!deleteTargetAmenity) return;
+    const { amenityId, amenityName } = deleteTargetAmenity;
+
+    // Find all active maintenance tasks for this amenity
+    const tasksToCancel = maintenanceList.filter((t) => {
+      const matchAmenity =
+        String(t.amenityId) === String(amenityId) ||
+        (t.amenityName &&
+          amenityName &&
+          t.amenityName.trim().toLowerCase() === amenityName.trim().toLowerCase());
+      const s = String(t.status || '').toUpperCase();
+      return matchAmenity && s !== 'CANCELLED' && s !== 'COMPLETED';
+    });
+
+    if (tasksToCancel.length === 0) {
+      setDeleteTargetAmenity(null);
+      return;
+    }
+
+    // 1. Optimistically remove all from Redux state
+    tasksToCancel.forEach((task) => {
+      if (task._id) {
+        dispatch(removeMaintenanceTask(String(task._id)));
+      }
+    });
+    setDeleteTargetAmenity(null);
+
+    // 2. Concurrently cancel each task via multi-tier fallback
+    try {
+      await Promise.allSettled(
+        tasksToCancel.map(async (task) => {
+          const id = String(task._id);
+          try {
+            await amenityManagementService.deleteMaintenanceBlock(id);
+          } catch (_) {
+            try {
+              await amenityManagementService.updateMaintenanceStatus(id, 'CANCELLED');
+            } catch (_) {
+              if (task.amenityId && task.amenityId !== 'OTHER') {
+                try {
+                  const amenityService = await import('../services/amenityService');
+                  await amenityService.deleteMaintenanceTask(task.amenityId, id);
+                } catch (_) {}
+              }
+            }
+          }
+        })
+      );
+    } catch (err: any) {
+      console.warn('[useAdminMaintenance] Bulk delete tasks error:', err);
     } finally {
       await loadData();
     }
@@ -443,6 +475,8 @@ export function useAdminMaintenance() {
     selectedAmenityId,
     deleteTargetTask,
     setDeleteTargetTask,
+    deleteTargetAmenity,
+    setDeleteTargetAmenity,
     scheduling,
     loadData,
     handleLoadMore: loadData,
@@ -451,6 +485,7 @@ export function useAdminMaintenance() {
     handleCloseModal,
     handleScheduleSubmit,
     handleConfirmDelete,
+    handleConfirmDeleteAll,
   };
 }
 

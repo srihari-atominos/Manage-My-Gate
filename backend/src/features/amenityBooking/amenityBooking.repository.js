@@ -207,16 +207,61 @@ export class AmenityBookingRepository {
       .exec();
   }
 
-  async findEventsForCalendar(orgId, startDate, endDate) {
+  async findEventsForCalendar(orgId, startDate, endDate, filters = {}) {
     const query = { orgId: new mongoose.Types.ObjectId(orgId) };
     if (startDate && endDate) {
       query.bookingDate = { $gte: startDate, $lte: endDate };
+    } else if (startDate) {
+      query.bookingDate = { $gte: startDate };
+    } else if (endDate) {
+      query.bookingDate = { $lte: endDate };
     }
-    return await AmenityBooking.find(query)
-    .populate('userId', 'name email profilePicture flatNumber building tower phoneNumber villaNumber username')
-    .populate('amenityId', 'name type images location bookingRules pricing')
-    .sort({ bookingDate: 1, startTime: 1 })
-    .lean();
+    const targetAmenityId = filters.facilityId || filters.amenityId;
+    if (targetAmenityId && targetAmenityId !== 'All') {
+      query.amenityId = new mongoose.Types.ObjectId(targetAmenityId);
+    }
+    if (filters.status && filters.status !== 'All') {
+      query.status = filters.status.toLowerCase();
+    }
+    if (filters.paymentStatus && filters.paymentStatus !== 'All') {
+      query.paymentStatus = filters.paymentStatus.toLowerCase();
+    }
+    const bookings = await AmenityBooking.find(query)
+      .populate('userId', 'name email profilePicture flatNumber building tower phoneNumber villaNumber username')
+      .populate('amenityId', 'name type images location bookingRules pricing')
+      .sort({ bookingDate: 1, startTime: 1 })
+      .lean();
+
+    // If amenityId is null (e.g. references AmenityFacility in V2), populate from AmenityFacility
+    const unpopulated = bookings.filter((b) => !b.amenityId);
+    if (unpopulated.length > 0) {
+      const rawDocs = await AmenityBooking.find(
+        { _id: { $in: unpopulated.map((u) => u._id) } },
+        { amenityId: 1 }
+      ).lean();
+      const rawMap = new Map(rawDocs.map((r) => [String(r._id), r.amenityId]));
+      const facilityIds = [...new Set(rawDocs.map((r) => r.amenityId).filter(Boolean))];
+
+      if (facilityIds.length > 0) {
+        const AmenityFacility = mongoose.models.AmenityFacility || (await import('../amenityManagement/facilities/amenityFacility.model.js')).default;
+        const facilities = await AmenityFacility.find({ _id: { $in: facilityIds } }).lean();
+        const facMap = new Map(facilities.map((f) => [String(f._id), f]));
+
+        for (const b of unpopulated) {
+          const rawAmenityId = rawMap.get(String(b._id));
+          if (rawAmenityId) {
+            const fac = facMap.get(String(rawAmenityId));
+            if (fac) {
+              b.amenityId = fac;
+            } else {
+              b.amenityId = { _id: rawAmenityId, name: 'Amenity' };
+            }
+          }
+        }
+      }
+    }
+
+    return bookings;
   }
 
   async getAggregatedCalendarBookings(orgId, startDate, endDate) {

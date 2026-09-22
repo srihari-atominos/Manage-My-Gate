@@ -39,8 +39,13 @@ export class AmenityBookingService {
     return await amenityBookingRepository.findByUser(userId, orgId, filters);
   }
 
-  async findEventsForCalendar(orgId, startDate, endDate) {
-    return await amenityBookingRepository.findEventsForCalendar(orgId, startDate, endDate);
+  async findEventsForCalendar(orgId, startDate, endDate, filters = {}) {
+    return await amenityBookingRepository.findEventsForCalendar(orgId, startDate, endDate, filters);
+  }
+
+  async getAdminCalendar(orgId, startDate, endDate, filters = {}) {
+    const dashboardService = (await import('../amenityDashboard/amenityDashboard.service.js')).default;
+    return await dashboardService.getCalendarEvents(orgId, startDate, endDate, filters);
   }
 
   async getAggregatedCalendarBookings(orgId, startDate, endDate) {

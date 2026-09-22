@@ -79,11 +79,12 @@ const DayRenderer = memo(({ currentDate, events = [], onEventClick }) => {
               const top = startH * hourHeight
               const height = dur * hourHeight
               const colors = getStatusColor(evt.colorKey || evt.status)
+              const isMaint = evt.type === 'maintenance'
 
               return (
                 <div
                   key={evt.id}
-                  className="rcv-event-card"
+                  className={`rcv-event-card ${isMaint ? 'rcv-event-card--maintenance' : ''}`}
                   style={{
                     top: `${top}px`,
                     height: `${height}px`,
@@ -95,11 +96,38 @@ const DayRenderer = memo(({ currentDate, events = [], onEventClick }) => {
                   }}
                   onClick={() => onEventClick && onEventClick(evt)}
                 >
-                  <div className="rcv-event-header">
-                    <span className="rcv-event-title">{evt.title}</span>
-                    <span className="rcv-event-time">
-                      {evt.start} - {evt.end}
+                  <div className="rcv-event-header d-flex align-items-center justify-content-between">
+                    <span className="rcv-event-title d-flex align-items-center">
+                      {isMaint && <i className="fa-solid fa-wrench me-1"></i>}
+                      {evt.title}
                     </span>
+                    <div className="d-flex align-items-center gap-2">
+                      {!isMaint && evt.paymentStatus && (
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: '10px',
+                            padding: '2px 6px',
+                            backgroundColor:
+                              evt.paymentStatus === 'PAID'
+                                ? '#16A34A'
+                                : evt.paymentStatus === 'PARTIALLY_PAID'
+                                  ? '#D97706'
+                                  : '#DC2626',
+                            color: '#fff',
+                          }}
+                        >
+                          {evt.paymentStatus === 'PAID'
+                            ? '✓ Paid'
+                            : evt.paymentStatus === 'PARTIALLY_PAID'
+                              ? '◐ Partial'
+                              : '! Unpaid'}
+                        </span>
+                      )}
+                      <span className="rcv-event-time">
+                        {evt.start} - {evt.end}
+                      </span>
+                    </div>
                   </div>
                   {evt.subtitle && <div className="rcv-event-subtitle">{evt.subtitle}</div>}
                 </div>

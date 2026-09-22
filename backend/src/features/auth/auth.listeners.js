@@ -48,7 +48,7 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
               html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes.</p>`,
             });
 
-            logger.info(`OTP email sent successfully to ${identifier} via IntegrationHub SMTP (${host} - ${authUsername})`);
+            logger.info(`OTP email sent successfully to ${maskEmail(identifier)} via IntegrationHub SMTP (${host} - ${authUsername})`);
             return;
           }
         } catch (smtpErr) {
@@ -79,7 +79,7 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
           });
 
           if (response.ok) {
-            logger.info(`OTP email sent to ${identifier} via Resend`);
+            logger.info(`OTP email sent to ${maskEmail(identifier)} via Resend`);
             return;
           } else {
             const errData = await response.json();
@@ -99,7 +99,7 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
           subject: 'Your One-Time Password (OTP)',
           html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes.</p>`,
         });
-        logger.info(`OTP email sent to ${identifier} via Environment SMTP`);
+        logger.info(`OTP email sent to ${maskEmail(identifier)} via Environment SMTP`);
         return;
       }
 
@@ -147,7 +147,7 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
             }),
           });
           if (response.ok) {
-            logger.info(`OTP SMS sent to ${identifier} via Twilio`);
+            logger.info(`OTP SMS sent to ${maskPhone(identifier)} via Twilio`);
             return;
           } else {
             const errData = await response.json();
@@ -223,7 +223,7 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
             });
             
             if (sendRes.ok) {
-              logger.info(`OTP SMS sent to ${identifier} via Message Central`);
+              logger.info(`OTP SMS sent to ${maskPhone(identifier)} via Message Central`);
               return;
             } else {
               const errData = await sendRes.json().catch(() => ({ message: sendRes.statusText }));
@@ -233,9 +233,9 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
         }
       }
 
-      logger.warn(`No active SMS provider (Twilio/MessageCentral) found. OTP SMS to ${identifier} was not sent. Check your integrations.`);
+      logger.warn(`No active SMS provider (Twilio/MessageCentral) found. OTP SMS to ${maskPhone(identifier)} was not sent. Check your integrations.`);
     } catch (error) {
-      logger.error(`Failed to send OTP SMS to ${identifier}:`, error);
+      logger.error(`Failed to send OTP SMS to ${maskPhone(identifier)}: ${error.message}`);
     }
   }
 });

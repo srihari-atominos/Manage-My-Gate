@@ -13,6 +13,7 @@ export const AMENITY_EVENTS = {
   MAINTENANCE_EXTENDED: 'amenity:maintenance:extended',
   MAINTENANCE_COMPLETED: 'amenity:maintenance:completed',
   MAINTENANCE_CANCELLED: 'amenity:maintenance:cancelled',
+  MAINTENANCE_DELETED: 'amenity:maintenance:deleted',
   REFUND_DISPATCH_REQUIRED: 'amenity:refund:required',
   FACILITY_CREATED: 'amenity:facility:created',
   FACILITY_PUBLISHED: 'amenity:facility:published',
@@ -68,6 +69,10 @@ amenityManagementEvents.on(AMENITY_EVENTS.MAINTENANCE_COMPLETED, (payload) => {
 
 amenityManagementEvents.on(AMENITY_EVENTS.MAINTENANCE_CANCELLED, (payload) => {
   amenityManagementSocket.dispatchMaintenanceEvent(payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.MAINTENANCE_DELETED, (payload) => {
+  amenityManagementSocket.dispatchMaintenanceEvent({ ...payload, status: 'CANCELLED' });
 });
 
 amenityManagementEvents.on(AMENITY_EVENTS.FACILITY_CREATED, (payload) => {

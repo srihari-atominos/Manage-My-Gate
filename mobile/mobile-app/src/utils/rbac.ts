@@ -93,9 +93,9 @@ export const checkIsSecurityRole = (user: UserLike | null | undefined): boolean 
 // Permission synonyms and equivalencies mapping for Role Builder permission keys
 const PERMISSION_SYNONYMS: Record<string, string[]> = {
   // Visitor & Gate Security
-  'visitor:guard': ['visitor:guard', 'visitor.guard', 'visitor:admin', 'visitor', 'gate:console', 'visitor_gate_console', 'visitor_gate_pass'],
-  'visitor:admin': ['visitor:admin', 'visitor.admin', 'visitor:guard', 'visitor', 'visitor_admin_dashboard', 'visitor_community_passes', 'visitor_admin_logs', 'visitor_gate_console', 'visitor_gate_pass', 'visitor_invite'],
-  'visitor:resident': ['visitor:resident', 'visitor.resident', 'visitor', 'visitor_resident_passes', 'visitor_passes', 'visitor:view', 'visitor:read', 'visitor_gate_pass', 'visitor_gate_console', 'visitor_invite'],
+  'visitor:guard': ['visitor:guard', 'visitor.guard', 'visitor:admin', 'visitor', 'gate:console', 'visitor_gate_console'],
+  'visitor:admin': ['visitor:admin', 'visitor.admin', 'visitor:guard', 'visitor', 'visitor_admin_dashboard', 'visitor_community_passes', 'visitor_admin_logs', 'visitor_gate_console', 'visitor_invite'],
+  'visitor:resident': ['visitor:resident', 'visitor.resident', 'visitor', 'visitor_resident_passes', 'visitor_passes', 'visitor:view', 'visitor:read', 'visitor_gate_console', 'visitor_invite'],
 
   // Notice Board
   'notices:active_board': ['notices:active_board', 'notices:read', 'notices.read', 'notices:view', 'notices.view', 'notices', 'notice_board'],

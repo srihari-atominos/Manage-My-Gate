@@ -83,4 +83,24 @@ describe('Phase 1 Security Hardening: Phone Lifecycle Tests', () => {
       );
     });
   });
+
+  describe('5. CRM Enquiry Conversion Phone Normalization Tests', () => {
+    it('should normalize un-normalized CRM phone input (919876543210) to canonical E.164 (+919876543210)', () => {
+      const rawPhone = '919876543210';
+      const normalized = rawPhone ? (normalizePhone(rawPhone) || rawPhone) : '';
+      assert.equal(normalized, '+919876543210');
+    });
+
+    it('should preserve already canonical CRM phone input (+919876543210)', () => {
+      const rawPhone = '+919876543210';
+      const normalized = rawPhone ? (normalizePhone(rawPhone) || rawPhone) : '';
+      assert.equal(normalized, '+919876543210');
+    });
+
+    it('should handle un-prefixed 10-digit CRM phone input (9876543210)', () => {
+      const rawPhone = '9876543210';
+      const normalized = rawPhone ? (normalizePhone(rawPhone) || rawPhone) : '';
+      assert.equal(normalized, '+919876543210');
+    });
+  });
 });

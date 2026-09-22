@@ -419,10 +419,24 @@ export const deleteMaintenanceTaskThunk = createAsyncThunk(
     if (!id) return rejectWithValue('Missing blockId');
     try {
       const amenityManagementService = (await import('../services/amenityManagementService')).default;
-      const response = await amenityManagementService.updateMaintenanceStatus(id, 'CANCELLED');
-      return { blockId: id, maintenanceId: id, response: response?.data || response };
-    } catch (error: any) {
-      return rejectWithValue(error?.response?.data?.message || error.message || 'Failed to cancel maintenance task');
+      try {
+        const response = await amenityManagementService.deleteMaintenanceBlock(id);
+        return { blockId: id, maintenanceId: id, response: response?.data || response };
+      } catch (delErr) {
+        const response = await amenityManagementService.updateMaintenanceStatus(id, 'CANCELLED');
+        return { blockId: id, maintenanceId: id, response: response?.data || response };
+      }
+    } catch (v2Error: any) {
+      if (payload.amenityId && payload.maintenanceId) {
+        try {
+          const amenityService = await import('../services/amenityService');
+          const response = await amenityService.deleteMaintenanceTask(payload.amenityId, payload.maintenanceId);
+          return { blockId: id, maintenanceId: id, response: response?.data || response };
+        } catch (v1Error: any) {
+          return rejectWithValue(v1Error?.response?.data?.message || v1Error.message || 'Failed to cancel maintenance task');
+        }
+      }
+      return rejectWithValue(v2Error?.response?.data?.message || v2Error.message || 'Failed to cancel maintenance task');
     }
   }
 );

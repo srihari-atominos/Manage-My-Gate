@@ -24,9 +24,18 @@ export class AmenityBookingController {
   async getAdminCalendar(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, date, amenityId, facilityId, resourceId, status, paymentStatus, search } = req.query;
+      const filters = {
+        facilityId: facilityId || amenityId,
+        resourceId,
+        status,
+        paymentStatus,
+        search,
+      };
+      const effectiveStart = startDate || date;
+      const effectiveEnd = endDate || date;
       
-      const bookings = await amenityBookingService.findEventsForCalendar(orgId, startDate, endDate);
+      const bookings = await amenityBookingService.getAdminCalendar(orgId, effectiveStart, effectiveEnd, filters);
       res.success(bookings, 'Admin calendar bookings retrieved successfully');
     } catch (error) {
       next(error);

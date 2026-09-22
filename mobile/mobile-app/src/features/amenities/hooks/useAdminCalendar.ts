@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import {
   fetchAdminCalendarThunk,
-  createManualBookingThunk,
-  adminCancelBookingThunk,
   AmenityBooking,
 } from '../store/amenityBookingSlice';
 import { fetchAmenitiesThunk } from '../store/amenitySlice';
-import { ManualBookingFormData } from '../components/ManualBookingModal';
-
-export type CalendarViewMode = 'day' | 'week' | 'month';
+import { CalendarFilterState } from '../components/AdminCalendarFilterDrawer';
+import {
+  calculateFacilityAvailability,
+  detectReservationConflicts,
+  getTimePresetInterval,
+  isTimeIntervalOverlapping,
+  FacilityAvailabilityItem,
+} from '../utils/amenityAvailabilityHelpers';
 
 export const formatDateString = (dateObj: Date): string => {
   const year = dateObj.getFullYear();
@@ -20,191 +22,367 @@ export const formatDateString = (dateObj: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+export const INITIAL_CALENDAR_FILTERS: CalendarFilterState = {
+  datePreset: 'selected',
+  customStartDate: undefined,
+  customEndDate: undefined,
+  facilityId: 'All',
+  availability: 'ALL',
+  timePreset: 'all',
+  customStartTime: undefined,
+  customEndTime: undefined,
+  bookingStatus: 'All',
+  paymentStatus: 'All',
+};
+
 export function useAdminCalendar() {
   const dispatch = useDispatch<AppDispatch>();
 
-  // Date & View Mode State
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('day');
+  // Date State (Month navigation)
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const selectedDate = useMemo(() => formatDateString(currentDate), [currentDate]);
+  const [selectedDate, setSelectedDate] = useState<string>(() => formatDateString(new Date()));
 
   // Filters State
-  const [selectedAmenityId, setSelectedAmenityId] = useState<string>('All');
-  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [filters, setFilters] = useState<CalendarFilterState>(INITIAL_CALENDAR_FILTERS);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('All');
 
-  // Modals & Action Targets State
-  const [isManualModalOpen, setIsManualModalOpen] = useState<boolean>(false);
-  const [cancelTarget, setCancelTarget] = useState<AmenityBooking | null>(null);
+  // Selected Booking Detail Modal
   const [selectedBookingDetail, setSelectedBookingDetail] = useState<AmenityBooking | null>(null);
-  const [submittingManual, setSubmittingManual] = useState<boolean>(false);
-  const [submittingCancel, setSubmittingCancel] = useState<boolean>(false);
 
   const { adminBookings, pagination, loading, error } = useSelector((state: RootState) => state.amenityBookings);
   const { amenities } = useSelector((state: RootState) => state.amenities);
 
-  // Date Bounds Calculation for API requests
+  // Month Date Bounds for API request
   const dateBounds = useMemo(() => {
     const curr = new Date(currentDate);
-    if (viewMode === 'month') {
-      const start = new Date(curr.getFullYear(), curr.getMonth(), 1);
-      const end = new Date(curr.getFullYear(), curr.getMonth() + 1, 0);
-      return { startDate: formatDateString(start), endDate: formatDateString(end) };
-    } else if (viewMode === 'week') {
-      const dayOfWeek = curr.getDay();
-      const start = new Date(curr);
-      start.setDate(curr.getDate() - dayOfWeek);
-      const end = new Date(start);
-      end.setDate(start.getDate() + 6);
-      return { startDate: formatDateString(start), endDate: formatDateString(end) };
-    } else {
-      // Single day view
-      const singleDate = formatDateString(curr);
-      return { startDate: singleDate, endDate: singleDate };
+    const start = new Date(curr.getFullYear(), curr.getMonth(), 1);
+    const end = new Date(curr.getFullYear(), curr.getMonth() + 1, 0);
+
+    // If custom date range filter is active, span to include custom dates
+    if (filters.datePreset === 'custom' && filters.customStartDate && filters.customEndDate) {
+      return {
+        startDate: filters.customStartDate < formatDateString(start) ? filters.customStartDate : formatDateString(start),
+        endDate: filters.customEndDate > formatDateString(end) ? filters.customEndDate : formatDateString(end),
+      };
     }
-  }, [currentDate, viewMode]);
+
+    return { startDate: formatDateString(start), endDate: formatDateString(end) };
+  }, [currentDate, filters.datePreset, filters.customStartDate, filters.customEndDate]);
 
   const loadData = useCallback(() => {
     dispatch(
       fetchAdminCalendarThunk({
-        date: selectedDate,
         startDate: dateBounds.startDate,
         endDate: dateBounds.endDate,
-        amenityId: selectedAmenityId !== 'All' ? selectedAmenityId : undefined,
-        status: statusFilter !== 'All' ? statusFilter : undefined,
+        amenityId: filters.facilityId !== 'All' ? filters.facilityId : undefined,
+        status: filters.bookingStatus !== 'All' ? filters.bookingStatus : undefined,
         search: searchQuery.trim() || undefined,
-        paymentStatus: paymentStatusFilter !== 'All' ? paymentStatusFilter : undefined,
+        paymentStatus: filters.paymentStatus !== 'All' ? filters.paymentStatus : undefined,
       })
     );
     dispatch(fetchAmenitiesThunk({}));
   }, [
     dispatch,
-    selectedDate,
     dateBounds.startDate,
     dateBounds.endDate,
-    selectedAmenityId,
-    statusFilter,
+    filters.facilityId,
+    filters.bookingStatus,
+    filters.paymentStatus,
     searchQuery,
-    paymentStatusFilter,
   ]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Date Navigation Helpers
+  // Month Navigation Helpers
   const navigateDate = (direction: number) => {
     const nextDate = new Date(currentDate);
-    if (viewMode === 'month') {
-      nextDate.setMonth(nextDate.getMonth() + direction);
-    } else if (viewMode === 'week') {
-      nextDate.setDate(nextDate.getDate() + direction * 7);
-    } else {
-      nextDate.setDate(nextDate.getDate() + direction);
-    }
+    nextDate.setMonth(nextDate.getMonth() + direction);
     setCurrentDate(nextDate);
+
+    // If target month contains today, select today; otherwise select 1st of target month
+    const today = new Date();
+    if (today.getFullYear() === nextDate.getFullYear() && today.getMonth() === nextDate.getMonth()) {
+      setSelectedDate(formatDateString(today));
+    } else {
+      const firstOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth(), 1);
+      setSelectedDate(formatDateString(firstOfMonth));
+    }
   };
 
   const setToday = () => {
-    setCurrentDate(new Date());
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(formatDateString(today));
   };
 
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
+    setSelectedDate(dateString);
+
     const parts = dateString.split('-');
     if (parts.length === 3) {
       const y = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10) - 1;
       const d = parseInt(parts[2], 10);
-      setCurrentDate(new Date(y, m, d));
+      const newD = new Date(y, m, d);
+
+      // If selected date is in a different month, update currentDate
+      if (currentDate.getFullYear() !== y || currentDate.getMonth() !== m) {
+        setCurrentDate(newD);
+      }
     }
   };
 
-  // Client-Side Dynamic Filtering for Responsive UX
+  // Available Resources extracted from loaded bookings & amenities
+  const availableResources = useMemo(() => {
+    const map = new Map<string, { _id: string; name: string; facilityId?: string }>();
+
+    for (const b of adminBookings || []) {
+      if (b.resourceId && b.resourceName) {
+        const facId =
+          typeof b.amenityId === 'object' && b.amenityId ? b.amenityId._id : b.amenityId;
+        if (!map.has(b.resourceId)) {
+          map.set(b.resourceId, {
+            _id: b.resourceId,
+            name: b.resourceName,
+            facilityId: facId,
+          });
+        }
+      }
+    }
+
+    return Array.from(map.values());
+  }, [adminBookings]);
+
+  // Availability Summary for Selected Date
+  const availabilitySummary = useMemo((): FacilityAvailabilityItem[] => {
+    if (!amenities || amenities.length === 0) return [];
+
+    const maintenanceBlocks = (adminBookings || []).filter((b) => b.type === 'maintenance');
+    const timeInterval = getTimePresetInterval(
+      filters.timePreset,
+      filters.customStartTime,
+      filters.customEndTime
+    );
+
+    return amenities.map((facility) => {
+      return calculateFacilityAvailability({
+        facility,
+        reservations: adminBookings as any,
+        maintenanceBlocks: maintenanceBlocks as any,
+        selectedDate,
+        timeInterval,
+      });
+    });
+  }, [amenities, adminBookings, selectedDate, filters.timePreset, filters.customStartTime, filters.customEndTime]);
+
+  const facilityAvailabilityMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of availabilitySummary) {
+      map.set(item.facilityId, item.state);
+    }
+    return map;
+  }, [availabilitySummary]);
+
+  // Client-Side Dynamic Filtering for Responsive & Filter-Aware UX
   const filteredBookings = useMemo(() => {
     if (!adminBookings) return [];
 
+    const timeInterval = getTimePresetInterval(
+      filters.timePreset,
+      filters.customStartTime,
+      filters.customEndTime
+    );
+
     return adminBookings.filter((item) => {
-      // Amenity Filter
-      if (selectedAmenityId && selectedAmenityId !== 'All') {
-        const itemAmenityId =
-          typeof item.amenityId === 'object' && item.amenityId ? item.amenityId._id : item.amenityId;
-        if (itemAmenityId !== selectedAmenityId) return false;
+      const itemAmenityId =
+        typeof item.amenityId === 'object' && item.amenityId
+          ? (item.amenityId as any)._id || (item.amenityId as any).id
+          : item.amenityId;
+
+      const itemResourceId =
+        typeof item.resourceId === 'object' && item.resourceId
+          ? (item.resourceId as any)._id || (item.resourceId as any).id
+          : item.resourceId;
+
+      // 1. Facility Filter
+      if (filters.facilityId && filters.facilityId !== 'All') {
+        if (itemAmenityId !== filters.facilityId) return false;
       }
 
-      // Status Filter
-      if (statusFilter && statusFilter !== 'All') {
-        if (item.status?.toUpperCase() !== statusFilter.toUpperCase()) return false;
+      // 2. Status Filter
+      if (filters.bookingStatus && filters.bookingStatus !== 'All') {
+        if (item.status?.toUpperCase() !== filters.bookingStatus.toUpperCase()) return false;
       }
 
-      // Payment Status Filter
-      if (paymentStatusFilter && paymentStatusFilter !== 'All') {
-        if (item.paymentStatus?.toUpperCase() !== paymentStatusFilter.toUpperCase()) return false;
+      // 4. Payment Status Filter
+      if (filters.paymentStatus && filters.paymentStatus !== 'All') {
+        if (item.paymentStatus?.toUpperCase() !== filters.paymentStatus.toUpperCase()) return false;
       }
 
-      // Search Query Filter (Resident name, flat/villa number, pass code, amenity name)
+      // 5. Availability Filter
+      if (filters.availability && filters.availability !== 'ALL') {
+        const facState = facilityAvailabilityMap.get(itemAmenityId);
+        if (item.type === 'maintenance') {
+          if (filters.availability !== 'MAINTENANCE') return false;
+        } else {
+          if (filters.availability === 'MAINTENANCE') return false;
+          if (facState && facState !== filters.availability) return false;
+        }
+      }
+
+      // 6. Time Filter
+      if (timeInterval && item.startTime && item.endTime) {
+        if (!isTimeIntervalOverlapping(timeInterval.startTime, timeInterval.endTime, item.startTime, item.endTime)) {
+          return false;
+        }
+      }
+
+      // 7. Date Range Filter
+      const rawDate = item.date || item.bookingDate;
+      const itemDate = rawDate ? (rawDate.includes('T') ? rawDate.split('T')[0] : rawDate) : '';
+
+      if (filters.datePreset === 'today') {
+        const todayStr = formatDateString(new Date());
+        if (itemDate !== todayStr) return false;
+      } else if (filters.datePreset === 'week') {
+        const curr = new Date(currentDate);
+        const dayOfWeek = curr.getDay();
+        const startWeek = new Date(curr);
+        startWeek.setDate(curr.getDate() - dayOfWeek);
+        const endWeek = new Date(startWeek);
+        endWeek.setDate(startWeek.getDate() + 6);
+        const startStr = formatDateString(startWeek);
+        const endStr = formatDateString(endWeek);
+        if (itemDate < startStr || itemDate > endStr) return false;
+      } else if (filters.datePreset === 'month') {
+        const curr = new Date(currentDate);
+        const startMonth = formatDateString(new Date(curr.getFullYear(), curr.getMonth(), 1));
+        const endMonth = formatDateString(new Date(curr.getFullYear(), curr.getMonth() + 1, 0));
+        if (itemDate < startMonth || itemDate > endMonth) return false;
+      } else if (filters.datePreset === 'custom') {
+        if (filters.customStartDate && itemDate < filters.customStartDate) return false;
+        if (filters.customEndDate && itemDate > filters.customEndDate) return false;
+      }
+
+      // 7. Search Query Filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
         const amenityName =
           typeof item.amenityId === 'object' && item.amenityId
             ? item.amenityId.name
             : item.amenityName || '';
+        const resourceName = item.resourceName || '';
         const residentName = item.residentName || (item as any).userName || '';
         const villaNumber =
           (item as any).villaNumber || (item as any).flatNumber || (item as any).unit || '';
-        const passCode = item.qrCode || item.passCode || item._id || '';
+        const passCode = item.reservationNumber || item.bookingId || item.qrCode || item._id || '';
 
         const matchAmenity = amenityName.toLowerCase().includes(query);
+        const matchResource = resourceName.toLowerCase().includes(query);
         const matchResident = residentName.toLowerCase().includes(query);
         const matchVilla = villaNumber.toLowerCase().includes(query);
         const matchPassCode = passCode.toLowerCase().includes(query);
 
-        if (!matchAmenity && !matchResident && !matchVilla && !matchPassCode) return false;
+        if (!matchAmenity && !matchResource && !matchResident && !matchVilla && !matchPassCode) {
+          return false;
+        }
       }
 
       return true;
     });
-  }, [adminBookings, selectedAmenityId, statusFilter, paymentStatusFilter, searchQuery]);
+  }, [adminBookings, filters, searchQuery, currentDate]);
 
-  // Modal Handlers
-  const handleOpenManualModal = () => setIsManualModalOpen(true);
-  const handleCloseManualModal = () => setIsManualModalOpen(false);
+  // Group and count actual reservation records by date from filteredBookings
+  // Excludes maintenance events and deduplicates records
+  const bookingCountsByDate = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const countedIds = new Set<string>();
 
-  const handleManualSubmit = async (formData: ManualBookingFormData) => {
-    setSubmittingManual(true);
-    try {
-      await dispatch(createManualBookingThunk(formData)).unwrap();
-      setSubmittingManual(false);
-      handleCloseManualModal();
-      loadData();
-    } catch (err: any) {
-      setSubmittingManual(false);
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to create manual reservation';
-      Alert.alert('Reservation Error', msg);
+    for (const item of filteredBookings) {
+      if (item.type === 'maintenance') {
+        continue;
+      }
+
+      // Deduplicate by ID
+      const uniqueKey = item._id || item.bookingId || item.reservationNumber;
+      if (uniqueKey && countedIds.has(uniqueKey)) {
+        continue;
+      }
+      if (uniqueKey) {
+        countedIds.add(uniqueKey);
+      }
+
+      const rawDate = item.date || item.bookingDate;
+      if (rawDate) {
+        const dateKey = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+        counts[dateKey] = (counts[dateKey] || 0) + 1;
+      }
     }
+    return counts;
+  }, [filteredBookings]);
+
+  // Reservations & Events for the currently selected date
+  const selectedDateBookings = useMemo(() => {
+    const seenIds = new Set<string>();
+    return filteredBookings.filter((item) => {
+      const rawDate = item.date || item.bookingDate;
+      if (!rawDate) return false;
+      const dateKey = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+      if (dateKey !== selectedDate) return false;
+
+      // Deduplicate by ID
+      const uniqueKey = item._id || item.bookingId || item.reservationNumber;
+      if (uniqueKey && seenIds.has(uniqueKey)) {
+        return false;
+      }
+      if (uniqueKey) {
+        seenIds.add(uniqueKey);
+      }
+      return true;
+    });
+  }, [filteredBookings, selectedDate]);
+
+  // Conflict Detection
+  const conflictedBookingIds = useMemo(() => {
+    return detectReservationConflicts(filteredBookings as any);
+  }, [filteredBookings]);
+
+  // Filter Actions
+  const handleApplyFilters = (newFilters: CalendarFilterState) => {
+    setFilters(newFilters);
   };
 
-  const handleConfirmAdminCancel = async (reason?: string) => {
-    if (!cancelTarget) return;
-    setSubmittingCancel(true);
-    try {
-      await dispatch(
-        adminCancelBookingThunk({
-          bookingId: cancelTarget._id,
-          reason: reason || 'Admin Cancellation',
-        })
-      ).unwrap();
-      setSubmittingCancel(false);
-      setCancelTarget(null);
-      setSelectedBookingDetail(null);
-      loadData();
-    } catch (err: any) {
-      setSubmittingCancel(false);
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to cancel reservation';
-      Alert.alert('Cancellation Error', msg);
-    }
+  const handleResetFilters = () => {
+    setFilters(INITIAL_CALENDAR_FILTERS);
+    setSearchQuery('');
   };
+
+  const handleRemoveFilter = (key: keyof CalendarFilterState | 'searchQuery') => {
+    if (key === 'searchQuery') {
+      setSearchQuery('');
+      return;
+    }
+    setFilters((prev) => ({
+      ...prev,
+      [key]: INITIAL_CALENDAR_FILTERS[key],
+    }));
+  };
+
+  // Active filter count for badge
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.datePreset !== 'selected') count++;
+    if (filters.facilityId !== 'All') count++;
+    if (filters.availability !== 'ALL') count++;
+    if (filters.timePreset !== 'all') count++;
+    if (filters.bookingStatus !== 'All') count++;
+    if (filters.paymentStatus !== 'All') count++;
+    if (searchQuery.trim()) count++;
+    return count;
+  }, [filters, searchQuery]);
 
   const handleLoadMore = useCallback(() => {
     if (pagination && pagination.currentPage < pagination.totalPages) {
@@ -213,10 +391,10 @@ export function useAdminCalendar() {
           date: selectedDate,
           startDate: dateBounds.startDate,
           endDate: dateBounds.endDate,
-          amenityId: selectedAmenityId,
-          status: statusFilter,
-          search: searchQuery,
-          paymentStatus: paymentStatusFilter,
+          amenityId: filters.facilityId !== 'All' ? filters.facilityId : undefined,
+          status: filters.bookingStatus !== 'All' ? filters.bookingStatus : undefined,
+          search: searchQuery.trim() || undefined,
+          paymentStatus: filters.paymentStatus !== 'All' ? filters.paymentStatus : undefined,
           page: pagination.currentPage + 1,
         } as any)
       );
@@ -227,47 +405,41 @@ export function useAdminCalendar() {
     selectedDate,
     dateBounds.startDate,
     dateBounds.endDate,
-    selectedAmenityId,
-    statusFilter,
+    filters.facilityId,
+    filters.bookingStatus,
+    filters.paymentStatus,
     searchQuery,
-    paymentStatusFilter,
   ]);
 
   return {
     adminBookings,
     filteredBookings,
+    selectedDateBookings,
+    bookingCountsByDate,
     amenities,
+    availableResources,
+    conflictedBookingIds,
+    availabilitySummary,
     pagination,
     handleLoadMore,
-    viewMode,
-    setViewMode,
     currentDate,
     selectedDate,
     handleDateChange,
     navigateDate,
     setToday,
-    selectedAmenityId,
-    setSelectedAmenityId,
-    statusFilter,
-    setStatusFilter,
+    filters,
+    setFilters,
     searchQuery,
     setSearchQuery,
-    paymentStatusFilter,
-    setPaymentStatusFilter,
-    isManualModalOpen,
-    cancelTarget,
-    setCancelTarget,
+    handleApplyFilters,
+    handleResetFilters,
+    handleRemoveFilter,
+    activeFilterCount,
     selectedBookingDetail,
     setSelectedBookingDetail,
     loading,
     error,
-    submittingManual,
-    submittingCancel,
     loadData,
-    handleOpenManualModal,
-    handleCloseManualModal,
-    handleManualSubmit,
-    handleConfirmAdminCancel,
   };
 }
 

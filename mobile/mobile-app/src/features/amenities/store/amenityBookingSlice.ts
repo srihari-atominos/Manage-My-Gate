@@ -31,11 +31,15 @@ import { mapAmenityApiError } from '../utils/amenityErrorMapper';
 export interface AmenityBooking {
   _id: string;
   bookingId?: string;
+  reservationNumber?: string;
   userId?: any;
   amenityId: string | { _id: string; name: string; category?: string; location?: string; images?: string[] };
   amenityName?: string;
   amenityLocation?: string;
-  residentId?: string;
+  resourceId?: string | null;
+  resourceName?: string | null;
+  type?: 'booking' | 'maintenance' | string;
+  residentId?: string | null;
   residentName?: string;
   date: string;
   bookingDate?: string;
@@ -45,13 +49,19 @@ export interface AmenityBooking {
   qrCode?: string;
   passCode?: string;
   paymentMethod?: 'WALLET' | 'PAY_AT_GATE' | 'ONLINE' | string;
-  paymentStatus?: 'PENDING' | 'PAID' | 'REFUNDED' | string;
+  paymentStatus?: 'PENDING' | 'PAID' | 'PARTIALLY_PAID' | 'NOT_REQUIRED' | 'REFUNDED' | 'FAILED' | string;
   totalFee?: number;
+  bookingAmount?: number;
+  paidAmount?: number;
+  remainingAmount?: number;
+  depositAmount?: number;
   guestsCount?: number;
   numberOfPersons?: number;
   qrStatus?: 'active' | 'expired' | 'revoked' | string;
+  checkInStatus?: string;
   checkInTime?: string;
   checkOutTime?: string;
+  cancellationReason?: string;
   createdAt?: string;
 }
 
@@ -88,16 +98,24 @@ export const normalizeAmenityBooking = (raw: any): AmenityBooking => {
   const rawPaymentStatus = String(raw.paymentStatus || 'SUCCESS').toUpperCase();
   const paymentStatus =
     rawPaymentStatus === 'REFUNDED' ? 'REFUNDED' :
-    rawPaymentStatus === 'FAILED' ? 'FAILED' : 'PAID';
+    rawPaymentStatus === 'FAILED' ? 'FAILED' :
+    rawPaymentStatus === 'PARTIALLY_PAID' ? 'PARTIALLY_PAID' :
+    rawPaymentStatus === 'PENDING' ? 'PENDING' :
+    rawPaymentStatus === 'NOT_REQUIRED' || rawPaymentStatus === 'NOT_APPLICABLE' ? 'NOT_REQUIRED' :
+    'PAID';
+
+  const startTime = raw.start || raw.startTime || '00:00';
+  const endTime = raw.end || raw.endTime || '00:00';
 
   return {
     ...raw,
     _id: String(raw._id || raw.id || raw.bookingId || ''),
     bookingId: String(raw.bookingId || raw._id || ''),
+    reservationNumber: raw.reservationNumber,
     date,
     bookingDate: date,
-    startTime: raw.startTime || '00:00',
-    endTime: raw.endTime || '00:00',
+    startTime,
+    endTime,
     status,
     guestsCount,
     numberOfPersons: guestsCount,
@@ -107,8 +125,15 @@ export const normalizeAmenityBooking = (raw: any): AmenityBooking => {
     flatNumber: villaNumber,
     amenityName,
     amenityLocation,
+    resourceId: raw.resourceId ? String(raw.resourceId?._id || raw.resourceId) : undefined,
+    resourceName: raw.resourceName || undefined,
+    type: raw.type || 'booking',
     paymentMethod: raw.paymentMethod || 'ONLINE',
     paymentStatus,
+    bookingAmount: raw.bookingAmount ?? totalFee,
+    paidAmount: raw.paidAmount ?? (paymentStatus === 'PAID' ? totalFee : 0),
+    remainingAmount: raw.remainingAmount ?? 0,
+    depositAmount: raw.depositAmount ?? 0,
     qrCode: raw.qrCode || raw.passCode || raw.bookingId || raw._id,
     qrStatus: raw.qrStatus || 'active',
     checkInTime: raw.checkInTime,

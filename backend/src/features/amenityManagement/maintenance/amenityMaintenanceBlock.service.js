@@ -2778,6 +2778,15 @@ export class AmenityMaintenanceBlockService {
 
     return { success: true, message: 'Maintenance block deleted successfully' };
   }
+
+  /**
+   * Finds maintenance blocks for calendar view within a date range with optional filtering.
+   * @param {Object} criteria
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async findBlocksForCalendar(criteria, session) {
+    return amenityMaintenanceBlockRepository.findBlocksForCalendar(criteria, session);
+  }
 }
 
 export const amenityMaintenanceBlockService = new AmenityMaintenanceBlockService();

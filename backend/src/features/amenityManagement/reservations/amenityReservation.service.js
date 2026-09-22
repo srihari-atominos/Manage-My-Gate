@@ -48,6 +48,15 @@ export class AmenityReservationService {
   }
 
   /**
+   * Finds reservations for admin calendar view within a date range.
+   * @param {Object} criteria
+   * @param {mongoose.ClientSession} [session]
+   */
+  async findEventsForCalendar(criteria, session) {
+    return amenityReservationRepository.findEventsForCalendar(criteria, session);
+  }
+
+  /**
    * Internal implementation of reservation confirmation inside a transaction session.
    * @private
    */

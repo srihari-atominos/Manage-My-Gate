@@ -16,7 +16,9 @@ export const useAdminCalendar = () => {
 
   // Filters State
   const [filters, setFilters] = useState({
+    facilityId: '',
     amenityId: '',
+    resourceId: '',
     status: '',
     residentId: '',
     search: '',
@@ -38,12 +40,20 @@ export const useAdminCalendar = () => {
       if (viewMode === 'month') {
         const year = curr.getFullYear()
         const month = curr.getMonth()
-        // start of month
-        const start = new Date(year, month, 1)
-        // end of month
-        const end = new Date(year, month + 1, 0)
-        startDate = formatDate(start)
-        endDate = formatDate(end)
+        // First day of month
+        const firstOfMonth = new Date(year, month, 1)
+        // Grid starts on Sunday of the first week
+        const startOfGrid = new Date(firstOfMonth)
+        startOfGrid.setDate(firstOfMonth.getDate() - firstOfMonth.getDay())
+
+        // Last day of month
+        const lastOfMonth = new Date(year, month + 1, 0)
+        // Grid ends on Saturday of the last week
+        const endOfGrid = new Date(lastOfMonth)
+        endOfGrid.setDate(lastOfMonth.getDate() + (6 - lastOfMonth.getDay()))
+
+        startDate = formatDate(startOfGrid)
+        endDate = formatDate(endOfGrid)
       } else if (viewMode === 'week') {
         const day = curr.getDay()
         const start = new Date(curr)
@@ -58,8 +68,19 @@ export const useAdminCalendar = () => {
         endDate = startDate
       }
 
+      // Prepare API filters
+      const apiFilters = {}
+      const targetFacilityId = filters.facilityId || filters.amenityId
+      if (targetFacilityId && targetFacilityId !== 'All') apiFilters.facilityId = targetFacilityId
+      if (filters.resourceId && filters.resourceId !== 'All')
+        apiFilters.resourceId = filters.resourceId
+      if (filters.status && filters.status !== 'All') apiFilters.status = filters.status
+      if (filters.paymentStatus && filters.paymentStatus !== 'All')
+        apiFilters.paymentStatus = filters.paymentStatus
+      if (filters.search?.trim()) apiFilters.search = filters.search.trim()
+
       // Fetch Events
-      const response = await dashboardApi.getCalendarEvents(startDate, endDate)
+      const response = await dashboardApi.getCalendarEvents(startDate, endDate, apiFilters)
       setBookingQueue(response.data || [])
 
       // Fetch KPIs
@@ -75,42 +96,58 @@ export const useAdminCalendar = () => {
     } finally {
       setIsQueueLoading(false)
     }
-  }, [currentDate, viewMode])
+  }, [currentDate, viewMode, filters])
 
   // Transform Raw API response to Unified Event Interface
   const rawEvents = useMemo(() => {
     if (!bookingQueue) return []
 
-    return bookingQueue.map((event) => ({
-      ...event,
-      title: event.status === 'cancelled' ? `${event.title} (Cancelled)` : event.title,
-      subtitle: event.subtitle,
-      colorKey:
-        event.type === 'maintenance'
-          ? 'rejected'
-          : event.type === 'operating_hours'
-            ? 'default'
-            : event.type === 'holiday'
-              ? 'checked_in'
-              : event.status,
-      metadata: event,
-    }))
+    return bookingQueue.map((event) => {
+      const isCancelled = String(event.status).toUpperCase() === 'CANCELLED'
+      return {
+        ...event,
+        title: isCancelled ? `${event.title} (Cancelled)` : event.title,
+        subtitle: event.subtitle,
+        colorKey:
+          event.type === 'maintenance'
+            ? 'maintenance'
+            : isCancelled
+              ? 'cancelled'
+              : String(event.status).toLowerCase(),
+        metadata: event,
+      }
+    })
   }, [bookingQueue])
 
-  // Apply filters
+  // Apply filters client-side for responsive updates
   const filteredEvents = useMemo(() => {
     const validEvents = rawEvents.filter((event) => {
-      if (event.status === 'cancelled') return false // Hide cancelled events
-      if (filters.amenityId && event.amenityId !== filters.amenityId) return false
-      if (filters.status && event.status !== filters.status) return false
-      if (filters.paymentStatus && event.paymentStatus !== filters.paymentStatus) return false
-      if (filters.search) {
-        const query = filters.search.toLowerCase()
+      const targetFacilityId = filters.facilityId || filters.amenityId
+      if (targetFacilityId && targetFacilityId !== 'All') {
+        const eventFacilityId = String(event.amenityId || '')
+        if (eventFacilityId !== targetFacilityId) return false
+      }
+      if (filters.resourceId && filters.resourceId !== 'All') {
+        const eventResourceId = String(event.resourceId || '')
+        if (eventResourceId !== filters.resourceId) return false
+      }
+      if (filters.status && filters.status !== 'All') {
+        const eventStatus = String(event.status || '').toUpperCase()
+        if (eventStatus !== filters.status.toUpperCase()) return false
+      }
+      if (filters.paymentStatus && filters.paymentStatus !== 'All') {
+        const eventPayment = String(event.paymentStatus || '').toUpperCase()
+        if (eventPayment !== filters.paymentStatus.toUpperCase()) return false
+      }
+      if (filters.search?.trim()) {
+        const query = filters.search.toLowerCase().trim()
         const matchTitle = (event.title || '').toLowerCase().includes(query)
         const matchSubtitle = (event.subtitle || '').toLowerCase().includes(query)
         const matchResident = (event.residentName || '').toLowerCase().includes(query)
         const matchFlat = (event.flatNumber || '').toLowerCase().includes(query)
-        if (!matchTitle && !matchSubtitle && !matchResident && !matchFlat) return false
+        const matchBookingId = (event.bookingId || '').toLowerCase().includes(query)
+        if (!matchTitle && !matchSubtitle && !matchResident && !matchFlat && !matchBookingId)
+          return false
       }
       return true
     })
@@ -121,9 +158,9 @@ export const useAdminCalendar = () => {
     const groups = {}
     validEvents.forEach((e) => {
       if (e.type === 'maintenance') {
-        const maintKey = e.id || `maint_${e.amenityId}_${e.date}_${e.start}`;
-        groups[maintKey] = { ...e };
-        return;
+        const maintKey = e.id || `maint_${e.amenityId}_${e.date}_${e.start}`
+        groups[maintKey] = { ...e }
+        return
       }
 
       const key = `${e.amenityId}-${e.date}-${e.start}-${e.end}`

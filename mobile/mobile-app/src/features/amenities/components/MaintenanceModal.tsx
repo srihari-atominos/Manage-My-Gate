@@ -153,6 +153,7 @@ export interface MaintenanceFormData {
   autoCancelBookings: boolean;
   isCompleteClosure?: boolean;
   degradedCapacity?: number;
+  isOngoing?: boolean;
 }
 
 export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
@@ -307,7 +308,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
           selectedDays: initialData.recurrence?.daysOfWeek?.length ? initialData.recurrence.daysOfWeek : [1],
           dayOfMonth: initDayOfMonth,
           occurrenceCount: initialData.recurrence?.occurrenceCount || 8,
-          description: initialData.description || initialData.internalNotes || '',
+          description: initialData.description || (initialData as any).internalNotes || '',
           assignedStaff: initialData.assignedStaff || 'Facilities Team',
           autoCancelBookings: initialData.autoCancelBookings !== false,
           isCompleteClosure: initialData.isCompleteClosure !== false,
@@ -850,9 +851,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
               </View>
             ))}
 
-            <Text className="text-[11px] text-muted-foreground">
-              Schedule multiple windows (e.g. today 12:00 AM–5:00 PM, tomorrow 12:00 AM–5:00 PM, and 10 days later) in this single submission.
-            </Text>
           </View>
         )}
 

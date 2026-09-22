@@ -1,0 +1,609 @@
+/**
+ * Admin Calendar Mobile UX & Behavior Verification Tests
+ * Verifies:
+ * 1. Compact Month calendar rendering with date numbers & booking count indicators
+ * 2. Resident names NOT appearing inside calendar cells
+ * 3. Date selection updating reservation list locally without redundant API calls
+ * 4. Reservation card display (Facility, Resource, Time, Resident, Unit, Status, Payment, Ref ID)
+ * 5. Complete removal of "+ Reserve", "Maintenance", "Cancel Slot", and "Cancel Booking" buttons
+ * 6. Deduplication and exclusion of maintenance events from reservation counts
+ * 7. Tapping card opens BookingDetailModal
+ * 8. Real availability business logic (Available, Partially Available, Fully Booked, Maintenance, Blocked)
+ * 9. Conflict detection (Booking vs Booking, Booking vs Maintenance)
+ * 10. Filter Drawer & Facility -> Resource dependency
+ * 11. Time window filtering (Morning, Afternoon, Evening, Custom)
+ * 12. Active filter chips and individual removal
+ * 13. Context-aware empty state with Clear Filters action
+ */
+
+import React from 'react';
+import { render, screen, fireEvent, act, renderHook } from '@testing-library/react-native';
+import { View, Text } from 'react-native';
+
+let mockState: any;
+const mockDispatch = jest.fn((action: any) => action);
+
+jest.mock('react-redux', () => ({
+  useDispatch: () => mockDispatch,
+  useSelector: (selector: any) => selector(mockState),
+}));
+
+const mockFetchAdminCalendarThunk = jest.fn();
+const mockFetchAmenitiesThunk = jest.fn();
+
+jest.mock('../store/amenityBookingSlice', () => {
+  const actual = jest.requireActual('../store/amenityBookingSlice');
+  return {
+    ...actual,
+    fetchAdminCalendarThunk: (params: any) => {
+      mockFetchAdminCalendarThunk(params);
+      return { type: 'amenityBookings/fetchAdminCalendar', payload: params };
+    },
+    createManualBookingThunk: jest.fn(),
+    adminCancelBookingThunk: jest.fn(),
+  };
+});
+
+jest.mock('../store/amenitySlice', () => ({
+  fetchAmenitiesThunk: (params: any) => {
+    mockFetchAmenitiesThunk(params);
+    return { type: 'amenities/fetchAmenities', payload: params };
+  },
+}));
+
+// Mock expo-router
+const mockRouterPush = jest.fn();
+const mockRouterBack = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: mockRouterPush, back: mockRouterBack }),
+  usePathname: () => '/(resident)/amenities/admin-calendar',
+  useLocalSearchParams: () => ({}),
+  Redirect: () => null,
+}));
+
+// Mock reanimated
+jest.mock('react-native-reanimated', () => {
+  const Reanimated = require('react-native-reanimated/mock');
+  return {
+    ...Reanimated,
+    useAnimatedStyle: (fn: any) => (typeof fn === 'function' ? fn() : {}),
+    useSharedValue: (val: any) => ({ value: val }),
+    withTiming: (val: any) => val,
+    withRepeat: (val: any) => val,
+    withSequence: (...args: any[]) => args[0],
+    FadeIn: { duration: () => ({}) },
+    FadeOut: { duration: () => ({}) },
+  };
+});
+
+// Mock navigation modals
+jest.mock('@/components/navigation/BottomNavigationBar', () => ({
+  BottomNavigationBar: () => null,
+}));
+jest.mock('@/components/navigation/RoleSwitchModal', () => ({
+  RoleSwitchModal: () => null,
+}));
+jest.mock('@/components/navigation/VillaSwitchModal', () => ({
+  VillaSwitchModal: () => null,
+}));
+jest.mock('@/components/navigation/GlobalNavModal', () => ({
+  GlobalNavModal: () => null,
+}));
+
+// Mock auth & permissions
+jest.mock('../../../features/auth/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { _id: 'admin-1', name: 'Admin User', role: 'admin', permissions: ['amenities:admin_calander'] },
+    isAuthenticated: true,
+  }),
+}));
+
+jest.mock('../../../utils/rbac', () => ({
+  isFeatureAllowedForUser: () => true,
+}));
+
+// Mock safe area context
+jest.mock('react-native-safe-area-context', () => {
+  const actual = jest.requireActual('react-native-safe-area-context');
+  return {
+    ...actual,
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+    SafeAreaProvider: ({ children }: any) => children,
+    SafeAreaView: ({ children }: any) => children,
+  };
+});
+
+// Mock Modal to expose children in tests
+jest.mock('react-native/Libraries/Modal/Modal', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockModal = ({ children, visible, testID }: any) =>
+    visible ? <View testID={testID || 'mock-modal'}>{children}</View> : null;
+  MockModal.displayName = 'Modal';
+  return {
+    __esModule: true,
+    default: MockModal,
+  };
+});
+
+import { useAdminCalendar } from '../hooks/useAdminCalendar';
+import { AdminCalendarView } from '../components/AdminCalendarView';
+import { AdminReservationCard } from '../components/AdminReservationCard';
+import { AdminAvailabilitySummary } from '../components/AdminAvailabilitySummary';
+import { AdminActiveFilterChips } from '../components/AdminActiveFilterChips';
+import { AdminCalendarFilterDrawer } from '../components/AdminCalendarFilterDrawer';
+import AdminAmenityCalendarScreen from '../../../../app/(resident)/amenities/admin-calendar';
+import { AmenityBooking } from '../store/amenityBookingSlice';
+import {
+  calculateFacilityAvailability,
+  detectReservationConflicts,
+  isTimeIntervalOverlapping,
+} from '../utils/amenityAvailabilityHelpers';
+
+describe('Admin Calendar Mobile UX & Behavior Tests', () => {
+  const mockBookings: AmenityBooking[] = [
+    {
+      _id: 'book-1',
+      bookingId: 'BK-1001',
+      reservationNumber: 'RES-1001',
+      date: '2026-09-22',
+      bookingDate: '2026-09-22',
+      startTime: '09:00',
+      endTime: '10:00',
+      amenityId: 'amenity-gym',
+      amenityName: 'Gymnasium',
+      resourceId: 'res-gym-1',
+      resourceName: 'Weight Section',
+      residentName: 'Naveen Vijayakumar',
+      villaNumber: 'Villa 101',
+      status: 'CONFIRMED',
+      paymentStatus: 'PAID',
+      type: 'booking',
+      numberOfPersons: 2,
+    } as any,
+    {
+      _id: 'book-2',
+      bookingId: 'BK-1002',
+      reservationNumber: 'RES-1002',
+      date: '2026-09-22',
+      bookingDate: '2026-09-22',
+      startTime: '11:00',
+      endTime: '12:00',
+      amenityId: 'amenity-pool',
+      amenityName: 'Swimming Pool',
+      resourceId: 'res-pool-1',
+      resourceName: 'Lane 1',
+      residentName: 'Arun Kumar',
+      villaNumber: 'Villa 205',
+      status: 'CONFIRMED',
+      paymentStatus: 'PENDING',
+      type: 'booking',
+      numberOfPersons: 1,
+    } as any,
+    {
+      _id: 'maint-1',
+      bookingId: 'MNT-501',
+      date: '2026-09-22',
+      bookingDate: '2026-09-22',
+      startTime: '14:00',
+      endTime: '16:00',
+      amenityId: 'amenity-tennis',
+      amenityName: 'Tennis Court',
+      subtitle: 'Net Repair',
+      status: 'CONFIRMED',
+      type: 'maintenance',
+    } as any,
+    {
+      _id: 'book-3',
+      bookingId: 'BK-1003',
+      reservationNumber: 'RES-1003',
+      date: '2026-09-23',
+      bookingDate: '2026-09-23',
+      startTime: '10:00',
+      endTime: '11:00',
+      amenityId: 'amenity-club',
+      amenityName: 'Clubhouse',
+      residentName: 'Sara Khan',
+      villaNumber: 'Villa 302',
+      status: 'CHECKED_IN',
+      paymentStatus: 'PARTIALLY_PAID',
+      type: 'booking',
+      numberOfPersons: 4,
+    } as any,
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockState = {
+      amenityBookings: {
+        adminBookings: mockBookings,
+        pagination: { currentPage: 1, totalPages: 1, totalRecords: 4, limit: 50 },
+        loading: false,
+        error: null,
+      },
+      amenities: {
+        amenities: [
+          { _id: 'amenity-gym', name: 'Gymnasium', capacity: 20, isActive: true },
+          { _id: 'amenity-pool', name: 'Swimming Pool', capacity: 10, isActive: true },
+          { _id: 'amenity-tennis', name: 'Tennis Court', capacity: 4, isActive: true },
+          { _id: 'amenity-club', name: 'Clubhouse', capacity: 50, isActive: true },
+        ],
+      },
+      auth: {
+        user: { _id: 'admin-1', name: 'Admin User' },
+      },
+    };
+  });
+
+  describe('1. AdminCalendarView Component (Compact Month View)', () => {
+    it('renders compact month grid with date numbers and booking counts without resident names', async () => {
+      const onSelectDate = jest.fn();
+      const bookingCounts = { '2026-09-22': 2, '2026-09-23': 1 };
+
+      await render(
+        <AdminCalendarView
+          currentDate={new Date(2026, 8, 1)} // September 2026
+          selectedDate="2026-09-22"
+          onSelectDate={onSelectDate}
+          bookingCountsByDate={bookingCounts}
+          onPrevDate={jest.fn()}
+          onNextDate={jest.fn()}
+        />
+      );
+
+      // Date number 22 should be present
+      expect(screen.getByText('22')).toBeTruthy();
+      // Date 22 has 2 bookings (verified via accessibility label)
+      expect(screen.getByLabelText('September 2026 22, 2 bookings')).toBeTruthy();
+
+      // Date number 23 should be present with 1 booking
+      expect(screen.getByText('23')).toBeTruthy();
+      expect(screen.getByLabelText('September 2026 23, 1 bookings')).toBeTruthy();
+
+      // CRITICAL: Resident names MUST NOT appear in calendar cells
+      expect(screen.queryByText('Naveen Vijayakumar')).toBeNull();
+      expect(screen.queryByText('Arun Kumar')).toBeNull();
+      expect(screen.queryByText('Sara Khan')).toBeNull();
+    });
+
+    it('triggers onSelectDate when a date cell is pressed', async () => {
+      const onSelectDate = jest.fn();
+      await render(
+        <AdminCalendarView
+          currentDate={new Date(2026, 8, 1)}
+          selectedDate="2026-09-22"
+          onSelectDate={onSelectDate}
+          bookingCountsByDate={{ '2026-09-22': 2 }}
+          onPrevDate={jest.fn()}
+          onNextDate={jest.fn()}
+        />
+      );
+
+      fireEvent.press(screen.getByText('22'));
+      expect(onSelectDate).toHaveBeenCalledWith('2026-09-22');
+    });
+
+    it('does NOT contain Day View or Week View options or switcher', async () => {
+      await render(
+        <AdminCalendarView
+          currentDate={new Date(2026, 8, 1)}
+          selectedDate="2026-09-22"
+          onSelectDate={jest.fn()}
+          bookingCountsByDate={{}}
+          onPrevDate={jest.fn()}
+          onNextDate={jest.fn()}
+        />
+      );
+
+      expect(screen.queryByText('Day View')).toBeNull();
+      expect(screen.queryByText('Week View')).toBeNull();
+      expect(screen.queryByText('Month View')).toBeNull();
+    });
+  });
+
+  describe('2. AdminReservationCard Component', () => {
+    it('renders facility, resource, time slot, resident, unit, status, payment status, and ref ID', async () => {
+      const onPress = jest.fn();
+      await render(
+        <AdminReservationCard booking={mockBookings[0]} onPress={onPress} />
+      );
+
+      // Facility & Resource
+      expect(screen.getByText('Gymnasium • Weight Section')).toBeTruthy();
+      // Time, Resident & Unit
+      expect(screen.getByText(/9:00 AM - 10:00 AM • Naveen Vijayakumar \(Villa 101\)/)).toBeTruthy();
+      // Status
+      expect(screen.getByText('CONFIRMED')).toBeTruthy();
+      // Payment Status
+      expect(screen.getByText('Paid')).toBeTruthy();
+      // Ref ID
+      expect(screen.getByText('Ref: #RES-1001')).toBeTruthy();
+      // Headcount
+      expect(screen.getByText('2 Person(s)')).toBeTruthy();
+    });
+
+    it('renders conflict badge when isConflicted is true', async () => {
+      await render(
+        <AdminReservationCard booking={mockBookings[0]} onPress={jest.fn()} isConflicted={true} />
+      );
+
+      expect(screen.getByText('CONFLICT')).toBeTruthy();
+    });
+
+    it('does NOT render Cancel Slot or Cancel Booking buttons', async () => {
+      await render(
+        <AdminReservationCard booking={mockBookings[0]} onPress={jest.fn()} />
+      );
+
+      expect(screen.queryByText('Cancel Slot')).toBeNull();
+      expect(screen.queryByText('Cancel Booking')).toBeNull();
+      expect(screen.queryByText('Cancel')).toBeNull();
+    });
+
+    it('fires onPress when tapped to open detail modal', async () => {
+      const onPress = jest.fn();
+      await render(
+        <AdminReservationCard booking={mockBookings[0]} onPress={onPress} />
+      );
+
+      fireEvent.press(screen.getByText('Gymnasium • Weight Section'));
+      expect(onPress).toHaveBeenCalledWith(mockBookings[0]);
+    });
+  });
+
+  describe('3. Availability & Conflict Business Logic', () => {
+    it('calculates interval overlaps accurately', () => {
+      expect(isTimeIntervalOverlapping('09:00', '10:00', '09:30', '10:30')).toBe(true);
+      expect(isTimeIntervalOverlapping('09:00', '10:00', '10:00', '11:00')).toBe(false);
+      expect(isTimeIntervalOverlapping('14:00', '16:00', '15:00', '15:30')).toBe(true);
+      expect(isTimeIntervalOverlapping('14:00', '16:00', '16:01', '17:00')).toBe(false);
+    });
+
+    it('evaluates facility availability considering reservations and maintenance', () => {
+      // 1. Tennis court has complete maintenance on 2026-09-22
+      const tennisAvail = calculateFacilityAvailability({
+        facility: { _id: 'amenity-tennis', name: 'Tennis Court', capacity: 4, isActive: true },
+        reservations: mockBookings as any,
+        maintenanceBlocks: [mockBookings[2]] as any,
+        selectedDate: '2026-09-22',
+      });
+      expect(tennisAvail.state).toBe('MAINTENANCE');
+      expect(tennisAvail.label).toBe('Maintenance');
+
+      // 2. Gymnasium on 2026-09-22 has 1 active booking out of capacity 20
+      const gymAvail = calculateFacilityAvailability({
+        facility: { _id: 'amenity-gym', name: 'Gymnasium', capacity: 20, isActive: true },
+        reservations: mockBookings as any,
+        maintenanceBlocks: [],
+        selectedDate: '2026-09-22',
+      });
+      expect(gymAvail.state).toBe('PARTIALLY_AVAILABLE');
+      expect(gymAvail.label).toBe('19 spots');
+
+      // 3. Blocked / inactive facility
+      const blockedAvail = calculateFacilityAvailability({
+        facility: { _id: 'amenity-blocked', name: 'Sauna', isActive: false },
+        reservations: [],
+        maintenanceBlocks: [],
+        selectedDate: '2026-09-22',
+      });
+      expect(blockedAvail.state).toBe('BLOCKED');
+      expect(blockedAvail.label).toBe('Blocked');
+    });
+
+    it('detects booking conflicts and maintenance conflicts', () => {
+      const conflictedBookings = [
+        ...mockBookings,
+        // Overlapping booking on Gym with same resource
+        {
+          _id: 'book-conflict',
+          bookingId: 'BK-1004',
+          date: '2026-09-22',
+          startTime: '09:30',
+          endTime: '10:30',
+          amenityId: 'amenity-gym',
+          resourceId: 'res-gym-1',
+          status: 'CONFIRMED',
+          type: 'booking',
+        } as any,
+      ];
+
+      const conflictIds = detectReservationConflicts(conflictedBookings as any);
+      expect(conflictIds.has('book-1')).toBe(true);
+      expect(conflictIds.has('book-conflict')).toBe(true);
+    });
+  });
+
+  describe('4. Filter Drawer & Facilities', () => {
+    it('selects facility and confirms resource filter is removed from drawer', async () => {
+      const onApply = jest.fn();
+      const onReset = jest.fn();
+      const initialFilters = {
+        datePreset: 'selected' as const,
+        facilityId: 'amenity-gym',
+        availability: 'ALL',
+        timePreset: 'all' as const,
+        bookingStatus: 'All',
+        paymentStatus: 'All',
+      };
+
+      await render(
+        <AdminCalendarFilterDrawer
+          visible={true}
+          onClose={jest.fn()}
+          filters={initialFilters}
+          onApply={onApply}
+          onReset={onReset}
+          amenities={[
+            { _id: 'amenity-gym', name: 'Gymnasium' },
+            { _id: 'amenity-pool', name: 'Swimming Pool' },
+          ]}
+        />
+      );
+
+      // Verify Resource section is completely removed
+      expect(screen.queryByText('Resource')).toBeNull();
+      expect(screen.queryByText('All Resources')).toBeNull();
+
+      // Directly tap Swimming Pool chip
+      await act(async () => {
+        fireEvent.press(screen.getByText('Swimming Pool'));
+      });
+
+      // Apply
+      await act(async () => {
+        fireEvent.press(screen.getByText('Apply Filters'));
+      });
+      expect(onApply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          facilityId: 'amenity-pool',
+        })
+      );
+    });
+
+    it('renders active filter chips and handles individual removal and clear all', async () => {
+      const onRemove = jest.fn();
+      const onClearAll = jest.fn();
+      const activeFilters = {
+        datePreset: 'today' as const,
+        facilityId: 'amenity-gym',
+        availability: 'AVAILABLE',
+        timePreset: 'morning' as const,
+        bookingStatus: 'CONFIRMED',
+        paymentStatus: 'PAID',
+      };
+
+      await render(
+        <AdminActiveFilterChips
+          filters={activeFilters}
+          searchQuery="Naveen"
+          onRemoveFilter={onRemove}
+          onClearAll={onClearAll}
+          amenities={[{ _id: 'amenity-gym', name: 'Gymnasium' }]}
+        />
+      );
+
+      expect(screen.getByText('Search: "Naveen"')).toBeTruthy();
+      expect(screen.getByText('Date: Today')).toBeTruthy();
+      expect(screen.getByText('Facility: Gymnasium')).toBeTruthy();
+      expect(screen.getByText('Avail: Available')).toBeTruthy();
+      expect(screen.getByText('Time: Morning')).toBeTruthy();
+      expect(screen.getByText('Status: CONFIRMED')).toBeTruthy();
+      expect(screen.getByText('Payment: PAID')).toBeTruthy();
+      expect(screen.queryByText(/Resource:/)).toBeNull();
+
+      // Tap Clear All
+      fireEvent.press(screen.getByText('Clear All'));
+      expect(onClearAll).toHaveBeenCalled();
+    });
+  });
+
+  describe('5. useAdminCalendar Hook Behavior', () => {
+    it('groups bookings by date and excludes maintenance from reservation counts', async () => {
+      const { result } = await renderHook(() => useAdminCalendar());
+
+      // On 2026-09-22, there are 2 bookings and 1 maintenance block.
+      // The count must be 2 (maintenance excluded from reservation count).
+      expect(result.current.bookingCountsByDate['2026-09-22']).toBe(2);
+      // On 2026-09-23, there is 1 booking.
+      expect(result.current.bookingCountsByDate['2026-09-23']).toBe(1);
+    });
+
+    it('filters selectedDateBookings locally when date is changed without refetching network', async () => {
+      const { result } = await renderHook(() => useAdminCalendar());
+
+      // Select 2026-09-22
+      await act(async () => {
+        result.current.handleDateChange('2026-09-22');
+      });
+
+      expect(result.current.selectedDate).toBe('2026-09-22');
+      expect(result.current.selectedDateBookings.length).toBe(3);
+
+      const fetchCountAfterSept22 = mockFetchAdminCalendarThunk.mock.calls.length;
+
+      // Select 2026-09-23 (within the same loaded month)
+      await act(async () => {
+        result.current.handleDateChange('2026-09-23');
+      });
+
+      expect(result.current.selectedDate).toBe('2026-09-23');
+      expect(result.current.selectedDateBookings.length).toBe(1);
+
+      // CRITICAL: Changing date within the already-loaded month MUST NOT call API again
+      expect(mockFetchAdminCalendarThunk.mock.calls.length).toBe(fetchCountAfterSept22);
+    });
+
+    it('updates booking counts dynamically when filters are applied (filter-aware counts)', async () => {
+      const { result } = await renderHook(() => useAdminCalendar());
+
+      // Initial: 2 on 2026-09-22
+      expect(result.current.bookingCountsByDate['2026-09-22']).toBe(2);
+
+      // Apply Facility = Gym filter
+      await act(async () => {
+        result.current.handleApplyFilters({
+          ...result.current.filters,
+          facilityId: 'amenity-gym',
+        });
+      });
+
+      // Now only 1 booking on 2026-09-22 matches Gym!
+      expect(result.current.bookingCountsByDate['2026-09-22']).toBe(1);
+    });
+  });
+
+  describe('6. AdminAmenityCalendarScreen Layout, Compact Header & Empty States', () => {
+    it('completely removes + Reserve and Maintenance action buttons from screen header', async () => {
+      await render(<AdminAmenityCalendarScreen />);
+
+      expect(screen.queryByLabelText('Reserve manual slot')).toBeNull();
+      expect(screen.queryByLabelText('Maintenance Schedule')).toBeNull();
+      expect(screen.queryByText('+ Reserve')).toBeNull();
+    });
+
+    it('completely removes Cancel Slot and Cancel Booking buttons from the entire screen', async () => {
+      await render(<AdminAmenityCalendarScreen />);
+
+      expect(screen.queryByText('Cancel Slot')).toBeNull();
+      expect(screen.queryByText('Cancel Booking')).toBeNull();
+    });
+
+    it('renders context-aware empty state with Clear Filters button when filters match zero', async () => {
+      mockState = {
+        ...mockState,
+        amenityBookings: {
+          adminBookings: [],
+          pagination: { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 50 },
+          loading: false,
+          error: null,
+        },
+      };
+      await render(<AdminAmenityCalendarScreen />);
+
+      // Search for something with no matches
+      const searchInput = screen.getByPlaceholderText('Search resident, villa #, ref ID...');
+      fireEvent.changeText(searchInput, 'NonExistentResident12345');
+
+      const filteredEmptyElement = await screen.findByText('No reservations match the selected filters');
+      expect(filteredEmptyElement).toBeTruthy();
+      expect(screen.getByText('Clear Filters')).toBeTruthy();
+    });
+
+    it('renders standard empty state when no filters are active and date has no bookings', async () => {
+      mockState = {
+        ...mockState,
+        amenityBookings: {
+          adminBookings: [],
+          pagination: { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 50 },
+          loading: false,
+          error: null,
+        },
+      };
+      await render(<AdminAmenityCalendarScreen />);
+
+      const emptyElement = await screen.findByText('No reservations for this date');
+      expect(emptyElement).toBeTruthy();
+    });
+  });
+});

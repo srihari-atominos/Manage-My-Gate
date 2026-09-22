@@ -215,6 +215,73 @@ export class AmenityMaintenanceBlockRepository {
     if (orgId) filter.orgId = orgId;
     return AmenityMaintenanceBlock.findOneAndDelete(filter).session(getValidSession(session));
   }
+
+  /**
+   * Finds maintenance blocks for calendar within a date range with optional filtering.
+   * Matches blocks overlapping [startDate, endDate].
+   * @param {Object} params
+   * @param {string|mongoose.Types.ObjectId} params.orgId
+   * @param {string|Date} [params.startDate]
+   * @param {string|Date} [params.endDate]
+   * @param {string|mongoose.Types.ObjectId} [params.facilityId]
+   * @param {string|mongoose.Types.ObjectId} [params.resourceId]
+   * @param {string} [params.status]
+   * @param {mongoose.ClientSession} [session]
+   */
+  async findBlocksForCalendar(
+    {
+      orgId,
+      startDate,
+      endDate,
+      facilityId,
+      resourceId,
+      status,
+    },
+    session
+  ) {
+    const filter = { orgId: new mongoose.Types.ObjectId(orgId) };
+
+    if (startDate && endDate) {
+      const rangeStart = new Date(startDate);
+      const rangeEnd = String(endDate).includes('T')
+        ? new Date(endDate)
+        : new Date(`${endDate}T23:59:59.999Z`);
+      filter.startDateTime = { $lt: rangeEnd };
+      filter.endDateTime = { $gt: rangeStart };
+    } else if (startDate) {
+      const rangeStart = new Date(startDate);
+      filter.endDateTime = { $gt: rangeStart };
+    } else if (endDate) {
+      const rangeEnd = String(endDate).includes('T')
+        ? new Date(endDate)
+        : new Date(`${endDate}T23:59:59.999Z`);
+      filter.startDateTime = { $lt: rangeEnd };
+    }
+
+    if (facilityId && facilityId !== 'All') {
+      filter.facilityId = new mongoose.Types.ObjectId(facilityId);
+    }
+    if (resourceId && resourceId !== 'All') {
+      const resId = new mongoose.Types.ObjectId(resourceId);
+      filter.$or = [
+        { resourceId: resId },
+        { resourceIds: resId },
+        { resourceId: null, $or: [{ resourceIds: { $exists: false } }, { resourceIds: { $size: 0 } }] },
+      ];
+    }
+    if (status && status !== 'All') {
+      filter.status = status.toUpperCase();
+    }
+
+    return AmenityMaintenanceBlock.find(filter)
+      .populate('facilityId', 'name type images location category')
+      .populate('resourceId', 'name type')
+      .populate('resourceIds', 'name type')
+      .populate('completedBy', 'name username email')
+      .sort({ startDateTime: 1 })
+      .session(getValidSession(session))
+      .lean();
+  }
 }
 
 export const amenityMaintenanceBlockRepository = new AmenityMaintenanceBlockRepository();

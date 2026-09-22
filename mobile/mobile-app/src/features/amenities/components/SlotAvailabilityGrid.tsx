@@ -4,6 +4,7 @@ import { Clock, Check } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { EmptyState } from '@/components/feedback/EmptyState';
 import { AmenitySlot } from '../store/amenitySlice';
 import { formatTimeRange12Hour } from '../utils/amenityStateHelpers';
 import { cn } from '@/lib/utils';

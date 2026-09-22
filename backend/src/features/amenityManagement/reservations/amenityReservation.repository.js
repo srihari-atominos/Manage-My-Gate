@@ -223,6 +223,73 @@ export class AmenityReservationRepository {
 
     return { data, items: data, total, page, limit, totalPages };
   }
+
+  /**
+   * Finds reservations for calendar view within a date range with optional filtering.
+   * Matches reservations overlapping [startDate, endDate].
+   * @param {Object} params
+   * @param {string|mongoose.Types.ObjectId} params.orgId
+   * @param {string|Date} [params.startDate]
+   * @param {string|Date} [params.endDate]
+   * @param {string|mongoose.Types.ObjectId} [params.facilityId]
+   * @param {string|mongoose.Types.ObjectId} [params.resourceId]
+   * @param {string} [params.bookingStatus]
+   * @param {string} [params.paymentStatus]
+   * @param {mongoose.ClientSession} [session]
+   */
+  async findEventsForCalendar(
+    {
+      orgId,
+      startDate,
+      endDate,
+      facilityId,
+      resourceId,
+      bookingStatus,
+      paymentStatus,
+    },
+    session
+  ) {
+    const filter = { orgId: new mongoose.Types.ObjectId(orgId) };
+
+    if (startDate && endDate) {
+      const rangeStart = new Date(startDate);
+      const rangeEnd = String(endDate).includes('T')
+        ? new Date(endDate)
+        : new Date(`${endDate}T23:59:59.999Z`);
+      filter.effectiveStartDateTime = { $lt: rangeEnd };
+      filter.effectiveEndDateTime = { $gt: rangeStart };
+    } else if (startDate) {
+      const rangeStart = new Date(startDate);
+      filter.effectiveEndDateTime = { $gt: rangeStart };
+    } else if (endDate) {
+      const rangeEnd = String(endDate).includes('T')
+        ? new Date(endDate)
+        : new Date(`${endDate}T23:59:59.999Z`);
+      filter.effectiveStartDateTime = { $lt: rangeEnd };
+    }
+
+    if (facilityId && facilityId !== 'All') {
+      filter.facilityId = new mongoose.Types.ObjectId(facilityId);
+    }
+    if (resourceId && resourceId !== 'All') {
+      filter.resourceId = new mongoose.Types.ObjectId(resourceId);
+    }
+    if (bookingStatus && bookingStatus !== 'All') {
+      filter.bookingStatus = bookingStatus.toUpperCase();
+    }
+    if (paymentStatus && paymentStatus !== 'All') {
+      filter.paymentStatus = paymentStatus.toUpperCase();
+    }
+
+    return AmenityReservation.find(filter)
+      .populate('facilityId', 'name type images location bookingRules category isExclusive pricingConfig')
+      .populate('resourceId', 'name type resourceCode capacity')
+      .populate('residentId', 'name email profilePicture flatNumber building tower phoneNumber villaNumber username')
+      .populate('unitId', 'unitNumber villaNumber block floor')
+      .sort({ effectiveStartDateTime: 1 })
+      .session(getValidSession(session))
+      .lean();
+  }
 }
 
 export const amenityReservationRepository = new AmenityReservationRepository();

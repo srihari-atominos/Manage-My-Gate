@@ -1,29 +1,27 @@
-import React, { useMemo } from 'react';
-import { View } from 'react-native';
-import { useRouter, Redirect } from 'expo-router';
+import React, { useState, useMemo } from 'react';
+import { View, TextInput as RNTextInput, Pressable } from 'react-native';
+import { Redirect } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { DropdownSelect } from '@/components/forms/DropdownSelect';
-import { SegmentedControl, SegmentItem } from '@/components/common/SegmentedControl';
-import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
-import { ListCard } from '@/components/ui/ListCard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { type StatusVariant } from '@/components/ui/StatusBadge';
-import { Plus, Wrench } from 'lucide-react-native';
+import { Icon } from '@/components/ui/icon';
+import { Search, SlidersHorizontal, X, Calendar as CalendarIcon } from 'lucide-react-native';
 
 import { useAdminCalendar } from '../../../src/features/amenities/hooks/useAdminCalendar';
-import { ScheduleDateNavigator } from '../../../src/features/amenities/components/ScheduleDateNavigator';
-import { ManualBookingModal } from '../../../src/features/amenities/components/ManualBookingModal';
-import { AdminCancelReasonModal } from '../../../src/features/amenities/components/AdminCancelReasonModal';
+import { AdminCalendarView } from '../../../src/features/amenities/components/AdminCalendarView';
+import { AdminReservationCard } from '../../../src/features/amenities/components/AdminReservationCard';
+import { AdminCalendarFilterDrawer } from '../../../src/features/amenities/components/AdminCalendarFilterDrawer';
+import { AdminActiveFilterChips } from '../../../src/features/amenities/components/AdminActiveFilterChips';
+import { AdminAvailabilitySummary } from '../../../src/features/amenities/components/AdminAvailabilitySummary';
 import { BookingDetailModal } from '../../../src/features/amenities/components/BookingDetailModal';
 import { AmenityBooking } from '../../../src/features/amenities/store/amenityBookingSlice';
 import { useAuth } from '../../../src/features/auth/hooks/useAuth';
 import { isFeatureAllowedForUser } from '../../../src/utils/rbac';
 
 export default function AdminAmenityCalendarScreen() {
-  const router = useRouter();
   const { user } = useAuth();
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   // Guard: Non-admin users or users without amenity permissions are redirected
   if (user && !isFeatureAllowedForUser({ id: 'amenities_admin_calendar', permission: 'amenities:admin_calander' }, user)) {
@@ -35,233 +33,234 @@ export default function AdminAmenityCalendarScreen() {
     }
     return <Redirect href="/(resident)/dashboard" />;
   }
+
   const {
     adminBookings,
     filteredBookings,
+    selectedDateBookings,
+    bookingCountsByDate,
     amenities,
-    pagination,
-    handleLoadMore,
-    viewMode,
-    setViewMode,
+    availableResources,
+    conflictedBookingIds,
+    availabilitySummary,
+    currentDate,
     selectedDate,
     handleDateChange,
     navigateDate,
-    setToday,
-    selectedAmenityId,
-    setSelectedAmenityId,
-    statusFilter,
-    setStatusFilter,
+    filters,
     searchQuery,
     setSearchQuery,
-    isManualModalOpen,
-    cancelTarget,
-    setCancelTarget,
+    handleApplyFilters,
+    handleResetFilters,
+    handleRemoveFilter,
+    activeFilterCount,
     selectedBookingDetail,
     setSelectedBookingDetail,
+    pagination,
+    handleLoadMore,
     loading,
     error,
-    submittingManual,
-    submittingCancel,
     loadData,
-    handleOpenManualModal,
-    handleCloseManualModal,
-    handleManualSubmit,
-    handleConfirmAdminCancel,
   } = useAdminCalendar();
 
-  // Segment Items for View Mode
-  const viewSegments: SegmentItem[] = [
-    { key: 'day', label: 'Day View' },
-    { key: 'week', label: 'Week View' },
-    { key: 'month', label: 'Month View' },
-  ];
+  // Formatted selected date header
+  const formattedSelectedDateHeader = useMemo(() => {
+    if (!selectedDate) return '';
+    const parts = selectedDate.split('-');
+    const d =
+      parts.length === 3
+        ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+        : new Date(selectedDate);
+    return d.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }, [selectedDate]);
 
-  // Facility Filter Options
-  const amenityOptions = useMemo(() => {
-    const opts = amenities.map((a) => ({ label: a.name, value: a._id }));
-    return [{ label: 'All Facilities', value: 'All' }, ...opts];
-  }, [amenities]);
-
-  // Status Filter Options
-  const statusOptions = [
-    { label: 'All Statuses', value: 'All' },
-    { label: 'Confirmed', value: 'CONFIRMED' },
-    { label: 'Checked In', value: 'CHECKED_IN' },
-    { label: 'Completed', value: 'COMPLETED' },
-    { label: 'Cancelled', value: 'CANCELLED' },
-  ];
+  const selectedDateReservationCount = bookingCountsByDate[selectedDate] || 0;
 
   const renderBookingItem = (item: AmenityBooking) => {
     if (!item) return null;
-
-    const name =
-      typeof item.amenityId === 'object' && item.amenityId
-        ? item.amenityId.name
-        : item.amenityName || 'Amenity Slot';
-
-    const residentName =
-      item.residentName ||
-      (typeof item.userId === 'object' && item.userId ? item.userId.name || item.userId.username : '') ||
-      (item as any).userName ||
-      'Community Resident';
-
-    const villaNum =
-      (item as any).villaNumber ||
-      (item as any).flatNumber ||
-      (typeof item.userId === 'object' && item.userId ? item.userId.villaNumber || item.userId.flatNumber : '') ||
-      'Villa 101';
-
-    const isCancelled = (item.status as string) === 'CANCELLED' || (item.status as string) === 'REJECTED';
-    const statusLabel = isCancelled ? 'CANCELLED' : item.status === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED';
-    const statusVariant: StatusVariant = isCancelled ? 'danger' : item.status === 'COMPLETED' ? 'neutral' : 'success';
-
-    const timeWindowStr = item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : item.startTime || item.endTime || '';
-
     return (
-      <ListCard
-        key={item._id}
-        title={timeWindowStr ? `${name} • ${timeWindowStr}` : name}
-        subtitle={`Resident: ${residentName} (${villaNum})`}
-        leftIcon="Calendar"
-        status={{ label: statusLabel, variant: statusVariant }}
-        timestamp={item.date || item.bookingDate}
-        onPress={() => setSelectedBookingDetail(item)}
-        className="mb-2.5"
-      >
-        <View className="flex-row items-center justify-between pt-2 border-t border-border/40 mt-1">
-          <Text className="text-xs text-muted-foreground">
-            Ref: #{item.bookingId || item._id.slice(-6).toUpperCase()}
-          </Text>
-          {!isCancelled && item.status !== 'COMPLETED' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={() => setCancelTarget(item)}
-              className="py-1 px-3 h-7 border-border active:bg-secondary/60"
-              accessibilityLabel={`Cancel booking for ${residentName}`}
-            >
-              <Text className="text-muted-foreground text-xs font-semibold">Cancel Slot</Text>
-            </Button>
-          )}
-        </View>
-      </ListCard>
+      <AdminReservationCard
+        key={item._id || item.bookingId}
+        booking={item}
+        isConflicted={conflictedBookingIds.has(item._id)}
+        onPress={(b) => setSelectedBookingDetail(b)}
+      />
     );
   };
 
   const renderHeader = () => (
-    <View className="mb-3 gap-3">
-      {/* View Mode Segmented Control */}
-      <SegmentedControl
-        segments={viewSegments}
-        activeSegment={viewMode}
-        onChange={(key: string) => setViewMode(key as any)}
-      />
+    <View className="mb-2.5 gap-2.5">
+      {/* Search & Filter Bar */}
+      <View className="flex-row items-center gap-2">
+        {/* Search Input */}
+        <View className="flex-1 flex-row items-center bg-card border border-border/80 rounded-xl px-3 h-10 shadow-2xs">
+          <Icon as={Search} size={16} className="text-muted-foreground mr-2" />
+          <RNTextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search resident, villa #, ref ID..."
+            placeholderTextColor="#9ca3af"
+            className="flex-1 text-xs text-foreground font-normal py-0"
+            accessibilityLabel="Search resident, villa number, or reservation ID"
+          />
+          {Boolean(searchQuery) && (
+            <Pressable
+              onPress={() => setSearchQuery('')}
+              className="p-1"
+              accessibilityLabel="Clear search"
+            >
+              <Icon as={X} size={14} className="text-muted-foreground" />
+            </Pressable>
+          )}
+        </View>
 
-      {/* Date Navigation & Picker Bar */}
-      <ScheduleDateNavigator
-        selectedDate={selectedDate}
-        onDateChange={handleDateChange}
-        onPrevDate={() => navigateDate(-1)}
-        onNextDate={() => navigateDate(1)}
-        onToday={setToday}
-        title="Choose Occupancy Date"
-      />
-
-      {/* Search & Moveable Slide Status Filter Bar */}
-      <SearchFilterBar
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search resident, villa #, pass code..."
-        sortOptions={statusOptions}
-        currentSort={statusFilter}
-        onSortChange={setStatusFilter}
-        variant="default"
-        className="px-0 py-0 border-0"
-      />
-
-      {/* Facility Filter Bar */}
-      <View className="bg-card p-3 rounded-2xl border border-border shadow-xs">
-        <DropdownSelect
-          label="Facility Filter"
-          options={amenityOptions}
-          value={selectedAmenityId}
-          onValueChange={setSelectedAmenityId}
-        />
+        {/* Filter Trigger Button */}
+        <Pressable
+          onPress={() => setIsFilterDrawerOpen(true)}
+          className={`flex-row items-center justify-center gap-1.5 px-3 h-10 rounded-xl border ${
+            activeFilterCount > 0
+              ? 'bg-primary/10 border-primary/40'
+              : 'bg-card border-border/80 shadow-2xs active:bg-muted'
+          }`}
+          accessibilityRole="button"
+          accessibilityLabel={`Open filters. ${activeFilterCount} active filters.`}
+        >
+          <Icon
+            as={SlidersHorizontal}
+            size={15}
+            className={activeFilterCount > 0 ? 'text-primary' : 'text-foreground'}
+          />
+          <Text
+            className={`text-xs font-bold ${
+              activeFilterCount > 0 ? 'text-primary' : 'text-foreground'
+            }`}
+          >
+            Filters
+          </Text>
+          {activeFilterCount > 0 && (
+            <View className="w-4 h-4 rounded-full bg-primary items-center justify-center ms-0.5">
+              <Text className="text-[10px] font-bold text-primary-foreground leading-none">
+                {activeFilterCount}
+              </Text>
+            </View>
+          )}
+        </Pressable>
       </View>
 
-      {/* Summary Counter */}
-      <View className="flex-row items-center justify-between px-1">
-        <Text variant="large" className="font-bold text-foreground">
-          Reservations ({filteredBookings.length})
-        </Text>
-        {filteredBookings.length !== adminBookings.length && (
+      {/* Active Filter Chips Row */}
+      <AdminActiveFilterChips
+        filters={filters}
+        searchQuery={searchQuery}
+        onRemoveFilter={handleRemoveFilter}
+        onClearAll={handleResetFilters}
+        amenities={amenities}
+      />
+
+      {/* Compact Month Calendar */}
+      <AdminCalendarView
+        currentDate={currentDate}
+        selectedDate={selectedDate}
+        onSelectDate={handleDateChange}
+        bookingCountsByDate={bookingCountsByDate}
+        onPrevDate={() => navigateDate(-1)}
+        onNextDate={() => navigateDate(1)}
+      />
+
+      {/* Compact Availability Summary for Selected Date */}
+      <AdminAvailabilitySummary items={availabilitySummary} />
+
+      {/* Selected Date Header & Total Reservation Count */}
+      <View className="flex-row items-center justify-between px-1 pt-1">
+        <View>
+          <Text className="text-xs font-semibold text-muted-foreground">
+            {formattedSelectedDateHeader}
+          </Text>
+          <Text variant="large" className="font-bold text-foreground text-base mt-0.5">
+            Reservations ({selectedDateReservationCount})
+          </Text>
+        </View>
+        {filteredBookings.length > 0 && (
           <Text variant="muted" className="text-xs text-muted-foreground">
-            Filtered from {adminBookings.length}
+            {filteredBookings.length} total in range
           </Text>
         )}
       </View>
     </View>
   );
 
+  const renderEmptyComponent = () => {
+    if (activeFilterCount > 0) {
+      return (
+        <View className="items-center justify-center p-6 bg-card rounded-2xl border border-border mt-1">
+          <Icon as={CalendarIcon} size={32} className="text-muted-foreground mb-2" />
+          <Text className="text-sm font-bold text-foreground text-center">
+            No reservations match the selected filters
+          </Text>
+          <Text className="text-xs text-muted-foreground text-center mt-1 mb-3">
+            Try adjusting your filter settings or selecting another date.
+          </Text>
+          <Button variant="outline" size="sm" onPress={handleResetFilters}>
+            Clear Filters
+          </Button>
+        </View>
+      );
+    }
+
+    return (
+      <View className="items-center justify-center p-6 bg-card rounded-2xl border border-border mt-1">
+        <Icon as={CalendarIcon} size={32} className="text-muted-foreground mb-2" />
+        <Text className="text-sm font-bold text-foreground text-center">
+          No reservations for this date
+        </Text>
+        <Text className="text-xs text-muted-foreground text-center mt-1">
+          There are no bookings or maintenance events scheduled for this day.
+        </Text>
+      </View>
+    );
+  };
+
   return (
     <ScreenShell
       title="Facility Schedule & Occupancy"
-      subtitle="Track occupancy & block reserved slots"
+      subtitle="Track occupancy & monitor reservations"
       iconName="Calendar"
       loading={loading && adminBookings.length === 0}
       error={error}
-      headerRight={
-        <View className="flex-row items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
-            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7 bg-amber-500/10 border-amber-500/30"
-            accessibilityLabel="Maintenance Schedule"
-          >
-            <Wrench size={12} className="text-amber-600 dark:text-amber-400" />
-            <Text className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">Maintenance</Text>
-          </Button>
-          <Button
-            size="sm"
-            onPress={handleOpenManualModal}
-            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7 bg-emerald-600 active:bg-emerald-700"
-            accessibilityLabel="Reserve manual slot"
-          >
-            <Plus size={13} color="#FFFFFF" />
-            <Text className="text-white font-bold text-[11px]">Reserve</Text>
-          </Button>
-        </View>
-      }
     >
       <View className="flex-1 bg-background">
         <PaginatedList<AmenityBooking>
-          data={filteredBookings}
+          data={selectedDateBookings}
           renderItem={renderBookingItem}
-          pagination={pagination || {
-            currentPage: 1,
-            totalPages: 1,
-            totalRecords: filteredBookings.length,
-            limit: 50,
-          }}
+          pagination={
+            pagination || {
+              currentPage: 1,
+              totalPages: 1,
+              totalRecords: selectedDateBookings.length,
+              limit: 50,
+            }
+          }
           onLoadMore={handleLoadMore}
           onRefresh={loadData}
           loading={loading}
           ListHeaderComponent={renderHeader()}
-          emptyIcon="Calendar"
-          emptyTitle="No Reservations Found"
-          emptySubtitle="No active or pending bookings match your selected date bounds or filter."
-          contentContainerClassName="p-4 pt-3 pb-28 gap-3"
+          ListEmptyComponent={renderEmptyComponent()}
+          contentContainerClassName="p-3 pt-2.5 pb-28 gap-2.5"
         />
       </View>
 
-      {/* Manual Admin Reservation Modal */}
-      <ManualBookingModal
-        visible={isManualModalOpen}
-        onClose={handleCloseManualModal}
-        onSubmit={handleManualSubmit}
+      {/* Filter Bottom Sheet */}
+      <AdminCalendarFilterDrawer
+        visible={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        filters={filters}
+        onApply={handleApplyFilters}
+        onReset={handleResetFilters}
         amenities={amenities}
-        loading={submittingManual}
       />
 
       {/* Booking Details Inspection Modal */}
@@ -269,18 +268,7 @@ export default function AdminAmenityCalendarScreen() {
         visible={!!selectedBookingDetail}
         onClose={() => setSelectedBookingDetail(null)}
         booking={selectedBookingDetail}
-        onCancelClick={(b) => setCancelTarget(b)}
-      />
-
-      {/* Admin Cancel Reason Modal */}
-      <AdminCancelReasonModal
-        visible={!!cancelTarget}
-        onClose={() => setCancelTarget(null)}
-        onConfirm={handleConfirmAdminCancel}
-        booking={cancelTarget}
-        loading={submittingCancel}
       />
     </ScreenShell>
   );
 }
-

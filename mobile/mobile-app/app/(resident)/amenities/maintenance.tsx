@@ -10,13 +10,16 @@ import { Plus, Search, X, RotateCcw } from 'lucide-react-native';
 
 import { useAdminMaintenance } from '../../../src/features/amenities/hooks/useAdminMaintenance';
 import { AmenityMaintenanceCard } from '../../../src/features/amenities/components/AmenityMaintenanceCard';
-import { MaintenanceModal } from '../../../src/features/amenities/components/MaintenanceModal';
+import { MaintenanceWizard } from '../../../src/features/amenities/components/maintenance-wizard';
+import { FacilityMaintenanceDetailSheet } from '../../../src/features/amenities/components/FacilityMaintenanceDetailSheet';
+import amenityManagementService from '../../../src/features/amenities/services/amenityManagementService';
 import { Amenity, MaintenanceTask } from '../../../src/features/amenities/store/amenitySlice';
 
 type StatusFilterType = 'ALL' | 'MAINTENANCE' | 'OPERATIONAL';
 
 export interface AmenityMaintenanceItem {
   amenity: Amenity;
+  activeTasks: MaintenanceTask[];
   activeTask?: MaintenanceTask | null;
 }
 
@@ -31,6 +34,8 @@ export default function AmenityMaintenanceScheduleScreen() {
     selectedAmenityId,
     deleteTargetTask,
     setDeleteTargetTask,
+    deleteTargetAmenity,
+    setDeleteTargetAmenity,
     scheduling,
     loadData,
     handleLoadMore,
@@ -39,28 +44,32 @@ export default function AmenityMaintenanceScheduleScreen() {
     handleCloseModal,
     handleScheduleSubmit,
     handleConfirmDelete,
+    handleConfirmDeleteAll,
   } = useAdminMaintenance();
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>('ALL');
 
-  // Pair each amenity from Amenities Master with its active scheduled upkeep task
+  // Selected facility for the detailed maintenance bottom sheet view
+  const [selectedFacilityForDetails, setSelectedFacilityForDetails] = useState<Amenity | null>(null);
+
+  // Pair each amenity from Amenities Master with ALL its active scheduled upkeep tasks
   const amenityMaintenanceItems: AmenityMaintenanceItem[] = useMemo(() => {
     const list: AmenityMaintenanceItem[] = amenities.map((amenity) => {
-      const activeTask =
-        maintenanceList.find((t) => {
-          const matchAmenity =
-            String(t.amenityId) === String(amenity._id) ||
-            (t.amenityName &&
-              amenity.name &&
-              t.amenityName.trim().toLowerCase() === amenity.name.trim().toLowerCase());
-          const s = String(t.status || '').toUpperCase();
-          return matchAmenity && s !== 'CANCELLED' && s !== 'COMPLETED';
-        }) || null;
+      const activeTasks = maintenanceList.filter((t) => {
+        const matchAmenity =
+          String(t.amenityId) === String(amenity._id) ||
+          (t.amenityName &&
+            amenity.name &&
+            t.amenityName.trim().toLowerCase() === amenity.name.trim().toLowerCase());
+        const s = String(t.status || '').toUpperCase();
+        return matchAmenity && s !== 'CANCELLED' && s !== 'COMPLETED';
+      });
 
       return {
         amenity,
-        activeTask,
+        activeTasks,
+        activeTask: activeTasks[0] || null,
       };
     });
 
@@ -84,6 +93,7 @@ export default function AmenityMaintenanceScheduleScreen() {
             category: task.maintenanceType || 'General',
             location: 'Community Facility',
           },
+          activeTasks: [task],
           activeTask: task,
         });
       }
@@ -92,14 +102,36 @@ export default function AmenityMaintenanceScheduleScreen() {
     return list;
   }, [amenities, maintenanceList]);
 
+  // Derive the latest facility object for details modal
+  const currentSelectedAmenity = useMemo(() => {
+    if (!selectedFacilityForDetails) return null;
+    return (
+      amenities.find((a) => String(a._id) === String(selectedFacilityForDetails._id)) ||
+      selectedFacilityForDetails
+    );
+  }, [selectedFacilityForDetails, amenities]);
+
+  // Derive active tasks live from maintenanceList for the selected facility
+  const activeTasksForSelectedFacility = useMemo(() => {
+    if (!selectedFacilityForDetails) return [];
+    const facId = String(selectedFacilityForDetails._id);
+    const facName = selectedFacilityForDetails.name?.trim().toLowerCase();
+    return maintenanceList.filter((t) => {
+      const matchAmenity =
+        String(t.amenityId) === facId ||
+        (t.amenityName && facName && t.amenityName.trim().toLowerCase() === facName);
+      const s = String(t.status || '').toUpperCase();
+      return matchAmenity && s !== 'CANCELLED' && s !== 'COMPLETED';
+    });
+  }, [selectedFacilityForDetails, maintenanceList]);
+
   // Compute status counts for filter badges
   const counts = useMemo(() => {
     let maintenance = 0;
     let operational = 0;
 
     amenityMaintenanceItems.forEach((item) => {
-      const s = String(item.activeTask?.status || '').toUpperCase();
-      const isMaint = Boolean(item.activeTask && s !== 'CANCELLED' && s !== 'COMPLETED');
+      const isMaint = item.activeTasks.length > 0;
       if (isMaint) maintenance++;
       else operational++;
     });
@@ -114,8 +146,7 @@ export default function AmenityMaintenanceScheduleScreen() {
   // Filter items by status and search query
   const filteredItems = useMemo(() => {
     return amenityMaintenanceItems.filter((item) => {
-      const s = String(item.activeTask?.status || '').toUpperCase();
-      const hasActiveMaintenance = Boolean(item.activeTask && s !== 'CANCELLED' && s !== 'COMPLETED');
+      const hasActiveMaintenance = item.activeTasks.length > 0;
 
       // Status filter
       if (statusFilter === 'MAINTENANCE' && !hasActiveMaintenance) return false;
@@ -127,16 +158,18 @@ export default function AmenityMaintenanceScheduleScreen() {
         const matchesName = item.amenity.name?.toLowerCase().includes(q);
         const matchesCategory = item.amenity.category?.toLowerCase().includes(q);
         const matchesLocation = item.amenity.location?.toLowerCase().includes(q);
-        const matchesTaskTitle = item.activeTask?.title?.toLowerCase().includes(q);
-        const matchesTaskType = item.activeTask?.maintenanceType?.toLowerCase().includes(q);
-        const matchesTaskDesc = item.activeTask?.description?.toLowerCase().includes(q);
+        const matchesAnyTask = item.activeTasks.some((t) => {
+          return (
+            t.title?.toLowerCase().includes(q) ||
+            t.maintenanceType?.toLowerCase().includes(q) ||
+            t.description?.toLowerCase().includes(q)
+          );
+        });
         if (
           !matchesName &&
           !matchesCategory &&
           !matchesLocation &&
-          !matchesTaskTitle &&
-          !matchesTaskType &&
-          !matchesTaskDesc
+          !matchesAnyTask
         ) {
           return false;
         }
@@ -151,15 +184,27 @@ export default function AmenityMaintenanceScheduleScreen() {
     setStatusFilter('ALL');
   };
 
+  const cancelConfirmMessage = useMemo(() => {
+    if (!deleteTargetTask) return '';
+    const facName = deleteTargetTask.amenityName || currentSelectedAmenity?.name || 'Facility';
+    const maintTitle = deleteTargetTask.title || deleteTargetTask.reason || 'Routine Maintenance';
+    const dateStr = `${deleteTargetTask.startDate}${
+      deleteTargetTask.endDate && deleteTargetTask.endDate !== deleteTargetTask.startDate
+        ? ` – ${deleteTargetTask.endDate}`
+        : ''
+    }`;
+    const timeStr = `${deleteTargetTask.startTime || '00:00'} – ${deleteTargetTask.endTime || '23:59'}`;
+    return `Facility:\n${facName}\n\nMaintenance:\n${maintTitle}\n\nDate:\n${dateStr}\n\nTime:\n${timeStr}\n\nAre you sure you want to cancel this maintenance window?`;
+  }, [deleteTargetTask, currentSelectedAmenity]);
+
   const renderItem = (item: AmenityMaintenanceItem) => {
     return (
       <AmenityMaintenanceCard
         key={item.amenity._id}
         amenity={item.amenity}
         activeTask={item.activeTask}
-        onSchedule={handleOpenCreateModal}
-        onEditTask={handleOpenEditModal}
-        onDeleteTask={setDeleteTargetTask}
+        activeTasks={item.activeTasks}
+        onPress={(amenity) => setSelectedFacilityForDetails(amenity)}
       />
     );
   };
@@ -266,7 +311,7 @@ export default function AmenityMaintenanceScheduleScreen() {
       }
     >
       <View className="flex-1 bg-background">
-        {/* Unified Amenity Maintenance Card List */}
+        {/* Clean Facility Summary Card List */}
         <PaginatedList<AmenityMaintenanceItem>
           data={filteredItems}
           renderItem={renderItem}
@@ -295,8 +340,22 @@ export default function AmenityMaintenanceScheduleScreen() {
         />
       </View>
 
-      {/* Schedule / Edit Maintenance Modal */}
-      <MaintenanceModal
+      {/* Facility Maintenance Details Bottom Sheet */}
+      <FacilityMaintenanceDetailSheet
+        visible={!!currentSelectedAmenity}
+        onClose={() => setSelectedFacilityForDetails(null)}
+        amenity={currentSelectedAmenity}
+        activeTasks={activeTasksForSelectedFacility}
+        onAddWindow={(amenityId) => handleOpenCreateModal(amenityId)}
+        onEditTask={(task) => handleOpenEditModal(task)}
+        onCancelTask={(task) => handleConfirmDelete(task)}
+        loading={loading}
+        error={error}
+        onRetry={loadData}
+      />
+
+      {/* Schedule / Edit Maintenance Wizard */}
+      <MaintenanceWizard
         visible={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleScheduleSubmit}
@@ -306,16 +365,30 @@ export default function AmenityMaintenanceScheduleScreen() {
         loading={scheduling}
       />
 
-      {/* Cancel Maintenance Confirmation Modal */}
+      {/* Cancel Single Maintenance Window Confirmation Modal */}
       <ConfirmationModal
         visible={!!deleteTargetTask}
         title="Cancel Maintenance Window?"
-        message={`Are you sure you want to cancel the maintenance window "${deleteTargetTask?.reason || (deleteTargetTask as any)?.title || 'Maintenance'}"? This will unblock conflicting resident reservation slots.`}
+        message={cancelConfirmMessage}
         variant="danger"
-        confirmLabel="Cancel Maintenance"
+        confirmLabel="Cancel Window"
         cancelLabel="Keep Window"
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTargetTask(null)}
+      />
+
+      {/* Cancel All Maintenance Schedules for Facility Confirmation Modal */}
+      <ConfirmationModal
+        visible={!!deleteTargetAmenity}
+        title="Cancel All Maintenance Schedules?"
+        message={`Are you sure you want to cancel all scheduled maintenance windows for "${
+          deleteTargetAmenity?.amenityName || 'this facility'
+        }"? This will return the facility to operational status and unblock resident reservation slots.`}
+        variant="danger"
+        confirmLabel="Cancel All Maintenance"
+        cancelLabel="Keep Schedules"
+        onConfirm={handleConfirmDeleteAll}
+        onCancel={() => setDeleteTargetAmenity(null)}
       />
     </ScreenShell>
   );

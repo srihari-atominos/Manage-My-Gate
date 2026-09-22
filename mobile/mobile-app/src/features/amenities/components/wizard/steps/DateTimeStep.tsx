@@ -11,6 +11,7 @@ import { DatePicker } from '@/components/common/DatePicker';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Clock, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react-native';
 import { formatTo12Hour, formatTimeRange12Hour } from '../../../utils/amenityStateHelpers';
+import { AmenityFacility, AmenityAvailabilityResult } from '../../../types/amenityDomain.types';
 
 export interface DateTimeStepProps {
   facility: AmenityFacility;
@@ -51,7 +52,7 @@ export function DateTimeStep({
   // Compute day of week for operating hours matching (0 = Sun, 6 = Sat)
   const dayOfWeek = selectedDateObj.getDay();
   const daySchedule = useMemo(() => {
-    return facility.operatingHours?.find((h) => h.dayOfWeek === dayOfWeek);
+    return facility.operatingHours?.find((h: any) => h.dayOfWeek === dayOfWeek);
   }, [facility.operatingHours, dayOfWeek]);
 
   // Generate suggested slot chunks based on slotDurationMinutes, operating hours, and server availability

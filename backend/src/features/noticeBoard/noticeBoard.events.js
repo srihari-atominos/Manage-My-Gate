@@ -37,7 +37,6 @@ const enqueueNoticeOutbox = async (eventType, notice, extraPayload = {}) => {
     },
   });
 };
-};
 
 // Hook events to Socket dispatcher and asynchronous outbox pipeline
 noticeEvents.on('NOTICE_CREATED', (notice) => {

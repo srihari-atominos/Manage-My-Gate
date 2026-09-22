@@ -203,6 +203,11 @@ const amenityReservationSchema = new mongoose.Schema(
       required: [true, 'Total amount is required'],
       min: [0, 'Total amount cannot be negative'],
     },
+    paidAmount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Paid amount cannot be negative'],
+    },
     depositAmount: {
       type: Number,
       default: 0,
