@@ -63,6 +63,50 @@ export const validateEngagementContent = async (req, res, next) => {
       req.body.targetAudience = targetAudience;
     }
 
+    // Audience targetType validation
+    if (req.body.targetAudience) {
+      let audienceObj = req.body.targetAudience;
+      if (typeof audienceObj === 'string') {
+        try {
+          audienceObj = JSON.parse(audienceObj);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (audienceObj && typeof audienceObj === 'object' && audienceObj.targetType) {
+        const VALID_TARGET_TYPES = ['ALL', 'ROLES', 'BLOCKS', 'UNITS', 'RESIDENCY_TYPES', 'CUSTOM'];
+        if (!VALID_TARGET_TYPES.includes(audienceObj.targetType)) {
+          throw new HttpError(
+            400,
+            `Invalid targetType "${audienceObj.targetType}". Must be one of: ${VALID_TARGET_TYPES.join(', ')}.`
+          );
+        }
+      }
+    }
+
+    // Scheduling Chronology Validation
+    if (req.body.scheduleDate) {
+      const scheduleTime = new Date(req.body.scheduleDate).getTime();
+      if (isNaN(scheduleTime)) {
+        throw new HttpError(400, 'scheduleDate must be a valid date format');
+      }
+
+      if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.NOTICE && req.body.expiryDate) {
+        const expiryTime = new Date(req.body.expiryDate).getTime();
+        if (!isNaN(expiryTime) && expiryTime <= scheduleTime) {
+          throw new HttpError(400, 'expiryDate must be after scheduleDate');
+        }
+      }
+
+      if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.POLL && req.body.endDate) {
+        const endTime = new Date(req.body.endDate).getTime();
+        if (!isNaN(endTime) && endTime <= scheduleTime) {
+          throw new HttpError(400, 'endDate must be after scheduleDate');
+        }
+      }
+    }
+
     // Dynamic delegation to domain validation rules
     if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.NOTICE) {
       return validate(createNoticeRules)(req, res, next);

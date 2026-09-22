@@ -23,6 +23,28 @@ export class CommunityEngagementController {
       next(error);
     }
   }
+
+  /**
+   * Side-effect-free preview endpoint for Community Engagement content (Notice or Poll).
+   *
+   * @param {import('express').Request} req
+   * @param {import('express').Response} res
+   * @param {import('express').NextFunction} next
+   */
+  async previewContent(req, res, next) {
+    try {
+      const result = await communityEngagementService.previewContent(
+        req.body,
+        req.user,
+        req.tenant,
+        req.files || []
+      );
+
+      return res.success(result, 'Engagement preview generated successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const communityEngagementController = new CommunityEngagementController();

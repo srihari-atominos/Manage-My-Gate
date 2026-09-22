@@ -64,4 +64,43 @@ router.post(
   communityEngagementController.createContent
 );
 
+/**
+ * @swagger
+ * /community-engagement/preview:
+ *   post:
+ *     summary: Side-effect-free preview generator for Community Engagement content (NOTICE or POLL)
+ *     tags: [CommunityEngagement]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - contentType
+ *             properties:
+ *               contentType:
+ *                 type: string
+ *                 enum: [NOTICE, POLL]
+ *     responses:
+ *       200:
+ *         description: Preview generated successfully
+ *       400:
+ *         description: Validation error or invalid contentType
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.post(
+  '/preview',
+  authorizePermission(['notices', 'polls', 'community_engagement'], CONTENT_MANAGE_PERMISSIONS),
+  noticeUpload.array('images', 5),
+  noticeImageSignatureValidator,
+  validateEngagementContent,
+  communityEngagementController.previewContent
+);
+
 export default router;

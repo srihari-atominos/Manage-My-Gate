@@ -18,8 +18,7 @@ import { syncPermissions } from './src/utils/permissionSync.util.js';
 import complaintCron from './src/features/complaint/complaint.cron.js';
 import assessmentCron from './src/features/assessment/utils/assessmentCron.js';
 import userCron from './src/features/user/user.cron.js';
-import noticeBoardCron from './src/features/noticeBoard/noticeBoard.cron.js';
-import pollCron from './src/features/poll/poll.cron.js';
+import communityEngagementCron from './src/features/communityEngagement/communityEngagement.cron.js';
 import outboxWorker from './src/workers/outbox.worker.js';
 
 const initCronJobs = () => {
@@ -27,8 +26,7 @@ const initCronJobs = () => {
     complaintCron.init();
     assessmentCron.init();
     userCron.init();
-    noticeBoardCron.init();
-    pollCron.init();
+    communityEngagementCron.init();
     logger.info('Background Cron Jobs Initialized');
   }
 };

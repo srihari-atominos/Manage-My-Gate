@@ -10,6 +10,7 @@ import {
   COMMUNITY_ENGAGEMENT_CONTENT_TYPES,
   VALID_CONTENT_TYPES,
 } from '../../../src/features/communityEngagement/communityEngagement.constants.js';
+import enqueueCommunityEngagementOutbox from '../../../src/features/communityEngagement/communityEngagement.outbox.js';
 import noticeBoardService from '../../../src/features/noticeBoard/noticeBoard.service.js';
 import * as pollService from '../../../src/features/poll/poll.services.js';
 import HttpError from '../../../src/utils/httpError.utils.js';
@@ -295,11 +296,18 @@ describe('Community Engagement Gateway Unit & Integration Tests (Phase 2)', () =
 
       const customPollService = {
         createPoll: async (data) => {
-          receivedPollData = data;
+          const options = (data.options || []).map((opt) => ({
+            text: typeof opt === 'string' ? opt.trim() : (opt.text || '').trim(),
+            votesCount: 0,
+          }));
+          const scheduleDate = data.scheduleDate ? new Date(data.scheduleDate) : null;
+          const status = data.status || (scheduleDate && scheduleDate > new Date() ? 'Scheduled' : 'Active');
+          receivedPollData = { ...data, options, status };
           return {
             _id: new mongoose.Types.ObjectId(),
             ...data,
-            status: data.status || 'Active',
+            options,
+            status,
             toObject: function () {
               return { ...this };
             },
@@ -420,6 +428,261 @@ describe('Community Engagement Gateway Unit & Integration Tests (Phase 2)', () =
       const optionErr = passedError.details?.find((d) => d.field === 'options');
       assert.ok(optionErr, 'Should report options validation error');
       assert.match(optionErr.message, /between 2 and 10 options/i);
+    });
+  });
+
+  describe('7. Side-Effect-Free Preview Generation (previewContent)', () => {
+    it('should generate Notice preview with Published projectedStatus and estimated recipients without DB writes', async () => {
+      let createNoticeCalled = false;
+      const mockNoticeService = {
+        createNotice: async () => {
+          createNoticeCalled = true;
+        },
+      };
+      const mockAudienceService = {
+        validateTarget: async (target) => target || { targetType: 'ALL' },
+        countEligibleRecipients: async () => 42,
+      };
+
+      const service = new CommunityEngagementService({
+        noticeService: mockNoticeService,
+        audienceService: mockAudienceService,
+      });
+
+      const payload = {
+        contentType: 'NOTICE',
+        title: 'Water Maintenance Notice',
+        description: 'Water will be shut off for maintenance.',
+        category: 'Maintenance',
+        priority: 'High',
+      };
+
+      const preview = await service.previewContent(payload, adminUser, tenantContextOrgA);
+
+      assert.strictEqual(createNoticeCalled, false, 'createNotice must NOT be called on preview');
+      assert.strictEqual(preview.contentType, 'NOTICE');
+      assert.strictEqual(preview.title, 'Water Maintenance Notice');
+      assert.strictEqual(preview.projectedStatus, 'Published');
+      assert.strictEqual(preview.status, 'Published');
+      assert.strictEqual(preview.estimatedRecipients, 42);
+      assert.strictEqual(preview.previewOnly, true);
+      assert.strictEqual(preview.orgId.toString(), orgA.toString());
+    });
+
+    it('should generate Notice preview with Scheduled projectedStatus when future scheduleDate is supplied', async () => {
+      const futureDate = new Date(Date.now() + 86400000).toISOString();
+      const service = new CommunityEngagementService({
+        audienceService: {
+          validateTarget: async (t) => t,
+          countEligibleRecipients: async () => 15,
+        },
+      });
+
+      const payload = {
+        contentType: 'NOTICE',
+        title: 'Future Scheduled Notice',
+        description: 'Scheduled announcement.',
+        category: 'General',
+        scheduleDate: futureDate,
+      };
+
+      const preview = await service.previewContent(payload, adminUser, tenantContextOrgA);
+
+      assert.strictEqual(preview.projectedStatus, 'Scheduled');
+      assert.strictEqual(preview.status, 'Scheduled');
+      assert.strictEqual(preview.scheduleDate, futureDate);
+      assert.strictEqual(preview.estimatedRecipients, 15);
+    });
+
+    it('should generate Poll preview with normalized options and estimated recipients without DB writes', async () => {
+      let createPollCalled = false;
+      const mockPollService = {
+        createPoll: async () => {
+          createPollCalled = true;
+        },
+      };
+      const mockAudienceService = {
+        validateTarget: async (t) => t,
+        countEligibleRecipients: async () => 88,
+      };
+
+      const service = new CommunityEngagementService({
+        pollService: mockPollService,
+        audienceService: mockAudienceService,
+      });
+
+      const payload = {
+        contentType: 'POLL',
+        question: 'Do you agree with the new visitor parking policy?',
+        options: ['Agree completely', 'Disagree', 'Neutral'],
+        endDate: new Date(Date.now() + 172800000).toISOString(),
+      };
+
+      const preview = await service.previewContent(payload, adminUser, tenantContextOrgA);
+
+      assert.strictEqual(createPollCalled, false, 'createPoll must NOT be called on preview');
+      assert.strictEqual(preview.contentType, 'POLL');
+      assert.strictEqual(preview.question, payload.question);
+      assert.strictEqual(preview.projectedStatus, 'Active');
+      assert.strictEqual(preview.status, 'Active');
+      assert.strictEqual(preview.estimatedRecipients, 88);
+      assert.strictEqual(preview.previewOnly, true);
+      assert.strictEqual(preview.options.length, 3);
+      assert.strictEqual(preview.options[0].text, 'Agree completely');
+      assert.strictEqual(preview.options[0].votes, 0);
+    });
+
+    it('should reject preview for unauthorized resident without create permission', async () => {
+      const service = new CommunityEngagementService();
+      const payload = {
+        contentType: 'NOTICE',
+        title: 'Unauthorized resident notice',
+      };
+
+      await assert.rejects(
+        async () => {
+          await service.previewContent(payload, residentUser, tenantContextOrgA);
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 403);
+          assert.match(err.message, /do not have permission/i);
+          return true;
+        }
+      );
+    });
+  });
+
+  describe('8. Phase 3 Gateway Validation & Audience Verification', () => {
+    it('should reject payload when targetType is invalid', async () => {
+      let passedError = null;
+      const req = {
+        body: {
+          contentType: 'NOTICE',
+          title: 'Valid Title',
+          description: 'Valid Description',
+          category: 'General',
+          priority: 'Low',
+          targetAudience: {
+            targetType: 'INVALID_TARGET_TYPE',
+          },
+        },
+      };
+      const res = {};
+      const next = (err) => {
+        passedError = err;
+      };
+
+      await validateEngagementContent(req, res, next);
+      assert.ok(passedError, 'Should reject invalid targetType');
+      assert.strictEqual(passedError.statusCode, 400);
+      assert.match(passedError.message, /Invalid targetType "INVALID_TARGET_TYPE"/i);
+    });
+
+    it('should reject NOTICE when expiryDate is before or equal to scheduleDate', async () => {
+      let passedError = null;
+      const scheduleDate = new Date(Date.now() + 86400000).toISOString();
+      const expiryDate = new Date(Date.now() + 43200000).toISOString(); // 12 hours earlier
+
+      const req = {
+        body: {
+          contentType: 'NOTICE',
+          title: 'Invalid Date Notice',
+          description: 'Notice with invalid dates',
+          category: 'General',
+          priority: 'Low',
+          scheduleDate,
+          expiryDate,
+        },
+      };
+      const res = {};
+      const next = (err) => {
+        passedError = err;
+      };
+
+      await validateEngagementContent(req, res, next);
+      assert.ok(passedError, 'Should reject expiryDate before scheduleDate');
+      assert.strictEqual(passedError.statusCode, 400);
+      assert.match(passedError.message, /expiryDate must be after scheduleDate/i);
+    });
+
+    it('should reject POLL when endDate is before or equal to scheduleDate', async () => {
+      let passedError = null;
+      const scheduleDate = new Date(Date.now() + 86400000).toISOString();
+      const endDate = new Date(Date.now() + 43200000).toISOString(); // 12 hours earlier
+
+      const req = {
+        body: {
+          contentType: 'POLL',
+          question: 'Invalid Date Poll Question?',
+          options: ['Option 1', 'Option 2'],
+          scheduleDate,
+          endDate,
+        },
+      };
+      const res = {};
+      const next = (err) => {
+        passedError = err;
+      };
+
+      await validateEngagementContent(req, res, next);
+      assert.ok(passedError, 'Should reject endDate before scheduleDate');
+      assert.strictEqual(passedError.statusCode, 400);
+      assert.match(passedError.message, /endDate must be after scheduleDate/i);
+    });
+
+    it('should normalize client-provided "audience" key to "targetAudience"', async () => {
+      let nextCalled = false;
+      const req = {
+        body: {
+          contentType: 'NOTICE',
+          title: 'Normalized Audience Notice',
+          description: 'Valid Description',
+          category: 'General',
+          priority: 'Medium',
+          audience: { targetType: 'ALL' },
+        },
+      };
+      const res = {};
+      const next = (err) => {
+        nextCalled = true;
+      };
+
+      await validateEngagementContent(req, res, next);
+      assert.strictEqual(nextCalled, true);
+      assert.deepStrictEqual(req.body.targetAudience, { targetType: 'ALL' });
+    });
+  });
+
+  describe('9. Standardized Outbox Dispatcher (enqueueCommunityEngagementOutbox)', () => {
+    it('should reject outbox dispatch with invalid aggregateType', async () => {
+      const result = await enqueueCommunityEngagementOutbox({
+        aggregateType: 'INVALID_TYPE',
+        aggregateId: new mongoose.Types.ObjectId(),
+        eventType: 'NOTICE_PUBLISHED',
+        payload: {},
+      });
+      assert.strictEqual(result, null);
+    });
+
+    it('should reject outbox dispatch with missing eventType', async () => {
+      const result = await enqueueCommunityEngagementOutbox({
+        aggregateType: 'NOTICE',
+        aggregateId: new mongoose.Types.ObjectId(),
+        eventType: '',
+        payload: {},
+      });
+      assert.strictEqual(result, null);
+    });
+
+    it('should safely return null when database connection is not established', async () => {
+      const result = await enqueueCommunityEngagementOutbox({
+        aggregateType: 'NOTICE',
+        aggregateId: new mongoose.Types.ObjectId(),
+        eventType: 'NOTICE_PUBLISHED',
+        payload: { title: 'Test Notice' },
+      });
+      // In test environment without active DB connection (readyState !== 1), returns null safely
+      assert.strictEqual(result, null);
     });
   });
 });

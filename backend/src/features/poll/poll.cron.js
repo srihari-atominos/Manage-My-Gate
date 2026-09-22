@@ -4,15 +4,9 @@ import { processScheduledPolls, processExpiredPolls, processClosingSoonPolls } f
 
 class PollCron {
   init() {
-    // Run every 5 minutes
-    cron.schedule('*/5 * * * *', async () => {
-      try {
-        await this.runNow();
-      } catch (err) {
-        logger.error('[Poll Cron] Scheduled tick failed:', err);
-      }
-    });
-    logger.info('[Poll Cron] Initialized background schedule (every 5 mins).');
+    // Deprecated: Consolidated under CommunityEngagementCron.
+    // Does not register a duplicate node-cron timer.
+    logger.info('[Poll Cron] Deprecated: Poll lifecycle scheduling is orchestrated by CommunityEngagementCron.');
   }
 
   async runNow(now = new Date()) {

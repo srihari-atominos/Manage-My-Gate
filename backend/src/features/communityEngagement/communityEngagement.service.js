@@ -1,6 +1,7 @@
 import HttpError from '../../utils/httpError.utils.js';
 import noticeBoardService from '../noticeBoard/noticeBoard.service.js';
 import * as pollService from '../poll/poll.services.js';
+import audienceService from '../audience/audience.service.js';
 import { getPermissionsForUser } from '../../middlewares/rbac.middleware.js';
 import { mapPermission, expandUserPermissions } from '../../utils/permissionMapper.js';
 import {
@@ -13,10 +14,12 @@ export class CommunityEngagementService {
    * @param {Object} [deps={}]
    * @param {Object} [deps.noticeService]
    * @param {Object} [deps.pollService]
+   * @param {Object} [deps.audienceService]
    */
   constructor(deps = {}) {
     this.noticeService = deps.noticeService || noticeBoardService;
     this.pollService = deps.pollService || pollService;
+    this.audienceService = deps.audienceService || audienceService;
   }
 
   /**
@@ -134,30 +137,10 @@ export class CommunityEngagementService {
 
     // Delegation to Poll Domain
     if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.POLL) {
-      const scheduleDate = contentData.scheduleDate ? new Date(contentData.scheduleDate) : null;
-      let status = contentData.status;
-      if (!status) {
-        status = scheduleDate && scheduleDate > new Date() ? 'Scheduled' : 'Active';
-      }
-
-      // Map options ensuring each item is { text: '...' }
-      const options = (contentData.options || []).map((opt) => {
-        if (typeof opt === 'string') {
-          return { text: opt.trim(), votesCount: 0 };
-        }
-        return {
-          text: (opt.text || '').trim(),
-          votesCount: opt.votesCount || 0,
-        };
-      });
-
       const pollData = {
         ...contentData,
-        options,
         orgId,
         createdBy: userId,
-        status,
-        scheduleDate,
         targetAudience,
         visibility: contentData.visibility || 'Everyone',
       };
@@ -168,6 +151,165 @@ export class CommunityEngagementService {
       return {
         contentType: COMMUNITY_ENGAGEMENT_CONTENT_TYPES.POLL,
         ...pollObj,
+      };
+    }
+
+    throw new HttpError(400, `Unhandled contentType: '${contentType}'`);
+  }
+
+  /**
+   * Generates a side-effect-free preview of Notice or Poll content.
+   * Computes projected status, validates and normalizes target audience,
+   * calculates estimated eligible recipients, without creating database records or firing outbox/notifications.
+   *
+   * @param {Object} contentData - Raw request payload
+   * @param {Object} user - Authenticated user object
+   * @param {Object} tenant - Validated tenant context ({ orgId })
+   * @param {Array} [files=[]] - Optional uploaded files for Notice attachments
+   * @returns {Promise<Object>} Normalized preview projection
+   */
+  async previewContent(contentData, user, tenant, files = []) {
+    const orgId = tenant?.orgId;
+    if (!orgId) {
+      throw new HttpError(400, 'Workspace / Organization context is required.');
+    }
+
+    const userId = user?.id || user?._id;
+    if (!userId) {
+      throw new HttpError(401, 'Unauthorized. Authentication required.');
+    }
+
+    const rawType = contentData?.contentType;
+    if (!rawType || typeof rawType !== 'string') {
+      throw new HttpError(400, 'contentType is required');
+    }
+
+    const contentType = rawType.trim().toUpperCase();
+    if (!VALID_CONTENT_TYPES.includes(contentType)) {
+      throw new HttpError(
+        400,
+        `Invalid contentType: '${rawType}'. Allowed values are: ${VALID_CONTENT_TYPES.join(', ')}`
+      );
+    }
+
+    // Granular content-type permission check
+    await this.verifyContentTypePermission(user, contentType);
+
+    // Normalize audience targeting
+    let targetAudience = contentData.targetAudience || contentData.audience;
+    if (typeof targetAudience === 'string') {
+      try {
+        targetAudience = JSON.parse(targetAudience);
+      } catch (e) {
+        // preserve as string
+      }
+    }
+
+    // Validate and resolve audience
+    let normalizedAudience = { targetType: 'ALL' };
+    let estimatedRecipients = 0;
+
+    if (this.audienceService) {
+      if (typeof this.audienceService.validateTarget === 'function') {
+        normalizedAudience = await this.audienceService.validateTarget(targetAudience, orgId);
+      } else if (targetAudience) {
+        normalizedAudience = targetAudience;
+      }
+
+      if (typeof this.audienceService.countEligibleRecipients === 'function') {
+        estimatedRecipients = await this.audienceService.countEligibleRecipients(normalizedAudience, orgId);
+      }
+    }
+
+    // Determine projected lifecycle status
+    const hasFutureSchedule = contentData.scheduleDate && new Date(contentData.scheduleDate) > new Date();
+
+    if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.NOTICE) {
+      let projectedStatus = 'Published';
+      if (hasFutureSchedule) {
+        projectedStatus = 'Scheduled';
+      } else if (contentData.status === 'Draft') {
+        projectedStatus = 'Draft';
+      } else if (contentData.status) {
+        projectedStatus = contentData.status;
+      }
+
+      const uploadedImages = (files || []).map((file) => ({
+        url: `/public/uploads/notices/${file.filename}`,
+        filename: file.originalname,
+        uploadTimestamp: new Date(),
+      }));
+
+      const images = uploadedImages.length > 0 ? uploadedImages : contentData.images || [];
+
+      return {
+        contentType: COMMUNITY_ENGAGEMENT_CONTENT_TYPES.NOTICE,
+        title: contentData.title,
+        description: contentData.description,
+        category: contentData.category,
+        priority: contentData.priority || 'Medium',
+        status: projectedStatus,
+        projectedStatus,
+        scheduleDate: contentData.scheduleDate || null,
+        expiryDate: contentData.expiryDate || null,
+        targetAudience: normalizedAudience,
+        estimatedRecipients,
+        images,
+        requiresAcknowledgment: Boolean(contentData.requiresAcknowledgment),
+        allowComments: contentData.allowComments !== undefined ? Boolean(contentData.allowComments) : true,
+        createdBy: {
+          id: userId,
+          name: user?.name || user?.username || 'Current User',
+        },
+        orgId,
+        previewOnly: true,
+      };
+    }
+
+    if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.POLL) {
+      let projectedStatus = 'Active';
+      if (hasFutureSchedule) {
+        projectedStatus = 'Scheduled';
+      } else if (contentData.status === 'Draft') {
+        projectedStatus = 'Draft';
+      } else if (contentData.status) {
+        projectedStatus = contentData.status;
+      }
+
+      const normalizedOptions = (contentData.options || []).map((opt, idx) => {
+        if (typeof opt === 'string') {
+          return { id: `opt-${idx + 1}`, text: opt.trim(), votes: 0 };
+        }
+        return {
+          id: opt._id || opt.id || `opt-${idx + 1}`,
+          text: opt.text ? opt.text.trim() : '',
+          votes: 0,
+        };
+      });
+
+      return {
+        contentType: COMMUNITY_ENGAGEMENT_CONTENT_TYPES.POLL,
+        question: contentData.question,
+        description: contentData.description || '',
+        options: normalizedOptions,
+        choiceType: contentData.choiceType || 'SINGLE_CHOICE',
+        maxChoices: contentData.maxChoices || 1,
+        votingMode: contentData.votingMode || 'ONE_PER_USER',
+        resultsVisibility: contentData.resultsVisibility || 'ALWAYS',
+        isAnonymous: Boolean(contentData.isAnonymous),
+        quorumPercentage: contentData.quorumPercentage || 0,
+        status: projectedStatus,
+        projectedStatus,
+        scheduleDate: contentData.scheduleDate || null,
+        endDate: contentData.endDate,
+        targetAudience: normalizedAudience,
+        estimatedRecipients,
+        createdBy: {
+          id: userId,
+          name: user?.name || user?.username || 'Current User',
+        },
+        orgId,
+        previewOnly: true,
       };
     }
 

@@ -4,15 +4,9 @@ import logger from '../../utils/logger.utils.js';
 
 class NoticeBoardCron {
   init() {
-    // Run every 5 minutes
-    cron.schedule('*/5 * * * *', async () => {
-      try {
-        await this.runNow();
-      } catch (err) {
-        logger.error('[NoticeBoard Cron] Scheduled tick failed:', err);
-      }
-    });
-    logger.info('[NoticeBoard Cron] Initialized background schedule (every 5 mins).');
+    // Deprecated: Consolidated under CommunityEngagementCron.
+    // Does not register a duplicate node-cron timer.
+    logger.info('[NoticeBoard Cron] Deprecated: Notice lifecycle scheduling is orchestrated by CommunityEngagementCron.');
   }
 
   async runNow(now = new Date()) {
