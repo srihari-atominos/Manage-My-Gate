@@ -63,6 +63,7 @@ export interface AmenityBooking {
   checkOutTime?: string;
   cancellationReason?: string;
   createdAt?: string;
+  subtitle?: string;
 }
 
 export const normalizeAmenityBooking = (raw: any): AmenityBooking => {

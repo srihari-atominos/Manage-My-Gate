@@ -231,9 +231,12 @@ export class OrgMembershipRepository {
   }
 
   async updateStatus(userId, orgId, status, session = null) {
-    const query = { userId };
+    const query = {};
+    if (userId) {
+      query.userId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+    }
     if (orgId) {
-      query.orgId = orgId;
+      query.orgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
     }
     return await OrgMembership.updateMany(
       query,

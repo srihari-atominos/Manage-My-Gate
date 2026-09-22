@@ -8,8 +8,10 @@ import { cn } from '@/lib/utils';
 
 export interface AdminCalendarViewProps {
   currentDate: Date;
-  selectedDate: string; // "YYYY-MM-DD"
-  onSelectDate: (dateString: string) => void;
+  startDate?: string; // "YYYY-MM-DD"
+  endDate?: string | null; // "YYYY-MM-DD" | null
+  selectedDate?: string; // legacy fallback "YYYY-MM-DD"
+  onSelectDate: (dateString: string, isDoubleClick?: boolean) => void;
   bookingCountsByDate: Record<string, number>;
   onPrevDate: () => void;
   onNextDate: () => void;
@@ -21,7 +23,9 @@ const DAYS_OF_WEEK = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 export function AdminCalendarView({
   currentDate,
-  selectedDate,
+  startDate: propStartDate,
+  endDate: propEndDate,
+  selectedDate: propSelectedDate,
   onSelectDate,
   bookingCountsByDate,
   onPrevDate,
@@ -29,9 +33,24 @@ export function AdminCalendarView({
   className,
 }: AdminCalendarViewProps) {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const lastTapRef = React.useRef<{ date: string; time: number }>({ date: '', time: 0 });
+
+  const handleDatePress = (dateString: string) => {
+    const now = Date.now();
+    const isDoubleClick =
+      lastTapRef.current.date === dateString &&
+      now - lastTapRef.current.time < 350;
+
+    lastTapRef.current = { date: dateString, time: now };
+    onSelectDate(dateString, isDoubleClick);
+  };
 
   const today = new Date();
   const todayString = formatDateString(today);
+
+  // Normalize startDate and endDate
+  const startDate = propStartDate || propSelectedDate || todayString;
+  const endDate = propEndDate !== undefined ? propEndDate : (propStartDate ? null : propSelectedDate || null);
 
   // Month calculations
   const year = currentDate.getFullYear();
@@ -44,14 +63,21 @@ export function AdminCalendarView({
     year: 'numeric',
   });
 
+  const isWholeMonth = React.useMemo(() => {
+    if (!startDate || !endDate) return false;
+    const startOfMonth = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const endOfMonth = `${year}-${String(month + 1).padStart(2, '0')}-${String(totalDaysInMonth).padStart(2, '0')}`;
+    return startDate === startOfMonth && endDate === endOfMonth;
+  }, [startDate, endDate, year, month, totalDaysInMonth]);
+
   const selectedDateObj = React.useMemo(() => {
-    if (!selectedDate) return new Date();
-    const parts = selectedDate.split('-');
+    const targetDateStr = startDate || todayString;
+    const parts = targetDateStr.split('-');
     if (parts.length === 3) {
       return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     }
-    return new Date(selectedDate);
-  }, [selectedDate]);
+    return new Date(targetDateStr);
+  }, [startDate, todayString]);
 
   return (
     <View className={cn('bg-card rounded-2xl border border-border/80 p-2.5 shadow-2xs', className)}>
@@ -114,35 +140,69 @@ export function AdminCalendarView({
           {Array.from({ length: totalDaysInMonth }).map((_, i) => {
             const dayNum = i + 1;
             const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-            const isSelected = dateString === selectedDate;
+            const isStart = !isWholeMonth && dateString === startDate;
+            const isEnd = !isWholeMonth && Boolean(endDate && dateString === endDate);
+            const isSingle = !isWholeMonth && isStart && (!endDate || startDate === endDate);
+            const isRangeStart = !isWholeMonth && isStart && Boolean(endDate && startDate !== endDate);
+            const isRangeEnd = !isWholeMonth && isEnd && Boolean(startDate && startDate !== endDate);
+            const isInRange = !isWholeMonth && Boolean(startDate && endDate && dateString > startDate && dateString < endDate);
             const isToday = dateString === todayString;
             const count = bookingCountsByDate[dateString] || 0;
 
+            // Compute cell border and background styling for range connection
+            let cellStyle = 'bg-card border-border/30 rounded-lg active:bg-muted/60';
+            let textStyle = 'text-foreground';
+            let countBg = 'bg-primary/15';
+            let countText = 'text-primary';
+
+            if (isSingle) {
+              cellStyle = 'bg-primary border-primary rounded-lg shadow-xs';
+              textStyle = 'text-primary-foreground';
+              countBg = 'bg-white/30';
+              countText = 'text-primary-foreground';
+            } else if (isRangeStart) {
+              cellStyle = 'bg-primary border-primary rounded-l-lg rounded-r-none shadow-xs';
+              textStyle = 'text-primary-foreground';
+              countBg = 'bg-white/30';
+              countText = 'text-primary-foreground';
+            } else if (isRangeEnd) {
+              cellStyle = 'bg-primary border-primary rounded-r-lg rounded-l-none shadow-xs';
+              textStyle = 'text-primary-foreground';
+              countBg = 'bg-white/30';
+              countText = 'text-primary-foreground';
+            } else if (isInRange) {
+              cellStyle = 'bg-primary/15 border-y border-primary/30 rounded-none';
+              textStyle = 'text-primary font-bold';
+              countBg = 'bg-primary/25';
+              countText = 'text-primary';
+            } else if (isToday) {
+              cellStyle = 'bg-primary/10 border-primary/40 rounded-lg';
+              textStyle = 'text-primary';
+              countBg = 'bg-primary/15';
+              countText = 'text-primary';
+            }
+
             return (
-              <View key={`month-day-${dayNum}`} className="w-[14.28%] h-9 p-0.5 items-center justify-center">
+              <View
+                key={`month-day-${dayNum}`}
+                className={cn(
+                  'w-[14.28%] h-9 p-0.5 items-center justify-center',
+                  (isRangeStart || isInRange) && 'pr-0',
+                  (isRangeEnd || isInRange) && 'pl-0'
+                )}
+              >
                 <Pressable
-                  onPress={() => onSelectDate(dateString)}
+                  onPress={() => handleDatePress(dateString)}
                   accessibilityRole="button"
-                  accessibilityLabel={`${monthYearLabel} ${dayNum}, ${count} bookings`}
+                  accessibilityLabel={`${monthYearLabel} ${dayNum}, ${count} bookings${
+                    isStart ? ', range start' : isEnd ? ', range end' : isInRange ? ', in range' : ''
+                  }`}
                   className={cn(
-                    'w-full h-full items-center justify-center rounded-lg border flex-col',
-                    isSelected
-                      ? 'bg-primary border-primary shadow-xs'
-                      : isToday
-                      ? 'bg-primary/10 border-primary/40'
-                      : 'bg-card border-border/30 active:bg-muted/60'
+                    'w-full h-full items-center justify-center border flex-col',
+                    cellStyle
                   )}
                 >
-                  <Text
-                    className={cn(
-                      'text-xs font-bold leading-tight',
-                      isSelected
-                        ? 'text-primary-foreground'
-                        : isToday
-                        ? 'text-primary'
-                        : 'text-foreground'
-                    )}
-                  >
+                  <Text className={cn('text-xs font-bold leading-tight', textStyle)}>
                     {dayNum}
                   </Text>
 
@@ -151,15 +211,10 @@ export function AdminCalendarView({
                     <View
                       className={cn(
                         'px-1 py-0.2 rounded-full mt-0.5 items-center justify-center',
-                        isSelected ? 'bg-white/30' : 'bg-primary/15'
+                        countBg
                       )}
                     >
-                      <Text
-                        className={cn(
-                          'text-[9px] font-bold leading-tight',
-                          isSelected ? 'text-primary-foreground' : 'text-primary'
-                        )}
-                      >
+                      <Text className={cn('text-[9px] font-bold leading-tight', countText)}>
                         {count}
                       </Text>
                     </View>

@@ -91,15 +91,28 @@ jest.mock('@/components/navigation/GlobalNavModal', () => ({
 }));
 
 // Mock auth & permissions
-jest.mock('../../../features/auth/hooks/useAuth', () => ({
+jest.mock('@/src/features/auth/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { _id: 'admin-1', name: 'Admin User', role: 'admin', permissions: ['amenities:admin_calander'] },
+    isAuthenticated: true,
+  }),
+}));
+jest.mock('../../auth/hooks/useAuth', () => ({
   useAuth: () => ({
     user: { _id: 'admin-1', name: 'Admin User', role: 'admin', permissions: ['amenities:admin_calander'] },
     isAuthenticated: true,
   }),
 }));
 
+jest.mock('@/src/utils/rbac', () => ({
+  isFeatureAllowedForUser: () => true,
+  checkIsAdmin: () => true,
+  getUserRoleName: () => 'admin',
+}));
 jest.mock('../../../utils/rbac', () => ({
   isFeatureAllowedForUser: () => true,
+  checkIsAdmin: () => true,
+  getUserRoleName: () => 'admin',
 }));
 
 // Mock safe area context
@@ -230,12 +243,12 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
         ],
       },
       auth: {
-        user: { _id: 'admin-1', name: 'Admin User' },
+        user: { _id: 'admin-1', name: 'Admin User', role: 'admin', permissions: ['amenities:admin_calander'] },
       },
     };
   });
 
-  describe('1. AdminCalendarView Component (Compact Month View)', () => {
+  describe('1. AdminCalendarView Component (Compact Month View & Date Range)', () => {
     it('renders compact month grid with date numbers and booking counts without resident names', async () => {
       const onSelectDate = jest.fn();
       const bookingCounts = { '2026-09-22': 2, '2026-09-23': 1 };
@@ -243,7 +256,8 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
       await render(
         <AdminCalendarView
           currentDate={new Date(2026, 8, 1)} // September 2026
-          selectedDate="2026-09-22"
+          startDate="2026-09-22"
+          endDate="2026-09-22"
           onSelectDate={onSelectDate}
           bookingCountsByDate={bookingCounts}
           onPrevDate={jest.fn()}
@@ -254,11 +268,11 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
       // Date number 22 should be present
       expect(screen.getByText('22')).toBeTruthy();
       // Date 22 has 2 bookings (verified via accessibility label)
-      expect(screen.getByLabelText('September 2026 22, 2 bookings')).toBeTruthy();
+      expect(screen.getByLabelText(/September 2026 22, 2 bookings/)).toBeTruthy();
 
       // Date number 23 should be present with 1 booking
       expect(screen.getByText('23')).toBeTruthy();
-      expect(screen.getByLabelText('September 2026 23, 1 bookings')).toBeTruthy();
+      expect(screen.getByLabelText(/September 2026 23, 1 bookings/)).toBeTruthy();
 
       // CRITICAL: Resident names MUST NOT appear in calendar cells
       expect(screen.queryByText('Naveen Vijayakumar')).toBeNull();
@@ -266,12 +280,39 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
       expect(screen.queryByText('Sara Khan')).toBeNull();
     });
 
+    it('renders range start, middle, and end visual states with appropriate accessibility labels', async () => {
+      const onSelectDate = jest.fn();
+      const bookingCounts = { '2026-09-22': 2, '2026-09-23': 1, '2026-09-24': 0, '2026-09-25': 3 };
+
+      await render(
+        <AdminCalendarView
+          currentDate={new Date(2026, 8, 1)}
+          startDate="2026-09-22"
+          endDate="2026-09-25"
+          onSelectDate={onSelectDate}
+          bookingCountsByDate={bookingCounts}
+          onPrevDate={jest.fn()}
+          onNextDate={jest.fn()}
+        />
+      );
+
+      // Start date (22)
+      expect(screen.getByLabelText('September 2026 22, 2 bookings, range start')).toBeTruthy();
+      // Middle date (23)
+      expect(screen.getByLabelText('September 2026 23, 1 bookings, in range')).toBeTruthy();
+      // Middle date (24)
+      expect(screen.getByLabelText('September 2026 24, 0 bookings, in range')).toBeTruthy();
+      // End date (25)
+      expect(screen.getByLabelText('September 2026 25, 3 bookings, range end')).toBeTruthy();
+    });
+
     it('triggers onSelectDate when a date cell is pressed', async () => {
       const onSelectDate = jest.fn();
       await render(
         <AdminCalendarView
           currentDate={new Date(2026, 8, 1)}
-          selectedDate="2026-09-22"
+          startDate="2026-09-22"
+          endDate={null}
           onSelectDate={onSelectDate}
           bookingCountsByDate={{ '2026-09-22': 2 }}
           onPrevDate={jest.fn()}
@@ -280,14 +321,15 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
       );
 
       fireEvent.press(screen.getByText('22'));
-      expect(onSelectDate).toHaveBeenCalledWith('2026-09-22');
+      expect(onSelectDate).toHaveBeenCalledWith('2026-09-22', false);
     });
 
     it('does NOT contain Day View or Week View options or switcher', async () => {
       await render(
         <AdminCalendarView
           currentDate={new Date(2026, 8, 1)}
-          selectedDate="2026-09-22"
+          startDate="2026-09-22"
+          endDate="2026-09-22"
           onSelectDate={jest.fn()}
           bookingCountsByDate={{}}
           onPrevDate={jest.fn()}
@@ -414,17 +456,16 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
     });
   });
 
-  describe('4. Filter Drawer & Facilities', () => {
-    it('selects facility and confirms resource filter is removed from drawer', async () => {
+  describe('4. Filter Drawer & Active Filter Chips', () => {
+    it('supports facility multi-select with search and resource dependency', async () => {
       const onApply = jest.fn();
       const onReset = jest.fn();
       const initialFilters = {
-        datePreset: 'selected' as const,
-        facilityId: 'amenity-gym',
+        facilityIds: ['amenity-gym'],
+        resourceIds: [],
         availability: 'ALL',
-        timePreset: 'all' as const,
-        bookingStatus: 'All',
-        paymentStatus: 'All',
+        bookingStatuses: [],
+        paymentStatuses: [],
       };
 
       await render(
@@ -438,39 +479,83 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
             { _id: 'amenity-gym', name: 'Gymnasium' },
             { _id: 'amenity-pool', name: 'Swimming Pool' },
           ]}
+          availableResources={[
+            { _id: 'res-gym-1', name: 'Weight Section', facilityId: 'amenity-gym' },
+            { _id: 'res-pool-1', name: 'Lane 1', facilityId: 'amenity-pool' },
+          ]}
         />
       );
 
-      // Verify Resource section is completely removed
-      expect(screen.queryByText('Resource')).toBeNull();
-      expect(screen.queryByText('All Resources')).toBeNull();
+      // Verify Date Range and Time Slot sections are COMPLETELY REMOVED from drawer
+      expect(screen.queryByText('Date Range')).toBeNull();
+      expect(screen.queryByText('Time Slot')).toBeNull();
+      expect(screen.queryByText('Morning')).toBeNull();
+      expect(screen.queryByText('Evening')).toBeNull();
 
-      // Directly tap Swimming Pool chip
+      // Facilities are NOT shown by default (no default values shown; user searches to find them)
+      expect(screen.queryByText('Swimming Pool')).toBeNull();
+
+      // Search facilities
+      const searchInput = screen.getByPlaceholderText('Search facility or feature...');
+      await act(async () => {
+        fireEvent.changeText(searchInput, 'Swimming');
+      });
+
+      // Swimming Pool should be visible after typing search
+      expect(screen.getByText('Swimming Pool')).toBeTruthy();
+
+      // Tap Swimming Pool to add it to multi-select
       await act(async () => {
         fireEvent.press(screen.getByText('Swimming Pool'));
       });
 
+      // Clear search to see resources
+      await act(async () => {
+        fireEvent.changeText(searchInput, '');
+      });
+
+      // Check that resource for gym is available
+      expect(screen.getByText('Weight Section')).toBeTruthy();
+
+      // Tap Weight Section
+      await act(async () => {
+        fireEvent.press(screen.getByText('Weight Section'));
+      });
+
+      // Tap Confirmed status
+      await act(async () => {
+        fireEvent.press(screen.getByText('Confirmed'));
+      });
+
+      // Tap Paid payment status
+      await act(async () => {
+        fireEvent.press(screen.getByText('Paid'));
+      });
+
       // Apply
       await act(async () => {
-        fireEvent.press(screen.getByText('Apply Filters'));
+        fireEvent.press(screen.getByText(/Apply Filters/));
       });
+
       expect(onApply).toHaveBeenCalledWith(
         expect.objectContaining({
-          facilityId: 'amenity-pool',
+          facilityIds: expect.arrayContaining(['amenity-gym', 'amenity-pool']),
+          resourceIds: ['res-gym-1'],
+          bookingStatuses: ['CONFIRMED'],
+          paymentStatuses: ['PAID'],
         })
       );
     });
 
-    it('renders active filter chips and handles individual removal and clear all', async () => {
+    it('renders active filter chips for multi-select and handles individual removal and clear all', async () => {
       const onRemove = jest.fn();
       const onClearAll = jest.fn();
       const activeFilters = {
-        datePreset: 'today' as const,
-        facilityId: 'amenity-gym',
+        facilityIds: ['amenity-gym'],
+        resourceIds: ['res-gym-1'],
         availability: 'AVAILABLE',
-        timePreset: 'morning' as const,
-        bookingStatus: 'CONFIRMED',
-        paymentStatus: 'PAID',
+        bookingStatuses: ['CONFIRMED'],
+        paymentStatuses: ['PAID'],
       };
 
       await render(
@@ -480,20 +565,31 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
           onRemoveFilter={onRemove}
           onClearAll={onClearAll}
           amenities={[{ _id: 'amenity-gym', name: 'Gymnasium' }]}
+          availableResources={[{ _id: 'res-gym-1', name: 'Weight Section' }]}
         />
       );
 
       expect(screen.getByText('Search: "Naveen"')).toBeTruthy();
-      expect(screen.getByText('Date: Today')).toBeTruthy();
       expect(screen.getByText('Facility: Gymnasium')).toBeTruthy();
+      expect(screen.getByText('Resource: Weight Section')).toBeTruthy();
       expect(screen.getByText('Avail: Available')).toBeTruthy();
-      expect(screen.getByText('Time: Morning')).toBeTruthy();
       expect(screen.getByText('Status: CONFIRMED')).toBeTruthy();
       expect(screen.getByText('Payment: PAID')).toBeTruthy();
-      expect(screen.queryByText(/Resource:/)).toBeNull();
+      // NO date or time chip
+      expect(screen.queryByText(/Date:/)).toBeNull();
+      expect(screen.queryByText(/Time:/)).toBeNull();
+
+      // Remove an individual chip (facility is index 1 after search)
+      const removeButtons = screen.getAllByLabelText('Remove');
+      await act(async () => {
+        fireEvent.press(removeButtons[1]);
+      });
+      expect(onRemove).toHaveBeenCalledWith('facilityIds', 'amenity-gym');
 
       // Tap Clear All
-      fireEvent.press(screen.getByText('Clear All'));
+      await act(async () => {
+        fireEvent.press(screen.getByText('Clear All'));
+      });
       expect(onClearAll).toHaveBeenCalled();
     });
   });
@@ -509,46 +605,113 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
       expect(result.current.bookingCountsByDate['2026-09-23']).toBe(1);
     });
 
-    it('filters selectedDateBookings locally when date is changed without refetching network', async () => {
+    it('handles date range state machine (first tap, second tap, same date, backward range, new range)', async () => {
       const { result } = await renderHook(() => useAdminCalendar());
 
-      // Select 2026-09-22
+      // 1. Single click on 2026-09-22: selects that date immediately as normal single date ("single click means it shows normal")
       await act(async () => {
-        result.current.handleDateChange('2026-09-22');
+        result.current.handleSelectCalendarDate('2026-09-22', false);
       });
+      expect(result.current.startDate).toBe('2026-09-22');
+      expect(result.current.endDate).toBe('2026-09-22');
 
-      expect(result.current.selectedDate).toBe('2026-09-22');
-      expect(result.current.selectedDateBookings.length).toBe(3);
-
-      const fetchCountAfterSept22 = mockFetchAdminCalendarThunk.mock.calls.length;
-
-      // Select 2026-09-23 (within the same loaded month)
+      // 2. Double click on 2026-09-22: enters range mode ("double click only it should available the filter")
       await act(async () => {
-        result.current.handleDateChange('2026-09-23');
+        result.current.handleSelectCalendarDate('2026-09-22', true);
       });
+      expect(result.current.startDate).toBe('2026-09-22');
+      expect(result.current.endDate).toBeNull();
 
-      expect(result.current.selectedDate).toBe('2026-09-23');
-      expect(result.current.selectedDateBookings.length).toBe(1);
+      // 3. Single click on second date (2026-09-25): completes range
+      await act(async () => {
+        result.current.handleSelectCalendarDate('2026-09-25', false);
+      });
+      expect(result.current.startDate).toBe('2026-09-22');
+      expect(result.current.endDate).toBe('2026-09-25');
 
-      // CRITICAL: Changing date within the already-loaded month MUST NOT call API again
-      expect(mockFetchAdminCalendarThunk.mock.calls.length).toBe(fetchCountAfterSept22);
+      // 4. Single click after range: returns to normal single-date selection
+      await act(async () => {
+        result.current.handleSelectCalendarDate('2026-09-28', false);
+      });
+      expect(result.current.startDate).toBe('2026-09-28');
+      expect(result.current.endDate).toBe('2026-09-28');
+
+      // 5. Double click on 2026-09-25 then single click on earlier date (2026-09-20) -> backward normalization
+      await act(async () => {
+        result.current.handleSelectCalendarDate('2026-09-25', true);
+      });
+      expect(result.current.startDate).toBe('2026-09-25');
+      expect(result.current.endDate).toBeNull();
+
+      await act(async () => {
+        result.current.handleSelectCalendarDate('2026-09-20', false);
+      });
+      expect(result.current.startDate).toBe('2026-09-20');
+      expect(result.current.endDate).toBe('2026-09-25');
     });
 
-    it('updates booking counts dynamically when filters are applied (filter-aware counts)', async () => {
+    it('groups reservations chronologically by date and sorts by startTime', async () => {
       const { result } = await renderHook(() => useAdminCalendar());
 
-      // Initial: 2 on 2026-09-22
+      // Select range spanning 2026-09-22 to 2026-09-23 via double click then second date
+      await act(async () => {
+        result.current.handleSelectCalendarDate('2026-09-22', true);
+      });
+      await act(async () => {
+        result.current.handleSelectCalendarDate('2026-09-23', false);
+      });
+
+      const groups = result.current.groupedReservationsByDate;
+      expect(groups.length).toBe(2);
+      expect(groups[0].date).toBe('2026-09-22');
+      // 2 bookings + 1 maintenance scheduled on 2026-09-22
+      expect(groups[0].bookings.length).toBe(3);
+      // Sorted by startTime (09:00 before 11:00 before 14:00)
+      expect(groups[0].bookings[0].startTime).toBe('09:00');
+      expect(groups[0].bookings[1].startTime).toBe('11:00');
+      expect(groups[0].bookings[2].startTime).toBe('14:00');
+
+      expect(groups[1].date).toBe('2026-09-23');
+      expect(groups[1].bookings.length).toBe(1);
+    });
+
+    it('filters selectedRangeBookings locally without refetching network', async () => {
+      const { result } = await renderHook(() => useAdminCalendar());
+
+      // Single click selects 2026-09-22 normally
+      await act(async () => {
+        result.current.handleSelectCalendarDate('2026-09-22', false);
+      });
+
+      // 2 bookings + 1 maintenance scheduled on 2026-09-22
+      expect(result.current.selectedRangeBookings.length).toBe(3);
+
+      const fetchCount = mockFetchAdminCalendarThunk.mock.calls.length;
+
+      // Single click selects 2026-09-23 normally
+      await act(async () => {
+        result.current.handleSelectCalendarDate('2026-09-23', false);
+      });
+
+      expect(result.current.selectedRangeBookings.length).toBe(1);
+      // No extra network call
+      expect(mockFetchAdminCalendarThunk.mock.calls.length).toBe(fetchCount);
+    });
+
+    it('updates booking counts dynamically when multi-select filters are applied', async () => {
+      const { result } = await renderHook(() => useAdminCalendar());
+
       expect(result.current.bookingCountsByDate['2026-09-22']).toBe(2);
 
       // Apply Facility = Gym filter
       await act(async () => {
         result.current.handleApplyFilters({
           ...result.current.filters,
-          facilityId: 'amenity-gym',
+          facilityIds: ['amenity-gym'],
         });
       });
 
-      // Now only 1 booking on 2026-09-22 matches Gym!
+      // Only 1 gym booking on 2026-09-22
       expect(result.current.bookingCountsByDate['2026-09-22']).toBe(1);
     });
   });
@@ -567,6 +730,14 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
 
       expect(screen.queryByText('Cancel Slot')).toBeNull();
       expect(screen.queryByText('Cancel Booking')).toBeNull();
+    });
+
+    it('renders range summary label and date-grouped section headers', async () => {
+      await render(<AdminAmenityCalendarScreen />);
+
+      // Selected header label
+      expect(screen.getByText('Selected')).toBeTruthy();
+      expect(screen.getByText(/Reservations \(/)).toBeTruthy();
     });
 
     it('renders context-aware empty state with Clear Filters button when filters match zero', async () => {
@@ -604,6 +775,24 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
 
       const emptyElement = await screen.findByText('No reservations for this date');
       expect(emptyElement).toBeTruthy();
+    });
+
+    it('renders Availability quick action filter row on the outside and updates filter on tap', async () => {
+      await render(<AdminAmenityCalendarScreen />);
+
+      // Verify quick action availability pills outside with live counts
+      expect(screen.getByText(/^All \(/)).toBeTruthy();
+      expect(screen.getByText(/^Available \(/)).toBeTruthy();
+      expect(screen.getByText(/^Maintenance \(/)).toBeTruthy();
+
+      // Tap on Maintenance quick action pill
+      const maintPill = screen.getByText(/^Maintenance \(/);
+      await act(async () => {
+        fireEvent.press(maintPill);
+      });
+
+      // Active filter chip for availability appears
+      expect(screen.getByText('Avail: Maintenance')).toBeTruthy();
     });
   });
 });

@@ -11,9 +11,43 @@ import { CButton } from '@coreui/react'
  * Provides single-click Google and Microsoft SSO invitation acceptance.
  * Reuses existing provider token flows and delegates to backend accept-invite/sso.
  */
+const useIsDarkMode = () => {
+  const [isDark, setIsDark] = React.useState(() => {
+    if (typeof window === 'undefined') return false
+    const coreuiTheme = document.documentElement.getAttribute('data-coreui-theme')
+    if (coreuiTheme === 'dark') return true
+    if (coreuiTheme === 'light') return false
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = () => {
+      const currentCoreui = document.documentElement.getAttribute('data-coreui-theme')
+      if (currentCoreui === 'dark') setIsDark(true)
+      else if (currentCoreui === 'light') setIsDark(false)
+      else setIsDark(mediaQuery.matches)
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+
+    const observer = new MutationObserver(handleChange)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-coreui-theme'] })
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange)
+      observer.disconnect()
+    }
+  }, [])
+
+  return isDark
+}
+
 export const InviteSsoButtons = ({ onSsoSuccess, onSsoError, disabled }) => {
   const { t } = useTranslation()
   const { instance: msalInstance } = useMsal()
+  const isDarkMode = useIsDarkMode()
 
   const handleMicrosoftClick = async () => {
     if (!msalInstance) {
@@ -83,7 +117,7 @@ export const InviteSsoButtons = ({ onSsoSuccess, onSsoError, disabled }) => {
               }
             }}
             type="standard"
-            theme="outline"
+            theme={isDarkMode ? 'filled_black' : 'outline'}
             size="large"
             width={String(btnWidth)}
             text="continue_with"
@@ -96,7 +130,7 @@ export const InviteSsoButtons = ({ onSsoSuccess, onSsoError, disabled }) => {
             type="button"
             color="light"
             variant="outline"
-            className="w-100 py-2 d-flex align-items-center justify-content-center gap-2 border rounded-3 fw-semibold text-dark shadow-xs"
+            className="invite-microsoft-btn w-100 py-2 d-flex align-items-center justify-content-center gap-2 border rounded-3 fw-semibold shadow-xs"
             style={{ maxWidth: `${btnWidth}px`, minHeight: '40px' }}
             disabled={disabled}
             onClick={handleMicrosoftClick}

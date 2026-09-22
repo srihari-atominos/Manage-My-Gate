@@ -55,7 +55,7 @@ export const InviteMobileHandoffCard = ({ handoffData, orgName }) => {
   const storeName = isIos ? 'Apple App Store' : 'Google Play Store'
 
   return (
-    <CCard className="border-0 shadow-lg rounded-4 overflow-hidden text-center p-4 p-md-5">
+    <CCard className="invite-card invite-handoff-card border-0 shadow-lg rounded-4 overflow-hidden text-center p-4 p-md-5">
       <CCardBody className="p-0">
         <div
           className="mb-3 d-inline-flex align-items-center justify-content-center bg-success-subtle text-success rounded-circle p-3"

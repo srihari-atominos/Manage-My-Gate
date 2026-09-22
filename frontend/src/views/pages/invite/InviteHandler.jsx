@@ -9,7 +9,10 @@ import {
   CRow,
   CCol,
   CAlert,
+  useColorModes,
 } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilSun, cilMoon } from '@coreui/icons'
 import useAuth from '../../../features/auth/hooks/useAuth.js'
 import ErrorBoundary from '../../../components/ErrorBoundary/ErrorBoundary.jsx'
 import { InviteHeader } from '../../../features/auth/components/InviteHeader.jsx'
@@ -65,6 +68,36 @@ const InviteHandlerContent = () => {
   } = useAuth()
 
   const token = routeToken || searchParams.get('token') || ''
+
+  // Theme management with CoreUI useColorModes hook & phone night theme detection
+  const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
+
+  const isDarkActive =
+    colorMode === 'dark' ||
+    (colorMode !== 'light' &&
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+  const toggleTheme = () => {
+    setColorMode(isDarkActive ? 'light' : 'dark')
+  }
+
+  const renderThemeToggle = () => (
+    <div className="position-absolute top-0 end-0 p-2 p-sm-3 z-3">
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-light rounded-pill px-2.5 py-1 px-sm-3 py-sm-1.5 d-flex align-items-center gap-1.5 shadow-sm border-light-subtle"
+        onClick={toggleTheme}
+        title={isDarkActive ? t('common.switchToLight', 'Switch to light mode') : t('common.switchToDark', 'Switch to dark mode')}
+        aria-label="Toggle theme"
+        style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255, 255, 255, 0.12)' }}
+      >
+        <CIcon icon={isDarkActive ? cilSun : cilMoon} size="sm" />
+        <span className="small fw-semibold">{isDarkActive ? 'Light' : 'Dark'}</span>
+      </button>
+    </div>
+  )
 
   // Form submission state
   const [submitting, setSubmitting] = useState(false)
@@ -301,7 +334,8 @@ const InviteHandlerContent = () => {
   // 0. Mobile Handoff State (Rendered after successful acceptance on mobile device)
   if (handoffData) {
     return (
-      <div className="invite-page-wrapper">
+      <div className="invite-page-wrapper position-relative">
+        {renderThemeToggle()}
         <CContainer>
           <CRow className="justify-content-center">
             <CCol xs={12} className="d-flex justify-content-center">
@@ -321,7 +355,8 @@ const InviteHandlerContent = () => {
   // 1. Loading State
   if (isLoading) {
     return (
-      <div className="invite-page-wrapper">
+      <div className="invite-page-wrapper position-relative">
+        {renderThemeToggle()}
         <div className="text-center text-white">
           <CSpinner color="primary" variant="grow" className="mb-3" />
           <h5 className="fw-semibold">{t('auth.invite.validating', 'Validating workspace invitation...')}</h5>
@@ -333,7 +368,8 @@ const InviteHandlerContent = () => {
   // 2. Terminal Lifecycle / Validation Error State
   if (hasError) {
     return (
-      <div className="invite-page-wrapper">
+      <div className="invite-page-wrapper position-relative">
+        {renderThemeToggle()}
         <CContainer>
           <CRow className="justify-content-center">
             <CCol xs={12} className="d-flex justify-content-center">
@@ -353,7 +389,8 @@ const InviteHandlerContent = () => {
 
   // 3. Valid Invitation Experience
   return (
-    <div className="invite-page-wrapper">
+    <div className="invite-page-wrapper position-relative">
+      {renderThemeToggle()}
       <CContainer fluid="sm" className="px-2 px-sm-3">
         <CRow className="justify-content-center mx-0">
           <CCol xs={12} className="d-flex justify-content-center px-0">
@@ -363,12 +400,6 @@ const InviteHandlerContent = () => {
                 <InviteHeader inviteData={inviteData} />
 
                 <CCardBody className="p-3 p-sm-4 p-md-5">
-                  {/* Global submission error display if any */}
-                  {submissionError && (
-                    <CAlert color="danger" className="mb-4 py-2 small" dismissible onClose={() => setSubmissionError('')}>
-                      {submissionError}
-                    </CAlert>
-                  )}
 
                   {/* Mobile App Shortcut Banner */}
                   {isMobileDevice() && (() => {

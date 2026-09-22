@@ -7,9 +7,10 @@ import { CalendarFilterState } from './AdminCalendarFilterDrawer';
 export interface AdminActiveFilterChipsProps {
   filters: CalendarFilterState;
   searchQuery?: string;
-  onRemoveFilter: (key: keyof CalendarFilterState | 'searchQuery') => void;
+  onRemoveFilter: (key: keyof CalendarFilterState | 'searchQuery', value?: string) => void;
   onClearAll: () => void;
   amenities: Array<{ _id: string; name: string }>;
+  availableResources?: Array<{ _id: string; name: string }>;
 }
 
 export function AdminActiveFilterChips({
@@ -18,6 +19,7 @@ export function AdminActiveFilterChips({
   onRemoveFilter,
   onClearAll,
   amenities,
+  availableResources = [],
 }: AdminActiveFilterChipsProps) {
   const chips: Array<{ id: string; label: string; onRemove: () => void }> = [];
 
@@ -30,32 +32,35 @@ export function AdminActiveFilterChips({
     });
   }
 
-  // Date Preset
-  if (filters.datePreset && filters.datePreset !== 'selected') {
-    const labelMap: Record<string, string> = {
-      today: 'Date: Today',
-      week: 'Date: This Week',
-      month: 'Date: This Month',
-      custom: `Date: ${filters.customStartDate || 'Start'} to ${filters.customEndDate || 'End'}`,
-    };
-    chips.push({
-      id: 'date',
-      label: labelMap[filters.datePreset] || 'Date',
-      onRemove: () => onRemoveFilter('datePreset'),
+  // Facility Multi-Select Chips
+  if (filters.facilityIds && filters.facilityIds.length > 0) {
+    filters.facilityIds.forEach((facId) => {
+      if (facId !== 'All') {
+        const facility = amenities.find((a) => a._id === facId);
+        chips.push({
+          id: `facility-${facId}`,
+          label: `Facility: ${facility ? facility.name : facId}`,
+          onRemove: () => onRemoveFilter('facilityIds', facId),
+        });
+      }
     });
   }
 
-  // Facility
-  if (filters.facilityId && filters.facilityId !== 'All') {
-    const facility = amenities.find((a) => a._id === filters.facilityId);
-    chips.push({
-      id: 'facility',
-      label: `Facility: ${facility ? facility.name : filters.facilityId}`,
-      onRemove: () => onRemoveFilter('facilityId'),
+  // Resource Multi-Select Chips
+  if (filters.resourceIds && filters.resourceIds.length > 0) {
+    filters.resourceIds.forEach((resId) => {
+      if (resId !== 'All') {
+        const resource = availableResources.find((r) => r._id === resId);
+        chips.push({
+          id: `resource-${resId}`,
+          label: `Resource: ${resource ? resource.name : resId}`,
+          onRemove: () => onRemoveFilter('resourceIds', resId),
+        });
+      }
     });
   }
 
-  // Availability
+  // Availability Chip
   if (filters.availability && filters.availability !== 'ALL') {
     const availLabelMap: Record<string, string> = {
       AVAILABLE: 'Available',
@@ -71,36 +76,29 @@ export function AdminActiveFilterChips({
     });
   }
 
-  // Time
-  if (filters.timePreset && filters.timePreset !== 'all') {
-    const timeLabelMap: Record<string, string> = {
-      morning: 'Time: Morning',
-      afternoon: 'Time: Afternoon',
-      evening: 'Time: Evening',
-      custom: `Time: ${filters.customStartTime || '00:00'}-${filters.customEndTime || '23:59'}`,
-    };
-    chips.push({
-      id: 'time',
-      label: timeLabelMap[filters.timePreset] || 'Time',
-      onRemove: () => onRemoveFilter('timePreset'),
+  // Booking Status Multi-Select Chips
+  if (filters.bookingStatuses && filters.bookingStatuses.length > 0) {
+    filters.bookingStatuses.forEach((status) => {
+      if (status !== 'All') {
+        chips.push({
+          id: `status-${status}`,
+          label: `Status: ${status}`,
+          onRemove: () => onRemoveFilter('bookingStatuses', status),
+        });
+      }
     });
   }
 
-  // Status
-  if (filters.bookingStatus && filters.bookingStatus !== 'All') {
-    chips.push({
-      id: 'status',
-      label: `Status: ${filters.bookingStatus}`,
-      onRemove: () => onRemoveFilter('bookingStatus'),
-    });
-  }
-
-  // Payment
-  if (filters.paymentStatus && filters.paymentStatus !== 'All') {
-    chips.push({
-      id: 'payment',
-      label: `Payment: ${filters.paymentStatus}`,
-      onRemove: () => onRemoveFilter('paymentStatus'),
+  // Payment Status Multi-Select Chips
+  if (filters.paymentStatuses && filters.paymentStatuses.length > 0) {
+    filters.paymentStatuses.forEach((payment) => {
+      if (payment !== 'All') {
+        chips.push({
+          id: `payment-${payment}`,
+          label: `Payment: ${payment}`,
+          onRemove: () => onRemoveFilter('paymentStatuses', payment),
+        });
+      }
     });
   }
 

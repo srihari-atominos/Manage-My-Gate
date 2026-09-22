@@ -907,10 +907,30 @@ export default function LoginScreen() {
 
                     {/* Global Error Banner */}
                     {error ? (
-                      <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                      <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5 gap-2">
                         <Text className="text-rose-500 text-xs text-center font-medium">
                           {error}
                         </Text>
+                        {(error.toLowerCase().includes('pending verification') ||
+                          error.toLowerCase().includes('invitation') ||
+                          error.toLowerCase().includes('password is not set') ||
+                          error.toLowerCase().includes('active membership')) && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              const currentLogin = basicForm.getValues('login');
+                              router.push({
+                                pathname: '/(auth)/accept-invite',
+                                params: currentLogin ? { email: currentLogin } : {},
+                              });
+                            }}
+                            className="bg-primary/15 border border-primary/30 rounded-lg py-1.5 px-3 self-center flex-row items-center gap-1.5"
+                          >
+                            <Sparkles size={13} color="#EA580C" />
+                            <Text className="text-xs font-bold text-primary">
+                              {t('accept_invitation_cta', 'Accept Workspace Invitation')}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     ) : null}
 

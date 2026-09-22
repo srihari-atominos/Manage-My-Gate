@@ -1,23 +1,27 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View } from 'react-native';
+import { View, TextInput as RNTextInput, Pressable, ScrollView } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Chip } from '@/components/common/Chip';
-import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { formatDateString } from '@/components/common/DatePickerModal';
+import { Icon } from '@/components/ui/icon';
+import {
+  Layers,
+  Search,
+  X,
+  Boxes,
+  Tag,
+  CircleDollarSign,
+  RotateCcw,
+  Check,
+} from 'lucide-react-native';
 
 export interface CalendarFilterState {
-  datePreset: 'selected' | 'today' | 'week' | 'month' | 'custom';
-  customStartDate?: string;
-  customEndDate?: string;
-  facilityId: string;
-  availability: string;
-  timePreset: 'all' | 'morning' | 'afternoon' | 'evening' | 'custom';
-  customStartTime?: string;
-  customEndTime?: string;
-  bookingStatus: string;
-  paymentStatus: string;
+  facilityIds: string[]; // multi-select; empty or ['All'] means All
+  resourceIds: string[]; // multi-select; empty means All
+  availability: string; // 'ALL' | 'AVAILABLE' | ...
+  bookingStatuses: string[]; // multi-select; empty means All
+  paymentStatuses: string[]; // multi-select; empty means All
 }
 
 export interface AdminCalendarFilterDrawerProps {
@@ -26,28 +30,11 @@ export interface AdminCalendarFilterDrawerProps {
   filters: CalendarFilterState;
   onApply: (newFilters: CalendarFilterState) => void;
   onReset: () => void;
-  amenities: Array<{ _id: string; name: string }>;
+  amenities: Array<{ _id: string; name: string; category?: string }>;
+  availableResources?: Array<{ _id: string; name: string; facilityId?: string }>;
 }
 
-const AVAILABILITY_OPTIONS = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Available', value: 'AVAILABLE' },
-  { label: 'Partially Available', value: 'PARTIALLY_AVAILABLE' },
-  { label: 'Fully Booked', value: 'FULLY_BOOKED' },
-  { label: 'Maintenance', value: 'MAINTENANCE' },
-  { label: 'Blocked', value: 'BLOCKED' },
-];
-
-const TIME_PRESET_OPTIONS: Array<{ label: string; value: CalendarFilterState['timePreset'] }> = [
-  { label: 'Any Time', value: 'all' },
-  { label: 'Morning (6AM-12PM)', value: 'morning' },
-  { label: 'Afternoon (12PM-5PM)', value: 'afternoon' },
-  { label: 'Evening (5PM-10PM)', value: 'evening' },
-  { label: 'Custom', value: 'custom' },
-];
-
 const STATUS_OPTIONS = [
-  { label: 'All', value: 'All' },
   { label: 'Confirmed', value: 'CONFIRMED' },
   { label: 'Checked In', value: 'CHECKED_IN' },
   { label: 'Completed', value: 'COMPLETED' },
@@ -55,20 +42,11 @@ const STATUS_OPTIONS = [
 ];
 
 const PAYMENT_OPTIONS = [
-  { label: 'All', value: 'All' },
   { label: 'Paid', value: 'PAID' },
   { label: 'Partially Paid', value: 'PARTIALLY_PAID' },
   { label: 'Pending', value: 'PENDING' },
   { label: 'Not Required', value: 'NOT_REQUIRED' },
   { label: 'Refunded', value: 'REFUNDED' },
-];
-
-const DATE_PRESET_OPTIONS: Array<{ label: string; value: CalendarFilterState['datePreset'] }> = [
-  { label: 'Selected Date', value: 'selected' },
-  { label: 'Today', value: 'today' },
-  { label: 'This Week', value: 'week' },
-  { label: 'This Month', value: 'month' },
-  { label: 'Custom Range', value: 'custom' },
 ];
 
 export function AdminCalendarFilterDrawer({
@@ -78,24 +56,103 @@ export function AdminCalendarFilterDrawer({
   onApply,
   onReset,
   amenities,
+  availableResources = [],
 }: AdminCalendarFilterDrawerProps) {
   const [draft, setDraft] = useState<CalendarFilterState>(filters);
+  const [facilitySearch, setFacilitySearch] = useState('');
 
   // Sync draft whenever drawer opens
   useEffect(() => {
     if (visible) {
       setDraft(filters);
+      setFacilitySearch('');
     }
   }, [visible, filters]);
 
-  // Facility Options
-  const facilityOptions = useMemo(
-    () => [
-      { label: 'All Facilities', value: 'All' },
-      ...amenities.map((a) => ({ label: a.name, value: a._id })),
-    ],
-    [amenities]
+  // Specific facilities selected (excluding 'All')
+  const specificFacilityIds = useMemo(
+    () => draft.facilityIds.filter((id) => id !== 'All'),
+    [draft.facilityIds]
   );
+  const isAllFacilities = specificFacilityIds.length === 0;
+
+  // Filtered available facilities based on search (user searches to find them; no default chips shown)
+  const filteredAmenities = useMemo(() => {
+    if (!facilitySearch.trim()) return [];
+    const q = facilitySearch.toLowerCase().trim();
+    return amenities.filter((a) => a.name.toLowerCase().includes(q));
+  }, [amenities, facilitySearch]);
+
+  // Resources available for the selected facilities
+  const applicableResources = useMemo(() => {
+    if (isAllFacilities) return availableResources;
+    const facIdSet = new Set(specificFacilityIds);
+    return availableResources.filter((r) => r.facilityId && facIdSet.has(r.facilityId));
+  }, [availableResources, specificFacilityIds, isAllFacilities]);
+
+  // Handle facility toggle
+  const handleToggleFacility = (id: string) => {
+    if (id === 'All') {
+      setDraft((p) => ({ ...p, facilityIds: [] }));
+      return;
+    }
+
+    setDraft((p) => {
+      const current = p.facilityIds.filter((fid) => fid !== 'All');
+      const isSelected = current.includes(id);
+      const next = isSelected ? current.filter((fid) => fid !== id) : [...current, id];
+      return { ...p, facilityIds: next };
+    });
+  };
+
+  // Handle resource toggle
+  const handleToggleResource = (id: string) => {
+    if (id === 'All') {
+      setDraft((p) => ({ ...p, resourceIds: [] }));
+      return;
+    }
+    setDraft((p) => {
+      const isSelected = p.resourceIds.includes(id);
+      const next = isSelected ? p.resourceIds.filter((rid) => rid !== id) : [...p.resourceIds, id];
+      return { ...p, resourceIds: next };
+    });
+  };
+
+  // Handle booking status toggle
+  const handleToggleBookingStatus = (status: string) => {
+    if (status === 'All') {
+      setDraft((p) => ({ ...p, bookingStatuses: [] }));
+      return;
+    }
+    setDraft((p) => {
+      const isSelected = p.bookingStatuses.includes(status);
+      const next = isSelected
+        ? p.bookingStatuses.filter((s) => s !== status)
+        : [...p.bookingStatuses, status];
+      return { ...p, bookingStatuses: next };
+    });
+  };
+
+  // Handle payment status toggle
+  const handleTogglePaymentStatus = (payment: string) => {
+    if (payment === 'All') {
+      setDraft((p) => ({ ...p, paymentStatuses: [] }));
+      return;
+    }
+    setDraft((p) => {
+      const isSelected = p.paymentStatuses.includes(payment);
+      const next = isSelected
+        ? p.paymentStatuses.filter((s) => s !== payment)
+        : [...p.paymentStatuses, payment];
+      return { ...p, paymentStatuses: next };
+    });
+  };
+
+  const currentSelectionCount =
+    specificFacilityIds.length +
+    draft.resourceIds.length +
+    draft.bookingStatuses.length +
+    draft.paymentStatuses.length;
 
   const handleApply = () => {
     onApply(draft);
@@ -103,6 +160,14 @@ export function AdminCalendarFilterDrawer({
   };
 
   const handleReset = () => {
+    setDraft({
+      facilityIds: [],
+      resourceIds: [],
+      availability: 'ALL',
+      bookingStatuses: [],
+      paymentStatuses: [],
+    });
+    setFacilitySearch('');
     onReset();
     onClose();
   };
@@ -110,211 +175,201 @@ export function AdminCalendarFilterDrawer({
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Filter Reservations & Schedule">
       <View className="gap-5 pb-6">
-        {/* 1. FACILITY SELECTION (Interactive Wrapped Chips) */}
-        <View className="gap-2">
-          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Facility
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {facilityOptions.map((opt) => {
-              const isSelected = draft.facilityId === opt.value;
-              return (
-                <Chip
-                  key={opt.value}
-                  label={opt.label}
-                  selected={isSelected}
-                  className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                  onPress={() => setDraft((p) => ({ ...p, facilityId: opt.value }))}
-                />
-              );
-            })}
-          </View>
-        </View>
-
-        {/* 2. DATE PRESETS & RANGE */}
-        <View className="gap-2">
-          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Date Range
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {DATE_PRESET_OPTIONS.map((opt) => {
-              const isSelected = draft.datePreset === opt.value;
-              return (
-                <Chip
-                  key={opt.value}
-                  label={opt.label}
-                  selected={isSelected}
-                  className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                  onPress={() => setDraft((p) => ({ ...p, datePreset: opt.value }))}
-                />
-              );
-            })}
+        {/* 1. FACILITY / FEATURE (Multi-Select with Search) */}
+        <View className="gap-2.5">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <Layers size={16} className="text-primary" />
+              <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                Facility / Feature ({amenities.length})
+              </Text>
+            </View>
+            {specificFacilityIds.length > 0 && (
+              <Text className="text-[11px] font-semibold text-primary">
+                Selected ({specificFacilityIds.length})
+              </Text>
+            )}
           </View>
 
-          {draft.datePreset === 'custom' && (
-            <View className="gap-2 mt-1">
-              <View className="flex-row gap-2">
-                <Chip
-                  label="Next 7 Days"
-                  onPress={() => {
-                    const now = new Date();
-                    const next7 = new Date();
-                    next7.setDate(now.getDate() + 7);
-                    setDraft((p) => ({
-                      ...p,
-                      customStartDate: formatDateString(now),
-                      customEndDate: formatDateString(next7),
-                    }));
-                  }}
-                />
-                <Chip
-                  label="Next 14 Days"
-                  onPress={() => {
-                    const now = new Date();
-                    const next14 = new Date();
-                    next14.setDate(now.getDate() + 14);
-                    setDraft((p) => ({
-                      ...p,
-                      customStartDate: formatDateString(now),
-                      customEndDate: formatDateString(next14),
-                    }));
-                  }}
-                />
-                <Chip
-                  label="Next 30 Days"
-                  onPress={() => {
-                    const now = new Date();
-                    const next30 = new Date();
-                    next30.setDate(now.getDate() + 30);
-                    setDraft((p) => ({
-                      ...p,
-                      customStartDate: formatDateString(now),
-                      customEndDate: formatDateString(next30),
-                    }));
-                  }}
-                />
-              </View>
-              <View className="flex-row gap-2">
-                <View className="flex-1">
-                  <TextInput
-                    label="From (YYYY-MM-DD)"
-                    placeholder="2026-09-01"
-                    value={draft.customStartDate || ''}
-                    onChangeText={(val) => setDraft((p) => ({ ...p, customStartDate: val }))}
-                  />
-                </View>
-                <View className="flex-1">
-                  <TextInput
-                    label="To (YYYY-MM-DD)"
-                    placeholder="2026-09-30"
-                    value={draft.customEndDate || ''}
-                    onChangeText={(val) => setDraft((p) => ({ ...p, customEndDate: val }))}
-                  />
-                </View>
-              </View>
+          {/* Facility Search Field */}
+          <View className="flex-row items-center bg-card border border-border/80 rounded-xl px-3 h-9 shadow-2xs">
+            <Icon as={Search} size={14} className="text-muted-foreground mr-2" />
+            <RNTextInput
+              value={facilitySearch}
+              onChangeText={setFacilitySearch}
+              placeholder="Search facility or feature..."
+              placeholderTextColor="#9ca3af"
+              className="flex-1 text-xs text-foreground font-normal py-0"
+              accessibilityLabel="Search facility or feature"
+            />
+            {Boolean(facilitySearch) && (
+              <Pressable onPress={() => setFacilitySearch('')} className="p-1">
+                <Icon as={X} size={13} className="text-muted-foreground" />
+              </Pressable>
+            )}
+          </View>
+
+          {/* Selected Facilities Chips Row (with X) */}
+          {specificFacilityIds.length > 0 && (
+            <View className="gap-1">
+              <Text className="text-[11px] text-muted-foreground font-medium">Selected:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-1.5 py-0.5">
+                {specificFacilityIds.map((facId) => {
+                  const facility = amenities.find((a) => a._id === facId);
+                  return (
+                    <Chip
+                      key={`selected-fac-${facId}`}
+                      label={facility ? facility.name : facId}
+                      onRemove={() => handleToggleFacility(facId)}
+                      className="bg-primary border-primary h-7 px-2.5"
+                      labelClassName="text-primary-foreground font-medium text-xs"
+                    />
+                  );
+                })}
+              </ScrollView>
             </View>
           )}
-        </View>
 
-        {/* 3. AVAILABILITY STATE */}
-        <View className="gap-2">
-          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Availability State
-          </Text>
+          {/* Available Facilities Options */}
           <View className="flex-row flex-wrap gap-2">
-            {AVAILABILITY_OPTIONS.map((opt) => {
-              const isSelected = draft.availability === opt.value;
+            {/* All Facilities Option (shown by default when not searching or when searching 'all') */}
+            {(!facilitySearch.trim() || 'all facilities'.includes(facilitySearch.trim().toLowerCase())) && (
+              <Chip
+                label="All Facilities"
+                selected={isAllFacilities}
+                className={isAllFacilities ? 'bg-primary border-primary' : 'bg-card border-border/70'}
+                onPress={() => handleToggleFacility('All')}
+              />
+            )}
+
+            {filteredAmenities.map((a) => {
+              const isSelected = specificFacilityIds.includes(a._id);
               return (
                 <Chip
-                  key={opt.value}
-                  label={opt.label}
+                  key={a._id}
+                  label={a.name}
                   selected={isSelected}
                   className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                  onPress={() => setDraft((p) => ({ ...p, availability: opt.value }))}
+                  onPress={() => handleToggleFacility(a._id)}
                 />
               );
             })}
+
+            {Boolean(facilitySearch.trim()) && filteredAmenities.length === 0 && (
+              <Text className="text-xs text-muted-foreground italic py-1">
+                No facilities found matching "{facilitySearch}"
+              </Text>
+            )}
           </View>
         </View>
 
-        {/* 4. TIME PRESETS & CUSTOM TIME */}
-        <View className="gap-2">
-          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Time Slot
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {TIME_PRESET_OPTIONS.map((opt) => {
-              const isSelected = draft.timePreset === opt.value;
-              return (
-                <Chip
-                  key={opt.value}
-                  label={opt.label}
-                  selected={isSelected}
-                  className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                  onPress={() => setDraft((p) => ({ ...p, timePreset: opt.value }))}
-                />
-              );
-            })}
-          </View>
-
-          {draft.timePreset === 'custom' && (
-            <View className="flex-row gap-2 mt-1">
-              <View className="flex-1">
-                <TextInput
-                  label="From (HH:mm)"
-                  placeholder="09:00"
-                  value={draft.customStartTime || ''}
-                  onChangeText={(val) => setDraft((p) => ({ ...p, customStartTime: val }))}
-                />
+        {/* 2. RESOURCE FILTER (Dependent on Selected Facilities) */}
+        {applicableResources.length > 0 && (
+          <View className="gap-2.5">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <Boxes size={16} className="text-primary" />
+                <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                  Resource ({applicableResources.length})
+                </Text>
               </View>
-              <View className="flex-1">
-                <TextInput
-                  label="To (HH:mm)"
-                  placeholder="17:00"
-                  value={draft.customEndTime || ''}
-                  onChangeText={(val) => setDraft((p) => ({ ...p, customEndTime: val }))}
-                />
-              </View>
+              {draft.resourceIds.length > 0 && (
+                <Text className="text-[11px] font-semibold text-primary">
+                  Selected ({draft.resourceIds.length})
+                </Text>
+              )}
             </View>
-          )}
-        </View>
+            <View className="flex-row flex-wrap gap-2">
+              <Chip
+                label="All Resources"
+                selected={draft.resourceIds.length === 0}
+                className={draft.resourceIds.length === 0 ? 'bg-primary border-primary' : 'bg-card border-border/70'}
+                onPress={() => handleToggleResource('All')}
+              />
+              {applicableResources.map((res) => {
+                const isSelected = draft.resourceIds.includes(res._id);
+                return (
+                  <Chip
+                    key={res._id}
+                    label={res.name}
+                    selected={isSelected}
+                    className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
+                    onPress={() => handleToggleResource(res._id)}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        )}
 
-        {/* 5. BOOKING STATUS */}
-        <View className="gap-2">
-          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Booking Status
-          </Text>
+        {/* 3. BOOKING STATUS (Multi-Select) */}
+        <View className="gap-2.5">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <Tag size={16} className="text-primary" />
+              <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                Booking Status
+              </Text>
+            </View>
+            {draft.bookingStatuses.length > 0 && (
+              <Text className="text-[11px] font-semibold text-primary">
+                Selected ({draft.bookingStatuses.length})
+              </Text>
+            )}
+          </View>
           <View className="flex-row flex-wrap gap-2">
+            <Chip
+              label="All"
+              selected={draft.bookingStatuses.length === 0}
+              className={draft.bookingStatuses.length === 0 ? 'bg-primary border-primary' : 'bg-card border-border/70'}
+              onPress={() => handleToggleBookingStatus('All')}
+            />
             {STATUS_OPTIONS.map((opt) => {
-              const isSelected = draft.bookingStatus === opt.value;
+              const isSelected = draft.bookingStatuses.includes(opt.value);
               return (
                 <Chip
                   key={opt.value}
                   label={opt.label}
                   selected={isSelected}
                   className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                  onPress={() => setDraft((p) => ({ ...p, bookingStatus: opt.value }))}
+                  onPress={() => handleToggleBookingStatus(opt.value)}
                 />
               );
             })}
           </View>
         </View>
 
-        {/* 6. PAYMENT STATUS */}
-        <View className="gap-2">
-          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Payment Status
-          </Text>
+        {/* 4. PAYMENT STATUS (Multi-Select) */}
+        <View className="gap-2.5">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <CircleDollarSign size={16} className="text-primary" />
+              <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                Payment Status
+              </Text>
+            </View>
+            {draft.paymentStatuses.length > 0 && (
+              <Text className="text-[11px] font-semibold text-primary">
+                Selected ({draft.paymentStatuses.length})
+              </Text>
+            )}
+          </View>
           <View className="flex-row flex-wrap gap-2">
+            <Chip
+              label="All"
+              selected={draft.paymentStatuses.length === 0}
+              className={draft.paymentStatuses.length === 0 ? 'bg-primary border-primary' : 'bg-card border-border/70'}
+              onPress={() => handleTogglePaymentStatus('All')}
+            />
             {PAYMENT_OPTIONS.map((opt) => {
-              const isSelected = draft.paymentStatus === opt.value;
+              const isSelected = draft.paymentStatuses.includes(opt.value);
               return (
                 <Chip
                   key={opt.value}
                   label={opt.label}
                   selected={isSelected}
                   className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                  onPress={() => setDraft((p) => ({ ...p, paymentStatus: opt.value }))}
+                  onPress={() => handleTogglePaymentStatus(opt.value)}
                 />
               );
             })}
@@ -325,19 +380,27 @@ export function AdminCalendarFilterDrawer({
         <View className="flex-row gap-3 pt-3 border-t border-border/60 mt-2">
           <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 flex-row items-center justify-center gap-2 border-border"
             onPress={handleReset}
-            accessibilityLabel="Reset Filters"
+            accessibilityRole="button"
+            accessibilityLabel="Reset all filters"
           >
-            Reset
+            <RotateCcw size={16} className="text-foreground" />
+            <Text className="font-semibold text-foreground text-sm font-sans">Reset All</Text>
           </Button>
           <Button
             variant="default"
-            className="flex-1"
+            className="flex-1 flex-row items-center justify-center gap-2 bg-primary"
             onPress={handleApply}
-            accessibilityLabel="Apply Filters"
+            accessibilityRole="button"
+            accessibilityLabel="Apply selected filters"
           >
-            Apply Filters
+            <Check size={16} className="text-primary-foreground" />
+            <Text className="font-semibold text-primary-foreground text-sm font-sans">
+              {currentSelectionCount > 0
+                ? `Apply Filters (${currentSelectionCount})`
+                : 'Apply Filters'}
+            </Text>
           </Button>
         </View>
       </View>

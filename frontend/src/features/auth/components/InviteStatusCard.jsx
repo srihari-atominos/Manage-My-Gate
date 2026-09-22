@@ -105,7 +105,7 @@ export const InviteStatusCard = ({ status, errorMessage, isAuthenticated }) => {
   }
 
   return (
-    <CCard className="border-0 shadow-lg rounded-4 overflow-hidden">
+    <CCard className="invite-card invite-status-card border-0 shadow-lg rounded-4 overflow-hidden">
       <CCardBody className="p-5 text-center">
         <div
           className={`d-inline-flex align-items-center justify-content-center rounded-circle mb-3 ${iconBg}`}
