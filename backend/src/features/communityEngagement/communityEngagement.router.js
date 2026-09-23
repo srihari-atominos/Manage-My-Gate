@@ -3,7 +3,10 @@ import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 import communityEngagementController from './communityEngagement.controller.js';
-import { validateEngagementContent } from './communityEngagement.validate.js';
+import {
+  validateEngagementContent,
+  validateUpdateEngagementContent,
+} from './communityEngagement.validate.js';
 import {
   noticeUpload,
   noticeImageSignatureValidator,
@@ -101,6 +104,53 @@ router.post(
   noticeImageSignatureValidator,
   validateEngagementContent,
   communityEngagementController.previewContent
+);
+
+/**
+ * @swagger
+ * /community-engagement/content/{id}:
+ *   put:
+ *     summary: Unified update gateway for Community Engagement content (NOTICE or POLL)
+ *     tags: [CommunityEngagement]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - contentType
+ *             properties:
+ *               contentType:
+ *                 type: string
+ *                 enum: [NOTICE, POLL]
+ *     responses:
+ *       200:
+ *         description: Content updated successfully
+ *       400:
+ *         description: Validation error or invalid contentType
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Content not found
+ */
+router.put(
+  '/content/:id',
+  authorizePermission(['notices', 'polls', 'community_engagement'], CONTENT_MANAGE_PERMISSIONS),
+  noticeUpload.array('images', 5),
+  noticeImageSignatureValidator,
+  validateUpdateEngagementContent,
+  communityEngagementController.updateContent
 );
 
 export default router;

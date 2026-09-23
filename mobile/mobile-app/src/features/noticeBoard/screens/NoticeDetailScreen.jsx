@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Share, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+
 
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { ScrollContainer } from '@/components/layout/ScrollContainer';
@@ -368,32 +369,12 @@ function NoticeDetailContent() {
 }
 
 export default function NoticeDetailScreen() {
-  const { canUpdate, isAdmin } = useNoticeBoard();
-  const router = useRouter();
-  const { id } = useLocalSearchParams();
-
   return (
     <ErrorBoundary>
-      <ScreenShell 
-        title="Notice Detail"
-        headerRight={
-          (canUpdate || isAdmin) ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={() => router.push({
-                pathname: '/(resident)/notices/create',
-                params: { id }
-              })}
-              accessibilityLabel="Edit Notice"
-            >
-              Edit
-            </Button>
-          ) : null
-        }
-      >
+      <ScreenShell title="Notice Detail">
         <NoticeDetailContent />
       </ScreenShell>
     </ErrorBoundary>
   );
 }
+

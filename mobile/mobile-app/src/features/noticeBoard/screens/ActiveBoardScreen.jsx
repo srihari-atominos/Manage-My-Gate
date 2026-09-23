@@ -1,62 +1,33 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
-import { ActionGrid } from '@/components/ui/ActionGrid';
-import { SectionHeader } from '@/components/common/SectionHeader';
-import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { SearchFilterBar, SortOption } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { EmptyState } from '@/components/feedback/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Chip } from '@/components/common/Chip';
 import { useTranslation } from '@/src/utils/i18n';
 
 import { useNoticeBoard } from '../hooks/useNoticeBoard';
 import { useNoticeSocket } from '../hooks/useNoticeSocket';
-import { 
-  MemoizedNoticeCard, 
-  ErrorBoundary, 
-  NoticeBoardTopNav,
+import {
+  NoticePostCard,
+  PollPostCard,
+  ActiveBoardFilterDrawer,
+  DEFAULT_ACTIVE_BOARD_FILTERS,
+  ErrorBoundary,
   NoticeBoardLoadingSkeleton,
 } from '../components';
+import { pollApi } from '@/src/features/poll/services/pollApi';
 import { debounce } from '../utils/debounce';
-import { 
-  Megaphone, 
-  AlertTriangle, 
-  ShieldAlert, 
-  CheckCircle, 
-  Heart, 
-  CheckSquare, 
-  ListChecks, 
+import {
+  Megaphone,
+  BarChart3,
+  Layers,
   RotateCcw,
-  Wrench,
-  Calendar,
-  Building2,
 } from 'lucide-react-native';
-
-const CATEGORY_FILTER_OPTIONS = [
-  { label: 'All', value: 'ALL' },
-  { label: 'General', value: 'General', icon: Megaphone },
-  { label: 'Maintenance', value: 'Maintenance', icon: Wrench },
-  { label: 'Events', value: 'Events', icon: Calendar },
-  { label: 'Emergency', value: 'Emergency', icon: ShieldAlert },
-  { label: 'Meetings', value: 'Meetings', icon: Building2 },
-];
-
-const PRIORITY_FILTER_OPTIONS = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Low', value: 'Low' },
-  { label: 'Medium', value: 'Medium' },
-  { label: 'High', value: 'High' },
-];
-
-const TYPE_FILTER_OPTIONS = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Unread', value: 'Unread' },
-  { label: 'Bookmarks', value: 'Bookmarks' },
-];
 
 export default function ActiveBoardScreen() {
   const router = useRouter();
@@ -73,34 +44,60 @@ export default function ActiveBoardScreen() {
     search,
     filters,
     sort,
-    dashboardStats,
     loadNotices,
-    loadNoticeStats,
     setSearch,
     setFilters,
-    setSort,
-    resetFilters,
     setCurrentPage,
     selectNotice,
     readNotice,
     toggleBookmark,
+    acknowledgeNotice,
     canManage,
     isAdmin,
   } = useNoticeBoard();
 
-  const [filterType, setFilterType] = useState('CATEGORY'); // 'CATEGORY' | 'PRIORITY' | 'TYPE'
-  const [localSearch, setLocalSearch] = useState(search || '');
+  // Perspective mode: 'ALL' | 'NOTICES' | 'POLLS'
+  const [perspectiveMode, setPerspectiveMode] = useState('ALL');
 
-  // Initialize board and apply default Published status filter on mount & focus
+  // Quick pill filter: 'ALL' | 'URGENT' | 'PINNED' | 'SIGNOFF' | 'Maintenance' | 'Events' | 'General' | 'Meetings'
+  const [activeQuickPill, setActiveQuickPill] = useState('ALL');
+
+  // Local debounced search
+  const [localSearch, setLocalSearch] = useState(search || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search || '');
+
+  // Advanced Filter Drawer state
+  const [filterDrawerVisible, setFilterDrawerVisible] = useState(false);
+  const [activeFilters, setActiveFilters] = useState(DEFAULT_ACTIVE_BOARD_FILTERS);
+
+  // Polls dataset
+  const [polls, setPolls] = useState([]);
+  const [pollsLoading, setPollsLoading] = useState(false);
+
+  // Fetch active polls
+  const fetchActivePolls = useCallback(async () => {
+    try {
+      setPollsLoading(true);
+      const res = await pollApi.getPolls({ status: 'Active', limit: 20 });
+      const raw = res?.data?.data?.polls || res?.data?.data || res?.data?.polls || res?.data || [];
+      setPolls(Array.isArray(raw) ? raw : []);
+    } catch {
+      setPolls([]);
+    } finally {
+      setPollsLoading(false);
+    }
+  }, []);
+
+  // Initialize board and apply default Published status on mount & focus
   useFocusEffect(
     useCallback(() => {
       setFilters({ status: 'Published' });
       loadNotices();
-      loadNoticeStats?.();
-    }, [setFilters, loadNotices, loadNoticeStats])
+      fetchActivePolls();
+    }, [setFilters, loadNotices, fetchActivePolls])
   );
 
-  // Handle deep-linking to automatically open notice details
+  // Deep-linking to automatically open notice details
   useEffect(() => {
     if (openNoticeId && notices.length > 0) {
       const notice = notices.find((n) => n._id === openNoticeId);
@@ -115,23 +112,31 @@ export default function ActiveBoardScreen() {
         });
       }
     }
-  }, [openNoticeId, notices, router]);
+  }, [openNoticeId, notices, selectNotice, readNotice, router]);
 
-  // Load notices when search, filters, sorting or page changes
-  useEffect(() => {
-    loadNotices();
-  }, [search, filters, sort, pagination.currentPage]);
+  // Debounced search updates
+  const debouncedSearchUpdate = useMemo(
+    () =>
+      debounce((val) => {
+        setDebouncedSearch(val);
+        setSearch(val);
+      }, 300),
+    [setSearch]
+  );
 
-  // Sync local search input if search is reset globally
-  useEffect(() => {
-    setLocalSearch(search || '');
-  }, [search]);
+  const handleSearchChange = useCallback(
+    (value) => {
+      setLocalSearch(value);
+      debouncedSearchUpdate(value);
+    },
+    [debouncedSearchUpdate]
+  );
 
   const handleRefresh = useCallback(() => {
     setCurrentPage(1);
     loadNotices();
-    loadNoticeStats?.();
-  }, [loadNotices, loadNoticeStats, setCurrentPage]);
+    fetchActivePolls();
+  }, [loadNotices, fetchActivePolls, setCurrentPage]);
 
   const handleLoadMore = useCallback(() => {
     if (pagination.currentPage < pagination.totalPages && !loading) {
@@ -139,340 +144,313 @@ export default function ActiveBoardScreen() {
     }
   }, [pagination, loading, setCurrentPage]);
 
-  // Debounced search updates to Redux store
-  const debouncedSetSearch = useCallback(
-    debounce((value) => {
-      setSearch(value);
-    }, 300),
-    [setSearch]
+  const handleCardPress = useCallback(
+    (notice) => {
+      selectNotice(notice);
+      if (!notice.isReadByUser) {
+        readNotice(notice._id);
+      }
+      router.push({
+        pathname: '/(resident)/notices/[id]',
+        params: { id: notice._id },
+      });
+    },
+    [selectNotice, readNotice, router]
   );
 
-  const handleSearchChange = useCallback((value) => {
-    setLocalSearch(value);
-    debouncedSetSearch(value);
-  }, [debouncedSetSearch]);
+  const handlePollPress = useCallback(
+    (poll) => {
+      router.push({
+        pathname: '/(resident)/polls/[id]',
+        params: { id: poll._id || poll.id },
+      });
+    },
+    [router]
+  );
 
-  const handleCategoryFilterChange = useCallback((categoryValue) => {
-    setCurrentPage(1);
-    const newFilters = { ...filters };
-    if (categoryValue === 'ALL' || !categoryValue) {
-      delete newFilters.category;
-    } else {
-      newFilters.category = categoryValue;
-    }
-    setFilters(newFilters);
-  }, [filters, setFilters, setCurrentPage]);
+  const handleBookmarkPress = useCallback(
+    (id, isBookmarked) => {
+      toggleBookmark(id, isBookmarked);
+    },
+    [toggleBookmark]
+  );
 
-  const handlePriorityFilterChange = useCallback((priorityValue) => {
-    setCurrentPage(1);
-    const newFilters = { ...filters };
-    if (priorityValue === 'ALL' || !priorityValue) {
-      delete newFilters.priority;
-    } else {
-      newFilters.priority = priorityValue;
-    }
-    setFilters(newFilters);
-  }, [filters, setFilters, setCurrentPage]);
+  const handleAcknowledgePress = useCallback(
+    async (id) => {
+      try {
+        await acknowledgeNotice(id, '');
+        handleRefresh();
+      } catch {
+        router.push({
+          pathname: '/(resident)/notices/[id]',
+          params: { id },
+        });
+      }
+    },
+    [acknowledgeNotice, handleRefresh, router]
+  );
 
-  const handleTypeFilterChange = useCallback((typeValue) => {
-    setCurrentPage(1);
-    const newFilters = { ...filters };
-    if (typeValue === 'Unread') {
-      newFilters.readStatus = 'Unread';
-      delete newFilters.isBookmarked;
-    } else if (typeValue === 'Bookmarks') {
-      newFilters.isBookmarked = 'true';
-      delete newFilters.readStatus;
-    } else {
-      delete newFilters.readStatus;
-      delete newFilters.isBookmarked;
-    }
-    setFilters(newFilters);
-  }, [filters, setFilters, setCurrentPage]);
+  // Combine raw notices & active polls based on perspective mode
+  const combinedItems = useMemo(() => {
+    const rawNotices = (notices || []).map((n) => ({ ...n, itemType: 'NOTICE' }));
+    const rawPolls = (polls || []).map((p) => ({ ...p, itemType: 'POLL' }));
 
-  const handleResetFilters = useCallback(() => {
-    resetFilters();
-    setFilters({ status: 'Published' });
-    setSearch('');
-    setLocalSearch('');
-    setSort({ sortBy: 'createdAt', sortOrder: 'desc' });
-  }, [resetFilters, setFilters, setSearch, setSort]);
+    if (perspectiveMode === 'NOTICES') return rawNotices;
+    if (perspectiveMode === 'POLLS') return rawPolls;
 
-  const handleCardPress = useCallback((notice) => {
-    router.push({
-      pathname: '/(resident)/notices/[id]',
-      params: { id: notice._id },
+    return [...rawNotices, ...rawPolls].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [perspectiveMode, notices, polls]);
+
+  // Live item count calculations for quick pill badges
+  const liveCounts = useMemo(() => {
+    let all = 0;
+    let urgent = 0;
+    let pinned = 0;
+    let signoff = 0;
+    let maintenance = 0;
+    let events = 0;
+    let general = 0;
+    let meetings = 0;
+
+    (notices || []).forEach((n) => {
+      all++;
+      const isUrgent = n.priority === 'High' || n.priority === 'Critical' || n.isCritical;
+      if (isUrgent) urgent++;
+      if (n.isPinned) pinned++;
+      if (n.requiresAcknowledgement && !n.hasAcknowledged) signoff++;
+      if (n.category === 'Maintenance') maintenance++;
+      if (n.category === 'Events') events++;
+      if (n.category === 'General') general++;
+      if (n.category === 'Meetings') meetings++;
     });
-  }, [router]);
 
-  const handleBookmarkPress = useCallback((id, isBookmarked) => {
-    toggleBookmark(id, isBookmarked);
-  }, [toggleBookmark]);
+    return { all, urgent, pinned, signoff, maintenance, events, general, meetings };
+  }, [notices]);
 
-  // Derive counts for Visitor-Management style KPI cards
-  const stats = dashboardStats?.kpis || {};
-  const activeCount = stats.activeNotices || (notices.filter(n => n.status === 'Published').length || notices.length);
-  const highPriorityCount = notices.filter(n => n.priority === 'High').length;
-  const unreadCount = notices.filter(n => !n.isReadByUser).length;
-  const bookmarkedCount = notices.filter(n => n.isBookmarkedByUser).length;
+  // Quick pill options for the horizontal scroll bar in SearchFilterBar
+  const quickPillOptions = useMemo(
+    () => [
+      { label: `All (${liveCounts.all})`, value: 'ALL' },
+      { label: `🚨 Urgent (${liveCounts.urgent})`, value: 'URGENT' },
+      { label: `📌 Pinned (${liveCounts.pinned})`, value: 'PINNED' },
+      { label: `✍️ Needs Sign-off (${liveCounts.signoff})`, value: 'SIGNOFF' },
+      { label: `🛠️ Maintenance (${liveCounts.maintenance})`, value: 'Maintenance' },
+      { label: `🎉 Events (${liveCounts.events})`, value: 'Events' },
+      { label: `📢 General (${liveCounts.general})`, value: 'General' },
+      { label: `🏛️ Meetings (${liveCounts.meetings})`, value: 'Meetings' },
+    ],
+    [liveCounts]
+  );
 
-  const isHighPriorityFilter = filters?.priority === 'High';
-  const isBookmarkFilter = filters?.isBookmarked === 'true' || filters?.isBookmarked === true;
-  const isCategoryFilter = !!filters?.category;
-  const isSearchFilter = !!search;
-  const isFilterActive = isHighPriorityFilter || isBookmarkFilter || isCategoryFilter || isSearchFilter;
-
-  // Visitor-style KPI cards
-  const noticeKpis = useMemo(() => [
-    {
-      title: t('active_notices', 'Active Notices'),
-      value: String(activeCount),
-      iconName: 'Megaphone',
-      variant: 'success',
-      trend: { direction: 'up', value: t('live', 'Live') },
-    },
-    {
-      title: t('high_priority', 'High Priority'),
-      value: String(highPriorityCount),
-      iconName: 'AlertTriangle',
-      variant: highPriorityCount > 0 ? 'warning' : 'default',
-      trend: {
-        direction: highPriorityCount > 0 ? 'up' : 'down',
-        value: highPriorityCount > 0 ? t('needs_attention', 'Important') : t('clear', 'Normal'),
-      },
-    },
-    {
-      title: t('unread_notices', 'Unread'),
-      value: String(unreadCount),
-      iconName: 'CheckCircle',
-      variant: unreadCount > 0 ? 'warning' : 'default',
-      trend: {
-        direction: 'up',
-        value: unreadCount > 0 ? t('pending', 'Pending') : t('up_to_date', 'Up to date'),
-      },
-    },
-  ], [activeCount, highPriorityCount, unreadCount, t]);
-
-  // Visitor-style 3-Column ActionGrid items
-  const noticeActions = useMemo(() => [
-    {
-      id: 'high_priority',
-      name: isHighPriorityFilter ? t('all_notices', 'All Notices') : t('high_priority', 'High Priority'),
-      iconName: 'AlertTriangle',
-      colorBg: isHighPriorityFilter ? 'bg-amber-500/20' : 'bg-amber-500/10',
-      colorIcon: '#f59e0b',
-      badge: highPriorityCount > 0 ? highPriorityCount : undefined,
-      badgeColor: 'bg-amber-600',
-      onPress: () => {
-        setFilterType('PRIORITY');
-        if (isHighPriorityFilter) {
-          const newFilters = { ...filters };
-          delete newFilters.priority;
-          setFilters(newFilters);
-        } else {
-          setFilters({ ...filters, priority: 'High', isBookmarked: undefined, readStatus: undefined });
+  // Apply Quick Pill, Search, and Advanced Drawer Filters
+  const filteredFeedItems = useMemo(() => {
+    return combinedItems.filter((item) => {
+      // If it's a poll, only filter by search keyword unless in poll mode
+      if (item.itemType === 'POLL') {
+        if (debouncedSearch) {
+          const q = debouncedSearch.toLowerCase();
+          const match =
+            item.question?.toLowerCase().includes(q) ||
+            item.description?.toLowerCase().includes(q);
+          if (!match) return false;
         }
-      },
-    },
-    {
-      id: 'polls',
-      name: t('polls_surveys', 'Polls & Votes'),
-      iconName: 'CheckSquare',
-      colorBg: 'bg-purple-500/10',
-      colorIcon: '#8b5cf6',
-      route: '/(resident)/polls',
-    },
-    {
-      id: 'bookmarks',
-      name: isBookmarkFilter ? t('all_notices', 'All Notices') : t('saved_bookmarks', 'Bookmarks'),
-      iconName: 'Heart',
-      colorBg: isBookmarkFilter ? 'bg-amber-500/20' : 'bg-amber-500/10',
-      colorIcon: '#f59e0b',
-      badge: bookmarkedCount > 0 ? bookmarkedCount : undefined,
-      badgeColor: 'bg-amber-500',
-      onPress: () => {
-        setFilterType('TYPE');
-        if (isBookmarkFilter) {
-          const newFilters = { ...filters };
-          delete newFilters.isBookmarked;
-          setFilters(newFilters);
-        } else {
-          setFilters({ ...filters, isBookmarked: 'true', readStatus: undefined });
+        return true;
+      }
+
+      // 1. Quick Pill Filter
+      if (activeQuickPill === 'URGENT') {
+        const isUrgent =
+          item.priority === 'High' || item.priority === 'Critical' || item.isCritical;
+        if (!isUrgent) return false;
+      } else if (activeQuickPill === 'PINNED') {
+        if (!item.isPinned) return false;
+      } else if (activeQuickPill === 'SIGNOFF') {
+        if (!item.requiresAcknowledgement || item.hasAcknowledged) return false;
+      } else if (activeQuickPill !== 'ALL') {
+        if (item.category !== activeQuickPill) return false;
+      }
+
+      // 2. Debounced Search Keyword Filter
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
+        const matchTitle = item.title?.toLowerCase().includes(q);
+        const matchDesc = item.description?.toLowerCase().includes(q);
+        const matchCat = item.category?.toLowerCase().includes(q);
+        const matchAuthor =
+          item.author?.name?.toLowerCase().includes(q) ||
+          item.createdBy?.name?.toLowerCase().includes(q);
+        if (!matchTitle && !matchDesc && !matchCat && !matchAuthor) return false;
+      }
+
+      // 3. Advanced Drawer Filters
+      if (activeFilters.categories.length > 0) {
+        if (!activeFilters.categories.includes(item.category)) return false;
+      }
+
+      if (activeFilters.priorities.length > 0) {
+        if (!activeFilters.priorities.includes(item.priority)) return false;
+      }
+
+      if (activeFilters.requiresSignoffOnly) {
+        if (!item.requiresAcknowledgement || item.hasAcknowledged) return false;
+      }
+
+      if (activeFilters.unreadOnly) {
+        if (item.isReadByUser) return false;
+      }
+
+      if (activeFilters.isPinnedOnly) {
+        if (!item.isPinned) return false;
+      }
+
+      if (activeFilters.hasImagesOnly) {
+        if (!item.images || item.images.length === 0) return false;
+      }
+
+      if (activeFilters.hasDocsOnly) {
+        if (!item.attachments || item.attachments.length === 0) return false;
+      }
+
+      // Date range filter
+      if (activeFilters.datePreset !== 'ALL_TIME') {
+        const itemDate = new Date(item.createdAt).getTime();
+        const now = new Date().getTime();
+        if (activeFilters.datePreset === 'TODAY') {
+          const oneDayMs = 24 * 60 * 60 * 1000;
+          if (now - itemDate > oneDayMs) return false;
+        } else if (activeFilters.datePreset === 'THIS_WEEK') {
+          const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+          if (now - itemDate > sevenDaysMs) return false;
+        } else if (activeFilters.datePreset === 'PAST_30_DAYS') {
+          const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+          if (now - itemDate > thirtyDaysMs) return false;
         }
-      },
-    },
-  ], [isHighPriorityFilter, isBookmarkFilter, highPriorityCount, bookmarkedCount, filters, setFilters, t]);
+      }
 
-  const currentFilterValue = useMemo(() => {
-    if (filterType === 'CATEGORY') return filters.category || 'ALL';
-    if (filterType === 'PRIORITY') return filters.priority || 'ALL';
-    if (filterType === 'TYPE') {
-      if (filters.isBookmarked === 'true' || filters.isBookmarked === true) return 'Bookmarks';
-      if (filters.readStatus === 'Unread') return 'Unread';
-      return 'ALL';
-    }
-    return 'ALL';
-  }, [filterType, filters]);
+      return true;
+    });
+  }, [combinedItems, activeQuickPill, debouncedSearch, activeFilters]);
 
-  const renderNoticeItem = useCallback((notice) => (
-    <MemoizedNoticeCard
-      notice={notice}
-      onPress={handleCardPress}
-      onBookmarkToggle={handleBookmarkPress}
-      isAdmin={isAdmin}
-    />
-  ), [handleCardPress, handleBookmarkPress, isAdmin]);
+  // Active filter count badge for drawer button
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (activeFilters.categories?.length > 0) count++;
+    if (activeFilters.priorities?.length > 0) count++;
+    if (activeFilters.requiresSignoffOnly) count++;
+    if (activeFilters.unreadOnly) count++;
+    if (activeFilters.isPinnedOnly) count++;
+    if (activeFilters.hasImagesOnly) count++;
+    if (activeFilters.hasDocsOnly) count++;
+    if (activeFilters.datePreset !== 'ALL_TIME') count++;
+    return count;
+  }, [activeFilters]);
 
-  const listHeaderComponent = useMemo(() => (
-    <View className="gap-3 mb-1">
-      {/* Management Navigation Tabs (Admins/Managers only) */}
-      {(canManage || isAdmin) && <NoticeBoardTopNav />}
+  const isFilterActive =
+    activeQuickPill !== 'ALL' ||
+    Boolean(debouncedSearch) ||
+    activeFilterCount > 0 ||
+    perspectiveMode !== 'ALL';
 
-      {/* Universal KPI Statistics Strip (Visitor Management Standard) */}
-      <KPIDashboardStrip cards={noticeKpis} />
+  const handleResetAllFilters = useCallback(() => {
+    setActiveQuickPill('ALL');
+    setLocalSearch('');
+    setDebouncedSearch('');
+    setSearch('');
+    setActiveFilters(DEFAULT_ACTIVE_BOARD_FILTERS);
+    setPerspectiveMode('ALL');
+  }, [setSearch]);
 
-      {/* Universal 3-Column ActionGrid (Urgent, Polls, Bookmarks) */}
-      <ActionGrid title={t('quick_actions', 'Quick Actions')} items={noticeActions} />
-
-      {/* Filter Mode Switcher matching Manage Notices (Category vs Priority vs Type) */}
-      <View className="flex-row items-center justify-between px-1 mt-1">
-        <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-          {t('filter_by', 'Filter by:')}
-        </Text>
-        <View className="flex-row bg-muted/60 p-0.5 rounded-xl gap-1">
-          <TouchableOpacity
-            onPress={() => setFilterType('CATEGORY')}
-            className={`px-2.5 py-1 rounded-lg ${filterType === 'CATEGORY' ? 'bg-card shadow-xs' : 'bg-transparent'}`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: filterType === 'CATEGORY' }}
-          >
-            <Text className={`text-xs font-bold ${filterType === 'CATEGORY' ? 'text-primary' : 'text-muted-foreground'}`}>
-              {t('category', 'Category')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setFilterType('PRIORITY')}
-            className={`px-2.5 py-1 rounded-lg ${filterType === 'PRIORITY' ? 'bg-card shadow-xs' : 'bg-transparent'}`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: filterType === 'PRIORITY' }}
-          >
-            <Text className={`text-xs font-bold ${filterType === 'PRIORITY' ? 'text-primary' : 'text-muted-foreground'}`}>
-              {t('priority', 'Priority')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setFilterType('TYPE')}
-            className={`px-2.5 py-1 rounded-lg ${filterType === 'TYPE' ? 'bg-card shadow-xs' : 'bg-transparent'}`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: filterType === 'TYPE' }}
-          >
-            <Text className={`text-xs font-bold ${filterType === 'TYPE' ? 'text-primary' : 'text-muted-foreground'}`}>
-              {t('type', 'Type')}
-            </Text>
-          </TouchableOpacity>
-        </View>
+  const renderHeader = () => (
+    <View className="mb-2 gap-2.5">
+      {/* Layer 1: Perspective Mode Toggle (All Active / Notices / Polls) */}
+      <View className="flex-row items-center gap-2 pt-1 pb-0.5">
+        <Chip
+          label={`All Active (${(notices?.length || 0) + (polls?.length || 0)})`}
+          icon={Layers}
+          selected={perspectiveMode === 'ALL'}
+          onPress={() => setPerspectiveMode('ALL')}
+          className="rounded-full px-3 py-1.5"
+        />
+        <Chip
+          label={`Announcements (${notices?.length || 0})`}
+          icon={Megaphone}
+          selected={perspectiveMode === 'NOTICES'}
+          onPress={() => setPerspectiveMode('NOTICES')}
+          className="rounded-full px-3 py-1.5"
+        />
+        <Chip
+          label={`Live Polls (${polls?.length || 0})`}
+          icon={BarChart3}
+          selected={perspectiveMode === 'POLLS'}
+          onPress={() => setPerspectiveMode('POLLS')}
+          className="rounded-full px-3 py-1.5"
+        />
       </View>
 
-      {/* Search & Filter Bar with Dynamic Category, Priority, or Type Pills matching Manage Notices Screen */}
+      {/* Layer 2: Search Input & Advanced Drawer Trigger */}
+      {/* Layer 3: Horizontal Scrollable Quick Pills with Live Counts */}
       <SearchFilterBar
         searchValue={localSearch}
         onSearchChange={handleSearchChange}
-        searchPlaceholder={
-          filterType === 'CATEGORY'
-            ? t('search_by_category', 'Search notices by category, title...')
-            : filterType === 'PRIORITY'
-            ? t('search_by_priority', 'Search notices by priority, title...')
-            : t('search_notices', 'Search announcements...')
-        }
-        sortOptions={
-          filterType === 'CATEGORY'
-            ? CATEGORY_FILTER_OPTIONS
-            : filterType === 'PRIORITY'
-            ? PRIORITY_FILTER_OPTIONS
-            : TYPE_FILTER_OPTIONS
-        }
-        currentSort={currentFilterValue}
-        onSortChange={
-          filterType === 'CATEGORY'
-            ? handleCategoryFilterChange
-            : filterType === 'PRIORITY'
-            ? handlePriorityFilterChange
-            : handleTypeFilterChange
-        }
-        variant="default"
+        searchPlaceholder={t('search_notices', 'Search announcements, updates, keywords...')}
+        sortOptions={quickPillOptions}
+        currentSort={activeQuickPill}
+        onSortChange={setActiveQuickPill}
+        onFilterPress={() => setFilterDrawerVisible(true)}
+        activeFilterCount={activeFilterCount}
         className="px-0 py-0 border-0"
       />
-
-      {/* Canonical Section Header */}
-      <SectionHeader
-        title={
-          isHighPriorityFilter
-            ? t('high_priority', 'High Priority')
-            : isBookmarkFilter
-            ? t('saved_bookmarks', 'Saved Bookmarks')
-            : filters?.category
-            ? `${filters.category} ${t('notices', 'Notices')}`
-            : t('recent_announcements', 'Recent Announcements')
-        }
-        actionLabel={isFilterActive ? t('view_all', 'View All') : undefined}
-        onAction={isFilterActive ? handleResetFilters : undefined}
-        className="px-0 bg-transparent dark:bg-transparent"
-      />
     </View>
-  ), [
-    canManage,
-    isAdmin,
-    noticeKpis,
-    noticeActions,
-    filterType,
-    localSearch,
-    handleSearchChange,
-    currentFilterValue,
-    handleCategoryFilterChange,
-    handlePriorityFilterChange,
-    handleTypeFilterChange,
-    isHighPriorityFilter,
-    isBookmarkFilter,
-    filters?.category,
-    isFilterActive,
-    handleResetFilters,
-    t,
-  ]);
+  );
+
+  const renderFeedItem = useCallback(
+    (item) => {
+      if (item.itemType === 'POLL' || (!item.category && item.question)) {
+        return (
+          <PollPostCard
+            key={`poll-${item._id || item.id}`}
+            poll={item}
+            onPress={handlePollPress}
+          />
+        );
+      }
+
+      return (
+        <NoticePostCard
+          key={`notice-${item._id || item.id}`}
+          notice={item}
+          onPress={handleCardPress}
+          onBookmarkToggle={handleBookmarkPress}
+          onAcknowledge={handleAcknowledgePress}
+          isAdmin={isAdmin}
+        />
+      );
+    },
+    [handleCardPress, handlePollPress, handleBookmarkPress, handleAcknowledgePress, isAdmin]
+  );
 
   const isLoadingInitial = loading && notices.length === 0;
 
   return (
     <ErrorBoundary>
-      <ScreenShell 
+      <ScreenShell
         title={t('notice_board', 'Notice Board')}
-        subtitle={t('official_announcements', 'Community announcements & resident polls')}
+        subtitle={t('official_announcements', 'Live community announcements & resident votes')}
         iconName="Megaphone"
         loading={false}
         headerRight={
-          (canManage || isAdmin) ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={() => router.push('/(resident)/notices/manage')}
-              className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
-              accessibilityRole="button"
-              accessibilityLabel="Manage Notices"
-            >
-              <ListChecks size={13} className="text-foreground" />
-              <Text className="text-xs font-semibold text-foreground">{t('manage', 'Manage')}</Text>
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onPress={handleRefresh}
-              className="w-9 h-9 rounded-full items-center justify-center p-0"
-              accessibilityRole="button"
-              accessibilityLabel="Refresh notices"
-            >
-              <RotateCcw size={16} className="text-foreground" />
-            </Button>
-          )
+          <Button
+            variant="ghost"
+            size="sm"
+            onPress={handleRefresh}
+            className="w-9 h-9 rounded-full items-center justify-center p-0"
+            accessibilityRole="button"
+            accessibilityLabel="Refresh notices"
+          >
+            <RotateCcw size={16} className="text-foreground" />
+          </Button>
         }
       >
         <View className="flex-1 bg-background">
@@ -482,30 +460,69 @@ export default function ActiveBoardScreen() {
             </View>
           ) : (
             <PaginatedList
-              data={notices}
-              renderItem={renderNoticeItem}
-              keyExtractor={(item) => item._id}
-              loading={loading}
+              data={filteredFeedItems}
+              renderItem={renderFeedItem}
+              keyExtractor={(item) =>
+                item.itemType === 'POLL'
+                  ? `poll-${item._id || item.id}`
+                  : `notice-${item._id || item.id}`
+              }
+              loading={loading || pollsLoading}
               onRefresh={handleRefresh}
               onLoadMore={handleLoadMore}
               pagination={{
                 currentPage: pagination.currentPage,
                 totalPages: pagination.totalPages,
-                totalRecords: pagination.totalRecords || notices.length,
+                totalRecords: filteredFeedItems.length,
                 limit: pagination.limit || 10,
               }}
               emptyIcon="Megaphone"
-              emptyTitle={t('no_notices', 'No Notices Available')}
+              emptyTitle={
+                isFilterActive
+                  ? t('no_matching_notices', 'No Matching Announcements')
+                  : t('no_notices', 'No Active Announcements')
+              }
               emptySubtitle={
                 isFilterActive
-                  ? t('no_matching_notices', 'No notices match the selected filters. Tap View All to reset.')
-                  : t('check_back_later', 'Check back later for community updates and announcements.')
+                  ? t(
+                      'try_adjusting_filters',
+                      'No announcements match the selected filter criteria. Tap below to reset.'
+                    )
+                  : t(
+                      'check_back_later',
+                      'There are currently no active community announcements or live ballots.'
+                    )
               }
-              ListHeaderComponent={listHeaderComponent}
-              contentContainerClassName="p-4 pb-36 gap-3"
+              emptyAction={
+                isFilterActive ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onPress={handleResetAllFilters}
+                    className="mt-2 rounded-xl"
+                  >
+                    <Text className="text-xs font-semibold text-foreground">
+                      Reset All Filters
+                    </Text>
+                  </Button>
+                ) : undefined
+              }
+              ListHeaderComponent={renderHeader()}
+              contentContainerClassName="px-4 pt-2 pb-36 gap-3"
+              contentContainerStyle={{ paddingBottom: 110 }}
             />
           )}
         </View>
+
+        {/* Advanced Filter Sliding Drawer */}
+        <ActiveBoardFilterDrawer
+          visible={filterDrawerVisible}
+          onClose={() => setFilterDrawerVisible(false)}
+          filters={activeFilters}
+          onApply={setActiveFilters}
+          onReset={() => setActiveFilters(DEFAULT_ACTIVE_BOARD_FILTERS)}
+          matchCount={filteredFeedItems.length}
+        />
       </ScreenShell>
     </ErrorBoundary>
   );

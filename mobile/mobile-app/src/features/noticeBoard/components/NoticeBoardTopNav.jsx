@@ -10,6 +10,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Active Notice', route: '/(resident)/notices' },
   { name: 'Manage Notices', route: '/(resident)/notices/manage', requiresManage: true },
   { name: 'Polls', route: '/(resident)/polls' },
+  { name: 'Engagement Hub', route: '/(resident)/community-engagement' },
 ];
 
 export function NoticeBoardTopNav() {

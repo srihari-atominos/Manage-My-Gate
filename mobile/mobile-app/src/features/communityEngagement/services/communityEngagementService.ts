@@ -1,5 +1,6 @@
 import apiClient from '../../../services/apiClient';
 import {
+  EngagementContentType,
   CommunityEngagementFormData,
   PreviewRecipientProjection,
 } from '../types/communityEngagement.types';
@@ -73,6 +74,9 @@ export const buildEngagementPayload = (
       'requiresAcknowledgement',
       data.requiresAcknowledgement ? 'true' : 'false'
     );
+    if (data.requiresAcknowledgement && data.acknowledgementDeadline) {
+      formData.append('acknowledgementDeadline', data.acknowledgementDeadline);
+    }
     formData.append('expiryDate', data.expiryDate);
 
     if (!data.publishNow && data.scheduleDate) {
@@ -161,8 +165,75 @@ export const previewEngagementContent = async (
   return response.data?.data || response.data;
 };
 
+/**
+ * Fetches single Notice or Poll content by ID for editing or deep view.
+ */
+export const getEngagementContent = async (
+  id: string,
+  type: EngagementContentType = 'NOTICE'
+) => {
+  try {
+    if (type === 'NOTICE') {
+      const res = await apiClient.get(`/notices/${id}`);
+      return res.data?.data || res.data;
+    } else {
+      const res = await apiClient.get(`/polls/${id}`);
+      return res.data?.data || res.data;
+    }
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      try {
+        const alternateEndpoint = type === 'NOTICE' ? `/polls/${id}` : `/notices/${id}`;
+        const altRes = await apiClient.get(alternateEndpoint);
+        return altRes.data?.data || altRes.data;
+      } catch {
+        throw error;
+      }
+    }
+    throw error;
+  }
+};
+
+
+/**
+ * Updates existing Notice or Poll content via the unified Community Engagement gateway.
+ * Falls back to domain-specific endpoints (/notices/:id or /polls/:id) if gateway returns 404.
+ */
+export const updateEngagementContent = async (
+  id: string,
+  type: EngagementContentType,
+  payload: FormData | Record<string, any>
+) => {
+  const isFormData = typeof FormData !== 'undefined' && payload instanceof FormData;
+  const config = isFormData
+    ? { headers: { 'Content-Type': 'multipart/form-data' } }
+    : undefined;
+
+  try {
+    const response = await apiClient.put(
+      `/community-engagement/content/${id}`,
+      payload,
+      config
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      if (type === 'NOTICE') {
+        const fallbackRes = await apiClient.put(`/notices/${id}`, payload, config);
+        return fallbackRes.data;
+      } else {
+        const fallbackRes = await apiClient.put(`/polls/${id}`, payload, config);
+        return fallbackRes.data;
+      }
+    }
+    throw error;
+  }
+};
+
 export default {
   buildEngagementPayload,
   createEngagementContent,
   previewEngagementContent,
+  getEngagementContent,
+  updateEngagementContent,
 };

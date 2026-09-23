@@ -45,6 +45,30 @@ export class CommunityEngagementController {
       next(error);
     }
   }
+
+  /**
+   * Unified content update endpoint for Community Engagement (Notice or Poll).
+   *
+   * @param {import('express').Request} req
+   * @param {import('express').Response} res
+   * @param {import('express').NextFunction} next
+   */
+  async updateContent(req, res, next) {
+    try {
+      const result = await communityEngagementService.updateContent(
+        req.params.id,
+        req.body,
+        req.user,
+        req.tenant,
+        req.files || []
+      );
+
+      const typeLabel = result.contentType === 'NOTICE' ? 'Notice' : 'Poll';
+      return res.success(result, `${typeLabel} updated successfully`, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const communityEngagementController = new CommunityEngagementController();

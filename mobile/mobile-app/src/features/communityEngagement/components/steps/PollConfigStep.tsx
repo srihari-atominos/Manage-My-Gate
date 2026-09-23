@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, TouchableOpacity, ScrollView } from 'react-native';
+import { View, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
-import { ToggleSwitch } from '@/components/forms/ToggleSwitch';
 import {
   PollChoiceType,
   PollVotingMode,
@@ -349,20 +348,22 @@ export const PollConfigStep: React.FC<PollConfigStepProps> = ({
         {/* Anonymous Ballot Toggle */}
         <View className="bg-card border border-border rounded-2xl p-4">
           <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3 flex-1 pe-2">
-              <View className="w-9 h-9 rounded-xl bg-purple-500/10 items-center justify-center">
+            <View className="flex-row items-center gap-3 flex-1 me-3 min-w-0">
+              <View className="w-9 h-9 rounded-xl bg-purple-500/10 items-center justify-center shrink-0">
                 <Lock size={18} className="text-purple-500" />
               </View>
-              <View className="flex-1">
+              <View className="flex-1 min-w-0">
                 <Text className="text-sm font-bold text-foreground">Anonymous Voting</Text>
                 <Text variant="muted" className="text-xs">
                   Voter identities and apartment numbers are hidden from tally reports.
                 </Text>
               </View>
             </View>
-            <ToggleSwitch
+            <Switch
               value={isAnonymous}
               onValueChange={(val: boolean) => onChangeField('isAnonymous', val)}
+              trackColor={{ false: '#374151', true: '#16a34a' }}
+              thumbColor="#ffffff"
             />
           </View>
         </View>

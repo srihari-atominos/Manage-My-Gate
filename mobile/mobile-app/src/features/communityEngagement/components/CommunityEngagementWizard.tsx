@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { CommunityEngagementFlowHeader } from './CommunityEngagementFlowHeader';
 import { CommunityEngagementStepIndicator } from './CommunityEngagementStepIndicator';
@@ -15,16 +16,23 @@ import { EngagementContentType } from '../types/communityEngagement.types';
 
 export interface CommunityEngagementWizardProps {
   initialType?: EngagementContentType;
+  initialItem?: any;
+  mode?: 'create' | 'edit';
+  editId?: string;
   onClose: () => void;
   onSuccess?: (result: any) => void;
 }
 
 export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps> = ({
   initialType = 'NOTICE',
+  initialItem,
+  mode = 'create',
+  editId,
   onClose,
   onSuccess,
 }) => {
   const {
+    isEditMode,
     contentType,
     formData,
     steps,
@@ -33,12 +41,15 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
     isFirstStep,
     isLastStep,
     previewData,
+    loadingItem,
     previewLoading,
     submitting,
     error,
     success,
     createdResult,
     selectType,
+    initializeForEdit,
+    loadAndInitializeForEdit,
     setField,
     goNext,
     goBack,
@@ -53,10 +64,28 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
   const [stepError, setStepError] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
 
-  // Initialize with initialType on mount
+  // Initialize with initialType or existing item for edit on mount
   useEffect(() => {
-    selectType(initialType);
-  }, [initialType, selectType]);
+    if (mode === 'edit' || editId || initialItem) {
+      if (initialItem) {
+        initializeForEdit(initialItem, initialType);
+      } else if (editId) {
+        loadAndInitializeForEdit(editId, initialType).catch((err: any) => {
+          setStepError(err || 'Failed to load content for editing');
+        });
+      }
+    } else {
+      selectType(initialType);
+    }
+  }, [
+    mode,
+    editId,
+    initialItem,
+    initialType,
+    initializeForEdit,
+    loadAndInitializeForEdit,
+    selectType,
+  ]);
 
   // Handle successful submission
   useEffect(() => {
@@ -114,6 +143,17 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
     onClose();
   };
 
+  if (loadingItem) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background p-6">
+        <ActivityIndicator size="large" className="text-primary" />
+        <Text className="mt-3 text-sm text-muted-foreground font-medium">
+          Loading content for editing...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -127,6 +167,7 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
           stepSubtitle={currentStep?.subtitle}
           stepIndex={currentStepIndex}
           totalSteps={steps.length}
+          isEditMode={isEditMode}
           onBack={goBack}
           onCancel={handleClose}
         />
@@ -182,6 +223,7 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
                   allowComments={formData.allowComments}
                   allowReactions={formData.allowReactions}
                   requiresAcknowledgement={formData.requiresAcknowledgement}
+                  acknowledgementDeadline={formData.acknowledgementDeadline}
                   isCritical={formData.isCritical}
                   images={formData.images}
                   onChangeField={setField}
@@ -220,6 +262,7 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
           onSaveDraft={handleSaveDraft}
           isFirstStep={isFirstStep}
           isLastStep={isLastStep}
+          isEditMode={isEditMode}
           loading={submitting}
           savingDraft={savingDraft}
           publishNow={formData.publishNow}

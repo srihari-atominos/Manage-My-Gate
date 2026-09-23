@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Switch } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { ToggleSwitch } from '@/components/forms/ToggleSwitch';
+import { DatePicker } from '@/components/common/DatePicker';
 import { AttachmentPicker } from '@/components/ui/AttachmentPicker';
 import { LocalAttachment } from '../../types/communityEngagement.types';
 import {
@@ -11,12 +11,14 @@ import {
   ShieldAlert,
   Paperclip,
   AlertCircle,
+  Calendar,
 } from 'lucide-react-native';
 
 interface NoticeConfigStepProps {
   allowComments: boolean;
   allowReactions: boolean;
   requiresAcknowledgement: boolean;
+  acknowledgementDeadline?: string;
   isCritical: boolean;
   images: LocalAttachment[];
   onChangeField: (field: any, value: any) => void;
@@ -27,6 +29,7 @@ export const NoticeConfigStep: React.FC<NoticeConfigStepProps> = ({
   allowComments,
   allowReactions,
   requiresAcknowledgement,
+  acknowledgementDeadline,
   isCritical,
   images,
   onChangeField,
@@ -85,39 +88,43 @@ export const NoticeConfigStep: React.FC<NoticeConfigStepProps> = ({
 
           {/* Allow Comments */}
           <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3 flex-1 pe-2">
-              <View className="w-9 h-9 rounded-xl bg-primary/10 items-center justify-center">
+            <View className="flex-row items-center gap-3 flex-1 me-3 min-w-0">
+              <View className="w-9 h-9 rounded-xl bg-primary/10 items-center justify-center shrink-0">
                 <MessageSquare size={18} className="text-primary" />
               </View>
-              <View className="flex-1">
+              <View className="flex-1 min-w-0">
                 <Text className="text-sm font-bold text-foreground">Allow Comments</Text>
                 <Text variant="muted" className="text-xs">
                   Residents can discuss and reply under this announcement.
                 </Text>
               </View>
             </View>
-            <ToggleSwitch
+            <Switch
               value={allowComments}
               onValueChange={(val: boolean) => onChangeField('allowComments', val)}
+              trackColor={{ false: '#374151', true: '#16a34a' }}
+              thumbColor="#ffffff"
             />
           </View>
 
           {/* Allow Reactions */}
           <View className="flex-row items-center justify-between pt-2 border-t border-border/50">
-            <View className="flex-row items-center gap-3 flex-1 pe-2">
-              <View className="w-9 h-9 rounded-xl bg-primary/10 items-center justify-center">
+            <View className="flex-row items-center gap-3 flex-1 me-3 min-w-0">
+              <View className="w-9 h-9 rounded-xl bg-primary/10 items-center justify-center shrink-0">
                 <Smile size={18} className="text-primary" />
               </View>
-              <View className="flex-1">
+              <View className="flex-1 min-w-0">
                 <Text className="text-sm font-bold text-foreground">Allow Reactions</Text>
                 <Text variant="muted" className="text-xs">
                   Enable resident emoji reactions (Like, Applaud, Caution).
                 </Text>
               </View>
             </View>
-            <ToggleSwitch
+            <Switch
               value={allowReactions}
               onValueChange={(val: boolean) => onChangeField('allowReactions', val)}
+              trackColor={{ false: '#374151', true: '#16a34a' }}
+              thumbColor="#ffffff"
             />
           </View>
         </View>
@@ -130,11 +137,11 @@ export const NoticeConfigStep: React.FC<NoticeConfigStepProps> = ({
 
           {/* Requires Acknowledgement */}
           <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3 flex-1 pe-2">
-              <View className="w-9 h-9 rounded-xl bg-blue-500/10 items-center justify-center">
+            <View className="flex-row items-center gap-3 flex-1 me-3 min-w-0">
+              <View className="w-9 h-9 rounded-xl bg-blue-500/10 items-center justify-center shrink-0">
                 <CheckSquare size={18} className="text-blue-500" />
               </View>
-              <View className="flex-1">
+              <View className="flex-1 min-w-0">
                 <Text className="text-sm font-bold text-foreground">
                   Require Resident Sign-off
                 </Text>
@@ -143,21 +150,38 @@ export const NoticeConfigStep: React.FC<NoticeConfigStepProps> = ({
                 </Text>
               </View>
             </View>
-            <ToggleSwitch
+            <Switch
               value={requiresAcknowledgement}
               onValueChange={(val: boolean) =>
                 onChangeField('requiresAcknowledgement', val)
               }
+              trackColor={{ false: '#374151', true: '#16a34a' }}
+              thumbColor="#ffffff"
             />
           </View>
 
+          {/* Conditional Sign-off Deadline */}
+          {requiresAcknowledgement && (
+            <View className="pt-2 border-t border-border/50 gap-2">
+              <View className="flex-row items-center gap-2">
+                <Calendar size={15} className="text-primary" />
+                <Text className="text-xs font-semibold text-foreground">Sign-off Deadline</Text>
+              </View>
+              <DatePicker
+                label="Sign-off Deadline"
+                value={acknowledgementDeadline ? new Date(acknowledgementDeadline) : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)}
+                onChange={(date: Date) => onChangeField('acknowledgementDeadline', date.toISOString())}
+              />
+            </View>
+          )}
+
           {/* Critical Emergency Broadcast */}
           <View className="flex-row items-center justify-between pt-2 border-t border-border/50">
-            <View className="flex-row items-center gap-3 flex-1 pe-2">
-              <View className="w-9 h-9 rounded-xl bg-destructive/10 items-center justify-center">
+            <View className="flex-row items-center gap-3 flex-1 me-3 min-w-0">
+              <View className="w-9 h-9 rounded-xl bg-destructive/10 items-center justify-center shrink-0">
                 <ShieldAlert size={18} className="text-destructive" />
               </View>
-              <View className="flex-1">
+              <View className="flex-1 min-w-0">
                 <Text className="text-sm font-bold text-foreground">
                   Emergency Priority Broadcast
                 </Text>
@@ -166,9 +190,11 @@ export const NoticeConfigStep: React.FC<NoticeConfigStepProps> = ({
                 </Text>
               </View>
             </View>
-            <ToggleSwitch
+            <Switch
               value={isCritical}
               onValueChange={(val: boolean) => onChangeField('isCritical', val)}
+              trackColor={{ false: '#374151', true: '#16a34a' }}
+              thumbColor="#ffffff"
             />
           </View>
         </View>
@@ -187,8 +213,8 @@ export const NoticeConfigStep: React.FC<NoticeConfigStepProps> = ({
 
           <AttachmentPicker
             attachments={images}
-            onAddAttachments={handleAddAttachments}
-            onRemoveAttachment={handleRemoveAttachment}
+            onAdd={handleAddAttachments}
+            onRemove={handleRemoveAttachment}
             maxFiles={5}
           />
         </View>
