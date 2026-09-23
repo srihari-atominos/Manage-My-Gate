@@ -145,13 +145,13 @@ export default function DashboardScreen() {
       <Animated.ScrollView 
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        className="flex-1 px-4 pt-1"
+        className="flex-1 px-4 pt-3"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) + 110 }}
       >
-        <View className="gap-2.5 max-w-md mx-auto w-full">
+        <View className="gap-3.5 max-w-md mx-auto w-full">
           {/* Dynamic Role-Based Greeting */}
           <RoleBasedGreeting />
 

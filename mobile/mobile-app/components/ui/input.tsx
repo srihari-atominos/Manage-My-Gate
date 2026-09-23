@@ -21,13 +21,13 @@ export const Input = React.forwardRef<TextInput, InputProps>(
     return (
       <View className="w-full gap-1.5">
         {Boolean(label) && (
-          <Text className="text-foreground font-medium text-[14px] ms-1">
+          <Text className="text-foreground font-bold font-sans text-[13.5px] ms-1">
             {label}
           </Text>
         )}
 
         <View className={cn(
-          "relative flex-row items-center border border-border bg-card rounded-xl px-3.5 focus:border-primary",
+          "relative flex-row items-center border border-border/80 bg-card rounded-2xl px-3.5 shadow-2xs focus:border-primary",
           error ? "border-destructive bg-destructive/5" : ""
         )}>
           {leftIcon && <View className="me-2.5">{leftIcon}</View>}
@@ -36,7 +36,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             ref={ref}
             secureTextEntry={isPassword ? secureTextEntry : props.secureTextEntry}
             placeholderTextColor={props.placeholderTextColor || (isDark ? '#737c88' : '#9ca3af')}
-            className={cn(`flex-1 text-foreground py-3 text-[15px] font-sans`, className)}
+            className={cn(`flex-1 text-foreground py-3.5 text-[15px] font-sans`, className)}
             {...props}
           />
 
@@ -56,7 +56,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
         </View>
 
         {error ? (
-          <Text className="text-destructive text-xs font-medium ms-1">
+          <Text className="text-destructive text-xs font-semibold ms-1">
             {error}
           </Text>
         ) : null}

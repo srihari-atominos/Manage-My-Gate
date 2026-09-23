@@ -169,12 +169,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   return (
     <>
       <View 
-        style={{ paddingTop: Math.max(insets.top, 16) }}
+        style={{ paddingTop: Math.max(insets.top, 16) + 4 }}
         className={cn(
           transparent
-            ? 'bg-card/75 dark:bg-card/75 border-b border-border/40'
-            : 'bg-card border-b border-border',
-          'px-4 pb-3 flex-row items-center justify-between shadow-xs'
+            ? 'bg-transparent'
+            : 'bg-card border-b border-border/70 shadow-2xs',
+          'px-4 pb-4 flex-row items-center justify-between'
         )}
       >
         {/* Left Section: Community / Villa Context Pill */}
@@ -182,13 +182,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-2 flex-1 max-w-[65%] me-2 bg-secondary border border-border/80 px-3 py-2 rounded-full shadow-xs"
+          className="flex-row items-center gap-2 flex-1 max-w-[65%] me-2 bg-secondary/90 border border-border/70 px-3 py-1.5 rounded-full shadow-2xs"
         >
-          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/30 shrink-0">
+          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/20 shrink-0 shadow-2xs">
             {hasUnit ? (
-              <Home size={12} color="#FFFFFF" />
+              <Home size={12} color="#FFFFFF" strokeWidth={2.4} />
             ) : (
-              <Building2 size={12} color="#FFFFFF" />
+              <Building2 size={12} color="#FFFFFF" strokeWidth={2.4} />
             )}
           </View>
 
@@ -197,14 +197,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <>
                 <Text
                   numberOfLines={1}
-                  className="text-[14.5px] font-black font-sans text-foreground shrink-0"
+                  className="text-[14px] font-bold font-sans text-foreground shrink-0"
                 >
                   {activeVilla}
                 </Text>
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  className="text-[13px] font-medium font-sans text-muted-foreground flex-1 ms-1"
+                  className="text-[12.5px] font-medium font-sans text-muted-foreground flex-1 ms-1"
                 >
                   • {activeCommunity ? translateText(activeCommunity) : t('community', 'Community')}
                 </Text>
@@ -213,7 +213,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                className="text-[14.5px] font-bold font-sans text-foreground flex-1"
+                className="text-[14px] font-bold font-sans text-foreground flex-1"
               >
                 {activeCommunity ? translateText(activeCommunity) : t('community_workspace', 'Community Workspace')}
               </Text>
@@ -231,14 +231,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={toggleTheme}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Toggle Light and Dark Theme"
           >
             {colorScheme === 'dark' ? (
-              <Sun size={18} color="#F59E0B" strokeWidth={2.2} />
+              <Sun size={17} color="#F59E0B" strokeWidth={2.2} />
             ) : (
-              <Moon size={18} color="#334155" strokeWidth={2.2} />
+              <Moon size={17} color="#334155" strokeWidth={2.2} />
             )}
           </TouchableOpacity>
 
@@ -246,14 +246,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center relative active:bg-secondary shadow-xs"
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center relative active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
-            <Bell size={18} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
+            <Bell size={17} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
             {liveUnreadCount > 0 ? (
-              <View className="absolute -top-0.5 -right-0.5 bg-[#FF6A00] rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card">
-                <Text className="text-[8.5px] font-bold font-sans text-white leading-tight">
+              <View className="absolute -top-0.5 -right-0.5 bg-primary rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card shadow-2xs">
+                <Text className="text-[8.5px] font-bold font-sans text-primary-foreground leading-tight">
                   {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
                 </Text>
               </View>
@@ -264,11 +264,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={() => router.push('/(resident)/settings' as any)}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel={t('app_settings', 'Settings')}
           >
-            <Settings size={18} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
+            <Settings size={17} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
           </TouchableOpacity>
         </View>
       </View>

@@ -134,7 +134,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
       <View className={cn('w-full', containerClassName)}>
         {Boolean(translatedLabel) && (
           <View className="flex-row items-center justify-between mb-1.5">
-            <Text className={cn('text-sm font-medium text-foreground', labelClassName)}>
+            <Text className={cn('text-[13.5px] font-bold font-sans text-foreground', labelClassName)}>
               {translatedLabel}
               {required && !label?.includes('*') && (
                 <Text className="text-destructive font-bold"> *</Text>
@@ -143,7 +143,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             {effectiveStatus === 'valid' && !error && (
               <View className="flex-row items-center gap-1">
                 <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
-                <Text className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <Text className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                   {t('valid', 'Valid')}
                 </Text>
               </View>
@@ -153,10 +153,10 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
 
         <View
           className={cn(
-            'flex-row rounded-2xl border bg-white/75 dark:bg-[#292524]/75 px-3.5 py-3 shadow-2xs transition-colors backdrop-blur-sm',
+            'flex-row rounded-2xl border bg-card dark:bg-[#1C1C20] px-3.5 py-3 shadow-2xs transition-colors',
             props.multiline ? 'items-start' : 'items-center',
             // Default border
-            'border-white/80 dark:border-white/20',
+            'border-border/80 dark:border-border/50',
             // Focused state
             isFocused && !error && 'border-primary ring-2 ring-primary/20',
             // Incomplete status

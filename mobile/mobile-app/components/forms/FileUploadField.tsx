@@ -33,20 +33,20 @@ export const FileUploadField = ({
   return (
     <View className={cn('w-full', className)}>
       {Boolean(label) && (
-        <Text className="mb-1.5 text-sm font-medium text-foreground">
-          {translateText(label)}
+        <Text className="mb-1.5 text-[13.5px] font-bold font-sans text-foreground">
+          {translateText(label || '')}
         </Text>
       )}
       
       {files.length < maxFiles && (
         <Pressable
           onPress={onUploadPress}
-          className="mb-3 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/40 py-6"
+          className="mb-3 items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-card/60 active:bg-secondary/60 py-6 shadow-2xs"
         >
-          <View className="mb-2 h-10 w-10 items-center justify-center rounded-full bg-muted">
-            <UploadCloud size={20} className="text-muted-foreground" />
+          <View className="mb-2 h-10 w-10 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
+            <UploadCloud size={20} className="text-primary" />
           </View>
-          <Text className="text-sm font-medium text-primary">
+          <Text className="text-[13.5px] font-bold font-sans text-primary">
             {t('tap_to_select_file', 'Tap to select file')}
           </Text>
           <Text className="mt-1 text-xs text-muted-foreground">

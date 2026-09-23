@@ -48,7 +48,7 @@ export const ProfileHeaderCard = ({
   return (
     <View
       className={cn(
-        'items-center bg-card border border-border rounded-2xl p-5 shadow-xs gap-3 w-full',
+        'items-center bg-card border border-border/70 rounded-3xl p-5 shadow-2xs gap-3 w-full',
         className
       )}
     >
@@ -57,7 +57,7 @@ export const ProfileHeaderCard = ({
         onPress={onAvatarPress}
         disabled={!onAvatarPress || isAvatarLoading}
         activeOpacity={0.85}
-        className="relative items-center justify-center"
+        className="relative items-center justify-center mt-1 mb-2"
         accessibilityRole={onAvatarPress ? 'button' : 'none'}
         accessibilityLabel="Change profile avatar"
       >
@@ -65,7 +65,9 @@ export const ProfileHeaderCard = ({
           source={resolvedAvatarUrl ? { uri: resolvedAvatarUrl } : null}
           fallback={initialLetter}
           size="xl"
-          className="border-2 border-primary/40 bg-primary/10 h-20 w-20"
+          style={{ width: 88, height: 88, borderRadius: 44 }}
+          className="border-2 border-primary/30 bg-primary/10 shadow-2xs"
+          fallbackClassName="text-2xl"
         />
         {isAvatarLoading && (
           <View className="absolute inset-0 rounded-full bg-black/50 items-center justify-center">
@@ -73,37 +75,19 @@ export const ProfileHeaderCard = ({
           </View>
         )}
         {showCameraBadge && !isAvatarLoading && (
-          <View className="absolute -bottom-1 -right-1 size-7 rounded-full bg-primary border-2 border-card items-center justify-center shadow-xs">
-            <Camera size={13} color="#FFFFFF" />
+          <View className="absolute bottom-0 right-0 size-7 rounded-full bg-primary border-2 border-card items-center justify-center shadow-2xs">
+            <Camera size={13} color="#FFFFFF" strokeWidth={2.4} />
           </View>
         )}
       </TouchableOpacity>
 
-      {onAvatarPress && (
-        <TouchableOpacity
-          onPress={onAvatarPress}
-          disabled={isAvatarLoading}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1.5 py-1 px-3 rounded-full bg-primary/10 border border-primary/20 -mt-1"
-        >
-          {isAvatarLoading ? (
-            <ActivityIndicator size={12} color="#0284c7" />
-          ) : (
-            <Camera size={12} className="text-primary" />
-          )}
-          <Text className="text-xs font-bold text-primary">
-            {isAvatarLoading ? t('saving_photo', 'Saving Photo...') : t('change_photo', 'Change Photo')}
-          </Text>
-        </TouchableOpacity>
-      )}
-
       {/* User Info Header */}
       <View className="items-center">
-        <Text className="text-xl font-black text-foreground text-center">
+        <Text className="text-[21px] font-bold font-sans text-foreground text-center tracking-tight">
           {name}
         </Text>
         {communityName ? (
-          <Text className="text-xs font-semibold text-primary mt-0.5 text-center">
+          <Text className="text-[13px] font-bold font-sans text-primary mt-0.5 text-center">
             {communityName}
           </Text>
         ) : null}
@@ -113,15 +97,15 @@ export const ProfileHeaderCard = ({
       {(email || phone) && (
         <View className="flex-row flex-wrap items-center justify-center gap-3">
           {email ? (
-            <View className="flex-row items-center gap-1">
+            <View className="flex-row items-center gap-1.5">
               <Mail size={13} className="text-muted-foreground" />
-              <Text className="text-xs text-muted-foreground">{email}</Text>
+              <Text className="text-[12.5px] font-medium font-sans text-muted-foreground">{email}</Text>
             </View>
           ) : null}
           {phone ? (
-            <View className="flex-row items-center gap-1">
+            <View className="flex-row items-center gap-1.5">
               <Phone size={13} className="text-muted-foreground" />
-              <Text className="text-xs text-muted-foreground">{phone}</Text>
+              <Text className="text-[12.5px] font-medium font-sans text-muted-foreground">{phone}</Text>
             </View>
           ) : null}
         </View>

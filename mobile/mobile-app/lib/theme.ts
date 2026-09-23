@@ -58,198 +58,58 @@ export const THEME_1_NAHOM_NAVY = {
 
 export const THEME_2_VENTOREX_ORANGE = {
   light: {
-
-    // ─────────────────────────────────────────────
-    // FOUNDATION
-    // ─────────────────────────────────────────────
-
-    background: 'hsl(30 29% 97%)', // #FAF8F6 Warm White / Main App Canvas
-
-    foreground: 'hsl(220 3% 19%)', // #2F3032 Ventorex Graphite
-
-    card: 'hsl(0 0% 100%)', // #FFFFFF Clean White Surface
-
-    cardForeground: 'hsl(220 3% 19%)',
-
+    background: 'hsl(34 100% 97%)', // #FFF8EF Primary App Warm Ivory Background
+    foreground: 'hsl(0 0% 9%)', // #171717 Primary Text
+    card: 'hsl(0 0% 100%)', // #FFFFFF Pure White Surface
+    cardForeground: 'hsl(0 0% 9%)',
     popover: 'hsl(0 0% 100%)',
-
-    popoverForeground: 'hsl(220 3% 19%)',
-
-
-    // ─────────────────────────────────────────────
-    // BRAND / PRIMARY
-    // ─────────────────────────────────────────────
-
-    primary: 'hsl(17 88% 40%)', // #C2410C Accessible Deep Ventorex Orange
-
-    primaryForeground: 'hsl(0 0% 100%)', // #FFFFFF
-
-
-    // ─────────────────────────────────────────────
-    // SECONDARY
-    // ─────────────────────────────────────────────
-
-    secondary: 'hsl(24 38% 95%)', // #F7F1ED Soft Warm Surface
-
-    secondaryForeground: 'hsl(220 3% 19%)',
-
-
-    // ─────────────────────────────────────────────
-    // MUTED
-    // ─────────────────────────────────────────────
-
-    muted: 'hsl(24 17% 89%)', // #E7E1DD Warm Neutral Surface
-
-    mutedForeground: 'hsl(216 3% 37%)', // #5B5D60 Secondary Graphite
-
-
-    // ─────────────────────────────────────────────
-    // ACCENT
-    // ─────────────────────────────────────────────
-
-    accent: 'hsl(23 97% 46%)', // #E85D04 Brand Orange Accent
-
+    popoverForeground: 'hsl(0 0% 9%)',
+    primary: 'hsl(21 92% 50%)', // #F45A0A Primary Orange
+    primaryForeground: 'hsl(0 0% 100%)',
+    secondary: 'hsl(30 100% 95%)', // #FFF3E7 Secondary Warm Background
+    secondaryForeground: 'hsl(0 0% 9%)',
+    muted: 'hsl(25 100% 95%)', // #FFF0E5 Soft Orange Surface
+    mutedForeground: 'hsl(33 5% 41%)', // #6F6A64 Secondary Text
+    accent: 'hsl(21 92% 50%)', // #F45A0A Brand Orange Accent
     accentForeground: 'hsl(0 0% 100%)',
-
-
-    // ─────────────────────────────────────────────
-    // SEMANTIC
-    // ─────────────────────────────────────────────
-
-    destructive: 'hsl(0 72% 51%)', // #DC2626 Error / Destructive
-
-
-    // ─────────────────────────────────────────────
-    // STRUCTURE
-    // ─────────────────────────────────────────────
-
-    border: 'hsl(24 17% 89%)', // #E7E1DD Soft Warm Border
-
-    input: 'hsl(24 17% 89%)',
-
-    ring: 'hsl(17 88% 40%)', // #C2410C Focus Ring
-
-
-    // ─────────────────────────────────────────────
-    // SHAPE
-    // ─────────────────────────────────────────────
-
+    destructive: 'hsl(0 72% 51%)', // #DC2626 Error
+    border: 'hsl(30 30% 91%)', // #EFE6DC Subtle Warm Border
+    input: 'hsl(30 30% 91%)',
+    ring: 'hsl(21 92% 50%)',
     radius: '1.125rem', // 18px
-
-
-    // ─────────────────────────────────────────────
-    // DATA VISUALIZATION
-    // ─────────────────────────────────────────────
-
-    chart1: 'hsl(17 88% 40%)', // #C2410C Deep Orange
-
-    chart2: 'hsl(23 97% 46%)', // #E85D04 Orange
-
-    chart3: 'hsl(25 95% 53%)', // #F97316 Bright Orange
-
-    chart4: 'hsl(14 100% 50%)', // #FF3D00 Red Orange
-
-    chart5: 'hsl(142 71% 45%)', // #22C55E Success Green
-
+    chart1: 'hsl(21 92% 50%)',
+    chart2: 'hsl(25 95% 53%)',
+    chart3: 'hsl(38 92% 50%)',
+    chart4: 'hsl(14 100% 50%)',
+    chart5: 'hsl(142 71% 45%)',
   },
-
 
   dark: {
-
-    // ─────────────────────────────────────────────
-    // FOUNDATION
-    // ─────────────────────────────────────────────
-
-    background: 'hsl(0 0% 9%)', // #171717 Deep Graphite
-
-    foreground: 'hsl(0 0% 96%)', // #F5F5F4 Soft White
-
-    card: 'hsl(0 0% 14%)', // #242424 Elevated Graphite Surface
-
-    cardForeground: 'hsl(0 0% 96%)',
-
-    popover: 'hsl(0 0% 17%)', // #2B2B2B
-
-    popoverForeground: 'hsl(0 0% 96%)',
-
-
-    // ─────────────────────────────────────────────
-    // BRAND / PRIMARY
-    // ─────────────────────────────────────────────
-
+    background: 'hsl(240 5% 7%)', // #121214 Deep Obsidian Base
+    foreground: 'hsl(0 0% 98%)', // #FAFAFA Soft Crisp White
+    card: 'hsl(240 4% 11%)', // #1C1C20 Elevated Obsidian Surface
+    cardForeground: 'hsl(0 0% 98%)',
+    popover: 'hsl(240 4% 13%)', // #222226
+    popoverForeground: 'hsl(0 0% 98%)',
     primary: 'hsl(25 100% 50%)', // #FF6A00 Ventorex Bright Orange
-
-    primaryForeground: 'hsl(0 0% 9%)', // #171717
-
-
-    // ─────────────────────────────────────────────
-    // SECONDARY
-    // ─────────────────────────────────────────────
-
-    secondary: 'hsl(0 0% 17%)', // #2B2B2B Graphite Surface
-
-    secondaryForeground: 'hsl(0 0% 96%)',
-
-
-    // ─────────────────────────────────────────────
-    // MUTED
-    // ─────────────────────────────────────────────
-
-    muted: 'hsl(0 0% 17%)', // #2B2B2B
-
-    mutedForeground: 'hsl(0 0% 72%)', // #B8B8B8
-
-
-    // ─────────────────────────────────────────────
-    // ACCENT
-    // ─────────────────────────────────────────────
-
+    primaryForeground: 'hsl(0 0% 8%)', // #141416
+    secondary: 'hsl(240 4% 14%)', // #24242A Obsidian Secondary
+    secondaryForeground: 'hsl(0 0% 98%)',
+    muted: 'hsl(240 4% 15%)',
+    mutedForeground: 'hsl(0 0% 70%)', // #B3B3B3
     accent: 'hsl(24 100% 62%)', // #FF8A3D Soft Bright Orange
-
-    accentForeground: 'hsl(0 0% 9%)',
-
-
-    // ─────────────────────────────────────────────
-    // SEMANTIC
-    // ─────────────────────────────────────────────
-
+    accentForeground: 'hsl(0 0% 8%)',
     destructive: 'hsl(0 84% 60%)', // #EF4444
-
-
-    // ─────────────────────────────────────────────
-    // STRUCTURE
-    // ─────────────────────────────────────────────
-
-    border: 'hsl(0 0% 24%)', // #3D3D3D Graphite Border
-
-    input: 'hsl(0 0% 24%)',
-
-    ring: 'hsl(25 100% 50%)', // #FF6A00
-
-
-    // ─────────────────────────────────────────────
-    // SHAPE
-    // ─────────────────────────────────────────────
-
+    border: 'hsl(240 4% 20%)', // #323238 Subtle Dark Border
+    input: 'hsl(240 4% 20%)',
+    ring: 'hsl(25 100% 50%)',
     radius: '1.125rem', // 18px
-
-
-    // ─────────────────────────────────────────────
-    // DATA VISUALIZATION
-    // ─────────────────────────────────────────────
-
-    chart1: 'hsl(25 100% 50%)', // #FF6A00 Bright Orange
-
-    chart2: 'hsl(24 100% 62%)', // #FF8A3D Light Orange
-
-    chart3: 'hsl(14 100% 50%)', // #FF3D00 Red Orange
-
-    chart4: 'hsl(0 0% 72%)', // #B8B8B8 Neutral Graphite
-
-    chart5: 'hsl(142 71% 45%)', // #22C55E Success Green
-
+    chart1: 'hsl(25 100% 50%)',
+    chart2: 'hsl(24 100% 62%)',
+    chart3: 'hsl(23 97% 46%)',
+    chart4: 'hsl(14 100% 50%)',
+    chart5: 'hsl(142 71% 45%)',
   },
-
 };
 
 // ============================================================================

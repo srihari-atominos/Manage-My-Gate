@@ -61,31 +61,35 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   }, [propEquippedFeatures, activeFeatureIds, user, language]);
 
   return (
-    <View className="gap-2.5 my-2">
+    <View className="gap-3 my-2.5">
       {/* Section Header with Customise Button */}
       <View className="flex-row items-center justify-between px-1">
-        <Text className="text-[16px] font-bold font-sans text-foreground tracking-tight">
+        <Text className="text-[18px] font-bold font-sans text-foreground tracking-tight">
           {t('quick_actions', 'Quick Actions')}
         </Text>
 
         <TouchableOpacity
           onPress={onOpenCustomise}
-          activeOpacity={0.7}
-          className="flex-row items-center gap-1 bg-secondary border border-border/80 px-2.5 py-1 rounded-full shadow-2xs"
+          activeOpacity={0.75}
+          style={{
+            backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
+            borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
+          }}
+          className="flex-row items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs"
           accessibilityRole="button"
           accessibilityLabel={t('customise', 'Customise')}
         >
-          <SlidersHorizontal size={11} className="text-muted-foreground" />
-          <Text className="text-[11px] font-bold font-sans text-foreground">{t('customise', 'Customise')}</Text>
+          <SlidersHorizontal size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
+          <Text className="text-[12px] font-bold font-sans text-[#172B70] dark:text-[#93C5FD]">{t('customise', 'Customise')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* 4-Column Grid with Equal-Size Rounded Tiles */}
-      <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3.5">
+      <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-4">
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
           const iconName = meta?.iconName || tile.iconName;
-          const colorIcon = meta?.colorIcon || tile.colorIcon || '#2563EB';
+          const colorIcon = meta?.colorIcon || tile.colorIcon || '#EA580C';
           const badge = meta?.badge || tile.badge;
           const badgeColor = meta?.badgeColor || tile.badgeColor;
 
@@ -93,7 +97,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
             <ActionTile
               key={tile.id}
               containerClassName="w-[23%]"
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={25} strokeWidth={1.9} />}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={34} strokeWidth={2.0} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
@@ -104,14 +108,14 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           );
         })}
 
-        {/* 8th Tile: View More (+) with App Primary Theme Accent Squircle */}
+        {/* 8th Tile: Explore More (+) with Navy Blue Theme Accent Squircle */}
         <ActionTile
           key="view_more_tile"
           containerClassName="w-[23%]"
           isAccent={true}
-          accentBg={isDark ? '#FF8A3D' : '#C2410C'}
-          icon={<Plus size={26} color="#FFFFFF" strokeWidth={2.4} />}
-          label={t('view_more', 'View More')}
+          accentBg={isDark ? '#1E3A8A' : '#172B70'}
+          icon={<Plus size={32} color="#FFFFFF" strokeWidth={2.5} />}
+          label={t('explore_more', 'Explore More')}
           onPress={onOpenViewMore}
         />
       </View>

@@ -23,6 +23,7 @@ import { isFeatureAllowedForUser, checkIsAdmin } from '@/src/utils/rbac';
 import { useTranslation } from '@/src/utils/i18n';
 import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 
 export default function AllFeaturesScreen() {
   const router = useRouter();
@@ -114,6 +115,9 @@ export default function AllFeaturesScreen() {
   }, [allFeaturesList, isAdminRole]);
   const activeCategory = featureCatalog?.find(cat => cat.categoryKey === selectedCategoryKey);
 
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   return (
     <ScreenShell
       title={t('quick_actions', 'Quick Actions')}
@@ -125,11 +129,17 @@ export default function AllFeaturesScreen() {
       headerRight={
         <TouchableOpacity
           onPress={() => setCustomiseOpen(true)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1 bg-primary/10 border border-primary/30 px-2.5 py-1.5 rounded-full"
+          activeOpacity={0.75}
+          style={{
+            backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
+            borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
+          }}
+          className="flex-row items-center gap-1.5 border px-3 py-1.5 rounded-full shadow-2xs"
+          accessibilityRole="button"
+          accessibilityLabel={t('customise', 'Customise')}
         >
-          <SlidersHorizontal size={13} className="text-muted-foreground" />
-          <Text className="text-xs font-bold text-foreground font-sans">{t('customise', 'Customise')}</Text>
+          <SlidersHorizontal size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
+          <Text className="text-[12px] font-bold text-[#172B70] dark:text-[#93C5FD] font-sans">{t('customise', 'Customise')}</Text>
         </TouchableOpacity>
       }
     >

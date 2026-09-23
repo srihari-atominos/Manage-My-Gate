@@ -96,12 +96,12 @@ export function getStatusVariant(status: string): StatusVariant {
 }
 
 const statusBadgeVariants = cva(
-  'inline-flex flex-row items-center justify-center rounded-full self-start',
+  'inline-flex flex-row items-center justify-center rounded-full self-start shadow-2xs',
   {
     variants: {
       size: {
-        sm: 'h-5 px-1.5 gap-1',
-        md: 'h-6 px-2 gap-1.5',
+        sm: 'h-[22px] px-2 gap-1',
+        md: 'h-[26px] px-2.5 gap-1.5',
       },
     },
     defaultVariants: {
@@ -110,11 +110,11 @@ const statusBadgeVariants = cva(
   }
 );
 
-const statusBadgeTextVariants = cva('font-semibold font-sans', {
+const statusBadgeTextVariants = cva('font-bold font-sans', {
   variants: {
     size: {
       sm: 'text-[11px] uppercase tracking-wider',
-      md: 'text-[13px] tracking-wide',
+      md: 'text-[12.5px] tracking-wide',
     },
   },
   defaultVariants: {

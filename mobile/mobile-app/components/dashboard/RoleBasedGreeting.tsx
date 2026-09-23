@@ -10,6 +10,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { MapPin } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { getUserRoleName } from '../../src/utils/rbac';
 import { useTranslation } from '../../src/utils/i18n';
@@ -274,6 +275,8 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 }) => {
   const { user } = useAuth();
   const { t, translateText, language } = useTranslation();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const [villaModalVisible, setVillaModalVisible] = React.useState(false);
 
   // 1. Time of day calculation
@@ -295,31 +298,35 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 
   return (
     <>
-      <View className="flex-row items-center justify-between py-2 px-1">
+      <View className="flex-row items-center justify-between pt-1 pb-2.5 px-1">
         {/* Left: Salutation & Subtitle */}
         <View className="flex-1 pr-2">
           <View className="flex-row items-center flex-wrap gap-1.5">
-            <Text className="text-[20px] font-extrabold font-sans text-foreground tracking-tight leading-snug">
+            <Text className="text-[21px] font-bold font-sans text-foreground tracking-tight leading-snug">
               {t(timeGreeting.key, timeGreeting.defaultText)}, {displayName}
             </Text>
             <WavingHand />
           </View>
-          <Text className="text-[13px] font-bold font-sans text-slate-800 dark:text-slate-100 mt-0.5 tracking-tight">
+          <Text className="text-[13px] font-medium font-sans text-muted-foreground mt-0.5 tracking-tight">
             {t('welcome_back_sub', 'Welcome back to your community hub')}
           </Text>
         </View>
 
-        {/* Right: Location / Villa Badge Pill adopting existing theme color with location symbol */}
+        {/* Right: Location / Villa Badge Pill adopting Navy Blue UI color with location symbol */}
         {localizedLocation ? (
           <TouchableOpacity
             onPress={() => setVillaModalVisible(true)}
             activeOpacity={0.75}
-            className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-3 py-1.5 rounded-full shadow-2xs shrink-0"
+            style={{
+              backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
+              borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
+            }}
+            className="flex-row items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
             accessibilityRole="button"
             accessibilityLabel={`Current location: ${localizedLocation}`}
           >
-            <MapPin size={13} color="#FF6A00" strokeWidth={2.4} />
-            <Text className="text-[12px] font-bold font-sans text-primary dark:text-primary">
+            <MapPin size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
+            <Text className="text-[12px] font-bold font-sans text-[#172B70] dark:text-[#93C5FD]">
               {localizedLocation}
             </Text>
           </TouchableOpacity>

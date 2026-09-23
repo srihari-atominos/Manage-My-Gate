@@ -45,9 +45,12 @@ export const DashboardBackground: React.FC<DashboardBackgroundProps> = memo(
           <Defs>
             {/* Background Base Gradients */}
             <LinearGradient id="lightBaseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <Stop offset="0%" stopColor="#FAF8F6" stopOpacity="1" />
-              <Stop offset="45%" stopColor="#F5F1EC" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#EDE6DF" stopOpacity="1" />
+              <Stop offset="0%" stopColor="#FFA872" stopOpacity="0.60" />
+              <Stop offset="18%" stopColor="#FFBA92" stopOpacity="0.45" />
+              <Stop offset="36%" stopColor="#FFDEC7" stopOpacity="0.28" />
+              <Stop offset="58%" stopColor="#FFF2E7" stopOpacity="0.14" />
+              <Stop offset="85%" stopColor="#FFF8EF" stopOpacity="1" />
+              <Stop offset="100%" stopColor="#FFF8EF" stopOpacity="1" />
             </LinearGradient>
 
             <LinearGradient id="darkBaseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -57,10 +60,10 @@ export const DashboardBackground: React.FC<DashboardBackgroundProps> = memo(
             </LinearGradient>
 
             {/* Ambient Lighting Orbs */}
-            <RadialGradient id="lightWarmAura" cx="85%" cy="12%" r="55%">
-              <Stop offset="0%" stopColor="#FF6A00" stopOpacity="0.065" />
-              <Stop offset="50%" stopColor="#C2410C" stopOpacity="0.02" />
-              <Stop offset="100%" stopColor="#FAF8F6" stopOpacity="0" />
+            <RadialGradient id="lightWarmAura" cx="88%" cy="5%" r="65%">
+              <Stop offset="0%" stopColor="#F45A0A" stopOpacity="0.25" />
+              <Stop offset="45%" stopColor="#FFA872" stopOpacity="0.10" />
+              <Stop offset="100%" stopColor="#FFF8EF" stopOpacity="0" />
             </RadialGradient>
 
             <RadialGradient id="darkWarmAura" cx="85%" cy="12%" r="55%">
@@ -69,10 +72,10 @@ export const DashboardBackground: React.FC<DashboardBackgroundProps> = memo(
               <Stop offset="100%" stopColor="#0B0F19" stopOpacity="0" />
             </RadialGradient>
 
-            <RadialGradient id="lightCoolAura" cx="15%" cy="65%" r="50%">
-              <Stop offset="0%" stopColor="#245FA8" stopOpacity="0.035" />
-              <Stop offset="60%" stopColor="#51418F" stopOpacity="0.015" />
-              <Stop offset="100%" stopColor="#FAF8F6" stopOpacity="0" />
+            <RadialGradient id="lightCoolAura" cx="12%" cy="8%" r="60%">
+              <Stop offset="0%" stopColor="#FFBA92" stopOpacity="0.32" />
+              <Stop offset="50%" stopColor="#FFDEC7" stopOpacity="0.10" />
+              <Stop offset="100%" stopColor="#FFF8EF" stopOpacity="0" />
             </RadialGradient>
 
             <RadialGradient id="darkCoolAura" cx="15%" cy="65%" r="50%">

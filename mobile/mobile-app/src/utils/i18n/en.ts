@@ -254,6 +254,7 @@ export const en: Record<string, string> = {
   'expires_label': 'Expires:',
   'expiry_date': 'Expiry Date',
   'explore_module': 'Explore Module',
+  'explore_more': 'Explore More',
   'explore_quick_actions': 'Explore community quick actions and services',
   'facilities': 'Facilities',
   'facility_downtime': 'Facility Downtime',

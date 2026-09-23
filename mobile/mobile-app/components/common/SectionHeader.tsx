@@ -150,7 +150,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   return (
     <View
       className={cn(
-        'flex-row items-center justify-between py-2 px-1',
+        'flex-row items-center justify-between py-2.5 px-1',
         containerClassName || className
       )}
     >
@@ -159,14 +159,14 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         {IconComponent ? (
           <View
             className={cn(
-              'w-8 h-8 rounded-xl items-center justify-center mr-2.5 shrink-0 border',
+              'w-9 h-9 rounded-2xl items-center justify-center mr-3 shrink-0 border shadow-2xs',
               isDark
                 ? 'bg-secondary/70 border-border/60'
-                : iconBgColor || 'bg-primary/10 border-primary/15'
+                : iconBgColor || 'bg-primary/10 border-primary/20'
             )}
           >
             <IconComponent
-              size={16}
+              size={17}
               color={iconColor || (isDark ? '#FF8A3D' : '#C2410C')}
               strokeWidth={2.3}
             />
@@ -176,7 +176,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         <View className="flex-1 min-w-0 justify-center">
           <Text
             numberOfLines={1}
-            className="text-[15px] font-bold font-sans text-foreground tracking-tight"
+            className="text-[16px] sm:text-[17px] font-bold font-sans text-foreground tracking-tight"
           >
             {localizedTitle}
           </Text>
@@ -184,7 +184,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           {displaySubtitle ? (
             <Text
               numberOfLines={1}
-              className="text-[11.5px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
+              className="text-[12px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
             >
               {localizedSubtitle}
             </Text>
@@ -196,11 +196,11 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       {actionLabel && onAction && (
         <Pressable
           onPress={onAction}
-          className="flex-row items-center gap-1 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-2.5 py-1 rounded-full active:scale-95 transition-transform shrink-0 shadow-xs"
+          className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-3 py-1.5 rounded-full active:scale-95 transition-transform shrink-0 shadow-2xs"
           accessibilityRole="button"
           accessibilityLabel={localizedActionLabel}
         >
-          <Text className="text-[11px] font-bold font-sans text-primary">
+          <Text className="text-[11.5px] font-bold font-sans text-primary">
             {localizedActionLabel}
           </Text>
           {isExpanded !== undefined ? (

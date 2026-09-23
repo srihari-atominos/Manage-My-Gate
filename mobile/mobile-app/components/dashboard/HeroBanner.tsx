@@ -1,98 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
-import { Text } from '../ui/text';
-import { ArrowRight, Sparkles, Megaphone, ShieldCheck, Building2, Coins } from 'lucide-react-native';
+import { View, ScrollView, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { useTranslation } from '../../src/utils/i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 400);
+const BANNER_HEIGHT = Math.round((BANNER_WIDTH - 8) * (216 / 472));
 
 export interface BannerItem {
   id: string;
-  tagKey: string;
+  image: any;
   titleKey: string;
-  subtitleKey: string;
-  defaultTag: string;
   defaultTitle: string;
-  defaultSubtitle: string;
-  icon: React.ReactNode;
-  bgClass: string;
-  borderClass: string;
-  pillBg: string;
-  ctaBg: string;
-  textColor: string;
-  subtextColor: string;
-  glowColor: string;
 }
 
 const BANNERS: BannerItem[] = [
   {
     id: '1',
-    tagKey: 'tag_community',
+    image: require('../../assets/images/banners/banner_community.png'),
     titleKey: 'banner_welcome_title',
-    subtitleKey: 'banner_welcome_sub',
-    defaultTag: 'Community',
-    defaultTitle: 'Welcome to NAHOM',
-    defaultSubtitle: 'Nexus Around Home — Connected Harmony & Security.',
-    icon: <Megaphone size={12} color="#60A5FA" />,
-    bgClass: 'bg-[#0B1437] border-[#245FA8]/50',
-    borderClass: 'border-[#245FA8]/40',
-    pillBg: 'bg-[#172B70]/80 border-[#245FA8]/50',
-    ctaBg: 'bg-[#FF6A00] border-[#FF6A00]',
-    textColor: 'text-white',
-    subtextColor: 'text-blue-100/90',
-    glowColor: 'bg-[#245FA8]/25',
+    defaultTitle: 'Community',
   },
   {
     id: '2',
-    tagKey: 'tag_security_gate',
+    image: require('../../assets/images/banners/banner_security.png'),
     titleKey: 'banner_qr_title',
-    subtitleKey: 'banner_qr_sub',
-    defaultTag: 'Security Gate',
-    defaultTitle: 'Instant QR Visitor Passes',
-    defaultSubtitle: 'Generate guest passes for seamless touchless gate validation.',
-    icon: <ShieldCheck size={12} color="#34D399" />,
-    bgClass: 'bg-[#061C24] border-emerald-500/40',
-    borderClass: 'border-emerald-500/40',
-    pillBg: 'bg-emerald-500/20 border-emerald-400/40',
-    ctaBg: 'bg-emerald-600 border-emerald-500/50',
-    textColor: 'text-white',
-    subtextColor: 'text-emerald-100/80',
-    glowColor: 'bg-emerald-500/20',
+    defaultTitle: 'Security Gate',
   },
   {
     id: '3',
-    tagKey: 'tag_amenities',
+    image: require('../../assets/images/banners/banner_amenities.png'),
     titleKey: 'banner_amenities_title',
-    subtitleKey: 'banner_amenities_sub',
-    defaultTag: 'Amenities',
-    defaultTitle: 'Clubhouse & Facility Booking',
-    defaultSubtitle: 'Reserve community amenities, tennis courts, and slots in seconds.',
-    icon: <Building2 size={12} color="#A78BFA" />,
-    bgClass: 'bg-[#140F2E] border-[#51418F]/50',
-    borderClass: 'border-[#51418F]/40',
-    pillBg: 'bg-[#51418F]/30 border-[#8A7CE0]/40',
-    ctaBg: 'bg-indigo-600 border-indigo-500/50',
-    textColor: 'text-white',
-    subtextColor: 'text-indigo-100/80',
-    glowColor: 'bg-[#51418F]/25',
+    defaultTitle: 'Amenities',
   },
   {
     id: '4',
-    tagKey: 'tag_financial',
+    image: require('../../assets/images/banners/banner_financial.png'),
     titleKey: 'banner_billing_title',
-    subtitleKey: 'banner_billing_sub',
-    defaultTag: 'Financial Suite',
-    defaultTitle: 'Zero-Hassle Bill Payments',
-    defaultSubtitle: 'Pay maintenance dues and top up your digital prepaid wallet.',
-    icon: <Coins size={12} color="#FBBF24" />,
-    bgClass: 'bg-[#181528] border-amber-500/40',
-    borderClass: 'border-amber-500/40',
-    pillBg: 'bg-amber-500/20 border-amber-400/40',
-    ctaBg: 'bg-[#FF6A00] border-amber-500/50',
-    textColor: 'text-white',
-    subtextColor: 'text-amber-100/80',
-    glowColor: 'bg-amber-500/20',
+    defaultTitle: 'Financial Suite',
   },
 ];
 
@@ -146,53 +90,24 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         {BANNERS.map((banner) => (
           <TouchableOpacity
             key={banner.id}
-            activeOpacity={0.9}
+            activeOpacity={0.92}
             onPress={() => onBannerPress && onBannerPress(banner)}
             style={{ width: BANNER_WIDTH }}
             className="px-1"
           >
             <View
-              className={`${banner.bgClass} border ${banner.borderClass} rounded-2xl p-4 gap-2.5 relative overflow-hidden min-h-[148px] justify-between`}
+              style={{
+                width: BANNER_WIDTH - 8,
+                height: BANNER_HEIGHT,
+              }}
+              className="rounded-3xl overflow-hidden border border-border/70 shadow-xs bg-card"
             >
-              {/* Ambient Glowing Background Circles */}
-              <View
-                className={`absolute -right-8 -top-8 size-36 rounded-full ${banner.glowColor} pointer-events-none`}
+              <Image
+                source={banner.image}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+                accessibilityLabel={t(banner.titleKey, banner.defaultTitle)}
               />
-              <View
-                className={`absolute -left-10 -bottom-10 size-32 rounded-full ${banner.glowColor} pointer-events-none`}
-              />
-
-              {/* Tag Header */}
-              <View className="flex-row items-center justify-between z-10">
-                <View className={`${banner.pillBg} border px-2.5 py-1 rounded-full flex-row items-center gap-1.5`}>
-                  {banner.icon}
-                  <Text className="text-white text-[10.5px] font-bold uppercase tracking-wider font-sans">
-                    {t(banner.tagKey, banner.defaultTag)}
-                  </Text>
-                </View>
-
-                <Sparkles size={16} color="#ffffff" opacity={0.8} />
-              </View>
-
-              {/* Title & Subtitle */}
-              <View className="gap-1 pr-2 z-10">
-                <Text className={`${banner.textColor} text-[16px] font-extrabold tracking-tight font-sans leading-tight`}>
-                  {t(banner.titleKey, banner.defaultTitle)}
-                </Text>
-                <Text className={`${banner.subtextColor} text-[12px] font-medium font-sans leading-snug`}>
-                  {t(banner.subtitleKey, banner.defaultSubtitle)}
-                </Text>
-              </View>
-
-              {/* CTA Link Button */}
-              <View className="flex-row items-center justify-between pt-1 z-10">
-                <View className={`${banner.ctaBg} px-3 py-1 rounded-full flex-row items-center gap-1.5 border`}>
-                  <Text className="text-white text-[11px] font-bold font-sans">{t('explore_module', 'Explore Module')}</Text>
-                  <ArrowRight size={12} color="#ffffff" />
-                </View>
-
-                <Text className="text-white/70 text-[10px] font-medium font-sans">{t('swipe', 'Swipe →')}</Text>
-              </View>
             </View>
           </TouchableOpacity>
         ))}
@@ -204,7 +119,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
           <View
             key={idx}
             className={`h-1.5 rounded-full transition-all ${
-              idx === activeIndex ? 'w-5 bg-primary' : 'w-1.5 bg-muted-foreground/30'
+              idx === activeIndex ? 'w-6 bg-primary' : 'w-2 bg-muted-foreground/30'
             }`}
           />
         ))}
@@ -214,3 +129,4 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
 };
 
 export default HeroBanner;
+

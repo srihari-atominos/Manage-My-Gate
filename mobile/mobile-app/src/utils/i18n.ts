@@ -3039,6 +3039,10 @@ export const i18n = {
     return i18n.translateText(fallback || String(role));
   },
 
+  hasKey: (key: string): boolean => {
+    return Boolean(TRANSLATIONS[currentLanguageCode]?.[key] || TRANSLATIONS.en?.[key]);
+  },
+
   /**
    * Translates text dynamically to active language while strictly preserving:
    * 1. Numbers (e.g. 104, 24, 7, 02/09/2026, 18:00)
@@ -3097,6 +3101,13 @@ export const i18n = {
   },
 };
 
+export const translateText = (rawText: string): string => i18n.translateText(rawText);
+export const t = (key: string, fallback?: string): string => i18n.t(key, fallback);
+
+export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return React.createElement(React.Fragment, null, children) as React.ReactElement;
+};
+
 export const useTranslation = () => {
   const [lang, setLang] = useState<LanguageCode>(i18n.getCurrentLanguage());
 
@@ -3106,7 +3117,7 @@ export const useTranslation = () => {
     });
   }, []);
 
-  const t = (
+  const tFunc = (
     key: string,
     fallbackOrParams?: string | Record<string, any>,
     params?: Record<string, any>
@@ -3117,11 +3128,12 @@ export const useTranslation = () => {
   const tCategoryName = (key?: string, fallback?: string): string => i18n.translateText(fallback || key || '');
 
   return {
-    t,
+    t: tFunc,
     tRole,
     tFeatureName,
     tFeatureSubtitle,
     tCategoryName,
+    hasKey: i18n.hasKey,
     language: lang,
     languageCode: lang,
     setLanguage: i18n.setLanguage,

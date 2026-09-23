@@ -30,6 +30,7 @@ import { GlobalNavModal } from '../navigation/GlobalNavModal';
 import { BottomNavigationBar } from '../navigation/BottomNavigationBar';
 import { useBottomNavScroll } from '../navigation/BottomNavScrollContext';
 import { useTranslation } from '../../src/utils/i18n';
+import { AppBackground } from './AppBackground';
 
 export interface ScreenShellProps {
   title: string;
@@ -162,20 +163,23 @@ export function ScreenShell({
   const topInsetPadding = Math.max(insets.top, 12);
 
   return (
-    <View className={cn('flex-1 bg-background', className)}>
-      {/* Top Status Bar Safe Area Spacer (fixed background color so status bar icons never clash) */}
+    <View className={cn('flex-1 bg-background relative', className)}>
+      {/* Global Luxury Warm Peach-to-Ivory Background Layer */}
+      <AppBackground />
+
+      {/* Top Status Bar Safe Area Spacer */}
       <View
         style={{ height: topInsetPadding }}
-        className="bg-card z-30"
+        className="bg-transparent z-30"
       />
 
-      {/* Header row (rock-solid stable header without scroll jiggle or layout bleeding) */}
+      {/* Header row (seamless transparent header showing warm peach gradient) */}
       {!hideHeader && (
         <View
-          className="bg-card border-b border-border px-3.5 pt-1.5 pb-2.5 shadow-xs z-30"
+          className="bg-transparent px-4 pt-1 pb-2.5 z-30"
         >
-          <View className="flex-row items-center justify-between gap-1.5 min-h-[48px]">
-            <View className="flex-row items-center flex-1 min-w-0 me-1.5">
+          <View className="flex-row items-center justify-between gap-2 min-h-[48px]">
+            <View className="flex-row items-center flex-1 min-w-0 me-1">
               {showBackButton && (
                 <Pressable
                   onPress={() => {
@@ -187,18 +191,18 @@ export function ScreenShell({
                       router.replace('/(resident)/dashboard' as any);
                     }
                   }}
-                  className="me-2 p-1.5 rounded-xl active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"
+                  className="me-2.5 p-2 rounded-xl bg-secondary/80 active:bg-secondary shrink-0 border border-border/60 shadow-2xs"
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Go back"
                 >
-                  <Icon as={ChevronLeft} size={22} className="text-foreground" />
+                  <Icon as={ChevronLeft} size={20} className="text-foreground" />
                 </Pressable>
               )}
 
               {DynamicIcon && (!showBackButton || showIconWithBackButton) ? (
-                <View className="me-2 size-8 rounded-lg bg-primary/15 items-center justify-center border border-primary/25 shrink-0">
-                  <Icon as={DynamicIcon} size={16} className="text-primary" />
+                <View className="me-2.5 size-9 rounded-xl bg-primary/10 items-center justify-center border border-primary/20 shrink-0">
+                  <Icon as={DynamicIcon} size={18} className="text-primary" />
                 </View>
               ) : null}
 
@@ -210,14 +214,14 @@ export function ScreenShell({
               >
                 <Text
                   numberOfLines={subtitle ? 1 : 2}
-                  className="text-foreground text-[18px] sm:text-[20px] font-bold tracking-tight leading-tight shrink"
+                  className="text-foreground text-[19px] sm:text-[21px] font-bold tracking-tight leading-tight shrink"
                 >
                   {translateText(title)}
                 </Text>
                 {subtitle ? (
                   <Text
                     numberOfLines={1}
-                    className="text-xs sm:text-[13px] text-muted-foreground mt-0.5 font-medium leading-none shrink"
+                    className="text-[12px] sm:text-[13px] text-muted-foreground mt-0.5 font-medium leading-snug shrink"
                   >
                     {translateText(subtitle)}
                   </Text>
@@ -233,7 +237,7 @@ export function ScreenShell({
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setShowGlobalNavModal(true)}
-                  className="p-1.5 rounded-xl bg-secondary border border-border/80 items-center justify-center"
+                  className="p-2 rounded-xl bg-secondary/80 border border-border/80 items-center justify-center shadow-2xs"
                   accessibilityLabel={t('global_navigation', 'Global Easy Navigation')}
                 >
                   <Icon as={Compass} size={18} className="text-foreground" />
@@ -270,13 +274,13 @@ export function ScreenShell({
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-        className="flex-1 bg-background"
+        className="flex-1 bg-transparent"
       >
         {loading && !hasChildren ? (
           <Skeleton variant="listItem" count={5} />
         ) : scrollable ? (
           <ScrollView 
-            className="flex-1"
+            className="flex-1 bg-transparent"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
@@ -291,7 +295,7 @@ export function ScreenShell({
             {children}
           </ScrollView>
         ) : (
-          <View className="flex-1 bg-background">
+          <View className="flex-1 bg-transparent">
             {children}
           </View>
         )}
