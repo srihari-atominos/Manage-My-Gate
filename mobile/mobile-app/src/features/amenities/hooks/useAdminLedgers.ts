@@ -17,10 +17,14 @@ export function useAdminLedgers() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('All');
   const [selectedAmenityId, setSelectedAmenityId] = useState<string>('All');
+  const [datePreset, setDatePreset] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [selectedLedgerDetail, setSelectedLedgerDetail] = useState<AmenityBooking | null>(null);
 
-  const { adminBookings, pagination, loading, error } = useSelector(
+  const { adminBookings, ledgerSummary, amenitySummary, pagination, loading, error } = useSelector(
     (state: RootState) => state.amenityBookings
   );
   const { balance, transactions, loading: walletLoading } = useSelector(
@@ -34,14 +38,18 @@ export function useAdminLedgers() {
         fetchBookingQueueThunk({
           page,
           limit: 10,
-          search: searchQuery,
-          status: statusFilter,
-          amenityId: selectedAmenityId,
-        })
+          search: searchQuery.trim() || undefined,
+          status: statusFilter !== 'All' ? statusFilter : undefined,
+          paymentStatus: paymentStatusFilter !== 'All' ? paymentStatusFilter : undefined,
+          amenityId: selectedAmenityId !== 'All' ? selectedAmenityId : undefined,
+          datePreset: datePreset !== 'all' && datePreset !== 'custom' ? datePreset : undefined,
+          startDate: datePreset === 'custom' && startDate ? startDate : undefined,
+          endDate: datePreset === 'custom' && endDate ? endDate : undefined,
+        } as any)
       );
       dispatch(fetchAmenitiesThunk({}));
     },
-    [dispatch, searchQuery, statusFilter, selectedAmenityId]
+    [dispatch, searchQuery, statusFilter, paymentStatusFilter, selectedAmenityId, datePreset, startDate, endDate]
   );
 
   const loadWalletLedger = useCallback(() => {
@@ -70,36 +78,54 @@ export function useAdminLedgers() {
     }
   };
 
-  // Compute Master Financial KPIs
+  // Master Financial KPIs (from backend summary or computed as fallback)
   const kpis = useMemo(() => {
+    if (ledgerSummary) {
+      return {
+        totalMasterRevenue: Number(ledgerSummary.totalRevenue || 0),
+        todayEarnings: Number(ledgerSummary.todayRevenue || 0),
+        totalEntries: Number(ledgerSummary.totalBookings || pagination.totalRecords || adminBookings.length),
+        paidBookings: Number(ledgerSummary.paidBookings || 0),
+        pendingPayments: Number(ledgerSummary.pendingPayments || 0),
+        refundedAmount: Number(ledgerSummary.refundedAmount || 0),
+        cancelledCount: Number(ledgerSummary.cancelledBookings || 0),
+      };
+    }
+
     let totalMasterRevenue = 0;
     let todayEarnings = 0;
-    let completedCount = 0;
+    let paidBookings = 0;
+    let pendingPayments = 0;
     let cancelledCount = 0;
+    let refundedAmount = 0;
 
     const dNow = new Date();
     const todayStr = `${dNow.getFullYear()}-${String(dNow.getMonth() + 1).padStart(2, '0')}-${String(dNow.getDate()).padStart(2, '0')}`;
 
     adminBookings.forEach((b) => {
       const statusUpper = (b.status || '').toUpperCase();
-      if (statusUpper !== 'CANCELLED' && statusUpper !== 'REJECTED') {
-        const fee = Number(
-          b.totalFee ??
-          (b as any).totalPrice ??
-          (b as any).pricingDetails?.totalAmount ??
-          (b as any).totalAmount ??
-          (b as any).amount ??
-          0
-        );
+      const isCancelled = statusUpper === 'CANCELLED' || statusUpper === 'REJECTED';
+      const fee = Number(
+        b.bookingAmount ??
+        b.totalFee ??
+        (b as any).totalPrice ??
+        (b as any).pricingDetails?.totalAmount ??
+        (b as any).totalAmount ??
+        (b as any).amount ??
+        0
+      );
+
+      if (isCancelled) {
+        cancelledCount++;
+        refundedAmount += Number((b as any).pricingDetails?.refundAmount || (b as any).refundAmount || 0);
+      } else {
         totalMasterRevenue += fee;
-        completedCount++;
+        paidBookings++;
 
         const bDate = b.date || b.bookingDate || ((b as any).createdAt ? (b as any).createdAt.split('T')[0] : '');
         if (bDate === todayStr) {
           todayEarnings += fee;
         }
-      } else {
-        cancelledCount++;
       }
     });
 
@@ -107,42 +133,14 @@ export function useAdminLedgers() {
       totalMasterRevenue,
       todayEarnings,
       totalEntries: pagination.totalRecords || adminBookings.length,
-      completedCount,
+      paidBookings,
+      pendingPayments,
+      refundedAmount,
       cancelledCount,
     };
-  }, [adminBookings, pagination.totalRecords]);
+  }, [ledgerSummary, adminBookings, pagination.totalRecords]);
 
-  // Client-Side Filter fallback for instantaneous feedback
-  const filteredBookings = useMemo(() => {
-    if (!adminBookings) return [];
-
-    return adminBookings.filter((b) => {
-      if (statusFilter && statusFilter !== 'All') {
-        if (b.status?.toUpperCase() !== statusFilter.toUpperCase()) return false;
-      }
-      if (selectedAmenityId && selectedAmenityId !== 'All') {
-        const itemAmenityId =
-          typeof b.amenityId === 'object' && b.amenityId ? b.amenityId._id : b.amenityId;
-        if (itemAmenityId !== selectedAmenityId) return false;
-      }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const bookingId = b.bookingId || b._id || '';
-        const residentName = b.residentName || (b as any).userName || '';
-        const villaNum = (b as any).villaNumber || (b as any).flatNumber || (b as any).unit || '';
-        const amenityName =
-          typeof b.amenityId === 'object' && b.amenityId ? b.amenityId.name : b.amenityName || '';
-
-        const matchId = bookingId.toLowerCase().includes(q);
-        const matchResident = residentName.toLowerCase().includes(q);
-        const matchVilla = villaNum.toLowerCase().includes(q);
-        const matchAmenity = amenityName.toLowerCase().includes(q);
-
-        if (!matchId && !matchResident && !matchVilla && !matchAmenity) return false;
-      }
-      return true;
-    });
-  }, [adminBookings, statusFilter, selectedAmenityId, searchQuery]);
+  const filteredBookings = adminBookings || [];
 
   return {
     viewMode,
@@ -157,13 +155,22 @@ export function useAdminLedgers() {
     setSearchQuery,
     statusFilter,
     setStatusFilter,
+    paymentStatusFilter,
+    setPaymentStatusFilter,
     selectedAmenityId,
     setSelectedAmenityId,
+    datePreset,
+    setDatePreset,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
     selectedLedgerDetail,
     setSelectedLedgerDetail,
     balance,
     transactions,
     kpis,
+    amenitySummary: amenitySummary || [],
     loading: viewMode === 'master' ? loading : walletLoading,
     error,
     handleRefresh,

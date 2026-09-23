@@ -1,7 +1,6 @@
 import React from 'react';
-import { View, TouchableOpacity, ScrollView } from 'react-native';
+import { View, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { ToggleSwitch } from '@/components/forms/ToggleSwitch';
 import { DatePicker } from '@/components/common/DatePicker';
 import {
   EngagementContentType,
@@ -150,20 +149,22 @@ export const ScheduleStep: React.FC<ScheduleStepProps> = ({
         {isNotice && (
           <View className="p-4 bg-card border border-border rounded-2xl gap-2 mt-2">
             <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2 flex-1 pe-2">
-                <View className="w-8 h-8 rounded-lg bg-amber-500/10 items-center justify-center">
-                  <Pin size={16} className="text-amber-500" />
+              <View className="flex-row items-center gap-3 flex-1 me-3 min-w-0">
+                <View className="w-9 h-9 rounded-xl bg-amber-500/10 items-center justify-center shrink-0">
+                  <Pin size={18} className="text-amber-500" />
                 </View>
-                <View className="flex-1">
+                <View className="flex-1 min-w-0">
                   <Text className="text-sm font-bold text-foreground">Pin to Top of Feed</Text>
                   <Text variant="muted" className="text-xs">
                     Keep this announcement pinned at the head of the resident board.
                   </Text>
                 </View>
               </View>
-              <ToggleSwitch
+              <Switch
                 value={isPinned}
                 onValueChange={(val: boolean) => onChangeField('isPinned', val)}
+                trackColor={{ false: '#374151', true: '#16a34a' }}
+                thumbColor="#ffffff"
               />
             </View>
           </View>

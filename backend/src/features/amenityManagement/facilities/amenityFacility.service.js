@@ -199,6 +199,21 @@ export class AmenityFacilityService {
 
       if (payload.archetype === 'ROOM_RESOURCE' && Array.isArray(payload.subRooms) && payload.subRooms.length > 0) {
         await this._syncSubRooms(facility, payload.subRooms, trxSession);
+      } else if (payload.archetype === 'INVENTORY_TOOLS') {
+        const identifier = `${facility.code}-ITEM-01`;
+        await amenityResourceService.createResource(
+          {
+            orgId: facility.orgId,
+            facilityId: facility._id,
+            name: facility.name,
+            identifier,
+            totalBulkStock: facility.availableStock || facility.capacity || 1,
+            isSerializedAsset: false,
+            assetState: 'AVAILABLE',
+            isActive: !facility.isDraft,
+          },
+          trxSession
+        );
       }
 
       // Record Transactional Outbox Event
@@ -405,6 +420,20 @@ export class AmenityFacilityService {
 
       if (updated.archetype === 'ROOM_RESOURCE' && Array.isArray(updateData.subRooms)) {
         await this._syncSubRooms(updated, updateData.subRooms, trxSession);
+      } else if (updated.archetype === 'INVENTORY_TOOLS' && updateData.availableStock !== undefined) {
+        const existingResources = await amenityResourceService.getAllResourcesByFacilityId(
+          facilityId,
+          orgId,
+          trxSession
+        );
+        if (existingResources.length === 1 && !existingResources[0].isSerializedAsset) {
+          await amenityResourceService.updateResource(
+            existingResources[0]._id,
+            orgId,
+            { totalBulkStock: updateData.availableStock },
+            trxSession
+          );
+        }
       }
 
       if (transitionEvent) {

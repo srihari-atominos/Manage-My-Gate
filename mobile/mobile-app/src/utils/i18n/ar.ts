@@ -1196,7 +1196,7 @@ export const ar: Record<string, string> = {
   'enter_6_digit_pin_code_or_name': 'أدخل رمز PIN المكون من 6 أرقام أو الرمز أو الاسم...',
   'no_live_activity': 'لا يوجد نشاط مباشر',
   'recent_check_in_scans_will_stream_live_h': 'ستظهر عمليات مسح تسجيل الدخول الأخيرة مباشرة هنا عند وصول السكان إلى المرافق.',
-  'amenity_qr_scanner': 'ماسح QR للمرافق',
+  'amenity_qr_scanner': 'ماسح QR',
   'manual_booking_token_lookup': 'البحث اليدوي عن رمز الحجز',
   'enter_the_resident_reservation_reference': 'أدخل رمز مرجع حجز الساكن إذا كان المسح الضوئي لرمز QR غير متاح.',
   'eg_bk_778899': 'مثال: BK-778899',
@@ -3510,6 +3510,12 @@ export const ar: Record<string, string> = {
   'saving_photo': 'جارٍ حفظ الصورة...',
   'profile_photo_saved': 'تم تحديث صورة الملف الشخصي بنجاح!',
   'failed_to_save_photo': 'فشل في حفظ صورة الملف الشخصي.',
+
+  // Amenity Pass Reference & WhatsApp Share
+  'amenity_pass_details': 'تفاصيل تصريح المرفق',
+  'amenity_pass_keycode': 'رمز تصريح المرفق',
+  'view_full_pass_share': 'فتح التصريح والمشاركة على واتساب',
+  'valid_for_amenity': 'صالح للمرفق',
 
 };
 

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import {
   initializeWizard,
+  initializeEditWizard,
   setContentType,
   updateFormData,
   setStepIndex,
@@ -13,6 +14,8 @@ import {
   clearEngagementSuccess,
   fetchEngagementPreview,
   submitEngagementContent,
+  fetchEngagementItemForEdit,
+  updateEngagementContentThunk,
 } from '../store/communityEngagementSlice';
 import {
   EngagementContentType,
@@ -81,11 +84,14 @@ export const useCommunityEngagementWizard = () => {
   const dispatch = useDispatch<AppDispatch>();
 
   const {
+    mode,
+    editingId,
     contentType,
     formData,
     currentStepIndex,
     previewData,
     loading,
+    loadingItem,
     previewLoading,
     submitting,
     error,
@@ -93,6 +99,7 @@ export const useCommunityEngagementWizard = () => {
     createdResult,
   } = useSelector((state: RootState) => state.communityEngagement);
 
+  const isEditMode = mode === 'edit';
   const steps = useMemo(() => WIZARD_STEPS[contentType], [contentType]);
   const currentStep = useMemo(() => steps[currentStepIndex] || steps[0], [steps, currentStepIndex]);
   const isFirstStep = currentStepIndex === 0;
@@ -102,6 +109,22 @@ export const useCommunityEngagementWizard = () => {
   const selectType = useCallback(
     (type: EngagementContentType) => {
       dispatch(initializeWizard(type));
+    },
+    [dispatch]
+  );
+
+  // Initialize for edit with existing object
+  const initializeForEdit = useCallback(
+    (item: any, type?: EngagementContentType) => {
+      dispatch(initializeEditWizard({ item, type }));
+    },
+    [dispatch]
+  );
+
+  // Fetch from server and initialize for edit
+  const loadAndInitializeForEdit = useCallback(
+    (id: string, type: EngagementContentType) => {
+      return dispatch(fetchEngagementItemForEdit({ id, type })).unwrap();
     },
     [dispatch]
   );
@@ -234,13 +257,28 @@ export const useCommunityEngagementWizard = () => {
 
   // Submissions
   const saveDraft = useCallback(async () => {
+    if (isEditMode) {
+      return dispatch(updateEngagementContentThunk('Draft')).unwrap();
+    }
     return dispatch(submitEngagementContent('Draft')).unwrap();
-  }, [dispatch]);
+  }, [dispatch, isEditMode]);
 
   const publishOrSchedule = useCallback(async () => {
     const override = formData.publishNow ? 'Published' : 'Scheduled';
+    if (isEditMode) {
+      return dispatch(updateEngagementContentThunk(override)).unwrap();
+    }
     return dispatch(submitEngagementContent(override)).unwrap();
-  }, [dispatch, formData.publishNow]);
+  }, [dispatch, formData.publishNow, isEditMode]);
+
+  const updateExisting = useCallback(
+    async (statusOverride?: 'Draft' | 'Published' | 'Scheduled') => {
+      const override =
+        statusOverride || (formData.publishNow ? 'Published' : 'Scheduled');
+      return dispatch(updateEngagementContentThunk(override)).unwrap();
+    },
+    [dispatch, formData.publishNow]
+  );
 
   const refreshPreview = useCallback(() => {
     dispatch(fetchEngagementPreview());
@@ -259,6 +297,9 @@ export const useCommunityEngagementWizard = () => {
   }, [dispatch]);
 
   return {
+    mode,
+    isEditMode,
+    editingId,
     contentType,
     formData,
     steps,
@@ -268,6 +309,7 @@ export const useCommunityEngagementWizard = () => {
     isLastStep,
     previewData,
     loading,
+    loadingItem,
     previewLoading,
     submitting,
     error,
@@ -276,6 +318,8 @@ export const useCommunityEngagementWizard = () => {
 
     // Actions
     selectType,
+    initializeForEdit,
+    loadAndInitializeForEdit,
     setField,
     setFields,
     validateCurrentStep,
@@ -284,6 +328,7 @@ export const useCommunityEngagementWizard = () => {
     goToStepIndex,
     saveDraft,
     publishOrSchedule,
+    updateExisting,
     refreshPreview,
     reset,
     clearError,

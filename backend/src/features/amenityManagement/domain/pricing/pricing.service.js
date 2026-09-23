@@ -70,8 +70,8 @@ export class PricingService {
     }
 
     const taxAmount = Math.round(((baseAmount * taxPercentage) / 100) * 100) / 100;
-    const totalAmount = Math.round((baseAmount + taxAmount) * 100) / 100;
-    const depositAmount = Math.round(securityDeposit * 100) / 100;
+    const depositAmount = pricingType === 'FREE' ? 0 : Math.round(securityDeposit * 100) / 100;
+    const totalAmount = pricingType === 'FREE' ? 0 : Math.round((baseAmount + taxAmount + depositAmount) * 100) / 100;
 
     return {
       baseAmount,

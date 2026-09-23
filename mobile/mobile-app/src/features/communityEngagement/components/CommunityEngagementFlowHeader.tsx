@@ -10,6 +10,7 @@ export interface CommunityEngagementFlowHeaderProps {
   stepSubtitle?: string;
   stepIndex: number;
   totalSteps: number;
+  isEditMode?: boolean;
   onBack?: () => void;
   onCancel: () => void;
 }
@@ -20,6 +21,7 @@ export const CommunityEngagementFlowHeader: React.FC<CommunityEngagementFlowHead
   stepSubtitle,
   stepIndex,
   totalSteps,
+  isEditMode = false,
   onBack,
   onCancel,
 }) => {
@@ -46,7 +48,13 @@ export const CommunityEngagementFlowHeader: React.FC<CommunityEngagementFlowHead
 
           <View className="flex-1">
             <Text className="text-base font-bold text-foreground" numberOfLines={1}>
-              {isNotice ? 'Create Community Notice' : 'Create Community Poll'}
+              {isEditMode
+                ? isNotice
+                  ? 'Edit Community Notice'
+                  : 'Edit Community Poll'
+                : isNotice
+                ? 'Create Community Notice'
+                : 'Create Community Poll'}
             </Text>
             <Text variant="muted" className="text-xs">
               Step {stepIndex + 1} of {totalSteps}

@@ -42,12 +42,35 @@ export class AmenityResourceService {
 
   /**
    * Retrieves all active sub-resources under a facility.
+   * Auto-provisions default bulk resource for INVENTORY_TOOLS facilities if none exist.
    * @param {string|import('mongoose').Types.ObjectId} facilityId
    * @param {string|import('mongoose').Types.ObjectId} orgId
    * @param {import('mongoose').ClientSession} [session]
    */
   async getResourcesByFacilityId(facilityId, orgId, session) {
-    return amenityResourceRepository.findActiveByFacilityId(facilityId, orgId, session);
+    const resources = await amenityResourceRepository.findActiveByFacilityId(facilityId, orgId, session);
+    if ((!resources || resources.length === 0) && facilityId) {
+      const { amenityFacilityService } = await import('../facilities/amenityFacility.service.js');
+      const facility = await amenityFacilityService.getFacilityById(facilityId, orgId, session).catch(() => null);
+      if (facility && facility.archetype === 'INVENTORY_TOOLS') {
+        const identifier = `${facility.code}-ITEM-01`;
+        const autoResource = await amenityResourceRepository.create(
+          {
+            orgId: facility.orgId,
+            facilityId: facility._id,
+            name: facility.name,
+            identifier,
+            totalBulkStock: facility.availableStock || facility.capacity || 1,
+            isSerializedAsset: false,
+            assetState: 'AVAILABLE',
+            isActive: true,
+          },
+          session
+        );
+        return [autoResource];
+      }
+    }
+    return resources;
   }
 
   /**
@@ -91,10 +114,39 @@ export class AmenityResourceService {
 
   /**
    * Lists resources with pagination via $facet aggregation pipeline.
+   * Auto-provisions default bulk resource for INVENTORY_TOOLS facilities if empty.
    * @param {Object} queryParams
    */
   async listResources(queryParams) {
-    return amenityResourceRepository.findWithPagination(queryParams);
+    const result = await amenityResourceRepository.findWithPagination(queryParams);
+    if ((!result.items || result.items.length === 0) && queryParams.facilityId) {
+      const { amenityFacilityService } = await import('../facilities/amenityFacility.service.js');
+      const facility = await amenityFacilityService
+        .getFacilityById(queryParams.facilityId, queryParams.orgId)
+        .catch(() => null);
+      if (facility && facility.archetype === 'INVENTORY_TOOLS') {
+        const identifier = `${facility.code}-ITEM-01`;
+        const autoResource = await amenityResourceRepository.create({
+          orgId: facility.orgId,
+          facilityId: facility._id,
+          name: facility.name,
+          identifier,
+          totalBulkStock: facility.availableStock || facility.capacity || 1,
+          isSerializedAsset: false,
+          assetState: 'AVAILABLE',
+          isActive: true,
+        });
+        return {
+          data: [autoResource],
+          items: [autoResource],
+          total: 1,
+          page: 1,
+          limit: queryParams.limit || 10,
+          totalPages: 1,
+        };
+      }
+    }
+    return result;
   }
 }
 

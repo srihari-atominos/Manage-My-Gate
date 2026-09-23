@@ -432,10 +432,10 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
   // ==========================================
   describe('ResidentReservationCard Component', () => {
     it('Scenario 9: Renders facility and reservation metadata accurately', async () => {
-      await render(<ResidentReservationCard reservation={mockReservation} />);
+      await render(<ResidentReservationCard reservation={mockReservation} detailed />);
 
       expect(screen.getByText('Infinity Swimming Pool')).toBeTruthy();
-      expect(screen.getByText('RES-2026-00042')).toBeTruthy();
+      expect(screen.getByText(/2026-00042/)).toBeTruthy();
       expect(screen.getByText('3 Guests')).toBeTruthy();
     });
 
@@ -458,7 +458,7 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(getPaymentStatusVariant('REFUNDED')).toBe('neutral');
       expect(getPaymentStatusVariant('FAILED')).toBe('danger');
 
-      await render(<ResidentReservationCard reservation={mockReservation} />);
+      await render(<ResidentReservationCard reservation={mockReservation} detailed />);
       expect(screen.getByText(/PAID/i)).toBeTruthy();
     });
 
@@ -468,7 +468,7 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(getApprovalStatusVariant('PENDING_REVIEW')).toBe('warning');
       expect(getApprovalStatusVariant('REJECTED')).toBe('danger');
 
-      await render(<ResidentReservationCard reservation={mockReservation} />);
+      await render(<ResidentReservationCard reservation={mockReservation} detailed />);
       expect(screen.getByText(/APPROVED/i)).toBeTruthy();
     });
 
@@ -479,7 +479,7 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(getAccessStatusVariant('ACCESS_REVOKED')).toBe('danger');
       expect(getAccessStatusVariant('NOT_APPLICABLE')).toBe('neutral');
 
-      await render(<ResidentReservationCard reservation={mockReservation} />);
+      await render(<ResidentReservationCard reservation={mockReservation} detailed />);
       expect(screen.getByText(/Pass Ready/i)).toBeTruthy();
     });
 
@@ -489,7 +489,7 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(getCompletionStatusVariant('NO_SHOW')).toBe('danger');
       expect(getCompletionStatusVariant('ABANDONED')).toBe('danger');
 
-      await render(<ResidentReservationCard reservation={mockReservation} />);
+      await render(<ResidentReservationCard reservation={mockReservation} detailed />);
       expect(screen.getByText(/Upcoming/i)).toBeTruthy();
     });
 
@@ -506,7 +506,7 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
     it('Scenario 15b: Shows Cancel Booking button for cancellable reservations and triggers onCancelPress', async () => {
       const onCancelMock = jest.fn();
       await render(
-        <ResidentReservationCard reservation={mockReservation} onCancelPress={onCancelMock} />
+        <ResidentReservationCard reservation={mockReservation} detailed onCancelPress={onCancelMock} />
       );
 
       const cancelBtn = screen.getByText('Cancel Booking');
@@ -690,7 +690,7 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       await render(<MyBookingsScreen />);
 
       expect(screen.getByText('Infinity Swimming Pool')).toBeTruthy();
-      expect(screen.getByText('RES-2026-00042')).toBeTruthy();
+      expect(screen.getByText(/2026-00042/)).toBeTruthy();
       expect(screen.getByText('My Amenity Bookings')).toBeTruthy();
     });
 
@@ -806,10 +806,8 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(screen.queryByText('Pending Spa Suite')).toBeNull();
     });
 
-    it('Scenario 39 & 40: Renders five orthogonal dimensions in card', async () => {
-      mockState.amenityBookings.v2Reservations = [mockReservation];
-
-      await render(<MyBookingsScreen />);
+    it('Scenario 39 & 40: Renders five orthogonal dimensions in detailed card', async () => {
+      await render(<ResidentReservationCard reservation={mockReservation} detailed />);
 
       expect(screen.getByText(/CONFIRMED/i)).toBeTruthy();
       expect(screen.getByText(/PAID/i)).toBeTruthy();
@@ -823,9 +821,19 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
 
       await render(<MyBookingsScreen />);
 
+      const passCodeBtn = screen.getByText('Pass Code');
+      await act(async () => {
+        fireEvent.press(passCodeBtn);
+      });
+
       const cancelBtn = screen.getByText('Cancel Booking');
       await act(async () => {
         fireEvent.press(cancelBtn);
+      });
+
+      const confirmCancelBtn = screen.getByText('Confirm Cancel');
+      await act(async () => {
+        fireEvent.press(confirmCancelBtn);
       });
 
       expect(screen.getByText('Cancel Reservation')).toBeTruthy();
@@ -859,9 +867,12 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
         paymentStatus: 'REFUNDED' as const,
         bookingStatus: 'CANCELLED' as const,
       };
-      mockState.amenityBookings.v2Reservations = [refundPendingRes, refundedRes];
-
-      await render(<MyBookingsScreen />);
+      await render(
+        <>
+          <ResidentReservationCard reservation={refundPendingRes} detailed />
+          <ResidentReservationCard reservation={refundedRes} detailed />
+        </>
+      );
 
       expect(screen.getByText('Refund Pending Hall')).toBeTruthy();
       expect(screen.getByText('Refunded Hall')).toBeTruthy();

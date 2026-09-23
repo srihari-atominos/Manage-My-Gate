@@ -3,11 +3,14 @@ import {
   EngagementContentType,
   CommunityEngagementFormData,
   PreviewRecipientProjection,
+  mapEngagementEntityToFormData,
 } from '../types/communityEngagement.types';
 import {
   buildEngagementPayload,
   createEngagementContent,
   previewEngagementContent,
+  getEngagementContent,
+  updateEngagementContent,
 } from '../services/communityEngagementService';
 
 const getDefaultFormData = (
@@ -55,11 +58,14 @@ const getDefaultFormData = (
 };
 
 export interface CommunityEngagementState {
+  mode: 'create' | 'edit';
+  editingId: string | null;
   contentType: EngagementContentType;
   formData: CommunityEngagementFormData;
   currentStepIndex: number;
   previewData: PreviewRecipientProjection | null;
   loading: boolean;
+  loadingItem: boolean;
   previewLoading: boolean;
   submitting: boolean;
   error: string | null;
@@ -68,17 +74,44 @@ export interface CommunityEngagementState {
 }
 
 const initialState: CommunityEngagementState = {
+  mode: 'create',
+  editingId: null,
   contentType: 'NOTICE',
   formData: getDefaultFormData('NOTICE'),
   currentStepIndex: 0,
   previewData: null,
   loading: false,
+  loadingItem: false,
   previewLoading: false,
   submitting: false,
   error: null,
   success: false,
   createdResult: null,
 };
+
+// Async Thunk: Fetch single item for edit hydration
+export const fetchEngagementItemForEdit = createAsyncThunk(
+  'communityEngagement/fetchItemForEdit',
+  async (
+    { id, type }: { id: string; type: EngagementContentType },
+    { rejectWithValue }
+  ) => {
+    try {
+      const item = await getEngagementContent(id, type);
+      const resolvedType: EngagementContentType =
+        item?.question || item?.choiceType || item?.votingMode
+          ? 'POLL'
+          : item?.title || item?.category
+          ? 'NOTICE'
+          : type;
+      return { item, type: resolvedType };
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.response?.data?.message || error?.message || 'Failed to load content for editing'
+      );
+    }
+  }
+);
 
 // Async Thunk: Generate Backend Preview
 export const fetchEngagementPreview = createAsyncThunk(
@@ -117,6 +150,33 @@ export const submitEngagementContent = createAsyncThunk(
   }
 );
 
+// Async Thunk: Update Existing Content
+export const updateEngagementContentThunk = createAsyncThunk(
+  'communityEngagement/updateContent',
+  async (
+    statusOverride: 'Draft' | 'Published' | 'Scheduled' | undefined,
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const state = (getState() as any).communityEngagement as CommunityEngagementState;
+      if (!state.editingId) {
+        throw new Error('Missing editingId for update operation');
+      }
+      const payload = buildEngagementPayload(state.formData, statusOverride);
+      const result = await updateEngagementContent(
+        state.editingId,
+        state.contentType,
+        payload
+      );
+      return result;
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.response?.data?.message || error?.message || 'Failed to update content'
+      );
+    }
+  }
+);
+
 export const communityEngagementSlice = createSlice({
   name: 'communityEngagement',
   initialState,
@@ -126,6 +186,8 @@ export const communityEngagementSlice = createSlice({
       action: PayloadAction<EngagementContentType | undefined>
     ) => {
       const type = action.payload || 'NOTICE';
+      state.mode = 'create';
+      state.editingId = null;
       state.contentType = type;
       state.formData = getDefaultFormData(type);
       state.currentStepIndex = 0;
@@ -133,6 +195,25 @@ export const communityEngagementSlice = createSlice({
       state.error = null;
       state.success = false;
       state.createdResult = null;
+      state.loadingItem = false;
+    },
+    initializeEditWizard: (
+      state,
+      action: PayloadAction<{ item: any; type?: EngagementContentType }>
+    ) => {
+      const { item, type } = action.payload;
+      const resolvedType: EngagementContentType =
+        type || (item?.question ? 'POLL' : 'NOTICE');
+      state.mode = 'edit';
+      state.editingId = item?._id || item?.id || null;
+      state.contentType = resolvedType;
+      state.formData = mapEngagementEntityToFormData(item, resolvedType);
+      state.currentStepIndex = 0;
+      state.previewData = null;
+      state.error = null;
+      state.success = false;
+      state.createdResult = null;
+      state.loadingItem = false;
     },
     setContentType: (state, action: PayloadAction<EngagementContentType>) => {
       state.contentType = action.payload;
@@ -154,6 +235,8 @@ export const communityEngagementSlice = createSlice({
       state.currentStepIndex = Math.max(0, state.currentStepIndex - 1);
     },
     resetWizard: (state) => {
+      state.mode = 'create';
+      state.editingId = null;
       state.contentType = 'NOTICE';
       state.formData = getDefaultFormData('NOTICE');
       state.currentStepIndex = 0;
@@ -161,6 +244,7 @@ export const communityEngagementSlice = createSlice({
       state.error = null;
       state.success = false;
       state.createdResult = null;
+      state.loadingItem = false;
     },
     clearEngagementError: (state) => {
       state.error = null;
@@ -171,6 +255,26 @@ export const communityEngagementSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Fetch Item for Edit
+      .addCase(fetchEngagementItemForEdit.pending, (state) => {
+        state.loadingItem = true;
+        state.error = null;
+      })
+      .addCase(fetchEngagementItemForEdit.fulfilled, (state, action) => {
+        state.loadingItem = false;
+        const { item, type } = action.payload;
+        const resolvedType = type || (item?.question ? 'POLL' : 'NOTICE');
+        state.mode = 'edit';
+        state.editingId = item?._id || item?.id || null;
+        state.contentType = resolvedType;
+        state.formData = mapEngagementEntityToFormData(item, resolvedType);
+        state.currentStepIndex = 0;
+        state.previewData = null;
+      })
+      .addCase(fetchEngagementItemForEdit.rejected, (state, action) => {
+        state.loadingItem = false;
+        state.error = action.payload as string;
+      })
       // Preview
       .addCase(fetchEngagementPreview.pending, (state) => {
         state.previewLoading = true;
@@ -184,7 +288,7 @@ export const communityEngagementSlice = createSlice({
         state.previewLoading = false;
         state.error = action.payload as string;
       })
-      // Submit
+      // Submit Create
       .addCase(submitEngagementContent.pending, (state) => {
         state.submitting = true;
         state.error = null;
@@ -197,12 +301,27 @@ export const communityEngagementSlice = createSlice({
       .addCase(submitEngagementContent.rejected, (state, action) => {
         state.submitting = false;
         state.error = action.payload as string;
+      })
+      // Submit Update
+      .addCase(updateEngagementContentThunk.pending, (state) => {
+        state.submitting = true;
+        state.error = null;
+      })
+      .addCase(updateEngagementContentThunk.fulfilled, (state, action) => {
+        state.submitting = false;
+        state.success = true;
+        state.createdResult = action.payload;
+      })
+      .addCase(updateEngagementContentThunk.rejected, (state, action) => {
+        state.submitting = false;
+        state.error = action.payload as string;
       });
   },
 });
 
 export const {
   initializeWizard,
+  initializeEditWizard,
   setContentType,
   updateFormData,
   setStepIndex,

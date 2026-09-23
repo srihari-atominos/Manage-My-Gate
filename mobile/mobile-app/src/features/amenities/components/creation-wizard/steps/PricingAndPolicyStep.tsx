@@ -80,7 +80,17 @@ export const PricingAndPolicyStep: React.FC<PricingAndPolicyStepProps> = ({
                 key={p.value}
                 label={p.label}
                 selected={isSelected}
-                onPress={() => onChange({ ...data, pricingType: p.value })}
+                onPress={() => {
+                  if (p.value === 'FREE') {
+                    onChange({ ...data, pricingType: p.value, baseRate: 0, securityDeposit: 0 });
+                  } else {
+                    onChange({
+                      ...data,
+                      pricingType: p.value,
+                      baseRate: Number(data.baseRate) > 0 ? data.baseRate : '',
+                    });
+                  }
+                }}
               />
             );
           })}
@@ -107,7 +117,14 @@ export const PricingAndPolicyStep: React.FC<PricingAndPolicyStepProps> = ({
                   }) *`}
                   placeholder="250"
                   keyboardType="numeric"
-                  value={String(data.baseRate || '')}
+                  required
+                  value={
+                    data.baseRate === undefined ||
+                    data.baseRate === null ||
+                    (data.baseRate === 0 && currentPricingType !== 'FREE')
+                      ? ''
+                      : String(data.baseRate)
+                  }
                   onChangeText={(val) => onChange({ ...data, baseRate: val })}
                   error={errors.baseRate}
                 />
@@ -117,7 +134,11 @@ export const PricingAndPolicyStep: React.FC<PricingAndPolicyStepProps> = ({
                   label="Security Deposit (₹)"
                   placeholder="0"
                   keyboardType="numeric"
-                  value={String(data.securityDeposit || '')}
+                  value={
+                    data.securityDeposit === undefined || data.securityDeposit === null
+                      ? ''
+                      : String(data.securityDeposit)
+                  }
                   onChangeText={(val) => onChange({ ...data, securityDeposit: val })}
                   error={errors.securityDeposit}
                 />

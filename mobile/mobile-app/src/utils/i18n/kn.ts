@@ -1196,7 +1196,7 @@ export const kn: Record<string, string> = {
   'enter_6_digit_pin_code_or_name': '6-ಅಂಕಿಯ ಪಿನ್, ಕೋಡ್ ಅಥವಾ ಹೆಸರನ್ನು ನಮೂದಿಸಿ...',
   'no_live_activity': 'ಯಾವುದೇ ನೇರ ಚಟುವಟಿಕೆ ಇಲ್ಲ',
   'recent_check_in_scans_will_stream_live_h': 'ನಿವಾಸಿಗಳು ಸೌಲಭ್ಯಗಳನ್ನು ಬಳಸುವಾಗ ಇತ್ತೀಚಿನ ಚೆಕ್-ಇನ್ ಸ್ಕ್ಯಾನ್‌ಗಳು ಇಲ್ಲಿ ಲೈವ್ ಆಗಿ ಕಾಣಿಸಿಕೊಳ್ಳುತ್ತವೆ.',
-  'amenity_qr_scanner': 'ಸೌಲಭ್ಯ QR ಸ್ಕ್ಯಾನರ್',
+  'amenity_qr_scanner': 'QR ಸ್ಕ್ಯಾನರ್',
   'manual_booking_token_lookup': 'ಹಸ್ತಚಾಲಿತ ಬುಕಿಂಗ್ ಟೋಕನ್ ಹುಡುಕಾಟ',
   'enter_the_resident_reservation_reference': 'ಆಪ್ಟಿಕಲ್ QR ಸ್ಕ್ಯಾನ್ ಲಭ್ಯವಿಲ್ಲದಿದ್ದರೆ ನಿವಾಸಿ ಕಾಯ್ದಿರಿಸುವಿಕೆಯ ಉಲ್ಲೇಖ ಟೋಕನ್ ನಮೂದಿಸಿ.',
   'eg_bk_778899': 'ಉದಾ. BK-778899',

@@ -82,7 +82,7 @@ export const ReviewPreviewStep: React.FC<ReviewPreviewStepProps> = ({
                   <View
                     className={cn(
                       'px-2.5 py-1 rounded-full border',
-                      formData.priority === 'Urgent'
+                      formData.priority === 'Critical'
                         ? 'bg-destructive/10 border-destructive/20'
                         : formData.priority === 'High'
                         ? 'bg-amber-500/10 border-amber-500/20'
@@ -92,7 +92,7 @@ export const ReviewPreviewStep: React.FC<ReviewPreviewStepProps> = ({
                     <Text
                       className={cn(
                         'text-xs font-semibold',
-                        formData.priority === 'Urgent'
+                        formData.priority === 'Critical'
                           ? 'text-destructive'
                           : formData.priority === 'High'
                           ? 'text-amber-500'

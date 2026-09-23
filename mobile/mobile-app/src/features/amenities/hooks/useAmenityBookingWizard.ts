@@ -192,13 +192,51 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
               (Array.isArray((res as any)?.items) ? (res as any).items : null) ||
               (Array.isArray((res as any)?.data) ? (res as any).data : null) ||
               [];
-            const normalized = resList.map((r: any) => normalizeResourceFromApi(r));
+            let normalized = resList.map((r: any) => normalizeResourceFromApi(r));
+
+            // Fallback synthesis: If inventory tools have no discrete child resource, provide facility-level bulk resource
+            if (normalized.length === 0 && facility?.archetype === 'INVENTORY_TOOLS') {
+              const fallbackResource: AmenityResource = {
+                _id: String(targetFacilityId),
+                facilityId: String(targetFacilityId),
+                name: facility.name || 'Equipment Item',
+                identifier: `${facility.code || 'FAC'}-ITEM-01`,
+                totalBulkStock: facility.availableStock || facility.capacity || 1,
+                assetState: 'AVAILABLE',
+                isSerializedAsset: false,
+                isActive: true,
+              };
+              normalized = [fallbackResource];
+            }
+
             setAvailableResources(normalized);
+
+            // Auto-select when exactly 1 resource exists (e.g. single inventory tool or dedicated suite)
+            if (normalized.length === 1) {
+              setSelectedResource((prev) => prev || normalized[0]);
+            }
           }
         })
         .catch((err) => {
           console.error('[useAmenityBookingWizard] Failed to fetch resources:', err);
-          if (isMounted) setAvailableResources([]);
+          if (isMounted) {
+            if (facility?.archetype === 'INVENTORY_TOOLS') {
+              const fallbackResource: AmenityResource = {
+                _id: String(targetFacilityId),
+                facilityId: String(targetFacilityId),
+                name: facility.name || 'Equipment Item',
+                identifier: `${facility.code || 'FAC'}-ITEM-01`,
+                totalBulkStock: facility.availableStock || facility.capacity || 1,
+                assetState: 'AVAILABLE',
+                isSerializedAsset: false,
+                isActive: true,
+              };
+              setAvailableResources([fallbackResource]);
+              setSelectedResource((prev) => prev || fallbackResource);
+            } else {
+              setAvailableResources([]);
+            }
+          }
         })
         .finally(() => {
           if (isMounted) setResourcesLoading(false);
@@ -208,7 +246,15 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
         isMounted = false;
       };
     }
-  }, [facility?._id, (facility as any)?.id, facility?.archetype]);
+  }, [
+    facility?._id,
+    (facility as any)?.id,
+    facility?.archetype,
+    facility?.name,
+    facility?.code,
+    facility?.availableStock,
+    facility?.capacity,
+  ]);
 
   // Fetch available slots from server (filtering out booked and past slots)
   const fetchDailySlots = useCallback(async (date: string, resourceId?: string) => {

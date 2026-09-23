@@ -14,4 +14,7 @@ export const pollApi = {
   voteOnPoll: (id: string, optionIndex: number) => apiClient.post(`/polls/${id}/vote`, { optionIndex }),
   getPollResults: (id: string) => apiClient.get(`/polls/${id}/results`),
   getPollVoters: (id: string) => apiClient.get(`/polls/${id}/voters`),
+  reopenPoll: (id: string) => apiClient.post(`/polls/${id}/reopen`),
+  finalizePoll: (id: string) => apiClient.post(`/polls/${id}/finalize`),
+  exportPollCSV: (id: string) => apiClient.get(`/polls/${id}/export/csv`),
 };
