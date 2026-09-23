@@ -61,11 +61,13 @@ export class AmenityAccessPassController {
     try {
       const orgId = req.tenant.orgId;
       const { rawToken, gateId } = req.body;
+      const guardId = req.user?.id || req.user?._id;
 
       const result = await amenityAccessPassService.validateAndRecordCheckIn({
         orgId,
         rawToken,
         gateId,
+        guardId,
       });
 
       return res.success(result, 'Check-in validated and recorded successfully');

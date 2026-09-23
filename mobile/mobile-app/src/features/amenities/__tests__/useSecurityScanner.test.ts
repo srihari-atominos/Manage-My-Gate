@@ -1,7 +1,7 @@
 /**
- * Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests
- * Verifies useSecurityScanner hook, raw token parsing, check-in, check-out with inspection,
- * anti-replay handling, validity window guards, and static forensic independence from V1.
+ * Amenity Management: Unified Single Security Scanner Tests
+ * Verifies useSecurityScanner hook, raw token parsing, single turnstile check-in,
+ * anti-replay handling, validity window guards, and static forensic single-scanner architecture.
  */
 
 import { renderHook, act } from '@testing-library/react-native';
@@ -10,7 +10,6 @@ import path from 'path';
 import {
   useSecurityScanner,
   extractRawPassToken,
-  ScanMode,
 } from '../hooks/useSecurityScanner';
 
 // Test Token: 64 hexadecimal characters (256-bit entropy)
@@ -20,7 +19,6 @@ const VALID_RAW_TOKEN =
 let mockState: any = {
   amenityBookings: {
     v2CheckInResult: null,
-    v2CheckOutResult: null,
     v2PassActionLoading: false,
     v2PassError: null,
     recentScans: [],
@@ -34,23 +32,22 @@ jest.mock('react-redux', () => ({
   useSelector: (selector: any) => selector(mockState),
 }));
 
+const mockSocketOn = jest.fn();
+const mockSocketOff = jest.fn();
+const mockSocketEmit = jest.fn();
+
 jest.mock('../../../hooks/useAppSocket', () => ({
   useAppSocket: () => ({
     socket: {
-      on: jest.fn(),
-      off: jest.fn(),
-      emit: jest.fn(),
+      on: mockSocketOn,
+      off: mockSocketOff,
+      emit: mockSocketEmit,
     },
   }),
 }));
 
 const mockCheckInPassThunk = jest.fn((payload: any) => ({
   type: 'amenityBookings/checkInPass',
-  payload,
-}));
-
-const mockCheckOutPassThunk = jest.fn((payload: any) => ({
-  type: 'amenityBookings/checkOutPass',
   payload,
 }));
 
@@ -70,19 +67,17 @@ const mockFetchRecentScansThunk = jest.fn((payload: any) => ({
 jest.mock('../store/amenityBookingSlice', () => ({
   __esModule: true,
   checkInPassThunk: (payload: any) => mockCheckInPassThunk(payload),
-  checkOutPassThunk: (payload: any) => mockCheckOutPassThunk(payload),
   clearV2PassResults: () => mockClearV2PassResults(),
   clearCheckInResult: () => mockClearCheckInResult(),
   fetchRecentScansThunk: (payload: any) => mockFetchRecentScansThunk(payload),
 }));
 
-describe('Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests', () => {
+describe('Amenity Management: Unified Single Security Scanner Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState = {
       amenityBookings: {
         v2CheckInResult: null,
-        v2CheckOutResult: null,
         v2PassActionLoading: false,
         v2PassError: null,
         recentScans: [],
@@ -94,50 +89,74 @@ describe('Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests'
   // Unit Tests for extractRawPassToken helper
   // =========================================================================
   describe('Raw Token Extraction & Validation', () => {
-    it('Test 6: passes a valid 64-character raw hex token unchanged', () => {
+    it('passes a valid 64-character raw hex token unchanged', () => {
       const extracted = extractRawPassToken(VALID_RAW_TOKEN);
       expect(extracted).toBe(VALID_RAW_TOKEN);
       expect(extracted?.length).toBe(64);
     });
 
-    it('Test 7A: extracts raw token from backward-compatible JSON wrapper { rawToken: "..." }', () => {
+    it('extracts raw token from backward-compatible JSON wrapper { rawToken: "..." }', () => {
       const jsonWrapper = JSON.stringify({ rawToken: VALID_RAW_TOKEN });
       const extracted = extractRawPassToken(jsonWrapper);
       expect(extracted).toBe(VALID_RAW_TOKEN);
     });
 
-    it('Test 7B: extracts raw token from backward-compatible JSON wrapper { qrData: "..." }', () => {
+    it('extracts raw token from backward-compatible JSON wrapper { qrData: "..." }', () => {
       const jsonWrapper = JSON.stringify({ qrData: VALID_RAW_TOKEN });
       const extracted = extractRawPassToken(jsonWrapper);
       expect(extracted).toBe(VALID_RAW_TOKEN);
     });
 
-    it('Test 7C: strictly rejects legacy JSON with { bookingId: "..." } as V2 pass token', () => {
+    it('extracts pass token from canonical MMG:AMENITY format', () => {
+      const canonical = `MMG:AMENITY:${VALID_RAW_TOKEN}`;
+      const extracted = extractRawPassToken(canonical);
+      expect(extracted).toBe(VALID_RAW_TOKEN);
+    });
+
+    it('extracts booking token from legacy JSON with { bookingId: "..." } for cross-platform compatibility', () => {
       const legacyJson = JSON.stringify({
         bookingId: '67cb1a48f872c842b4059098',
         _id: '67cb1a48f872c842b4059098',
         code: 'BK-123456',
       });
       const extracted = extractRawPassToken(legacyJson);
-      expect(extracted).toBeNull();
+      expect(extracted).toBe('67cb1a48f872c842b4059098');
     });
 
-    it('Test 5A: rejects invalid/random string content and returns null', () => {
+    it('extracts formatted resident passcode 202609-000004 and canonical RES-202609-000004', () => {
+      expect(extractRawPassToken('202609-000004')).toBe('202609-000004');
+      expect(extractRawPassToken('RES-202609-000004')).toBe('RES-202609-000004');
+      expect(extractRawPassToken('  202609-000004  ')).toBe('202609-000004');
+    });
+
+    it('extracts letter and number amenity passcodes across various amenity types', () => {
+      expect(extractRawPassToken('POOL-000004')).toBe('POOL-000004');
+      expect(extractRawPassToken('GYM-000012')).toBe('GYM-000012');
+      expect(extractRawPassToken('TEN-000007')).toBe('TEN-000007');
+      expect(extractRawPassToken('CLUB-000003')).toBe('CLUB-000003');
+      expect(extractRawPassToken('RES-000004')).toBe('RES-000004');
+      expect(extractRawPassToken('6BBF46')).toBe('6BBF46');
+    });
+
+    it('rejects invalid/random string content and returns null', () => {
       expect(extractRawPassToken('')).toBeNull();
       expect(extractRawPassToken('random-malformed-string')).toBeNull();
-      expect(extractRawPassToken('12345')).toBeNull();
-      expect(extractRawPassToken('not-a-hex-token-with-bad-chars-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')).toBeNull();
+      expect(
+        extractRawPassToken(
+          'not-a-hex-token-with-bad-chars-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        )
+      ).toBeNull();
     });
   });
 
   // =========================================================================
-  // Hook Behavior Tests (useSecurityScanner)
+  // Hook Behavior Tests (useSecurityScanner) - Single Unified Scanner
   // =========================================================================
-  describe('useSecurityScanner Hook Lifecycle & Execution', () => {
-    it('Test 1: Check-In mode dispatches checkInPassThunk with { rawToken }', async () => {
-      const { result } = await renderHook(() => useSecurityScanner({ defaultMode: 'CHECK_IN' }));
-
-      expect(result.current.scanMode).toBe('CHECK_IN');
+  describe('useSecurityScanner Hook Lifecycle & Execution (Single Scanner)', () => {
+    it('Test 1: Single scanner dispatches checkInPassThunk with { rawToken, gateId } and opens result modal', async () => {
+      const { result } = await renderHook(() =>
+        useSecurityScanner({ gateId: 'GATE-01' })
+      );
 
       await act(async () => {
         await result.current.handleBarCodeScanned({
@@ -149,156 +168,13 @@ describe('Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests'
       expect(mockCheckInPassThunk).toHaveBeenCalledTimes(1);
       expect(mockCheckInPassThunk).toHaveBeenCalledWith({
         rawToken: VALID_RAW_TOKEN,
-        gateId: undefined,
+        gateId: 'GATE-01',
       });
       expect(result.current.isResultModalOpen).toBe(true);
       expect(result.current.localScanError).toBeNull();
     });
 
-    it('Test 2: Check-Out mode stores pending token and opens inspection sheet', async () => {
-      const { result } = await renderHook(() => useSecurityScanner({ defaultMode: 'CHECK_OUT' }));
-
-      expect(result.current.scanMode).toBe('CHECK_OUT');
-
-      await act(async () => {
-        await result.current.handleBarCodeScanned({
-          type: 'CAMERA',
-          data: VALID_RAW_TOKEN,
-        });
-      });
-
-      // In check-out mode, inspection sheet is presented before submitting
-      expect(result.current.isInspectionModalOpen).toBe(true);
-      expect(mockCheckOutPassThunk).not.toHaveBeenCalled();
-
-      // Submit check-out
-      await act(async () => {
-        await result.current.executeCheckOutWithInspection();
-      });
-
-      expect(mockCheckOutPassThunk).toHaveBeenCalledTimes(1);
-      expect(mockCheckOutPassThunk).toHaveBeenCalledWith({
-        rawToken: VALID_RAW_TOKEN,
-        inspectionDetails: undefined,
-      });
-      expect(result.current.isResultModalOpen).toBe(true);
-      expect(result.current.isInspectionModalOpen).toBe(false);
-    });
-
-    it('Test 8: Check-Out passes inspection details (isDamaged, damageNotes, assessedPenaltyAmount) correctly', async () => {
-      const { result } = await renderHook(() => useSecurityScanner({ defaultMode: 'CHECK_OUT' }));
-
-      await act(async () => {
-        await result.current.handleBarCodeScanned({
-          type: 'CAMERA',
-          data: VALID_RAW_TOKEN,
-        });
-      });
-
-      const inspection = {
-        isDamaged: true,
-        damageNotes: 'Torn badminton net racket string broken',
-        assessedPenaltyAmount: 75.5,
-      };
-
-      await act(async () => {
-        await result.current.executeCheckOutWithInspection(inspection);
-      });
-
-      expect(mockCheckOutPassThunk).toHaveBeenCalledWith({
-        rawToken: VALID_RAW_TOKEN,
-        inspectionDetails: inspection,
-      });
-
-      // Token lifecycle verification: subsequent call without new scan does not dispatch
-      mockCheckOutPassThunk.mockClear();
-      await act(async () => {
-        await result.current.executeCheckOutWithInspection();
-      });
-      expect(mockCheckOutPassThunk).not.toHaveBeenCalled();
-    });
-
-    it('Test 5C: cancelCheckOutInspection clears pendingCheckOutToken immediately', async () => {
-      const { result } = await renderHook(() => useSecurityScanner({ defaultMode: 'CHECK_OUT' }));
-
-      await act(async () => {
-        await result.current.handleBarCodeScanned({
-          type: 'CAMERA',
-          data: VALID_RAW_TOKEN,
-        });
-      });
-
-      expect(result.current.isInspectionModalOpen).toBe(true);
-
-      await act(async () => {
-        result.current.cancelCheckOutInspection();
-      });
-
-      expect(result.current.isInspectionModalOpen).toBe(false);
-      expect(result.current.isScanning).toBe(true);
-
-      // Verify token was wiped: executeCheckOutWithInspection does nothing
-      mockCheckOutPassThunk.mockClear();
-      await act(async () => {
-        await result.current.executeCheckOutWithInspection();
-      });
-      expect(mockCheckOutPassThunk).not.toHaveBeenCalled();
-    });
-
-    it('Test 5D: executeCheckOutWithInspection clears pendingCheckOutToken even if dispatch rejects', async () => {
-      const { result } = await renderHook(() => useSecurityScanner({ defaultMode: 'CHECK_OUT' }));
-
-      await act(async () => {
-        await result.current.handleBarCodeScanned({
-          type: 'CAMERA',
-          data: VALID_RAW_TOKEN,
-        });
-      });
-
-      expect(result.current.isInspectionModalOpen).toBe(true);
-
-      mockDispatch.mockImplementationOnce(() => {
-        throw new Error('Network failure during checkout');
-      });
-
-      await act(async () => {
-        try {
-          await result.current.executeCheckOutWithInspection();
-        } catch {
-          // Expected error caught
-        }
-      });
-
-      // Verify token was wiped despite exception
-      mockCheckOutPassThunk.mockClear();
-      mockDispatch.mockImplementation((action: any) => action);
-      await act(async () => {
-        await result.current.executeCheckOutWithInspection();
-      });
-      expect(mockCheckOutPassThunk).not.toHaveBeenCalled();
-    });
-
-    it('Test 5E: unmount hook cleanup clears pendingCheckOutToken', async () => {
-      const { result, unmount } = await renderHook(() => useSecurityScanner({ defaultMode: 'CHECK_OUT' }));
-
-      await act(async () => {
-        await result.current.handleBarCodeScanned({
-          type: 'CAMERA',
-          data: VALID_RAW_TOKEN,
-        });
-      });
-
-      expect(result.current.isInspectionModalOpen).toBe(true);
-
-      await act(async () => {
-        unmount();
-      });
-
-      // Verified unmount completed cleanly
-      expect(mockCheckOutPassThunk).not.toHaveBeenCalled();
-    });
-
-    it('Test 5B: invalid QR sets local validation error and does NOT call backend thunks', async () => {
+    it('Test 2: invalid QR sets local validation error and does NOT call backend thunk', async () => {
       const { result } = await renderHook(() => useSecurityScanner());
 
       await act(async () => {
@@ -309,7 +185,6 @@ describe('Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests'
       });
 
       expect(mockCheckInPassThunk).not.toHaveBeenCalled();
-      expect(mockCheckOutPassThunk).not.toHaveBeenCalled();
       expect(result.current.localScanError).toMatch(/Invalid QR\/pass format/i);
       expect(result.current.isResultModalOpen).toBe(true);
     });
@@ -318,7 +193,6 @@ describe('Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests'
       mockState = {
         amenityBookings: {
           v2CheckInResult: null,
-          v2CheckOutResult: null,
           v2PassActionLoading: false,
           v2PassError: {
             statusCode: 409,
@@ -338,7 +212,6 @@ describe('Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests'
       mockState = {
         amenityBookings: {
           v2CheckInResult: null,
-          v2CheckOutResult: null,
           v2PassActionLoading: false,
           v2PassError: {
             statusCode: 403,
@@ -353,7 +226,7 @@ describe('Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests'
       expect(result.current.v2PassError?.message).toMatch(/Access denied/i);
     });
 
-    it('Test 9: resetScanner clears Redux V2 pass results and local modal states', async () => {
+    it('Test 5: resetScanner clears Redux V2 pass results and local modal states', async () => {
       const { result } = await renderHook(() => useSecurityScanner());
 
       await act(async () => {
@@ -363,31 +236,37 @@ describe('Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests'
       expect(mockClearV2PassResults).toHaveBeenCalledTimes(1);
       expect(mockClearCheckInResult).toHaveBeenCalledTimes(1);
       expect(result.current.isResultModalOpen).toBe(false);
-      expect(result.current.isInspectionModalOpen).toBe(false);
       expect(result.current.isScanning).toBe(true);
       expect(result.current.localScanError).toBeNull();
     });
 
-    it('Test 10: Mode switcher switches cleanly between CHECK_IN and CHECK_OUT', async () => {
-      const { result } = await renderHook(() => useSecurityScanner({ defaultMode: 'CHECK_IN' }));
-      expect(result.current.scanMode).toBe('CHECK_IN');
+    it('Test 6: toggleFlashlight toggles flashlight state', async () => {
+      const { result } = await renderHook(() => useSecurityScanner());
+      expect(result.current.isFlashlightOn).toBe(false);
 
       await act(async () => {
-        result.current.setScanMode('CHECK_OUT');
+        result.current.toggleFlashlight();
       });
-      expect(result.current?.scanMode).toBe('CHECK_OUT');
+      expect(result.current.isFlashlightOn).toBe(true);
 
       await act(async () => {
-        result.current.setScanMode('CHECK_IN');
+        result.current.toggleFlashlight();
       });
-      expect(result.current?.scanMode).toBe('CHECK_IN');
+      expect(result.current.isFlashlightOn).toBe(false);
+    });
+
+    it('Test 7: loads recent scans on mount', async () => {
+      await act(async () => {
+        renderHook(() => useSecurityScanner());
+      });
+      expect(mockFetchRecentScansThunk).toHaveBeenCalledWith({});
     });
   });
 
   // =========================================================================
-  // Static Forensic Verification: Guard Scanner Independence from V1
+  // Static Forensic Verification: Unified Single Scanner Architecture
   // =========================================================================
-  describe('Static Forensic Verification: Zero V1 Check-In Dependencies in Active Scanner', () => {
+  describe('Static Forensic Verification: Unified Single Scanner Architecture', () => {
     const scannerPath = path.resolve(
       __dirname,
       '../../../../app/(resident)/amenities/scanner.tsx'
@@ -401,16 +280,15 @@ describe('Amenity Management Phase 3B-2: Security Guard Mobile V2 Cutover Tests'
       expect(hookContent).not.toMatch(/amenityService\.checkInBooking/);
       expect(hookContent).not.toMatch(/\/api\/v1\/amenity-bookings/);
       expect(hookContent).toMatch(/checkInPassThunk/);
-      expect(hookContent).toMatch(/checkOutPassThunk/);
     });
 
-    it('verifies scanner.tsx does NOT depend on checkInResult.booking in its active V2 formatting path', () => {
+    it('verifies scanner.tsx does NOT contain dual-mode tabs (SCAN_MODE_TABS) or checkout inspection sheets', () => {
       const scannerContent = fs.readFileSync(scannerPath, 'utf8');
 
       expect(scannerContent).toMatch(/v2CheckInResult/);
-      expect(scannerContent).toMatch(/v2CheckOutResult/);
-      expect(scannerContent).toMatch(/SCAN_MODE_TABS/);
-      expect(scannerContent).toMatch(/isInspectionModalOpen/);
+      expect(scannerContent).not.toMatch(/SCAN_MODE_TABS/);
+      expect(scannerContent).not.toMatch(/isInspectionModalOpen/);
+      expect(scannerContent).not.toMatch(/Equipment & Facility Return Inspection/);
     });
   });
 });

@@ -285,3 +285,65 @@ export function buildVisitorPassShareMessage(options: BuildVisitorPassShareTextO
   );
 }
 
+export interface BuildAmenityPassShareTextOptions {
+  passCode: string;
+  facilityName: string;
+  residentName?: string;
+  date?: string;
+  timeWindow?: string;
+  location?: string;
+  destinationUnit?: string;
+  barcodePayload: string;
+  validUntil?: string;
+}
+
+/**
+ * Builds the canonical share message for Amenity Access Passes for WhatsApp and messaging apps.
+ * Formats the message with rich Unicode QR code block (rendered via monospace triple backticks)
+ * and pass attributes so it displays directly in the WhatsApp message chat bubble.
+ */
+export function buildAmenityPassShareMessage(options: BuildAmenityPassShareTextOptions): string {
+  const code = options.passCode || 'PASS';
+  const facility = options.facilityName || 'Amenity Facility';
+  const resident = options.residentName || 'Resident';
+
+  const unicodeQr = generateUnicodeQr(options.barcodePayload);
+  const barcodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=12&data=${encodeURIComponent(options.barcodePayload)}`;
+
+  const destinationLine = options.destinationUnit ? `📍 *Unit / Villa:* ${options.destinationUnit}\n` : '';
+  const dateLine = options.date ? `📅 *Date:* ${options.date}\n` : '';
+  const timeLine = options.timeWindow ? `⏰ *Time Window:* ${options.timeWindow}\n` : '';
+  const locationLine = options.location ? `📍 *Location:* ${options.location}\n` : '';
+  const validityLine = options.validUntil
+    ? `⌛ *Valid Until:* ${new Date(options.validUntil).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}\n`
+    : '';
+
+  let qrSection = '';
+  if (unicodeQr && unicodeQr.trim().length > 0) {
+    qrSection =
+      `📱 *QR PASS:*\n` +
+      `\`\`\`\n` +
+      `${unicodeQr.trimEnd()}\n` +
+      `\`\`\`\n\n` +
+      `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n`;
+  } else {
+    qrSection = `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n`;
+  }
+
+  return (
+    `🏊 *AMENITY ACCESS PASS* 🎾\n\n` +
+    `🔑 *PASS CODE:* *${code}*\n` +
+    `🏢 *Facility:* ${facility}\n` +
+    `👤 *Passholder:* ${resident}\n` +
+    destinationLine +
+    dateLine +
+    timeLine +
+    locationLine +
+    validityLine +
+    `\n` +
+    qrSection +
+    `*Security Instructions:*\n` +
+    `Please present this Pass Code (${code}) or the QR code at the amenity gate/turnstile for access verification.`
+  );
+}
+

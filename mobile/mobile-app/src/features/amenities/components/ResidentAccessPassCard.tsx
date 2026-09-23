@@ -129,6 +129,13 @@ export function ResidentAccessPassCard({
 
   const canRenderQr = shouldRenderQrCode(activePass, reservation);
 
+  const qrString = useMemo(() => {
+    if (!activePass?.qrData) return '';
+    const trimmed = activePass.qrData.trim();
+    if (trimmed.startsWith('MMG:AMENITY:')) return trimmed;
+    return `MMG:AMENITY:${trimmed}`;
+  }, [activePass?.qrData]);
+
   const formattedValidFrom = activePass?.validFrom
     ? formatUtcToLocalDisplay(activePass.validFrom, reservation.facilityTimezone).formatted
     : null;
@@ -230,7 +237,7 @@ export function ResidentAccessPassCard({
         {canRenderQr ? (
           <View className="mt-2 items-center">
             <QRCodeView
-              value={activePass.qrData || ''}
+              value={qrString}
               size={160}
               caption={activePass.passCode ? `Pass Code: ${activePass.passCode}` : undefined}
             />
@@ -253,7 +260,7 @@ export function ResidentAccessPassCard({
 
         {/* Server-Provided QR Presentation Credential */}
         <QRCodeView
-          value={activePass.qrData || ''}
+          value={qrString}
           size={180}
           caption={activePass.passCode ? `Pass Code: ${activePass.passCode}` : undefined}
         />

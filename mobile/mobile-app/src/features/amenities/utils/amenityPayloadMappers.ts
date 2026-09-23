@@ -204,11 +204,19 @@ export const normalizeResourceFromApi = (raw: ApiAmenityResource | any): Amenity
 };
 
 export const normalizePricingSnapshot = (raw?: ApiPricingSnapshot): AmenityPricingSnapshot => {
+  const base = Number(raw?.baseAmount) || 0;
+  const tax = Number(raw?.taxAmount) || 0;
+  const deposit = Number(raw?.depositAmount) || 0;
+  const computedTotal = Math.round((base + tax + deposit) * 100) / 100;
+  const rawTotal = raw?.totalAmount !== undefined && raw?.totalAmount !== null ? Number(raw.totalAmount) : computedTotal;
+  // If backend total did not include depositAmount, guarantee deposit is added
+  const effectiveTotal = deposit > 0 && Math.abs(rawTotal - (base + tax)) < 0.01 ? computedTotal : rawTotal;
+
   return {
-    baseAmount: raw?.baseAmount ?? 0,
-    taxAmount: raw?.taxAmount ?? 0,
-    depositAmount: raw?.depositAmount ?? 0,
-    totalAmount: raw?.totalAmount ?? 0,
+    baseAmount: base,
+    taxAmount: tax,
+    depositAmount: deposit,
+    totalAmount: effectiveTotal,
     currency: raw?.currency || 'INR',
   };
 };
@@ -325,37 +333,49 @@ export const normalizeReservationFromApi = (payload: any): AmenityReservation =>
 export const normalizeAccessPassFromApi = (raw: ApiAmenityAccessPass | any): AmenityAccessPass => {
   if (!raw) return raw as any;
 
-  const checkInTimestamp = raw.checkInTimestamp || (raw as any).checkedInAt || null;
-  const checkOutTimestamp = raw.checkOutTimestamp || (raw as any).checkedOutAt || null;
-  const qrData = String(raw.qrData || raw.rawToken || raw.passTokenHash || raw.passCode || raw._id || '');
+  const passDoc = raw.pass || raw;
+  const checkInTimestamp = passDoc.checkInTimestamp || passDoc.checkedInAt || null;
+  const checkOutTimestamp = passDoc.checkOutTimestamp || passDoc.checkedOutAt || null;
+  const qrData = String(passDoc.qrData || passDoc.rawToken || passDoc.passTokenHash || passDoc.passCode || passDoc._id || '');
+
+  const resident = raw.resident || null;
+  const facility = raw.facility || null;
+  const booking = raw.booking || null;
+  const organisation = raw.organisation || null;
+  const guard = raw.guard || null;
 
   return {
-    _id: String(raw._id || raw.id || ''),
-    orgId: String(raw.orgId || ''),
-    facilityId: String(raw.facilityId || ''),
-    facilityName: raw.facilityName || 'Amenity Facility',
-    reservationId: String(raw.reservationId || ''),
-    userId: String(raw.userId || ''),
-    passCode: raw.passCode || raw._id || 'PASS-001',
+    _id: String(passDoc._id || passDoc.id || ''),
+    orgId: String(passDoc.orgId || raw.organisation?.id || ''),
+    facilityId: String(passDoc.facilityId || facility?.id || ''),
+    facilityName: facility?.name || passDoc.facilityName || 'Amenity Facility',
+    reservationId: String(passDoc.reservationId || booking?.id || booking?.reservationNumber || ''),
+    userId: String(passDoc.userId || resident?.id || ''),
+    passCode: passDoc.passCode || booking?.bookingId || booking?.reservationNumber || (passDoc._id ? String(passDoc._id).slice(-6).toUpperCase() : 'PASS-001'),
     qrData,
-    passType: raw.passType || 'QR_DYNAMIC',
-    validFrom: raw.validFrom || new Date().toISOString(),
-    validUntil: raw.validUntil || new Date(Date.now() + 86400000).toISOString(),
-    maxUses: raw.maxUses ?? 1,
-    currentUses: raw.currentUses ?? 0,
-    checkedInAt: raw.checkedInAt || (checkInTimestamp ? String(checkInTimestamp) : undefined),
-    checkedOutAt: raw.checkedOutAt || (checkOutTimestamp ? String(checkOutTimestamp) : undefined),
-    status: raw.status || (raw.isRevoked ? 'REVOKED' : checkOutTimestamp ? 'USED' : 'ACTIVE'),
+    passType: passDoc.passType || 'QR_DYNAMIC',
+    validFrom: passDoc.validFrom || (booking ? `${booking.date}T${booking.startTime}` : new Date().toISOString()),
+    validUntil: passDoc.validUntil || (booking ? `${booking.date}T${booking.endTime}` : new Date(Date.now() + 86400000).toISOString()),
+    maxUses: passDoc.maxUses ?? 1,
+    currentUses: passDoc.currentUses ?? 0,
+    checkedInAt: passDoc.checkedInAt || (checkInTimestamp ? String(checkInTimestamp) : undefined),
+    checkedOutAt: passDoc.checkedOutAt || (checkOutTimestamp ? String(checkOutTimestamp) : undefined),
+    status: passDoc.status || (passDoc.isRevoked ? 'REVOKED' : checkOutTimestamp ? 'USED' : 'ACTIVE'),
     checkInTimestamp,
     checkOutTimestamp,
-    gateId: raw.gateId || null,
-    isRevoked: Boolean(raw.isRevoked || raw.status === 'REVOKED'),
-    revokedAt: raw.revokedAt || null,
-    revokedReason: raw.revokedReason || null,
-    inspectionDetails: raw.inspectionDetails || null,
-    passTokenHash: raw.passTokenHash,
-    createdAt: raw.createdAt,
-    updatedAt: raw.updatedAt,
+    gateId: passDoc.gateId || null,
+    isRevoked: Boolean(passDoc.isRevoked || passDoc.status === 'REVOKED'),
+    revokedAt: passDoc.revokedAt || null,
+    revokedReason: passDoc.revokedReason || null,
+    inspectionDetails: passDoc.inspectionDetails || null,
+    passTokenHash: passDoc.passTokenHash,
+    createdAt: passDoc.createdAt || new Date().toISOString(),
+    updatedAt: passDoc.updatedAt || new Date().toISOString(),
+    resident: resident || undefined,
+    facility: facility || undefined,
+    booking: booking || undefined,
+    organisation: organisation || undefined,
+    guard: guard || undefined,
   };
 };
 

@@ -12,10 +12,8 @@ export interface AmenityLedgerCardProps {
 }
 
 export function AmenityLedgerCard({ booking, onPress, className }: AmenityLedgerCardProps) {
-  const amenityName =
-    typeof booking.amenityId === 'object' && booking.amenityId
-      ? booking.amenityId.name
-      : booking.amenityName || 'Amenity Facility';
+  const amenityObj = typeof booking.amenityId === 'object' && booking.amenityId ? booking.amenityId : null;
+  const amenityName = amenityObj?.name || booking.amenityName || (booking as any).amenity?.name || 'Amenity Facility';
 
   const userObj = typeof booking.userId === 'object' && booking.userId ? booking.userId : null;
   const residentName =
@@ -34,14 +32,16 @@ export function AmenityLedgerCard({ booking, onPress, className }: AmenityLedger
     'Villa 101';
 
   const bookingCode = booking.bookingId ? `#${booking.bookingId}` : `#${booking._id.slice(-6).toUpperCase()}`;
-  const subtitle = `Resident: ${residentName} (${villaNum}) • ${booking.date || booking.bookingDate || 'Recent'}`;
+  const personsCount = booking.numberOfPersons || (booking as any).guestsCount || 1;
+  const subtitle = `${residentName} (${villaNum}) • ${booking.date || booking.bookingDate || 'Recent'} • ${personsCount} P`;
 
   const rawStatus = (booking.status || '').toUpperCase();
   const isCancelled = rawStatus === 'CANCELLED' || rawStatus === 'REJECTED';
   const statusLabel = isCancelled ? 'CANCELLED' : rawStatus === 'COMPLETED' ? 'COMPLETED' : rawStatus === 'CHECKED_IN' || rawStatus === 'CHECKED-IN' ? 'CHECKED IN' : 'CONFIRMED';
   const statusVariant: StatusVariant = isCancelled ? 'danger' : rawStatus === 'COMPLETED' ? 'neutral' : rawStatus.includes('CHECK') ? 'info' : 'success';
 
-  const paymentStatus = booking.paymentStatus || (isCancelled ? 'REFUNDED' : 'PAID');
+  const rawPaymentStatus = String(booking.paymentStatus || (isCancelled ? 'REFUNDED' : 'PAID')).toUpperCase();
+  const paymentStatus = rawPaymentStatus === 'CAPTURED' || rawPaymentStatus === 'SUCCESS' ? 'PAID' : rawPaymentStatus;
   const paymentVariant: StatusVariant =
     paymentStatus === 'PAID' || paymentStatus === 'COMPLETED'
       ? 'success'
@@ -50,6 +50,7 @@ export function AmenityLedgerCard({ booking, onPress, className }: AmenityLedger
       : 'warning';
 
   const feeAmount = Number(
+    booking.bookingAmount ??
     booking.totalFee ??
     (booking as any).totalPrice ??
     (booking as any).pricingDetails?.totalAmount ??

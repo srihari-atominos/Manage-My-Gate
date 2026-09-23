@@ -19,6 +19,7 @@ import {
 } from '@/src/features/amenities/hooks/useResidentReservations';
 import { ResidentReservationCard } from '@/src/features/amenities/components/ResidentReservationCard';
 import { ResidentCancelModal } from '@/src/features/amenities/components/ResidentCancelModal';
+import { AmenityPassDetailsModal } from '@/src/features/amenities/components/AmenityPassDetailsModal';
 import { AmenityReservation } from '@/src/features/amenities/types/amenityDomain.types';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { isFeatureAllowedForUser } from '@/src/utils/rbac';
@@ -61,6 +62,9 @@ export default function MyBookingsScreen() {
     loadMore,
   } = useResidentReservations();
 
+  const [selectedPassReservation, setSelectedPassReservation] = React.useState<AmenityReservation | null>(null);
+  const [passModalOpen, setPassModalOpen] = React.useState(false);
+
   // Canonical presentation category tabs
   const sortOptions: SortOption[] = useMemo(
     () => [
@@ -91,6 +95,10 @@ export default function MyBookingsScreen() {
       key={`${item._id}-${language}`}
       reservation={item}
       onPress={handleCardPress}
+      onShowQR={(reservation) => {
+        setSelectedPassReservation(reservation);
+        setPassModalOpen(true);
+      }}
       onCancelPress={setCancelTarget}
       testID={`reservation-card-${item._id}`}
     />
@@ -102,7 +110,7 @@ export default function MyBookingsScreen() {
       <SearchFilterBar
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder={t('search_facility_pass', 'Search by facility name or reservation number...')}
+        searchPlaceholder={t('search_facility_reservation', 'Search by facility name or reservation number...')}
         sortOptions={sortOptions}
         currentSort={selectedTab}
         onSortChange={(value) => setSelectedTab(value as ReservationFilterTab)}
@@ -153,6 +161,20 @@ export default function MyBookingsScreen() {
           contentContainerClassName="px-4 pt-3 pb-28"
         />
       </View>
+
+      {/* Visitor-Management-Aligned Pass Details Modal */}
+      <AmenityPassDetailsModal
+        visible={passModalOpen}
+        reservation={selectedPassReservation}
+        onClose={() => {
+          setPassModalOpen(false);
+          setSelectedPassReservation(null);
+        }}
+        onCancelPress={(target) => {
+          setPassModalOpen(false);
+          setCancelTarget(target as AmenityReservation);
+        }}
+      />
 
       {/* Cancel Confirmation Modal */}
       <ResidentCancelModal

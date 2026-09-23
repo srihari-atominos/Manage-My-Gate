@@ -38,15 +38,18 @@ const sendBookingNotification = async (booking, type, title, message) => {
 amenityBookingEventEmitter.on(AMENITY_BOOKING_CREATED, async (booking) => {
   logBookingEvent('AMENITY_BOOKING_CREATED', booking);
   if (booking.status === 'confirmed') {
-    // Generate QR if it bypassed payment
     try {
+      const crypto = (await import('crypto')).default;
       const bookingIdStr = booking.bookingId || generateBookingId();
-      const qrData = JSON.stringify({ bookingId: booking._id, displayId: bookingIdStr, userId: booking.userId, amenityId: booking.amenityId?._id || booking.amenityId });
-      const qrCodeUrl = await QRCode.toDataURL(qrData);
+      const passToken = booking.passToken || crypto.randomBytes(32).toString('hex');
+      const passTokenHash = booking.passTokenHash || crypto.createHash('sha256').update(passToken).digest('hex');
+      const qrCodeUrl = await QRCode.toDataURL(`MMG:AMENITY:${passToken}`);
       const qrExpiresAt = new Date(`${booking.bookingDate}T${booking.endTime}`);
       
       await amenityBookingRepository.updateStatus(booking._id, booking.orgId, 'confirmed', { 
         bookingId: bookingIdStr,
+        passToken,
+        passTokenHash,
         qrCode: qrCodeUrl,
         qrStatus: 'active',
         qrGeneratedAt: new Date(),

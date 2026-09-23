@@ -6,7 +6,7 @@ import paymentService from '../payment/payment.service.js';
 export class AmenityBookingService {
   async getBookingsQueue(orgId, page = 1, limit = 10, filters = {}) {
     const skip = (page - 1) * limit;
-    const { data, totalRecords } = await amenityBookingRepository.findByOrgPaginated(orgId, filters, skip, limit);
+    const { data, totalRecords, summary, amenitySummary } = await amenityBookingRepository.findByOrgPaginated(orgId, filters, skip, limit);
     const totalPages = Math.ceil(totalRecords / limit);
     return {
       data,
@@ -16,6 +16,16 @@ export class AmenityBookingService {
         totalPages: totalPages || 1,
         limit,
       },
+      summary: summary || {
+        totalRevenue: 0,
+        todayRevenue: 0,
+        totalBookings: 0,
+        paidBookings: 0,
+        pendingPayments: 0,
+        refundedAmount: 0,
+        cancelledBookings: 0,
+      },
+      amenitySummary: amenitySummary || [],
     };
   }
 
@@ -328,17 +338,14 @@ export class AmenityBookingService {
         }
       }
 
+      const crypto = (await import('crypto')).default;
+      const passToken = crypto.randomBytes(32).toString('hex');
+      const passTokenHash = crypto.createHash('sha256').update(passToken).digest('hex');
       const bookingIdStr = bookingData.bookingId || `BKG-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
       let qrCodeUrl = null;
       try {
         const QRCode = (await import('qrcode')).default;
-        const qrData = JSON.stringify({
-          bookingId: bookingIdStr,
-          displayId: bookingIdStr,
-          userId,
-          amenityId
-        });
-        qrCodeUrl = await QRCode.toDataURL(qrData);
+        qrCodeUrl = await QRCode.toDataURL(`MMG:AMENITY:${passToken}`);
       } catch (e) {
         logger.warn('Failed to pre-generate QR in createBooking, listener will retry:', e);
       }
@@ -346,6 +353,8 @@ export class AmenityBookingService {
       const newBookingData = {
         ...bookingData,
         bookingId: bookingIdStr,
+        passToken,
+        passTokenHash,
         qrCode: qrCodeUrl,
         qrStatus: 'active',
         qrGeneratedAt: new Date(),
@@ -418,16 +427,13 @@ export class AmenityBookingService {
       const HttpError = (await import('../../utils/httpError.utils.js')).default;
       throw new HttpError(404, 'Booking not found');
     }
+    const crypto = (await import('crypto')).default;
     const QRCode = (await import('qrcode')).default;
     const bookingIdStr = booking.bookingId || `BKG-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-    const qrData = JSON.stringify({
-      bookingId: booking._id,
-      displayId: bookingIdStr,
-      userId: booking.userId,
-      amenityId: booking.amenityId?._id || booking.amenityId
-    });
-    const qrCodeUrl = await QRCode.toDataURL(qrData);
-    return { qrCodeUrl, bookingIdStr };
+    const passToken = booking.passToken || crypto.randomBytes(32).toString('hex');
+    const passTokenHash = booking.passTokenHash || crypto.createHash('sha256').update(passToken).digest('hex');
+    const qrCodeUrl = await QRCode.toDataURL(`MMG:AMENITY:${passToken}`);
+    return { qrCodeUrl, bookingIdStr, passToken, passTokenHash };
   }
 
   async settleBookingPayment(bookingId, paymentData, session) {
@@ -442,7 +448,7 @@ export class AmenityBookingService {
       return booking;
     }
 
-    const { qrCodeUrl, bookingIdStr } = await this.generateAccessQRCode(booking._id, session);
+    const { qrCodeUrl, bookingIdStr, passToken, passTokenHash } = await this.generateAccessQRCode(booking._id, session);
     const qrExpiresAt = new Date(`${booking.bookingDate}T${booking.endTime}`);
 
     // Robust extraction: support both standard paymentData object and raw Razorpay payload
@@ -455,6 +461,8 @@ export class AmenityBookingService {
     
     booking.razorpayTransactionId = gatewayTransactionId;
     booking.paymentMethod = paymentMethod;
+    booking.passToken = passToken;
+    booking.passTokenHash = passTokenHash;
     booking.qrCode = qrCodeUrl;
     booking.qrStatus = 'active';
     booking.qrGeneratedAt = new Date();
@@ -1110,126 +1118,11 @@ export class AmenityBookingService {
   }
 
   async checkInBooking(bookingId, orgId, userId) {
-    const booking = await amenityBookingRepository.findById(bookingId, orgId);
-    
-    const emitDenied = (reason) => {
-      amenityBookingEventEmitter.emit(AMENITY_BOOKING_DENIED, {
-        orgId,
-        bookingId,
-        userId, // The guard scanning it
-        booking,
-        reason
-      });
-      return new HttpError(400, reason);
-    };
-    
-    // 1 & 2. Booking Exists
-    if (!booking) {
-      amenityBookingEventEmitter.emit(AMENITY_BOOKING_DENIED, { orgId, bookingId, userId, reason: 'Invalid QR Code' });
-      throw new HttpError(404, 'Booking not found.');
-    }
-
-    const moment = (await import('moment-timezone')).default;
-    const TIMEZONE = 'Asia/Kolkata';
-    const today = moment().tz(TIMEZONE).format('YYYY-MM-DD');
-    
-    // 4. Booking Status Cancelled
-    if (booking.status === 'cancelled') {
-      throw emitDenied('Booking has been cancelled.');
-    }
-    
-    // 5. Payment Status
-    if (booking.paymentStatus === 'pending' && !['PAY_AT_GATE', 'Pay_At_Gate', 'pay_at_gate'].includes(booking.paymentMethod) && booking.status !== 'confirmed' && booking.status !== 'approved') {
-      throw emitDenied('Payment is pending.');
-    }
-
-    // 6. QR Status
-    if (booking.qrStatus === 'expired') {
-      throw emitDenied('QR Code has expired.');
-    }
-
-    // 9. Duplicate Entry (Already Completed)
-    if (booking.status === 'completed') {
-      throw emitDenied('Booking already completed.');
-    }
-
-    // Exit Workflow
-    if (booking.status === 'checked-in') {
-      const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'completed');
-      updated.checkOutTime = new Date();
-      await updated.save();
-      await updated.populate([
-        { path: 'checkedInBy', select: 'name username' },
-        { path: 'amenityId', select: 'name type location images' },
-        { path: 'userId', select: 'name username email profilePicture villaNumber unit flatNumber' }
-      ]);
-      
-      const { AMENITY_BOOKING_COMPLETED } = await import('./amenityBooking.events.js');
-      amenityBookingEventEmitter.emit(AMENITY_BOOKING_COMPLETED, updated);
-      
-      return Object.assign(updated.toObject(), {
-        isExit: true,
-        message: 'Exit Recorded'
-      });
-    }
-
-    // Entry Workflow Validations
-    // 3. Booking Date
-    if (booking.bookingDate !== today) {
-      const formattedDate = new Date(booking.bookingDate).toLocaleDateString('en-US', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
-      });
-      throw emitDenied(`Pass Not Active Today: This reservation is scheduled for ${formattedDate}. Please scan on your reserved date.`);
-    }
-    const parseTimeStr = (timeStr) => {
-      // Assuming HH:MM in 24hr format based on regex ^([01]\d|2[0-3]):?([0-5]\d)$
-      const [h, m] = timeStr.split(':').map(Number);
-      return h * 60 + m;
-    };
-    
-    // 7. Booking Time (15-min early arrival grace window and 15-min departure grace window)
-    const now = moment().tz(TIMEZONE);
-    
-    const checkInStart = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).subtract(15, 'minutes');
-    let checkInEnd = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).add(15, 'minutes');
-    
-    if (checkInEnd.isBefore(checkInStart)) {
-      checkInEnd.add(1, 'days');
-    }
-    
-    if (now.isBefore(checkInStart)) {
-      const allowedTime = checkInStart.format('hh:mm A');
-      throw emitDenied(`Resident is too early for this booking. Entry permitted from ${allowedTime}.`);
-    }
-    if (now.isAfter(checkInEnd)) {
-      throw emitDenied('Booking time has expired.');
-    }
-
-    // 8. Amenity Status
-    const amenityService = (await import('../amenity/amenity.services.js')).default;
-    const amenity = await amenityService.getAmenityById(booking.amenityId, orgId);
-    if (!amenity || amenity.status === 'inactive') {
-      throw emitDenied('Amenity is currently unavailable.');
-    }
-
-    // Entry Workflow
-    const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'checked-in');
-    updated.checkInTime = new Date();
-    updated.checkedInBy = userId; // Log who scanned it (Security Guard)
-    await updated.save();
-    
-    // Populate checkedInBy, amenityId, and userId so frontend displays guard and resident details
-    await updated.populate([
-      { path: 'checkedInBy', select: 'name username' },
-      { path: 'amenityId', select: 'name type location images' },
-      { path: 'userId', select: 'name username email profilePicture villaNumber unit flatNumber' }
-    ]);
-
-    amenityBookingEventEmitter.emit(AMENITY_BOOKING_CHECKED_IN, updated);
-    
-    return Object.assign(updated.toObject(), {
-      isExit: false,
-      message: 'Access Granted'
+    const { amenityAccessPassService } = await import('../amenityManagement/passes/amenityAccessPass.service.js');
+    return await amenityAccessPassService.validateAndRecordCheckIn({
+      orgId,
+      rawToken: bookingId,
+      guardId: userId,
     });
   }
 

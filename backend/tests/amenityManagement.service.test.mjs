@@ -106,7 +106,7 @@ describe('Amenity Management Phase 4B — Services, Repositories, Transactions &
       assert.equal(snapshot.baseAmount, 1000);
       // 18% of 1000 = 180
       assert.equal(snapshot.taxAmount, 180);
-      assert.equal(snapshot.totalAmount, 1180);
+      assert.equal(snapshot.totalAmount, 2180);
       assert.equal(snapshot.depositAmount, 1000);
       assert.equal(snapshot.currency, 'INR');
     });

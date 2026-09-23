@@ -18,7 +18,7 @@ export interface CameraViewFinderProps {
 
 export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
   onScan,
-  instruction = 'Position Amenity QR Code within Frame',
+  instruction = 'Position QR Code within Frame',
   isScanning = true,
   enableTorch,
   fullscreen = false,

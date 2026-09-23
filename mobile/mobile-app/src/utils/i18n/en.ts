@@ -1202,7 +1202,7 @@ export const en: Record<string, string> = {
   'enter_6_digit_pin_code_or_name': 'Enter 6-digit PIN, Code, or Name...',
   'no_live_activity': 'No Live Activity',
   'recent_check_in_scans_will_stream_live_h': 'Recent check-in scans will stream live here as residents access facilities.',
-  'amenity_qr_scanner': 'Amenity QR Scanner',
+  'amenity_qr_scanner': 'QR Scanner',
   'manual_booking_token_lookup': 'Manual Booking Token Lookup',
   'enter_the_resident_reservation_reference': 'Enter the resident reservation reference token if optical QR scan is unavailable.',
   'eg_bk_778899': 'e.g. BK-778899',
@@ -3516,6 +3516,12 @@ export const en: Record<string, string> = {
   'saving_photo': 'Saving Photo...',
   'profile_photo_saved': 'Profile photo updated successfully!',
   'failed_to_save_photo': 'Failed to save profile photo.',
+
+  // Amenity Pass Reference & WhatsApp Share
+  'amenity_pass_details': 'Amenity Pass Details',
+  'amenity_pass_keycode': 'AMENITY PASSKEYCODE',
+  'view_full_pass_share': 'Open Pass & Share on WhatsApp',
+  'valid_for_amenity': 'Valid for Amenity',
 
 };
 

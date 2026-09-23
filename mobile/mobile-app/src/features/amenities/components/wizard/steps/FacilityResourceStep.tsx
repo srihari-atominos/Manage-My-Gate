@@ -27,6 +27,16 @@ export function FacilityResourceStep({
 }: FacilityResourceStepProps) {
   const isTool = facility.archetype === 'INVENTORY_TOOLS';
 
+  React.useEffect(() => {
+    if (
+      availableResources.length === 1 &&
+      !selectedResource &&
+      availableResources[0].assetState === 'AVAILABLE'
+    ) {
+      onSelectResource(availableResources[0]);
+    }
+  }, [availableResources, selectedResource, onSelectResource]);
+
   return (
     <View className="gap-3">
       <View className="mb-1">

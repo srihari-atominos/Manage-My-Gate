@@ -10,15 +10,19 @@ export const useSecurityScanner = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const processCheckIn = useCallback(async (bookingId) => {
+  const processCheckIn = useCallback(async (tokenOrId) => {
     setLoading(true)
     setError(null)
     try {
-      const response = await checkInBooking(bookingId)
-      // response contains the updated booking along with isExit and message flags
+      const response = await checkInBooking(tokenOrId)
       setScanResult({
         success: true,
-        booking: response || { _id: bookingId },
+        booking: response?.booking || response?.pass || response || { _id: tokenOrId },
+        resident: response?.resident || null,
+        facility: response?.facility || null,
+        pass: response?.pass || null,
+        guard: response?.guard || null,
+        organisation: response?.organisation || null,
         message: response?.message || 'Check-in successful.',
       })
     } catch (err) {
@@ -39,14 +43,21 @@ export const useSecurityScanner = () => {
       // Simple debounce to prevent multiple rapid scans
       if (loading || scanResult) return
 
-      try {
-        const payload = JSON.parse(data)
-        if (payload && payload.bookingId) {
-          processCheckIn(payload.bookingId)
-        } else {
-          throw new Error('Invalid QR Format')
+      let token = String(data).trim()
+
+      // Handle legacy JSON payload if present
+      if (token.startsWith('{') && token.endsWith('}')) {
+        try {
+          const payload = JSON.parse(token)
+          token = payload.passToken || payload.rawToken || payload.bookingId || payload.id || token
+        } catch {
+          // keep token as is
         }
-      } catch (e) {
+      }
+
+      if (token) {
+        processCheckIn(token)
+      } else {
         setScanResult({
           success: false,
           message:

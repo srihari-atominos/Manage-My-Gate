@@ -13,6 +13,7 @@ import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
+import { useTranslation } from '@/src/utils/i18n';
 import {
   AmenityReservation,
   AmenityBookingStatus,
@@ -31,12 +32,15 @@ import {
   formatCompletionStatusLabel,
   formatBookingStatusLabel,
   formatPaymentStatusLabel,
+  formatAmenityPassCode,
 } from '../utils/amenityStateHelpers';
 
 export interface ResidentReservationCardProps {
   reservation: AmenityReservation;
   onPress?: (reservation: AmenityReservation) => void;
+  onShowQR?: (reservation: AmenityReservation) => void;
   onCancelPress?: (reservation: AmenityReservation) => void;
+  detailed?: boolean;
   testID?: string;
 }
 
@@ -120,12 +124,28 @@ export function getCompletionStatusVariant(status: AmenityCompletionStatus): Sta
 export function ResidentReservationCard({
   reservation,
   onPress,
+  onShowQR,
   onCancelPress,
+  detailed = false,
   testID,
 }: ResidentReservationCardProps) {
+  const { t } = useTranslation();
   const facilityName = reservation.facilityName || 'Amenity Facility';
   const resourceName = reservation.resourceName;
   const reservationNumber = reservation.reservationNumber || reservation._id;
+  const passCode = formatAmenityPassCode(reservationNumber, facilityName);
+
+  const unitNum =
+    (reservation as any).unitNumber ||
+    (reservation as any).villaNumber ||
+    (reservation as any).unitId?.unitNumber ||
+    (reservation as any).unitId?.name;
+  const resolvedVilla = unitNum ? `${t('villa_label', 'Villa')} ${unitNum}` : '';
+  const displayContext = resourceName || resolvedVilla;
+
+  const subtitle = displayContext
+    ? `${displayContext} • ${t('code_label', 'Code:')} ${passCode}`
+    : `${t('code_label', 'Code:')} ${passCode}`;
 
   // Format date & time components with Indian timezone fallback
   const tz = reservation.facilityTimezone || 'Asia/Kolkata';
@@ -148,6 +168,11 @@ export function ResidentReservationCard({
     reservation.completionStatus !== 'COMPLETED' &&
     reservation.accessStatus !== 'CHECKED_OUT';
 
+  const canShowQR =
+    reservation.bookingStatus !== 'CANCELLED' &&
+    reservation.bookingStatus !== 'REJECTED' &&
+    reservation.completionStatus !== 'ABANDONED';
+
   const handleCardPress = () => {
     if (onPress) {
       onPress(reservation);
@@ -165,22 +190,48 @@ export function ResidentReservationCard({
     <ListCard
       testID={testID}
       title={facilityName}
-      subtitle={resourceName ? `${resourceName} • ${reservationNumber}` : reservationNumber}
+      subtitle={subtitle}
+      leftIcon="QrCode"
+      leftIconBgColor="rgba(23, 43, 112, 0.12)"
+      leftIconColor="#172B70"
       status={{
         label: formatBookingStatusLabel(reservation.bookingStatus),
         variant: getBookingStatusVariant(reservation.bookingStatus),
       }}
-      secondaryBadge={{
-        label: formatPaymentStatusLabel(reservation.paymentStatus),
-        variant: getPaymentStatusVariant(reservation.paymentStatus),
-      }}
+      secondaryBadge={
+        detailed
+          ? {
+              label: formatPaymentStatusLabel(reservation.paymentStatus),
+              variant: getPaymentStatusVariant(reservation.paymentStatus),
+            }
+          : undefined
+      }
+      rightContent={
+        onShowQR && canShowQR ? (
+          <Button
+            variant="info"
+            size="sm"
+            onPress={(e: any) => {
+              e?.stopPropagation?.();
+              onShowQR(reservation);
+            }}
+            className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg"
+            accessibilityRole="button"
+            accessibilityLabel={`View Pass Code for ${facilityName}`}
+          >
+            <QrCode size={14} color="#245fa8" />
+            <Text>{t('pass_code', 'Pass Code')}</Text>
+          </Button>
+        ) : undefined
+      }
       onPress={handleCardPress}
       accessibilityRole="button"
-      accessibilityLabel={`Reservation for ${facilityName}, Number ${reservationNumber}`}
+      accessibilityLabel={`Reservation for ${facilityName}, Code ${passCode}`}
     >
-      <View className="pt-2.5 mt-1 border-t border-border/50 gap-2.5">
-        {/* Schedule & Headcount Row */}
-        <View className="flex-row items-center flex-wrap gap-x-4 gap-y-2">
+      {detailed && (
+        <View className="pt-2.5 mt-1 border-t border-border/50 gap-2.5">
+          {/* Schedule & Headcount Row */}
+          <View className="flex-row items-center flex-wrap gap-x-4 gap-y-2">
           <View className="flex-row items-center gap-1.5">
             <Icon as={Calendar} size={14} className="text-muted-foreground" />
             <Text variant="muted" className="text-xs font-medium">
@@ -265,6 +316,7 @@ export function ResidentReservationCard({
           </View>
         ) : null}
       </View>
+      )}
     </ListCard>
   );
 }

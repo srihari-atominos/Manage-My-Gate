@@ -1196,7 +1196,7 @@ export const te: Record<string, string> = {
   'enter_6_digit_pin_code_or_name': '6 అంకెల పిన్, కోడ్ లేదా పేరును నమోదు చేయండి...',
   'no_live_activity': 'ప్రత్యక్ష కార్యకలాపం లేదు',
   'recent_check_in_scans_will_stream_live_h': 'నివాసితులు సౌకర్యాలను పొందుతున్నప్పుడు ఇటీవలి చెక్-ఇన్ స్కాన్‌లు ఇక్కడ ప్రత్యక్షంగా కనిపిస్తాయి.',
-  'amenity_qr_scanner': 'సౌకర్యం QR స్కానర్',
+  'amenity_qr_scanner': 'QR స్కానర్',
   'manual_booking_token_lookup': 'మాన్యువల్ బుకింగ్ టోకెన్ శోధన',
   'enter_the_resident_reservation_reference': 'ఆప్టికల్ QR స్కాన్ అందుబాటులో లేకుంటే నివాసి రిజర్వేషన్ రిఫరెన్స్ టోకెన్‌ను నమోదు చేయండి.',
   'eg_bk_778899': 'ఉదా. BK-778899',

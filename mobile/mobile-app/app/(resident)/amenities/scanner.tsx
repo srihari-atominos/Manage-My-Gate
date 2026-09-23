@@ -6,9 +6,6 @@ import {
   ScanLine,
   Search,
   CheckCircle2,
-  DoorOpen,
-  DoorClosed,
-  ShieldAlert,
 } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { TabBar } from '@/components/ui/TabBar';
@@ -16,8 +13,6 @@ import { KPIRow } from '@/components/ui/KPIRow';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
-import { ToggleSwitch } from '@/components/forms/ToggleSwitch';
-import { BottomSheet } from '@/components/ui/BottomSheet';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { ScanResultSheet, ScanResultData } from '@/components/hardware/ScanResultSheet';
@@ -36,11 +31,6 @@ import { formatUtcToLocalDisplay } from '../../../src/features/amenities/utils/a
 const AMENITY_TABS = [
   { key: 'CONSOLE', label: 'Console' },
   { key: 'LOGS', label: 'Security Logs' },
-];
-
-const SCAN_MODE_TABS = [
-  { key: 'CHECK_IN', label: 'Facility Entry (Check-In)' },
-  { key: 'CHECK_OUT', label: 'Facility Exit (Check-Out)' },
 ];
 
 const SCAN_TYPE_TABS = [
@@ -68,15 +58,10 @@ export default function AmenitySecurityGateScannerScreen() {
     return <Redirect href="/(resident)/dashboard" />;
   }
   const {
-    scanMode,
-    setScanMode,
     isScanning,
     isFlashlightOn,
     isResultModalOpen,
-    isInspectionModalOpen,
-    setIsInspectionModalOpen,
     v2CheckInResult,
-    v2CheckOutResult,
     v2PassActionLoading,
     v2PassError,
     localScanError,
@@ -84,8 +69,6 @@ export default function AmenitySecurityGateScannerScreen() {
     checkingIn,
     toggleFlashlight,
     handleBarCodeScanned,
-    executeCheckOutWithInspection,
-    cancelCheckOutInspection,
     resetScanner,
   } = useSecurityScanner();
 
@@ -112,11 +95,6 @@ export default function AmenitySecurityGateScannerScreen() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [selectedAuditLog, setSelectedAuditLog] = useState<SecurityLog | null>(null);
 
-  // Check-Out Inspection Form State
-  const [isDamaged, setIsDamaged] = useState(false);
-  const [damageNotes, setDamageNotes] = useState('');
-  const [penaltyAmount, setPenaltyAmount] = useState('');
-
   const loadData = useCallback(async () => {
     setRefreshing(true);
     refreshSecurityLogs();
@@ -141,25 +119,6 @@ export default function AmenitySecurityGateScannerScreen() {
     handleVerifyPass(token);
   };
 
-  const handleConfirmInspection = async () => {
-    await executeCheckOutWithInspection({
-      isDamaged,
-      damageNotes: damageNotes.trim() || undefined,
-      assessedPenaltyAmount: Number(penaltyAmount) || 0,
-    });
-    setIsDamaged(false);
-    setDamageNotes('');
-    setPenaltyAmount('');
-    refreshSecurityLogs();
-  };
-
-  const handleCancelInspection = () => {
-    cancelCheckOutInspection();
-    setIsDamaged(false);
-    setDamageNotes('');
-    setPenaltyAmount('');
-  };
-
   // Standardize check-in / check-out result for ScanResultSheet (V2 Authoritative)
   const formattedResult: ScanResultData | null = useMemo(() => {
     if (localScanError) {
@@ -178,13 +137,8 @@ export default function AmenitySecurityGateScannerScreen() {
       let message = v2PassError.message || 'Pass verification failed.';
 
       if (code === 409) {
-        if (scanMode === 'CHECK_IN') {
-          title = 'Security Alert: Pass Replay Detected';
-          message = v2PassError.message || 'This pass has already been used for entry.';
-        } else {
-          title = 'Check-Out Conflict';
-          message = v2PassError.message || 'This pass has already been checked out.';
-        }
+        title = 'Security Alert: Pass Replay Detected';
+        message = v2PassError.message || 'This pass has already been used for entry.';
       } else if (code === 403) {
         if (
           v2PassError.code === 'PASS_REVOKED' ||
@@ -202,7 +156,7 @@ export default function AmenitySecurityGateScannerScreen() {
         title = 'Pass Not Recognized';
         message = v2PassError.message || 'Invalid pass. This QR code is not recognized for this community.';
       } else if (code === 400) {
-        title = scanMode === 'CHECK_OUT' ? 'Check-Out Rejected' : 'Check-In Rejected';
+        title = 'Check-In Rejected';
         message = v2PassError.message || 'Pass validation failed.';
       }
 
@@ -222,47 +176,30 @@ export default function AmenitySecurityGateScannerScreen() {
         ? formatUtcToLocalDisplay(v2CheckInResult.checkInTimestamp).formatted
         : 'Just now';
 
+      const residentName = v2CheckInResult.resident?.name || 'Resident';
+      const residentPhoto = v2CheckInResult.resident?.photoUrl || undefined;
+      const residentPhone = v2CheckInResult.resident?.phone || undefined;
+      const unitOrVilla =
+        v2CheckInResult.resident?.unitNumber ||
+        v2CheckInResult.resident?.villaNumber ||
+        (v2CheckInResult.gateId ? `Gate: ${v2CheckInResult.gateId}` : 'Main Turnstile');
+      const facilityName = v2CheckInResult.facility?.name || v2CheckInResult.facilityName || 'Community Facility';
+      const passRef = v2CheckInResult.passCode || v2CheckInResult.booking?.bookingId || v2CheckInResult.reservationId || 'N/A';
+
       return {
         success: true,
         status: 'VERIFIED',
         title: 'Facility Entry Verified',
         message: 'Reservation pass is active and verified for facility entry.',
-        visitorName: 'Amenity Passholder',
+        visitorName: residentName,
+        visitorPhoto: residentPhoto,
+        visitorPhone: residentPhone,
         passType: v2CheckInResult.passType || 'AMENITY ACCESS',
-        amenityName: v2CheckInResult.facilityName || 'Community Facility',
-        unitOrVilla: v2CheckInResult.gateId ? `Gate: ${v2CheckInResult.gateId}` : 'Main Turnstile',
+        amenityName: facilityName,
+        unitOrVilla,
         validityWindow: validFromStr && validUntilStr ? `${validFromStr} - ${validUntilStr}` : 'Active Window',
         entryTime: checkInStr,
-        bookingReference: v2CheckInResult.reservationId || 'N/A',
-      };
-    }
-
-    if (v2CheckOutResult) {
-      const validFromStr = formatUtcToLocalDisplay(v2CheckOutResult.validFrom).formatted;
-      const validUntilStr = formatUtcToLocalDisplay(v2CheckOutResult.validUntil).formatted;
-      const checkOutStr = v2CheckOutResult.checkOutTimestamp
-        ? formatUtcToLocalDisplay(v2CheckOutResult.checkOutTimestamp).formatted
-        : 'Just now';
-
-      return {
-        success: true,
-        status: 'VERIFIED',
-        title: 'Facility Exit Recorded',
-        message: 'Pass check-out completed and exit recorded.',
-        visitorName: 'Amenity Passholder',
-        passType: v2CheckOutResult.passType || 'AMENITY ACCESS',
-        amenityName: v2CheckOutResult.facilityName || 'Community Facility',
-        unitOrVilla: v2CheckOutResult.gateId ? `Gate: ${v2CheckOutResult.gateId}` : 'Main Turnstile',
-        validityWindow: validFromStr && validUntilStr ? `${validFromStr} - ${validUntilStr}` : 'Completed Window',
-        entryTime: checkOutStr,
-        bookingReference: v2CheckOutResult.reservationId || 'N/A',
-        metadata: v2CheckOutResult.inspectionDetails
-          ? {
-              'Damaged': v2CheckOutResult.inspectionDetails.isDamaged ? 'YES' : 'NO',
-              'Damage Notes': v2CheckOutResult.inspectionDetails.damageNotes || 'None',
-              'Assessed Penalty': String(v2CheckOutResult.inspectionDetails.assessedPenaltyAmount || 0),
-            }
-          : undefined,
+        bookingReference: passRef,
       };
     }
 
@@ -281,11 +218,11 @@ export default function AmenitySecurityGateScannerScreen() {
     }
 
     return null;
-  }, [localScanError, v2PassError, v2CheckInResult, v2CheckOutResult, scanMode, checkInResult]);
+  }, [localScanError, v2PassError, v2CheckInResult, checkInResult]);
 
   return (
     <ScreenShell
-      title="Amenity Security Console"
+      title="Amenity Access Pass Scanner"
       subtitle="Facility entry verification & QR pass scanner"
       iconName="ShieldCheck"
     >
@@ -415,26 +352,12 @@ export default function AmenitySecurityGateScannerScreen() {
               </View>
             )}
 
-            {/* Mode Switcher: Facility Entry (Check-In) vs Facility Exit (Check-Out) */}
-            <TabBar
-              tabs={SCAN_MODE_TABS}
-              activeTab={scanMode}
-              onTabChange={(key) => {
-                resetScanner();
-                setScanMode(key as any);
-              }}
-              variant="pill"
-              className="mx-0 mb-1"
-            />
-
             {/* Verification Input Card */}
             <View className="bg-card border border-border rounded-2xl p-4 gap-3 shadow-xs">
               <View className="flex-row items-center gap-2 border-b border-border/40 pb-2.5">
                 <ScanLine size={18} color="#ea580c" />
                 <Text className="text-sm font-bold text-foreground">
-                  {scanMode === 'CHECK_IN'
-                    ? 'Verify Entry Pass (Check-In)'
-                    : 'Process Exit Pass (Check-Out)'}
+                  Verify Access Pass
                 </Text>
               </View>
 
@@ -506,8 +429,8 @@ export default function AmenitySecurityGateScannerScreen() {
       {/* Hardware Camera QR Scanner Modal */}
       <QRScannerModal
         visible={qrScannerOpen}
-        title="Amenity QR Scanner"
-        instruction="Align Amenity QR Code inside Frame"
+        title="QR Scanner"
+        instruction="Align QR Code inside Frame"
         onClose={() => setQrScannerOpen(false)}
         onScanCode={async (code) => {
           setQrScannerOpen(false);
@@ -516,74 +439,6 @@ export default function AmenitySecurityGateScannerScreen() {
         }}
       />
 
-      {/* Check-Out Inspection Bottom Sheet */}
-      <BottomSheet
-        visible={isInspectionModalOpen}
-        onClose={handleCancelInspection}
-        title="Equipment & Facility Return Inspection"
-      >
-        <View className="gap-4 pb-4">
-          <Text className="text-xs text-muted-foreground">
-            Inspect returned facility equipment or physical condition before confirming exit.
-          </Text>
-
-          <ToggleSwitch
-            label="Damage or Defect Identified?"
-            description="Enable if returned equipment has issues or requires repair."
-            value={isDamaged}
-            onValueChange={setIsDamaged}
-          />
-
-          {isDamaged && (
-            <View className="gap-3 pt-1">
-              <TextInput
-                label="Damage Notes & Description"
-                value={damageNotes}
-                onChangeText={setDamageNotes}
-                placeholder="Describe damage, broken parts, missing items..."
-                multiline={true}
-                numberOfLines={3}
-              />
-
-              <TextInput
-                label="Assessed Penalty Amount (Optional)"
-                value={penaltyAmount}
-                onChangeText={setPenaltyAmount}
-                placeholder="0.00"
-                keyboardType="decimal-pad"
-              />
-            </View>
-          )}
-
-          <View className="gap-2.5 pt-2">
-            <Button
-              onPress={handleConfirmInspection}
-              disabled={checkingIn}
-              loading={checkingIn}
-              className="w-full h-12 bg-primary flex-row items-center justify-center gap-2"
-              accessibilityRole="button"
-              accessibilityLabel="Confirm Facility Exit"
-            >
-              <DoorClosed size={18} color="#FFFFFF" />
-              <Text className="text-sm font-bold text-primary-foreground">
-                {checkingIn ? 'Processing Exit...' : 'Confirm Facility Exit'}
-              </Text>
-            </Button>
-
-            <Button
-              variant="outline"
-              onPress={handleCancelInspection}
-              disabled={checkingIn}
-              className="w-full h-11 border-border"
-              accessibilityRole="button"
-              accessibilityLabel="Cancel Inspection"
-            >
-              <Text className="text-sm font-semibold text-foreground">Cancel</Text>
-            </Button>
-          </View>
-        </View>
-      </BottomSheet>
-
       {/* Verification Result Sheet */}
       <ScanResultSheet
         visible={isResultModalOpen}
@@ -591,7 +446,7 @@ export default function AmenitySecurityGateScannerScreen() {
         result={formattedResult}
         loading={checkingIn}
         onPrimaryAction={resetScanner}
-        primaryActionLabel={scanMode === 'CHECK_IN' ? 'Confirm Facility Entry' : 'Confirm Facility Exit'}
+        primaryActionLabel="Confirm Facility Entry"
         onSecondaryAction={resetScanner}
         secondaryActionLabel="Dismiss"
       />
