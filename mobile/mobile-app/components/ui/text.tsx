@@ -81,11 +81,14 @@ function Text({
   variant = 'default',
   children,
   style,
+  skipTranslate,
   ...props
 }: React.ComponentProps<typeof RNText> &
   React.RefAttributes<typeof RNText> &
   TextVariantProps & {
     asChild?: boolean;
+    skipTranslate?: boolean;
+    noTranslate?: boolean;
   }) {
   const textClass = React.useContext(TextClassContext);
   const Component = asChild ? Slot : RNText;
@@ -97,9 +100,15 @@ function Text({
 
   const isArabic = currentLang === 'ar';
 
+  const shouldSkipTranslate =
+    skipTranslate || (props as any).noTranslate || (props as any).translate === false;
+
   const translatedChildren = React.useMemo(() => {
+    if (shouldSkipTranslate) {
+      return children;
+    }
     return translateChildren(children);
-  }, [children, currentLang]);
+  }, [children, currentLang, shouldSkipTranslate]);
 
   const resolvedStyle = React.useMemo(() => {
     if (!isArabic || !style) return style;

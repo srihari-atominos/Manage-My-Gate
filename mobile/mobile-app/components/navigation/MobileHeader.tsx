@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Image } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, Home, Building2, ChevronDown, Sun, Moon, Settings } from 'lucide-react-native';
+import { Bell, Home, Building2, ChevronDown, Sun, Moon, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import storage from '../../src/utils/storage';
@@ -16,6 +16,7 @@ import { NotificationSheetModal } from './NotificationSheetModal';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
 import { useTranslation } from '@/src/utils/i18n';
 import useSettings from '@/src/features/settings/hooks/useSettings';
+import { getImageUrl } from '@/src/utils/imageUrl';
 import { cn } from '../../lib/utils';
 
 interface MobileHeaderProps {
@@ -121,6 +122,16 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const hasUnit = Boolean(activeVilla && activeVilla.trim() !== '');
 
   const canSwitchContext = hasUnit || hasOrgs || hasMultipleUnits;
+
+  // Avatar resolution
+  const userAny = user as any;
+  const userAvatar = user?.avatar || userAny?.avatarUrl;
+  const resolvedAvatarUrl = userAvatar ? getImageUrl(userAvatar) : null;
+  const [imageError, setImageError] = useState(false);
+
+  React.useEffect(() => {
+    setImageError(false);
+  }, [resolvedAvatarUrl]);
 
   // Avatar initial letter
   const avatarLetter = React.useMemo(() => {
@@ -260,15 +271,28 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             ) : null}
           </TouchableOpacity>
 
-          {/* App Settings Icon Button */}
+          {/* Profile Avatar / Icon Button */}
           <TouchableOpacity
-            onPress={() => router.push('/(resident)/settings' as any)}
+            onPress={() => router.push('/(resident)/profile' as any)}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
+            className="size-9 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center overflow-hidden active:bg-secondary shadow-xs"
             accessibilityRole="button"
-            accessibilityLabel={t('app_settings', 'Settings')}
+            accessibilityLabel={t('profile', 'Profile')}
           >
-            <Settings size={18} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
+            {resolvedAvatarUrl && !imageError ? (
+              <Image
+                source={{ uri: resolvedAvatarUrl }}
+                className="w-full h-full rounded-full"
+                resizeMode="cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <User
+                size={18}
+                color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'}
+                strokeWidth={2.2}
+              />
+            )}
           </TouchableOpacity>
         </View>
       </View>

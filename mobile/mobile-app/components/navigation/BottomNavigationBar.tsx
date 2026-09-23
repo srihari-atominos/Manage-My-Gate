@@ -15,7 +15,7 @@ import {
   Home,
   Users,
   ShieldCheck,
-  User,
+  Settings,
 } from 'lucide-react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -33,7 +33,7 @@ import Animated, {
 import { cn } from '../../lib/utils';
 import { useBottomNavScroll } from './BottomNavScrollContext';
 
-export type MainTabKey = 'dashboard' | 'community' | 'security' | 'profile';
+export type MainTabKey = 'dashboard' | 'community' | 'security' | 'settings';
 
 interface TabItem {
   key: MainTabKey;
@@ -62,10 +62,10 @@ const TAB_ITEMS: TabItem[] = [
     icon: ShieldCheck,
   },
   {
-    key: 'profile',
-    label: 'Profile',
-    route: '/(resident)/profile',
-    icon: User,
+    key: 'settings',
+    label: 'Settings',
+    route: '/(resident)/settings',
+    icon: Settings,
   },
 ];
 
@@ -323,7 +323,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   const activeTab: MainTabKey = useMemo(() => {
     if (pathname.includes('/visitor')) return 'security';
     if (pathname.includes('/notices') || pathname.includes('/directory') || pathname.includes('/polls') || pathname.includes('/notes')) return 'community';
-    if (pathname.includes('/profile') || pathname.includes('/settings') || pathname.includes('/account')) return 'profile';
+    if (pathname.includes('/settings')) return 'settings';
     return 'dashboard';
   }, [pathname]);
 

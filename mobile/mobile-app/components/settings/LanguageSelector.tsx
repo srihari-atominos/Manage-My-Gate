@@ -40,7 +40,7 @@ export const LanguageSelector = ({
             <Text className="text-sm font-semibold text-foreground font-sans" numberOfLines={1}>
               {t('language', 'Language')}
             </Text>
-            <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
+            <Text skipTranslate className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
               {currentLanguage}
             </Text>
           </View>
