@@ -679,7 +679,6 @@ export class UserService {
     };
   }
 
-<<<<<<< HEAD
   async requestPhoneOtp(userId, newPhone) {
     if (!newPhone || typeof newPhone !== 'string' || !newPhone.trim()) {
       throw new HttpError(400, 'New phone number is required.');
