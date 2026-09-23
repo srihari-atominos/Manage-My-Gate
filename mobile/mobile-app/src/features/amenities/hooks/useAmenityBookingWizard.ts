@@ -201,11 +201,10 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
                 facilityId: String(targetFacilityId),
                 name: facility.name || 'Equipment Item',
                 identifier: `${facility.code || 'FAC'}-ITEM-01`,
-                totalBulkStock: facility.availableStock || facility.capacity || 1,
+                totalBulkStock: (facility as any).availableStock || (facility as any).capacity || 1,
                 assetState: 'AVAILABLE',
                 isSerializedAsset: false,
-                isActive: true,
-              };
+              } as any;
               normalized = [fallbackResource];
             }
 
@@ -226,11 +225,10 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
                 facilityId: String(targetFacilityId),
                 name: facility.name || 'Equipment Item',
                 identifier: `${facility.code || 'FAC'}-ITEM-01`,
-                totalBulkStock: facility.availableStock || facility.capacity || 1,
+                totalBulkStock: (facility as any).availableStock || (facility as any).capacity || 1,
                 assetState: 'AVAILABLE',
                 isSerializedAsset: false,
-                isActive: true,
-              };
+              } as any;
               setAvailableResources([fallbackResource]);
               setSelectedResource((prev) => prev || fallbackResource);
             } else {
@@ -252,8 +250,8 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
     facility?.archetype,
     facility?.name,
     facility?.code,
-    facility?.availableStock,
-    facility?.capacity,
+    (facility as any)?.availableStock,
+    (facility as any)?.capacity,
   ]);
 
   // Fetch available slots from server (filtering out booked and past slots)

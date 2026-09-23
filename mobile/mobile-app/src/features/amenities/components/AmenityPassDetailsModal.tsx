@@ -120,7 +120,7 @@ export const AmenityPassDetailsModal: React.FC<AmenityPassDetailsModalProps> = (
       (reservation as any).effectiveEndDateTime ||
       (reservation as any).requestedEndDateTime;
 
-    formattedDate = formatReservationDate(rawStart, tz) || reservation.date || '';
+    formattedDate = formatReservationDate(rawStart, tz) || (reservation as any).date || '';
     formattedTime = formatReservationTimeRange(rawStart, rawEnd, tz) || '';
   } else if (booking) {
     formattedDate = booking.date || (booking as any).bookingDate || '';
