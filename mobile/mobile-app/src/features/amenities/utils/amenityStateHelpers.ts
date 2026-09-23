@@ -341,3 +341,76 @@ export const formatPaymentStatusLabel = (status?: string): string => {
   }
 };
 
+/**
+ * Maps an amenity facility name to a short, recognizable 3-to-4 letter category prefix.
+ */
+export const getAmenityTypePrefix = (facilityName?: string | null): string => {
+  if (!facilityName) return 'RES';
+  const name = facilityName.trim().toUpperCase();
+  if (name.includes('TENNIS')) return 'TEN';
+  if (name.includes('GYM') || name.includes('FITNESS')) return 'GYM';
+  if (name.includes('POOL') || name.includes('SWIM')) return 'POOL';
+  if (name.includes('BADMINTON')) return 'BAD';
+  if (name.includes('CLUB') || name.includes('HALL') || name.includes('COMMUNITY')) return 'CLUB';
+  if (name.includes('BASKETBALL')) return 'BBALL';
+  if (name.includes('SQUASH')) return 'SQUASH';
+  if (name.includes('SPA') || name.includes('SAUNA')) return 'SPA';
+  if (name.includes('THEATRE') || name.includes('CINEMA')) return 'CINE';
+  return 'RES';
+};
+
+/**
+ * Formats a raw reservation number or booking reference into an easy-to-identify pass code
+ * combining letters and numbers (alphanumeric), replicating the clean identification pattern from Visitor Management.
+ * Supports:
+ * - 'RES-202609-000004' for 'Tennis Court' -> 'TEN-000004' (letters + numbers, facility-specific)
+ * - '202609-000004' for 'Tennis Court' -> 'TEN-000004'
+ * - 'RES-849201' for 'Olympic Swimming Pool' -> 'POOL-849201'
+ * - Hex MongoDB ObjectId '6ab35b3b1c62dd0466b7f33e' -> 'TEN-B7F33E' (or 'B7F33E')
+ * - 6-character alphanumeric keycode '6BBF46' -> '6BBF46'
+ */
+export const formatAmenityPassCode = (
+  rawId?: string | null,
+  facilityName?: string | null
+): string => {
+  if (!rawId) return 'PASS';
+  let str = String(rawId).trim();
+
+  const prefix = getAmenityTypePrefix(facilityName);
+
+  // 1. If it's a 24-character MongoDB hex ObjectId, take last 6 chars uppercase (e.g. 6ab35b3b1c62dd0466b7f33e -> B7F33E)
+  if (/^[a-f0-9]{24}$/i.test(str)) {
+    const shortHex = str.slice(-6).toUpperCase();
+    return prefix !== 'RES' ? `${prefix}-${shortHex}` : shortHex;
+  }
+
+  // 2. If it's already a 6-character alphanumeric code without hyphen (e.g. 6BBF46 or 849201), return it
+  if (/^[0-9a-zA-Z]{6}$/.test(str) && !str.includes('-')) {
+    return str.toUpperCase();
+  }
+
+  // 3. If it starts with RES- or BKG-, replace with the facility prefix (e.g. RES-202609-000004 -> TEN-202609-000004)
+  if (/^(RES|BKG)-/i.test(str)) {
+    const cleanSeq = str.replace(/^(RES|BKG)-/i, '');
+    return `${prefix}-${cleanSeq.toUpperCase()}`;
+  }
+
+  // 4. If it already has an amenity-specific prefix (e.g. TEN-..., POOL-..., GYM-...)
+  if (/^[A-Z]{2,6}-[0-9A-Z_-]+$/i.test(str)) {
+    return str.toUpperCase();
+  }
+
+  // 5. If it starts with digits only (e.g. 202609-000004 or 849201), add facility prefix
+  if (/^\d/.test(str)) {
+    return `${prefix}-${str.toUpperCase()}`;
+  }
+
+  // 6. Fallback: prepend prefix if not already present
+  if (prefix !== 'RES' && !str.toUpperCase().startsWith(`${prefix}-`)) {
+    return `${prefix}-${str.toUpperCase()}`;
+  }
+
+  return str.toUpperCase();
+};
+
+

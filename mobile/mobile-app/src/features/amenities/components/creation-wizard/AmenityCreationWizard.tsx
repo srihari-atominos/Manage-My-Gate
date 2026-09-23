@@ -233,7 +233,7 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
         maxLoanHours: 24,
         requiresInspection: true,
         pricingType: defaultPricing,
-        baseRate: 0,
+        baseRate: defaultPricing === 'FREE' ? 0 : '',
         securityDeposit: 0,
         securityDepositDescription: '',
         isCancellationAllowed: true,
@@ -362,9 +362,21 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
           form.baseRate === undefined ||
           form.baseRate === '' ||
           isNaN(Number(form.baseRate)) ||
-          Number(form.baseRate) < 0
+          Number(form.baseRate) <= 0
         ) {
-          errors.baseRate = 'Please provide a valid non-negative rate';
+          errors.baseRate = 'Rate is required and must be greater than 0';
+          showCrossPlatformAlert(
+            'Validation Error',
+            'Please enter a valid rate greater than 0 for this billing model.'
+          );
+        }
+        if (
+          form.securityDeposit !== undefined &&
+          form.securityDeposit !== '' &&
+          (isNaN(Number(form.securityDeposit)) || Number(form.securityDeposit) < 0)
+        ) {
+          errors.securityDeposit = 'Security deposit cannot be negative';
+          showCrossPlatformAlert('Validation Error', 'Security deposit cannot be negative.');
         }
       }
     }
@@ -525,13 +537,25 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
           form.baseRate === undefined ||
           form.baseRate === '' ||
           isNaN(Number(form.baseRate)) ||
-          Number(form.baseRate) < 0
+          Number(form.baseRate) <= 0
         ) {
           return {
             isValid: false,
             errorStepIndex: pricingIdx,
-            message: 'Please provide a valid non-negative base rate',
-            errors: { baseRate: 'Valid rate required' },
+            message: 'Please provide a valid rate greater than 0 for paid billing models',
+            errors: { baseRate: 'Rate is required and must be greater than 0' },
+          };
+        }
+        if (
+          form.securityDeposit !== undefined &&
+          form.securityDeposit !== '' &&
+          (isNaN(Number(form.securityDeposit)) || Number(form.securityDeposit) < 0)
+        ) {
+          return {
+            isValid: false,
+            errorStepIndex: pricingIdx,
+            message: 'Security deposit cannot be negative',
+            errors: { securityDeposit: 'Invalid deposit' },
           };
         }
       }

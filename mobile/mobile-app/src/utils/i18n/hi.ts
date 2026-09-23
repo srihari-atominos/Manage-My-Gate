@@ -1196,7 +1196,7 @@ export const hi: Record<string, string> = {
   'enter_6_digit_pin_code_or_name': '6-अंकों का पिन, कोड या नाम दर्ज करें...',
   'no_live_activity': 'कोई लाइव गतिविधि नहीं है',
   'recent_check_in_scans_will_stream_live_h': 'निवासियों द्वारा सुविधाओं का उपयोग करने पर हालिया चेक-इन स्कैन यहां लाइव दिखाई देंगे।',
-  'amenity_qr_scanner': 'सुविधा क्यूआर स्कैनर',
+  'amenity_qr_scanner': 'क्यूआर स्कैनर',
   'manual_booking_token_lookup': 'मैन्युअल बुकिंग टोकन खोज',
   'enter_the_resident_reservation_reference': 'यदि ऑप्टिकल क्यूआर स्कैन उपलब्ध नहीं है तो निवासी आरक्षण संदर्भ टोकन दर्ज करें।',
   'eg_bk_778899': 'उदा. BK-778899',

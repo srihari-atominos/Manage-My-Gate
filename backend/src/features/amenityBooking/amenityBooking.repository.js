@@ -80,20 +80,40 @@ export class AmenityBookingRepository {
   async findByOrgPaginated(orgId, filters = {}, skip = 0, limit = 10) {
     const targetOrgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
     const matchStage = { orgId: targetOrgId };
+
+    const kNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const todayStr = `${kNow.getFullYear()}-${String(kNow.getMonth() + 1).padStart(2, '0')}-${String(kNow.getDate()).padStart(2, '0')}`;
+
     if (filters.status && filters.status !== 'All' && filters.status !== 'ALL') {
       if (typeof filters.status === 'object') {
         matchStage.status = filters.status;
       } else if (typeof filters.status === 'string') {
         const s = filters.status.toLowerCase();
         if (s === 'checked_in' || s === 'checked-in') {
-          matchStage.status = { $in: ['checked-in', 'checked_in'] };
+          matchStage.status = { $in: ['checked-in', 'checked_in', 'CHECKED_IN'] };
         } else {
-          matchStage.status = s;
+          matchStage.status = { $in: [s, s.toUpperCase()] };
         }
       } else {
         matchStage.status = filters.status;
       }
     }
+
+    if (filters.paymentStatus && filters.paymentStatus !== 'All' && filters.paymentStatus !== 'ALL') {
+      const ps = filters.paymentStatus.toLowerCase();
+      if (ps === 'paid') {
+        matchStage.paymentStatus = { $in: ['captured', 'success', 'paid', 'completed', 'PAID', 'CAPTURED', 'SUCCESS'] };
+      } else if (ps === 'pending') {
+        matchStage.paymentStatus = { $in: ['pending', 'PENDING', 'unpaid', 'UNPAID'] };
+      } else if (ps === 'refunded') {
+        matchStage.paymentStatus = { $in: ['refunded', 'REFUNDED', 'partial_refund'] };
+      } else if (ps === 'failed') {
+        matchStage.paymentStatus = { $in: ['failed', 'FAILED'] };
+      } else {
+        matchStage.paymentStatus = ps;
+      }
+    }
+
     if (filters.amenityId && filters.amenityId !== 'All' && filters.amenityId !== 'ALL') {
       if (typeof filters.amenityId === 'object' && !mongoose.Types.ObjectId.isValid(filters.amenityId)) {
         matchStage.amenityId = filters.amenityId;
@@ -101,8 +121,34 @@ export class AmenityBookingRepository {
         matchStage.amenityId = new mongoose.Types.ObjectId(filters.amenityId);
       }
     }
-    if (filters.date) matchStage.bookingDate = filters.date;
-    if (filters.bookingDate) matchStage.bookingDate = filters.bookingDate;
+
+    if (filters.startDate && filters.endDate) {
+      matchStage.bookingDate = { $gte: filters.startDate, $lte: filters.endDate };
+    } else if (filters.startDate) {
+      matchStage.bookingDate = { $gte: filters.startDate };
+    } else if (filters.endDate) {
+      matchStage.bookingDate = { $lte: filters.endDate };
+    } else if (filters.datePreset) {
+      if (filters.datePreset === 'today') {
+        matchStage.bookingDate = todayStr;
+      } else if (filters.datePreset === 'yesterday') {
+        const yest = new Date(kNow);
+        yest.setDate(kNow.getDate() - 1);
+        const yestStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+        matchStage.bookingDate = yestStr;
+      } else if (filters.datePreset === 'this_week') {
+        const startOfWeek = new Date(kNow);
+        startOfWeek.setDate(kNow.getDate() - kNow.getDay());
+        const weekStartStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
+        matchStage.bookingDate = { $gte: weekStartStr, $lte: todayStr };
+      } else if (filters.datePreset === 'this_month') {
+        const monthStartStr = `${kNow.getFullYear()}-${String(kNow.getMonth() + 1).padStart(2, '0')}-01`;
+        matchStage.bookingDate = { $gte: monthStartStr, $lte: todayStr };
+      }
+    } else if (filters.date || filters.bookingDate) {
+      matchStage.bookingDate = filters.date || filters.bookingDate;
+    }
+
     if (filters.userId && mongoose.Types.ObjectId.isValid(filters.userId)) {
       matchStage.userId = new mongoose.Types.ObjectId(filters.userId);
     }
@@ -111,7 +157,127 @@ export class AmenityBookingRepository {
     }
 
     const pipeline = [
+      { $match: { orgId: targetOrgId } },
+      {
+        $unionWith: {
+          coll: 'amenity_management_reservations',
+          pipeline: [
+            { $match: { orgId: targetOrgId } },
+            {
+              $project: {
+                _id: 1,
+                orgId: 1,
+                bookingId: '$reservationNumber',
+                amenityId: '$facilityId',
+                userId: '$residentId',
+                status: { $toLower: '$bookingStatus' },
+                paymentStatus: { $toLower: '$paymentStatus' },
+                numberOfPersons: { $ifNull: ['$headcount', '$quantity', 1] },
+                pricingDetails: '$pricingSnapshot',
+                totalPrice: { $ifNull: ['$pricingSnapshot.totalAmount', '$totalAmount', 0] },
+                totalFee: { $ifNull: ['$pricingSnapshot.totalAmount', '$totalAmount', 0] },
+                bookingDate: {
+                  $dateToString: {
+                    date: { $ifNull: ['$effectiveStartDateTime', '$requestedStartDateTime'] },
+                    format: '%Y-%m-%d',
+                    timezone: 'Asia/Kolkata'
+                  }
+                },
+                startTime: {
+                  $dateToString: {
+                    date: { $ifNull: ['$effectiveStartDateTime', '$requestedStartDateTime'] },
+                    format: '%H:%M',
+                    timezone: 'Asia/Kolkata'
+                  }
+                },
+                endTime: {
+                  $dateToString: {
+                    date: { $ifNull: ['$effectiveEndDateTime', '$requestedEndDateTime'] },
+                    format: '%H:%M',
+                    timezone: 'Asia/Kolkata'
+                  }
+                },
+                deposit: { $ifNull: ['$pricingSnapshot.depositAmount', '$depositAmount', 0] },
+                refundAmount: { $ifNull: ['$refundAmount', 0] },
+                cancellationReason: 1,
+                cancelledAt: 1,
+                createdAt: 1,
+                updatedAt: 1
+              }
+            }
+          ]
+        }
+      },
       { $match: matchStage },
+      {
+        $lookup: {
+          from: 'amenities',
+          localField: 'amenityId',
+          foreignField: '_id',
+          as: 'amenityV1'
+        }
+      },
+      { $unwind: { path: '$amenityV1', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'amenity_management_facilities',
+          localField: 'amenityId',
+          foreignField: '_id',
+          as: 'amenityV2'
+        }
+      },
+      { $unwind: { path: '$amenityV2', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          resolvedAmenityName: {
+            $ifNull: ['$amenityV1.name', '$amenityV2.name', '$amenityName', 'Amenity']
+          },
+          resolvedAmenityCategory: {
+            $ifNull: ['$amenityV1.category', '$amenityV2.category', '$amenityV2.archetype', 'General']
+          },
+          resolvedAmenityLocation: {
+            $ifNull: ['$amenityV1.location', '$amenityV2.location', 'Community Facility']
+          },
+          resolvedAmenityImages: {
+            $ifNull: ['$amenityV1.images', '$amenityV2.images', []]
+          }
+        }
+      }
+    ];
+
+    if (filters.search && String(filters.search).trim()) {
+      const searchStr = String(filters.search).trim();
+      const searchRegex = new RegExp(searchStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      pipeline.push({
+        $match: {
+          $or: [
+            { bookingId: searchRegex },
+            { _id: mongoose.Types.ObjectId.isValid(searchStr) ? new mongoose.Types.ObjectId(searchStr) : searchRegex },
+            { paymentId: searchRegex },
+            { razorpayTransactionId: searchRegex },
+            { resolvedAmenityName: searchRegex },
+            { 'user.name': searchRegex },
+            { 'user.username': searchRegex },
+            { 'user.email': searchRegex },
+            { 'user.villaNumber': searchRegex },
+            { 'user.flatNumber': searchRegex },
+            { 'user.unit': searchRegex },
+            { 'user.building': searchRegex }
+          ]
+        }
+      });
+    }
+
+    pipeline.push(
       { $sort: { createdAt: -1 } },
       {
         $facet: {
@@ -120,24 +286,6 @@ export class AmenityBookingRepository {
             { $skip: skip },
             { $limit: limit },
             {
-              $lookup: {
-                from: 'amenities',
-                localField: 'amenityId',
-                foreignField: '_id',
-                as: 'amenity'
-              }
-            },
-            { $unwind: { path: '$amenity', preserveNullAndEmptyArrays: true } },
-            {
-              $lookup: {
-                from: 'users',
-                localField: 'userId',
-                foreignField: '_id',
-                as: 'user'
-              }
-            },
-            { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
-            {
               $project: {
                 _id: 1,
                 bookingId: 1,
@@ -145,18 +293,52 @@ export class AmenityBookingRepository {
                 startTime: 1,
                 endTime: 1,
                 status: 1,
+                numberOfPersons: 1,
                 pricingDetails: 1,
                 totalFee: { $ifNull: ['$pricingDetails.totalAmount', 0] },
                 totalPrice: { $ifNull: ['$pricingDetails.totalAmount', 0] },
-                deposit: '$pricingDetails.securityDeposit',
+                bookingAmount: { $ifNull: ['$pricingDetails.totalAmount', 0] },
+                paidAmount: {
+                  $cond: [
+                    {
+                      $or: [
+                        { $in: ['$paymentStatus', ['captured', 'success', 'paid', 'completed', 'PAID', 'CAPTURED', 'SUCCESS']] },
+                        { $in: ['$status', ['confirmed', 'checked-in', 'completed', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED']] }
+                      ]
+                    },
+                    { $ifNull: ['$pricingDetails.totalAmount', 0] },
+                    0
+                  ]
+                },
+                refundAmount: { $ifNull: ['$pricingDetails.refundAmount', '$refundAmount', 0] },
+                netRevenue: {
+                  $subtract: [
+                    {
+                      $cond: [
+                        {
+                          $or: [
+                            { $in: ['$paymentStatus', ['captured', 'success', 'paid', 'completed', 'PAID', 'CAPTURED', 'SUCCESS']] },
+                            { $in: ['$status', ['confirmed', 'checked-in', 'completed', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED']] }
+                          ]
+                        },
+                        { $ifNull: ['$pricingDetails.totalAmount', 0] },
+                        0
+                      ]
+                    },
+                    { $ifNull: ['$pricingDetails.refundAmount', '$refundAmount', 0] }
+                  ]
+                },
                 paymentStatus: 1,
                 paymentMethod: 1,
+                paymentId: 1,
+                razorpayTransactionId: 1,
                 qrCode: 1,
                 qrStatus: 1,
                 rejectionReason: 1,
-                numberOfPersons: 1,
+                cancellationReason: 1,
+                cancelledAt: 1,
                 createdAt: 1,
-                villaNumber: '$user.villaNumber',
+                villaNumber: { $ifNull: ['$user.villaNumber', '$user.flatNumber', '$user.unit'] },
                 userName: '$user.name',
                 userId: {
                   _id: '$user._id',
@@ -171,21 +353,169 @@ export class AmenityBookingRepository {
                   tower: '$user.tower'
                 },
                 amenityId: {
-                  _id: '$amenity._id',
-                  name: '$amenity.name',
-                  type: '$amenity.type'
+                  _id: { $ifNull: ['$amenityV1._id', '$amenityV2._id', '$amenityId'] },
+                  name: '$resolvedAmenityName',
+                  category: '$resolvedAmenityCategory',
+                  location: '$resolvedAmenityLocation',
+                  images: '$resolvedAmenityImages',
+                  type: { $ifNull: ['$amenityV1.type', '$amenityV2.archetype'] }
                 }
               }
             }
+          ],
+          summary: [
+            {
+              $group: {
+                _id: null,
+                totalBookings: { $sum: 1 },
+                paidBookings: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $or: [
+                          { $in: ['$paymentStatus', ['captured', 'success', 'paid', 'completed', 'PAID', 'CAPTURED', 'SUCCESS']] },
+                          { $in: ['$status', ['confirmed', 'checked-in', 'completed', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED']] }
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                pendingPayments: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $not: [{ $in: ['$paymentStatus', ['captured', 'success', 'paid', 'completed', 'refunded', 'PAID', 'CAPTURED', 'SUCCESS', 'REFUNDED']] }] },
+                          { $not: [{ $in: ['$status', ['confirmed', 'checked-in', 'completed', 'cancelled', 'rejected', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'CANCELLED', 'REJECTED']] }] }
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                cancelledBookings: {
+                  $sum: {
+                    $cond: [
+                      { $in: ['$status', ['cancelled', 'rejected', 'CANCELLED', 'REJECTED']] },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                grossRevenue: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $or: [
+                          { $in: ['$paymentStatus', ['captured', 'success', 'paid', 'completed', 'PAID', 'CAPTURED', 'SUCCESS']] },
+                          { $in: ['$status', ['confirmed', 'checked-in', 'completed', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED']] }
+                        ]
+                      },
+                      { $ifNull: ['$pricingDetails.totalAmount', 0] },
+                      0
+                    ]
+                  }
+                },
+                refundedAmount: {
+                  $sum: { $ifNull: ['$pricingDetails.refundAmount', '$refundAmount', 0] }
+                },
+                todayRevenue: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $eq: ['$bookingDate', todayStr] },
+                          {
+                            $or: [
+                              { $in: ['$paymentStatus', ['captured', 'success', 'paid', 'completed', 'PAID', 'CAPTURED', 'SUCCESS']] },
+                              { $in: ['$status', ['confirmed', 'checked-in', 'completed', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED']] }
+                            ]
+                          }
+                        ]
+                      },
+                      { $ifNull: ['$pricingDetails.totalAmount', 0] },
+                      0
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                totalBookings: 1,
+                paidBookings: 1,
+                pendingPayments: 1,
+                cancelledBookings: 1,
+                grossRevenue: 1,
+                refundedAmount: 1,
+                todayRevenue: 1,
+                totalRevenue: { $subtract: ['$grossRevenue', '$refundedAmount'] }
+              }
+            }
+          ],
+          amenitySummary: [
+            {
+              $group: {
+                _id: '$resolvedAmenityName',
+                amenityId: { $first: { $ifNull: ['$amenityV1._id', '$amenityV2._id', '$amenityId'] } },
+                amenityName: { $first: '$resolvedAmenityName' },
+                bookingsCount: { $sum: 1 },
+                grossRevenue: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $or: [
+                          { $in: ['$paymentStatus', ['captured', 'success', 'paid', 'completed', 'PAID', 'CAPTURED', 'SUCCESS']] },
+                          { $in: ['$status', ['confirmed', 'checked-in', 'completed', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED']] }
+                        ]
+                      },
+                      { $ifNull: ['$pricingDetails.totalAmount', 0] },
+                      0
+                    ]
+                  }
+                },
+                refundedAmount: {
+                  $sum: { $ifNull: ['$pricingDetails.refundAmount', '$refundAmount', 0] }
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                amenityId: 1,
+                amenityName: 1,
+                bookingsCount: 1,
+                grossRevenue: 1,
+                refundedAmount: 1,
+                netRevenue: { $subtract: ['$grossRevenue', '$refundedAmount'] }
+              }
+            },
+            { $sort: { netRevenue: -1, bookingsCount: -1 } }
           ]
         }
       }
-    ];
+    );
 
     const result = await AmenityBooking.aggregate(pipeline);
-    const data = result[0]?.data || [];
-    const totalRecords = (result[0]?.metadata && result[0].metadata.length > 0) ? result[0].metadata[0].totalRecords : 0;
-    return { data, totalRecords };
+    const facetRes = result[0] || {};
+    const data = facetRes.data || [];
+    const totalRecords = facetRes.metadata?.[0]?.totalRecords || 0;
+    const summary = facetRes.summary?.[0] || {
+      totalRevenue: 0,
+      todayRevenue: 0,
+      totalBookings: 0,
+      paidBookings: 0,
+      pendingPayments: 0,
+      refundedAmount: 0,
+      cancelledBookings: 0
+    };
+    const amenitySummary = facetRes.amenitySummary || [];
+
+    return { data, totalRecords, summary, amenitySummary };
   }
 
   async findByUser(userId, orgId, filters = {}) {

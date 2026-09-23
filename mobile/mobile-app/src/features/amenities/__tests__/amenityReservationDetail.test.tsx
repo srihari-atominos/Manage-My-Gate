@@ -581,7 +581,7 @@ describe('Amenity Management Phase 6C.3: Resident Reservation Detail & Access Pa
         />
       );
 
-      expect(screen.getByText('CHECKED_OUT')).toBeTruthy();
+      expect(screen.getByText('Checked Out')).toBeTruthy();
       expect(
         screen.getByText(/Access Completed. You have checked out of the facility./)
       ).toBeTruthy();
@@ -605,7 +605,7 @@ describe('Amenity Management Phase 6C.3: Resident Reservation Detail & Access Pa
         />
       );
 
-      expect(screen.getByText('CHECKED_IN')).toBeTruthy();
+      expect(screen.getByText(/checked[ _]in/i)).toBeTruthy();
       expect(screen.getByText(/Currently Checked In. Enjoy your session!/)).toBeTruthy();
     });
 

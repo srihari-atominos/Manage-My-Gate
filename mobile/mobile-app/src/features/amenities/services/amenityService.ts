@@ -179,14 +179,22 @@ export const getBookingQueue = async (params: {
   limit?: number;
   search?: string;
   status?: string;
+  paymentStatus?: string;
   amenityId?: string;
+  datePreset?: string;
+  startDate?: string;
+  endDate?: string;
 } = {}) => {
   const query = new URLSearchParams();
   if (params.page) query.append('page', String(params.page));
   if (params.limit) query.append('limit', String(params.limit));
   if (params.search) query.append('search', params.search);
   if (params.status && params.status !== 'All') query.append('status', params.status);
+  if (params.paymentStatus && params.paymentStatus !== 'All') query.append('paymentStatus', params.paymentStatus);
   if (params.amenityId && params.amenityId !== 'All') query.append('amenityId', params.amenityId);
+  if (params.datePreset && params.datePreset !== 'all') query.append('datePreset', params.datePreset);
+  if (params.startDate) query.append('startDate', params.startDate);
+  if (params.endDate) query.append('endDate', params.endDate);
 
   const queryString = query.toString();
   return await apiClient.get(`/amenity-bookings/queue${queryString ? `?${queryString}` : ''}`);

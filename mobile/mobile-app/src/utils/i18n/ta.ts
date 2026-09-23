@@ -1196,7 +1196,7 @@ export const ta: Record<string, string> = {
   'enter_6_digit_pin_code_or_name': '6 இலக்க பின், குறியீடு அல்லது பெயரை உள்ளிடவும்...',
   'no_live_activity': 'நேரலை செயல்பாடு எதுவும் இல்லை',
   'recent_check_in_scans_will_stream_live_h': 'குடியிருப்பாளர்கள் வசதிகளைப் பயன்படுத்தும்போது, சமீபத்திய நுழைவு வருடல்கள் இங்கே நேரலையாகத் தோன்றும்.',
-  'amenity_qr_scanner': 'வசதி QR ஸ்கேனர்',
+  'amenity_qr_scanner': 'QR ஸ்கேனர்',
   'manual_booking_token_lookup': 'கைமுறை முன்பதிவு டோக்கன் தேடல்',
   'enter_the_resident_reservation_reference': 'QR ஸ்கேன் கிடைக்கவில்லை என்றால் குடியிருப்பாளர் முன்பதிவு குறிப்பு டோக்கனை உள்ளிடவும்.',
   'eg_bk_778899': 'எ.கா. BK-778899',

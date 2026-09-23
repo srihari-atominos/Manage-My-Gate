@@ -236,6 +236,37 @@ export interface AmenityAccessPass {
   passTokenHash?: string;
   createdAt: string;
   updatedAt: string;
+  resident?: {
+    id?: string;
+    name?: string;
+    photoUrl?: string | null;
+    unitNumber?: string | null;
+    villaNumber?: string | null;
+    phone?: string | null;
+  };
+  facility?: {
+    id?: string;
+    name?: string;
+    location?: string | null;
+  };
+  booking?: {
+    id?: string;
+    bookingId?: string;
+    reservationNumber?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    status?: string;
+    headcount?: number;
+  };
+  organisation?: {
+    id?: string;
+    name?: string;
+  };
+  guard?: {
+    id?: string;
+    name?: string;
+  };
 }
 
 // Maintenance Block Domain Model

@@ -73,6 +73,15 @@ const startServer = async () => {
       logger.info(`🚀 Server is running on http://${host}:${port}`);
     });
 
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        logger.warn(`Port ${port} is already in use. An active backend instance is already running on http://${host}:${port}.`);
+        process.exit(0);
+      } else {
+        logger.error('HTTP Server Error:', err);
+      }
+    });
+
     const shutdown = (signal) => {
       logger.info(`Received ${signal}, shutting down server...`);
       try {

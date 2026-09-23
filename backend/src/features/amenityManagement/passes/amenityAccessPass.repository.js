@@ -31,7 +31,11 @@ export class AmenityAccessPassRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findByTokenHash(orgId, passTokenHash, session) {
-    return AmenityAccessPass.findOne({ orgId, passTokenHash }).session(getValidSession(session));
+    const query = { passTokenHash };
+    if (orgId) {
+      query.orgId = orgId;
+    }
+    return AmenityAccessPass.findOne(query).session(getValidSession(session));
   }
 
   /**
@@ -52,23 +56,33 @@ export class AmenityAccessPassRepository {
    * @param {string} [params.gateId]
    * @param {mongoose.ClientSession} [session]
    */
-  async recordCheckIn({ orgId, passTokenHash, gateId }, session) {
+  async recordCheckIn({ orgId, passTokenHash, gateId, guardId }, session) {
     const now = new Date();
+    // 15-minute early arrival grace window (validFrom <= now + 15 mins)
+    const earlyArrivalBoundary = new Date(now.getTime() + 15 * 60 * 1000);
+    // 1-minute end-time tolerance (validUntil >= now - 1 min)
+    const endToleranceBoundary = new Date(now.getTime() - 1 * 60 * 1000);
+
+    const update = {
+      $set: {
+        checkInTimestamp: now,
+        gateId: gateId || null,
+      },
+    };
+    if (guardId) {
+      update.$set['inspectionDetails.checkedOutByStaff'] = guardId;
+    }
+
     return AmenityAccessPass.findOneAndUpdate(
       {
         orgId,
         passTokenHash,
         isRevoked: false,
-        validFrom: { $lte: now },
-        validUntil: { $gte: now },
+        validFrom: { $lte: earlyArrivalBoundary },
+        validUntil: { $gte: endToleranceBoundary },
         checkInTimestamp: null, // Anti-replay check
       },
-      {
-        $set: {
-          checkInTimestamp: now,
-          gateId: gateId || null,
-        },
-      },
+      update,
       { session: getValidSession(session), returnDocument: 'after' }
     );
   }

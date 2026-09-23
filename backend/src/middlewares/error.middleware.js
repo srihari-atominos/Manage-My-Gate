@@ -80,12 +80,19 @@ export const errorHandler = (err, req, res, next) => {
     message = `Invalid ID format provided for ${err.path || 'resource'}: ${err.value}`;
   }
 
-  // Log error using Winston logger
-  logger.error(`HTTP ${statusCode} - ${message}`, {
-    statusCode,
-    stack: err.stack,
-    requestId: req.id
-  });
+  // Log error using Winston logger: 5xx server errors get error level with stack; 4xx client errors get warn level
+  if (statusCode >= 500) {
+    logger.error(`HTTP ${statusCode} - ${message}`, {
+      statusCode,
+      stack: err.stack,
+      requestId: req.id
+    });
+  } else {
+    logger.warn(`HTTP ${statusCode} - ${message}`, {
+      statusCode,
+      requestId: req.id
+    });
+  }
 
   try {
     fs.writeFileSync('last_error.json', JSON.stringify({ statusCode, message, stack: err.stack, details, body: req.body }), 'utf-8');

@@ -4,7 +4,6 @@ import { RootState, AppDispatch } from '../../../store/store';
 import { useAppSocket } from '../../../hooks/useAppSocket';
 import {
   checkInPassThunk,
-  checkOutPassThunk,
   clearV2PassResults,
   clearCheckInResult,
   fetchRecentScansThunk,
@@ -12,7 +11,6 @@ import {
 import { parseAndValidateAppBarcode } from '@/src/utils/appBarcodeProtocol';
 import {
   AmenityAccessPass,
-  AmenityInspectionDetails,
   AmenityErrorDetails,
 } from '../types/amenityDomain.types';
 
@@ -24,7 +22,13 @@ export interface UseSecurityScannerOptions {
 }
 
 /**
- * Safely extracts a 64-character raw hexadecimal pass token from QR or manual input.
+ * Safely extracts an amenity pass token or reference from QR or manual input.
+ * Supports:
+ * 1. Raw 64-character hexadecimal pass token
+ * 2. Canonical MMG:AMENITY:<token> format
+ * 3. Application barcode protocol (parseAndValidateAppBarcode)
+ * 4. Backward-compatible JSON wrapper inspection (Web & Mobile legacy)
+ * 5. Booking ID pattern (e.g. BKG-...) or Mongo ObjectId
  * Strictly avoids logging or persisting the token.
  */
 export function extractRawPassToken(rawInput: string): string | null {
@@ -36,25 +40,54 @@ export function extractRawPassToken(rawInput: string): string | null {
     return trimmed;
   }
 
-  // 2. Manage-My-Gate application barcode protocol inspection
+  // 2. Canonical MMG:AMENITY prefix (e.g. MMG:AMENITY:<token>)
+  if (/^MMG:AMENITY:/i.test(trimmed)) {
+    const token = trimmed.replace(/^MMG:AMENITY:/i, '').trim();
+    if (token) return token;
+  }
+
+  // 3. Backward-compatible JSON wrapper inspection (Web & Mobile legacy)
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') {
+        const candidate = String(
+          parsed.passToken || parsed.rawToken || parsed.qrData || parsed.token || parsed.bookingId || parsed.id || ''
+        ).trim();
+        if (candidate) {
+          return candidate;
+        }
+      }
+    } catch {
+      // Not valid JSON; fall through
+    }
+  }
+
+  // 4. Manage-My-Gate application barcode protocol inspection (must be AMENITY or valid token/ID)
   const validation = parseAndValidateAppBarcode(trimmed);
   if (validation.isValid && validation.code) {
-    if (/^[0-9a-fA-F]{64}$/.test(validation.code)) {
+    if (
+      validation.type === 'AMENITY' ||
+      /^[0-9a-fA-F]{64}$/.test(validation.code) ||
+      /^(RES|BKG|GYM|POOL|TEN|CLUB|BAD|BBALL|SQUASH|SPA|CINE)-[0-9A-Z_-]+$/i.test(validation.code) ||
+      /^[A-Z]{2,6}-\d+$/i.test(validation.code) ||
+      /^[0-9a-fA-F]{6}$/i.test(validation.code) ||
+      /^\d{6}-\d{6}$/.test(validation.code) ||
+      /^[0-9a-fA-F]{24}$/.test(validation.code)
+    ) {
       return validation.code;
     }
   }
 
-  // 2. Backward-compatible JSON wrapper inspection
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (parsed && typeof parsed === 'object') {
-      const candidate = String(parsed.rawToken || parsed.qrData || parsed.token || '').trim();
-      if (/^[0-9a-fA-F]{64}$/.test(candidate)) {
-        return candidate;
-      }
-    }
-  } catch {
-    // Not valid JSON; fall through
+  // 5. Booking / Reservation pattern (e.g. RES-..., POOL-..., GYM-..., 6BBF46, 202609-000004) or Mongo ObjectId
+  if (
+    /^(RES|BKG|GYM|POOL|TEN|CLUB|BAD|BBALL|SQUASH|SPA|CINE)-[0-9A-Z_-]+$/i.test(trimmed) ||
+    /^[A-Z]{2,6}-\d+$/i.test(trimmed) ||
+    /^[0-9a-fA-F]{6}$/i.test(trimmed) ||
+    /^\d{6}-\d{6}$/.test(trimmed) ||
+    /^[0-9a-fA-F]{24}$/.test(trimmed)
+  ) {
+    return trimmed;
   }
 
   return null;
@@ -65,12 +98,9 @@ export function useSecurityScanner(options: UseSecurityScannerOptions = {}) {
   const dispatch = useDispatch<AppDispatch>();
   const { socket } = useAppSocket();
 
-  const [scanMode, setScanMode] = useState<ScanMode>(defaultMode);
   const [isScanning, setIsScanning] = useState<boolean>(true);
   const [isFlashlightOn, setIsFlashlightOn] = useState<boolean>(false);
   const [isResultModalOpen, setIsResultModalOpen] = useState<boolean>(false);
-  const [isInspectionModalOpen, setIsInspectionModalOpen] = useState<boolean>(false);
-  const [pendingCheckOutToken, setPendingCheckOutToken] = useState<string | null>(null);
   const [localScanError, setLocalScanError] = useState<string | null>(null);
 
   const amenityBookingsState = useSelector(
@@ -78,7 +108,6 @@ export function useSecurityScanner(options: UseSecurityScannerOptions = {}) {
   );
 
   const v2CheckInResult: AmenityAccessPass | null = amenityBookingsState?.v2CheckInResult || null;
-  const v2CheckOutResult: AmenityAccessPass | null = amenityBookingsState?.v2CheckOutResult || null;
   const v2PassActionLoading: boolean = Boolean(amenityBookingsState?.v2PassActionLoading);
   const v2PassError: AmenityErrorDetails | null = amenityBookingsState?.v2PassError || null;
   const recentScans = amenityBookingsState?.recentScans || [];
@@ -130,69 +159,31 @@ export function useSecurityScanner(options: UseSecurityScannerOptions = {}) {
         return;
       }
 
-      if (scanMode === 'CHECK_IN') {
-        await dispatch(checkInPassThunk({ rawToken, gateId }));
-        setIsResultModalOpen(true);
-        loadRecentScans();
-      } else {
-        // CHECK_OUT Mode: store pending token and present inspection dialog
-        setPendingCheckOutToken(rawToken);
-        setIsInspectionModalOpen(true);
-      }
-    },
-    [dispatch, v2PassActionLoading, scanMode, gateId, loadRecentScans]
-  );
-
-  // Cleanup pending checkout token on unmount to prevent retention in memory
-  useEffect(() => {
-    return () => {
-      setPendingCheckOutToken(null);
-    };
-  }, []);
-
-  const executeCheckOutWithInspection = useCallback(
-    async (inspectionDetails?: AmenityInspectionDetails) => {
-      const token = pendingCheckOutToken;
-      if (!token) return;
-
-      setIsInspectionModalOpen(false);
-      try {
-        await dispatch(checkOutPassThunk({ rawToken: token, inspectionDetails }));
-      } finally {
-        setPendingCheckOutToken(null);
-      }
+      await dispatch(checkInPassThunk({ rawToken, gateId }));
       setIsResultModalOpen(true);
       loadRecentScans();
     },
-    [dispatch, pendingCheckOutToken, loadRecentScans]
+    [dispatch, v2PassActionLoading, gateId, loadRecentScans]
   );
-
-  const cancelCheckOutInspection = useCallback(() => {
-    setPendingCheckOutToken(null);
-    setIsInspectionModalOpen(false);
-    setIsScanning(true);
-  }, []);
 
   const resetScanner = useCallback(() => {
     dispatch(clearV2PassResults());
     dispatch(clearCheckInResult());
     setLocalScanError(null);
-    setPendingCheckOutToken(null);
-    setIsInspectionModalOpen(false);
     setIsResultModalOpen(false);
     setIsScanning(true);
   }, [dispatch]);
 
   return {
-    scanMode,
-    setScanMode,
+    scanMode: 'CHECK_IN' as ScanMode,
+    setScanMode: () => {},
     isScanning,
     isFlashlightOn,
     isResultModalOpen,
-    isInspectionModalOpen,
-    setIsInspectionModalOpen,
+    isInspectionModalOpen: false,
+    setIsInspectionModalOpen: () => {},
     v2CheckInResult,
-    v2CheckOutResult,
+    v2CheckOutResult: null,
     v2PassActionLoading,
     v2PassError,
     localScanError,
@@ -201,8 +192,8 @@ export function useSecurityScanner(options: UseSecurityScannerOptions = {}) {
     recentScans,
     toggleFlashlight,
     handleBarCodeScanned,
-    executeCheckOutWithInspection,
-    cancelCheckOutInspection,
+    executeCheckOutWithInspection: async () => {},
+    cancelCheckOutInspection: () => {},
     resetScanner,
     loadRecentScans,
   };

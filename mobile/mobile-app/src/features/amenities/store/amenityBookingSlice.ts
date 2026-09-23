@@ -183,6 +183,10 @@ export interface AmenityBookingState {
   v2CheckOutResult: AmenityAccessPass | null;
   v2PassActionLoading: boolean;
   v2PassError: AmenityErrorDetails | null;
+
+  // Master Ledger Summary Stats
+  ledgerSummary: any;
+  amenitySummary: any[];
 }
 
 const initialState: AmenityBookingState = {
@@ -224,6 +228,10 @@ const initialState: AmenityBookingState = {
   v2CheckOutResult: null,
   v2PassActionLoading: false,
   v2PassError: null,
+
+  // Master Ledger Summary Stats
+  ledgerSummary: null,
+  amenitySummary: [],
 };
 
 // ==========================================
@@ -710,7 +718,8 @@ const amenityBookingSlice = createSlice({
       .addCase(fetchBookingQueueThunk.fulfilled, (state, action: any) => {
         state.loading = false;
         state.error = null;
-        const payload = action.payload?.data || action.payload;
+        const resObj = action.payload || {};
+        const payload = resObj.data || resObj;
         let list: any[] = [];
         if (Array.isArray(payload)) {
           list = payload;
@@ -721,15 +730,24 @@ const amenityBookingSlice = createSlice({
             limit: payload.length || 10,
           };
         } else if (payload && typeof payload === 'object') {
-          list = payload.docs || payload.bookings || payload.items || [];
+          list = payload.docs || payload.bookings || payload.items || payload.data || [];
+          const pag = payload.pagination || resObj.pagination || {};
           state.pagination = {
-            currentPage: payload.page || payload.currentPage || 1,
-            totalPages: payload.totalPages || payload.pages || 1,
-            totalRecords: payload.totalDocs || payload.totalRecords || list.length,
-            limit: payload.limit || 10,
+            currentPage: pag.currentPage || payload.page || payload.currentPage || 1,
+            totalPages: pag.totalPages || payload.totalPages || payload.pages || 1,
+            totalRecords: pag.totalRecords || payload.totalDocs || payload.totalRecords || list.length,
+            limit: pag.limit || payload.limit || 10,
           };
         }
         state.adminBookings = list.map(normalizeAmenityBooking);
+        const summary = payload.summary || resObj.summary;
+        if (summary) {
+          state.ledgerSummary = summary;
+        }
+        const amenitySummary = payload.amenitySummary || resObj.amenitySummary;
+        if (amenitySummary) {
+          state.amenitySummary = amenitySummary;
+        }
       })
       .addCase(fetchBookingQueueThunk.rejected, (state, action) => {
         state.loading = false;

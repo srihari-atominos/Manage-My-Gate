@@ -4,6 +4,7 @@ import { ListCard } from '@/components/ui/ListCard';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { QrCode } from 'lucide-react-native';
 import { AmenityBooking } from '../store/amenityBookingSlice';
 import { formatTimeRange12Hour } from '../utils/amenityStateHelpers';
 import { useTranslation } from '@/src/utils/i18n';
@@ -173,17 +174,18 @@ export function AmenityBookingCard({
       {canViewPass && (
         <View className="flex-row justify-between items-center pt-2 mt-1 border-t border-border/30">
           <Button
-            variant="outline"
+            variant="info"
             size="sm"
             onPress={(e: any) => {
               e?.stopPropagation?.();
               onViewPassQR(booking);
             }}
-            className="h-8 px-3 rounded-lg border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20"
+            className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg"
             accessibilityRole="button"
-            accessibilityLabel="View digital pass QR"
+            accessibilityLabel={`View Pass Code for ${translateText(amenityName)}`}
           >
-            <Text className="text-blue-600 dark:text-blue-400 text-xs font-semibold">{t('view_pass_qr', 'View Pass QR')}</Text>
+            <QrCode size={14} color="#245fa8" />
+            <Text>{t('pass_code', 'Pass Code')}</Text>
           </Button>
           {isCancelable && onCancelPress && (
             <Button

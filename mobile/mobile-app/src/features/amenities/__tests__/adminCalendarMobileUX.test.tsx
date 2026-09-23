@@ -355,7 +355,7 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
       // Time, Resident & Unit
       expect(screen.getByText(/9:00 AM - 10:00 AM • Naveen Vijayakumar \(Villa 101\)/)).toBeTruthy();
       // Status
-      expect(screen.getByText('CONFIRMED')).toBeTruthy();
+      expect(screen.getByText(/confirmed/i)).toBeTruthy();
       // Payment Status
       expect(screen.getByText('Paid')).toBeTruthy();
       // Ref ID

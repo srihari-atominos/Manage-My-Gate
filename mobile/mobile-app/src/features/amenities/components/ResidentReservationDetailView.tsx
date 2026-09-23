@@ -25,6 +25,9 @@ import {
   getCompletionStatusVariant,
 } from './ResidentReservationCard';
 import { ResidentAccessPassCard } from './ResidentAccessPassCard';
+import { AmenityPassDetailsModal } from './AmenityPassDetailsModal';
+import { useTranslation } from '@/src/utils/i18n';
+import { QrCode } from 'lucide-react-native';
 import {
   formatUtcToLocalDisplay,
   formatTo12Hour,
@@ -52,6 +55,9 @@ export function ResidentReservationDetailView({
   className = '',
   testID = 'resident-reservation-detail-view',
 }: ResidentReservationDetailViewProps) {
+  const { t } = useTranslation();
+  const [passModalOpen, setPassModalOpen] = React.useState(false);
+
   const facilityName = reservation.facilityName || 'Amenity Facility';
   const reservationNumber = reservation.reservationNumber || reservation._id;
   const pricing = reservation.pricingSnapshot;
@@ -138,11 +144,27 @@ export function ResidentReservationDetailView({
       </View>
 
       {/* 2. Digital Access Pass Section */}
-      <ResidentAccessPassCard
-        passes={accessPasses}
-        reservation={reservation}
-        testID="detail-access-pass-card"
-      />
+      <View className="gap-2.5">
+        <ResidentAccessPassCard
+          passes={accessPasses}
+          reservation={reservation}
+          testID="detail-access-pass-card"
+        />
+        {accessPasses?.length > 0 || reservation.accessStatus === 'PASS_GENERATED' ? (
+          <Button
+            variant="outline"
+            onPress={() => setPassModalOpen(true)}
+            className="w-full h-11 rounded-2xl border-primary/30 bg-primary/5 active:bg-primary/10 flex-row items-center justify-center gap-2"
+            accessibilityRole="button"
+            accessibilityLabel="Open Pass Details and Share"
+          >
+            <QrCode size={16} className="text-primary" />
+            <Text className="font-bold text-primary text-xs">
+              {t('view_full_pass_share', 'Open Pass & Share on WhatsApp')}
+            </Text>
+          </Button>
+        ) : null}
+      </View>
 
       {/* 3. Authoritative Lifecycle States (Five Orthogonal Dimensions) */}
       <DetailSection
@@ -316,6 +338,15 @@ export function ResidentReservationDetailView({
           </Button>
         </View>
       ) : null}
+
+      {/* Visitor-Management-Aligned Pass Details Modal */}
+      <AmenityPassDetailsModal
+        visible={passModalOpen}
+        reservation={reservation}
+        accessPass={accessPasses?.[0] || null}
+        onClose={() => setPassModalOpen(false)}
+        onCancelPress={onCancelPress}
+      />
     </ScrollView>
   );
 }

@@ -86,6 +86,18 @@ const amenityBookingSchema = new mongoose.Schema({
     type: String, // The encrypted payload or URL to the QR image
     default: null
   },
+  passToken: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  passTokenHash: {
+    type: String,
+    default: null,
+    trim: true,
+    index: true,
+    sparse: true
+  },
   qrStatus: {
     type: String,
     enum: ['active', 'expired', 'revoked'],

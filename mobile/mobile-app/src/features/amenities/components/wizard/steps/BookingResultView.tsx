@@ -132,11 +132,17 @@ export function BookingResultView({
             </Button>
           </View>
 
-          <QRCodeView
-            value={primaryPass?.qrData || primaryPass?.passCode || reservation.reservationNumber || reservation._id}
-            size={180}
-            caption={`Pass Code: ${primaryPass?.passCode || reservation.reservationNumber || reservation._id}`}
-          />
+          {(() => {
+            const raw = primaryPass?.qrData || primaryPass?.passCode || reservation.reservationNumber || reservation._id;
+            const qrValue = raw && String(raw).startsWith('MMG:AMENITY:') ? String(raw) : `MMG:AMENITY:${raw}`;
+            return (
+              <QRCodeView
+                value={qrValue}
+                size={180}
+                caption={`Pass Code: ${primaryPass?.passCode || reservation.reservationNumber || reservation._id}`}
+              />
+            );
+          })()}
 
           <View className="mt-1 flex-row items-center gap-2">
             <StatusBadge label={primaryPass?.status || 'ACTIVE'} variant="success" dot />

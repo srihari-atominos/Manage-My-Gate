@@ -4,13 +4,19 @@ import HttpError from '../../utils/httpError.utils.js';
 export class AmenityBookingController {
   async getQueue(req, res, next) {
     try {
-      const orgId = req.tenant.orgId;
+      const orgId = req.tenant?.orgId || req.headers['x-organization-id'] || req.user?.orgId;
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
       const filters = {};
       if (req.query.status) filters.status = req.query.status;
-      if (req.query.amenityId) filters.amenityId = req.query.amenityId;
+      if (req.query.paymentStatus) filters.paymentStatus = req.query.paymentStatus;
+      if (req.query.amenityId || req.query.facilityId) filters.amenityId = req.query.amenityId || req.query.facilityId;
       if (req.query.date) filters.date = req.query.date;
+      if (req.query.bookingDate) filters.bookingDate = req.query.bookingDate;
+      if (req.query.startDate) filters.startDate = req.query.startDate;
+      if (req.query.endDate) filters.endDate = req.query.endDate;
+      if (req.query.datePreset) filters.datePreset = req.query.datePreset;
+      if (req.query.search) filters.search = req.query.search;
       if (req.query.userId) filters.userId = req.query.userId;
       if (req.query.checkedInBy) filters.checkedInBy = req.query.checkedInBy;
 
