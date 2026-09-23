@@ -12,6 +12,7 @@ export default function ResidentLayout() {
       <Stack.Screen name="complaints" />
       <Stack.Screen name="notices" />
       <Stack.Screen name="polls" />
+      <Stack.Screen name="community-engagement" />
       <Stack.Screen name="visitor" />
       <Stack.Screen name="profile/index" />
       <Stack.Screen name="account/index" />

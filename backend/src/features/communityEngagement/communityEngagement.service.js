@@ -28,7 +28,7 @@ export class CommunityEngagementService {
    * @param {Object} user - Authenticated user
    * @param {'NOTICE'|'POLL'} contentType - Target content type
    */
-  async verifyContentTypePermission(user, contentType) {
+  async verifyContentTypePermission(user, contentType, action = 'create') {
     const roleUpper = (user?.role || '').toUpperCase();
     const isFullAdmin =
       ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(
@@ -46,20 +46,30 @@ export class CommunityEngagementService {
     const userPermissions = expandUserPermissions(permissions.map(mapPermission));
 
     if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.NOTICE) {
-      const hasNoticeCreate =
-        userPermissions.includes('notices:create') ||
-        userPermissions.includes('notices:manage_notices');
-      if (!hasNoticeCreate) {
-        throw new HttpError(403, 'Forbidden. You do not have permission to create notices.');
+      const hasNoticePerm =
+        action === 'update'
+          ? userPermissions.includes('notices:update') ||
+            userPermissions.includes('notices:manage_notices') ||
+            userPermissions.includes('manage_notices')
+          : userPermissions.includes('notices:create') ||
+            userPermissions.includes('notices:manage_notices') ||
+            userPermissions.includes('manage_notices');
+      if (!hasNoticePerm) {
+        throw new HttpError(403, `Forbidden. You do not have permission to ${action} notices.`);
       }
     } else if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.POLL) {
-      const hasPollCreate =
-        userPermissions.includes('polls:create') ||
-        userPermissions.includes('notices:manage_notices') ||
-        userPermissions.includes('notices:manage_polls') ||
-        userPermissions.includes('polls:manage');
-      if (!hasPollCreate) {
-        throw new HttpError(403, 'Forbidden. You do not have permission to create polls.');
+      const hasPollPerm =
+        action === 'update'
+          ? userPermissions.includes('polls:update') ||
+            userPermissions.includes('notices:manage_notices') ||
+            userPermissions.includes('notices:manage_polls') ||
+            userPermissions.includes('polls:manage')
+          : userPermissions.includes('polls:create') ||
+            userPermissions.includes('notices:manage_notices') ||
+            userPermissions.includes('notices:manage_polls') ||
+            userPermissions.includes('polls:manage');
+      if (!hasPollPerm) {
+        throw new HttpError(403, `Forbidden. You do not have permission to ${action} polls.`);
       }
     }
 
@@ -147,6 +157,129 @@ export class CommunityEngagementService {
 
       const poll = await this.pollService.createPoll(pollData);
       const pollObj = poll && typeof poll.toObject === 'function' ? poll.toObject() : poll;
+
+      return {
+        contentType: COMMUNITY_ENGAGEMENT_CONTENT_TYPES.POLL,
+        ...pollObj,
+      };
+    }
+
+    throw new HttpError(400, `Unhandled contentType: '${contentType}'`);
+  }
+
+  /**
+   * Orchestrates unified content update across Notice and Poll domains.
+   *
+   * @param {string} id - Target entity ID
+   * @param {Object} contentData - Request payload
+   * @param {Object} user - Authenticated user object
+   * @param {Object} tenant - Validated tenant context ({ orgId })
+   * @param {Array} [files=[]] - Optional uploaded files (e.g. for Notice attachments)
+   * @returns {Promise<Object>} Updated content with contentType discriminator
+   */
+  async updateContent(id, contentData, user, tenant, files = []) {
+    const orgId = tenant?.orgId;
+    if (!orgId) {
+      throw new HttpError(400, 'Workspace / Organization context is required.');
+    }
+
+    const userId = user?.id || user?._id;
+    if (!userId) {
+      throw new HttpError(401, 'Unauthorized. Authentication required.');
+    }
+
+    if (!id) {
+      throw new HttpError(400, 'Content ID is required for update.');
+    }
+
+    const rawType = contentData?.contentType;
+    if (!rawType || typeof rawType !== 'string') {
+      throw new HttpError(400, 'contentType is required');
+    }
+
+    const contentType = rawType.trim().toUpperCase();
+    if (!VALID_CONTENT_TYPES.includes(contentType)) {
+      throw new HttpError(
+        400,
+        `Invalid contentType: '${rawType}'. Allowed values are: ${VALID_CONTENT_TYPES.join(', ')}`
+      );
+    }
+
+    // Granular content-type permission check for update
+    await this.verifyContentTypePermission(user, contentType, 'update');
+
+    // Normalize audience targeting
+    let targetAudience = contentData.targetAudience || contentData.audience;
+    if (typeof targetAudience === 'string') {
+      try {
+        targetAudience = JSON.parse(targetAudience);
+      } catch (e) {
+        // preserve
+      }
+    }
+
+    const roleUpper = (user?.role || '').toUpperCase();
+    const isCommunityAdmin =
+      ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(
+        user?.role
+      ) ||
+      roleUpper.includes('ADMIN') ||
+      roleUpper.includes('SUPER') ||
+      user?.isPlatform;
+
+    // Delegation to Notice Domain
+    if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.NOTICE) {
+      const uploadedImages = (files || []).map((file) => ({
+        url: `/public/uploads/notices/${file.filename}`,
+        filename: file.originalname,
+        uploadTimestamp: new Date(),
+      }));
+
+      const updateData = {
+        ...contentData,
+      };
+      if (targetAudience) {
+        updateData.targetAudience = targetAudience;
+      }
+      if (uploadedImages.length > 0) {
+        updateData.images = [
+          ...(contentData.images || []),
+          ...uploadedImages,
+        ];
+      }
+
+      const updatedNotice = await this.noticeService.updateNotice(id, updateData, userId, orgId);
+      const noticeObj =
+        updatedNotice && typeof updatedNotice.toObject === 'function'
+          ? updatedNotice.toObject()
+          : updatedNotice;
+
+      return {
+        contentType: COMMUNITY_ENGAGEMENT_CONTENT_TYPES.NOTICE,
+        ...noticeObj,
+      };
+    }
+
+    // Delegation to Poll Domain
+    if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.POLL) {
+      const updateData = {
+        ...contentData,
+      };
+      if (targetAudience) {
+        updateData.targetAudience = targetAudience;
+      }
+
+      const updatedPoll = await this.pollService.updatePoll(
+        id,
+        orgId,
+        userId,
+        updateData,
+        isCommunityAdmin
+      );
+      const pollObj =
+        updatedPoll && typeof updatedPoll.toObject === 'function'
+          ? updatedPoll.toObject()
+          : updatedPoll;
 
       return {
         contentType: COMMUNITY_ENGAGEMENT_CONTENT_TYPES.POLL,

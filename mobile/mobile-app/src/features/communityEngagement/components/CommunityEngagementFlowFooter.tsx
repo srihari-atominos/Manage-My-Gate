@@ -10,6 +10,7 @@ export interface CommunityEngagementFlowFooterProps {
   onSaveDraft?: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
+  isEditMode?: boolean;
   loading?: boolean;
   savingDraft?: boolean;
   disabled?: boolean;
@@ -22,6 +23,7 @@ export const CommunityEngagementFlowFooter: React.FC<CommunityEngagementFlowFoot
   onSaveDraft,
   isFirstStep,
   isLastStep,
+  isEditMode = false,
   loading = false,
   savingDraft = false,
   disabled = false,
@@ -70,7 +72,9 @@ export const CommunityEngagementFlowFooter: React.FC<CommunityEngagementFlowFoot
         accessibilityRole="button"
         accessibilityLabel={
           isLastStep
-            ? publishNow
+            ? isEditMode
+              ? 'Save Changes'
+              : publishNow
               ? 'Publish Announcement Now'
               : 'Schedule Announcement'
             : 'Continue to next step'
@@ -81,7 +85,9 @@ export const CommunityEngagementFlowFooter: React.FC<CommunityEngagementFlowFoot
             <CheckCircle2 size={18} className="text-primary-foreground" />
             <Text className="font-bold text-primary-foreground text-sm">
               {loading
-                ? 'Submitting...'
+                ? 'Saving...'
+                : isEditMode
+                ? 'Save Changes'
                 : publishNow
                 ? 'Publish Now'
                 : 'Schedule Content'}

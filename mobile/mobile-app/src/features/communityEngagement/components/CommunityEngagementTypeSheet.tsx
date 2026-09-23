@@ -18,18 +18,18 @@ export interface ContentTypeCatalogOption {
 export const CONTENT_TYPE_OPTIONS: ContentTypeCatalogOption[] = [
   {
     type: 'NOTICE',
-    label: 'Official Notice',
-    badge: 'Broadcast & Alerts',
-    hint: 'Broadcast community news, maintenance notices, bylaw rules, or critical emergency alerts.',
-    examples: 'Water Shutdown, AGM Meeting, Lift Maintenance, Fire Drill',
+    label: 'Notice',
+    badge: 'Announcement',
+    hint: 'Share information with residents',
+    examples: 'Community news, maintenance updates, circulars',
     icon: Bell,
   },
   {
     type: 'POLL',
-    label: 'Community Poll',
-    badge: 'Voting & Feedback',
-    hint: 'Conduct democratic resident votes, unit-level ballots, or feedback surveys with automated tallies.',
-    examples: 'Gym Equipment Choice, Festival Dates, Pet Policy Amendment',
+    label: 'Poll',
+    badge: 'Voting',
+    hint: 'Get opinions from residents',
+    examples: 'Community decisions, resident feedback',
     icon: BarChart3,
   },
 ];
@@ -48,11 +48,11 @@ export const CommunityEngagementTypeSheet: React.FC<CommunityEngagementTypeSheet
   onSelectType,
 }) => {
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Create Community Content">
+    <BottomSheet visible={visible} onClose={onClose} title="Create Engagement">
       <ScrollView className="max-h-[520px] px-1 py-1" showsVerticalScrollIndicator={false}>
         <View className="gap-3 pb-6">
           <Text variant="muted" className="text-xs px-1">
-            Choose what type of community engagement you want to create for residents and staff.
+            Choose what you want to create
           </Text>
 
           {CONTENT_TYPE_OPTIONS.map((option) => {

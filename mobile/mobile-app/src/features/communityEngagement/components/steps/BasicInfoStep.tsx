@@ -33,7 +33,7 @@ const PRIORITY_OPTIONS: { label: string; value: NoticePriority; color: string }[
   { label: 'Low', value: 'Low', color: 'border-muted-foreground/30 bg-muted/30' },
   { label: 'Medium', value: 'Medium', color: 'border-blue-500/30 bg-blue-500/10' },
   { label: 'High', value: 'High', color: 'border-amber-500/30 bg-amber-500/10' },
-  { label: 'Urgent', value: 'Urgent', color: 'border-destructive/30 bg-destructive/10' },
+  { label: 'Critical', value: 'Critical', color: 'border-destructive/30 bg-destructive/10' },
 ];
 
 export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({

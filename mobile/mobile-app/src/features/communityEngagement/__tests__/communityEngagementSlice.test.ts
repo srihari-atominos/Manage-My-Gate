@@ -1,5 +1,6 @@
 import reducer, {
   initializeWizard,
+  initializeEditWizard,
   setContentType,
   updateFormData,
   setStepIndex,
@@ -8,13 +9,18 @@ import reducer, {
   resetWizard,
   fetchEngagementPreview,
   submitEngagementContent,
+  fetchEngagementItemForEdit,
+  updateEngagementContentThunk,
   CommunityEngagementState,
 } from '../store/communityEngagementSlice';
 import { buildEngagementPayload } from '../services/communityEngagementService';
 
 describe('Community Engagement Redux Slice & Payload Builder', () => {
   const getInitialState = (): CommunityEngagementState => ({
+    mode: 'create',
+    editingId: null,
     contentType: 'NOTICE',
+    loadingItem: false,
     formData: {
       contentType: 'NOTICE',
       title: '',
@@ -227,6 +233,113 @@ describe('Community Engagement Redux Slice & Payload Builder', () => {
       });
       expect(state.submitting).toBe(false);
       expect(state.error).toBe('Failed to create notice');
+    });
+
+    it('should populate state properly when initializeEditWizard is dispatched for Notice', () => {
+      const existingNotice = {
+        _id: 'notice-abc-123',
+        title: 'Elevator Maintenance Scheduled',
+        description: 'Passenger lift 1 will be serviced tomorrow morning.',
+        category: 'Maintenance',
+        priority: 'High',
+        status: 'Published',
+        isPinned: true,
+        targetAudience: { targetType: 'ALL' },
+      };
+
+      const state = reducer(
+        undefined,
+        initializeEditWizard({ item: existingNotice, type: 'NOTICE' })
+      );
+
+      expect(state.mode).toBe('edit');
+      expect(state.editingId).toBe('notice-abc-123');
+      expect(state.contentType).toBe('NOTICE');
+      expect(state.formData.title).toBe('Elevator Maintenance Scheduled');
+      expect(state.formData.category).toBe('Maintenance');
+      expect(state.formData.priority).toBe('High');
+      expect(state.formData.isPinned).toBe(true);
+      expect(state.formData.targetType).toBe('ALL');
+    });
+
+    it('should populate state properly when initializeEditWizard is dispatched for Poll', () => {
+      const existingPoll = {
+        _id: 'poll-xyz-456',
+        question: 'Should we add badminton courts?',
+        description: 'Vote on clubhouse phase 2 expansion.',
+        choiceType: 'MULTIPLE_CHOICE',
+        maxChoices: 2,
+        votingMode: 'ONE_PER_USER',
+        options: [{ text: 'Yes, badminton' }, { text: 'No, prefer gym equipment' }],
+        targetAudience: { targetType: 'ALL' },
+      };
+
+      const state = reducer(
+        undefined,
+        initializeEditWizard({ item: existingPoll, type: 'POLL' })
+      );
+
+      expect(state.mode).toBe('edit');
+      expect(state.editingId).toBe('poll-xyz-456');
+      expect(state.contentType).toBe('POLL');
+      expect(state.formData.title).toBe('Should we add badminton courts?');
+      expect(state.formData.choiceType).toBe('MULTIPLE_CHOICE');
+      expect(state.formData.maxChoices).toBe(2);
+      expect(state.formData.options).toEqual(['Yes, badminton', 'No, prefer gym equipment']);
+    });
+
+    it('should handle fetchEngagementItemForEdit fulfilled', () => {
+      const mockNotice = {
+        _id: 'notice-fetched-789',
+        title: 'Fetched Notice for Edit',
+        description: 'Details fetched from backend API',
+        category: 'Emergency',
+        priority: 'Critical',
+        status: 'Published',
+      };
+
+      const state = reducer(getInitialState(), {
+        type: fetchEngagementItemForEdit.fulfilled.type,
+        payload: { item: mockNotice, type: 'NOTICE' },
+      });
+
+      expect(state.mode).toBe('edit');
+      expect(state.editingId).toBe('notice-fetched-789');
+      expect(state.contentType).toBe('NOTICE');
+      expect(state.formData.title).toBe('Fetched Notice for Edit');
+      expect(state.formData.category).toBe('Emergency');
+      expect(state.formData.priority).toBe('Critical');
+      expect(state.loadingItem).toBe(false);
+    });
+
+    it('should handle updateEngagementContentThunk lifecycle (pending, fulfilled, rejected)', () => {
+      // 1. Pending
+      let state = reducer(getInitialState(), {
+        type: updateEngagementContentThunk.pending.type,
+      });
+      expect(state.submitting).toBe(true);
+      expect(state.error).toBeNull();
+
+      // 2. Fulfilled
+      const mockResult = {
+        success: true,
+        data: { _id: 'item-updated-123', title: 'Updated Title' },
+      };
+      state = reducer(state, {
+        type: updateEngagementContentThunk.fulfilled.type,
+        payload: mockResult,
+      });
+      expect(state.submitting).toBe(false);
+      expect(state.success).toBe(true);
+      expect(state.createdResult).toEqual(mockResult);
+
+      // 3. Rejected
+      state = reducer(getInitialState(), {
+        type: updateEngagementContentThunk.rejected.type,
+        payload: 'Failed to update notice',
+      });
+      expect(state.submitting).toBe(false);
+      expect(state.error).toBe('Failed to update notice');
     });
   });
 });
