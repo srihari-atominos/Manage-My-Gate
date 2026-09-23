@@ -80,8 +80,8 @@ export const DropdownSelect = ({
       style={inline && isOpen ? { zIndex: 1000 } : undefined}
     >
       {Boolean(label) && (
-        <Text className="mb-1.5 text-sm font-medium text-foreground">
-          {translateText(label)}
+        <Text className="mb-1.5 text-[13.5px] font-bold font-sans text-foreground">
+          {translateText(label || '')}
           {required && !label?.includes('*') && (
             <Text className="text-destructive font-bold"> *</Text>
           )}
@@ -90,19 +90,19 @@ export const DropdownSelect = ({
 
       <Pressable
         className={cn(
-          'flex-row items-center justify-between rounded-2xl border bg-card px-3.5 py-3 shadow-xs active:bg-secondary/50 transition-colors',
+          'flex-row items-center justify-between rounded-2xl border bg-card px-3.5 py-3 shadow-2xs active:bg-secondary/70 transition-colors',
           'border-border/80',
           Boolean(error) && 'border-destructive bg-destructive/5 ring-1 ring-destructive/20'
         )}
         onPress={handlePress}
         accessibilityRole="button"
-        accessibilityLabel={label ? `${translateText(label)}: ${translateText(selectedOption?.label || placeholder)}` : translateText(placeholder)}
+        accessibilityLabel={label ? `${translateText(label || '')}: ${translateText(selectedOption?.label || placeholder)}` : translateText(placeholder)}
       >
         <Text
           numberOfLines={1}
           className={cn(
-            'text-[14px] font-sans flex-1 me-1',
-            selectedOption ? 'text-foreground font-medium' : 'text-muted-foreground'
+            'text-[14.5px] font-sans flex-1 me-1',
+            selectedOption ? 'text-foreground font-semibold' : 'text-muted-foreground'
           )}
         >
           {selectedOption ? translateText(selectedOption.label) : translateText(placeholder)}
@@ -113,12 +113,12 @@ export const DropdownSelect = ({
       {Boolean(error) && (
         <View className="flex-row items-center mt-1 ms-1 gap-1">
           <AlertCircle size={12} className="text-destructive shrink-0" />
-          <Text className="text-xs text-destructive font-semibold">{translateText(error)}</Text>
+          <Text className="text-xs text-destructive font-semibold">{translateText(error || '')}</Text>
         </View>
       )}
 
       {!error && Boolean(helperText) && (
-        <Text className="mt-1 text-[11px] text-muted-foreground ms-1">{translateText(helperText)}</Text>
+        <Text className="mt-1 text-[11.5px] text-muted-foreground ms-1">{translateText(helperText || '')}</Text>
       )}
 
       {/* Inline Dropdown List overlay */}

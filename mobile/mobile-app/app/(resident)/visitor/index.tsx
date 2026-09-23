@@ -74,10 +74,10 @@ export default function VisitorDashboardScreen() {
       trend: { direction: 'up', value: insideCount > 0 ? t('on_premises', 'On Premises') : t('none', 'None') },
     },
     {
-      title: t('walkin_waiting', 'Walk-In Waiting'),
+      title: t('walkins', 'Walk-Ins'),
       value: String(pendingWalkInsCount),
       iconName: 'Clock',
-      variant: pendingWalkInsCount > 0 ? 'warning' : 'default',
+      variant: pendingWalkInsCount > 0 ? 'warning' : 'accent',
       trend: {
         direction: pendingWalkInsCount > 0 ? 'down' : 'up',
         value: pendingWalkInsCount > 0 ? t('needs_action', 'Needs action') : t('clear', 'Clear'),
@@ -122,7 +122,7 @@ export default function VisitorDashboardScreen() {
 
   return (
     <ScreenShell
-      title={t('visitor_passes', 'Visitors & Passes')}
+      title={t('visitor_passes', 'Visitor Passes')}
       subtitle={t('visitor_subtext', 'Resident entry approvals, QR passes & gate logs')}
       iconName="ShieldCheck"
       scrollable={false}
@@ -134,12 +134,12 @@ export default function VisitorDashboardScreen() {
           variant="default"
           size="sm"
           onPress={() => setInviteSheetOpen(true)}
-          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-full shadow-2xs"
           accessibilityRole="button"
-          accessibilityLabel="Invite Visitor"
+          accessibilityLabel="Issue Visitor Pass"
         >
-          <Plus size={15} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">{t('invite', 'Invite')}</Text>
+          <Plus size={14} color="#ffffff" strokeWidth={2.4} />
+          <Text className="text-xs font-bold text-primary-foreground">{t('issue_pass', 'Issue')}</Text>
         </Button>
       }
     >

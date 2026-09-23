@@ -32,6 +32,13 @@ const mapPassStatusVariant = (status: string, isInside?: boolean): StatusVariant
   }
 };
 
+const getInitials = (name?: string): string => {
+  if (!name || !name.trim()) return 'VP';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+};
+
 export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   pass,
   onPress,
@@ -56,14 +63,13 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
 
   const badgeLabel = isInside ? 'INSIDE' : pass.status;
   const badgeVariant = mapPassStatusVariant(pass.status, isInside);
+  const initials = getInitials(pass.visitorName);
 
   return (
     <ListCard
       title={pass.visitorName || t('guest_visitor', 'Guest Visitor')}
       subtitle={subtitle}
-      leftIcon="QrCode"
-      leftIconBgColor="rgba(23, 43, 112, 0.12)"
-      leftIconColor="#172B70"
+      leftAvatarFallback={initials}
       status={{
         label: badgeLabel,
         variant: badgeVariant,
@@ -71,16 +77,16 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
       onPress={() => onPress(pass)}
       rightContent={
         <Button
-          variant="info"
+          variant="outline"
           size="sm"
           onPress={(e: any) => {
             e?.stopPropagation?.();
             onShowQR(pass);
           }}
-          className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg"
+          className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-xl border-primary/25 bg-primary/5 shadow-2xs"
         >
-          <QrCode size={14} color="#245fa8" />
-          <Text>{t('pass_code', 'Pass Code')}</Text>
+          <QrCode size={13} color="#EA580C" />
+          <Text className="text-[11.5px] font-bold text-primary">{t('pass_code', 'Pass Code')}</Text>
         </Button>
       }
     />

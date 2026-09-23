@@ -232,26 +232,6 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
       accessibilityLabel={translatedLabel}
     >
       <View className="items-center justify-center py-0.5 relative">
-        {/* Animated Zoom & Blur Glow Aura */}
-        <Animated.View
-          style={[
-            animatedHaloStyle,
-            {
-              position: 'absolute',
-              width: 38,
-              height: 38,
-              borderRadius: 19,
-              backgroundColor: activeColor,
-              shadowColor: activeColor,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: isDark ? 0.75 : 0.45,
-              shadowRadius: 10,
-              elevation: 4,
-            },
-          ]}
-          pointerEvents="none"
-        />
-
         {/* Icon: Visibly bigger than label text */}
         <Animated.View style={animatedIconStyle} className="items-center justify-center">
           <IconComponent
@@ -625,24 +605,6 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
                 }}
               />
             )}
-
-            {/* Active Tab: Switching Capsule */}
-            <Animated.View
-              style={[
-                slidingPillStyle,
-                {
-                  position: 'absolute',
-                  left: horizontalPadding,
-                  top: 6,
-                  height: 52,
-                  borderRadius: 22,
-                  backgroundColor: activeCapsuleBg,
-                  borderWidth: 1,
-                  borderColor: activeCapsuleBorder,
-                  pointerEvents: 'none',
-                },
-              ]}
-            />
 
             {/* Tab Navigation Items */}
             {TAB_ITEMS.map((item) => (

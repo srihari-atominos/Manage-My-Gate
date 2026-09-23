@@ -7,7 +7,7 @@ import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
 import { type KPICardProps } from '@/components/ui/KPICard';
 import { Button } from '@/components/ui/button';
 import { FAB } from '@/components/ui/FAB';
-import { CalendarCheck, Plus } from 'lucide-react-native';
+import { CalendarCheck, Plus, Compass } from 'lucide-react-native';
 import { useAmenityDashboard } from '@/src/features/amenities/hooks/useAmenityDashboard';
 import { MobileQuickNavHub } from '@/src/features/amenities/components/MobileQuickNavHub';
 import { MobileLiveActivityWidget } from '@/src/features/amenities/components/MobileLiveActivityWidget';
@@ -107,7 +107,7 @@ export default function AmenityExecutiveDashboardScreen() {
 
   return (
     <ScreenShell
-      title={t('amenities_facilities', 'Amenities Dashboard')}
+      title={t('amenities_facilities', 'Amenities & Facilities')}
       subtitle={t('feature_amenities_discover_sub', 'Facility bookings, ledger revenue & maintenance')}
       iconName="BarChart3"
       scrollable={false}
@@ -119,12 +119,12 @@ export default function AmenityExecutiveDashboardScreen() {
           variant="default"
           size="sm"
           onPress={() => router.push('/(resident)/amenities/discover' as any)}
-          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-full shadow-2xs"
           accessibilityRole="button"
-          accessibilityLabel="Book Amenity"
+          accessibilityLabel="Discover Amenities"
         >
-          <Plus size={15} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">{t('feature_amenities_discover_name', 'Book Amenity')}</Text>
+          <Compass size={14} color="#ffffff" strokeWidth={2.4} />
+          <Text className="text-xs font-bold text-primary-foreground">{t('discover', 'Discover')}</Text>
         </Button>
       }
     >

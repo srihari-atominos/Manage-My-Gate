@@ -77,7 +77,7 @@ export function formatRelativeTime(date: string | Date, tFunc?: (key: string, fb
 
 const listCardVariants = cva(
   cn(
-    'bg-card rounded-2xl border border-border/80 mb-2.5 p-3 flex-row items-center active:bg-secondary/60',
+    'bg-card rounded-2xl border border-border/70 mb-3 p-3.5 flex-row items-center active:bg-secondary/70 shadow-2xs',
     Platform.select({
       web: 'transition-all cursor-pointer select-none hover:border-border',
     })
@@ -99,8 +99,8 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       leftAvatarFallback,
       showChevron,
       backgroundImage,
-      leftIconBgColor = 'rgba(59, 130, 246, 0.12)',
-      leftIconColor = '#3b82f6',
+      leftIconBgColor = 'rgba(234, 88, 12, 0.08)',
+      leftIconColor = '#EA580C',
       status,
       secondaryBadge,
       timestamp,
@@ -127,22 +127,22 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         {leftAvatar ? (
           <Image
             source={{ uri: leftAvatar }}
-            className="w-9 h-9 rounded-full shrink-0 me-3 border border-border/50"
+            className="w-11 h-11 rounded-full shrink-0 me-3.5 border border-border/60 shadow-2xs"
             resizeMode="cover"
           />
         ) : leftAvatarFallback ? (
-          <View className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
+          <View className="w-11 h-11 rounded-full bg-primary/10 border border-primary/20 items-center justify-center me-3.5 shrink-0 shadow-2xs">
             <Text className="text-xs font-bold text-primary">{leftAvatarFallback}</Text>
           </View>
         ) : leftImage ? (
           <Image
             source={{ uri: leftImage }}
-            className="w-10 h-10 rounded-xl shrink-0 me-3"
+            className="w-11 h-11 rounded-2xl shrink-0 me-3.5 border border-border/40 shadow-2xs"
             resizeMode="cover"
           />
         ) : DynamicIcon ? (
           <View
-            className="w-11 h-11 rounded-xl items-center justify-center shrink-0 me-3 border border-border/50"
+            className="w-11 h-11 rounded-2xl items-center justify-center shrink-0 me-3.5 border border-border/40 shadow-2xs"
             style={{ backgroundColor: leftIconBgColor }}
           >
             <Icon as={DynamicIcon} size={20} color={leftIconColor} />
@@ -151,7 +151,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
 
         {/* Middle Details */}
         <View className="flex-1 shrink min-w-0 justify-center">
-          <Text variant="default" className={cn("font-semibold text-[14.5px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={titleLines}>
+          <Text variant="default" className={cn("font-bold text-[15px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={titleLines}>
             {translateText(title)}
           </Text>
           {subtitle ? (
@@ -162,7 +162,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
           {timestamp ? (
             <Text
               variant="muted"
-              className={cn("text-[11px] font-sans mt-0.5 shrink truncate", backgroundImage ? "text-white/60" : "text-muted-foreground/80")}
+              className={cn("text-[11.5px] font-sans mt-0.5 shrink truncate", backgroundImage ? "text-white/60" : "text-muted-foreground/80")}
               numberOfLines={1}
             >
               {disableRelativeTime
@@ -195,7 +195,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       return (
         <View
           ref={ref}
-          className={cn("bg-card rounded-2xl border border-border/80 mb-2.5 p-3 overflow-hidden", className)}
+          className={cn("bg-card rounded-2xl border border-border/70 mb-3 p-3.5 overflow-hidden shadow-2xs", className)}
           style={style as any}
         >
           <Pressable

@@ -28,21 +28,21 @@ export const EmptyState = ({
   return (
     <View className={cn('items-center justify-center py-10 px-4', className)}>
       {Icon && (
-        <View className="mb-4 h-16 w-16 items-center justify-center rounded-3xl bg-secondary border border-border/80 shadow-xs">
-          <Icon size={30} className="text-primary" />
+        <View className="mb-4 h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 border border-primary/20 shadow-2xs">
+          <Icon size={28} className="text-primary" />
         </View>
       )}
-      <Text className="mb-1 text-center text-lg font-bold font-sans text-foreground">
+      <Text className="mb-1 text-center text-[18px] font-bold font-sans text-foreground tracking-tight">
         {translateText(title)}
       </Text>
       {description && (
-        <Text className="mb-6 text-center text-sm font-sans text-muted-foreground max-w-xs">
+        <Text className="mb-6 text-center text-[13.5px] font-sans text-muted-foreground max-w-xs leading-snug">
           {translateText(description)}
         </Text>
       )}
       {actionLabel && onAction && (
-        <Button onPress={onAction} className="px-6">
-          <Text className="font-semibold text-primary-foreground">{translateText(actionLabel)}</Text>
+        <Button onPress={onAction} className="px-6 rounded-2xl shadow-2xs">
+          <Text className="font-bold text-primary-foreground">{translateText(actionLabel)}</Text>
         </Button>
       )}
     </View>

@@ -22,8 +22,8 @@ export default function AppInviteIndexRedirectScreen() {
   }, [params, router]);
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>
-      <ActivityIndicator size="large" color="#6366f1" />
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF8EF' }}>
+      <ActivityIndicator size="large" color="#F45A0A" />
     </View>
   );
 }
