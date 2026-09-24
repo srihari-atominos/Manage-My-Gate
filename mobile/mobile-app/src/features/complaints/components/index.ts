@@ -6,3 +6,4 @@ export * from './TicketEscalationModal';
 export * from './TicketDispatchCard';
 export * from './AssignTechnicianSheet';
 export * from './RaiseTicketForm';
+export * from './ComplaintFilterDrawer';

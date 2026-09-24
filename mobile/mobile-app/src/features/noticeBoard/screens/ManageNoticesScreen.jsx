@@ -306,15 +306,14 @@ function ManageNoticesContent() {
       headerRight={
         canCreate ? (
           <Button
-            variant="default"
             size="sm"
             onPress={() => router.push('/(resident)/notices/create')}
-            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+            className="bg-emerald-600 active:bg-emerald-700 flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
             accessibilityRole="button"
             accessibilityLabel="Create New Community Notice"
           >
-            <Plus size={15} color="#ffffff" />
-            <Text className="text-xs font-bold text-primary-foreground">New Notice</Text>
+            <Plus size={14} color="#ffffff" />
+            <Text className="text-xs font-bold text-white">New Notice</Text>
           </Button>
         ) : null
       }

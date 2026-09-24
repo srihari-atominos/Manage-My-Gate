@@ -11,7 +11,7 @@ export const DEFAULT_QUICK_ACTIONS = [
   'billing_dashboard',
   'complaints_track_requests',
   'amenities_discover',
-  'notices_active_board',
+  'community_engagement',
 ];
 
 /**

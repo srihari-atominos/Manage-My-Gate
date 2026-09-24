@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Filter, Users, ChevronLeft, ChevronRight, Mail, UserPlus, Users2, Hash, X, Plus } from 'lucide-react-native';
+import { Filter, Users, ChevronLeft, ChevronRight, Mail, Users2, Hash, X, Plus } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { FAB } from '@/components/ui/FAB';
@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/feedback/EmptyState';
 import { SkeletonLoader } from '@/components/feedback/SkeletonLoader';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/common/Button';
+import { RowsPerPageDropdown } from '@/components/ui/RowsPerPageDropdown';
 import { useTranslation } from '@/src/utils/i18n';
 import {
   useUserList,
@@ -202,7 +203,7 @@ export default function UserManagementScreen() {
   return (
     <ScreenShell
       title={t('feature_admin_users_name', 'User Management')}
-      subtitle={t('feature_admin_users_sub', 'Manage organization users & role access')}
+      subtitle={t('residents_and_staff', 'Residents & Staff')}
       iconName="Users"
       domainName="Administration & Security"
       sharedSlice="userSlice.ts"
@@ -213,7 +214,7 @@ export default function UserManagementScreen() {
         <View className="flex-row items-center gap-1.5">
           <TouchableOpacity
             onPress={() => router.push('/(resident)/admin/invitations')}
-            className="p-2 rounded-xl bg-secondary border border-border flex-row items-center"
+            className="p-2 rounded-xl bg-secondary border border-border flex-row items-center active:opacity-75"
             accessibilityRole="button"
             accessibilityLabel="View Invitations"
           >
@@ -221,11 +222,11 @@ export default function UserManagementScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setShowFilterSheet(true)}
-            className="p-2 rounded-xl bg-secondary border border-border flex-row items-center"
+            className="p-2 rounded-xl bg-secondary border border-border flex-row items-center active:opacity-75"
             accessibilityRole="button"
             accessibilityLabel="Filter users"
           >
-            <Filter size={16} className="text-foreground me-1" />
+            <Filter size={16} className="text-foreground" />
             {activeFilterCount > 0 ? (
               <View className="bg-primary px-1.5 py-0.5 rounded-full ms-1">
                 <Text className="text-[10px] font-bold text-primary-foreground">{activeFilterCount}</Text>
@@ -234,12 +235,12 @@ export default function UserManagementScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setShowInviteModal(true)}
-            className="flex-row items-center gap-1 bg-emerald-600 active:bg-emerald-700 px-3 py-1.5 rounded-full"
+            className="flex-row items-center gap-1.5 bg-emerald-600 active:bg-emerald-700 px-3 py-1.5 rounded-full"
             accessibilityRole="button"
             accessibilityLabel="Invite User"
           >
             <Plus size={14} color="#ffffff" />
-            <Text className="text-xs font-bold text-white">{t('invite_user', 'Invite')}</Text>
+            <Text className="text-xs font-bold text-white">{t('invite_user', 'Invite User')}</Text>
           </TouchableOpacity>
         </View>
       }
@@ -254,70 +255,68 @@ export default function UserManagementScreen() {
           activeFilterCount={activeFilterCount}
         />
 
-        {/* Action Bar (Configure Invitation Mail, Bulk Invite, Invite User) */}
-        <View className="px-3 py-1.5 border-b border-border/40">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row items-center gap-2">
-              <TouchableOpacity
-                onPress={() => setShowTemplateModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 flex-row items-center shadow-xs active:opacity-70"
-              >
-                <Mail size={14} color="#6366f1" className="me-1.5" />
-                <Text className="text-xs font-semibold text-foreground">{t('configure_invitation_mail', 'Configure Invitation Mail')}</Text>
-              </TouchableOpacity>
+        {/* Action Section (Responsive Mini Cards) */}
+        <View className="px-4 py-2.5 border-b border-border/40 bg-card/20 shrink-0">
+          <View className="flex-row items-stretch gap-2.5">
+            {/* Bulk Invite Mini Card */}
+            <TouchableOpacity
+              onPress={() => setShowBulkInviteModal(true)}
+              activeOpacity={0.7}
+              className="flex-1 p-2.5 rounded-xl border border-amber-500/25 bg-amber-500/5 active:bg-amber-500/10 flex-row items-center gap-2.5 shadow-2xs"
+              accessibilityRole="button"
+              accessibilityLabel="Bulk Invite Users"
+            >
+              <View className="w-9 h-9 rounded-lg bg-amber-500/15 items-center justify-center shrink-0">
+                <Users2 size={18} color="#d97706" />
+              </View>
+              <View className="flex-1 justify-center">
+                <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
+                  {t('bulk_invite', 'Bulk Invite')}
+                </Text>
+                <Text className="text-[10px] text-muted-foreground mt-0.5" numberOfLines={1}>
+                  {t('bulk_invite_sub', 'Import via CSV')}
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => setShowBulkInviteModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-row items-center active:opacity-70"
-              >
-                <Users2 size={14} color="#6366f1" className="me-1.5" />
-                <Text className="text-xs font-bold text-primary">{t('bulk_invite', 'Bulk Invite')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setShowInviteModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center active:opacity-80"
-              >
-                <UserPlus size={14} color="#ffffff" className="me-1.5" />
-                <Text className="text-xs font-bold text-white">{t('invite_user', 'Invite User')}</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+            {/* Configure Email Mini Card */}
+            <TouchableOpacity
+              onPress={() => setShowTemplateModal(true)}
+              activeOpacity={0.7}
+              className="flex-1 p-2.5 rounded-xl border border-blue-500/25 bg-blue-500/5 active:bg-blue-500/10 flex-row items-center gap-2.5 shadow-2xs"
+              accessibilityRole="button"
+              accessibilityLabel="Configure Invitation Email"
+            >
+              <View className="w-9 h-9 rounded-lg bg-blue-500/15 items-center justify-center shrink-0">
+                <Mail size={18} color="#2563eb" />
+              </View>
+              <View className="flex-1 justify-center">
+                <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
+                  {t('configure_invitation_mail_short', 'Email Template')}
+                </Text>
+                <Text className="text-[10px] text-muted-foreground mt-0.5" numberOfLines={1}>
+                  {t('configure_invitation_mail_sub', 'Customize invite')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* User Summary & Rows-Per-Page Selector Top Toolbar */}
-        <View className="px-3 py-1.5 flex-row items-center justify-between border-b border-border/40 bg-muted/20">
-          <Text className="text-[11px] font-semibold text-muted-foreground text-start">
-            {t('showing_users', 'Showing')} <Text className="font-bold text-foreground">{startRecord}-{endRecord}</Text> {t('of_users', 'of')} <Text className="font-bold text-foreground">{totalRecords}</Text> {t('users_label', 'Users')}
+        {/* User Summary & Compact Rows-Per-Page Dropdown */}
+        <View className="px-3 py-2 flex-row flex-wrap items-center justify-between gap-2 border-b border-border/40 bg-muted/20">
+          <Text className="text-xs font-semibold text-muted-foreground text-start">
+            {t('showing_users', 'Showing')}{' '}
+            <Text className="font-bold text-foreground">{startRecord}–{endRecord}</Text>{' '}
+            {t('of_users', 'of')}{' '}
+            <Text className="font-bold text-foreground">{totalRecords}</Text>{' '}
+            {t('users_label', 'Users')}
           </Text>
 
-          {/* Inline Rows Per Page Options (10, 20, 50, 100) */}
-          <View className="flex-row items-center gap-1">
-            <Text className="text-[10px] font-semibold text-muted-foreground me-0.5">
-              {t('rows_label', 'Rows:')}
-            </Text>
-            {[10, 20, 50, 100].map((limit) => (
-              <TouchableOpacity
-                key={limit}
-                onPress={() => setRowsPerPage(limit)}
-                className={`px-1.5 py-0.5 rounded-md border active:opacity-70 ${
-                  rowsPerPage === limit
-                    ? 'bg-blue-600 border-blue-600'
-                    : 'bg-background border-border/60'
-                }`}
-                accessibilityRole="button"
-                accessibilityLabel={`Set ${limit} rows per page`}
-              >
-                <Text
-                  className={`text-[10px] font-bold ${
-                    rowsPerPage === limit ? 'text-white' : 'text-foreground'
-                  }`}
-                >
-                  {limit}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <RowsPerPageDropdown
+            value={rowsPerPage}
+            options={[10, 20, 50, 100]}
+            onChange={setRowsPerPage}
+          />
         </View>
 
         {/* List Content */}

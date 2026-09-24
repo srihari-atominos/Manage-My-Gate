@@ -140,8 +140,8 @@ export function AdminReservationCard({
           Ref: #{refId}
         </Text>
         {!isMaintenance && (
-          <Text className="text-xs text-muted-foreground">
-            {booking.numberOfPersons || booking.guestsCount || 1} Person(s)
+          <Text className="text-xs text-muted-foreground font-sans">
+            {`${booking.numberOfPersons || booking.guestsCount || 1} Person(s)`}
           </Text>
         )}
       </View>

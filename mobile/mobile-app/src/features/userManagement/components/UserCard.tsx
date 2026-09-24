@@ -1,17 +1,21 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Shield, Phone, Trash2, Key, Send, Home } from 'lucide-react-native';
-import { ListCard } from '@/components/ui/ListCard';
-import { StatusVariant } from '@/components/ui/StatusBadge';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Pressable } from 'react-native';
+import { Shield, Phone, Home, MoreVertical } from 'lucide-react-native';
+import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { useTranslation, i18n } from '@/src/utils/i18n';
 import { UserData, AssignedUnit } from '../services/userService';
+import { UserOverflowMenu } from './UserOverflowMenu';
 
-interface UserCardProps {
+export interface UserCardProps {
   user: UserData;
   currentUserId?: string;
   onManageRoles: (user: UserData, unit?: AssignedUnit | null) => void;
-  onResendInvite: (user: UserData) => void;
+  onResendInvite?: (user: UserData) => void;
   onDeleteUser: (user: UserData) => void;
+  onOpenMenu?: (user: UserData) => void;
+  onViewDetails?: (user: UserData) => void;
+  onToggleStatus?: (user: UserData) => void;
+  className?: string;
 }
 
 export const UserCard: React.FC<UserCardProps> = ({
@@ -20,20 +24,21 @@ export const UserCard: React.FC<UserCardProps> = ({
   onManageRoles,
   onResendInvite,
   onDeleteUser,
+  onOpenMenu,
+  onViewDetails,
+  onToggleStatus,
+  className = '',
 }) => {
   const { t } = useTranslation();
-  const isSelf = user.id === currentUserId || user._id === currentUserId;
+  const [internalMenuOpen, setInternalMenuOpen] = useState(false);
+
   const isPending = user.status === 'Pending' || user.status === 'Pending Verification';
   const isRejected = user.status === 'Rejected';
   const displayStatus = isRejected ? 'Rejected' : isPending ? 'Pending' : user.status || 'Active';
 
   const mapStatusVariant = (status: string): StatusVariant => {
-    if (status === 'Rejected') {
-      return 'danger';
-    }
-    if (status === 'Pending' || status === 'Pending Verification') {
-      return 'warning';
-    }
+    if (status === 'Rejected') return 'danger';
+    if (status === 'Pending' || status === 'Pending Verification') return 'warning';
     switch (status) {
       case 'Active':
         return 'success';
@@ -59,67 +64,116 @@ export const UserCard: React.FC<UserCardProps> = ({
     ? user.role
     : [];
 
+  const handleMenuPress = () => {
+    if (onOpenMenu) {
+      onOpenMenu(user);
+    } else {
+      setInternalMenuOpen(true);
+    }
+  };
+
   return (
-    <ListCard
-      title={user.name}
-      subtitle={user.email}
-      leftAvatarFallback={getInitials(user.name)}
-      status={{ label: displayStatus, variant: mapStatusVariant(user.status) }}
-      showChevron={false}
-      className="mb-2 p-2.5 bg-card border border-border/70 rounded-xl shadow-xs"
-    >
-      <View className="mt-0.5">
-        {/* Phone & Role Row */}
-        <View className="flex-row items-center flex-wrap gap-1 mb-1">
-          {user.phone ? (
-            <View className="flex-row items-center me-2">
-              <Phone size={10} color="#6b7280" className="me-1" />
-              <Text className="text-[10px] font-medium text-muted-foreground text-start">
-                {user.phone}
+    <>
+      <View
+        className={`mb-3 p-3.5 bg-card border border-border/80 rounded-2xl shadow-2xs ${className}`}
+      >
+        {/* Top Section: Avatar + Details (Left) and Status + Menu Button (Right) */}
+        <View className="flex-row items-start justify-between">
+          {/* Left: Avatar + Identity */}
+          <View className="flex-row items-start flex-1 me-2">
+            {/* Circular Avatar */}
+            <View className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0 mt-0.5">
+              <Text className="text-xs font-bold text-primary font-sans">
+                {getInitials(user.name)}
               </Text>
             </View>
-          ) : null}
 
-          {globalRolesList.length > 0 ? (
-            <View className="flex-row items-center flex-wrap gap-1">
-              <Shield size={10} color="#6366f1" className="me-0.5" />
-              {globalRolesList.map((roleStr, idx) => (
-                <View
-                  key={idx}
-                  className="bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.2 rounded-full"
-                >
-                  <Text className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 text-start">
-                    {i18n.tRole(roleStr)}
-                  </Text>
-                </View>
-              ))}
+            {/* Name, Email, Phone, Role */}
+            <View className="flex-1">
+              <Text
+                className="text-[14px] font-bold text-foreground font-sans tracking-tight"
+                numberOfLines={1}
+              >
+                {user.name}
+              </Text>
+
+              <Text
+                className="text-xs text-muted-foreground font-sans mt-0.5"
+                numberOfLines={1}
+              >
+                {user.email}
+              </Text>
+
+              {/* Phone & Role Row */}
+              <View className="flex-row items-center flex-wrap gap-1.5 mt-1.5">
+                {user.phone ? (
+                  <View className="flex-row items-center me-1.5">
+                    <Phone size={11} className="text-muted-foreground me-1" />
+                    <Text className="text-[11px] font-medium text-muted-foreground font-sans">
+                      {user.phone}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {globalRolesList.map((roleStr, idx) => (
+                  <View
+                    key={idx}
+                    className="bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full flex-row items-center gap-1"
+                  >
+                    <Shield size={10} className="text-primary" />
+                    <Text className="text-[10px] font-bold text-primary font-sans">
+                      {i18n.tRole(roleStr)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          ) : null}
+          </View>
+
+          {/* Right: Status Badge & Overflow Menu Button */}
+          <View className="flex-row items-center gap-2 shrink-0">
+            <StatusBadge
+              label={displayStatus}
+              variant={mapStatusVariant(user.status)}
+              className="py-0.5 px-2"
+            />
+
+            <TouchableOpacity
+              onPress={handleMenuPress}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="w-8 h-8 rounded-full items-center justify-center bg-secondary/80 border border-border/60 active:bg-secondary"
+              accessibilityRole="button"
+              accessibilityLabel={`More options for ${user.name}`}
+            >
+              <MoreVertical size={16} className="text-foreground" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Assigned Villa Units Box */}
+        {/* Bottom Section: Assigned Villa Units Box (Subtle Tinted Background) */}
         {user.assignedUnits && user.assignedUnits.length > 0 ? (
-          <View className="my-1 border-t border-border/40 pt-1">
+          <View className="mt-2.5 pt-2.5 border-t border-border/50 gap-1.5">
             {user.assignedUnits.map((unit, idx) => (
               <View
                 key={idx}
-                className="flex-row items-center justify-between p-1 bg-muted/40 border border-border/40 rounded-lg mb-1"
+                className="flex-row items-center justify-between p-2 rounded-xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/15"
               >
-                <View className="flex-row items-center flex-1 me-1">
-                  <Home size={10} color="#10b981" className="me-1" />
-                  <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-start me-1">
+                <View className="flex-row items-center flex-1 me-2">
+                  <Home size={12} color="#10b981" className="me-1.5 shrink-0" />
+                  <Text className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 font-sans me-1.5">
                     {t('unit_label', 'Unit')} {unit.villaNumber} {unit.villaBlock ? `(${unit.villaBlock})` : ''}
                   </Text>
                   {unit.residentType && unit.residentType !== 'None' ? (
-                    <Text className="text-[9px] text-muted-foreground text-start">
-                      • {i18n.tRole(unit.residentType)}
+                    <Text className="text-[10px] text-muted-foreground font-sans">
+                      | {i18n.tRole(unit.residentType)}
                     </Text>
                   ) : null}
                 </View>
 
                 {unit.role ? (
-                  <View className="bg-background border border-border/60 px-1 py-0.2 rounded">
-                    <Text className="text-[9px] font-medium text-foreground text-start">
+                  <View className="bg-card border border-border/60 px-1.5 py-0.5 rounded-md">
+                    <Text className="text-[9px] font-semibold text-foreground font-sans">
                       {i18n.tRole(unit.role)}
                     </Text>
                   </View>
@@ -128,57 +182,23 @@ export const UserCard: React.FC<UserCardProps> = ({
             ))}
           </View>
         ) : null}
-
-        {/* Compact Card Action Row */}
-        <View className="flex-row items-center justify-end mt-1 pt-1 border-t border-border/40 gap-1.5">
-          {isPending || isRejected ? (
-            <TouchableOpacity
-              onPress={() => onResendInvite(user)}
-              className="flex-row items-center bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 active:opacity-70"
-              accessibilityRole="button"
-              accessibilityLabel={`Resend invite to ${user.name}`}
-            >
-              <Send size={10} color="#10b981" className="me-1" />
-              <Text className="text-[10px] font-bold text-emerald-600">{t('role_resend', 'Resend')}</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          <TouchableOpacity
-            onPress={() => onManageRoles(user)}
-            disabled={isSelf}
-            className={`flex-row items-center px-2 py-0.5 rounded-md border active:opacity-70 ${
-              isSelf
-                ? 'bg-muted border-border opacity-40'
-                : 'bg-blue-500/10 border-blue-500/20'
-            }`}
-            accessibilityRole="button"
-            accessibilityLabel={`Manage roles for ${user.name}`}
-          >
-            <Key size={10} color={isSelf ? '#9ca3af' : '#6366f1'} className="me-1" />
-            <Text className={`text-[10px] font-bold ${isSelf ? 'text-muted-foreground' : 'text-primary'}`}>
-              {t('role_manage_roles', 'Roles')}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => onDeleteUser(user)}
-            disabled={isSelf}
-            className={`flex-row items-center px-2 py-0.5 rounded-md border active:opacity-70 ${
-              isSelf
-                ? 'bg-muted border-border opacity-40'
-                : 'bg-red-500/10 border-red-500/20'
-            }`}
-            accessibilityRole="button"
-            accessibilityLabel={`Delete user ${user.name}`}
-          >
-            <Trash2 size={10} color={isSelf ? '#9ca3af' : '#ef4444'} className="me-1" />
-            <Text className={`text-[10px] font-bold ${isSelf ? 'text-muted-foreground' : 'text-destructive'}`}>
-              {t('role_delete', 'Delete')}
-            </Text>
-          </TouchableOpacity>
-        </View>
       </View>
-    </ListCard>
+
+      {/* Internal Overflow Menu fallback if not controlled externally */}
+      {!onOpenMenu && (
+        <UserOverflowMenu
+          visible={internalMenuOpen}
+          onClose={() => setInternalMenuOpen(false)}
+          user={user}
+          currentUserId={currentUserId}
+          onManageRoles={(u) => onManageRoles(u)}
+          onViewDetails={onViewDetails}
+          onResendInvite={onResendInvite}
+          onToggleStatus={onToggleStatus}
+          onDeleteUser={onDeleteUser}
+        />
+      )}
+    </>
   );
 };
 

@@ -120,12 +120,15 @@ export const useQuickActions = () => {
   // Effective feature catalog: uses backend catalog if non-empty, otherwise falls back to built-in catalog,
   // then filters based on active workspace modules AND user role / permissions.
   const featureCatalog = useMemo<FeatureCategory[]>(() => {
+    const validFeatureIds = new Set(ALL_AVAILABLE_FEATURES.map((item) => item.id));
+
     let baseCatalog = (rawCatalog && rawCatalog.length > 0) ? rawCatalog : BUILT_IN_FEATURE_CATALOG;
     if (rawCatalog && rawCatalog.length > 0) {
       baseCatalog = BUILT_IN_FEATURE_CATALOG.map((builtinCat) => {
         const rawCat = rawCatalog.find((rc) => rc.categoryKey === builtinCat.categoryKey);
         if (!rawCat) return builtinCat;
-        const mergedItems = [...rawCat.items];
+        const validRawItems = rawCat.items.filter((ri) => validFeatureIds.has(ri.id));
+        const mergedItems = [...validRawItems];
         builtinCat.items.forEach((bi) => {
           if (!mergedItems.some((ri) => ri.id === bi.id)) {
             mergedItems.push(bi);
@@ -177,10 +180,10 @@ export const useQuickActions = () => {
       }).filter(category => category.items.length > 0);
     }
     
-    // Authoritative RBAC permission filtering per user role & permissions
+    // Authoritative RBAC & Catalog validity permission filtering per user role
     return baseCatalog.map(category => ({
       ...category,
-      items: category.items.filter(item => isFeatureAllowedForUser(item, user))
+      items: category.items.filter(item => validFeatureIds.has(item.id) && isFeatureAllowedForUser(item, user))
     })).filter(category => category.items.length > 0);
   }, [rawCatalog, modules, user]);
 

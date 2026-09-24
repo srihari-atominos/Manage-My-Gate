@@ -57,6 +57,10 @@ function buildReverseMap() {
         if (cleanVal && !reverseLookupMap.has(cleanVal)) {
           reverseLookupMap.set(cleanVal, key);
         }
+        const strippedVal = cleanVal.replace(/[.?]+$/, '');
+        if (strippedVal && !reverseLookupMap.has(strippedVal)) {
+          reverseLookupMap.set(strippedVal, key);
+        }
       }
       // Also index key variants (e.g. "status_published" -> index "published" and "status_published")
       const cleanKey = key.toLowerCase();
@@ -115,6 +119,7 @@ export const i18n = {
   },
 
   setLanguage: async (code: LanguageCode): Promise<void> => {
+    if (currentLanguageCode === code) return;
     currentLanguageCode = code;
     try {
       I18nManager.allowRTL(false);
@@ -136,12 +141,13 @@ export const i18n = {
       } catch (e) {}
     }
 
+    listeners.forEach((fn) => fn(code));
+
     try {
       await storage.setItem('language_preference', code);
     } catch (e) {
       console.warn('Failed to save language preference:', e);
     }
-    listeners.forEach((fn) => fn(code));
   },
 
   initLanguage: async (): Promise<LanguageCode> => {
@@ -388,7 +394,9 @@ export const i18n = {
     if (dict[`feature_${normalizedKey}`]) return dict[`feature_${normalizedKey}`];
 
     // 3. Bidirectional multi-way match across ALL languages (English, Arabic, Tamil, Hindi, etc.)
-    const resolvedKey = reverseLookupMap.get(cleanLower);
+    const resolvedKey =
+      reverseLookupMap.get(cleanLower) ||
+      reverseLookupMap.get(cleanLower.replace(/[.?]+$/, ''));
     if (resolvedKey) {
       if (dict[resolvedKey]) {
         return dict[resolvedKey];
@@ -398,13 +406,13 @@ export const i18n = {
       }
     }
 
-    // 4. Known compound phrases (e.g. "Villa A-104", "الفيلا A-104", "Flat 404-B")
+    // 4. Known compound phrases (e.g. "Villa A-104", "الفيلا A-104", "Flat 404-B", "Building B")
     const villaPrefixMatch = trimmed.match(/^(Villa|Unit|Flat|Building|الفيلا|الوحدة|الشقة|المبنى)\s+(.+)$/i);
     if (villaPrefixMatch) {
       const prefix = villaPrefixMatch[1].toLowerCase();
       const unitCode = villaPrefixMatch[2];
-      const prefixKey = reverseLookupMap.get(prefix) || 'villa';
-      const translatedPrefix = dict[prefixKey] || dict.villa || dict.unit || villaPrefixMatch[1];
+      const prefixKey = reverseLookupMap.get(prefix);
+      const translatedPrefix = (prefixKey && dict[prefixKey]) || dict[prefix] || villaPrefixMatch[1];
       return `${translatedPrefix} ${unitCode}`;
     }
 

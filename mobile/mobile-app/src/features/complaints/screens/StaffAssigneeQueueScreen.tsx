@@ -12,6 +12,7 @@ import { useComplaints } from '../hooks/useComplaints';
 import { ComplaintCard } from '../components/ComplaintCard';
 import { CompleteWorkSheet } from '../components/CompleteWorkSheet';
 import { ComplaintDetailSheet } from '../components/ComplaintDetailSheet';
+import { ComplaintFilterDrawer, ComplaintFilterValues } from '../components/ComplaintFilterDrawer';
 import { TaskActionModal } from '../components/TaskActionModals';
 import { selectAuthUser } from '../../auth/store/authSelectors';
 import { Complaint } from '../types';
@@ -37,6 +38,12 @@ export function StaffAssigneeQueueScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusTab, setSelectedStatusTab] = useState<'ALL' | 'PENDING' | 'IN_PROGRESS' | 'ON_HOLD' | 'BROADCAST'>('ALL');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [drawerFilters, setDrawerFilters] = useState<ComplaintFilterValues>({
+    status: 'ALL',
+    priority: 'ALL',
+    category: 'ALL',
+  });
 
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [completingComplaint, setCompletingComplaint] = useState<Complaint | null>(null);
@@ -132,18 +139,36 @@ export function StaffAssigneeQueueScreen() {
 
       // 2. Status Tab Filter
       if (selectedStatusTab === 'PENDING') {
-        return ticket.status === 'Assigned' || ticket.status === 'Waiting For Acceptance' || ticket.status === 'Accepted';
+        if (ticket.status !== 'Assigned' && ticket.status !== 'Waiting For Acceptance' && ticket.status !== 'Accepted') return false;
+      } else if (selectedStatusTab === 'IN_PROGRESS') {
+        if (ticket.status !== 'In Progress') return false;
+      } else if (selectedStatusTab === 'ON_HOLD') {
+        if (ticket.status !== 'On Hold' && ticket.status !== 'Paused') return false;
       }
-      if (selectedStatusTab === 'IN_PROGRESS') {
-        return ticket.status === 'In Progress';
+
+      // 3. Drawer Priority Filter
+      if (drawerFilters.priority && drawerFilters.priority !== 'ALL') {
+        if (ticket.priority?.toLowerCase() !== drawerFilters.priority.toLowerCase()) return false;
       }
-      if (selectedStatusTab === 'ON_HOLD') {
-        return ticket.status === 'On Hold' || ticket.status === 'Paused';
+
+      // 4. Drawer Category Filter
+      if (drawerFilters.category && drawerFilters.category !== 'ALL') {
+        if (ticket.category?.toLowerCase() !== drawerFilters.category.toLowerCase()) return false;
+      }
+
+      // 5. Drawer Status Filter
+      if (drawerFilters.status && drawerFilters.status !== 'ALL') {
+        if (ticket.status?.toLowerCase() !== drawerFilters.status.toLowerCase()) return false;
       }
 
       return true;
     });
-  }, [metrics, searchQuery, selectedStatusTab]);
+  }, [metrics, searchQuery, selectedStatusTab, drawerFilters]);
+
+  const activeDrawerCount =
+    (drawerFilters.status !== 'ALL' && drawerFilters.status ? 1 : 0) +
+    (drawerFilters.priority !== 'ALL' && drawerFilters.priority ? 1 : 0) +
+    (drawerFilters.category !== 'ALL' && drawerFilters.category ? 1 : 0);
 
   const handleAcceptAssignment = async (id: string) => {
     try {
@@ -221,6 +246,8 @@ export function StaffAssigneeQueueScreen() {
               searchValue={searchQuery}
               onSearchChange={setSearchQuery}
               searchPlaceholder="Search by ticket #, title, category..."
+              onFilterPress={() => setIsFilterOpen(true)}
+              activeFilterCount={activeDrawerCount}
               sortOptions={[
                 { label: `All Tasks (${metrics.all})`, value: 'ALL' },
                 { label: `Pending (${metrics.pending})`, value: 'PENDING' },
@@ -464,6 +491,21 @@ export function StaffAssigneeQueueScreen() {
           onPauseWorkPress={(ticket) => setActionModal({ visible: true, type: 'PAUSE', complaint: ticket })}
           onResumeWork={handleResumeWork}
           onCompleteWorkPress={(ticket) => setCompletingComplaint(ticket)}
+        />
+
+        {/* COMPLAINT FILTER DRAWER */}
+        <ComplaintFilterDrawer
+          visible={isFilterOpen}
+          onClose={() => setIsFilterOpen(false)}
+          filters={drawerFilters}
+          onApply={setDrawerFilters}
+          onReset={() =>
+            setDrawerFilters({
+              status: 'ALL',
+              priority: 'ALL',
+              category: 'ALL',
+            })
+          }
         />
       </View>
     </ScreenShell>

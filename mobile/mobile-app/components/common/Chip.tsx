@@ -10,6 +10,7 @@ export interface ChipProps extends PressableProps {
   icon?: LucideIcon;
   onRemove?: () => void;
   selected?: boolean;
+  shape?: 'pill' | 'box';
   className?: string;
   labelClassName?: string;
 }
@@ -19,6 +20,7 @@ export const Chip = ({
   icon: Icon,
   onRemove,
   selected = false,
+  shape = 'pill',
   className,
   labelClassName,
   ...props
@@ -27,26 +29,27 @@ export const Chip = ({
   return (
     <Pressable
       className={cn(
-        'flex-row items-center rounded-full border px-2.5 py-1',
+        'flex-row items-center justify-center border px-3 py-1.5 min-h-[34px] active:opacity-85 shadow-2xs',
+        shape === 'box' ? 'rounded-xl' : 'rounded-full',
         selected
-          ? 'border-blue-600 bg-blue-600'
-          : 'border-border bg-card',
+          ? 'border-primary bg-primary'
+          : 'border-border/80 bg-card active:bg-secondary/60',
         className
       )}
       {...props}
     >
       {Icon && (
         <Icon
-          size={13}
+          size={14}
           className={cn(
-            'me-1',
+            'me-1.5 shrink-0',
             selected ? 'text-white' : 'text-muted-foreground'
           )}
         />
       )}
       <Text
         className={cn(
-          'text-xs font-medium',
+          'text-xs font-semibold leading-tight text-center',
           selected ? 'text-white font-bold' : 'text-foreground',
           labelClassName
         )}
@@ -56,8 +59,8 @@ export const Chip = ({
       {onRemove && (
         <Pressable onPress={onRemove} className="ms-1.5 p-0.5" accessibilityLabel="Remove">
           <X
-            size={14}
-            className={cn(selected ? 'text-primary-foreground/80' : 'text-muted-foreground')}
+            size={13}
+            className={cn(selected ? 'text-white/80' : 'text-muted-foreground')}
           />
         </Pressable>
       )}

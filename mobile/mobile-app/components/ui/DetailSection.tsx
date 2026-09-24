@@ -91,7 +91,7 @@ const DetailSection = React.forwardRef<View, DetailSectionProps>(
             <Icon as={IconComponent} size={20} className="text-muted-foreground" />
           ) : null}
 
-          <Text variant="default" className="font-semibold text-base flex-1">
+          <Text variant="default" className="font-bold text-[16.5px] text-foreground flex-1 tracking-tight">
             {translateText(title)}
           </Text>
 

@@ -76,8 +76,8 @@ function BottomSheet({
         
         {/* Content Box */}
         <View
-          style={{ maxHeight: sheetMaxHeight }}
-          className="bg-card border-t border-border/80 rounded-t-3xl sm:rounded-3xl sm:border sm:mb-4 shadow-2xl overflow-hidden flex-col w-full max-w-lg mx-auto"
+          style={{ maxHeight: sheetMaxHeight, maxWidth: '100%' }}
+          className="bg-card border-t border-border/80 rounded-t-3xl sm:rounded-3xl sm:border sm:mb-4 shadow-2xl overflow-hidden flex-col w-full max-w-md mx-auto"
         >
           {/* Top grab handle */}
           <SheetGrabHandle onClose={onClose} />
@@ -99,7 +99,7 @@ function BottomSheet({
           {/* Scrollable Body Content */}
           <ScrollView
             contentContainerStyle={[
-              { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 80, flexGrow: 1 },
+              { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 48, flexGrow: 1 },
               contentContainerStyle,
             ]}
             showsVerticalScrollIndicator={true}

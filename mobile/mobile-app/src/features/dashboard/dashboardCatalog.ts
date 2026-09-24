@@ -45,11 +45,9 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   { id: 'complaints_assignee', name: 'Assignee Console', subtitle: 'Work Orders', iconName: 'UserCheck', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/complaints/assignee', permission: 'complaints:assignee', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
 
   // 4. Notice Board & Polls
-  { id: 'community_engagement', name: 'Community Engagement', subtitle: 'Broadcasts & Polls Hub', iconName: 'Megaphone', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/community-engagement', permission: 'notices:polls', categoryKey: 'notice_board_polls', categoryName: 'Notice Board', badge: 'NEW', badgeColor: '#6366F1' },
-  { id: 'notices_active_board', name: 'Resident Feed', subtitle: 'Circulars', iconName: 'Megaphone', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', route: '/(resident)/notices/active-board', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board', badge: '1', badgeColor: '#EF4444' },
-  { id: 'notices_dashboard', name: 'Notice Stats', subtitle: 'Broadcasts', iconName: 'ChartBar', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', route: '/(resident)/notices/dashboard', permission: 'notices:dashboard', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
-  { id: 'notices_manage_notices', name: 'Manage Notices', subtitle: 'Draft & Publish', iconName: 'FilePenLine', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', route: '/(resident)/notices/manage', permission: 'notices:manage_notices', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
-  { id: 'notices_polls', name: 'Community Polls', subtitle: 'Resident Voting', iconName: 'Vote', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', route: '/(resident)/notices/polls', permission: 'notices:polls', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
+  { id: 'community_engagement', name: 'Community Engagement', subtitle: 'Broadcasts & Polls Hub', iconName: 'Megaphone', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/community-engagement', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board', badge: 'NEW', badgeColor: '#6366F1' },
+  { id: 'notices_active_board', name: 'Resident View', subtitle: 'Circulars & Live Polls', iconName: 'Users', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#10B981', iconShapeClass: 'rounded-[18px]', route: '/(resident)/notices/active-board', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
+  { id: 'community_engagement_manage', name: 'Manage Engagement', subtitle: 'Draft, Publish & Ledger', iconName: 'FilePenLine', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', route: '/(resident)/community-engagement/ledger', permission: 'notices:manage_notices', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
 
   // 5. Financial Suite & Billing
   { id: 'billing_dashboard', name: 'Billing Hub', subtitle: 'Collection Overview', iconName: 'ChartPie', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing', permission: 'billing:action_center', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing', badge: 'PAID', badgeColor: '#F59E0B' },
@@ -78,10 +76,9 @@ export const DEFAULT_8_QUICK_ACTIONS = [
   'billing_dashboard',
   'community_directory',
   'visitor_resident_passes',
-  'notices_active_board',
+  'community_engagement',
   'amenities_discover',
   'complaints_track_requests',
-  'visitor_gate_pass',
 ];
 
 export const DEFAULT_6_QUICK_ACTIONS = DEFAULT_8_QUICK_ACTIONS;
@@ -94,14 +91,14 @@ export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
     'admin_users',
     'admin_villas',
     'amenities_dashboard',
-    'notices_dashboard',
+    'community_engagement_manage',
     'complaints_complaint_management',
     'admin_workspace_settings',
   ],
   guard: [
     'visitor_gate_console',
     'amenities_scanner',
-    'notices_active_board',
+    'community_engagement',
     'complaints_track_requests',
     'complaints_raise_ticket',
     'amenities_security_logs',
@@ -110,12 +107,10 @@ export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
   ],
   resident: [
     'visitor_resident_passes',
-    'visitor_gate_pass',
     'billing_dashboard',
     'billing_my_dues',
     'amenities_discover',
-    'amenities_my_booking',
-    'notices_active_board',
+    'community_engagement',
     'complaints_track_requests',
   ],
 };

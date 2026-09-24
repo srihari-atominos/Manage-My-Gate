@@ -179,7 +179,7 @@ export function ScreenShell({
           className="bg-transparent px-4 pt-1 pb-2.5 z-30"
         >
           <View className="flex-row items-center justify-between gap-2 min-h-[48px]">
-            <View className="flex-row items-center flex-1 min-w-0 me-1">
+            <View className={`flex-row items-center flex-1 min-w-0 ${(headerRight || showGlobalNavButton) ? 'me-1' : ''}`}>
               {showBackButton && (
                 <Pressable
                   onPress={() => {
@@ -214,14 +214,14 @@ export function ScreenShell({
               >
                 <Text
                   numberOfLines={subtitle ? 1 : 2}
-                  className="text-foreground text-[19px] sm:text-[21px] font-bold tracking-tight leading-tight shrink"
+                  className="text-foreground text-[21px] sm:text-[23px] font-extrabold tracking-tight leading-tight shrink"
                 >
                   {translateText(title)}
                 </Text>
                 {subtitle ? (
                   <Text
                     numberOfLines={1}
-                    className="text-[12px] sm:text-[13px] text-muted-foreground mt-0.5 font-medium leading-snug shrink"
+                    className="text-[13px] sm:text-[14px] text-muted-foreground mt-1 font-normal leading-normal shrink"
                   >
                     {translateText(subtitle)}
                   </Text>
@@ -230,20 +230,22 @@ export function ScreenShell({
             </View>
 
             {/* Header Right Action Slots + Global Navigation Trigger Button */}
-            <View className="flex-row items-center gap-1.5 shrink-0">
-              {headerRight ? headerRight : null}
+            {(headerRight || showGlobalNavButton) ? (
+              <View className="flex-row items-center gap-1.5 shrink-0">
+                {headerRight ? headerRight : null}
 
-              {(!headerRight || showGlobalNavButton) && (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => setShowGlobalNavModal(true)}
-                  className="p-2 rounded-xl bg-secondary/80 border border-border/80 items-center justify-center shadow-2xs"
-                  accessibilityLabel={t('global_navigation', 'Global Easy Navigation')}
-                >
-                  <Icon as={Compass} size={18} className="text-foreground" />
-                </TouchableOpacity>
-              )}
-            </View>
+                {showGlobalNavButton ? (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setShowGlobalNavModal(true)}
+                    className="p-2 rounded-xl bg-secondary/80 border border-border/80 items-center justify-center shadow-2xs"
+                    accessibilityLabel={t('global_navigation', 'Global Easy Navigation')}
+                  >
+                    <Icon as={Compass} size={18} className="text-foreground" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </View>
       )}

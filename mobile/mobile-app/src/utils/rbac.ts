@@ -194,7 +194,7 @@ const FALLBACK_SECURITY_FEATURE_IDS = new Set([
   'visitor_admin_logs',
   'amenities_scanner',
   'amenities_security_logs',
-  'notices_active_board',
+  'community_engagement',
   'complaints_track_requests',
   'complaints_raise_ticket',
   'admin_villas',
@@ -225,8 +225,8 @@ const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'amenities_wallet',
   'complaints_raise_ticket',
   'complaints_track_requests',
+  'community_engagement',
   'notices_active_board',
-  'notices_polls',
   'admin_villas',
 ]);
 
@@ -335,7 +335,7 @@ export const isFeatureAllowedForUser = (
       'complaints_assignee',
       'complaints_track_requests',
       'complaints_raise_ticket',
-      'notices_active_board',
+      'community_engagement',
     ];
     return staffAllowed.includes(item.id);
   }
@@ -354,8 +354,8 @@ export const isFeatureAllowedForUser = (
       'complaints_complaint_management',
       'complaints_staff',
       'complaints_assignee',
-      'notices_dashboard',
-      'notices_manage_notices',
+      'community_engagement',
+      'community_engagement_manage',
       'visitor_admin_dashboard',
       'visitor_community_passes',
       'visitor_admin_logs',
@@ -391,7 +391,7 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
     return [
       'visitor_gate_console',
       'amenities_scanner',
-      'notices_active_board',
+      'community_engagement',
       'complaints_track_requests',
       'complaints_raise_ticket',
       'amenities_security_logs',
@@ -404,7 +404,7 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
       'admin_villas',
       'visitor_admin_dashboard',
       'billing_action_center',
-      'notices_manage_notices',
+      'community_engagement_manage',
       'amenities_dashboard',
     ];
   }
@@ -415,7 +415,7 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
     'billing_dashboard',
     'complaints_track_requests',
     'amenities_discover',
-    'notices_active_board',
+    'community_engagement',
     'complaints_raise_ticket',
   ];
 };
