@@ -50,8 +50,12 @@ export const updateUserRolesRules = [
   body('roles')
     .exists()
     .withMessage('roles field is required')
-    .isArray()
-    .withMessage('roles must be an array'),
+    .custom((value) => {
+      if (Array.isArray(value) || typeof value === 'string') {
+        return true;
+      }
+      throw new Error('roles must be an array or string');
+    }),
   body('villaId')
     .optional({ nullable: true })
     .isMongoId()

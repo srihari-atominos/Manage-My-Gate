@@ -19,7 +19,7 @@ import usePermission from '../../../hooks/usePermission'
  */
 const ManageRolesModal = ({ visible, user, unit, onClose, onSave, availableRoles = [] }) => {
   const hasPermission = usePermission('users', 'update')
-  const [selectedRole, setSelectedRole] = useState('')
+  const [selectedRoles, setSelectedRoles] = useState([])
   const [error, setError] = useState('')
 
   // Reset form values when visible changes or a different user is selected
@@ -34,10 +34,10 @@ const ManageRolesModal = ({ visible, user, unit, onClose, onSave, availableRoles
               .map((r) => r.trim())
               .filter(Boolean)
           : []
-      setSelectedRole(userRoles.length > 0 ? userRoles[0] : '')
+      setSelectedRoles(userRoles)
       setError('')
     } else if (!visible) {
-      setSelectedRole('')
+      setSelectedRoles([])
       setError('')
     }
   }, [user, unit, visible])
@@ -45,18 +45,17 @@ const ManageRolesModal = ({ visible, user, unit, onClose, onSave, availableRoles
   const handleRoleChange = (role) => {
     if (!hasPermission) return
     setError('')
-    if (selectedRole === role) {
-      setSelectedRole('') // Toggle off
+    if (selectedRoles.includes(role)) {
+      setSelectedRoles(selectedRoles.filter((r) => r !== role))
     } else {
-      setSelectedRole(role) // Select new role
+      setSelectedRoles([...selectedRoles, role])
     }
   }
 
   const onSubmit = (e) => {
     e.preventDefault()
     if (!hasPermission) return
-    // Allow empty role (Unassigned)
-    onSave(user.id, selectedRole ? [selectedRole] : [])
+    onSave(user.id, selectedRoles)
   }
 
   return (
@@ -80,8 +79,8 @@ const ManageRolesModal = ({ visible, user, unit, onClose, onSave, availableRoles
 
           <div className="d-flex flex-column gap-2 mb-3">
             {availableRoles.map((role) => {
-              const isChecked = selectedRole === role
-              const safeId = `role-radio-${role.replace(/\s+/g, '-').toLowerCase()}`
+              const isChecked = selectedRoles.includes(role)
+              const safeId = `role-checkbox-${role.replace(/\s+/g, '-').toLowerCase()}`
               return (
                 <div
                   key={role}
@@ -94,7 +93,6 @@ const ManageRolesModal = ({ visible, user, unit, onClose, onSave, availableRoles
                   <input
                     className="form-check-input mt-1"
                     type="checkbox"
-                    name="roleSelection"
                     id={safeId}
                     checked={isChecked}
                     disabled={!hasPermission}
