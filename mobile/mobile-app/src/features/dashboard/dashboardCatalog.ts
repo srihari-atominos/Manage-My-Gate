@@ -46,7 +46,7 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
 
   // 4. Notice Board & Polls
   { id: 'community_engagement', name: 'Community Engagement', subtitle: 'Broadcasts & Polls Hub', iconName: 'Megaphone', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/community-engagement', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board', badge: 'NEW', badgeColor: '#6366F1' },
-  { id: 'notices_active_board', name: 'Resident View', subtitle: 'Circulars & Live Polls', iconName: 'Users', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#10B981', iconShapeClass: 'rounded-[18px]', route: '/(resident)/notices/active-board', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
+  { id: 'notices_active_board', name: 'Resident Feed', subtitle: 'Circulars & Live Polls', iconName: 'Users', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#10B981', iconShapeClass: 'rounded-[18px]', route: '/(resident)/notices/active-board', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
   { id: 'community_engagement_manage', name: 'Manage Engagement', subtitle: 'Draft, Publish & Ledger', iconName: 'FilePenLine', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', route: '/(resident)/community-engagement/ledger', permission: 'notices:manage_notices', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
 
   // 5. Financial Suite & Billing
