@@ -35,53 +35,53 @@
     letter-spacing: 0px !important;
   }
   /* ==========================================================================
-     THEME 2: VENTOREX ORANGE (ACTIVE)
+     THEME 2: VENTOREX ORANGE (ACTIVE - LUXURY WARM EDITION)
      ========================================================================== */
   :root {
-    --background: 30 29% 97%; /* #FAF8F6 Warm White Canvas */
-    --foreground: 220 3% 19%; /* #2F3032 Ventorex Graphite */
-    --card: 0 0% 100%; /* #FFFFFF Pure White Surface */
-    --card-foreground: 220 3% 19%;
+    --background: 34 100% 97%; /* #FFF8EF Primary App Warm Ivory Background */
+    --foreground: 0 0% 9%; /* #171717 Primary Text */
+    --card: 0 0% 100%; /* #FFFFFF Crisp Pure White Surface */
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 3% 19%;
-    --primary: 17 88% 40%; /* #C2410C Deep Ventorex Orange */
+    --popover-foreground: 0 0% 9%;
+    --primary: 21 92% 50%; /* #F45A0A Primary Orange */
     --primary-foreground: 0 0% 100%;
-    --secondary: 24 38% 95%; /* #F7F1ED Soft Warm Surface */
-    --secondary-foreground: 220 3% 19%;
-    --muted: 24 17% 89%; /* #E7E1DD Warm Neutral Surface */
-    --muted-foreground: 216 3% 37%; /* #5B5D60 Secondary Graphite */
-    --accent: 23 97% 46%; /* #E85D04 Brand Orange Accent */
+    --secondary: 30 100% 95%; /* #FFF3E7 Secondary Warm Background */
+    --secondary-foreground: 0 0% 9%;
+    --muted: 25 100% 95%; /* #FFF0E5 Soft Orange Surface */
+    --muted-foreground: 33 5% 41%; /* #6F6A64 Secondary Text */
+    --accent: 21 92% 50%; /* #F45A0A Brand Orange Accent */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%; /* #DC2626 */
-    --border: 24 17% 89%; /* #E7E1DD Soft Warm Border */
-    --input: 24 17% 89%;
-    --ring: 17 88% 40%;
+    --border: 30 30% 91%; /* #EFE6DC Subtle Warm Border */
+    --input: 30 30% 91%;
+    --ring: 21 92% 50%;
     --radius: 1.125rem; /* 18px */
-    --chart-1: 17 88% 40%;
-    --chart-2: 23 97% 46%;
-    --chart-3: 25 95% 53%;
+    --chart-1: 21 92% 50%;
+    --chart-2: 25 95% 53%;
+    --chart-3: 38 92% 50%;
     --chart-4: 14 100% 50%;
     --chart-5: 142 71% 45%;
   }
 
   .dark:root {
-    --background: 0 0% 9%; /* #171717 Deep Graphite Base */
-    --foreground: 0 0% 96%; /* #F5F5F4 Soft White */
-    --card: 0 0% 14%; /* #242424 Elevated Graphite Surface */
-    --card-foreground: 0 0% 96%;
-    --popover: 0 0% 17%; /* #2B2B2B */
-    --popover-foreground: 0 0% 96%;
+    --background: 240 5% 7%; /* #121214 Deep Obsidian Graphite Base */
+    --foreground: 0 0% 98%; /* #FAFAFA Soft Crisp White */
+    --card: 240 4% 11%; /* #1C1C20 Elevated Obsidian Surface */
+    --card-foreground: 0 0% 98%;
+    --popover: 240 4% 13%; /* #222226 */
+    --popover-foreground: 0 0% 98%;
     --primary: 25 100% 50%; /* #FF6A00 Ventorex Bright Orange */
-    --primary-foreground: 0 0% 9%; /* #171717 */
-    --secondary: 0 0% 17%; /* #2B2B2B Graphite Surface */
-    --secondary-foreground: 0 0% 96%;
-    --muted: 0 0% 17%;
-    --muted-foreground: 0 0% 72%; /* #B8B8B8 */
+    --primary-foreground: 0 0% 8%; /* #141416 */
+    --secondary: 240 4% 14%; /* #24242A Obsidian Secondary */
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 15%;
+    --muted-foreground: 0 0% 70%; /* #B3B3B3 */
     --accent: 24 100% 62%; /* #FF8A3D Soft Bright Orange */
-    --accent-foreground: 0 0% 9%;
+    --accent-foreground: 0 0% 8%;
     --destructive: 0 84% 60%; /* #EF4444 */
-    --border: 0 0% 24%; /* #3D3D3D Graphite Border */
-    --input: 0 0% 24%;
+    --border: 240 4% 20%; /* #323238 Subtle Dark Border */
+    --input: 240 4% 20%;
     --ring: 25 100% 50%;
     --chart-1: 25 100% 50%;
     --chart-2: 24 100% 62%;

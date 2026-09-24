@@ -87,33 +87,33 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         {/* Squircle Icon Box */}
         <View
           style={{
-            width: 58,
-            height: 58,
-            borderRadius: 18,
+            width: 70,
+            height: 70,
+            borderRadius: 22,
             backgroundColor: isAccent
-              ? accentBg || (isDark ? '#FF8A3D' : '#C2410C')
+              ? accentBg || (isDark ? '#FF6A00' : '#EA580C')
               : isDark
-              ? '#242424'
+              ? '#1C1C20'
               : '#FFFFFF',
             borderColor: isAccent
-              ? isDark ? 'rgba(255, 138, 61, 0.4)' : 'rgba(194, 65, 12, 0.4)'
+              ? isDark ? 'rgba(255, 106, 0, 0.4)' : 'rgba(234, 88, 12, 0.4)'
               : isDark
-              ? 'rgba(255, 255, 255, 0.1)'
-              : 'rgba(0, 0, 0, 0.08)',
+              ? 'rgba(255, 255, 255, 0.12)'
+              : 'rgba(234, 88, 12, 0.12)',
             borderWidth: 1,
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
             ...(isAndroid
               ? {
-                  elevation: 1.5,
+                  elevation: 2,
                   shadowColor: '#000000',
                 }
               : {
-                  shadowColor: '#000000',
-                  shadowOffset: { width: 0, height: 1.5 },
-                  shadowOpacity: isDark ? 0.25 : 0.05,
-                  shadowRadius: 3,
+                  shadowColor: isDark ? '#000000' : '#EA580C',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isDark ? 0.35 : 0.08,
+                  shadowRadius: 5,
                 }),
           }}
         >
@@ -121,7 +121,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
           {badge && isNumericBadge ? (
             <View
               style={badgeColor ? { backgroundColor: badgeColor } : undefined}
-              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive border-2 border-card items-center justify-center z-20 shadow-xs"
+              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive border-2 border-card items-center justify-center z-20 shadow-2xs"
             >
               <Text className="text-[9.5px] font-bold text-destructive-foreground font-sans leading-none">
                 {badge}
@@ -131,7 +131,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             /* Pill Text Badge (e.g. "New", "FAST") Anchored to Top */
             <View
               style={badgeColor ? { backgroundColor: badgeColor } : undefined}
-              className="absolute -top-2 px-1.5 py-0.2 rounded-full bg-primary items-center justify-center z-20 shadow-xs"
+              className="absolute -top-2 px-1.5 py-0.2 rounded-full bg-primary items-center justify-center z-20 shadow-2xs"
             >
               <Text className="text-[8px] font-black font-sans text-primary-foreground tracking-wider uppercase leading-none">
                 {badge}
@@ -150,11 +150,11 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         </View>
 
         {/* Clean Label Container Below Squircle */}
-        <View className="w-full mt-1.5 min-h-[30px] justify-start items-center px-0.5">
+        <View className="w-full mt-2 min-h-[32px] justify-start items-center px-0.5">
           <Text
             numberOfLines={2}
             style={language === 'ar' ? { fontSize: 11, lineHeight: 14 } : undefined}
-            className="text-[11.5px] font-medium font-sans text-foreground text-center leading-[14px] tracking-tight"
+            className="text-[12.5px] font-bold font-sans text-foreground text-center leading-[16px] tracking-tight"
           >
             {translatedLabel}
           </Text>

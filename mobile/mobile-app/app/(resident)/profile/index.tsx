@@ -14,7 +14,7 @@ import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollConte
 import authService from '@/src/features/auth/services/authService';
 import { updateProfileThunk } from '@/src/features/auth/store/authSlice';
 import { useTranslation } from '@/src/utils/i18n';
-import { Save, Camera, Image as ImageIcon, FileUp, Trash2 } from 'lucide-react-native';
+import { Save, Camera, Image as ImageIcon, FileUp, Trash2, Settings, CheckCircle2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { validateEmail, validatePhone, parseBackendError } from '@/src/utils/validation';
@@ -482,6 +482,16 @@ export default function ProfileScreen() {
       scrollable={false}
       showBackButton={true}
       onBackPress={handleBack}
+      headerRight={
+        <Pressable
+          onPress={() => router.push('/(resident)/settings' as any)}
+          className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center active:bg-secondary shadow-2xs"
+          accessibilityRole="button"
+          accessibilityLabel={t('app_settings', 'Settings')}
+        >
+          <Settings size={17} className="text-foreground" strokeWidth={2.2} />
+        </Pressable>
+      }
     >
       <ScrollView
         className="flex-1"
@@ -505,12 +515,12 @@ export default function ProfileScreen() {
         />
 
         {/* Section: Personal Details & Edit Form */}
-        <View className="gap-2">
-          <Text className="text-xs font-bold text-muted-foreground uppercase px-1">
+        <View className="gap-2.5">
+          <Text className="text-[12px] font-bold font-sans text-muted-foreground uppercase px-1 tracking-wider">
             {t('personal_details', 'Personal Details')}
           </Text>
 
-          <View className="bg-card border border-border rounded-2xl p-4 shadow-xs gap-3.5">
+          <View className="bg-card border border-border/70 rounded-3xl p-5 shadow-2xs gap-4">
             <TextInput
               label={t('full_name', 'Full Name')}
               required
@@ -616,7 +626,7 @@ export default function ProfileScreen() {
               loading={profileSaving}
               leftIcon={Save}
               onPress={handleSaveProfile}
-              className="mt-1 h-12 rounded-xl"
+              className="mt-2 h-12 rounded-2xl shadow-2xs"
               textClassName="font-bold text-sm"
             >
               {t('save_profile_changes', 'Save Profile Changes')}

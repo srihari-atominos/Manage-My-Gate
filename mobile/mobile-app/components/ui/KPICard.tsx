@@ -22,47 +22,47 @@ export interface KPICardProps {
 
 const variantStyles: Record<string, { card: string; iconContainer: string; iconColor: string }> = {
   default: {
-    card: 'bg-card border-border/80',
-    iconContainer: 'bg-primary/15',
-    iconColor: '#6366f1',
+    card: 'bg-card border-border/70 shadow-2xs',
+    iconContainer: 'bg-primary/10 border border-primary/20',
+    iconColor: '#EA580C',
   },
   primary: {
-    card: 'bg-primary/10 border-primary/20',
+    card: 'bg-primary/10 border-primary/25 shadow-2xs',
     iconContainer: 'bg-primary',
     iconColor: '#ffffff',
   },
   success: {
-    card: 'bg-emerald-500/10 border-emerald-500/20',
+    card: 'bg-emerald-500/10 border-emerald-500/20 shadow-2xs',
     iconContainer: 'bg-emerald-500',
     iconColor: '#ffffff',
   },
   destructive: {
-    card: 'bg-destructive/10 border-destructive/20',
+    card: 'bg-destructive/10 border-destructive/20 shadow-2xs',
     iconContainer: 'bg-destructive',
     iconColor: '#ffffff',
   },
   warning: {
-    card: 'bg-amber-500/10 border-amber-500/20',
+    card: 'bg-amber-500/10 border-amber-500/20 shadow-2xs',
     iconContainer: 'bg-amber-500',
     iconColor: '#ffffff',
   },
   info: {
-    card: 'bg-sky-500/10 border-sky-500/20',
+    card: 'bg-sky-500/10 border-sky-500/20 shadow-2xs',
     iconContainer: 'bg-sky-500',
     iconColor: '#ffffff',
   },
   secondary: {
-    card: 'bg-secondary/40 border-border/70',
+    card: 'bg-secondary/60 border-border/70 shadow-2xs',
     iconContainer: 'bg-secondary',
     iconColor: '#64748b',
   },
   accent: {
-    card: 'bg-purple-500/10 border-purple-500/20',
+    card: 'bg-purple-500/10 border-purple-500/20 shadow-2xs',
     iconContainer: 'bg-purple-500',
     iconColor: '#ffffff',
   },
   muted: {
-    card: 'bg-muted/40 border-border/50',
+    card: 'bg-muted/40 border-border/50 shadow-2xs',
     iconContainer: 'bg-muted',
     iconColor: '#94a3b8',
   },
@@ -70,7 +70,7 @@ const variantStyles: Record<string, { card: string; iconContainer: string; iconC
 
 const kpiCardVariants = cva(
   cn(
-    'w-[140px] rounded-2xl p-3 border justify-between active:bg-secondary/60',
+    'w-[150px] rounded-2xl p-4 border justify-between active:bg-secondary/70 shadow-2xs',
     Platform.select({
       web: 'transition-all duration-200 hover:border-border cursor-pointer select-none',
     })

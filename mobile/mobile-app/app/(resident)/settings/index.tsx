@@ -446,6 +446,7 @@ export default function SettingsScreen() {
                       }`}
                     >
                       <Text
+                        skipTranslate
                         className={`text-sm font-sans ${
                           isSelected ? 'font-bold text-primary' : 'font-medium text-foreground'
                         }`}

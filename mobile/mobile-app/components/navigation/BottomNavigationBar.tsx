@@ -15,7 +15,7 @@ import {
   Home,
   Users,
   ShieldCheck,
-  User,
+  Settings,
 } from 'lucide-react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -33,7 +33,7 @@ import Animated, {
 import { cn } from '../../lib/utils';
 import { useBottomNavScroll } from './BottomNavScrollContext';
 
-export type MainTabKey = 'dashboard' | 'community' | 'security' | 'profile';
+export type MainTabKey = 'dashboard' | 'community' | 'security' | 'settings';
 
 interface TabItem {
   key: MainTabKey;
@@ -62,10 +62,10 @@ const TAB_ITEMS: TabItem[] = [
     icon: ShieldCheck,
   },
   {
-    key: 'profile',
-    label: 'Profile',
-    route: '/(resident)/profile',
-    icon: User,
+    key: 'settings',
+    label: 'Settings',
+    route: '/(resident)/settings',
+    icon: Settings,
   },
 ];
 
@@ -232,26 +232,6 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
       accessibilityLabel={translatedLabel}
     >
       <View className="items-center justify-center py-0.5 relative">
-        {/* Animated Zoom & Blur Glow Aura */}
-        <Animated.View
-          style={[
-            animatedHaloStyle,
-            {
-              position: 'absolute',
-              width: 38,
-              height: 38,
-              borderRadius: 19,
-              backgroundColor: activeColor,
-              shadowColor: activeColor,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: isDark ? 0.75 : 0.45,
-              shadowRadius: 10,
-              elevation: 4,
-            },
-          ]}
-          pointerEvents="none"
-        />
-
         {/* Icon: Visibly bigger than label text */}
         <Animated.View style={animatedIconStyle} className="items-center justify-center">
           <IconComponent
@@ -323,7 +303,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   const activeTab: MainTabKey = useMemo(() => {
     if (pathname.includes('/visitor')) return 'security';
     if (pathname.includes('/notices') || pathname.includes('/directory') || pathname.includes('/polls') || pathname.includes('/notes')) return 'community';
-    if (pathname.includes('/profile') || pathname.includes('/settings') || pathname.includes('/account')) return 'profile';
+    if (pathname.includes('/settings')) return 'settings';
     return 'dashboard';
   }, [pathname]);
 
@@ -625,24 +605,6 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
                 }}
               />
             )}
-
-            {/* Active Tab: Switching Capsule */}
-            <Animated.View
-              style={[
-                slidingPillStyle,
-                {
-                  position: 'absolute',
-                  left: horizontalPadding,
-                  top: 6,
-                  height: 52,
-                  borderRadius: 22,
-                  backgroundColor: activeCapsuleBg,
-                  borderWidth: 1,
-                  borderColor: activeCapsuleBorder,
-                  pointerEvents: 'none',
-                },
-              ]}
-            />
 
             {/* Tab Navigation Items */}
             {TAB_ITEMS.map((item) => (

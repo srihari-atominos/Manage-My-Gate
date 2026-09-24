@@ -204,8 +204,7 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
                 totalBulkStock: (facility as any)?.availableStock || (facility as any)?.capacity || 1,
                 assetState: 'AVAILABLE',
                 isSerializedAsset: false,
-                isActive: true,
-              };
+              } as any;
               normalized = [fallbackResource];
             }
 
@@ -229,8 +228,7 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
                 totalBulkStock: (facility as any)?.availableStock || (facility as any)?.capacity || 1,
                 assetState: 'AVAILABLE',
                 isSerializedAsset: false,
-                isActive: true,
-              };
+              } as any;
               setAvailableResources([fallbackResource]);
               setSelectedResource((prev) => prev || fallbackResource);
             } else {

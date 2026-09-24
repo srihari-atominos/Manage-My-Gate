@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Image } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, Home, Building2, ChevronDown, Sun, Moon, Settings } from 'lucide-react-native';
+import { Bell, Home, Building2, ChevronDown, Sun, Moon, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import storage from '../../src/utils/storage';
@@ -16,6 +16,7 @@ import { NotificationSheetModal } from './NotificationSheetModal';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
 import { useTranslation } from '@/src/utils/i18n';
 import useSettings from '@/src/features/settings/hooks/useSettings';
+import { getImageUrl } from '@/src/utils/imageUrl';
 import { cn } from '../../lib/utils';
 
 interface MobileHeaderProps {
@@ -122,6 +123,16 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   const canSwitchContext = hasUnit || hasOrgs || hasMultipleUnits;
 
+  // Avatar resolution
+  const userAny = user as any;
+  const userAvatar = user?.avatar || userAny?.avatarUrl;
+  const resolvedAvatarUrl = userAvatar ? getImageUrl(userAvatar) : null;
+  const [imageError, setImageError] = useState(false);
+
+  React.useEffect(() => {
+    setImageError(false);
+  }, [resolvedAvatarUrl]);
+
   // Avatar initial letter
   const avatarLetter = React.useMemo(() => {
     if (user?.name) return user.name.charAt(0).toUpperCase();
@@ -169,12 +180,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   return (
     <>
       <View 
-        style={{ paddingTop: Math.max(insets.top, 16) }}
+        style={{ paddingTop: Math.max(insets.top, 16) + 4 }}
         className={cn(
           transparent
-            ? 'bg-card/75 dark:bg-card/75 border-b border-border/40'
-            : 'bg-card border-b border-border',
-          'px-4 pb-3 flex-row items-center justify-between shadow-xs'
+            ? 'bg-transparent'
+            : 'bg-card border-b border-border/70 shadow-2xs',
+          'px-4 pb-4 flex-row items-center justify-between'
         )}
       >
         {/* Left Section: Community / Villa Context Pill */}
@@ -182,13 +193,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-1.5 flex-1 me-2 bg-secondary border border-border/80 px-2.5 py-1.5 rounded-full shadow-xs min-w-0"
+          className="flex-row items-center gap-2 flex-1 max-w-[65%] me-2 bg-secondary/90 border border-border/70 px-3 py-1.5 rounded-full shadow-2xs"
         >
-          <View className="p-1 rounded-full bg-primary items-center justify-center border border-primary/30 shrink-0">
+          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/20 shrink-0 shadow-2xs">
             {hasUnit ? (
-              <Home size={11} color="#FFFFFF" />
+              <Home size={12} color="#FFFFFF" strokeWidth={2.4} />
             ) : (
-              <Building2 size={11} color="#FFFFFF" />
+              <Building2 size={12} color="#FFFFFF" strokeWidth={2.4} />
             )}
           </View>
 
@@ -197,14 +208,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <>
                 <Text
                   numberOfLines={1}
-                  className="text-[13px] font-bold font-sans text-foreground shrink-0"
+                  className="text-[14px] font-bold font-sans text-foreground shrink-0"
                 >
                   {activeVilla}
                 </Text>
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  className="text-[11.5px] font-medium font-sans text-muted-foreground flex-1 ms-1 shrink"
+                  className="text-[12.5px] font-medium font-sans text-muted-foreground flex-1 ms-1"
                 >
                   • {activeCommunity ? translateText(activeCommunity) : t('community', 'Community')}
                 </Text>
@@ -213,7 +224,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                className="text-[13px] font-bold font-sans text-foreground flex-1"
+                className="text-[14px] font-bold font-sans text-foreground flex-1"
               >
                 {activeCommunity ? translateText(activeCommunity) : t('community_workspace', 'Community Workspace')}
               </Text>
@@ -231,14 +242,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={toggleTheme}
             activeOpacity={0.7}
-            className="size-9 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Toggle Light and Dark Theme"
           >
             {colorScheme === 'dark' ? (
-              <Sun size={16} color="#F59E0B" strokeWidth={2.2} />
+              <Sun size={17} color="#F59E0B" strokeWidth={2.2} />
             ) : (
-              <Moon size={16} color="#334155" strokeWidth={2.2} />
+              <Moon size={17} color="#334155" strokeWidth={2.2} />
             )}
           </TouchableOpacity>
 
@@ -246,29 +257,42 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-9 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center relative active:bg-secondary shadow-xs"
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center relative active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
-            <Bell size={16} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
+            <Bell size={17} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
             {liveUnreadCount > 0 ? (
-              <View className="absolute -top-0.5 -right-0.5 bg-[#FF6A00] rounded-full min-w-3.5 h-3.5 px-0.5 items-center justify-center border-2 border-card">
-                <Text className="text-[8px] font-bold font-sans text-white leading-tight">
+              <View className="absolute -top-0.5 -right-0.5 bg-primary rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card shadow-2xs">
+                <Text className="text-[8.5px] font-bold font-sans text-primary-foreground leading-tight">
                   {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
                 </Text>
               </View>
             ) : null}
           </TouchableOpacity>
 
-          {/* App Settings Icon Button */}
+          {/* Profile Avatar / Icon Button */}
           <TouchableOpacity
-            onPress={() => router.push('/(resident)/settings' as any)}
+            onPress={() => router.push('/(resident)/profile' as any)}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center overflow-hidden active:bg-secondary shadow-2xs"
             accessibilityRole="button"
-            accessibilityLabel={t('app_settings', 'Settings')}
+            accessibilityLabel={t('profile', 'Profile')}
           >
-            <Settings size={18} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
+            {resolvedAvatarUrl && !imageError ? (
+              <Image
+                source={{ uri: resolvedAvatarUrl }}
+                className="w-full h-full rounded-full"
+                resizeMode="cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <User
+                size={18}
+                color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'}
+                strokeWidth={2.2}
+              />
+            )}
           </TouchableOpacity>
         </View>
       </View>
