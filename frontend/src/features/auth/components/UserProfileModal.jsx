@@ -415,6 +415,10 @@ const UserProfileModal = ({ visible, onClose }) => {
                         )
                       })}
                     </div>
+                  )}
+                </div>
+              )}
+
               {/* Inline Assignment Picker */}
               {showAssignmentPicker && (
                 <div className="mt-3 p-2 bg-white rounded border">
