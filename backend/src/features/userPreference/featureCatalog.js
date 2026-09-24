@@ -52,7 +52,8 @@ export const SYSTEM_FEATURE_CATALOG = [
     categoryName: 'Notice Board & Polls',
     actionButton: { label: 'View all', type: 'link', route: '/(resident)/notices/active-board' },
     items: [
-      { id: 'notices_active_board', name: 'Active Notice Board', permission: 'notices:active_board', iconName: 'Megaphone', colorBg: 'bg-orange-500/15', colorIcon: '#f97316', route: '/(resident)/notices/active-board', badge: '8', badgeColor: 'bg-orange-600 text-white' },
+      { id: 'community_engagement', name: 'Community Engagement', permission: 'notices:polls', iconName: 'Megaphone', colorBg: 'bg-indigo-500/15', colorIcon: '#6366f1', route: '/(resident)/community-engagement' },
+      { id: 'notices_active_board', name: 'Resident Feed', permission: 'notices:active_board', iconName: 'Megaphone', colorBg: 'bg-orange-500/15', colorIcon: '#f97316', route: '/(resident)/notices/active-board', badge: '8', badgeColor: 'bg-orange-600 text-white' },
       { id: 'notices_dashboard', name: 'Notice Dashboard', permission: 'notices:dashboard', iconName: 'LayoutDashboard', colorBg: 'bg-indigo-500/15', colorIcon: '#6366f1', route: '/(resident)/notices/dashboard' },
       { id: 'notices_manage_notices', name: 'Manage Notices', permission: 'notices:manage_notices', iconName: 'FileEdit', colorBg: 'bg-sky-500/15', colorIcon: '#0ea5e9', route: '/(resident)/notices/manage' },
       { id: 'notices_polls', name: 'Community Polls', permission: 'notices:polls', iconName: 'Vote', colorBg: 'bg-fuchsia-500/15', colorIcon: '#d946ef', route: '/(resident)/notices/polls' }

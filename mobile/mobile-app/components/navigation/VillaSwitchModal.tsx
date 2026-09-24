@@ -10,7 +10,6 @@ import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/f
 
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 interface VillaUnit {
   id: string;
@@ -48,13 +47,23 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
 
   const userUnits: VillaUnit[] = React.useMemo(() => {
     const userAny = user as any;
+    const roleLower = (userAny?.role || (Array.isArray(userAny?.roles) ? userAny?.roles[0] : '') || '').toLowerCase();
+    const isResidentRole = /resident|tenant|owner|family/i.test(roleLower);
+
+    // Strictly resident roles have villa units
+    if (!isResidentRole) {
+      return [];
+    }
+
     const unitsMap = new Map<string, VillaUnit>();
 
     // 1. Extract from accessibleUnits
     if (userAny?.accessibleUnits && Array.isArray(userAny.accessibleUnits)) {
       userAny.accessibleUnits.forEach((u: any, idx: number) => {
+        const uOrg = u.orgId || u.organizationId;
+        if (activeOrgId && uOrg && uOrg !== activeOrgId) return;
         const uId = u.villaId || u.id || String(idx + 1);
-        const uNum = u.villaNumber || u.unitNumber || `Villa ${idx + 1}`;
+        const uNum = u.villaNumber || u.unitNumber;
         if (uNum) {
           unitsMap.set(uId, {
             id: uId,
@@ -66,12 +75,14 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
       });
     }
 
-    // 2. Extract from availableWorkspaces matching current active organization
+    // 2. Extract from availableWorkspaces matching current active organization ONLY if resident role
     const workspaces = userAny?.availableWorkspaces || reduxWorkspaces;
     if (Array.isArray(workspaces)) {
       workspaces.forEach((w: any, idx: number) => {
         const matchesOrg = !activeOrgId || w.orgId === activeOrgId || w._id === activeOrgId;
-        if (matchesOrg && (w.villaId || w.unitId || w.villaNumber || w.unitNumber)) {
+        const wsHasResident = (w.roles && Array.isArray(w.roles) && w.roles.some((r: string) => /resident|tenant|owner|family/i.test(r))) ||
+          /resident|tenant|owner|family/i.test(w.roleName || '');
+        if (matchesOrg && wsHasResident && (w.villaId || w.unitId || w.villaNumber || w.unitNumber)) {
           const uId = w.villaId || w.unitId || `ws-unit-${idx}`;
           const uNum = w.villaNumber || w.unitNumber;
           if (uNum && !unitsMap.has(uId)) {
@@ -79,7 +90,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
               id: uId,
               unitNumber: uNum,
               block: w.block || w.villaBlock || '',
-              residencyType: w.residentType || w.roleName || 'Resident',
+              residencyType: w.residentType || 'Resident',
             });
           }
         }
@@ -211,11 +222,13 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
             </View>
           </ScrollView>
 
-          {onOpenOrgModal && (
+          {onOpenOrgModal && Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 1 && (
             <TouchableOpacity
               onPress={() => {
                 onClose();
-                onOpenOrgModal();
+                setTimeout(() => {
+                  if (onOpenOrgModal) onOpenOrgModal();
+                }, 250);
               }}
               activeOpacity={0.8}
               className="flex-row items-center justify-between p-3 rounded-2xl bg-secondary/80 border border-border/80"

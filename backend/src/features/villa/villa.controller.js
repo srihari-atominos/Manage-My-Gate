@@ -180,8 +180,8 @@ export class VillaController {
     try {
       const { id } = req.params;
       const orgId = req.tenant.orgId;
-      const { userId, residencyType } = req.body;
-      const villa = await villaService.assignExistingUser(id, userId, residencyType, orgId);
+      const { userId, residencyType, isPrimary } = req.body;
+      const villa = await villaService.assignExistingUser(id, userId, residencyType, orgId, isPrimary);
       res.success(villa, 'Resident assigned successfully');
     } catch (error) {
       next(error);

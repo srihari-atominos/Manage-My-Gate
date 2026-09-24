@@ -20,6 +20,7 @@ export interface ProfileHeaderCardProps {
   status?: string;
   className?: string;
   onAvatarPress?: () => void;
+  onUnitPress?: () => void;
   showCameraBadge?: boolean;
   isAvatarLoading?: boolean;
 }
@@ -36,6 +37,7 @@ export const ProfileHeaderCard = ({
   status = 'Active',
   className,
   onAvatarPress,
+  onUnitPress,
   showCameraBadge = false,
   isAvatarLoading = false,
 }: ProfileHeaderCardProps) => {
@@ -114,11 +116,26 @@ export const ProfileHeaderCard = ({
       {/* Status Badges Row */}
       <View className="flex-row items-center justify-center flex-wrap gap-2 pt-1">
         {unitName ? (
-          <StatusBadge
-            label={unitName}
-            variant="info"
-            size="sm"
-          />
+          onUnitPress ? (
+            <TouchableOpacity
+              onPress={onUnitPress}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Unit ${unitName}. Tap to switch villa unit.`}
+            >
+              <StatusBadge
+                label={unitName}
+                variant="info"
+                size="sm"
+              />
+            </TouchableOpacity>
+          ) : (
+            <StatusBadge
+              label={unitName}
+              variant="info"
+              size="sm"
+            />
+          )
         ) : null}
 
         <StatusBadge

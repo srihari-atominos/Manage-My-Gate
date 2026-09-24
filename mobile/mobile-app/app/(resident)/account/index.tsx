@@ -44,12 +44,13 @@ export default function AccountScreen() {
 
   const userAny = user as any;
 
-  // Active villa & community info
-  const dynamicUnit =
-    userAny?.villaNumber ||
-    userAny?.activeVillaNumber ||
-    userAny?.unitNumber ||
-    '#104';
+  const roleLower = ((user?.role || (Array.isArray(userAny?.roles) ? userAny?.roles[0] : '') || '') as string).toLowerCase();
+  const isResidentRole = /resident|tenant|owner|family/i.test(roleLower);
+
+  // Active villa & community info strictly scoped to role
+  const dynamicUnit = isResidentRole
+    ? (userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber || '')
+    : '';
 
   const dynamicCommunity = useMemo(() => {
     const userOrg =
@@ -70,9 +71,17 @@ export default function AccountScreen() {
     return t('community_workspace', 'Community Workspace');
   }, [userAny, t]);
 
+  const workspaces = (userAny?.availableWorkspaces || []) as any[];
+  const hasMultipleOrgs = Array.isArray(workspaces) && workspaces.length > 1;
+
+  const accessibleUnits = isResidentRole && Array.isArray(userAny?.accessibleUnits) ? userAny.accessibleUnits : [];
+  const hasMultipleUnits = isResidentRole && accessibleUnits.length > 1;
+
+  const hasAnyContextSwitcher = hasMultipleOrgs || hasMultipleUnits;
+
   const dynamicRole =
     user?.role ||
-    (userAny?.roles && userAny?.roles.length > 0 ? userAny?.roles[0] : 'Resident');
+    (userAny?.roles && userAny?.roles.length > 0 ? userAny?.roles[0] : 'Member');
 
   // Avatar resolution
   const userAvatar = user?.avatar || userAny?.avatarUrl;
@@ -236,11 +245,13 @@ export default function AccountScreen() {
 
             {/* Unit & Role Pills */}
             <View className="flex-row flex-wrap justify-center gap-2 mt-2">
-              <View className="bg-primary/15 px-3 py-1 rounded-full border border-primary/30">
-                <Text className="text-primary text-[11px] font-bold font-sans">
-                  {dynamicUnit}
-                </Text>
-              </View>
+              {isResidentRole && dynamicUnit ? (
+                <View className="bg-primary/15 px-3 py-1 rounded-full border border-primary/30">
+                  <Text className="text-primary text-[11px] font-bold font-sans">
+                    {dynamicUnit}
+                  </Text>
+                </View>
+              ) : null}
               <View className="bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/25">
                 <Text className="text-emerald-600 dark:text-emerald-400 text-[11px] font-bold font-sans">
                   {tRole(dynamicRole, dynamicRole)}
@@ -258,29 +269,36 @@ export default function AccountScreen() {
             />
           </SettingsCard>
 
-          {/* 3. Context Switchers Section */}
-          <SettingsCard
-            title={t('context_switchers', 'Context Switchers')}
-            containerClassName="mx-0 mt-3"
-          >
-            <SettingsRow
-              icon={Building2}
-              iconColor="#6366f1"
-              iconBgColor="rgba(99, 102, 241, 0.12)"
-              title={t('switch_community', 'Switch Community')}
-              subtitle={dynamicCommunity}
-              onPress={() => setOrgModalVisible(true)}
-            />
-            <SettingsRow
-              icon={Home}
-              iconColor="#10b981"
-              iconBgColor="rgba(16, 185, 129, 0.12)"
-              title={t('switch_unit', 'Switch Villa Unit')}
-              subtitle={dynamicUnit}
-              onPress={() => setVillaModalVisible(true)}
-              isLast={true}
-            />
-          </SettingsCard>
+          {/* 3. Context Switchers Section (Only if multiple orgs or units exist) */}
+          {hasAnyContextSwitcher && (
+            <SettingsCard
+              title={t('context_switchers', 'Context Switchers')}
+              containerClassName="mx-0 mt-3"
+            >
+              {hasMultipleOrgs && (
+                <SettingsRow
+                  icon={Building2}
+                  iconColor="#6366f1"
+                  iconBgColor="rgba(99, 102, 241, 0.12)"
+                  title={t('switch_community', 'Switch Community')}
+                  subtitle={dynamicCommunity}
+                  onPress={() => setOrgModalVisible(true)}
+                  isLast={!hasMultipleUnits}
+                />
+              )}
+              {hasMultipleUnits && (
+                <SettingsRow
+                  icon={Home}
+                  iconColor="#10b981"
+                  iconBgColor="rgba(16, 185, 129, 0.12)"
+                  title={t('switch_unit', 'Switch Villa Unit')}
+                  subtitle={dynamicUnit}
+                  onPress={() => setVillaModalVisible(true)}
+                  isLast={true}
+                />
+              )}
+            </SettingsCard>
+          )}
 
           {/* 4. Community & Directory Section */}
           <SettingsCard

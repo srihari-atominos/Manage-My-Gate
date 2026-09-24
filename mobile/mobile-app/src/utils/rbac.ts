@@ -101,7 +101,7 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'notices:active_board': ['notices:active_board', 'notices:read', 'notices.read', 'notices:view', 'notices.view', 'notices', 'notice_board'],
   'notices:dashboard': ['notices:dashboard', 'notices:read', 'notices.read', 'notices:view', 'notices'],
   'notices:manage_notices': ['notices:manage_notices', 'notices:create', 'notices:update', 'notices.create', 'notices.update', 'notices'],
-  'notices:polls': ['notices:polls', 'notices:read', 'notices.polls', 'notices'],
+  'notices:polls': ['notices:polls', 'notices.polls'],
 
   // Complaints & Maintenance
   'complaints:track_requests': ['complaints:track_requests', 'complaints:raise_ticket', 'complaints:view', 'complaints.view', 'complaints:read', 'complaints.read', 'complaints:create', 'complaints'],

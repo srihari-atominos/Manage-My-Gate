@@ -171,7 +171,11 @@ const AppSidebar = () => {
   }
 
   // Split nav into portal and super-admin sections
-  const SUPER_ADMIN_PATHS = new Set(['/super-admin/organizations', '/super-admin/audit-logs'])
+  const SUPER_ADMIN_PATHS = new Set([
+    '/super-admin/organizations',
+    '/super-admin/audit-logs',
+    '/super-admin/issue-reports',
+  ])
   const portalNav = navigation.filter((item) => !SUPER_ADMIN_PATHS.has(item.to))
   const superAdminNav = navigation.filter((item) => SUPER_ADMIN_PATHS.has(item.to))
 

@@ -998,13 +998,24 @@ export class AmenityBookingService {
    * Calls: own repository for booking metrics, amenityService for amenity counts, Payment model for payment stats.
    * Returns a single DTO with all dashboard data.
    */
-  async getDashboardData(orgId) {
+  async getDashboardData(orgId, scopedFacilityId = null, scopedFacilityName = null) {
     // 1. Get all booking metrics in one $facet pipeline
     const bookingAgg = await amenityBookingRepository.getDashboardAggregation(orgId);
 
     // 2. Get amenity counts by status (cross-feature service call)
     const amenityService = (await import('../amenity/amenity.services.js')).default;
-    const allAmenities = await amenityService.getAllAmenities(orgId);
+    let allAmenities = await amenityService.getAllAmenities(orgId);
+    if (scopedFacilityName) {
+      const filtered = allAmenities.filter(a => a.name.toLowerCase() === scopedFacilityName.toLowerCase());
+      if (filtered.length > 0) {
+        allAmenities = filtered;
+      }
+    } else if (scopedFacilityId) {
+      const filtered = allAmenities.filter(a => a._id.toString() === scopedFacilityId.toString());
+      if (filtered.length > 0) {
+        allAmenities = filtered;
+      }
+    }
     
     const amenityKpis = {
       totalAmenities: allAmenities.length,

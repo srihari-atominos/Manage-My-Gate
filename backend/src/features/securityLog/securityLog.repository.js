@@ -23,6 +23,7 @@ class SecurityLogRepository {
 
     if (filters.status) query.status = filters.status;
     if (filters.scanType) query.scanType = filters.scanType;
+    if (filters.gateName) query.gateName = filters.gateName;
     if (filters.amenityId) query.amenityId = new mongoose.Types.ObjectId(filters.amenityId);
     if (filters.checkedInBy) query.checkedInBy = new mongoose.Types.ObjectId(filters.checkedInBy);
     
@@ -65,16 +66,21 @@ class SecurityLogRepository {
     return { total, logs };
   }
 
-  async getDashboardStats(orgId) {
+  async getDashboardStats(orgId, gateName = null) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const match = { 
+      orgId: new mongoose.Types.ObjectId(orgId),
+      scanTime: { $gte: today } 
+    };
+    if (gateName) {
+      match.gateName = gateName;
+    }
+
     const stats = await SecurityLog.aggregate([
       { 
-        $match: { 
-          orgId: new mongoose.Types.ObjectId(orgId),
-          scanTime: { $gte: today } 
-        } 
+        $match: match 
       },
       {
         $group: {

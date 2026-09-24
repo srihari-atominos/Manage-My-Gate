@@ -60,8 +60,8 @@ class SecurityLogService {
     return await securityLogRepository.getLogs(orgId, filters, skip, limit);
   }
 
-  async getDashboardStats(orgId) {
-    return await securityLogRepository.getDashboardStats(orgId);
+  async getDashboardStats(orgId, gateName = null) {
+    return await securityLogRepository.getDashboardStats(orgId, gateName);
   }
 
   async deleteLog(logId, orgId) {

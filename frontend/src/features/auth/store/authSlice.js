@@ -264,15 +264,20 @@ export const switchWorkspaceContext = createAsyncThunk(
   async (arg, { dispatch, rejectWithValue }) => {
     try {
       const rawPayload = typeof arg === 'string' ? { targetOrgId: arg } : { ...arg }
-      const payload = { targetOrgId: rawPayload.targetOrgId }
+      const payload = {}
+      if (rawPayload.targetOrgId) payload.targetOrgId = rawPayload.targetOrgId
       if (rawPayload.targetVillaId) payload.targetVillaId = rawPayload.targetVillaId
       if (rawPayload.targetRole) payload.targetRole = rawPayload.targetRole
+      if (rawPayload.targetAssignmentId) payload.targetAssignmentId = rawPayload.targetAssignmentId
+      if (rawPayload.targetAssignmentName) payload.targetAssignmentName = rawPayload.targetAssignmentName
+      if (rawPayload.targetAssignmentType) payload.targetAssignmentType = rawPayload.targetAssignmentType
 
       const response = await authService.switchContext(payload)
 
-      const token = response.data?.token
-      const user = response.data?.user
-      const availableWorkspaces = response.data?.availableWorkspaces || []
+      const responseData = response?.data || response
+      const token = responseData?.token
+      const user = responseData?.user
+      const availableWorkspaces = responseData?.availableWorkspaces || []
 
       dispatch(updateTokenAndUser({ token, user }))
 
@@ -282,6 +287,8 @@ export const switchWorkspaceContext = createAsyncThunk(
             activeOrganizationId: user.orgId,
             activeVillaId: user.villaId || null,
             activeRole: user.role,
+            activeAssignment: user.activeAssignment || null,
+            availableAssignments: user.availableAssignments || [],
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
@@ -825,11 +832,9 @@ const authSlice = createSlice({
         if (state.user) {
           localStorage.setItem('user', JSON.stringify(state.user))
         }
-        if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem(
-            'availableWorkspaces',
-            JSON.stringify(action.payload.data.availableWorkspaces),
-          )
+        const availableWs = action.payload?.data?.availableWorkspaces || action.payload?.availableWorkspaces
+        if (availableWs) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(availableWs))
         }
       })
       .addCase(switchWorkspaceContext.rejected, (state, action) => {

@@ -114,14 +114,47 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     }
   }, [params?.openProfile, router]);
 
-  // Check if context switching is applicable
-  const userUnits = (user as any)?.accessibleUnits || [];
-  const hasMultipleOrgs = Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 1;
-  const hasOrgs = (Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 0) || Boolean((user as any)?.orgId);
-  const hasMultipleUnits = Array.isArray(userUnits) && userUnits.length > 1;
-  const hasUnit = Boolean(activeVilla && activeVilla.trim() !== '');
+  // Check if context switching is applicable strictly based on role and actual multiplicity
+  const roleLower = ((user?.role || (Array.isArray(user?.roles) ? user?.roles[0] : '') || '') as string).toLowerCase();
+  const isResidentRole = /resident|tenant|owner|family/i.test(roleLower);
+  const userUnits = React.useMemo(() => {
+    if (!isResidentRole) return [];
+    const unitsMap = new Map<string, any>();
+    const userAny = user as any;
+    const activeOrgId = userAny?.orgId || userAny?.activeOrgId;
 
-  const canSwitchContext = hasUnit || hasOrgs || hasMultipleUnits;
+    if (Array.isArray(userAny?.accessibleUnits)) {
+      userAny.accessibleUnits.forEach((u: any, idx: number) => {
+        const uOrg = u.orgId || u.organizationId;
+        if (activeOrgId && uOrg && uOrg !== activeOrgId) return;
+        const uId = u.villaId || u.id || String(idx + 1);
+        const uNum = u.villaNumber || u.unitNumber;
+        if (uNum) unitsMap.set(uId, u);
+      });
+    }
+
+    const workspaces = userAny?.availableWorkspaces || reduxWorkspaces;
+    if (Array.isArray(workspaces)) {
+      workspaces.forEach((w: any, idx: number) => {
+        const matchesOrg = !activeOrgId || w.orgId === activeOrgId || w._id === activeOrgId;
+        const wsHasResident =
+          (w.roles && Array.isArray(w.roles) && w.roles.some((r: string) => /resident|tenant|owner|family/i.test(r))) ||
+          /resident|tenant|owner|family/i.test(w.roleName || '');
+        if (matchesOrg && wsHasResident && (w.villaId || w.unitId || w.villaNumber || w.unitNumber)) {
+          const uId = w.villaId || w.unitId || `ws-unit-${idx}`;
+          if (!unitsMap.has(uId)) unitsMap.set(uId, w);
+        }
+      });
+    }
+
+    return Array.from(unitsMap.values());
+  }, [isResidentRole, user, reduxWorkspaces]);
+
+  const hasMultipleOrgs = Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 1;
+  const hasMultipleUnits = isResidentRole && (userUnits.length > 1 || (userUnits.length > 0 && Boolean(activeVilla)));
+  const hasUnit = isResidentRole && Boolean(activeVilla && activeVilla.trim() !== '');
+
+  const canSwitchContext = (isResidentRole && (hasMultipleUnits || userUnits.length > 0)) || hasMultipleOrgs;
 
   // Avatar resolution
   const userAny = user as any;
@@ -150,9 +183,9 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   const handleContextPress = () => {
     if (!canSwitchContext) return;
-    if (hasUnit) {
+    if (isResidentRole && (hasMultipleUnits || userUnits.length > 0)) {
       setVillaModalVisible(true);
-    } else if (hasOrgs) {
+    } else if (hasMultipleOrgs) {
       setOrgModalVisible(true);
     }
   };
@@ -169,11 +202,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const headerTextString = React.useMemo(() => {
     const defaultComm = t('green_meadows', 'Green Meadows');
     const comm = activeCommunity ? translateText(activeCommunity) : defaultComm;
-    if (hasUnit && activeVilla) {
+    if (isResidentRole && hasUnit && activeVilla) {
       return `${activeVilla} • ${comm}`;
     }
     return comm;
-  }, [hasUnit, activeVilla, activeCommunity, language, t, translateText]);
+  }, [isResidentRole, hasUnit, activeVilla, activeCommunity, language, t, translateText]);
 
   const insets = useSafeAreaInsets();
 
@@ -188,53 +221,67 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           'px-4 pb-4 flex-row items-center justify-between'
         )}
       >
-        {/* Left Section: Community / Villa Context Pill */}
-        <TouchableOpacity
-          onPress={handleContextPress}
-          activeOpacity={canSwitchContext ? 0.8 : 1}
-          disabled={!canSwitchContext}
-          className="flex-row items-center gap-2 flex-1 max-w-[65%] me-2 bg-secondary/90 border border-border/70 px-3 py-1.5 rounded-full shadow-2xs"
-        >
-          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/20 shrink-0 shadow-2xs">
-            {hasUnit ? (
-              <Home size={12} color="#FFFFFF" strokeWidth={2.4} />
-            ) : (
-              <Building2 size={12} color="#FFFFFF" strokeWidth={2.4} />
-            )}
-          </View>
-
-          <View className="flex-1 flex-row items-center overflow-hidden min-w-0">
-            {hasUnit && activeVilla ? (
-              <>
-                <Text
-                  numberOfLines={1}
-                  className="text-[14px] font-bold font-sans text-foreground shrink-0"
-                >
+        {/* Left Section: Community & Villa Context Switchers */}
+        <View className="flex-row items-center gap-1.5 flex-1 max-w-[68%] me-2">
+          {/* Villa / Unit Switcher Pill (Resident roles only) */}
+          {hasUnit && activeVilla ? (
+            hasMultipleUnits ? (
+              <TouchableOpacity
+                onPress={() => setVillaModalVisible(true)}
+                activeOpacity={0.75}
+                className="flex-row items-center gap-1 bg-secondary/90 border border-border/70 px-2.5 py-1.5 rounded-full shadow-2xs shrink-0"
+                accessibilityRole="button"
+                accessibilityLabel={`Unit ${activeVilla}. Tap to switch villa unit.`}
+              >
+                <View className="p-1 rounded-full bg-primary/20 items-center justify-center shrink-0">
+                  <Home size={11} color="#03A9F4" strokeWidth={2.4} />
+                </View>
+                <Text numberOfLines={1} className="text-[13px] font-bold text-foreground">
                   {activeVilla}
                 </Text>
-                <Text
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                  className="text-[12.5px] font-medium font-sans text-muted-foreground flex-1 ms-1"
-                >
-                  • {activeCommunity ? translateText(activeCommunity) : t('community', 'Community')}
-                </Text>
-              </>
+                <ChevronDown size={11} className="text-muted-foreground shrink-0" />
+              </TouchableOpacity>
             ) : (
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                className="text-[14px] font-bold font-sans text-foreground flex-1"
+              <View
+                className="flex-row items-center gap-1 bg-secondary/90 border border-border/70 px-2.5 py-1.5 rounded-full shadow-2xs shrink-0"
+                accessibilityLabel={`Unit ${activeVilla}`}
               >
-                {activeCommunity ? translateText(activeCommunity) : t('community_workspace', 'Community Workspace')}
-              </Text>
-            )}
-          </View>
-
-          {canSwitchContext ? (
-            <ChevronDown size={12} className="text-muted-foreground shrink-0" />
+                <View className="p-1 rounded-full bg-primary/20 items-center justify-center shrink-0">
+                  <Home size={11} color="#03A9F4" strokeWidth={2.4} />
+                </View>
+                <Text numberOfLines={1} className="text-[13px] font-bold text-foreground">
+                  {activeVilla}
+                </Text>
+              </View>
+            )
           ) : null}
-        </TouchableOpacity>
+
+          {/* Community / Organisation Switcher Pill */}
+          <TouchableOpacity
+            onPress={() => {
+              if (hasMultipleOrgs) setOrgModalVisible(true);
+            }}
+            activeOpacity={hasMultipleOrgs ? 0.75 : 1}
+            disabled={!hasMultipleOrgs}
+            className="flex-row items-center gap-1.5 bg-secondary/90 border border-border/70 px-2.5 py-1.5 rounded-full shadow-2xs flex-1 min-w-0"
+            accessibilityRole={hasMultipleOrgs ? 'button' : 'none'}
+            accessibilityLabel={`Community ${activeCommunity}.${hasMultipleOrgs ? ' Tap to switch community.' : ''}`}
+          >
+            <View className="p-1 rounded-full bg-indigo-500/20 items-center justify-center shrink-0">
+              <Building2 size={11} color="#6366f1" strokeWidth={2.4} />
+            </View>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              className="text-[12.5px] font-semibold text-foreground flex-1"
+            >
+              {activeCommunity ? translateText(activeCommunity) : t('community', 'Community')}
+            </Text>
+            {hasMultipleOrgs ? (
+              <ChevronDown size={11} className="text-muted-foreground shrink-0" />
+            ) : null}
+          </TouchableOpacity>
+        </View>
 
         {/* Right Section: Theme Toggle, Notification Bell & Profile Avatar */}
         <View className="flex-row items-center gap-1.5 shrink-0">
@@ -305,7 +352,10 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           activeVilla={activeVilla || ''}
           onSelectVilla={(villaNum) => setActiveVilla(villaNum)}
           communityName={activeCommunity}
-          onOpenOrgModal={() => setOrgModalVisible(true)}
+          onOpenOrgModal={() => {
+            setVillaModalVisible(false);
+            setTimeout(() => setOrgModalVisible(true), 250);
+          }}
         />
       )}
 
@@ -343,9 +393,18 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           }}
           unitName={activeVilla || 'No Unit Assigned'}
           communityName={activeCommunity}
-          onOpenOrgModal={() => setOrgModalVisible(true)}
-          onOpenRoleModal={() => setRoleModalVisible(true)}
-          onOpenVillaModal={() => setVillaModalVisible(true)}
+          onOpenOrgModal={() => {
+            setProfileModalVisible(false);
+            setTimeout(() => setOrgModalVisible(true), 250);
+          }}
+          onOpenRoleModal={() => {
+            setProfileModalVisible(false);
+            setTimeout(() => setRoleModalVisible(true), 250);
+          }}
+          onOpenVillaModal={() => {
+            setProfileModalVisible(false);
+            setTimeout(() => setVillaModalVisible(true), 250);
+          }}
         />
       )}
 

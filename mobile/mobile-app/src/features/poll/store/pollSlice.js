@@ -337,7 +337,11 @@ export const pollSlice = createSlice({
       })
       .addCase(fetchPollById.fulfilled, (state, action) => {
         state.loading = false;
-        const poll = action.payload?.data || action.payload;
+        const poll =
+          action.payload?.data?.poll ||
+          action.payload?.data?.data ||
+          action.payload?.data ||
+          action.payload;
         state.selectedPoll = poll;
       })
       .addCase(fetchPollById.rejected, (state, action) => {

@@ -131,6 +131,11 @@ export default function VillaManagementScreen() {
     return count;
   }, [filters]);
 
+  const activeSelectedVilla = useMemo(() => {
+    if (!selectedVilla) return null;
+    return villas.find((v) => v._id === selectedVilla._id) || selectedVilla;
+  }, [selectedVilla, villas]);
+
   const availableStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
 
   return (
@@ -321,11 +326,11 @@ export default function VillaManagementScreen() {
       </View>
 
       {/* Details Bottom Sheet Modal */}
-      {detailsModalVisible && selectedVilla ? (
+      {detailsModalVisible && activeSelectedVilla ? (
         <VillaDetailsModal
           visible={detailsModalVisible}
           onClose={() => setDetailsModalVisible(false)}
-          villa={selectedVilla}
+          villa={activeSelectedVilla}
           onEdit={handleOpenEditForm}
           onDelete={handleDeleteUnit}
         />

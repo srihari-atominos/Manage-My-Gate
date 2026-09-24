@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/common/Button';
@@ -54,6 +55,11 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editResidencyTypeVal, setEditResidencyTypeVal] = useState('Tenant');
 
+  // Confirmation Modals State
+  const [residentToDelete, setResidentToDelete] = useState<{ id: string; nameOrEmail: string } | null>(null);
+  const [deleteResidentLoading, setDeleteResidentLoading] = useState(false);
+  const [showDeleteUnitConfirm, setShowDeleteUnitConfirm] = useState(false);
+
   useEffect(() => {
     if (visible) {
       loadWorkspaceUsers();
@@ -89,15 +95,13 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
     setAssignError(null);
     setAssignSuccess(null);
     try {
-      await assignResident(villa._id, selectedUserId, assignResidencyType);
-      if (isPrimaryCheck) {
-        await setPrimary(villa._id, selectedUserId);
-      }
+      await assignResident(villa._id, selectedUserId, assignResidencyType, isPrimaryCheck);
       setAssignSuccess('Resident assigned successfully!');
       setSelectedUserId('');
       setIsPrimaryCheck(false);
     } catch (err: any) {
-      setAssignError(err?.message || 'Failed to assign resident');
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Failed to assign resident');
+      setAssignError(errMsg);
     }
   };
 
@@ -134,7 +138,8 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
       setInviteEmail('');
       setInvitePhone('');
     } catch (err: any) {
-      setInviteError(err?.message || 'Failed to send resident invitation');
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Failed to send resident invitation');
+      setInviteError(errMsg);
     }
   };
 
@@ -144,7 +149,8 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
       await updateResidency(villa._id, userId, editResidencyTypeVal);
       setEditingUserId(null);
     } catch (err: any) {
-      setAssignError(err?.message || 'Failed to update residency type');
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Failed to update residency type');
+      setAssignError(errMsg);
     }
   };
 
@@ -153,7 +159,8 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
     try {
       await setPrimary(villa._id, currentIsPrimary ? null : userId);
     } catch (err: any) {
-      setAssignError(err?.message || 'Failed to update primary resident');
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Failed to update primary resident');
+      setAssignError(errMsg);
     }
   };
 
@@ -162,7 +169,8 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
     try {
       await unassignResident(villa._id, userId);
     } catch (err: any) {
-      setAssignError(err?.message || 'Failed to remove resident');
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Failed to remove resident');
+      setAssignError(errMsg);
     }
   };
 
@@ -259,10 +267,7 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
                 variant="destructive"
                 size="sm"
                 className="flex-1 bg-red-600 active:bg-red-700"
-                onPress={() => {
-                  onClose();
-                  onDelete(villa);
-                }}
+                onPress={() => setShowDeleteUnitConfirm(true)}
               >
                 <Text className="text-xs font-bold text-white">Delete Unit</Text>
               </Button>
@@ -319,8 +324,15 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
                       </View>
 
                       <TouchableOpacity
-                        onPress={() => handleUnassign(resId)}
+                        onPress={() =>
+                          setResidentToDelete({
+                            id: resId,
+                            nameOrEmail: resEmail || `Resident #${idx + 1}`,
+                          })
+                        }
                         className="p-2 rounded-lg bg-destructive/10 border border-destructive/20 active:opacity-75"
+                        accessibilityRole="button"
+                        accessibilityLabel="Delete resident"
                       >
                         <Icon as={Trash2} size={15} className="text-destructive" />
                       </TouchableOpacity>
@@ -525,6 +537,51 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
           </View>
         </View>
       </ScrollView>
+
+      {/* Delete Resident Confirmation Modal */}
+      <ConfirmationModal
+        visible={!!residentToDelete}
+        title="Remove Resident"
+        message={`Are you sure you want to remove ${residentToDelete?.nameOrEmail || 'this resident'} from Unit ${villa.unitNumber}? Confirm to proceed.`}
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deleteResidentLoading}
+        onCancel={() => {
+          if (deleteResidentLoading) return;
+          setResidentToDelete(null);
+        }}
+        onConfirm={async () => {
+          if (!residentToDelete) return;
+          setDeleteResidentLoading(true);
+          try {
+            await unassignResident(villa._id, residentToDelete.id);
+            setResidentToDelete(null);
+          } catch (err: any) {
+            const errMsg = typeof err === 'string' ? err : (err?.message || 'Failed to remove resident');
+            setAssignError(errMsg);
+            setResidentToDelete(null);
+          } finally {
+            setDeleteResidentLoading(false);
+          }
+        }}
+      />
+
+      {/* Delete Unit Confirmation Modal */}
+      <ConfirmationModal
+        visible={showDeleteUnitConfirm}
+        title="Delete Unit"
+        message={`Are you sure you want to delete Unit ${villa.unitNumber}? This will permanently remove the unit and all associated resident records.`}
+        confirmLabel="Confirm Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onCancel={() => setShowDeleteUnitConfirm(false)}
+        onConfirm={() => {
+          setShowDeleteUnitConfirm(false);
+          onClose();
+          onDelete && onDelete(villa);
+        }}
+      />
     </BottomSheet>
   );
 };

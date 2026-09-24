@@ -147,6 +147,12 @@ const _nav = [
   },
   {
     component: CNavItem,
+    name: 'Issue Reports',
+    to: '/super-admin/issue-reports',
+    icon: <CIcon icon={cilWarning} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
     name: 'Billing & Invoices',
     to: '/billing',
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,

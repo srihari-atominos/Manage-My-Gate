@@ -56,19 +56,16 @@ export default function PollDetailScreen() {
   const isCommunityAdmin = checkIsAdmin(user);
 
   useEffect(() => {
-    if (user && !isCommunityAdmin) {
-      router.replace('/(resident)/polls');
-    }
-  }, [user, isCommunityAdmin, router]);
-
-  useEffect(() => {
-    if (id && isCommunityAdmin) {
+    if (id) {
       loadPollById(id);
       loadResults(id);
     }
-  }, [id, isCommunityAdmin, loadPollById, loadResults]);
+  }, [id, loadPollById, loadResults]);
 
-  const poll = selectedPoll?._id === id ? selectedPoll : null;
+  const poll =
+    selectedPoll && (selectedPoll._id === id || selectedPoll.id === id || String(selectedPoll._id) === String(id))
+      ? selectedPoll
+      : null;
 
   const handleVote = async (votePayload) => {
     try {

@@ -189,6 +189,8 @@ export const en: Record<string, string> = {
   'create_pass': 'Create Pass',
   'create_password': 'Create Password',
   'create_resident_account': 'Create Resident Account',
+  'resident_feed': 'Resident Feed',
+  'resident_view': 'Resident Feed',
   'create_role': 'Create Role',
   'create_unit': 'Create Unit',
   'creating': 'Creating...',
@@ -928,6 +930,11 @@ export const en: Record<string, string> = {
   'workspace_context_cta': 'Active Workspace Context',
   'workspace_invitation': 'Workspace Invitation',
   'workspace_settings': 'Workspace Settings',
+  'workspace_context': 'Organisation & Role',
+  'current_organisation': 'Current Organisation',
+  'current_role': 'Current Role',
+  'switch_organisation': 'Switch Organisation',
+  'no_roles_found': 'No roles assigned to this account in the current organisation.',
   'yes_switch': 'Yes, Switch',
   'your_email': 'your email',
   'swimming_pool': 'Swimming Pool',
@@ -3523,6 +3530,20 @@ export const en: Record<string, string> = {
   'amenity_pass_keycode': 'AMENITY PASSKEYCODE',
   'view_full_pass_share': 'Open Pass & Share on WhatsApp',
   'valid_for_amenity': 'Valid for Amenity',
+
+  // Role, Assignment & Organisation Switching
+  'current_assignment': 'Current Assignment',
+  'switch_assignment': 'Switch Assignment',
+  'switch_assignment_scope': 'Switch Assignment / Scope',
+  'select_assignment_sub': 'Select your active duty station, facility, or unit assignment:',
+  'confirm_switch_assignment_title': 'Switch Assignment / Scope?',
+  'confirm_switch_assignment_msg': 'Are you sure you want to switch active assignment to',
+  'no_assignments_found': 'No specific assignments configured for this role.',
+  'general_community_scope': 'General Community Scope',
+  'assignment_type_gate': 'Security Gate',
+  'assignment_type_facility': 'Amenity / Facility',
+  'assignment_type_villa': 'Residence / Unit',
+  'assignment_type_general': 'General Scope',
 
 };
 

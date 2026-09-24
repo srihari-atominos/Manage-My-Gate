@@ -136,8 +136,8 @@ export const useVilla = () => {
   }, []);
 
   const assignResident = useCallback(
-    async (villaId: string, userId: string, residencyType: string) => {
-      const result = await dispatch(assignExistingUserThunk({ villaId, userId, residencyType }));
+    async (villaId: string, userId: string, residencyType: string, isPrimary?: boolean) => {
+      const result = await dispatch(assignExistingUserThunk({ villaId, userId, residencyType, isPrimary }));
       if (assignExistingUserThunk.fulfilled.match(result)) {
         dispatch(getVillaById(villaId));
         fetchVillas();

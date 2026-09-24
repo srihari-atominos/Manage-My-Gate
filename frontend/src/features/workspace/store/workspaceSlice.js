@@ -168,6 +168,8 @@ const initialState = {
   activeOrganizationId: cachedUser?.orgId || null,
   activeVillaId: cachedUser?.villaId || null,
   activeRole: cachedUser?.role || null,
+  activeAssignment: cachedUser?.activeAssignment || null,
+  availableAssignments: cachedUser?.availableAssignments || [],
   allowedFeatures: cachedUser?.permissions || [],
   organizationName: cachedWorkspaces.find((w) => w.orgId === cachedUser?.orgId)?.name || null,
   isPlatform: cachedUser?.isPlatform || false,
@@ -187,12 +189,26 @@ export const workspaceSlice = createSlice({
   initialState,
   reducers: {
     setActiveWorkspace: (state, action) => {
-      const { activeOrganizationId, activeVillaId, activeRole, allowedFeatures, isPlatform, availableWorkspaces } =
-        action.payload || {}
+      const {
+        activeOrganizationId,
+        activeVillaId,
+        activeRole,
+        activeAssignment,
+        availableAssignments,
+        allowedFeatures,
+        isPlatform,
+        availableWorkspaces,
+      } = action.payload || {}
 
       state.activeOrganizationId = activeOrganizationId ?? null
       state.activeVillaId = activeVillaId ?? null
       state.activeRole = activeRole ?? null
+      if (activeAssignment !== undefined) {
+        state.activeAssignment = activeAssignment ?? null
+      }
+      if (availableAssignments !== undefined) {
+        state.availableAssignments = availableAssignments ?? []
+      }
       state.allowedFeatures = allowedFeatures ?? []
       state.isPlatform = isPlatform ?? false
 
@@ -210,6 +226,8 @@ export const workspaceSlice = createSlice({
       state.activeOrganizationId = null
       state.activeVillaId = null
       state.activeRole = null
+      state.activeAssignment = null
+      state.availableAssignments = []
       state.allowedFeatures = []
       state.organizationName = null
       state.isPlatform = false
@@ -230,6 +248,8 @@ export const workspaceSlice = createSlice({
         state.activeOrganizationId = null
         state.activeVillaId = null
         state.activeRole = null
+        state.activeAssignment = null
+        state.availableAssignments = []
         state.allowedFeatures = []
         state.organizationName = null
         state.isPlatform = false

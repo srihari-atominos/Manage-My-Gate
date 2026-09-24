@@ -1,0 +1,220 @@
+import fs from 'fs';
+import mongoose from 'mongoose';
+import issueReportRepository from './issueReport.repository.js';
+import organizationService from '../organization/organization.services.js';
+import issueReportEventEmitter, { ISSUE_REPORT_EVENTS } from './issueReport.events.js';
+import HttpError from '../../utils/httpError.utils.js';
+import logger from '../../utils/logger.utils.js';
+
+export class IssueReportService {
+  /**
+   * Submit a new Issue Report from an authenticated user.
+   * Derives reporter and organization context exclusively from verified backend state.
+   *
+   * @param {Object} authenticatedUser - req.user
+   * @param {Object} tenantContext - req.tenant
+   * @param {Object} reportPayload - req.body
+   * @param {Object|null} [file=null] - Multer uploaded file
+   * @param {string|null} [clientRequestId=null] - Unique request correlation ID for idempotency
+   * @returns {Promise<{ reportNumber: string, createdAt: Date }>}
+   */
+  async submitReport(authenticatedUser, tenantContext, reportPayload, file = null, clientRequestId = null) {
+    if (!authenticatedUser) {
+      throw new HttpError(401, 'Authentication required to submit an issue report.');
+    }
+
+    // 1. Idempotency Check: Prevent double-submits with identical X-Request-ID
+    if (clientRequestId) {
+      const existing = await issueReportRepository.findByClientRequestId(clientRequestId);
+      if (existing) {
+        logger.info(`[IssueReport] Duplicate submission detected for clientRequestId: ${clientRequestId}, returning existing report: ${existing.reportNumber}`);
+        // Clean up redundant file uploaded on duplicate request
+        if (file && file.path && fs.existsSync(file.path)) {
+          fs.unlink(file.path, () => {});
+        }
+        return {
+          reportNumber: existing.reportNumber,
+          createdAt: existing.createdAt,
+        };
+      }
+    }
+
+    // 2. Strict Context Extraction (Never trusted from client request body)
+    const userId = authenticatedUser.id || authenticatedUser._id;
+    const userName = authenticatedUser.name || authenticatedUser.username || (authenticatedUser.email ? authenticatedUser.email.split('@')[0] : 'User');
+    const userEmail = authenticatedUser.email || '';
+    const userRole = tenantContext?.role || authenticatedUser.role || 'Resident';
+
+    const rawOrgId = tenantContext?.orgId || authenticatedUser.orgId;
+    if (!rawOrgId) {
+      // Clean up uploaded file if organization context is missing
+      if (file && file.path && fs.existsSync(file.path)) {
+        fs.unlink(file.path, () => {});
+      }
+      throw new HttpError(400, 'Workspace / Organization context is required to submit a report.');
+    }
+
+    const orgIdStr = typeof rawOrgId === 'object' && rawOrgId !== null ? (rawOrgId._id || rawOrgId.id || String(rawOrgId)) : String(rawOrgId);
+
+    // Resolve human-readable Organization Name via Organization Service
+    let orgName = authenticatedUser.organizationName || tenantContext?.organizationName || 'Community';
+    try {
+      if (mongoose.Types.ObjectId.isValid(orgIdStr)) {
+        const orgDoc = await organizationService.getOrganizationById(orgIdStr);
+        if (orgDoc?.name) {
+          orgName = orgDoc.name;
+        }
+      }
+    } catch (orgErr) {
+      logger.warn(`[IssueReport] Failed to resolve organization name for ${orgIdStr}: ${orgErr.message}`);
+    }
+
+    // 3. Technical Context Sanitization
+    let technicalContext = {};
+    if (reportPayload.technicalContext) {
+      if (typeof reportPayload.technicalContext === 'string') {
+        try {
+          technicalContext = JSON.parse(reportPayload.technicalContext);
+        } catch {
+          technicalContext = {};
+        }
+      } else if (typeof reportPayload.technicalContext === 'object') {
+        technicalContext = reportPayload.technicalContext;
+      }
+    }
+
+    const cleanTechnicalContext = {
+      appVersion: String(technicalContext.appVersion || '').slice(0, 50),
+      platform: String(technicalContext.platform || '').slice(0, 30).toLowerCase(),
+      deviceModel: String(technicalContext.deviceModel || '').slice(0, 100),
+      osVersion: String(technicalContext.osVersion || '').slice(0, 50),
+    };
+
+    // 4. Attachments Construction
+    const attachments = [];
+    if (file) {
+      attachments.push({
+        url: `/uploads/issueReports/${file.filename}`,
+        fileName: file.originalname || file.filename,
+        mimeType: file.mimetype,
+        size: file.size,
+      });
+    }
+
+    // 5. Atomic Report Number Generation & Persistence
+    try {
+      const reportNumber = await issueReportRepository.getNextReportNumber();
+
+      const newReportData = {
+        reportNumber,
+        reporter: {
+          userId,
+          name: userName,
+          email: userEmail,
+          role: userRole,
+        },
+        organisation: {
+          organisationId: orgIdStr,
+          name: orgName,
+        },
+        reportType: reportPayload.reportType,
+        feature: reportPayload.feature,
+        title: String(reportPayload.title || '').trim(),
+        description: String(reportPayload.description || '').trim(),
+        attachments,
+        technicalContext: cleanTechnicalContext,
+        source: reportPayload.source || 'MOBILE_APP',
+        clientRequestId: clientRequestId || undefined,
+      };
+
+      const savedReport = await issueReportRepository.create(newReportData);
+
+      logger.info(`[IssueReport] Report successfully created: ${savedReport.reportNumber} by user ${userId} in org ${orgIdStr}`);
+
+      // Broadcast internal application event to decouple execution
+      try {
+        issueReportEventEmitter.emit(ISSUE_REPORT_EVENTS.REPORT_SUBMITTED, {
+          reportId: savedReport._id,
+          reportNumber: savedReport.reportNumber,
+          organisationId: savedReport.organisation.id,
+          reporterId: savedReport.reporter.id,
+        });
+      } catch (emitErr) {
+        logger.warn(`[IssueReport] Event emit warning: ${emitErr.message}`);
+      }
+
+      return {
+        reportNumber: savedReport.reportNumber,
+        createdAt: savedReport.createdAt,
+      };
+    } catch (saveError) {
+      // 6. File Cleanup on Database Failure
+      if (file && file.path && fs.existsSync(file.path)) {
+        fs.unlink(file.path, (unlinkErr) => {
+          if (unlinkErr) logger.error(`[IssueReport] Error cleaning up file after failure: ${unlinkErr.message}`);
+        });
+      }
+      logger.error(`[IssueReport] Failed to create report: ${saveError.message}`, { stack: saveError.stack });
+      throw saveError;
+    }
+  }
+
+  /**
+   * Platform Admin listing of reports with pagination, filtering, and search.
+   *
+   * @param {Object} queryParams
+   * @returns {Promise<{ reports: Array, total: number, page: number, limit: number, totalPages: number }>}
+   */
+  async getPlatformReports(queryParams = {}) {
+    const {
+      search,
+      reportType,
+      feature,
+      organisationId,
+      platform,
+      startDate,
+      endDate,
+      page,
+      limit,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = queryParams;
+
+    const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+
+    return await issueReportRepository.findPlatformReports({
+      search,
+      reportType,
+      feature,
+      organisationId,
+      platform,
+      startDate,
+      endDate,
+      page,
+      limit,
+      sort,
+    });
+  }
+
+  /**
+   * Platform Admin retrieval of a single report by MongoDB ObjectId.
+   *
+   * @param {string} id
+   * @returns {Promise<Object>}
+   */
+  async getReportById(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      throw new HttpError(400, 'Invalid report ID format.');
+    }
+
+    const report = await issueReportRepository.findById(id);
+    if (!report) {
+      throw new HttpError(404, 'Issue report not found.');
+    }
+
+    return report;
+  }
+}
+
+export const issueReportService = new IssueReportService();
+export default issueReportService;

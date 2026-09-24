@@ -160,13 +160,13 @@ export function CommunityEngagementDashboardScreen() {
             onPress={() => router.push('/(resident)/notices/active-board' as any)}
             className="flex-1 bg-card border border-border p-4 rounded-xl flex-row items-center active:opacity-75"
             accessibilityRole="button"
-            accessibilityLabel="Resident View"
+            accessibilityLabel="Resident Feed"
           >
             <View className="w-10 h-10 rounded-lg bg-emerald-500/10 items-center justify-center me-3">
               <Users size={20} className="text-emerald-500" />
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-semibold text-foreground">Resident View</Text>
+              <Text className="text-sm font-semibold text-foreground">Resident Feed</Text>
               <Text className="text-xs text-muted-foreground">Circulars & live polls</Text>
             </View>
           </Pressable>
