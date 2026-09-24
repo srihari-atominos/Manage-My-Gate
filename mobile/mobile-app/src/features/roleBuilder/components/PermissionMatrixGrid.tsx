@@ -5,12 +5,26 @@ import { Icon } from '../../../../components/ui/icon';
 import { ShieldCheck, Compass, Check, Layers, Users, Key, Landmark, Sparkles } from 'lucide-react-native';
 import { PermissionGroupMap, PermissionItem } from '../store/roleSlice';
 
+const PERMISSION_LABEL_MAP: Record<string, string> = {
+  active_board: 'Resident Feed',
+  resident_feed: 'Resident Feed',
+  polls: 'Community Engagement',
+  community_engagement: 'Community Engagement',
+  manage_notices: 'Manage Engagement',
+  manage_engagement: 'Manage Engagement',
+  dashboard: 'Manage Engagement',
+};
+
 const formatPermissionLabel = (permissionString?: string): string => {
   if (!permissionString) return '';
   let label = permissionString;
   if (label.includes(':')) {
     const parts = label.split(':');
     label = parts[parts.length - 1];
+  }
+  const key = label.toLowerCase();
+  if (PERMISSION_LABEL_MAP[key]) {
+    return PERMISSION_LABEL_MAP[key];
   }
   label = label.replace(/_/g, ' ');
   return label.charAt(0).toUpperCase() + label.slice(1);
@@ -125,9 +139,70 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
           });
         }
 
+        // Filter noticeboard permissions as requested: only Resident Feed, Community Engagement, and Manage Engagement
+        const catKey = category.toLowerCase();
+        if (catKey === 'notices' || catKey === 'noticeboard' || catKey === 'notices board') {
+          const allowedNoticesPerms = [
+            'active_board',
+            'resident_feed',
+            'polls',
+            'community_engagement',
+            'manage_notices',
+            'manage_engagement',
+            'dashboard',
+          ];
+          const seenLabels = new Set<string>();
+          perms = perms.filter((p) => {
+            const permName = p.name || p.code || p._id || '';
+            const action = (permName.includes(':') ? permName.split(':')[1] : permName).toLowerCase();
+            if (allowedNoticesPerms.includes(action)) {
+              const displayLabel = PERMISSION_LABEL_MAP[action] || action;
+              if (seenLabels.has(displayLabel)) {
+                return false;
+              }
+              seenLabels.add(displayLabel);
+              return true;
+            }
+            return false;
+          });
+        }
+
+const isPermissionSelected = (selectedIds: string[], perm: PermissionItem): boolean => {
+  if (!selectedIds || !Array.isArray(selectedIds) || selectedIds.length === 0 || !perm) return false;
+  const pId = String(perm._id || '');
+  const pName = String(perm.name || '').trim().toLowerCase();
+  const pCode = String(perm.code || '').trim().toLowerCase();
+  const pAction = String(perm.action || '').trim().toLowerCase();
+
+  return selectedIds.some((selected) => {
+    if (!selected) return false;
+    const selStr = typeof selected === 'object' ? String((selected as any).name || (selected as any)._id || '') : String(selected);
+    const selTrimmed = selStr.trim().toLowerCase();
+    const selNormalized = selTrimmed.replace(':', '.');
+    const pNameNormalized = pName.replace(':', '.');
+
+    if (
+      selTrimmed === pId ||
+      selTrimmed === pName ||
+      selTrimmed === pCode ||
+      selNormalized === pNameNormalized
+    ) {
+      return true;
+    }
+
+    const selAction = selTrimmed.includes(':') ? selTrimmed.split(':')[1] : selTrimmed;
+    const pActionName = pName.includes(':') ? pName.split(':')[1] : pName;
+    if (selAction && (selAction === pAction || selAction === pActionName)) {
+      return true;
+    }
+
+    return false;
+  });
+};
+
         const groupCodes = perms.map((p) => p.name || p.code || p._id || '');
-        const selectedGroupCount = groupCodes.filter((code) => (selectedIds || []).includes(code)).length;
-        const isAllGroupSelected = groupCodes.length > 0 && selectedGroupCount === groupCodes.length;
+        const selectedGroupCount = perms.filter((p) => isPermissionSelected(selectedIds || [], p)).length;
+        const isAllGroupSelected = perms.length > 0 && selectedGroupCount === perms.length;
 
         const CategoryIcon = getCategoryIcon(category);
         const activeAmenityTier = isAmenities ? currentAmenityTier : null;
@@ -227,7 +302,7 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
               <View className="bg-card border border-border/80 rounded-2xl overflow-hidden shadow-xs">
                 {perms.map((perm, idx) => {
                   const permValue = perm.name || perm.code || perm._id || '';
-                  const isChecked = (selectedIds || []).includes(permValue);
+                  const isChecked = isPermissionSelected(selectedIds || [], perm);
                   const isLast = idx === perms.length - 1;
 
                   return (

@@ -98,10 +98,10 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'visitor:resident': ['visitor:resident', 'visitor.resident', 'visitor', 'visitor_resident_passes', 'visitor_passes', 'visitor:view', 'visitor:read', 'visitor_gate_console', 'visitor_invite'],
 
   // Notice Board
-  'notices:active_board': ['notices:active_board', 'notices:read', 'notices.read', 'notices:view', 'notices.view', 'notices', 'notice_board'],
-  'notices:dashboard': ['notices:dashboard', 'notices:read', 'notices.read', 'notices:view', 'notices'],
-  'notices:manage_notices': ['notices:manage_notices', 'notices:create', 'notices:update', 'notices.create', 'notices.update', 'notices'],
-  'notices:polls': ['notices:polls', 'notices:read', 'notices.polls', 'notices'],
+  'notices:active_board': ['notices:active_board', 'notices.active_board', 'active_board', 'resident_feed', 'notices_active_board'],
+  'notices:dashboard': ['notices:dashboard', 'notices:read', 'notices.read', 'notices:view'],
+  'notices:manage_notices': ['notices:manage_notices', 'notices.manage_notices', 'manage_notices', 'manage_engagement'],
+  'notices:polls': ['notices:polls', 'notices.polls', 'polls', 'community_engagement'],
 
   // Complaints & Maintenance
   'complaints:track_requests': ['complaints:track_requests', 'complaints:raise_ticket', 'complaints:view', 'complaints.view', 'complaints:read', 'complaints.read', 'complaints:create', 'complaints'],

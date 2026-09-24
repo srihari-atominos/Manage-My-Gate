@@ -68,7 +68,7 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       titleKey: 'nav_community_directory',
       defaultTitle: 'COMMUNITY & DIRECTORY',
       items: [
-        { id: 'cd-engagement', labelKey: 'community_engagement', defaultLabel: 'Community Engagement', route: '/(resident)/community-engagement', icon: Megaphone, color: '#6366f1', badge: 'NEW' },
+        { id: 'cd-engagement', labelKey: 'community_engagement', defaultLabel: 'Community Engagement', route: '/(resident)/community-engagement', icon: Megaphone, color: '#6366f1', badge: 'NEW', permission: 'notices:polls' },
         { id: 'cd-directory', labelKey: 'community_directory', defaultLabel: 'Community Directory', route: '/(resident)/directory/index', icon: Users, color: '#10b981' },
         { id: 'cd-notes', labelKey: 'all_community_notes', defaultLabel: 'All Community Notes', route: '/(resident)/notes/index', icon: Sparkles, color: '#ec4899', badge: '24h' },
       ],

@@ -2,12 +2,26 @@ import React from 'react';
 import { Checkbox } from 'src/components/ui/checkbox';
 import { Label } from 'src/components/ui/label';
 
+const PERMISSION_LABEL_MAP = {
+  active_board: 'Resident Feed',
+  resident_feed: 'Resident Feed',
+  polls: 'Community Engagement',
+  community_engagement: 'Community Engagement',
+  manage_notices: 'Manage Engagement',
+  manage_engagement: 'Manage Engagement',
+  dashboard: 'Manage Engagement',
+};
+
 const formatPermissionLabel = (permissionString) => {
   if (!permissionString) return '';
   let label = permissionString;
   if (label.includes(':')) {
     const parts = label.split(':');
     label = parts[parts.length - 1];
+  }
+  const key = label.toLowerCase();
+  if (PERMISSION_LABEL_MAP[key]) {
+    return PERMISSION_LABEL_MAP[key];
   }
   label = label.replace(/_/g, ' ');
   return label.charAt(0).toUpperCase() + label.slice(1);
@@ -37,8 +51,69 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
           });
         }
         
+        // Filter noticeboard permissions as requested: only Resident Feed, Community Engagement, and Manage Engagement
+        const catKey = category.toLowerCase();
+        if (catKey === 'notices' || catKey === 'noticeboard' || catKey === 'notices board') {
+          const allowedNoticesPerms = [
+            'active_board',
+            'resident_feed',
+            'polls',
+            'community_engagement',
+            'manage_notices',
+            'manage_engagement',
+            'dashboard',
+          ];
+          const seenLabels = new Set();
+          perms = perms.filter((p) => {
+            const permName = p.name || p.code || p._id || '';
+            const action = (permName.includes(':') ? permName.split(':')[1] : permName).toLowerCase();
+            if (allowedNoticesPerms.includes(action)) {
+              const displayLabel = PERMISSION_LABEL_MAP[action] || action;
+              if (seenLabels.has(displayLabel)) {
+                return false;
+              }
+              seenLabels.add(displayLabel);
+              return true;
+            }
+            return false;
+          });
+        }
+        
+const isPermissionSelected = (selectedIds, perm) => {
+  if (!selectedIds || !Array.isArray(selectedIds) || selectedIds.length === 0 || !perm) return false;
+  const pId = String(perm._id || '');
+  const pName = String(perm.name || '').trim().toLowerCase();
+  const pCode = String(perm.code || '').trim().toLowerCase();
+  const pAction = String(perm.action || '').trim().toLowerCase();
+
+  return selectedIds.some((selected) => {
+    if (!selected) return false;
+    const selStr = typeof selected === 'object' ? String(selected.name || selected._id || '') : String(selected);
+    const selTrimmed = selStr.trim().toLowerCase();
+    const selNormalized = selTrimmed.replace(':', '.');
+    const pNameNormalized = pName.replace(':', '.');
+
+    if (
+      selTrimmed === pId ||
+      selTrimmed === pName ||
+      selTrimmed === pCode ||
+      selNormalized === pNameNormalized
+    ) {
+      return true;
+    }
+
+    const selAction = selTrimmed.includes(':') ? selTrimmed.split(':')[1] : selTrimmed;
+    const pActionName = pName.includes(':') ? pName.split(':')[1] : pName;
+    if (selAction && (selAction === pAction || selAction === pActionName)) {
+      return true;
+    }
+
+    return false;
+  });
+};
+
         const groupCodes = perms.map((p) => p.name || p.code || p._id);
-        const isAllGroupSelected = groupCodes.length > 0 && groupCodes.every((code) => selectedIds.includes(code));
+        const isAllGroupSelected = perms.length > 0 && perms.every((p) => isPermissionSelected(selectedIds, p));
 
         return (
           <div key={category} className="border border-stroke dark:border-strokedark rounded-md bg-white dark:bg-boxdark p-4 shadow-sm mb-2">
@@ -68,7 +143,7 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
               {perms.map((perm) => {
                 const permValue = perm.name || perm.code || perm._id;
                 const idSafe = String(permValue).replace(/:/g, '-');
-                const isChecked = selectedIds.includes(permValue);
+                const isChecked = isPermissionSelected(selectedIds, perm);
 
                 if (category.toLowerCase() === 'visitor') {
                   return (

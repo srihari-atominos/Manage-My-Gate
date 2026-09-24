@@ -162,7 +162,7 @@ export const syncPermissions = async () => {
       'complaints:staff', 'complaints:raise_ticket', 'complaints:track_requests',
       'complaints:complaint_management', 'complaints:assignee',
       'visitor:admin',
-      'notices:create', 'notices:read', 'notices:update', 'notices:delete',
+      'notices:active_board', 'notices:polls', 'notices:manage_notices',
       'billing:dashboard', 'billing:assessment_manager', 'billing:action_center',
       'workspaces:read', 'workspaces:update',
     ];
