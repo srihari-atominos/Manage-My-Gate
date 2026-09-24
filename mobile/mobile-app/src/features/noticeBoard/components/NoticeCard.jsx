@@ -94,16 +94,16 @@ export function NoticeCard({
   // Primary badge priority
   const computeStatusBadge = () => {
     if (isHighNotice) {
-      return { label: 'HIGH PRIORITY', variant: 'warning' };
+      return { label: t('priority_high', 'High Priority').toUpperCase(), variant: 'warning' };
     }
     if (isAdmin && status && status !== 'Published') {
       return { label: status, variant: getNoticeStatusVariant(status) };
     }
     if (isMediumNotice) {
-      return { label: 'MEDIUM', variant: 'info' };
+      return { label: t('priority_medium', 'Medium').toUpperCase(), variant: 'info' };
     }
     if (isLowNotice) {
-      return { label: 'LOW', variant: 'neutral' };
+      return { label: t('priority_low', 'Low').toUpperCase(), variant: 'neutral' };
     }
     return status ? { label: status, variant: getNoticeStatusVariant(status) } : undefined;
   };
@@ -178,7 +178,7 @@ export function NoticeCard({
               <View className="flex-row items-center gap-1 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
                 <Pin size={11} color="#d97706" />
                 <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                  Pinned to Top
+                  {t('pinned', 'Pinned to Top')}
                 </Text>
               </View>
             )}

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
+import { RowsPerPageDropdown } from '@/components/ui/RowsPerPageDropdown';
 import { useTranslation } from '@/src/utils/i18n';
 import { useRoles } from '@/src/features/roleBuilder/hooks/useRoles';
 import { useRoleSocket } from '@/src/features/roleBuilder/hooks/useRoleSocket';
@@ -157,12 +158,12 @@ export default function RoleBuilderScreen() {
       headerRight={
         <TouchableOpacity
           onPress={openCreateModal}
-          className="flex-row items-center gap-1 bg-emerald-600 active:bg-emerald-700 px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1.5 bg-emerald-600 active:bg-emerald-700 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
-          accessibilityLabel="Add role"
+          accessibilityLabel="Create Role"
         >
           <Plus size={14} color="#ffffff" />
-          <Text className="text-xs font-bold text-white">{t('add_role', 'Add Role')}</Text>
+          <Text className="text-xs font-bold text-white">{t('create_role', 'Create Role')}</Text>
         </TouchableOpacity>
       }
     >
@@ -208,29 +209,20 @@ export default function RoleBuilderScreen() {
         </View>
 
         {/* Summary & Rows-Per-Page Selector (matching User Management exactly) */}
-        <View className="px-3 py-1.5 flex-row items-center justify-between border-b border-border/40 bg-muted/20">
-          <Text className="text-[11px] font-semibold text-muted-foreground text-start">
-            {t('showing_users', 'Showing')} <Text className="font-bold text-foreground">{startRecord}-{endRecord}</Text> {t('of_users', 'of')} <Text className="font-bold text-foreground">{totalRecords}</Text> {t('roles_label', 'Roles')}
+        <View className="px-3 py-2 flex-row flex-wrap items-center justify-between gap-2 border-b border-border/40 bg-muted/20">
+          <Text className="text-xs font-semibold text-muted-foreground text-start">
+            {t('showing_users', 'Showing')}{' '}
+            <Text className="font-bold text-foreground">{startRecord}–{endRecord}</Text>{' '}
+            {t('of_users', 'of')}{' '}
+            <Text className="font-bold text-foreground">{totalRecords}</Text>{' '}
+            {t('roles_label', 'Roles')}
           </Text>
 
-          <View className="flex-row items-center gap-1">
-            <Text className="text-[10px] font-semibold text-muted-foreground me-0.5">{t('rows_label', 'Rows:')}</Text>
-            {[10, 20, 50, 100].map((limit) => (
-              <TouchableOpacity
-                key={limit}
-                onPress={() => setRowsPerPage(limit)}
-                className={`px-1.5 py-0.5 rounded-md border active:opacity-70 ${
-                  rowsPerPage === limit ? 'bg-blue-600 border-blue-600' : 'bg-background border-border/60'
-                }`}
-                accessibilityRole="button"
-                accessibilityLabel={`Set ${limit} rows per page`}
-              >
-                <Text className={`text-[10px] font-bold ${rowsPerPage === limit ? 'text-white' : 'text-foreground'}`}>
-                  {limit}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <RowsPerPageDropdown
+            value={rowsPerPage}
+            options={[10, 20, 50, 100]}
+            onChange={setRowsPerPage}
+          />
         </View>
 
         {/* List Content (matching User Management: FlatList, not PaginatedList) */}

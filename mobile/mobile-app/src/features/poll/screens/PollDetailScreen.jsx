@@ -17,6 +17,7 @@ import { PollResultsView } from '../components/PollResultsView';
 import { PollVotersModal } from '../components/PollVotersModal';
 import { PollEngagementBar } from '../components/PollEngagementBar';
 import { checkIsAdmin } from '@/src/utils/rbac';
+import { useTranslation } from '@/src/utils/i18n';
 
 /**
  * PollDetailScreen Component (Pure JSX)
@@ -31,6 +32,7 @@ import { checkIsAdmin } from '@/src/utils/rbac';
 export default function PollDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { t, translateText } = useTranslation();
 
   const {
     selectedPoll,
@@ -152,8 +154,8 @@ export default function PollDetailScreen() {
 
   return (
     <ScreenShell
-      title="Poll Details"
-      subtitle={poll.question}
+      title={t('poll_details', 'Poll Details')}
+      subtitle={translateText(poll.question)}
       iconName="BarChart2"
     >
       <ScrollView className="flex-1 px-4 py-4" contentContainerStyle={{ paddingBottom: 60 }}>
@@ -162,16 +164,16 @@ export default function PollDetailScreen() {
           <View className="flex-row justify-between items-start mb-2">
             <View className="flex-1 me-3">
               <Text className="text-lg font-bold text-foreground">
-                {poll.question}
+                {translateText(poll.question)}
               </Text>
               {Boolean(poll.description) && (
                 <Text className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                  {poll.description}
+                  {translateText(poll.description)}
                 </Text>
               )}
             </View>
             <StatusBadge
-              label={poll.status}
+              label={t(`status_${poll.status.toLowerCase()}`, poll.status)}
               variant={poll.status === 'Active' ? 'success' : 'neutral'}
             />
           </View>

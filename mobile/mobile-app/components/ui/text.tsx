@@ -2,8 +2,8 @@ import { cn } from '../../lib/utils';
 import { Slot } from '@rn-primitives/slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-import { Platform, Text as RNText, type Role, StyleSheet } from 'react-native';
-import i18n from '../../src/utils/i18n';
+import { Platform, Text as RNText, type Role } from 'react-native';
+import i18n, { I18nContext } from '../../src/utils/i18n';
 
 const textVariants = cva(
   cn(
@@ -93,12 +93,23 @@ function Text({
   const textClass = React.useContext(TextClassContext);
   const Component = asChild ? Slot : RNText;
 
-  const [currentLang, setCurrentLang] = React.useState(i18n.getCurrentLanguage());
-  React.useEffect(() => {
-    return i18n.subscribe((newLang) => setCurrentLang(newLang));
-  }, []);
+  const i18nCtx = React.useContext(I18nContext);
+  const [fallbackLang, setFallbackLang] = React.useState(() => i18n.getCurrentLanguage());
 
-  const isArabic = currentLang === 'ar';
+  React.useEffect(() => {
+    if (!i18nCtx) {
+      return i18n.subscribe((newLang) => setFallbackLang(newLang));
+    }
+  }, [i18nCtx]);
+
+  const currentLang = i18nCtx?.language || fallbackLang;
+  const isNonLatin =
+    currentLang === 'ar' ||
+    currentLang === 'ta' ||
+    currentLang === 'hi' ||
+    currentLang === 'ml' ||
+    currentLang === 'te' ||
+    currentLang === 'kn';
 
   const shouldSkipTranslate =
     skipTranslate || (props as any).noTranslate || (props as any).translate === false;
@@ -110,33 +121,18 @@ function Text({
     return translateChildren(children);
   }, [children, currentLang, shouldSkipTranslate]);
 
-  const resolvedStyle = React.useMemo(() => {
-    if (!isArabic || !style) return style;
-    const flat = StyleSheet.flatten(style) || {};
-    if (flat.fontSize) {
-      return [
-        style,
-        {
-          fontSize: Math.round(flat.fontSize * 1.15),
-          lineHeight: flat.lineHeight ? Math.round(flat.lineHeight * 1.18) : undefined,
-        },
-      ];
-    }
-    return style;
-  }, [style, isArabic]);
-
   return (
     <Component
       dir="ltr"
       className={cn(
         textVariants({ variant }),
         textClass,
-        isArabic && 'tracking-normal text-[1.08em]',
+        isNonLatin && 'tracking-normal',
         className
       )}
       role={variant ? ROLE[variant] : undefined}
       aria-level={variant ? ARIA_LEVEL[variant] : undefined}
-      style={resolvedStyle}
+      style={style}
       {...(props as any)}
     >
       {translatedChildren}

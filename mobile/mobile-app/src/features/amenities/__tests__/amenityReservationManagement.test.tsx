@@ -781,7 +781,10 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(screen.getByText('Past Squash Court')).toBeTruthy();
       expect(screen.getByText('Pending Spa Suite')).toBeTruthy();
 
-      // Tap 'Past' tab
+      // Open filter modal and tap 'Past' tab
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Open filter options'));
+      });
       await act(async () => {
         fireEvent.press(screen.getByText('Past'));
       });
@@ -789,7 +792,10 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(screen.queryByText('Infinity Swimming Pool')).toBeNull();
       expect(screen.queryByText('Pending Spa Suite')).toBeNull();
 
-      // Tap 'Awaiting Approval' tab
+      // Open filter modal and tap 'Awaiting Approval' tab
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Open filter options'));
+      });
       await act(async () => {
         fireEvent.press(screen.getByText('Awaiting Approval'));
       });
@@ -797,7 +803,10 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(screen.queryByText('Past Squash Court')).toBeNull();
       expect(screen.queryByText('Infinity Swimming Pool')).toBeNull();
 
-      // Tap 'Upcoming' tab
+      // Open filter modal and tap 'Upcoming' tab
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Open filter options'));
+      });
       await act(async () => {
         fireEvent.press(screen.getAllByText('Upcoming')[0]);
       });

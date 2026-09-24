@@ -3,6 +3,7 @@ import { View, Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { CheckCircle2, Circle } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface PollOptionRowProps {
   text: string;
@@ -23,6 +24,7 @@ export function PollOptionRow({
   onSelect,
   disabled = false,
 }: PollOptionRowProps) {
+  const { translateText } = useTranslation();
   const isInteractive = !disabled && !showResults;
 
   return (
@@ -66,7 +68,7 @@ export function PollOptionRow({
               isSelected ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'font-medium text-foreground'
             }`}
           >
-            {text}
+            {translateText(text)}
           </Text>
         </View>
 

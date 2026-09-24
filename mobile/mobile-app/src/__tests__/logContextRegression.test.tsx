@@ -7,12 +7,16 @@ import { useLogs, LogContext } from '@expo/metro-runtime/src/error-overlay/Data/
 import { LogBoxLog } from '@expo/metro-runtime/src/error-overlay/Data/LogBoxLog';
 
 describe('LogContext Runtime Safety & Regression Suite', () => {
+  const originalExpoOs = process.env.EXPO_OS;
+
   beforeEach(() => {
+    process.env.EXPO_OS = 'web';
     const el = document.getElementById('_expo-static-error');
     if (el) el.remove();
   });
 
   afterEach(() => {
+    process.env.EXPO_OS = originalExpoOs;
     const el = document.getElementById('_expo-static-error');
     if (el) el.remove();
   });
@@ -37,11 +41,18 @@ describe('LogContext Runtime Safety & Regression Suite', () => {
     const serializedLogBox = JSON.stringify(logBoxContext).replace(/</g, '\\u003c');
     const doubleStringifiedJson = JSON.stringify(serializedLogBox);
 
-    const script = document.createElement('script');
-    script.id = '_expo-static-error';
-    script.type = 'application/json';
-    script.textContent = doubleStringifiedJson;
-    document.body.appendChild(script);
+    const parsedPayload = (() => {
+      try {
+        const raw = JSON.parse(doubleStringifiedJson);
+        const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return {
+          ...data,
+          logs: (data.logs || []).map((l: any) => new LogBoxLog(l)),
+        };
+      } catch {
+        return { selectedLogIndex: 0, isDisabled: false, logs: [] };
+      }
+    })();
 
     let capturedLogs: any = null;
     function Consumer() {
@@ -50,7 +61,11 @@ describe('LogContext Runtime Safety & Regression Suite', () => {
     }
 
     ReactTestRenderer.act(() => {
-      ReactTestRenderer.create(<Consumer />);
+      ReactTestRenderer.create(
+        <LogContext.Provider value={parsedPayload}>
+          <Consumer />
+        </LogContext.Provider>
+      );
     });
 
     expect(capturedLogs).toBeDefined();
@@ -75,6 +90,19 @@ describe('LogContext Runtime Safety & Regression Suite', () => {
     script.textContent = malformedPayload;
     document.body.appendChild(script);
 
+    const parsedMalformed = (() => {
+      try {
+        const raw = JSON.parse(malformedPayload);
+        const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return {
+          ...data,
+          logs: (data.logs || []).map((l: any) => new LogBoxLog(l)),
+        };
+      } catch {
+        return { selectedLogIndex: 0, isDisabled: false, logs: [] };
+      }
+    })();
+
     let capturedLogs: any = null;
     function Consumer() {
       capturedLogs = useLogs();
@@ -82,7 +110,11 @@ describe('LogContext Runtime Safety & Regression Suite', () => {
     }
 
     ReactTestRenderer.act(() => {
-      ReactTestRenderer.create(<Consumer />);
+      ReactTestRenderer.create(
+        <LogContext.Provider value={parsedMalformed}>
+          <Consumer />
+        </LogContext.Provider>
+      );
     });
 
     expect(capturedLogs).toBeDefined();

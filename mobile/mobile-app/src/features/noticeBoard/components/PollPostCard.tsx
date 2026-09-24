@@ -3,6 +3,7 @@ import { View, TouchableOpacity, Share } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/src/utils/i18n';
 import {
   BarChart3,
   Clock,
@@ -21,10 +22,11 @@ export interface PollPostCardProps {
 }
 
 export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => {
+  const { t, translateText } = useTranslation();
   if (!poll) return null;
 
   const id = poll._id || poll.id;
-  const question = poll.question || poll.title || 'Community Ballot';
+  const question = poll.question || poll.title || t('community_ballot', 'Community Ballot');
   const description = poll.description || '';
   const options = Array.isArray(poll.options) ? poll.options : [];
   const isAnonymous = Boolean(poll.isAnonymous);
@@ -33,27 +35,29 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
       ? poll.totalVotes
       : options.reduce((sum: number, opt: any) => sum + (Number(opt?.votes) || 0), 0);
   const hasVoted = Boolean(poll.hasVoted || poll.userVoted);
+  const isClosed = poll.status === 'Closed';
+  const isDraft = poll.status === 'Draft';
   const choiceType = poll.choiceType || 'SINGLE_CHOICE';
   const quorumMet = Boolean(poll.quorumMet);
   const quorumPercentage = Number(poll.quorumPercentage) || 0;
 
   // Relative Time & Expiry
   const formatRelativeTime = (dateStr?: string) => {
-    if (!dateStr) return 'Recently';
+    if (!dateStr) return t('recently', 'Recently');
     const date = new Date(dateStr);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     if (diffHours < 1) {
       const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-      return `${diffMins}m ago`;
+      return t('minutes_ago', '{{count}}m ago', { count: diffMins });
     }
     if (diffHours < 24) {
-      return `${diffHours}h ago`;
+      return t('hours_ago', '{{count}}h ago', { count: diffHours });
     }
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) {
-      return `${diffDays}d ago`;
+      return t('days_ago', '{{count}}d ago', { count: diffDays });
     }
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
@@ -63,13 +67,13 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
     const expiry = new Date(dateStr);
     const now = new Date();
     const diffMs = expiry.getTime() - now.getTime();
-    if (diffMs <= 0) return 'Closed';
+    if (diffMs <= 0) return t('closed', 'Closed');
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     if (diffHours < 24) {
-      return `Closes in ${diffHours}h`;
+      return t('closes_in_hours', 'Closes in {{count}}h', { count: diffHours });
     }
     const diffDays = Math.ceil(diffHours / 24);
-    return `Closes in ${diffDays}d`;
+    return t('closes_in_days', 'Closes in {{count}}d', { count: diffDays });
   };
 
   const closingCountdown = formatClosingCountdown(poll.endDate);
@@ -84,36 +88,41 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
   };
 
   return (
-    <View className="bg-card rounded-3xl border border-purple-500/20 dark:border-purple-500/30 overflow-hidden mb-4 shadow-sm">
+    <View className="bg-card rounded-2xl border border-border/80 dark:border-border/60 overflow-hidden mb-3 shadow-2xs">
       {/* 1. Publisher & Category Header */}
       <TouchableOpacity
         onPress={() => onPress(poll)}
         activeOpacity={0.85}
-        className="p-4 pb-2 flex-row items-center justify-between"
+        className="p-3.5 pb-2 flex-row items-center justify-between"
       >
-        <View className="flex-row items-center gap-2.5 flex-1 me-2">
-          <View className="w-10 h-10 rounded-full bg-purple-500/10 items-center justify-center border border-purple-500/20">
-            <BarChart3 size={18} className="text-purple-600 dark:text-purple-400" />
+        <View className="flex-row items-center gap-2.5 flex-1 me-2 min-w-0">
+          <View className="w-10 h-10 rounded-xl bg-[#00A6A6]/10 items-center justify-center border border-[#00A6A6]/20 shrink-0">
+            <BarChart3 size={18} color="#00A6A6" />
           </View>
 
           <View className="flex-1">
             <View className="flex-row items-center gap-1.5 flex-wrap">
               <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
-                Community Poll & Survey
+                {t('community_poll_survey', 'Community Poll & Survey')}
               </Text>
-              <View className="bg-purple-500/10 px-1.5 py-0.5 rounded-md border border-purple-500/20">
-                <Text className="text-[10px] font-bold text-purple-600 dark:text-purple-400">
-                  VOTE
+              <View className="bg-[#00A6A6]/10 px-1.5 py-0.5 rounded-md border border-[#00A6A6]/20">
+                <Text className="text-[10px] font-bold text-[#00A6A6]">
+                  {t('vote_action', 'VOTE')}
                 </Text>
               </View>
             </View>
             <Text className="text-xs text-muted-foreground mt-0.5">
-              {formatRelativeTime(poll.createdAt)} • Official Ballot
+              {formatRelativeTime(poll.createdAt)} • {t('official_ballot', 'Official Ballot')}
             </Text>
           </View>
         </View>
 
-        <StatusBadge label="ACTIVE" variant="success" size="sm" dot />
+        <StatusBadge
+          label={(isClosed ? t('status_closed', 'Closed') : poll.status === 'Draft' ? t('status_draft', 'Draft') : t('status_active', 'Active')).toUpperCase()}
+          variant={isClosed ? 'neutral' : poll.status === 'Draft' ? 'warning' : 'success'}
+          size="sm"
+          dot={!isClosed}
+        />
       </TouchableOpacity>
 
       {/* 2. Poll Question & Description */}
@@ -123,11 +132,11 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
         className="px-4 pb-3"
       >
         <Text className="text-base font-bold text-foreground tracking-tight leading-snug mb-1.5">
-          {question}
+          {translateText(question)}
         </Text>
         {description ? (
           <Text numberOfLines={2} className="text-xs text-muted-foreground/90 leading-relaxed">
-            {description}
+            {translateText(description)}
           </Text>
         ) : null}
       </TouchableOpacity>
@@ -148,7 +157,7 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
               {totalVotes > 0 && (
                 <View
                   style={{ width: `${percentage}%` }}
-                  className="absolute inset-y-0 start-0 bg-purple-500/15"
+                  className="absolute inset-y-0 start-0 bg-[#00A6A6]/15"
                 />
               )}
 
@@ -160,12 +169,12 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
                     </Text>
                   </View>
                   <Text className="text-xs font-semibold text-foreground flex-1" numberOfLines={1}>
-                    {optText}
+                    {translateText(optText)}
                   </Text>
                 </View>
 
                 {totalVotes > 0 && (
-                  <Text className="text-xs font-bold text-purple-600 dark:text-purple-400">
+                  <Text className="text-xs font-bold text-[#00A6A6]">
                     {percentage}%
                   </Text>
                 )}
@@ -176,7 +185,7 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
 
         {options.length > 3 && (
           <Text className="text-[11px] text-muted-foreground font-medium text-center">
-            +{options.length - 3} more option{options.length - 3 > 1 ? 's' : ''} on ballot
+            {t('more_options_on_ballot', '+{{count}} more options on ballot', { count: options.length - 3 })}
           </Text>
         )}
       </View>
@@ -186,19 +195,19 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
         {isAnonymous ? (
           <View className="flex-row items-center gap-1 bg-secondary/80 px-2 py-0.5 rounded-md">
             <Lock size={11} className="text-muted-foreground" />
-            <Text className="text-[11px] font-medium text-foreground">Anonymous</Text>
+            <Text className="text-[11px] font-medium text-foreground">{t('anonymous', 'Anonymous')}</Text>
           </View>
         ) : (
           <View className="flex-row items-center gap-1 bg-secondary/80 px-2 py-0.5 rounded-md">
             <Globe size={11} className="text-muted-foreground" />
-            <Text className="text-[11px] font-medium text-foreground">Public Ballot</Text>
+            <Text className="text-[11px] font-medium text-foreground">{t('public_ballot', 'Public Ballot')}</Text>
           </View>
         )}
 
         <View className="flex-row items-center gap-1 bg-secondary/80 px-2 py-0.5 rounded-md">
           <CheckSquare size={11} className="text-muted-foreground" />
           <Text className="text-[11px] font-medium text-foreground">
-            {choiceType === 'MULTIPLE_CHOICE' ? 'Multi-Choice' : 'Single Choice'}
+            {choiceType === 'MULTIPLE_CHOICE' ? t('multi_choice', 'Multi-Choice') : t('single_choice', 'Single Choice')}
           </Text>
         </View>
 
@@ -226,7 +235,7 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
                   : 'text-muted-foreground'
               }`}
             >
-              {quorumMet ? 'Quorum Met' : `${quorumPercentage}% Quorum`}
+              {quorumMet ? t('quorum_met', 'Quorum Met') : `${quorumPercentage}% ${t('quorum', 'Quorum')}`}
             </Text>
           </View>
         )}
@@ -235,9 +244,9 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
       {/* 5. Votes Stats & Share */}
       <View className="px-4 py-2 flex-row items-center justify-between bg-card">
         <View className="flex-row items-center gap-1.5">
-          <Users size={13} className="text-purple-600 dark:text-purple-400" />
+          <Users size={13} color="#00A6A6" />
           <Text className="text-xs font-semibold text-foreground">
-            {totalVotes} vote{totalVotes === 1 ? '' : 's'} recorded
+            {t('votes_recorded', '{{count}} votes recorded', { count: totalVotes })}
           </Text>
         </View>
 
@@ -257,13 +266,14 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
           variant="default"
           size="default"
           onPress={() => onPress(poll)}
-          className="w-full h-11 rounded-2xl flex-row items-center justify-center gap-2 bg-purple-600 active:bg-purple-700"
+          className="w-full h-11 rounded-2xl flex-row items-center justify-center gap-2 bg-[#00A6A6] active:bg-[#008f8f]"
+          style={{ backgroundColor: '#00A6A6' }}
           accessibilityRole="button"
           accessibilityLabel="Cast vote or view results"
         >
           <BarChart3 size={15} color="#ffffff" />
           <Text className="text-xs font-bold text-white">
-            {hasVoted ? 'View Live Ballot Results' : 'Cast Your Vote Now'}
+            {hasVoted ? t('view_live_ballot_results', 'View Live Ballot Results') : t('cast_your_vote_now', 'Cast Your Vote Now')}
           </Text>
           <ArrowRight size={14} color="#ffffff" />
         </Button>

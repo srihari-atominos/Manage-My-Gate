@@ -24,8 +24,8 @@ export const MaintenanceStepIndicator: React.FC<MaintenanceStepIndicatorProps> =
   return (
     <View className="bg-card px-4 py-2.5 border-b border-border gap-2">
       <View className="flex-row items-center justify-between">
-        <Text variant="small" className="text-foreground font-semibold">
-          Step {currentStepIndex + 1} of {totalSteps}: {currentStep.title}
+        <Text variant="small" className="text-foreground font-semibold font-sans">
+          {`Step ${currentStepIndex + 1} of ${totalSteps}: ${currentStep.title}`}
         </Text>
         <Text variant="muted" className="text-xs font-mono">
           {progressPercent}%

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -238,16 +238,16 @@ export default function ActiveBoardScreen() {
   // Quick pill options for the horizontal scroll bar in SearchFilterBar
   const quickPillOptions = useMemo(
     () => [
-      { label: `All (${liveCounts.all})`, value: 'ALL' },
-      { label: `🚨 Urgent (${liveCounts.urgent})`, value: 'URGENT' },
-      { label: `📌 Pinned (${liveCounts.pinned})`, value: 'PINNED' },
-      { label: `✍️ Needs Sign-off (${liveCounts.signoff})`, value: 'SIGNOFF' },
-      { label: `🛠️ Maintenance (${liveCounts.maintenance})`, value: 'Maintenance' },
-      { label: `🎉 Events (${liveCounts.events})`, value: 'Events' },
-      { label: `📢 General (${liveCounts.general})`, value: 'General' },
-      { label: `🏛️ Meetings (${liveCounts.meetings})`, value: 'Meetings' },
+      { label: `${t('all', 'All')} (${liveCounts.all})`, value: 'ALL' },
+      { label: `🚨 ${t('priority_urgent', 'Urgent')} (${liveCounts.urgent})`, value: 'URGENT' },
+      { label: `📌 ${t('pinned', 'Pinned')} (${liveCounts.pinned})`, value: 'PINNED' },
+      { label: `✍️ ${t('needs_signoff', 'Needs Sign-off')} (${liveCounts.signoff})`, value: 'SIGNOFF' },
+      { label: `🛠️ ${t('maintenance', 'Maintenance')} (${liveCounts.maintenance})`, value: 'Maintenance' },
+      { label: `🎉 ${t('events', 'Events')} (${liveCounts.events})`, value: 'Events' },
+      { label: `📢 ${t('general', 'General')} (${liveCounts.general})`, value: 'General' },
+      { label: `🏛️ ${t('meetings', 'Meetings')} (${liveCounts.meetings})`, value: 'Meetings' },
     ],
-    [liveCounts]
+    [liveCounts, t]
   );
 
   // Apply Quick Pill, Search, and Advanced Drawer Filters
@@ -370,33 +370,7 @@ export default function ActiveBoardScreen() {
 
   const renderHeader = () => (
     <View className="mb-2 gap-2.5">
-      {/* Layer 1: Perspective Mode Toggle (All Active / Notices / Polls) */}
-      <View className="flex-row items-center gap-2 pt-1 pb-0.5">
-        <Chip
-          label={`All Active (${(notices?.length || 0) + (polls?.length || 0)})`}
-          icon={Layers}
-          selected={perspectiveMode === 'ALL'}
-          onPress={() => setPerspectiveMode('ALL')}
-          className="rounded-full px-3 py-1.5"
-        />
-        <Chip
-          label={`Announcements (${notices?.length || 0})`}
-          icon={Megaphone}
-          selected={perspectiveMode === 'NOTICES'}
-          onPress={() => setPerspectiveMode('NOTICES')}
-          className="rounded-full px-3 py-1.5"
-        />
-        <Chip
-          label={`Live Polls (${polls?.length || 0})`}
-          icon={BarChart3}
-          selected={perspectiveMode === 'POLLS'}
-          onPress={() => setPerspectiveMode('POLLS')}
-          className="rounded-full px-3 py-1.5"
-        />
-      </View>
-
-      {/* Layer 2: Search Input & Advanced Drawer Trigger */}
-      {/* Layer 3: Horizontal Scrollable Quick Pills with Live Counts */}
+      {/* 1. Search Input First */}
       <SearchFilterBar
         searchValue={localSearch}
         onSearchChange={handleSearchChange}
@@ -408,6 +382,74 @@ export default function ActiveBoardScreen() {
         activeFilterCount={activeFilterCount}
         className="px-0 py-0 border-0"
       />
+
+      {/* 2. Below Search Bar: Perspective Mode Boxes */}
+      <View className="flex-row items-center gap-2 pt-0.5 pb-0.5">
+        {[
+          {
+            id: 'ALL',
+            label: t('all_active', 'All Active'),
+            count: (notices?.length || 0) + (polls?.length || 0),
+            icon: Layers,
+          },
+          {
+            id: 'NOTICES',
+            label: t('announcements', 'Announcements'),
+            count: notices?.length || 0,
+            icon: Megaphone,
+          },
+          {
+            id: 'POLLS',
+            label: t('live_polls', 'Live Polls'),
+            count: polls?.length || 0,
+            icon: BarChart3,
+          },
+        ].map((item) => {
+          const isSelected = perspectiveMode === item.id;
+          const Icon = item.icon;
+          return (
+            <Pressable
+              key={item.id}
+              onPress={() => setPerspectiveMode(item.id)}
+              className={`flex-1 flex-col items-center justify-center py-2 px-1.5 rounded-xl border min-h-[58px] shadow-2xs active:opacity-85 ${
+                isSelected
+                  ? 'border-primary bg-primary'
+                  : 'border-border/80 bg-card active:bg-secondary/60'
+              }`}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.label}, ${item.count}`}
+            >
+              <View className="flex-row items-center justify-center gap-1.5 mb-1">
+                <Icon
+                  size={14}
+                  className={isSelected ? 'text-white' : 'text-primary'}
+                />
+                <View
+                  className={`px-1.5 py-0.2 rounded-full items-center justify-center ${
+                    isSelected ? 'bg-white/25' : 'bg-primary/10'
+                  }`}
+                >
+                  <Text
+                    className={`text-[10.5px] font-bold font-sans ${
+                      isSelected ? 'text-white' : 'text-primary'
+                    }`}
+                  >
+                    {item.count}
+                  </Text>
+                </View>
+              </View>
+              <Text
+                numberOfLines={1}
+                className={`text-[11.5px] font-semibold text-center leading-tight ${
+                  isSelected ? 'text-white font-bold' : 'text-foreground'
+                }`}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 
@@ -446,6 +488,7 @@ export default function ActiveBoardScreen() {
         subtitle={t('official_announcements', 'Live community announcements & resident votes')}
         iconName="Megaphone"
         loading={false}
+        scrollable={false}
         headerRight={
           <Button
             variant="ghost"
@@ -509,7 +552,7 @@ export default function ActiveBoardScreen() {
                     className="mt-2 rounded-xl"
                   >
                     <Text className="text-xs font-semibold text-foreground">
-                      Reset All Filters
+                      {t('reset_all_filters', 'Reset All Filters')}
                     </Text>
                   </Button>
                 ) : undefined

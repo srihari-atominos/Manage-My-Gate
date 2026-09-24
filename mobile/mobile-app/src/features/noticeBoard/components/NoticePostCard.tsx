@@ -3,6 +3,7 @@ import { View, Image, TouchableOpacity, Share } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/src/utils/i18n';
 import {
   Megaphone,
   Wrench,
@@ -39,6 +40,7 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
   onAcknowledge,
   isAdmin = false,
 }) => {
+  const { t, translateText, tRole } = useTranslation();
   if (!notice) return null;
 
   const id = notice._id || notice.id;
@@ -60,7 +62,7 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
     notice.createdBy?.name ||
     notice.createdByName ||
     'Estate Management';
-  const authorRole = notice.author?.role || 'Office';
+  const authorRole = tRole(notice.author?.role || 'Office', 'Office');
 
   // Images
   const rawImages = Array.isArray(notice.images) ? notice.images : [];
@@ -72,21 +74,21 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
 
   // Relative Time & Expiry
   const formatRelativeTime = (dateStr?: string) => {
-    if (!dateStr) return 'Recently';
+    if (!dateStr) return t('recently', 'Recently');
     const date = new Date(dateStr);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     if (diffHours < 1) {
       const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-      return `${diffMins}m ago`;
+      return t('minutes_ago', '{{count}}m ago', { count: diffMins });
     }
     if (diffHours < 24) {
-      return `${diffHours}h ago`;
+      return t('hours_ago', '{{count}}h ago', { count: diffHours });
     }
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) {
-      return `${diffDays}d ago`;
+      return t('days_ago', '{{count}}d ago', { count: diffDays });
     }
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
@@ -96,22 +98,22 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
     const expiry = new Date(dateStr);
     const now = new Date();
     const diffMs = expiry.getTime() - now.getTime();
-    if (diffMs <= 0) return 'Expired';
+    if (diffMs <= 0) return t('expired', 'Expired');
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     if (diffHours < 24) {
-      return `Expires in ${diffHours}h`;
+      return t('expires_in_hours', 'Expires in {{count}}h', { count: diffHours });
     }
     const diffDays = Math.ceil(diffHours / 24);
-    return `Expires in ${diffDays}d`;
+    return t('expires_in_days', 'Expires in {{count}}d', { count: diffDays });
   };
 
   const formatAudienceScope = (ta?: any) => {
-    if (!ta) return 'All Residents';
-    if (ta.targetType === 'ALL' || !ta.targetType) return 'All Residents';
+    if (!ta) return t('all_residents', 'All Residents');
+    if (ta.targetType === 'ALL' || !ta.targetType) return t('all_residents', 'All Residents');
     if (ta.targetType === 'RESIDENCY_TYPES') {
       const types = ta.targetResidencyTypes || [];
-      if (types.some((t: string) => t.toLowerCase().includes('owner'))) return 'Owners Only';
-      if (types.some((t: string) => t.toLowerCase().includes('staff'))) return 'Staff Only';
+      if (types.some((t: string) => t.toLowerCase().includes('owner'))) return t('owners_only', 'Owners Only');
+      if (types.some((t: string) => t.toLowerCase().includes('staff'))) return t('staff_only', 'Staff Only');
     }
     if (ta.targetType === 'BLOCKS' && ta.blocks?.length) {
       return `Blocks: ${ta.blocks.join(', ')}`;
@@ -190,20 +192,20 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
   };
 
   return (
-    <View className="bg-card rounded-3xl border border-border/80 overflow-hidden mb-4 shadow-sm">
+    <View className="bg-card rounded-2xl border border-border/80 dark:border-border/60 overflow-hidden mb-3 shadow-2xs">
       {/* 1. Author & Publisher Header */}
       <TouchableOpacity
         onPress={() => onPress(notice)}
         activeOpacity={0.85}
-        className="p-4 pb-2 flex-row items-center justify-between"
+        className="p-3.5 pb-2 flex-row items-center justify-between"
       >
-        <View className="flex-row items-center gap-2.5 flex-1 me-2">
+        <View className="flex-row items-center gap-2.5 flex-1 me-2 min-w-0">
           {/* Publisher Avatar Badge */}
-          <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center border border-primary/20">
+          <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center border border-primary/20 shrink-0">
             <CategoryIcon size={18} className="text-primary" />
           </View>
 
-          <View className="flex-1">
+          <View className="flex-1 min-w-0">
             <View className="flex-row items-center gap-1.5 flex-wrap">
               <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
                 {authorName}
@@ -226,21 +228,21 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
             <View className="bg-amber-500/15 px-2 py-1 rounded-full flex-row items-center gap-1 border border-amber-500/30">
               <Pin size={11} className="text-amber-600 dark:text-amber-400" />
               <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">
-                Pinned
+                {t('pinned', 'PINNED')}
               </Text>
             </View>
           )}
 
           {isCritical ? (
-            <StatusBadge label="CRITICAL" variant="danger" size="sm" dot />
+            <StatusBadge label={t('critical', 'CRITICAL').toUpperCase()} variant="danger" size="sm" dot />
           ) : isHighPriority ? (
-            <StatusBadge label="HIGH" variant="warning" size="sm" />
+            <StatusBadge label={t('priority_high', 'HIGH').toUpperCase()} variant="warning" size="sm" />
           ) : (
             <View
               className={`px-2 py-0.5 rounded-full flex-row items-center gap-1 border ${catMeta.bg} ${catMeta.border}`}
             >
               <Text className={`text-[10px] font-bold uppercase ${catMeta.text}`}>
-                {category}
+                {t(category.toLowerCase(), category)}
               </Text>
             </View>
           )}
@@ -254,14 +256,14 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
         className="px-4 pb-3"
       >
         <Text className="text-base font-bold text-foreground tracking-tight leading-snug mb-1.5">
-          {title}
+          {translateText(title)}
         </Text>
         {description ? (
           <Text
             numberOfLines={3}
             className="text-xs text-muted-foreground/90 leading-relaxed"
           >
-            {description}
+            {translateText(description)}
           </Text>
         ) : null}
       </TouchableOpacity>
@@ -283,7 +285,7 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
               <View className="absolute bottom-2.5 end-2.5 bg-black/70 px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-white/20 shadow-xs">
                 <Camera size={11} color="#ffffff" />
                 <Text className="text-[10px] font-bold text-white">
-                  1 of {totalImages} photos
+                  {t('photo_count_indicator', '1 of {{count}} photos', { count: totalImages })}
                 </Text>
               </View>
             )}
@@ -296,11 +298,13 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
               >
                 <CategoryIcon size={11} className={catMeta.text} />
                 <Text className={`text-[10px] font-bold uppercase ${catMeta.text}`}>
-                  Official {category} Update
+                  {t('official_category_update', 'Official {{category}} Update', {
+                    category: t(category.toLowerCase(), category),
+                  })}
                 </Text>
               </View>
               <Text className="text-xs font-medium text-muted-foreground" numberOfLines={2}>
-                Official estate notice issued to residents of {audienceLabel}.
+                {t('official_notice_issued_to', 'Official estate notice issued to residents of {{audience}}.', { audience: audienceLabel })}
               </Text>
             </View>
             <View className="w-16 h-16 rounded-2xl bg-card border border-border/60 items-center justify-center shadow-xs">
@@ -341,14 +345,14 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
               <>
                 <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400" />
                 <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                  Signed
+                  {t('signed', 'Signed')}
                 </Text>
               </>
             ) : (
               <>
                 <AlertTriangle size={11} className="text-amber-600 dark:text-amber-400" />
                 <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                  Sign-off Required
+                  {t('signoff_required', 'Sign-off Required')}
                 </Text>
               </>
             )}
@@ -360,7 +364,7 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
           <View className="flex-row items-center gap-1 bg-secondary/80 px-2 py-0.5 rounded-md">
             <FileText size={11} className="text-muted-foreground" />
             <Text className="text-[11px] font-medium text-foreground">
-              {notice.attachments.length} Doc
+              {t('doc_count', '{{count}} Doc', { count: notice.attachments.length })}
             </Text>
           </View>
         )}
@@ -373,14 +377,14 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
           <View className="flex-row items-center gap-1">
             <Heart size={14} className="text-red-500" fill={totalReactions > 0 ? '#ef4444' : 'none'} />
             <Text className="text-xs font-semibold text-foreground">
-              {totalReactions > 0 ? totalReactions : 'Like'}
+              {totalReactions > 0 ? totalReactions : t('like', 'Like')}
             </Text>
           </View>
 
           <View className="flex-row items-center gap-1">
             <MessageSquare size={14} className="text-muted-foreground" />
             <Text className="text-xs font-semibold text-foreground">
-              {commentsCount > 0 ? `${commentsCount} comments` : 'Discuss'}
+              {commentsCount > 0 ? t('comments_count', '{{count}} comments', { count: commentsCount }) : t('discuss', 'Discuss')}
             </Text>
           </View>
         </View>
@@ -432,7 +436,7 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
           >
             <AlertTriangle size={15} color="#ffffff" />
             <Text className="text-xs font-bold text-white">
-              Acknowledge Notice & Open Discussion
+              {t('acknowledge_and_discuss', 'Acknowledge Notice & Open Discussion')}
             </Text>
           </Button>
         ) : (
@@ -445,7 +449,7 @@ export const NoticePostCard: React.FC<NoticePostCardProps> = ({
             accessibilityLabel="View full announcement"
           >
             <Text className="text-xs font-bold text-primary-foreground">
-              View Full Announcement & Discussion
+              {t('view_full_announcement_discussion', 'View Full Announcement & Discussion')}
             </Text>
             <ArrowRight size={14} className="text-primary-foreground" />
           </Button>

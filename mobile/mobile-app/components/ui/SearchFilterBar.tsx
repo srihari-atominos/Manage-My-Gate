@@ -3,16 +3,19 @@ import {
   View,
   TextInput,
   Pressable,
-  ScrollView,
   Platform,
 } from 'react-native';
 import { useColorScheme } from 'nativewind';
-import { Search, X, SlidersHorizontal, QrCode } from 'lucide-react-native';
+import { Search, X, SlidersHorizontal, QrCode, Check, RotateCcw } from 'lucide-react-native';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Text } from './text';
 import { Icon } from './icon';
 import { cn } from '../../lib/utils';
-import { getStatusTabStyle } from './statusTabColors';
+import { BottomSheet } from './BottomSheet';
+import { GlobalFilterPanel } from './GlobalFilterPanel';
+import { Button } from './button';
+import { Chip } from '../common/Chip';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface SortOption {
   label: string;
@@ -33,12 +36,12 @@ const searchFilterBarVariants = cva('w-full flex-col px-4 py-2', {
 });
 
 const filterButtonVariants = cva(
-  'h-10 w-10 rounded-lg bg-muted items-center justify-center relative shrink-0 active:opacity-80 active:bg-accent',
+  'h-11 w-11 rounded-2xl items-center justify-center relative shrink-0 active:opacity-80 active:bg-accent border border-border/80 bg-card shadow-2xs',
   {
     variants: {
       hasActiveFilter: {
-        true: 'bg-muted border border-primary/30',
-        false: 'bg-muted',
+        true: 'border-primary/40 bg-primary/10',
+        false: 'border-border/80 bg-card',
       },
     },
     defaultVariants: {
@@ -59,6 +62,7 @@ export interface SearchFilterBarProps
   sortOptions?: SortOption[];
   onSortChange?: (value: string) => void;
   currentSort?: string;
+  filterTitle?: string;
   className?: string;
 }
 
@@ -74,17 +78,59 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
       sortOptions,
       onSortChange,
       currentSort,
+      filterTitle = 'Filter & Sort Options',
       variant,
       className,
       ...props
     },
     ref
   ) => {
+    const { t, translateText } = useTranslation();
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === 'dark';
     const placeholderColor = isDark ? '#9ca3af' : '#6b7280';
 
-    const hasActiveFilter = Boolean(activeFilterCount && activeFilterCount > 0);
+    const [isInternalModalOpen, setIsInternalModalOpen] = React.useState(false);
+
+    const isNonDefaultSort = Boolean(
+      currentSort &&
+      currentSort !== 'ALL' &&
+      currentSort !== 'all' &&
+      currentSort !== ''
+    );
+
+    const effectiveFilterCount = activeFilterCount > 0
+      ? activeFilterCount
+      : isNonDefaultSort
+      ? 1
+      : 0;
+
+    const hasActiveFilter = effectiveFilterCount > 0;
+
+    const handleFilterButtonPress = () => {
+      if (onFilterPress) {
+        onFilterPress();
+      } else if (sortOptions && sortOptions.length > 0) {
+        setIsInternalModalOpen(true);
+      }
+    };
+
+    const handleSelectOption = (value: string) => {
+      onSortChange?.(value);
+      setIsInternalModalOpen(false);
+    };
+
+    const handleResetSort = () => {
+      if (sortOptions && sortOptions.length > 0) {
+        const defaultOpt = sortOptions.find(
+          (o) => o.value === 'ALL' || o.value === 'all' || o.value === ''
+        ) || sortOptions[0];
+        onSortChange?.(defaultOpt.value);
+      }
+      setIsInternalModalOpen(false);
+    };
+
+    const showFilterButton = Boolean(onFilterPress || (sortOptions && sortOptions.length > 0));
 
     return (
       <View
@@ -92,57 +138,10 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
         className={cn(searchFilterBarVariants({ variant }), className)}
         {...props}
       >
-        {/* Row 1: Filter / Sort options bar */}
-        {sortOptions && sortOptions.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mb-2.5"
-            contentContainerStyle={{ gap: 8 }}
-          >
-            {sortOptions.map((option) => {
-              const isSelected = currentSort === option.value;
-              const statusStyle = getStatusTabStyle(option.value || option.label, isSelected);
-              const OptionIcon = option.icon;
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => onSortChange?.(option.value)}
-                  className={cn(
-                    'flex-row items-center px-3 py-1.5 rounded-full border text-xs',
-                    statusStyle.containerClass
-                  )}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                >
-                  {OptionIcon && (
-                    <Icon
-                      as={OptionIcon}
-                      size={14}
-                      className={cn(
-                        'me-1.5',
-                        isSelected ? 'text-white' : 'text-muted-foreground'
-                      )}
-                    />
-                  )}
-                  <Text
-                    className={cn(
-                      'text-xs font-sans',
-                      statusStyle.textClass
-                    )}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
-
-        {/* Row 2: Search input container & filter trigger */}
+        {/* Single Clean Row: Search Input + Filter Icon Button */}
         <View className="flex-row items-center gap-2">
           {/* Search input container */}
-          <View className="flex-1 flex-row items-center bg-card border border-border/80 rounded-2xl px-3.5 py-2.5 text-foreground">
+          <View className="flex-1 flex-row items-center bg-card border border-border/80 rounded-2xl px-3.5 h-11 text-foreground shadow-2xs">
             <Icon
               as={Search}
               size={18}
@@ -151,10 +150,10 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
             <TextInput
               value={searchValue}
               onChangeText={onSearchChange}
-              placeholder={searchPlaceholder}
+              placeholder={translateText(searchPlaceholder)}
               placeholderTextColor={placeholderColor}
               className={cn(
-                'flex-1 text-foreground text-sm font-sans p-0 bg-transparent',
+                'flex-1 text-foreground text-sm font-sans p-0 bg-transparent h-full',
                 Platform.select({
                   web: 'outline-none',
                 })
@@ -189,24 +188,55 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
           </View>
 
           {/* Filter button */}
-          {onFilterPress && (
+          {showFilterButton && (
             <Pressable
-              onPress={onFilterPress}
-              className={cn(filterButtonVariants({ hasActiveFilter }), 'rounded-2xl border border-border/80 bg-card')}
+              onPress={handleFilterButtonPress}
+              className={cn(filterButtonVariants({ hasActiveFilter }))}
               accessibilityRole="button"
               accessibilityLabel="Open filter options"
             >
-              <Icon as={SlidersHorizontal} size={18} className="text-foreground" />
+              <Icon
+                as={SlidersHorizontal}
+                size={18}
+                className={hasActiveFilter ? 'text-primary' : 'text-foreground'}
+              />
               {hasActiveFilter && (
-                <View className="absolute -top-1 -right-1 bg-primary rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center">
+                <View className="absolute -top-1 -right-1 bg-primary rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center border-2 border-card shadow-2xs">
                   <Text className="text-primary-foreground text-[10px] font-bold font-sans leading-none text-center">
-                    {activeFilterCount > 99 ? '99+' : activeFilterCount}
+                    {effectiveFilterCount > 99 ? '99+' : effectiveFilterCount}
                   </Text>
                 </View>
               )}
             </Pressable>
           )}
         </View>
+
+        {/* Built-in Two-Pane Filter Panel for sortOptions when no custom onFilterPress is supplied */}
+        {sortOptions && sortOptions.length > 0 && !onFilterPress && (
+          <GlobalFilterPanel
+            visible={isInternalModalOpen}
+            onClose={() => setIsInternalModalOpen(false)}
+            title={translateText(filterTitle)}
+            categories={[
+              {
+                id: 'status_category',
+                label: t('status_category', 'Status & Options'),
+                type: 'radio',
+                options: sortOptions.map((opt) => ({
+                  id: opt.value,
+                  label: opt.label,
+                  icon: opt.icon,
+                })),
+                selectedValues: currentSort,
+                selectedCount: isNonDefaultSort ? 1 : 0,
+                onOptionSelect: (val) => handleSelectOption(val),
+              },
+            ]}
+            onApply={() => setIsInternalModalOpen(false)}
+            onClearAll={handleResetSort}
+            totalActiveCount={effectiveFilterCount}
+          />
+        )}
       </View>
     );
   }
