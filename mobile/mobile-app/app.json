@@ -20,9 +20,9 @@
       "enabled": false
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "15",
+      "buildNumber": "16",
       "associatedDomains": [
         "applinks:managemygate.e3esg.com",
         "applinks:app.managemygate.com",
