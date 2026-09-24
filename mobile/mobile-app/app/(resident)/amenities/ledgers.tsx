@@ -24,6 +24,8 @@ export default function AmenityLedgersScreen() {
     setSearchQuery,
     statusFilter,
     setStatusFilter,
+    paymentStatusFilter,
+    setPaymentStatusFilter,
     selectedAmenityId,
     setSelectedAmenityId,
     selectedLedgerDetail,
@@ -47,17 +49,25 @@ export default function AmenityLedgersScreen() {
     { label: 'Cancelled', value: 'CANCELLED' },
   ];
 
+  const paymentStatusOptions = [
+    { label: 'All Payment Statuses', value: 'All' },
+    { label: 'Paid', value: 'PAID' },
+    { label: 'Pending', value: 'PENDING' },
+    { label: 'Refunded', value: 'REFUNDED' },
+    { label: 'Failed', value: 'FAILED' },
+  ];
+
   const kpiCards: KPICardProps[] = useMemo(
     () => [
       {
         title: 'Total Revenue',
-        value: `₹${kpis.totalMasterRevenue.toFixed(2)}`,
+        value: `₹${kpis.totalMasterRevenue.toLocaleString('en-IN')}`,
         iconName: 'DollarSign',
         variant: 'success',
       },
       {
         title: 'Today Earnings',
-        value: `₹${kpis.todayEarnings.toFixed(2)}`,
+        value: `₹${kpis.todayEarnings.toLocaleString('en-IN')}`,
         iconName: 'TrendingUp',
         variant: 'warning',
       },
@@ -88,14 +98,24 @@ export default function AmenityLedgersScreen() {
         className="px-0 py-0 border-0"
       />
 
-      {/* Facility Filter Bar */}
-      <View className="bg-card p-3 rounded-2xl border border-border shadow-xs">
-        <DropdownSelect
-          label="Facility Filter"
-          options={amenityOptions}
-          value={selectedAmenityId}
-          onValueChange={setSelectedAmenityId}
-        />
+      {/* Facility & Payment Filter Bar */}
+      <View className="flex-row gap-2">
+        <View className="flex-1 bg-card p-2.5 rounded-2xl border border-border shadow-xs">
+          <DropdownSelect
+            label="Facility Filter"
+            options={amenityOptions}
+            value={selectedAmenityId}
+            onValueChange={setSelectedAmenityId}
+          />
+        </View>
+        <View className="flex-1 bg-card p-2.5 rounded-2xl border border-border shadow-xs">
+          <DropdownSelect
+            label="Payment Filter"
+            options={paymentStatusOptions}
+            value={paymentStatusFilter}
+            onValueChange={setPaymentStatusFilter}
+          />
+        </View>
       </View>
 
       <Text variant="large" className="font-bold text-foreground mt-1">

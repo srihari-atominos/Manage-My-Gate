@@ -58,8 +58,8 @@ const CalendarAnalytics = memo(({ analytics }) => {
       <CCol xs={6} md={3}>
         <CCard className="border-0 shadow-sm h-100" style={{ backgroundColor: '#F8FAFC' }}>
           <CCardBody className="p-3">
-            <div className="small text-uppercase fw-bold mb-1 text-muted">Active Bookings</div>
-            <div className="fs-4 fw-bold text-body">{active}</div>
+            <div className="small text-uppercase fw-bold mb-1 text-muted">Confirmed / Active</div>
+            <div className="fs-4 fw-bold text-body">{active || todayBookings}</div>
           </CCardBody>
         </CCard>
       </CCol>
@@ -74,7 +74,7 @@ const CalendarAnalytics = memo(({ analytics }) => {
       <CCol xs={6} md={3}>
         <CCard className="border-0 shadow-sm h-100" style={{ backgroundColor: '#F8FAFC' }}>
           <CCardBody className="p-3">
-            <div className="small text-uppercase fw-bold mb-1 text-muted">Pending</div>
+            <div className="small text-uppercase fw-bold mb-1 text-muted">Pending Payment</div>
             <div className="fs-4 fw-bold text-body">{pending}</div>
           </CCardBody>
         </CCard>

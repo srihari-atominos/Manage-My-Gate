@@ -4,6 +4,7 @@ import { Clock, Check } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { AmenitySlot } from '../store/amenitySlice';
+import { formatTo12Hour } from '../utils/amenityStateHelpers';
 import { cn } from '@/lib/utils';
 
 export interface TimeSlotSelectorProps {
@@ -112,12 +113,18 @@ export function TimeSlotSelector({
               ? Math.max(0, slot.capacity - (slot.bookedCount || 0))
               : 1;
 
+          const isUnderMaintenance =
+            slot?.status === 'Maintenance' ||
+            slot?.status === 'maintenance' ||
+            Boolean(slot?.isUnderMaintenance);
+
           const isAvailable =
-            slot?.isAvailable !== undefined
+            !isUnderMaintenance &&
+            (slot?.isAvailable !== undefined
               ? slot.isAvailable
               : slot?.status
               ? slot.status === 'Available'
-              : availableCount > 0;
+              : availableCount > 0);
 
           const duration = getSlotDuration(slotStartTime, slotEndTime);
 
@@ -130,6 +137,8 @@ export function TimeSlotSelector({
                 'w-[48.5%] rounded-xl p-2.5 border flex-col justify-between min-h-[78px] active:scale-[0.97] transition-all bg-card',
                 isSelected
                   ? 'border-2 border-primary bg-primary/10 dark:bg-primary/20 shadow-xs'
+                  : isUnderMaintenance
+                  ? 'border-dashed border-amber-500/50 bg-amber-500/10'
                   : isAvailable
                   ? 'border-border shadow-2xs'
                   : 'border-dashed border-border/70 bg-muted/40 opacity-50'
@@ -142,12 +151,14 @@ export function TimeSlotSelector({
                     'text-base font-black tracking-tight text-start leading-5',
                     isSelected
                       ? 'text-primary font-extrabold'
+                      : isUnderMaintenance
+                      ? 'text-amber-600 line-through'
                       : !isAvailable
                       ? 'text-muted-foreground line-through'
                       : 'text-foreground'
                   )}
                 >
-                  {slotStartTime}
+                  {formatTo12Hour(slotStartTime)}
                 </Text>
 
                 {isSelected && (
@@ -162,15 +173,23 @@ export function TimeSlotSelector({
                 <Text
                   className={cn(
                     'text-[10px] font-semibold me-1.5',
-                    !isAvailable ? 'text-muted-foreground/60' : 'text-muted-foreground'
+                    isUnderMaintenance
+                      ? 'text-amber-600/70'
+                      : !isAvailable
+                      ? 'text-muted-foreground/60'
+                      : 'text-muted-foreground'
                   )}
                 >
-                  {slotEndTime}
+                  {formatTo12Hour(slotEndTime)}
                 </Text>
                 <Text
                   className={cn(
                     'text-[10px] font-medium',
-                    !isAvailable ? 'text-muted-foreground/40' : 'text-muted-foreground'
+                    isUnderMaintenance
+                      ? 'text-amber-600/70'
+                      : !isAvailable
+                      ? 'text-muted-foreground/40'
+                      : 'text-muted-foreground'
                   )}
                 >
                   {duration}
@@ -179,8 +198,24 @@ export function TimeSlotSelector({
 
               {/* Bottom Row: Canonical StatusBadge */}
               <StatusBadge
-                label={isSelected ? 'Selected' : isAvailable ? 'Available' : 'Closed'}
-                variant={isSelected ? 'success' : isAvailable ? 'info' : 'neutral'}
+                label={
+                  isSelected
+                    ? 'Selected'
+                    : isUnderMaintenance
+                    ? 'Maintenance'
+                    : isAvailable
+                    ? 'Available'
+                    : 'Closed'
+                }
+                variant={
+                  isSelected
+                    ? 'success'
+                    : isUnderMaintenance
+                    ? 'warning'
+                    : isAvailable
+                    ? 'info'
+                    : 'neutral'
+                }
                 size="sm"
               />
             </Pressable>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View } from 'react-native';
+import { Redirect } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { KPIRow } from '@/components/ui/KPIRow';
@@ -11,8 +12,24 @@ import { AmenitySecurityLogCard } from '@/src/features/amenities/components/Amen
 import { SecurityLogDetailModal } from '@/src/features/amenities/components/SecurityLogDetailModal';
 import { SecurityLog } from '@/src/features/amenities/services/securityLogApi';
 import { useSecurityLogs } from '@/src/features/amenities/hooks/useSecurityLogs';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
 export default function AmenitySecurityLogsScreen() {
+  const { user } = useAuth();
+
+  // Guard: Users without security guard / log permissions are redirected
+  const hasLogsAccess =
+    isFeatureAllowedForUser({ id: 'amenities_security_logs', permission: 'amenities:security_logs' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user);
+
+  if (user && !hasLogsAccess) {
+    if (isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user)) {
+      return <Redirect href="/(resident)/amenities/discover" />;
+    }
+    return <Redirect href="/(resident)/dashboard" />;
+  }
   const {
     logs,
     dashboard,

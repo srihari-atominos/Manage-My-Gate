@@ -8,6 +8,9 @@ export default function AmenitiesLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="discover" />
+      <Stack.Screen name="detail/[id]" />
+      <Stack.Screen name="calendar" />
+      <Stack.Screen name="booking/[id]" />
       <Stack.Screen name="admin-calendar" />
       <Stack.Screen name="admin-master" />
       <Stack.Screen name="ledgers" />

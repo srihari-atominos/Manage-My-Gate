@@ -31,6 +31,18 @@ export const useGlobalAppSocket = () => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
+  const debounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const debounceDispatch = (key: string, fn: () => void, delayMs = 350) => {
+    if (debounceTimersRef.current[key]) {
+      clearTimeout(debounceTimersRef.current[key]);
+    }
+    debounceTimersRef.current[key] = setTimeout(() => {
+      delete debounceTimersRef.current[key];
+      fn();
+    }, delayMs);
+  };
+
   useEffect(() => {
     if (!socket || !isAuthenticated) return;
 
@@ -43,9 +55,11 @@ export const useGlobalAppSocket = () => {
       const canReadRoles = isSuperAdmin || permissions.includes('role:read') || permissions.includes('roles:read') || permissions.includes('*');
       const canReadUsers = isSuperAdmin || permissions.includes('user:read') || permissions.includes('users:read') || permissions.includes('*');
 
-      // Refetch roles & users only if user has permission
-      if (canReadRoles) dispatch(fetchRolesAsync({ page: 1, limit: 100 })).catch(() => {});
-      if (canReadUsers) dispatch(fetchUsersThunk({ page: 1, limit: 100 })).catch(() => {});
+      // Debounce refetch roles & users
+      debounceDispatch('roles_users', () => {
+        if (canReadRoles) dispatch(fetchRolesAsync({ page: 1, limit: 100 })).catch(() => {});
+        if (canReadUsers) dispatch(fetchUsersThunk({ page: 1, limit: 100 })).catch(() => {});
+      });
 
       if (!payload || !u) return;
 
@@ -73,53 +87,69 @@ export const useGlobalAppSocket = () => {
           );
         }
         // Re-sync session context from backend to ensure all scoped permissions and features are fresh
-        dispatch(switchWorkspaceContextThunk({})).catch(() => {});
+        debounceDispatch('org_context', () => {
+          dispatch(switchWorkspaceContextThunk({})).catch(() => {});
+        });
       }
     };
 
     // 2. Integration Hub Updates
     const handleIntegrationUpdate = () => {
-      dispatch(fetchConnectionsAsync()).catch(() => {});
+      debounceDispatch('integration', () => {
+        dispatch(fetchConnectionsAsync()).catch(() => {});
+      });
     };
 
     // 3. Visitor Management Pass & Log Updates
     const handleVisitorUpdate = () => {
-      const u = currentUserRef.current;
-      const orgId = u?.orgId || u?.activeOrgId || '';
-      dispatch(getPasses({ orgId, params: { page: 1, limit: 20 } })).catch(() => {});
-      dispatch(fetchActiveVisitorsThunk(orgId)).catch(() => {});
+      debounceDispatch('visitor', () => {
+        const u = currentUserRef.current;
+        const orgId = u?.orgId || u?.activeOrgId || '';
+        dispatch(getPasses({ orgId, params: { page: 1, limit: 20 } })).catch(() => {});
+        dispatch(fetchActiveVisitorsThunk(orgId)).catch(() => {});
+      });
     };
 
     // 4. Billing & Dues Updates
     const handleBillingUpdate = () => {
-      const u = currentUserRef.current;
-      const permissions: string[] = u?.permissions || [];
-      const userRole = getUserRoleName(u);
-      const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
-      const canReadInvoices = isSuperAdmin || permissions.includes('billing:dashboard') || permissions.includes('*');
+      debounceDispatch('billing', () => {
+        const u = currentUserRef.current;
+        const permissions: string[] = u?.permissions || [];
+        const userRole = getUserRoleName(u);
+        const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
+        const canReadInvoices = isSuperAdmin || permissions.includes('billing:dashboard') || permissions.includes('*');
 
-      dispatch(fetchMyDues()).catch(() => {});
-      if (canReadInvoices) dispatch(fetchInvoicesGrid({ page: 1, limit: 20 })).catch(() => {});
+        dispatch(fetchMyDues()).catch(() => {});
+        if (canReadInvoices) dispatch(fetchInvoicesGrid({ page: 1, limit: 20 })).catch(() => {});
+      });
     };
 
     // 5. Complaint Updates
     const handleComplaintUpdate = () => {
-      dispatch(fetchComplaints({})).catch(() => {});
+      debounceDispatch('complaint', () => {
+        dispatch(fetchComplaints({})).catch(() => {});
+      });
     };
 
     // 6. Notice Board Updates
     const handleNoticeUpdate = () => {
-      dispatch(fetchNotices()).catch(() => {});
+      debounceDispatch('notice', () => {
+        dispatch(fetchNotices()).catch(() => {});
+      });
     };
 
     // 7. Community Pulse Notes Updates
     const handleCommunityNoteUpdate = () => {
-      dispatch(fetchActiveNotes()).catch(() => {});
+      debounceDispatch('community_note', () => {
+        dispatch(fetchActiveNotes()).catch(() => {});
+      });
     };
 
     // 8. Organization & Workspace Lifecycle Updates
     const handleOrgUpdate = () => {
-      dispatch(switchWorkspaceContextThunk({})).catch(() => {});
+      debounceDispatch('org_lifecycle', () => {
+        dispatch(switchWorkspaceContextThunk({})).catch(() => {});
+      });
     };
 
     // Attach Event Listeners
@@ -199,6 +229,8 @@ export const useGlobalAppSocket = () => {
       socket.off('NOTICE_UPDATED', handleNoticeUpdate);
       socket.off('COMMUNITY_NOTE_CREATED', handleCommunityNoteUpdate);
       socket.off('RECORD_UPDATED');
+      Object.values(debounceTimersRef.current).forEach((timer) => clearTimeout(timer));
+      debounceTimersRef.current = {};
     };
   }, [socket, isAuthenticated, dispatch]);
 };

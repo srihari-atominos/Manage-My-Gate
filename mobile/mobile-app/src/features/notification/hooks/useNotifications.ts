@@ -12,6 +12,9 @@ import {
   clearLatestNotification,
 } from '../store/notificationSlice';
 
+let activeNotificationListenersCount = 0;
+let activeIncomingNotificationHandler: ((notification: any) => void) | null = null;
+
 export const useNotifications = () => {
   const dispatch = useDispatch<AppDispatch>();
   const notificationState = useSelector((state: RootState) => state.notification);
@@ -59,17 +62,23 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleIncomingNotification = (notification: any) => {
-      console.log('[Socket] INCOMING_NOTIFICATION received:', notification);
-      if (notification) {
-        dispatch(addRealTimeNotification(notification));
-      }
-    };
-
-    socket.on('INCOMING_NOTIFICATION', handleIncomingNotification);
+    if (activeNotificationListenersCount === 0) {
+      activeIncomingNotificationHandler = (notification: any) => {
+        if (notification) {
+          dispatch(addRealTimeNotification(notification));
+        }
+      };
+      socket.on('INCOMING_NOTIFICATION', activeIncomingNotificationHandler);
+    }
+    activeNotificationListenersCount++;
 
     return () => {
-      socket.off('INCOMING_NOTIFICATION', handleIncomingNotification);
+      activeNotificationListenersCount--;
+      if (activeNotificationListenersCount <= 0 && activeIncomingNotificationHandler) {
+        socket.off('INCOMING_NOTIFICATION', activeIncomingNotificationHandler);
+        activeIncomingNotificationHandler = null;
+        activeNotificationListenersCount = 0;
+      }
     };
   }, [socket, dispatch]);
 

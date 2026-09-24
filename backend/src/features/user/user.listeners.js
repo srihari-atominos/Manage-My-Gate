@@ -2,6 +2,7 @@ import userEvents from './user.events.js';
 import integrationHubService from '../integrationHub/integrationHub.service.js';
 import messageTemplateService from '../messageTemplate/messageTemplate.service.js';
 import logger from '../../utils/logger.utils.js';
+import { maskEmail, maskPhone } from '../../utils/phone.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from './utils/invite.utils.js';
 
@@ -25,11 +26,10 @@ const DEFAULT_INVITE_BODY = `
 // Register user domain events
 userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting }) => {
   try {
-    const inviteLink = generateInviteLink(invitationToken, invitationSource);
-    const rejectInviteLink = `${inviteLink}${inviteLink.includes('?') ? '&' : '?'}action=reject`;
+    const baseInviteLink = generateInviteLink(invitationToken, invitationSource);
 
     // 1. Fetch organization name for branded invite presentation
-    let communityName = 'ManageMyGate';
+    let communityName = 'Nahom';
     if (orgId) {
       try {
         const Organization = (await import('../organization/organization.model.js')).default;
@@ -51,20 +51,21 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
       } catch (e) {}
     }
 
-    // 3. Create in-app Notification for EXISTING registered users ONLY
+    // 3. Inspect target user account status to determine invitation routing mode
+    let hasPassword = false;
+    let targetUser = null;
     try {
       const User = (await import('./user.model.js')).default;
-      let targetUser = null;
       if (userId) {
         targetUser = await User.findById(userId);
       } else if (email) {
         targetUser = await User.findOne({ email: email.toLowerCase() });
       }
 
-      // Existing user has an active account (status Active or password set)
-      const isExistingAccount = isExisting !== undefined
-        ? isExisting
-        : (targetUser && (targetUser.status === 'Active' || !!(targetUser.password && targetUser.password.length > 0)));
+      hasPassword = !!(targetUser && targetUser.password && targetUser.password.length > 0 && targetUser.status === 'Active');
+
+      // Existing user has an account record in the system
+      const isExistingAccount = isExisting !== undefined ? isExisting : !!targetUser;
 
       if (targetUser && isExistingAccount) {
         const notificationService = (await import('../notification/notification.service.js')).default;
@@ -76,7 +77,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
           orgId,
           title: `Invitation to ${communityName}`,
           body: `You have been invited to join ${communityName}${descStr}. Tap to Accept or Reject this invitation.`,
-          actionUrl: inviteLink,
+          actionUrl: baseInviteLink,
           type: 'INVITATION',
           metadata: {
             token: invitationToken,
@@ -91,6 +92,11 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
     } catch (notifErr) {
       logger.error(`In-app invitation notification dispatch error: ${notifErr.message}`);
     }
+
+    const inviteMode = hasPassword ? 'signin' : 'signup';
+    const inviteLink = `${baseInviteLink}${baseInviteLink.includes('?') ? '&' : '?'}mode=${inviteMode}`;
+    const rejectInviteLink = `${baseInviteLink}${baseInviteLink.includes('?') ? '&' : '?'}action=reject`;
+    const ctaButtonText = hasPassword ? 'Sign In & Accept Invitation' : 'Create Account & Accept Invitation';
 
     const unitRoleDetails = (villaLabel || roleName) ? `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin: 18px 0 22px 0;">
@@ -166,12 +172,12 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
 
           <!-- Action Buttons (Centered, accessible on desktop and mobile) -->
           <tr>
-            <td style="padding: 0 24px 28px 24px;" align="center">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 340px; margin: 0 auto; width: 100%;">
+            <td style="padding: 0 24px 24px 24px;" align="center">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 360px; margin: 0 auto; width: 100%;">
                 <tr>
                   <td align="center" style="padding-bottom: 12px;">
                     <a href="{{invite_link}}" target="_blank" style="display: block; width: 100%; box-sizing: border-box; background-color: #16a34a; color: #ffffff; padding: 14px 24px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 15px; text-align: center; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25); letter-spacing: 0.01em;">
-                      Accept Invitation
+                      ${ctaButtonText}
                     </a>
                   </td>
                 </tr>
@@ -183,6 +189,34 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
                   </td>
                 </tr>
               </table>
+            </td>
+          </tr>
+
+          <!-- Mobile App Download Strip -->
+          <tr>
+            <td style="padding: 0 24px 24px 24px;" align="center">
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: center;">
+                <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+                  📱 Prefer using our mobile app?
+                </div>
+                <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">
+                  Download Nahom for your smartphone:
+                </div>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
+                  <tr>
+                    <td style="padding: 0 6px;">
+                      <a href="https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 8px 14px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 12px; text-align: center;">
+                        Google Play (Android)
+                      </a>
+                    </td>
+                    <td style="padding: 0 6px;">
+                      <a href="https://apps.apple.com/app/manage-my-gate/id6746501635" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 8px 14px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 12px; text-align: center;">
+                        App Store (iOS)
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </div>
             </td>
           </tr>
 
@@ -219,9 +253,15 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
 
     const bodyTemplate = template?.body || customInviteBody;
 
-    // Compile variables
-    const compiledSubject = subject.replace(/{{invite_link}}/g, inviteLink);
+    // Compile variables — also rewrite any legacy URL formats that may be
+    // stored in custom MongoDB email templates (hash-router, /invite/app/, /invite/web/)
+    const compiledSubject = subject
+      .replace(/{{invite_link}}/g, inviteLink)
+      .replace(/{{reject_link}}/g, rejectInviteLink);
     const compiledBody = bodyTemplate
+      // Rewrite ONLY legacy sub-path style: /invite/app/<token> or /invite/web/<token>
+      // Do NOT rewrite /#/invite?token=<token> — that is the correct format for this HashRouter app
+      .replace(/https?:\/\/[^\s"'>]+\/invite\/(?:app|web)\/[^\s"'>]*/gi, inviteLink)
       .replace(/https?:\/\/[^\s"']+\/(?:#\/)?invite(?:\/(?:web|app))?(?:\?token=|\/)[^\s"']*/gi, inviteLink)
       .replace(/{{invite_link}}/g, inviteLink)
       .replace(/{{reject_link}}/g, rejectInviteLink)
@@ -295,7 +335,11 @@ userEvents.on('USER_ADDED', async ({ email, orgId }) => {
 });
 
 userEvents.on('EMAIL_OTP_SENT', async ({ email, code }) => {
-  logger.info(`[USER EMAIL CHANGE OTP DELIVERED] Identifier: ${email} | Verification OTP Code: ${code}`);
+  if (process.env.NODE_ENV !== 'production') {
+    logger.info(`[USER EMAIL CHANGE OTP DELIVERED] Identifier: ${maskEmail(email)} | Verification OTP Code: ${code}`);
+  } else {
+    logger.info(`[USER EMAIL CHANGE OTP DISPATCHED] Identifier: ${maskEmail(email)}`);
+  }
 
   try {
     const { sendEmail } = await import('../../utils/email.utils.js');
@@ -313,9 +357,13 @@ userEvents.on('EMAIL_OTP_SENT', async ({ email, code }) => {
     `;
     const sent = await sendEmail(null, email, emailSubject, emailBody);
     if (sent) {
-      logger.info(`Email change OTP successfully delivered to inbox: ${email}`);
+      logger.info(`Email change OTP successfully delivered to inbox: ${maskEmail(email)}`);
     } else {
-      logger.info(`Email change verification code for ${email}: ${code}`);
+      if (process.env.NODE_ENV !== 'production') {
+        logger.info(`Email change verification code for ${maskEmail(email)}: ${code}`);
+      } else {
+        logger.warn(`Email change OTP could not be sent to inbox for ${maskEmail(email)}`);
+      }
     }
   } catch (error) {
     logger.error(`Asynchronous EMAIL_OTP_SENT dispatch failed: ${error.message}`);

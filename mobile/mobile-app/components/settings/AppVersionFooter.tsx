@@ -22,7 +22,7 @@ export const AppVersionFooter = ({
   return (
     <View className={cn('pt-6 pb-4 items-center justify-center gap-2', className)}>
       <Text className="text-xs font-bold text-muted-foreground tracking-wider uppercase font-sans">
-        {t('manage_my_gate', 'Manage My Gate')}
+        {t('nahom_enterprise', 'Nahom Enterprise')}
       </Text>
 
       {onPressPrivacy || onPressTerms ? (

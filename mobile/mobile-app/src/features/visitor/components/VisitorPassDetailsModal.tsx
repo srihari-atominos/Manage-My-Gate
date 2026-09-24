@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Share, ActivityIndicator, Linking, Alert } from 'react-native';
-import { File, Paths } from 'expo-file-system';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import { View, TouchableOpacity, Share, ActivityIndicator, Linking, Alert, Platform, Clipboard } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -12,8 +9,8 @@ import { VisitorPass } from '../store/visitorPassSlice';
 import { VisitorQRCode } from './shared/VisitorQRCode';
 import { QrCode, ShieldAlert, Copy, Check, Share2, MessageCircle, Barcode, Image as ImageIcon } from 'lucide-react-native';
 
-import { PASS_TYPE_META, encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
-import { generateQrPngBytes, bytesToBase64 } from '@/src/utils/qrPngGenerator';
+import { PASS_TYPE_META, encodeAppBarcode, buildVisitorPassShareMessage } from '@/src/utils/appBarcodeProtocol';
+import { shareQrImage } from '@/src/utils/qrPngGenerator';
 import { useVisitorPass } from '../hooks/useVisitorPass';
 
 export interface VisitorPassDetailsModalProps {
@@ -102,89 +99,119 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
   };
 
   const buildShareText = () => {
-    return (
-      `🚪 *MANAGE-MY-GATE VISITOR PASS* 🚪\n\n` +
-      `🔑 *PASS CODE:* *${passCode}*\n` +
-      `👤 *Visitor:* ${pass.visitorName || 'Guest'}\n` +
-      `🎫 *Pass Type:* ${passTypeMeta.label}\n` +
-      (destination ? `📍 *Destination Unit:* ${destination}\n` : '') +
-      `⏰ *Valid Until:* ${pass.validUntil ? new Date(pass.validUntil).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Today'}\n\n` +
-      `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n` +
-      `*Security Instructions:*\n` +
-      `Please present this 6-digit Pass Code (${passCode}) or the Barcode image at the security gate for fast check-in.`
-    );
+    return buildVisitorPassShareMessage({
+      passCode,
+      visitorName: pass.visitorName || 'Guest',
+      passTypeLabel: passTypeMeta.label,
+      validUntil: pass.validUntil,
+      destination,
+      barcodePayload,
+    });
   };
 
   const handleShareBarcodeToWhatsApp = async () => {
     if (!passCode || sharingImage) return;
     setSharingImage(true);
     try {
-      // 1. Generate pure JS high-res PNG image (100% offline, zero network delay)
-      const pngBytes = generateQrPngBytes(barcodePayload, 10, 4);
-
-      // 2. Save PNG to device cache
-      let targetUri = '';
-      try {
-        const file = new File(Paths.cache, `MMG_Pass_${passCode}.png`);
-        if (!file.exists) {
-          file.create();
-        }
-        file.write(pngBytes);
-        targetUri = file.uri;
-      } catch {
-        const base64 = bytesToBase64(pngBytes);
-        const cacheDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory || '';
-        const fallbackUri = `${cacheDir}MMG_Pass_${passCode}.png`;
-        await (FileSystem as any).writeAsStringAsync(fallbackUri, base64, { encoding: 'base64' });
-        targetUri = fallbackUri;
-      }
-
-      // 3. Share the actual PNG barcode image to WhatsApp / share sheet
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable && targetUri) {
-        await Sharing.shareAsync(targetUri, {
-          mimeType: 'image/png',
-          dialogTitle: `Manage-My-Gate Pass - ${passCode}`,
-          UTI: 'public.png',
-        });
-      } else {
-        await handleSendTextWhatsApp();
+      const shared = await shareQrImage(
+        barcodePayload,
+        passCode,
+        `Nahom Pass - ${passCode}`
+      );
+      if (!shared) {
+        await handleSendWhatsAppMessage();
       }
     } catch (e) {
       console.log('Error sharing barcode image:', e);
-      handleSendTextWhatsApp();
+      await handleSendWhatsAppMessage();
     } finally {
       setSharingImage(false);
     }
   };
 
-  const handleSendTextWhatsApp = async () => {
+  const handleSendWhatsAppMessage = async () => {
     if (!passCode) return;
     const text = buildShareText();
-    const phone = pass.phone ? pass.phone.replace(/[^0-9]/g, '') : '';
-    const whatsappUrl = phone
-      ? `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`
-      : `whatsapp://send?text=${encodeURIComponent(text)}`;
-    const webFallbackUrl = phone
-      ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const cleanPhone = pass.phone ? pass.phone.replace(/[^0-9]/g, '') : '';
 
-    try {
-      const supported = await Linking.canOpenURL(whatsappUrl);
-      if (supported) {
-        await Linking.openURL(whatsappUrl);
-      } else {
-        await Linking.openURL(webFallbackUrl);
+    const nativeWhatsappUrl = cleanPhone
+      ? `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`
+      : `whatsapp://send?text=${encodeURIComponent(text)}`;
+
+    if (Platform.OS !== 'web') {
+      // 1. Try launching native WhatsApp app directly
+      try {
+        await Linking.openURL(nativeWhatsappUrl);
+        return;
+      } catch (err) {
+        console.log('Could not open WhatsApp directly:', err);
       }
-    } catch {
+
+      // 2. WhatsApp not installed: fallback to native OS share sheet (never open broken wa.me in browser!)
       try {
         await Share.share({
-          title: 'Manage-My-Gate Visitor Pass',
+          title: `Nahom Visitor Pass (${passCode})`,
           message: text,
         });
-      } catch (err) {
-        console.log('Error sharing pass', err);
+        return;
+      } catch (shareErr) {
+        console.log('Error opening native share sheet:', shareErr);
       }
+    }
+
+    // 3. Web browser environment
+    const webWhatsAppUrl = cleanPhone
+      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+    try {
+      if (typeof window !== 'undefined') {
+        window.open(webWhatsAppUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        await Linking.openURL(webWhatsAppUrl);
+      }
+    } catch {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      } else if (Clipboard && typeof Clipboard.setString === 'function') {
+        Clipboard.setString(text);
+      }
+      Alert.alert('Pass Copied', 'Visitor pass details copied to clipboard.');
+    }
+  };
+
+  const handleSharePassText = async () => {
+    if (!passCode) return;
+    const text = buildShareText();
+
+    if (Platform.OS === 'web') {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({
+            title: `Nahom Visitor Pass (${passCode})`,
+            text,
+          });
+          return;
+        } catch (e: any) {
+          if (e.name === 'AbortError') return;
+        }
+      }
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      } else if (Clipboard && typeof Clipboard.setString === 'function') {
+        Clipboard.setString(text);
+      }
+      Alert.alert('Pass Copied', 'Visitor pass details copied to clipboard!');
+      return;
+    }
+
+    try {
+      await Share.share({
+        title: `Nahom Visitor Pass (${passCode})`,
+        message: text,
+      });
+    } catch (err) {
+      console.log('Error sharing pass', err);
     }
   };
 
@@ -222,7 +249,7 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
             )}
           </Button>
 
-          {/* Secondary Action Row: Copy Code, Send Text Only, Toggle QR */}
+          {/* Secondary Action Row: Copy Code, Share Pass, Toggle QR */}
           <View className="flex-row gap-2">
             <Button
               variant="outline"
@@ -244,13 +271,13 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
 
             <Button
               variant="outline"
-              onPress={handleSendTextWhatsApp}
+              onPress={handleSharePassText}
               className="flex-1 h-10 rounded-xl border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20 flex-row items-center justify-center gap-1.5"
-              accessibilityLabel="Send Text Only"
+              accessibilityLabel="Share Visitor Pass"
             >
               <Share2 size={15} className="text-blue-600 dark:text-blue-400" />
               <Text className="font-bold text-blue-600 dark:text-blue-400 text-xs">
-                Text Only
+                Share Pass
               </Text>
             </Button>
 

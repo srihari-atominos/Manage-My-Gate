@@ -28,15 +28,15 @@ const storage = multer.diskStorage({
 })
 
 const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp']
-  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp']
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
 
   const ext = path.extname(file.originalname).toLowerCase()
 
   if (allowedMimeTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
     cb(null, true)
   } else {
-    cb(new HttpError(400, 'Security violation: Invalid file type or extension.'), false)
+    cb(new HttpError(400, 'Security violation: Invalid file type or extension. Allowed: JPG, PNG, WEBP, PDF.'), false)
   }
 }
 
@@ -44,13 +44,13 @@ export const noticeUpload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit each
-    files: 5, // Limit to max 5 images
+    fileSize: 15 * 1024 * 1024, // 15MB limit
+    files: 5, // Limit to max 5 files
   },
 })
 
 /**
- * Middleware to verify magic bytes of multiple uploaded image files
+ * Middleware to verify magic bytes of multiple uploaded image and PDF files
  */
 export const noticeImageSignatureValidator = (req, res, next) => {
   if (!req.files || req.files.length === 0) {
@@ -73,8 +73,18 @@ export const noticeImageSignatureValidator = (req, res, next) => {
 
       let isValid = false
 
+      // Check PDF magic number: %PDF- (25 50 44 46 2D)
+      if (
+        buffer[0] === 0x25 &&
+        buffer[1] === 0x50 &&
+        buffer[2] === 0x44 &&
+        buffer[3] === 0x46 &&
+        buffer[4] === 0x2d
+      ) {
+        isValid = true
+      }
       // Check PNG magic number: 89 50 4E 47
-      if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+      else if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
         isValid = true
       }
       // Check JPEG magic number: FF D8 FF
@@ -96,13 +106,13 @@ export const noticeImageSignatureValidator = (req, res, next) => {
         // Delete all uploaded files immediately on security failure
         files.forEach((f) => {
           fs.unlink(f.path, (err) => {
-            if (err) console.error('Error deleting invalid file signature image:', err)
+            if (err) console.error('Error deleting invalid file signature file:', err)
           })
         })
         return next(
           new HttpError(
             400,
-            'Security violation: Invalid image signature detected (magic bytes mismatch).',
+            'Security violation: Invalid file signature detected (magic bytes mismatch).',
           ),
         )
       }

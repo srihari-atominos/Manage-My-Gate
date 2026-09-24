@@ -173,8 +173,8 @@ export default function SignupScreen() {
   const emblemScale = React.useRef(new Animated.Value(0)).current;
   const emblemOpacity = React.useRef(new Animated.Value(0)).current;
   const emblemFloat = React.useRef(new Animated.Value(0)).current;
-  const contentOpacity = React.useRef(new Animated.Value(0)).current;
-  const contentTranslateY = React.useRef(new Animated.Value(20)).current;
+  const contentOpacity = React.useRef(new Animated.Value(1)).current;
+  const contentTranslateY = React.useRef(new Animated.Value(0)).current;
 
   const { control, handleSubmit, watch, setError, formState: { errors } } = useForm<SignupFormValues>({
     resolver: yupResolver(signupSchema),
@@ -199,13 +199,6 @@ export default function SignupScreen() {
     Animated.parallel([
       Animated.spring(emblemScale, { toValue: 1, friction: 5, tension: 50, useNativeDriver: true }),
       Animated.timing(emblemOpacity, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.sequence([
-        Animated.delay(200),
-        Animated.parallel([
-          Animated.timing(contentOpacity, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(contentTranslateY, { toValue: 0, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        ]),
-      ]),
     ]).start(() => {
       Animated.loop(Animated.sequence([
         Animated.timing(emblemFloat, { toValue: -5, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -297,12 +290,12 @@ export default function SignupScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ImageBackground source={require('../../assets/images/auth-bg.jpg')} style={{ flex: 1 }} blurRadius={Platform.OS === 'ios' ? 3 : 2} resizeMode="cover">
         <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView
             contentContainerStyle={{
               flexGrow: 1,
               paddingTop: Math.max(insets.top, 24) + 16,
-              paddingBottom: Math.max(insets.bottom, 20) + 40,
+              paddingBottom: Math.max(insets.bottom, 20) + 100,
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"

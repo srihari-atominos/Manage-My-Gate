@@ -186,7 +186,7 @@ export function InvoiceActionsBottomSheet({
     try {
       await Share.share({
         title: `Invoice Statement #${invNo}`,
-        message: `ManageMyGate Statement #${invNo}\nUnit: ${unitStr}\nAmount: ₹${totalAmount.toLocaleString('en-IN')}\nStatus: ${status.replace(/_/g, ' ')}\nMethod: ${methodMeta.label}\nRef: ${refStr}`,
+        message: `Nahom Statement #${invNo}\nUnit: ${unitStr}\nAmount: ₹${totalAmount.toLocaleString('en-IN')}\nStatus: ${status.replace(/_/g, ' ')}\nMethod: ${methodMeta.label}\nRef: ${refStr}`,
       });
     } catch (err: any) {
       Alert.alert('Share Failed', err.message || 'Unable to share statement.');

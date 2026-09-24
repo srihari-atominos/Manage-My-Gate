@@ -143,7 +143,7 @@ export const ResidentDirectoryModal = ({
   return (
     <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <View className="flex-1 justify-end bg-black/50">
@@ -226,6 +226,8 @@ export const ResidentDirectoryModal = ({
             <ScrollView
               className="flex-1"
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom, 16) + 8 }}
             >
               {filteredNeighbors.length > 0 ? (

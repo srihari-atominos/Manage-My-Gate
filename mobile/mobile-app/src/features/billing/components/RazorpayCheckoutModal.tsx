@@ -99,7 +99,7 @@ export function RazorpayCheckoutModal({
     const orderId = options.orderId || '';
     const amountPaise = Math.round(options.amount * 100);
     const currency = options.currency || 'INR';
-    const name = 'ManageMyGate Billing';
+    const name = 'Nahom Billing';
     const description = options.description || `Invoice Settlement (₹${options.amount})`;
     const customerName = options.customerName || 'Resident';
     const customerPhone = options.customerPhone || '';

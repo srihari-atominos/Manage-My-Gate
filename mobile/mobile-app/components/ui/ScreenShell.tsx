@@ -272,7 +272,7 @@ export function ScreenShell({
 
       {/* Main content area */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         className="flex-1 bg-transparent"
       >
@@ -289,7 +289,7 @@ export function ScreenShell({
             {...scrollHandlerProps}
             contentContainerStyle={{
               flexGrow: 1,
-              paddingBottom: shouldShowBottomNav ? Math.max(insets.bottom + 95, 120) : Math.max(insets.bottom, 24),
+              paddingBottom: shouldShowBottomNav ? Math.max(insets.bottom + 70, 84) : Math.max(insets.bottom, 20),
             }}
           >
             {children}

@@ -39,6 +39,7 @@ export class GoogleProvider {
       const defaultProjectPrefix = '610778456829';
       const defaultWebClientId = '610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com';
       const defaultAndroidClientId = '610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com';
+      const defaultIosClientId = '512495714957-ppgtahfr70hmjclhmq7n3c7822aacd41.apps.googleusercontent.com';
 
       const configuredAudiences = [
         config.sso.googleClientId,
@@ -48,23 +49,26 @@ export class GoogleProvider {
         process.env.GOOGLE_IOS_CLIENT_ID,
         defaultWebClientId,
         defaultAndroidClientId,
+        defaultIosClientId,
       ].filter(Boolean);
 
-      // Derive the GCP project number prefix (e.g. "610778456829") so we can
-      // also accept any audience that belongs to the same project, even if a
-      // new platform-specific client ID has not yet been added to .env.
-      const projectPrefix =
-        (config.sso.googleClientId || '').split('-')[0] ||
-        (config.sso.googleAndroidClientId || '').split('-')[0] ||
-        (process.env.GOOGLE_CLIENT_ID || '').split('-')[0] ||
-        (process.env.GOOGLE_ANDROID_CLIENT_ID || '').split('-')[0] ||
-        defaultProjectPrefix;
+      // Derive the trusted GCP project prefixes so we can also accept tokens
+      // from any configured client ID belonging to either GCP project.
+      const projectPrefixes = [
+        defaultProjectPrefix,
+        '512495714957',
+        (config.sso.googleClientId || '').split('-')[0],
+        (config.sso.googleAndroidClientId || '').split('-')[0],
+        (process.env.GOOGLE_CLIENT_ID || '').split('-')[0],
+        (process.env.GOOGLE_ANDROID_CLIENT_ID || '').split('-')[0],
+        (process.env.GOOGLE_IOS_CLIENT_ID || '').split('-')[0],
+      ].filter(Boolean);
 
       const validAudiences = [...new Set([
         ...configuredAudiences,
         // If the token itself carries a same-project audience not yet in our list, trust it.
-        ...(tokenAud && projectPrefix && tokenAud.startsWith(projectPrefix) ? [tokenAud] : []),
-        ...(tokenAzp && projectPrefix && tokenAzp.startsWith(projectPrefix) ? [tokenAzp] : []),
+        ...(tokenAud && projectPrefixes.some((p) => tokenAud.startsWith(p)) ? [tokenAud] : []),
+        ...(tokenAzp && projectPrefixes.some((p) => tokenAzp.startsWith(p)) ? [tokenAzp] : []),
       ])];
 
       // verifyIdToken checks the token's signature, expiry, and whether the token
@@ -82,9 +86,9 @@ export class GoogleProvider {
       // confirm the audience belongs to OUR GCP project.
       const isAuthorizedProject =
         validAudiences.includes(verifiedAud) ||
-        (projectPrefix && verifiedAud && verifiedAud.startsWith(projectPrefix)) ||
+        projectPrefixes.some((p) => verifiedAud && verifiedAud.startsWith(p)) ||
         validAudiences.includes(verifiedAzp) ||
-        (projectPrefix && verifiedAzp && verifiedAzp.startsWith(projectPrefix));
+        projectPrefixes.some((p) => verifiedAzp && verifiedAzp.startsWith(p));
 
       if (!isAuthorizedProject) {
         throw new HttpError(401, `Google token audience (${verifiedAud}) does not belong to this project.`);

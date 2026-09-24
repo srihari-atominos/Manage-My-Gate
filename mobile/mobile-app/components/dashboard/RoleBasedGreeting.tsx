@@ -50,7 +50,7 @@ const WavingHand: React.FC = () => {
 
   return (
     <Animated.View style={animatedStyle} className="items-center justify-center">
-      <Text className="text-[21px] leading-none">👋</Text>
+      <Text className="text-[18px] leading-none">👋</Text>
     </Animated.View>
   );
 };

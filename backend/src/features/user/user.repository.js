@@ -1,4 +1,5 @@
 import User from './user.model.js';
+import { normalizePhone } from '../../utils/phone.utils.js';
 
 export class UserRepository {
   async findById(id, session) {
@@ -8,13 +9,13 @@ export class UserRepository {
   async findByEmail(email, session) {
     if (!email) return null;
     const normalized = String(email).trim().toLowerCase();
-    return await User.findOne({ email: normalized }).session(session || null);
+    return await User.findOne({ email: normalized, status: { $ne: 'Deleted' } }).session(session || null);
   }
 
   async findByUsername(username, session) {
     if (!username) return null;
     const normalized = String(username).trim();
-    return await User.findOne({ username: { $regex: new RegExp(`^${normalized}$`, 'i') } }).session(session || null);
+    return await User.findOne({ username: { $regex: new RegExp(`^${normalized}$`, 'i') }, status: { $ne: 'Deleted' } }).session(session || null);
   }
 
   /**
@@ -82,21 +83,29 @@ export class UserRepository {
    */
   async findByPhone(phone, session) {
     if (!phone) return null;
-    const trimmedPhone = phone.trim();
+    const trimmedPhone = String(phone).trim();
     if (!trimmedPhone) return null;
 
+    const normalized = normalizePhone(trimmedPhone);
     const digitsOnly = trimmedPhone.replace(/\D/g, '');
-    const last10 = digitsOnly.slice(-10);
 
-    const orConditions = [{ phone: trimmedPhone }];
-    if (digitsOnly) {
+    const orConditions = [];
+    if (normalized) {
+      orConditions.push({ phone: normalized });
+    }
+    if (trimmedPhone && trimmedPhone !== normalized) {
+      orConditions.push({ phone: trimmedPhone });
+    }
+    if (digitsOnly && digitsOnly !== normalized && digitsOnly !== trimmedPhone) {
       orConditions.push({ phone: digitsOnly });
     }
-    if (last10 && last10.length >= 7) {
-      orConditions.push({ phone: new RegExp(`${last10}$`) });
-    }
 
-    return await User.findOne({ $or: orConditions }).session(session || null);
+    if (orConditions.length === 0) return null;
+
+    return await User.findOne({
+      $or: orConditions,
+      status: { $ne: 'Deleted' },
+    }).session(session || null);
   }
 
   /**

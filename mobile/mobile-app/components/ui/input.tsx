@@ -19,7 +19,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
     const iconColor = isDark ? '#9ca3af' : '#6b7280';
 
     return (
-      <View className="w-full gap-1.5">
+      <View className="w-full gap-1">
         {Boolean(label) && (
           <Text className="text-foreground font-bold font-sans text-[13.5px] ms-1">
             {label}
@@ -30,7 +30,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
           "relative flex-row items-center border border-border/80 bg-card rounded-2xl px-3.5 shadow-2xs focus:border-primary",
           error ? "border-destructive bg-destructive/5" : ""
         )}>
-          {leftIcon && <View className="me-2.5">{leftIcon}</View>}
+          {leftIcon && <View className="me-2" pointerEvents="none">{leftIcon}</View>}
 
           <TextInput
             ref={ref}
@@ -44,12 +44,12 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             <TouchableOpacity
               onPress={() => setSecureTextEntry((prev) => !prev)}
               activeOpacity={0.7}
-              className="p-1.5 ms-1"
+              className="p-1 ms-1"
             >
               {secureTextEntry ? (
-                <EyeOff size={18} color={iconColor} />
+                <EyeOff size={16} color={iconColor} />
               ) : (
-                <Eye size={18} color={iconColor} />
+                <Eye size={16} color={iconColor} />
               )}
             </TouchableOpacity>
           )}

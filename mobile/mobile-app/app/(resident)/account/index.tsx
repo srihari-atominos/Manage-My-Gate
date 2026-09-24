@@ -194,9 +194,9 @@ export default function AccountScreen() {
             accessibilityLabel={t('edit_profile', 'Edit Profile')}
           >
             {/* Top Right Edit Hint Pill */}
-            <View className="absolute top-3.5 right-3.5 flex-row items-center gap-1 bg-primary/10 border border-primary/25 px-2.5 py-1 rounded-full">
-              <Edit3 size={11} color="#FF6A00" strokeWidth={2.4} />
-              <Text className="text-[11px] font-bold text-primary font-sans">
+            <View className="absolute top-3 right-3 flex-row items-center gap-1 bg-primary/10 border border-primary/25 px-2 py-0.5 rounded-full">
+              <Edit3 size={10} color="#FF6A00" strokeWidth={2.4} />
+              <Text className="text-[10.5px] font-bold text-primary font-sans">
                 {t('edit_profile', 'Edit Profile')}
               </Text>
             </View>
@@ -206,11 +206,11 @@ export default function AccountScreen() {
               {resolvedAvatarUrl ? (
                 <Image
                   source={{ uri: resolvedAvatarUrl }}
-                  className="size-20 rounded-full border-2 border-primary/40 shadow-xs"
+                  className="size-16 rounded-full border-2 border-primary/40 shadow-xs"
                 />
               ) : (
-                <View className="size-20 rounded-full bg-primary/20 items-center justify-center border-2 border-primary/40 shadow-xs">
-                  <Text className="text-primary font-black text-2xl font-sans">{avatarLetter}</Text>
+                <View className="size-16 rounded-full bg-primary/20 items-center justify-center border-2 border-primary/40 shadow-xs">
+                  <Text className="text-primary font-black text-xl font-sans">{avatarLetter}</Text>
                 </View>
               )}
             </View>

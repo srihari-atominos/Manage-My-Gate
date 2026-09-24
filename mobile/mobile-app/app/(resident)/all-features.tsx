@@ -71,6 +71,14 @@ export default function AllFeaturesScreen() {
       router.navigate('/(resident)/visitor' as any);
       return;
     }
+    if (tileId === 'visitor_gate_console') {
+      router.navigate('/(resident)/visitor/gate-console' as any);
+      return;
+    }
+    if (tileId === 'visitor_invite') {
+      router.navigate('/(resident)/visitor/invite' as any);
+      return;
+    }
     if (tileId === 'billing_dashboard') {
       router.navigate('/(resident)/billing' as any);
       return;
@@ -120,7 +128,7 @@ export default function AllFeaturesScreen() {
 
   return (
     <ScreenShell
-      title={t('quick_actions', 'Quick Actions')}
+      title={t('all_features', 'All Features')}
       subtitle={t('explore_quick_actions', 'Explore community quick actions and services')}
       iconName="LayoutGrid"
       scrollable={false}
@@ -146,19 +154,23 @@ export default function AllFeaturesScreen() {
       <ScrollView
         className="flex-1 px-4 pt-3"
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         {...scrollHandlerProps}
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 95, 130) }}
       >
         <View className="gap-4 pb-8 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}
-          <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 py-3 shadow-xs">
-            <Search size={18} color="#172B70" className="me-2.5 shrink-0" />
+          <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 min-h-[46px] py-0 shadow-xs">
+            <View pointerEvents="none">
+              <Search size={18} color="#172B70" className="me-2.5 shrink-0" />
+            </View>
             <TextInput
               placeholder={t('search_all_features', 'Search all features...')}
               placeholderTextColor="#64748B"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 text-[13px] font-sans text-foreground py-0"
+              className="flex-1 text-[13px] font-sans text-foreground self-stretch min-h-[42px] py-2"
             />
             {searchQuery ? (
               <TouchableOpacity onPress={() => setSearchQuery('')} className="p-0.5">

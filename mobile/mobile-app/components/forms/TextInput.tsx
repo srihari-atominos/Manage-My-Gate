@@ -89,14 +89,20 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
       if (!icon) return null;
       if (isValidElement(icon)) {
         return (
-          <View style={isLeft ? { marginRight: 12, alignItems: 'center', justifyContent: 'center' } : { marginLeft: 10, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            pointerEvents={isLeft ? 'none' : undefined}
+            style={isLeft ? { marginRight: 12, alignItems: 'center', justifyContent: 'center' } : { marginLeft: 10, alignItems: 'center', justifyContent: 'center' }}
+          >
             {icon}
           </View>
         );
       }
       const IconComponent = icon;
       return (
-        <View style={isLeft ? { marginRight: 12, alignItems: 'center', justifyContent: 'center' } : { marginLeft: 10, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          pointerEvents={isLeft ? 'none' : (!isLeft && onRightIconPress ? 'auto' : 'none')}
+          style={isLeft ? { marginRight: 12, alignItems: 'center', justifyContent: 'center' } : { marginLeft: 10, alignItems: 'center', justifyContent: 'center' }}
+        >
           <IconComponent
             size={18}
             className="text-muted-foreground"
@@ -178,7 +184,8 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             onFocus={handleFocus}
             onBlur={handleBlur}
             className={cn(
-              'flex-1 text-[15px] font-sans text-foreground py-0 min-h-[24px]',
+              'flex-1 text-[13.5px] font-sans text-foreground self-stretch',
+              props.multiline ? 'py-0 min-h-[50px]' : 'py-1.5 min-h-[38px]',
               inputClassName
             )}
             style={[

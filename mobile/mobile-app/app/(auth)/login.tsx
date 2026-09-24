@@ -249,19 +249,19 @@ export default function LoginScreen() {
         useNativeDriver: true,
       }),
 
-      // Wordmark Reveal
+      // Stage 2: Wordmark Reveal
       Animated.sequence([
-        Animated.delay(350),
+        Animated.delay(250),
         Animated.parallel([
           Animated.timing(wordmarkOpacity, {
             toValue: 1,
-            duration: 650,
+            duration: 450,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(wordmarkTranslateY, {
             toValue: 0,
-            duration: 650,
+            duration: 450,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
@@ -624,7 +624,7 @@ export default function LoginScreen() {
         <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" pointerEvents="none" />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
         >
           <ScrollView
@@ -907,10 +907,30 @@ export default function LoginScreen() {
 
                     {/* Global Error Banner */}
                     {error ? (
-                      <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                      <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5 gap-2">
                         <Text className="text-rose-500 text-xs text-center font-medium">
                           {error}
                         </Text>
+                        {(error.toLowerCase().includes('pending verification') ||
+                          error.toLowerCase().includes('invitation') ||
+                          error.toLowerCase().includes('password is not set') ||
+                          error.toLowerCase().includes('active membership')) && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              const currentLogin = basicForm.getValues('login');
+                              router.push({
+                                pathname: '/(auth)/accept-invite',
+                                params: currentLogin ? { email: currentLogin } : {},
+                              });
+                            }}
+                            className="bg-primary/15 border border-primary/30 rounded-lg py-1.5 px-3 self-center flex-row items-center gap-1.5"
+                          >
+                            <Sparkles size={13} color="#EA580C" />
+                            <Text className="text-xs font-bold text-primary">
+                              {t('accept_invitation_cta', 'Accept Workspace Invitation')}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     ) : null}
 
@@ -1105,21 +1125,23 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Create Account Prompt (Transparent container without underline) */}
+              {/* Create Organisation Prompt */}
               <View className="items-center justify-center pt-2.5 pb-2">
                 <Animated.View style={{ transform: [{ scale: createAccountPressScale }] }}>
                   <View className="bg-transparent flex-row items-center justify-center">
                     <Text className="text-xs text-[#1C1917] dark:text-white font-medium">
-                      {t('dont_have_account', "Don't have an account?")}{' '}
+                      {t('dont_have_organisation', "Don't have an Organisation?")}{' '}
                     </Text>
                     <TouchableOpacity
                       onPress={() => router.push('/(auth)/signup')}
                       onPressIn={handleCreateAccountPressIn}
                       onPressOut={handleCreateAccountPressOut}
                       activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Create Organisation"
                     >
                       <Text className="text-xs font-bold text-[#EA580C]">
-                        {t('create_account', 'Create Account')}
+                        {t('create_organisation', 'Create Organisation')}
                       </Text>
                     </TouchableOpacity>
                   </View>

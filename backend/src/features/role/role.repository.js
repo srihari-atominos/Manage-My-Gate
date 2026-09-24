@@ -45,7 +45,7 @@ export class RoleRepository {
   async findAllPaginated(orgId, skip, limit, session) {
     const opts = session ? { session } : {};
     const matchQuery = orgId 
-      ? { orgId: new mongoose.Types.ObjectId(orgId) }
+      ? { $or: [{ orgId: new mongoose.Types.ObjectId(orgId) }, { orgId: null }] }
       : { orgId: null };
 
     const result = await Role.aggregate([

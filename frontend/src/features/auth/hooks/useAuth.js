@@ -55,6 +55,7 @@ export const useAuth = () => {
         data: null,
       },
   )
+  const activeWorkspace = useSelector((state) => state.workspace)
   const allowedFeatures = useSelector((state) => state.workspace?.allowedFeatures || [])
   const isPlatform = useSelector((state) => state.workspace?.isPlatform || false)
 
@@ -167,7 +168,7 @@ export const useAuth = () => {
     return { success: false, error: resultAction.payload }
   }
 
-  const loginGoogle = async (credential, inviteToken) => {
+  const loginGoogle = async (credential, inviteToken, options = {}) => {
     const payload = typeof credential === 'object' ? credential : { token: credential, inviteToken }
     const resultAction = await dispatch(loginWithGoogle(payload))
     if (loginWithGoogle.fulfilled.match(resultAction)) {
@@ -179,36 +180,53 @@ export const useAuth = () => {
 
       const workspaces = data?.workspaces || data?.availableWorkspaces || []
       const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
-      navigate(navigateTo)
+      if (!options.skipNavigate) {
+        navigate(navigateTo)
+      }
       return { success: true, navigateTo }
     }
     return { success: false, error: resultAction.payload }
   }
 
-  const loginMicrosoft = async (idToken, inviteToken) => {
+  const loginMicrosoft = async (idToken, inviteToken, options = {}) => {
     const payload = typeof idToken === 'object' ? idToken : { token: idToken, inviteToken }
     const resultAction = await dispatch(loginWithMicrosoft(payload))
     if (loginWithMicrosoft.fulfilled.match(resultAction)) {
       const data = resultAction.payload?.data
       const workspaces = data?.workspaces || data?.availableWorkspaces || []
       const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
-      navigate(navigateTo)
+      if (!options.skipNavigate) {
+        navigate(navigateTo)
+      }
       return { success: true, navigateTo }
     }
     return { success: false, error: resultAction.payload }
   }
 
-  const handleAcceptSsoInvitation = async (inviteToken, ssoCredential, provider, options = {}) => {
+  const handleAcceptSsoInvitation = async (inviteTokenOrObj, ssoCredential, provider, options = {}) => {
     try {
+      let inviteToken = inviteTokenOrObj
+      let finalCredential = ssoCredential
+      let finalProvider = provider
+      let finalOptions = options
+
+      // Defensive argument normalization: support both positional and single-object argument styles
+      if (typeof inviteTokenOrObj === 'object' && inviteTokenOrObj !== null && !ssoCredential) {
+        inviteToken = inviteTokenOrObj.inviteToken || inviteTokenOrObj.token
+        finalCredential = inviteTokenOrObj.ssoCredential || inviteTokenOrObj.credential
+        finalProvider = inviteTokenOrObj.provider
+        finalOptions = inviteTokenOrObj.options || options
+      }
+
       const resultAction = await dispatch(
-        acceptSsoInvitation({ inviteToken, ssoCredential, provider }),
+        acceptSsoInvitation({ inviteToken, ssoCredential: finalCredential, provider: finalProvider }),
       )
       if (acceptSsoInvitation.fulfilled.match(resultAction)) {
         const data = resultAction.payload?.data
         const workspaces = data?.workspaces || data?.availableWorkspaces || []
         const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
         toast.success(t('auth.invite.success'))
-        if (!options.skipNavigate) {
+        if (!finalOptions?.skipNavigate) {
           navigate(navigateTo)
         }
         return { success: true, navigateTo, payload: resultAction.payload }
@@ -262,11 +280,58 @@ export const useAuth = () => {
       return true
     }
 
+    const adminRoles = [
+      'super admin',
+      'platform super admin',
+      'community admin',
+      'admin',
+      'superadmin',
+      'facility manager',
+      'super_admin',
+      'platform_super_admin',
+      'community_admin',
+      'facility_manager',
+    ]
+    const cleanRole = (r) => (r || '').toLowerCase().trim().replace(/[_-]/g, ' ')
+    const userRole = cleanRole(currentUser.role)
+    const userRoles = Array.isArray(currentUser.roles) ? currentUser.roles.map(cleanRole) : []
+
+    if (
+      adminRoles.some((ar) => cleanRole(ar) === userRole) ||
+      userRoles.some((r) => adminRoles.some((ar) => cleanRole(ar) === r))
+    ) {
+      return true
+    }
+
+    if (currentUser.permissions && (currentUser.permissions.includes('*') || currentUser.permissions.includes('all'))) {
+      return true
+    }
+
     const isPermEnabledInWorkspace = (perm) => {
       if (!perm || isPlatform) return true
       const featurePart = perm.split(':')[0]
-      if (featurePart === 'workspaces') return true
-      return allowedFeatures.includes(featurePart) || allowedFeatures.includes(perm)
+      if (featurePart === 'workspaces' || featurePart === 'dashboard') return true
+
+      const isModuleEnabled = (key) => {
+        if (allowedFeatures.includes(key)) return true
+        if (activeWorkspace?.modules?.some((m) => m.moduleKey === key && m.enabled !== false)) return true
+        if (activeWorkspace?.workspaceModules?.some((m) => m.moduleKey === key && m.enabled === true)) return true
+        return false
+      }
+
+      if (featurePart === 'amenities' || featurePart === 'booking') {
+        return ['amenities', 'booking', 'amenity', 'amenitiesBooking'].some((f) => isModuleEnabled(f))
+      }
+
+      if (['villas', 'users', 'roles', 'integrations'].includes(featurePart)) {
+        return (
+          isModuleEnabled('administration_security') ||
+          isModuleEnabled(featurePart) ||
+          allowedFeatures.includes(perm)
+        )
+      }
+
+      return isModuleEnabled(featurePart) || allowedFeatures.includes(perm)
     }
 
     if (Array.isArray(permissionName)) {

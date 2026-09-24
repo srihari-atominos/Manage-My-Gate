@@ -3,6 +3,7 @@ import HttpError from '../../utils/httpError.utils.js'
 import { generateInviteLink, resolveInvitationSource } from './utils/invite.utils.js'
 import fs from 'fs'
 
+
 export class UserController {
   /**
    * Retrieves and formats all users.
@@ -47,12 +48,15 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email, phone, villaId, residentType, roleName } = req.body;
+      const { email, phone, villaId, residentType, roleName, name } = req.body;
       const orgId = req.tenant.orgId;
 
       const inviterId = req.user?.id || req.user?._id || null;
 
-      const invitationSource = resolveInvitationSource(req);
+      // The web admin panel always sends web invitations — the email link must
+      // always point to the smart /invite/:token web landing page, never to a
+      // mobile-specific path. Do NOT derive this from Referer/Origin headers.
+      const invitationSource = 'WEB';
 
       const { user, invitationToken, membership } = await userService.inviteUser(
         email,
@@ -61,12 +65,13 @@ export class UserController {
         residentType,
         roleName,
         phone,
-        '',
+        name || '',
         invitationSource,
         inviterId
       );
 
-      const inviteLink = generateInviteLink(invitationToken, invitationSource);
+      // Generate the canonical invite URL for the admin UI "Copy Link" feature
+      const inviteLink = generateInviteLink(invitationToken);
 
       const formatted = {
         id: user._id,
@@ -134,17 +139,32 @@ export class UserController {
   }
 
   /**
-   * Updates current user's profile, email (with OTP), and avatar.
+   * Requests an OTP to verify a new phone number during profile update.
+   */
+  async requestPhoneOtp(req, res, next) {
+    try {
+      const userId = req.user.id || req.user._id;
+      const { newPhone } = req.body;
+      const result = await userService.requestPhoneOtp(userId, newPhone);
+      res.success(result, 'Verification OTP sent to new phone number');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Updates current user's profile, email (with OTP), phone (with OTP), and avatar.
    */
   async updateProfile(req, res, next) {
     try {
-      const userId = req.user.id;
-      const { name, phone, email, emailOtp, removeAvatar } = req.body;
+      const userId = req.user.id || req.user._id;
+      const { name, phone, phoneOtp, email, emailOtp, removeAvatar } = req.body;
       const avatarFilename = req.file ? req.file.filename : undefined;
 
       const updatedUser = await userService.updateProfile(userId, {
         name,
         phone,
+        phoneOtp,
         email,
         emailOtp,
         avatarFilename,
@@ -157,6 +177,7 @@ export class UserController {
         email: updatedUser.email,
         name: updatedUser.name,
         phone: updatedUser.phone,
+        phoneVerified: updatedUser.phoneVerified,
         avatar: updatedUser.avatar || null,
       }, 'Profile updated successfully');
     } catch (error) {

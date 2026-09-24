@@ -53,9 +53,37 @@ export const dispatchNoticePinnedToggled = (notice) => {
   }
 };
 
+export const dispatchNoticeExpired = (notice) => {
+  try {
+    const io = getIO();
+    if (notice.orgId) {
+      const room = `org:${notice.orgId.toString()}`;
+      logger.info(`Dispatching notice:expired to room: ${room}`);
+      io.to(room).emit('notice:expired', notice);
+    }
+  } catch (error) {
+    logger.error('Failed to emit notice:expired:', error);
+  }
+};
+
+export const dispatchNoticeAcknowledgementReminder = (payload) => {
+  try {
+    const io = getIO();
+    if (payload.orgId) {
+      const room = `org:${payload.orgId.toString()}`;
+      logger.info(`Dispatching notice:acknowledgement_reminder to room: ${room}`);
+      io.to(room).emit('notice:acknowledgement_reminder', payload);
+    }
+  } catch (error) {
+    logger.error('Failed to emit notice:acknowledgement_reminder:', error);
+  }
+};
+
 export default {
   dispatchNoticeCreated,
   dispatchNoticeUpdated,
   dispatchNoticeDeleted,
   dispatchNoticePinnedToggled,
+  dispatchNoticeExpired,
+  dispatchNoticeAcknowledgementReminder,
 };

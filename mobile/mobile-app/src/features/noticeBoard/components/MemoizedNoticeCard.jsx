@@ -9,7 +9,7 @@ import { useTranslation } from '@/src/utils/i18n';
  * while ensuring proper re-renders when language switches.
  */
 export const MemoizedNoticeCard = React.memo(
-  ({ notice, onPress, onBookmarkToggle, language: propLanguage }) => {
+  ({ notice, onPress, onBookmarkToggle, isAdmin = false, language: propLanguage }) => {
     const { language: currentLang } = useTranslation();
     const activeLang = propLanguage || currentLang;
 
@@ -31,7 +31,7 @@ export const MemoizedNoticeCard = React.memo(
           notice={notice}
           onPress={handlePress}
           onBookmarkToggle={handleBookmark}
-          isAdmin={false}
+          isAdmin={isAdmin}
         />
       </View>
     );
@@ -40,6 +40,7 @@ export const MemoizedNoticeCard = React.memo(
     return (
       prevProps.notice === nextProps.notice &&
       prevProps.language === nextProps.language &&
+      prevProps.isAdmin === nextProps.isAdmin &&
       prevProps.onPress === nextProps.onPress &&
       prevProps.onBookmarkToggle === nextProps.onBookmarkToggle
     );

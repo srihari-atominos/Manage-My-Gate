@@ -323,6 +323,48 @@ export const i18n = {
     const trimmed = rawText.trim();
     if (!trimmed) return rawText;
 
+    // 0. Language display names protection: Never translate language options / native names
+    const cleanLower = trimmed.toLowerCase();
+    const isLanguageOption = LANGUAGE_OPTIONS.some(
+      (opt) =>
+        opt.label.toLowerCase() === cleanLower ||
+        opt.nativeName.toLowerCase() === cleanLower ||
+        opt.code.toLowerCase() === cleanLower ||
+        `${opt.nativeName} (${opt.label})`.toLowerCase() === cleanLower
+    );
+    if (
+      isLanguageOption ||
+      cleanLower === 'english' ||
+      cleanLower === 'english (us)' ||
+      cleanLower === 'english (uk)' ||
+      cleanLower === 'arabic' ||
+      cleanLower === 'العربية' ||
+      cleanLower === 'العربية (arabic)' ||
+      cleanLower === 'tamil' ||
+      cleanLower === 'தமிழ்' ||
+      cleanLower === 'தமிழ் (tamil)' ||
+      cleanLower === 'hindi' ||
+      cleanLower === 'हिन्दी' ||
+      cleanLower === 'हिन्दी (hindi)' ||
+      cleanLower === 'malayalam' ||
+      cleanLower === 'മലയാളം' ||
+      cleanLower === 'മലയാളം (malayalam)' ||
+      cleanLower === 'telugu' ||
+      cleanLower === 'తెలుగు' ||
+      cleanLower === 'తెలుగు (telugu)' ||
+      cleanLower === 'kannada' ||
+      cleanLower === 'ಕನ್ನಡ' ||
+      cleanLower === 'ಕನ್ನಡ (kannada)'
+    ) {
+      const matchedOpt = LANGUAGE_OPTIONS.find(
+        (opt) =>
+          opt.label.toLowerCase() === cleanLower ||
+          opt.nativeName.toLowerCase() === cleanLower ||
+          opt.code.toLowerCase() === cleanLower
+      );
+      return matchedOpt ? matchedOpt.label : rawText;
+    }
+
     const dict = TRANSLATIONS[currentLanguageCode] || TRANSLATIONS.en;
     if (!dict) return rawText;
 
@@ -346,7 +388,6 @@ export const i18n = {
     if (dict[`feature_${normalizedKey}`]) return dict[`feature_${normalizedKey}`];
 
     // 3. Bidirectional multi-way match across ALL languages (English, Arabic, Tamil, Hindi, etc.)
-    const cleanLower = trimmed.toLowerCase();
     const resolvedKey = reverseLookupMap.get(cleanLower);
     if (resolvedKey) {
       if (dict[resolvedKey]) {

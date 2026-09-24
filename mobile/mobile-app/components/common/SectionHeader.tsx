@@ -155,11 +155,11 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       )}
     >
       {/* Left Column: Icon Badge + Title + Subtitle */}
-      <View className="flex-row items-center flex-1 min-w-0 mr-2">
+      <View className="flex-row items-center flex-1 min-w-0 me-2">
         {IconComponent ? (
           <View
             className={cn(
-              'w-9 h-9 rounded-2xl items-center justify-center mr-3 shrink-0 border shadow-2xs',
+              'w-9 h-9 rounded-2xl items-center justify-center me-3 shrink-0 border shadow-2xs',
               isDark
                 ? 'bg-secondary/70 border-border/60'
                 : iconBgColor || 'bg-primary/10 border-primary/20'

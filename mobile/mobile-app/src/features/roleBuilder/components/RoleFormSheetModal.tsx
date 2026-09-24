@@ -35,6 +35,7 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
     errors,
     isSubmitting,
     selectedPermissions,
+    amenityTier,
     isTenantRole,
     integrationMappings,
     isIntegrationDrawerOpen,
@@ -59,7 +60,12 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
       onClose={onClose}
       title={role ? `Edit ${role.name}` : 'New Security Role'}
     >
-      <ScrollView className="max-h-[500px]" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="max-h-[500px]"
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <View className="gap-3.5 pb-6">
           {/* Role Name */}
           <TextInput
@@ -156,6 +162,7 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
               <PermissionMatrixGrid
                 groupedPermissions={permissionsList}
                 selectedIds={selectedPermissions}
+                activeAmenityTier={amenityTier}
                 onSelectAllGroup={handleSelectAllGroup}
                 onTogglePermission={handleTogglePermission}
               />

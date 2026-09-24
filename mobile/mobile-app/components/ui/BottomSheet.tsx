@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   View,
   Modal,
@@ -23,6 +22,7 @@ export interface AppBottomSheetProps {
   snapPoints?: (string | number)[];
   children: React.ReactNode;
   enableDynamicSizing?: boolean;
+  contentContainerStyle?: any;
 }
 
 const bottomSheetHeaderVariants = cva(
@@ -40,11 +40,14 @@ function BottomSheet({
   onClose,
   title,
   children,
+  contentContainerStyle,
 }: AppBottomSheetProps) {
   if (!visible) return null;
 
   const screenHeight = Dimensions.get('window').height;
-  const sheetMaxHeight = Math.round(screenHeight * 0.88);
+  const sheetMaxHeight = Platform.OS === 'web'
+    ? Math.min(Math.round(screenHeight * 0.85), 680)
+    : Math.round(screenHeight * 0.88);
   const scrollMaxHeight = sheetMaxHeight - 65;
 
   const handleClose = () => {
@@ -61,9 +64,9 @@ function BottomSheet({
       onRequestClose={handleClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
-        className="flex-1 justify-end"
+        className="flex-1 justify-end items-center"
       >
         {/* Backdrop */}
         <Pressable 
@@ -73,8 +76,8 @@ function BottomSheet({
         
         {/* Content Box */}
         <View
-          style={{ maxHeight: '88%' }}
-          className="bg-card border-t border-border/80 rounded-t-3xl shadow-2xl overflow-hidden flex-col w-full"
+          style={{ maxHeight: sheetMaxHeight }}
+          className="bg-card border-t border-border/80 rounded-t-3xl sm:rounded-3xl sm:border sm:mb-4 shadow-2xl overflow-hidden flex-col w-full max-w-lg mx-auto"
         >
           {/* Top grab handle */}
           <SheetGrabHandle onClose={onClose} />
@@ -95,7 +98,10 @@ function BottomSheet({
 
           {/* Scrollable Body Content */}
           <ScrollView
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 80, flexGrow: 1 }}
+            contentContainerStyle={[
+              { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 80, flexGrow: 1 },
+              contentContainerStyle,
+            ]}
             showsVerticalScrollIndicator={true}
             bounces={true}
             alwaysBounceVertical={false}

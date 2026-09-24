@@ -60,9 +60,16 @@ export const setupAccountPasswordRules = [
  */
 export const loginRules = [
   body('login')
-    .notEmpty()
-    .withMessage('Email or Username is required')
-    .trim(),
+    .custom((val, { req }) => {
+      const id = val || req.body?.email || req.body?.username;
+      if (!id || !String(id).trim()) {
+        throw new Error('Email or Username is required');
+      }
+      return true;
+    })
+    .customSanitizer((val, { req }) => {
+      return String(val || req.body?.email || req.body?.username || '').trim();
+    }),
   body('password')
     .notEmpty()
     .withMessage('Password is required'),

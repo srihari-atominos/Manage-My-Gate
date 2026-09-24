@@ -19,6 +19,7 @@ export interface AmenitySlot {
   bookingId?: string;
   bookingStatus?: string;
   myBookingsCount?: number;
+  isUnderMaintenance?: boolean;
 }
 
 export interface Amenity {
@@ -35,6 +36,8 @@ export interface Amenity {
   rules?: string;
   status?: string;
   currentStatus?: string;
+  isDraft?: boolean;
+  isActive?: boolean;
   imageUrl?: string;
   images?: string[];
   iconName?: string;
@@ -53,7 +56,9 @@ export const normalizeAmenity = (raw: any): Amenity => {
   const bookingFee = raw.pricing?.baseRate ?? raw.bookingFee ?? 0;
   const openTime = raw.bookingRules?.openTime || raw.openTime || '06:00';
   const closeTime = raw.bookingRules?.closeTime || raw.closeTime || '22:00';
-  const statusRaw = String(raw.status || 'active').toLowerCase();
+  const isDraft = Boolean(raw.isDraft === true || String(raw.status).toUpperCase() === 'DRAFT');
+  const statusRaw = isDraft ? 'draft' : String(raw.status || 'active').toLowerCase();
+  const isActive = isDraft ? false : (raw.isActive !== false && statusRaw !== 'inactive');
   const imageUrl = Array.isArray(raw.images) && raw.images.length > 0 ? raw.images[0] : raw.imageUrl;
 
   return {
@@ -66,6 +71,8 @@ export const normalizeAmenity = (raw: any): Amenity => {
     openTime,
     closeTime,
     status: statusRaw,
+    isDraft,
+    isActive,
     imageUrl,
     location: raw.location || 'Community Facilities',
     capacity: raw.capacity || 20,
@@ -81,18 +88,37 @@ export interface PaginationMeta {
 
 export interface MaintenanceTask {
   _id: string;
-  amenityId: string;
+  facilityId?: string;
+  resourceId?: string;
+  amenityId?: string;
   amenityName?: string;
-  title: string;
+  title?: string;
   description?: string;
-  startDate: string;
-  endDate: string;
+  reason?: string;
+  startDate?: string;
+  endDate?: string;
+  startDateTime?: string;
+  endDateTime?: string;
   startTime?: string;
   endTime?: string;
+  isCompleteClosure?: boolean;
+  degradedCapacity?: number;
+  maintenanceType?: string;
+  recurringSeriesId?: string;
+  isRecurring?: boolean;
+  recurrence?: {
+    frequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | string;
+    interval?: number;
+    occurrenceCount?: number;
+    daysOfWeek?: number[];
+    dayOfMonth?: number;
+    timezone?: string;
+  };
   assignedStaff?: string;
-  status?: string;
+  status?: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | string;
   autoCancelBookings?: boolean;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AmenityState {
@@ -314,47 +340,71 @@ export const updateAmenityStatusThunk = createAsyncThunk(
 export const scheduleMaintenanceThunk = createAsyncThunk(
   'amenities/scheduleMaintenance',
   async (
-    {
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: any;
+    payload: {
+      facilityId: string;
+      resourceId?: string;
+      startDateTime?: string;
+      endDateTime?: string;
+      windows?: Array<{
+        startDateTime: string;
+        endDateTime: string;
+      }>;
+      title?: string;
+      reason: string;
+      isCompleteClosure?: boolean;
+      degradedCapacity?: number;
+      conflictAction?: 'CANCEL_AND_PROCEED';
     },
     { rejectWithValue }
   ) => {
     try {
-      const response = await amenityApi.scheduleMaintenance(id, payload);
-      return { id, response };
+      const amenityManagementService = (await import('../services/amenityManagementService')).default;
+      const response = await amenityManagementService.scheduleMaintenance({
+        facilityId: payload.facilityId,
+        resourceId: payload.resourceId,
+        startDateTime: payload.startDateTime,
+        endDateTime: payload.endDateTime,
+        windows: payload.windows,
+        title: payload.title || payload.reason,
+        reason: payload.reason,
+        isCompleteClosure: payload.isCompleteClosure,
+        degradedCapacity: payload.degradedCapacity,
+        conflictAction: payload.conflictAction,
+      });
+      return response?.data || response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to schedule maintenance window');
+      return rejectWithValue(error?.response?.data?.message || error.message || 'Failed to schedule maintenance window');
     }
   }
 );
 
 export const fetchMaintenanceListThunk = createAsyncThunk(
   'amenities/fetchMaintenanceList',
-  async (_, { rejectWithValue }) => {
+  async (params: { facilityId?: string; status?: string; page?: number; limit?: number } | void, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.getMaintenanceList();
-      return response;
+      const amenityManagementService = (await import('../services/amenityManagementService')).default;
+      const response = await amenityManagementService.listMaintenanceBlocks(params || {});
+      const resData: any = response?.data || response;
+      const list = resData?.records || resData?.docs || (Array.isArray(resData) ? resData : []);
+      return list;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch maintenance schedules');
+      return rejectWithValue(error?.response?.data?.message || error.message || 'Failed to fetch maintenance schedules');
     }
   }
 );
 
-export const updateMaintenanceTaskThunk = createAsyncThunk(
-  'amenities/updateMaintenanceTask',
+export const cancelMaintenanceTaskThunk = createAsyncThunk(
+  'amenities/cancelMaintenanceTask',
   async (
-    { amenityId, maintenanceId, payload }: { amenityId: string; maintenanceId: string; payload: any },
+    { blockId }: { blockId: string },
     { rejectWithValue }
   ) => {
     try {
-      const response = await amenityApi.updateMaintenanceTask(amenityId, maintenanceId, payload);
-      return response;
+      const amenityManagementService = (await import('../services/amenityManagementService')).default;
+      const response = await amenityManagementService.updateMaintenanceStatus(blockId, 'CANCELLED');
+      return { blockId, response: response?.data || response };
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to update maintenance task');
+      return rejectWithValue(error?.response?.data?.message || error.message || 'Failed to cancel maintenance task');
     }
   }
 );
@@ -362,14 +412,31 @@ export const updateMaintenanceTaskThunk = createAsyncThunk(
 export const deleteMaintenanceTaskThunk = createAsyncThunk(
   'amenities/deleteMaintenanceTask',
   async (
-    { amenityId, maintenanceId }: { amenityId: string; maintenanceId: string },
+    payload: { blockId?: string; amenityId?: string; maintenanceId?: string },
     { rejectWithValue }
   ) => {
+    const id = payload.blockId || payload.maintenanceId;
+    if (!id) return rejectWithValue('Missing blockId');
     try {
-      const response = await amenityApi.deleteMaintenanceTask(amenityId, maintenanceId);
-      return { amenityId, maintenanceId, response };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to delete maintenance task');
+      const amenityManagementService = (await import('../services/amenityManagementService')).default;
+      try {
+        const response = await amenityManagementService.deleteMaintenanceBlock(id);
+        return { blockId: id, maintenanceId: id, response: response?.data || response };
+      } catch (delErr) {
+        const response = await amenityManagementService.updateMaintenanceStatus(id, 'CANCELLED');
+        return { blockId: id, maintenanceId: id, response: response?.data || response };
+      }
+    } catch (v2Error: any) {
+      if (payload.amenityId && payload.maintenanceId) {
+        try {
+          const amenityService = await import('../services/amenityService');
+          const response = await amenityService.deleteMaintenanceTask(payload.amenityId, payload.maintenanceId);
+          return { blockId: id, maintenanceId: id, response: response?.data || response };
+        } catch (v1Error: any) {
+          return rejectWithValue(v1Error?.response?.data?.message || v1Error.message || 'Failed to cancel maintenance task');
+        }
+      }
+      return rejectWithValue(v2Error?.response?.data?.message || v2Error.message || 'Failed to cancel maintenance task');
     }
   }
 );
@@ -424,6 +491,13 @@ const amenitySlice = createSlice({
         }
       }
     },
+    setMaintenanceList: (state, action: PayloadAction<MaintenanceTask[]>) => {
+      state.maintenanceList = action.payload;
+    },
+    removeMaintenanceTask: (state, action: PayloadAction<string>) => {
+      const targetId = String(action.payload);
+      state.maintenanceList = state.maintenanceList.filter((m) => String(m._id) !== targetId);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -434,6 +508,7 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchAmenitiesThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const page = action.meta.arg?.page || 1;
         const payload = action.payload?.data || action.payload;
         let list: any[] = [];
@@ -455,7 +530,7 @@ const amenitySlice = createSlice({
           };
         }
         const normalizedList = list.map(normalizeAmenity);
-        const targetList = page > 1 ? [...state.amenities, ...normalizedList] : normalizedList;
+        const targetList = page > 1 ? [...state.amenities, ...normalizedList] : [...normalizedList, ...state.amenities];
         const seenIds = new Set<string>();
         const seenNames = new Set<string>();
         const uniqueAmenities: Amenity[] = [];
@@ -577,6 +652,13 @@ const amenitySlice = createSlice({
           state.currentAmenity.status = normalizedStatus as any;
         }
       })
+      // Schedule Maintenance Task
+      .addCase(scheduleMaintenanceThunk.fulfilled, (state, action: any) => {
+        const payload = action.payload?.data || action.payload;
+        if (payload && payload._id) {
+          state.maintenanceList.unshift(payload);
+        }
+      })
       // Fetch Maintenance List
       .addCase(fetchMaintenanceListThunk.pending, (state) => {
         state.loading = true;
@@ -584,18 +666,26 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchMaintenanceListThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const payload = action.payload?.data || action.payload || [];
-        state.maintenanceList = Array.isArray(payload) ? payload : payload.maintenanceList || [];
+        const list = Array.isArray(payload) ? payload : payload.records || payload.docs || [];
+        state.maintenanceList = list;
       })
       .addCase(fetchMaintenanceListThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to fetch maintenance tasks';
       })
-      // Delete maintenance task
+      // Cancel / Delete maintenance task
+      .addCase(cancelMaintenanceTaskThunk.fulfilled, (state, action: any) => {
+        const blockId = action.payload?.blockId;
+        if (blockId) {
+          state.maintenanceList = state.maintenanceList.filter((m) => m._id !== blockId);
+        }
+      })
       .addCase(deleteMaintenanceTaskThunk.fulfilled, (state, action: any) => {
-        const maintenanceId = action.payload?.maintenanceId;
-        if (maintenanceId) {
-          state.maintenanceList = state.maintenanceList.filter((m) => m._id !== maintenanceId);
+        const blockId = action.payload?.blockId || action.payload?.maintenanceId;
+        if (blockId) {
+          state.maintenanceList = state.maintenanceList.filter((m) => m._id !== blockId);
         }
       });
   },
@@ -608,6 +698,8 @@ export const {
   clearAmenityError,
   upsertAmenity,
   removeAmenity,
+  setMaintenanceList,
+  removeMaintenanceTask,
 } = amenitySlice.actions;
 
 export default amenitySlice.reducer;

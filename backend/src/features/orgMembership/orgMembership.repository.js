@@ -231,9 +231,12 @@ export class OrgMembershipRepository {
   }
 
   async updateStatus(userId, orgId, status, session = null) {
-    const query = { userId };
+    const query = {};
+    if (userId) {
+      query.userId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+    }
     if (orgId) {
-      query.orgId = orgId;
+      query.orgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
     }
     return await OrgMembership.updateMany(
       query,
@@ -278,6 +281,28 @@ export class OrgMembershipRepository {
       .populate({ path: 'villaId' })
       .populate({ path: 'units.villaId' })
       .session(session);
+  }
+
+  async findActiveMemberships(orgId, filter = {}, session = null) {
+    const query = {
+      orgId: new mongoose.Types.ObjectId(orgId),
+      status: 'Active',
+      ...filter,
+    };
+    return await OrgMembership.find(query)
+      .populate({ path: 'villaId' })
+      .populate({ path: 'units.villaId' })
+      .session(session || null);
+  }
+
+  async findActiveUserIds(orgId, filter = {}, session = null) {
+    const query = {
+      orgId: new mongoose.Types.ObjectId(orgId),
+      status: 'Active',
+      ...filter,
+    };
+    const memberships = await OrgMembership.find(query).select('userId').session(session || null);
+    return [...new Set(memberships.map((m) => m.userId?.toString()).filter(Boolean))];
   }
 }
 

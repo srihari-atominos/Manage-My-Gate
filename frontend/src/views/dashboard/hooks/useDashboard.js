@@ -81,11 +81,26 @@ export const useDashboard = () => {
     const featurePart = perm.split(':')[0]
     if (featurePart === 'workspaces' || featurePart === 'dashboard') return true
 
-    if (featurePart === 'amenities' || featurePart === 'booking') {
-      return allowedFeatures.some((f) => ['amenities', 'booking', 'amenity', 'amenitiesBooking'].includes(f))
+    const isModuleEnabled = (key) => {
+      if (allowedFeatures.includes(key)) return true
+      if (activeWorkspace?.modules?.some((m) => m.moduleKey === key && m.enabled !== false)) return true
+      if (activeWorkspace?.workspaceModules?.some((m) => m.moduleKey === key && m.enabled === true)) return true
+      return false
     }
 
-    return allowedFeatures.includes(featurePart) || allowedFeatures.includes(perm)
+    if (featurePart === 'amenities' || featurePart === 'booking') {
+      return ['amenities', 'booking', 'amenity', 'amenitiesBooking'].some((f) => isModuleEnabled(f))
+    }
+
+    if (['villas', 'users', 'roles', 'integrations'].includes(featurePart)) {
+      return (
+        isModuleEnabled('administration_security') ||
+        isModuleEnabled(featurePart) ||
+        allowedFeatures.includes(perm)
+      )
+    }
+
+    return isModuleEnabled(featurePart) || allowedFeatures.includes(perm)
   }
 
   const isPermitted = (item) => {
@@ -129,7 +144,28 @@ export const useDashboard = () => {
   let currentGroup = null
 
   for (const item of filteredNavigationItems) {
-    if (item.component === CNavTitle || !item.to) {
+    if (item.items && Array.isArray(item.items)) {
+      // Group item such as 'Administration & Security'
+      const groupCards = item.items.map((child) => {
+        const meta = getCardMetadata(child.name)
+        return {
+          id: meta.id,
+          name: child.name,
+          titleKey: meta.titleKey,
+          to: child.to,
+          icon: child.icon || item.icon,
+        }
+      })
+
+      if (groupCards.length > 0) {
+        groups.push({
+          id: item.name.toLowerCase().replace(/[^a-zA-Z0-9]+/g, '-'),
+          title: item.name,
+          titleKey: getCategoryKey(item.name),
+          cards: groupCards,
+        })
+      }
+    } else if (item.component === CNavTitle || !item.to) {
       currentGroup = {
         id: item.name.toLowerCase().replace(/[^a-zA-Z0-9]+/g, '-'),
         title: item.name,
@@ -160,8 +196,11 @@ export const useDashboard = () => {
     }
   }
 
+  // Filter out any groups that ended up with 0 cards
+  const visibleGroups = groups.filter((g) => g.cards && g.cards.length > 0)
+
   return {
-    groups,
+    groups: visibleGroups,
     appName: config.appName,
   }
 }

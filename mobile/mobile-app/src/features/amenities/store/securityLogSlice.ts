@@ -168,7 +168,11 @@ const securityLogSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      .addCase(fetchDashboardStatsThunk.pending, (state) => {
+        state.error = null;
+      })
       .addCase(fetchDashboardStatsThunk.fulfilled, (state, action) => {
+        state.error = null;
         if (action.payload) {
           state.dashboard = { ...state.dashboard, ...action.payload };
         }

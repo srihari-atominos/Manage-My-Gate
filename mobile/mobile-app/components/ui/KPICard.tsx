@@ -132,15 +132,15 @@ const KPICard = React.forwardRef<View, KPICardProps>(
         )}
       >
         {/* Top Section: Icon Circle & Trend Indicator */}
-        <View className="flex-row items-center justify-between mb-2">
+        <View className="flex-row items-center justify-between mb-1.5">
           {IconComponent ? (
             <View
               className={cn(
-                'w-8 h-8 rounded-full items-center justify-center',
+                'w-7 h-7 rounded-full items-center justify-center',
                 activeStyle.iconContainer
               )}
             >
-              <IconComponent size={16} color={effectiveIconColor} />
+              <IconComponent size={14} color={effectiveIconColor} />
             </View>
           ) : (
             <View />
@@ -149,13 +149,13 @@ const KPICard = React.forwardRef<View, KPICardProps>(
           {trend ? (
             <View className="flex-row items-center gap-0.5">
               {trend.direction === 'up' ? (
-                <TrendingUp size={14} color="#16a34a" />
+                <TrendingUp size={13} color="#16a34a" />
               ) : (
-                <TrendingDown size={14} color="#dc2626" />
+                <TrendingDown size={13} color="#dc2626" />
               )}
               <Text
                 className={cn(
-                  'text-[12px] font-semibold font-sans',
+                  'text-[11px] font-semibold font-sans',
                   trend.direction === 'up'
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-red-600 dark:text-red-400'
@@ -169,7 +169,7 @@ const KPICard = React.forwardRef<View, KPICardProps>(
 
         {/* Middle Section: Value */}
         <Text
-          className="text-[20px] font-bold font-sans text-foreground tracking-tight"
+          className="text-[18px] font-bold font-sans text-foreground tracking-tight"
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.7}
@@ -179,7 +179,7 @@ const KPICard = React.forwardRef<View, KPICardProps>(
 
         {/* Bottom Section: Title */}
         <Text
-          className="text-[13px] text-muted-foreground mt-0.5 font-medium font-sans"
+          className="text-[12px] text-muted-foreground mt-0.5 font-medium font-sans"
           numberOfLines={1}
         >
           {translateText(title)}

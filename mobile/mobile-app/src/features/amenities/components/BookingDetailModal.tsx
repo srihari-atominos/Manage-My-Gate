@@ -9,6 +9,7 @@ import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/src/utils/i18n';
 import { AmenityBooking } from '../store/amenityBookingSlice';
+import { formatTimeRange12Hour } from '../utils/amenityStateHelpers';
 
 export interface BookingDetailModalProps {
   visible: boolean;
@@ -83,8 +84,10 @@ export function BookingDetailModal({
             label={t('time_window', 'Time Window')}
             value={
               booking.startTime && booking.endTime
-                ? `${booking.startTime} - ${booking.endTime}`
-                : booking.startTime || booking.endTime || 'Full Day'
+                ? formatTimeRange12Hour(booking.startTime, booking.endTime)
+                : booking.startTime || booking.endTime
+                ? formatTimeRange12Hour(booking.startTime || booking.endTime)
+                : 'Full Day'
             }
             iconName="Clock"
           />

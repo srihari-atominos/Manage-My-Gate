@@ -4,7 +4,7 @@ import amenityBookingRepository from './amenityBooking.repository.js';
 import notificationService from '../notification/notification.service.js';
 import logger from '../../utils/logger.utils.js';
 import QRCode from 'qrcode';
-import walletRepository from '../wallet/wallet.repository.js';
+import walletService from '../wallet/wallet.service.js';
 
 const generateBookingId = () => `BKG-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
@@ -38,15 +38,18 @@ const sendBookingNotification = async (booking, type, title, message) => {
 amenityBookingEventEmitter.on(AMENITY_BOOKING_CREATED, async (booking) => {
   logBookingEvent('AMENITY_BOOKING_CREATED', booking);
   if (booking.status === 'confirmed') {
-    // Generate QR if it bypassed payment
     try {
+      const crypto = (await import('crypto')).default;
       const bookingIdStr = booking.bookingId || generateBookingId();
-      const qrData = JSON.stringify({ bookingId: booking._id, displayId: bookingIdStr, userId: booking.userId, amenityId: booking.amenityId?._id || booking.amenityId });
-      const qrCodeUrl = await QRCode.toDataURL(qrData);
+      const passToken = booking.passToken || crypto.randomBytes(32).toString('hex');
+      const passTokenHash = booking.passTokenHash || crypto.createHash('sha256').update(passToken).digest('hex');
+      const qrCodeUrl = await QRCode.toDataURL(`MMG:AMENITY:${passToken}`);
       const qrExpiresAt = new Date(`${booking.bookingDate}T${booking.endTime}`);
       
       await amenityBookingRepository.updateStatus(booking._id, booking.orgId, 'confirmed', { 
         bookingId: bookingIdStr,
+        passToken,
+        passTokenHash,
         qrCode: qrCodeUrl,
         qrStatus: 'active',
         qrGeneratedAt: new Date(),
@@ -91,7 +94,7 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_CANCELLED, async (booking) => {
     msg = 'Booking cancelled successfully. No refund is applicable because the cancellation occurred within the configured refund window.';
     // Update debit transaction
     try {
-      await walletRepository.updateTransactionDescription(booking._id, 'Debit', '(Cancelled within the configured refund window. No refund issued.)');
+      await walletService.updateTransactionDescription(booking._id, 'Debit', '(Cancelled within the configured refund window. No refund issued.)');
     } catch (e) {
       logger.error('Failed to update debit transaction description', e);
     }
@@ -148,7 +151,11 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_COMPLETED, async (booking) => {
 // Listen to Payment Events (The async payment flow)
 // ---------------------------------------------------------
 
-paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment) => {
+paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment, options = {}) => {
+  if (options.alreadySettled) {
+    logger.info(`Skipping PAYMENT_SUCCESS listener for AmenityBooking ${payment.referenceId} as it was settled in transaction.`);
+    return;
+  }
   if (payment.referenceType !== 'AmenityBooking') return;
 
   try {
@@ -207,7 +214,7 @@ paymentEventEmitter.on(PAYMENT_REFUNDED, async (payment) => {
     const booking = await amenityBookingRepository.findById(payment.referenceId, payment.orgId);
     if (booking) {
       const amenityName = booking.amenityId?.name || 'Amenity Booking';
-      await walletRepository.createTransaction({
+      await walletService.createTransaction({
         orgId: booking.orgId,
         userId: booking.userId,
         bookingId: booking.bookingId,
@@ -221,7 +228,7 @@ paymentEventEmitter.on(PAYMENT_REFUNDED, async (payment) => {
         description: 'Booking cancelled and refunded'
       });
       if (payment.method === 'wallet' || booking.paymentMethod === 'wallet') {
-        await walletRepository.updateBalance(booking.userId, booking.orgId, (payment.amount || booking.totalPrice));
+        await walletService.updateBalance(booking.userId, booking.orgId, (payment.amount || booking.totalPrice));
       }
       
       await sendBookingNotification(booking, 'info', 'Refund Processed', 'Your refund for the cancelled booking has been processed.');

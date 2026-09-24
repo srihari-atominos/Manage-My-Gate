@@ -35,7 +35,7 @@ type AcceptInviteFormValues = yup.InferType<typeof acceptInviteSchema>;
 
 export default function AcceptInviteScreen() {
   const { isAuthenticated, user, clearStatus, acceptInvite } = useAuth();
-  const searchParams = useLocalSearchParams<{ token?: string; code?: string; email?: string; action?: string }>();
+  const searchParams = useLocalSearchParams<{ token?: string; code?: string; email?: string; action?: string; mode?: string }>();
   const [submitting, setSubmitting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -242,8 +242,9 @@ export default function AcceptInviteScreen() {
             setIsRejectedState(true);
             setApiError(null);
           } else if (
-            (errMsg.toLowerCase().includes('already') && (errMsg.toLowerCase().includes('active') || errMsg.toLowerCase().includes('registered') || errMsg.toLowerCase().includes('accepted') || errMsg.toLowerCase().includes('member'))) ||
-            errMsg.toLowerCase().includes('active')
+            errMsg.toLowerCase().includes('already active') ||
+            errMsg.toLowerCase().includes('already registered') ||
+            (errMsg.toLowerCase().includes('already') && (errMsg.toLowerCase().includes('accepted') || errMsg.toLowerCase().includes('member')))
           ) {
             setIsAlreadyRegistered(true);
             setAlreadyRegisteredEmail(emailToValidate);

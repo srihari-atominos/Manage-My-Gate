@@ -252,6 +252,17 @@ export class AuthService {
       if (!selectedMembership) {
         selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
       }
+      // Auto-heal fallback: If user was invited and has a membership in this org that is still in 'Pending' status,
+      // and the organization is active, auto-promote it to 'Active' so valid authenticated users are never denied entry.
+      if (!selectedMembership) {
+        const pendingMatch = memberships.find((m) => m.orgId && m.orgId._id && m.orgId._id.toString() === targetOrgIdStr);
+        if (pendingMatch && (!pendingMatch.orgId.status || pendingMatch.orgId.status.toLowerCase() === 'active')) {
+          await orgMembershipService.updateStatus(user._id, targetOrgIdStr, 'Active');
+          pendingMatch.status = 'Active';
+          selectedMembership = pendingMatch;
+          activeMemberships.push(pendingMatch);
+        }
+      }
       if (!selectedMembership) {
         throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
       }
@@ -547,7 +558,8 @@ export class AuthService {
    * @param {object} loginData - Payload containing login (email/username) and password
    */
   async login(loginData) {
-    const { login, password, inviteToken } = loginData;
+    const login = (loginData.login || loginData.email || loginData.username || '').trim();
+    const { password, inviteToken } = loginData;
 
     // 1. Fetch user by email or username
     const user = await userService.getUserByEmailOrUsername(login);
@@ -577,33 +589,58 @@ export class AuthService {
     let targetOrgIdFromInvite = null;
     if (inviteToken) {
       try {
-        const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION');
-        targetOrgIdFromInvite = orgId;
-        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-        await orgMembershipService.updateStatus(user._id, orgId, 'Active');
-
-        // Assign resident to villa upon accepting invitation during login
-        const updatedMembership = await orgMembershipService.getMembershipWithVilla(user._id, orgId);
-        if (updatedMembership) {
-          const villaService = (await import('../villa/villa.services.js')).default;
-          if (updatedMembership.units && updatedMembership.units.length > 0) {
-            for (const unit of updatedMembership.units) {
-              if (unit.villaId) {
-                const vId = unit.villaId._id || unit.villaId;
-                await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', null, orgId);
-              }
-            }
-          } else if (updatedMembership.villaId) {
-            const vId = updatedMembership.villaId._id || updatedMembership.villaId;
-            await villaService.assignResidentToVilla(vId, user._id, updatedMembership.residentType || 'Resident', null, orgId);
+        try {
+          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION');
+          targetOrgIdFromInvite = orgId;
+        } catch (tokenErr) {
+          // If token was already accepted or consumed on a previous/concurrent request,
+          // recover orgId from the existing token document so the user can still sign in and access the workspace!
+          const existingTokenDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION');
+          if (existingTokenDoc && (existingTokenDoc.status === 'ACCEPTED' || existingTokenDoc.used === true)) {
+            targetOrgIdFromInvite = existingTokenDoc.orgId;
+          } else {
+            throw tokenErr;
           }
         }
 
-        const Technician = (await import('../technician/technician.model.js')).default;
-        await Technician.findOneAndUpdate({ userId: user._id, orgId }, { status: 'Active' }).catch(() => null);
+        if (targetOrgIdFromInvite) {
+          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+          await orgMembershipService.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
 
-        userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
-        userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
+          // If user was in Pending Verification, activate their global user profile
+          if (user.status === 'Pending Verification' || user.status === 'Pending') {
+            const User = (await import('../user/user.model.js')).default;
+            await User.updateOne(
+              { _id: user._id },
+              { $set: { status: 'Active', emailVerified: true } }
+            );
+            user.status = 'Active';
+            user.emailVerified = true;
+          }
+
+          // Assign resident to villa upon accepting invitation during login
+          const updatedMembership = await orgMembershipService.getMembershipWithVilla(user._id, targetOrgIdFromInvite);
+          if (updatedMembership) {
+            const villaService = (await import('../villa/villa.services.js')).default;
+            if (updatedMembership.units && updatedMembership.units.length > 0) {
+              for (const unit of updatedMembership.units) {
+                if (unit.villaId) {
+                  const vId = unit.villaId._id || unit.villaId;
+                  await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', null, targetOrgIdFromInvite);
+                }
+              }
+            } else if (updatedMembership.villaId) {
+              const vId = updatedMembership.villaId._id || updatedMembership.villaId;
+              await villaService.assignResidentToVilla(vId, user._id, updatedMembership.residentType || 'Resident', null, targetOrgIdFromInvite);
+            }
+          }
+
+          const Technician = (await import('../technician/technician.model.js')).default;
+          await Technician.findOneAndUpdate({ userId: user._id, orgId: targetOrgIdFromInvite }, { status: 'Active' }).catch(() => null);
+
+          userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId: targetOrgIdFromInvite });
+          userEvents.emit('USER_UPDATED', { userId: user._id, orgId: targetOrgIdFromInvite, action: 'activated' });
+        }
       } catch (tokenError) {
         console.warn('Login processed with invalid or expired invite token for active user:', tokenError.message);
       }
@@ -1854,7 +1891,9 @@ export class AuthService {
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      // Resolve scoped token and workspaces (outside transaction) scoped explicitly to target invitation orgId
+      // Resolve scoped token and workspaces (outside transaction)
+      // Pass orgId explicitly so the JWT is scoped to the newly-accepted community,
+      // not the user's prior/default active community (fixes multi-org SSO invite bug).
       const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(activatedUser, orgId);
       const token = signToken(tokenPayload);
 
@@ -2015,8 +2054,10 @@ export class AuthService {
 
     const invitationSource = tokenDoc?.invitationSource || 'WEB';
     const isAlreadyMemberInOrg = membershipDoc ? membershipDoc.status === 'Active' : false;
-    const hasAccountCredentials = user.status === 'Active' || !!(user.password && user.password.length > 0);
-    const isAlreadyRegistered = isAlreadyMemberInOrg || hasAccountCredentials;
+    const hasPassword = !!(user.password && user.password.length > 0);
+    const hasAccountCredentials = hasPassword && user.status === 'Active';
+    // User is only considered an existing registered user who can Sign In with credentials if they actually have a password configured
+    const isAlreadyRegistered = hasPassword && (user.status === 'Active' || isAlreadyMemberInOrg);
 
     let inviterName = '';
     if (tokenDoc?.inviterId) {
@@ -2268,7 +2309,7 @@ export class AuthService {
     const scheme = config.mobile?.scheme || 'managemygate';
     const universalDomain = config.mobile?.universalLinkDomain || 'app.managemygate.com';
     const androidPackage = config.mobile?.androidPackageName || 'com.atominosconsulting.nahom';
-    const iosAppStoreId = config.mobile?.iosAppStoreId || '6470000000';
+    const iosAppStoreId = config.mobile?.iosAppStoreId || '6746501635';
 
     return {
       handoffId: handoffResult.handoffId,

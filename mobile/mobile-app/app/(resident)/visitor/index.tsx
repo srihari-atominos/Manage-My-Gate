@@ -95,6 +95,14 @@ export default function VisitorDashboardScreen() {
       onPress: () => setInviteSheetOpen(true),
     },
     {
+      id: 'gate_console',
+      name: t('gate_console', 'Gate Console'),
+      iconName: 'DoorOpen',
+      colorBg: 'bg-teal-500/10',
+      colorIcon: '#0d9488',
+      route: '/(resident)/visitor/gate-console',
+    },
+    {
       id: 'history',
       name: t('history_logs', 'History Logs'),
       iconName: 'History',

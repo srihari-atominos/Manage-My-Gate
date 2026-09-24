@@ -2,6 +2,7 @@ import http from 'http';
 import app from './index.js';
 import config from './src/config/config.js';
 
+
 import './src/features/user/user.listeners.js';
 import './src/features/securityLog/securityLog.listeners.js';
 import './src/features/complaint/complaint.listeners.js';
@@ -9,6 +10,7 @@ import './src/features/technician/technician.listeners.js';
 import './src/features/auth/auth.listeners.js';
 import './src/features/workspace/workspace.listeners.js';
 import './src/features/poll/poll.listeners.js';
+import './src/features/noticeBoard/noticeBoard.listeners.js';
 import connectToDb from './src/config/db/mongodbConnectToDb.config.js';
 import { initSocket } from './src/config/socket.js';
 import initializePassport from './src/features/auth/passport/passport.init.js';
@@ -17,13 +19,19 @@ import { syncPermissions } from './src/utils/permissionSync.util.js';
 import complaintCron from './src/features/complaint/complaint.cron.js';
 import assessmentCron from './src/features/assessment/utils/assessmentCron.js';
 import userCron from './src/features/user/user.cron.js';
+import communityEngagementCron from './src/features/communityEngagement/communityEngagement.cron.js';
 import outboxWorker from './src/workers/outbox.worker.js';
+import {
+  amenityHoldExpirationWorker,
+  amenityOutboxWorker,
+} from './src/features/amenityManagement/index.js';
 
 const initCronJobs = () => {
   if (config.nodeEnv !== 'test') {
     complaintCron.init();
     assessmentCron.init();
     userCron.init();
+    communityEngagementCron.init();
     logger.info('Background Cron Jobs Initialized');
   }
 };
@@ -32,6 +40,13 @@ const startServer = async () => {
   try {
     initCronJobs();
     outboxWorker.init();
+
+    if (config.nodeEnv !== 'test') {
+      amenityHoldExpirationWorker.initWorker();
+      amenityOutboxWorker.initWorker();
+      logger.info('Amenity Management Background Workers Initialized');
+    }
+
     // 1. Connect the database FIRST
     await connectToDb();
 
@@ -58,8 +73,23 @@ const startServer = async () => {
       logger.info(`🚀 Server is running on http://${host}:${port}`);
     });
 
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        logger.warn(`Port ${port} is already in use. An active backend instance is already running on http://${host}:${port}.`);
+        process.exit(0);
+      } else {
+        logger.error('HTTP Server Error:', err);
+      }
+    });
+
     const shutdown = (signal) => {
       logger.info(`Received ${signal}, shutting down server...`);
+      try {
+        amenityHoldExpirationWorker.stopWorker();
+        amenityOutboxWorker.stopWorker();
+      } catch (err) {
+        logger.error('Error stopping amenity workers during shutdown:', err);
+      }
       server.close(() => {
         logger.info('HTTP server closed successfully.');
         if (signal === 'SIGUSR2') {
@@ -73,6 +103,13 @@ const startServer = async () => {
     process.once('SIGTERM', () => shutdown('SIGTERM'));
     process.once('SIGINT', () => shutdown('SIGINT'));
     process.once('SIGUSR2', () => shutdown('SIGUSR2'));
+
+    process.on('unhandledRejection', (reason, promise) => {
+      logger.error('Unhandled Rejection at:', { promise, reason: reason?.stack || reason });
+    });
+    process.on('uncaughtException', (error) => {
+      logger.error('Uncaught Exception thrown:', { error: error?.stack || error });
+    });
   } catch (error) {
     logger.error('Server startup FAILED: ', error);
     process.exit(1);
@@ -89,4 +126,5 @@ startServer();
 
 // trigger restart 4
 
-// trigger restart 5
+// trigger restart 6
+

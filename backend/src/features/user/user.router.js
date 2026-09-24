@@ -8,6 +8,7 @@ import {
   updateProfileRules,
   requestDeletionRules,
   requestEmailOtpRules,
+  requestPhoneOtpRules,
   revokeInvitationRules,
   listInvitationsRules,
   resendInvitationRules,
@@ -275,6 +276,36 @@ router.post(
   otpLimiter,
   validate(requestEmailOtpRules),
   userController.requestEmailOtp
+)
+
+/**
+ * @swagger
+ * /users/request-phone-otp:
+ *   post:
+ *     summary: Request verification OTP to update profile phone number
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newPhone
+ *             properties:
+ *               newPhone:
+ *                 type: string
+ *                 example: "+919876543210"
+ *     responses:
+ *       200:
+ *         description: Verification OTP sent to new phone number.
+ *       400:
+ *         description: Validation error or phone already in use.
+ */
+router.post(
+  '/request-phone-otp',
+  otpLimiter,
+  validate(requestPhoneOtpRules),
+  userController.requestPhoneOtp
 )
 
 router.put(

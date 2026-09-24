@@ -36,8 +36,15 @@ export const initSocket = async (httpServer) => {
 
   io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins,
-      methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const isAllowed = allowedOrigins.includes(origin) || 
+                          /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin);
+        if (isAllowed || process.env.NODE_ENV !== 'production') {
+          return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+      },
       credentials: true,
     },
     // Production-ready timeouts and transports

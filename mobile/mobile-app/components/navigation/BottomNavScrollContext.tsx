@@ -44,15 +44,25 @@ const extractScrollY = (event: any): number => {
 
 export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isCompact, setIsCompactState] = useState<boolean>(globalIsCompact);
+  const isCompactRef = useRef<boolean>(globalIsCompact);
   const lastScrollY = useRef<number>(0);
+  const lastScrollTime = useRef<number>(0);
 
   const setIsCompact = useCallback((compact: boolean) => {
+    if (isCompactRef.current === compact) return;
+    isCompactRef.current = compact;
     setIsCompactState(compact);
     setGlobalBottomNavCompact(compact);
   }, []);
 
   const handleScroll = useCallback(
     (event: any) => {
+      const now = Date.now();
+      if (now - lastScrollTime.current < 64) {
+        return;
+      }
+      lastScrollTime.current = now;
+
       const currentY = extractScrollY(event);
 
       // Protect against iOS overscroll bounce at top

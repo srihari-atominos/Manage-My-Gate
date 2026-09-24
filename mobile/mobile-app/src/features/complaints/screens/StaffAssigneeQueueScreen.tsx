@@ -62,20 +62,42 @@ export function StaffAssigneeQueueScreen() {
 
   // Compute Web-aligned status counts & assigned technician filtering
   const metrics = useMemo(() => {
-    // Web reference filtering logic: Filter assigned tasks for logged-in technician
+    // Filter assigned tasks specifically for the logged-in technician/user
     const assignedTasks = complaints.filter((c: Complaint) => {
+      // If it's a broadcast waiting for acceptance, it belongs to the broadcast pool, not direct assigned tasks
       if (c.isBroadcast && c.status === 'Waiting For Acceptance') return false;
-      if (!currentUserId) return true;
+      if (!currentUserId) return false;
+
+      // Exclude unassigned complaints / initial open states
+      if (['Submitted', 'Open', 'Waiting For Assignment'].includes(c.status) && !c.assignedTechnicianId && !c.assignedTechnicianName) {
+        return false;
+      }
+
       const techIdStr = typeof c.assignedTechnicianId === 'object' && c.assignedTechnicianId !== null
-        ? String(c.assignedTechnicianId._id)
+        ? String(c.assignedTechnicianId._id || (c.assignedTechnicianId as any).id || '')
         : String(c.assignedTechnicianId || '');
-      
-      const isDirectMatch = techIdStr === currentUserId;
-      const isNameMatch = Boolean(c.assignedTechnicianName && currentUser?.name && c.assignedTechnicianName.toLowerCase().includes(currentUser.name.toLowerCase()));
-      return !techIdStr || isDirectMatch || isNameMatch || currentUser?.role === 'Admin' || currentUser?.role === 'Facility Manager';
+
+      // Must have an assigned technician
+      if (!techIdStr && !c.assignedTechnicianName) return false;
+
+      const isDirectMatch = Boolean(techIdStr && techIdStr === currentUserId);
+      const isNameMatch = Boolean(
+        c.assignedTechnicianName &&
+        currentUser?.name &&
+        c.assignedTechnicianName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
+      );
+
+      return isDirectMatch || isNameMatch;
     });
 
-    const broadcastPool = complaints.filter((c: Complaint) => c.isBroadcast && c.status === 'Waiting For Acceptance');
+    const broadcastPool = complaints.filter((c: Complaint) => {
+      if (!c.isBroadcast || c.status !== 'Waiting For Acceptance') return false;
+      if (!currentUserId) return false;
+      return Array.isArray(c.broadcastTechnicianIds) && c.broadcastTechnicianIds.some((id: any) => {
+        const tid = typeof id === 'object' && id !== null ? String(id._id || id.id || '') : String(id || '');
+        return Boolean(tid && tid === currentUserId);
+      });
+    });
     
     const pendingAllocations = assignedTasks.filter(
       (c: Complaint) => c.status === 'Assigned' || c.status === 'Waiting For Acceptance' || c.status === 'Accepted'
@@ -229,35 +251,12 @@ export function StaffAssigneeQueueScreen() {
               </View>
             ) : (
               filteredTasks.map((ticket: Complaint) => {
-                const isUnassigned = !ticket.assignedTechnicianName && !ticket.vendor;
                 const isPendingAccept = ticket.status === 'Assigned' || ticket.status === 'Waiting For Acceptance';
                 const isInProgress = ticket.status === 'In Progress';
                 const isOnHold = ticket.status === 'On Hold' || ticket.status === 'Paused';
 
                 const renderCardActions = () => (
                   <>
-                    {/* UNASSIGNED / OPEN JOB CLAIM ACTION */}
-                    {(isUnassigned || ['Open', 'Submitted', 'Waiting For Assignment'].includes(ticket.status)) && !isPendingAccept && !isInProgress && !isOnHold && (
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={(e) => {
-                          e?.stopPropagation?.();
-                          handleAcceptAssignment(ticket._id);
-                        }}
-                        style={{
-                          backgroundColor: '#2563eb', // solid blue
-                          paddingVertical: 6,
-                          paddingHorizontal: 12,
-                          borderRadius: 10,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Icon as={Send} size={13} color="#ffffff" style={{ marginRight: 4 }} />
-                        <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 11 }}>Accept & Claim</Text>
-                      </TouchableOpacity>
-                    )}
-
                     {/* BROADCAST / PENDING ALLOCATION ACTIONS */}
                     {(selectedStatusTab === 'BROADCAST' || isPendingAccept) && (
                       <>

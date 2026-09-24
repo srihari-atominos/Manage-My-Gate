@@ -1,14 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, ScrollView, RefreshControl } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import {
   QrCode,
   ScanLine,
   Search,
   CheckCircle2,
-  DoorOpen,
-  DoorClosed,
-  ShieldAlert,
 } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { TabBar } from '@/components/ui/TabBar';
@@ -27,6 +24,9 @@ import { SecurityLog } from '@/src/features/amenities/services/securityLogApi';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { useSecurityScanner } from '../../../src/features/amenities/hooks/useSecurityScanner';
 import { useSecurityLogs } from '../../../src/features/amenities/hooks/useSecurityLogs';
+import { useAuth } from '../../../src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '../../../src/utils/rbac';
+import { formatUtcToLocalDisplay } from '../../../src/features/amenities/utils/amenityStateHelpers';
 
 const AMENITY_TABS = [
   { key: 'CONSOLE', label: 'Console' },
@@ -43,10 +43,28 @@ const SCAN_TYPE_TABS = [
 
 export default function AmenitySecurityGateScannerScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Guard: Users without security guard / scanner permissions are redirected
+  const hasScannerAccess =
+    isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user);
+
+  if (user && !hasScannerAccess) {
+    if (isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user)) {
+      return <Redirect href="/(resident)/amenities/discover" />;
+    }
+    return <Redirect href="/(resident)/dashboard" />;
+  }
   const {
     isScanning,
     isFlashlightOn,
     isResultModalOpen,
+    v2CheckInResult,
+    v2PassActionLoading,
+    v2PassError,
+    localScanError,
     checkInResult,
     checkingIn,
     toggleFlashlight,
@@ -87,26 +105,12 @@ export default function AmenitySecurityGateScannerScreen() {
     loadData();
   }, [loadData]);
 
-  // Clean raw scanned text
-  const extractCodeFromRaw = (raw: string): string => {
-    let text = (raw || '').trim();
-    try {
-      const parsed = JSON.parse(text);
-      if (parsed && typeof parsed === 'object') {
-        text = parsed.bookingId || parsed._id || parsed.id || parsed.displayId || parsed.code || text;
-      }
-    } catch {}
-    return String(text).trim();
-  };
-
   const handleVerifyPass = async (codeToVerify?: string) => {
     const raw = (codeToVerify || passCode).trim();
     if (!raw) return;
-    const cleanCode = extractCodeFromRaw(raw);
-    if (!cleanCode) return;
 
     setStatusMessage(null);
-    await handleBarCodeScanned({ type: 'MANUAL', data: cleanCode });
+    await handleBarCodeScanned({ type: 'MANUAL', data: raw });
     refreshSecurityLogs();
   };
 
@@ -115,43 +119,110 @@ export default function AmenitySecurityGateScannerScreen() {
     handleVerifyPass(token);
   };
 
-  // Standardize check-in result for ScanResultSheet
-  const formattedResult: ScanResultData | null = checkInResult
-    ? {
+  // Standardize check-in / check-out result for ScanResultSheet (V2 Authoritative)
+  const formattedResult: ScanResultData | null = useMemo(() => {
+    if (localScanError) {
+      return {
+        success: false,
+        status: 'REJECTED',
+        title: 'Invalid Pass Format',
+        message: localScanError,
+        passType: 'AMENITY PASS',
+      };
+    }
+
+    if (v2PassError) {
+      const code = v2PassError.statusCode;
+      let title = 'Verification Refused';
+      let message = v2PassError.message || 'Pass verification failed.';
+
+      if (code === 409) {
+        title = 'Security Alert: Pass Replay Detected';
+        message = v2PassError.message || 'This pass has already been used for entry.';
+      } else if (code === 403) {
+        if (
+          v2PassError.code === 'PASS_REVOKED' ||
+          v2PassError.reason === 'EMERGENCY_MAINTENANCE' ||
+          v2PassError.message?.toLowerCase().includes('emergency') ||
+          v2PassError.message?.toLowerCase().includes('evacuat')
+        ) {
+          title = 'EMERGENCY EVACUATION — ACCESS REVOKED';
+          message = 'Facility is closed under emergency maintenance. Turnstile entry is strictly barred.';
+        } else {
+          title = 'Access Denied';
+          message = v2PassError.message || 'Pass is revoked or outside its validity window.';
+        }
+      } else if (code === 404) {
+        title = 'Pass Not Recognized';
+        message = v2PassError.message || 'Invalid pass. This QR code is not recognized for this community.';
+      } else if (code === 400) {
+        title = 'Check-In Rejected';
+        message = v2PassError.message || 'Pass validation failed.';
+      }
+
+      return {
+        success: false,
+        status: 'REJECTED',
+        title,
+        message,
+        passType: 'AMENITY PASS',
+      };
+    }
+
+    if (v2CheckInResult) {
+      const validFromStr = formatUtcToLocalDisplay(v2CheckInResult.validFrom).formatted;
+      const validUntilStr = formatUtcToLocalDisplay(v2CheckInResult.validUntil).formatted;
+      const checkInStr = v2CheckInResult.checkInTimestamp
+        ? formatUtcToLocalDisplay(v2CheckInResult.checkInTimestamp).formatted
+        : 'Just now';
+
+      const residentName = v2CheckInResult.resident?.name || 'Resident';
+      const residentPhoto = v2CheckInResult.resident?.photoUrl || undefined;
+      const residentPhone = v2CheckInResult.resident?.phone || undefined;
+      const unitOrVilla =
+        v2CheckInResult.resident?.unitNumber ||
+        v2CheckInResult.resident?.villaNumber ||
+        (v2CheckInResult.gateId ? `Gate: ${v2CheckInResult.gateId}` : 'Main Turnstile');
+      const facilityName = v2CheckInResult.facility?.name || v2CheckInResult.facilityName || 'Community Facility';
+      const passRef = v2CheckInResult.passCode || v2CheckInResult.booking?.bookingId || v2CheckInResult.reservationId || 'N/A';
+
+      return {
+        success: true,
+        status: 'VERIFIED',
+        title: 'Facility Entry Verified',
+        message: 'Reservation pass is active and verified for facility entry.',
+        visitorName: residentName,
+        visitorPhoto: residentPhoto,
+        visitorPhone: residentPhone,
+        passType: v2CheckInResult.passType || 'AMENITY ACCESS',
+        amenityName: facilityName,
+        unitOrVilla,
+        validityWindow: validFromStr && validUntilStr ? `${validFromStr} - ${validUntilStr}` : 'Active Window',
+        entryTime: checkInStr,
+        bookingReference: passRef,
+      };
+    }
+
+    // Backward compatibility fallback
+    if (checkInResult) {
+      return {
         success: Boolean(checkInResult.success),
         status: checkInResult.success ? 'VERIFIED' : 'REJECTED',
-        title: checkInResult.success
-          ? 'Amenity Pass Verified'
-          : 'Amenity Access Denied',
-        message:
-          checkInResult.message ||
-          (checkInResult.success
-            ? 'Reservation pass is active and verified for facility entry.'
-            : 'Pass is expired, invalid, or already checked in.'),
+        title: checkInResult.success ? 'Amenity Pass Verified' : 'Amenity Access Denied',
+        message: checkInResult.message || 'Pass processed',
         visitorName: checkInResult.booking?.residentName || 'Resident Member',
         passType: 'AMENITY ACCESS',
         amenityName: checkInResult.booking?.amenityName || 'Community Facility',
-        unitOrVilla:
-          (checkInResult.booking as any)?.unitNumber ||
-          (checkInResult.booking as any)?.villaNumber ||
-          (checkInResult.booking as any)?.unit ||
-          'Estate',
-        validityWindow:
-          checkInResult.booking?.startTime && checkInResult.booking?.endTime
-            ? `${checkInResult.booking.startTime} - ${checkInResult.booking.endTime}`
-            : 'Today',
-        bookingReference:
-          checkInResult.booking?.bookingId ||
-          (checkInResult.booking as any)?.bookingReference ||
-          checkInResult.booking?._id ||
-          checkInResult.booking?.passCode ||
-          'N/A',
-      }
-    : null;
+        bookingReference: checkInResult.booking?.bookingId || checkInResult.booking?._id || 'N/A',
+      };
+    }
+
+    return null;
+  }, [localScanError, v2PassError, v2CheckInResult, checkInResult]);
 
   return (
     <ScreenShell
-      title="Amenity Security Console"
+      title="Amenity Access Pass Scanner"
       subtitle="Facility entry verification & QR pass scanner"
       iconName="ShieldCheck"
     >
@@ -285,7 +356,9 @@ export default function AmenitySecurityGateScannerScreen() {
             <View className="bg-card border border-border rounded-2xl p-4 gap-3 shadow-xs">
               <View className="flex-row items-center gap-2 border-b border-border/40 pb-2.5">
                 <ScanLine size={18} color="#ea580c" />
-                <Text className="text-sm font-bold text-foreground">Verify Pass Code / QR / Token</Text>
+                <Text className="text-sm font-bold text-foreground">
+                  Verify Access Pass
+                </Text>
               </View>
 
               <View className="flex-row items-center gap-2">
@@ -293,7 +366,7 @@ export default function AmenitySecurityGateScannerScreen() {
                   <TextInput
                     value={passCode}
                     onChangeText={setPassCode}
-                    placeholder="Enter 6-digit PIN, Code, or Name..."
+                    placeholder="Enter Pass Token or QR Code..."
                     keyboardType="default"
                     inputClassName="font-mono text-sm tracking-wider"
                     onSubmitEditing={() => handleVerifyPass()}
@@ -356,13 +429,13 @@ export default function AmenitySecurityGateScannerScreen() {
       {/* Hardware Camera QR Scanner Modal */}
       <QRScannerModal
         visible={qrScannerOpen}
-        title="Amenity QR Scanner"
-        instruction="Align Amenity QR Code inside Frame"
+        title="QR Scanner"
+        instruction="Align QR Code inside Frame"
         onClose={() => setQrScannerOpen(false)}
         onScanCode={async (code) => {
+          setQrScannerOpen(false);
           setPassCode(code);
           await handleVerifyPass(code);
-          refreshSecurityLogs();
         }}
       />
 

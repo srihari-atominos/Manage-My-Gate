@@ -139,7 +139,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
 
       <View
         className={cn(
-          'flex-row items-center rounded-2xl border bg-white/75 dark:bg-[#292524]/75 border-white/80 dark:border-white/20 px-3.5 py-3 shadow-2xs transition-colors backdrop-blur-sm',
+          'flex-row items-center rounded-2xl border bg-white/75 dark:bg-[#292524]/75 border-white/80 dark:border-white/20 px-3.5 min-h-[48px] py-2.5 shadow-2xs transition-colors backdrop-blur-sm',
           isFocused && !error && 'border-primary ring-2 ring-primary/20',
           isIncomplete && !error && 'border-amber-500/80 bg-amber-500/5',
           isComplete && !error && 'border-emerald-500/80 bg-emerald-500/5',
@@ -163,7 +163,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
 
         {/* National Number Input */}
         <RNTextInput
-          className="flex-1 text-sm font-sans text-foreground py-0 min-h-[24px]"
+          className="flex-1 text-sm font-sans text-foreground self-stretch min-h-[44px] py-3"
           style={{ outlineStyle: 'none' } as any}
           keyboardType="phone-pad"
           placeholder={placeholder}
@@ -201,7 +201,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       {/* Country Selection Modal */}
       <Modal visible={isPickerVisible} transparent statusBarTranslucent={true} animationType="fade">
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
         >
           <Pressable

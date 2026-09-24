@@ -74,6 +74,7 @@ const AppContent = () => {
                 '/roles',
                 '/role-builder',
                 '/villas',
+                '/integrations',
               ].includes(route.path) || route.path.startsWith('/super-admin/')
             const routeElement = isProtected ? (
               <AuthGuard>

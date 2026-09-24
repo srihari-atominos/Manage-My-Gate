@@ -1196,7 +1196,7 @@ export const ml: Record<string, string> = {
   'enter_6_digit_pin_code_or_name': '6-അക്ക പിൻ, കോഡ് അല്ലെങ്കിൽ പേര് നൽകുക...',
   'no_live_activity': 'തത്സമയ പ്രവർത്തനങ്ങളൊന്നുമില്ല',
   'recent_check_in_scans_will_stream_live_h': 'താമസക്കാർ സൗകര്യങ്ങളിൽ പ്രവേശിക്കുമ്പോൾ അവരുടെ സമീപകാല ചെക്ക്-ഇൻ സ്കാനുകൾ ഇവിടെ തത്സമയം കാണിക്കും.',
-  'amenity_qr_scanner': 'സൗകര്യം QR സ്കാനർ',
+  'amenity_qr_scanner': 'QR സ്കാനർ',
   'manual_booking_token_lookup': 'മാനുവൽ ബുക്കിംഗ് ടോക്കൺ തിരയൽ',
   'enter_the_resident_reservation_reference': 'QR സ്കാൻ ലഭ്യമല്ലെങ്കിൽ താമസക്കാരന്റെ റിസർവേഷൻ റഫറൻസ് ടോക്കൺ നൽകുക.',
   'eg_bk_778899': 'ഉദാ. BK-778899',

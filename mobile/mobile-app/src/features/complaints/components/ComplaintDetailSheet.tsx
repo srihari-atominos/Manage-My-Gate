@@ -425,19 +425,32 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
               </Text>
 
               <View className="flex-row items-center gap-2 flex-wrap">
-                {isUnassigned && (
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={async () => {
-                      const handler = onAcceptAssignment || acceptAssignment;
-                      await handler(complaint._id);
-                      onClose();
-                    }}
-                    className="bg-primary py-2.5 px-4 rounded-xl flex-row items-center justify-center flex-1"
-                  >
-                    <Icon as={Send} size={14} className="text-primary-foreground me-1.5" />
-                    <Text className="text-xs font-bold text-primary-foreground">Accept & Claim Job</Text>
-                  </TouchableOpacity>
+                {complaint.status === 'Waiting For Acceptance' && (
+                  <>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        if (onRejectPress) onRejectPress(complaint);
+                      }}
+                      className="bg-rose-500/10 border border-rose-500/30 py-2.5 px-3 rounded-xl flex-row items-center justify-center"
+                    >
+                      <Icon as={XCircle} size={14} className="text-rose-600 dark:text-rose-400 me-1" />
+                      <Text className="text-xs font-bold text-rose-700 dark:text-rose-300">Decline</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={async () => {
+                        const handler = onAcceptAssignment || acceptAssignment;
+                        await handler(complaint._id);
+                        onClose();
+                      }}
+                      className="bg-primary py-2.5 px-4 rounded-xl flex-row items-center justify-center flex-1"
+                    >
+                      <Icon as={Send} size={14} className="text-primary-foreground me-1.5" />
+                      <Text className="text-xs font-bold text-primary-foreground">Accept Job</Text>
+                    </TouchableOpacity>
+                  </>
                 )}
 
                 {(complaint.status === 'Accepted' || complaint.status === 'Assigned') && (

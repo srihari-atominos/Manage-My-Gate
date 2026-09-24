@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Linking } from 'react-native';
 
 export default function UniversalInviteTokenRedirectScreen() {
   const router = useRouter();

@@ -80,7 +80,12 @@ export const DeliveryValidityStep: React.FC<DeliveryValidityStepProps> = ({
   };
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 gap-4">
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerClassName="p-4 gap-4"
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+    >
       {/* Usage Type Segmented Toggle */}
       <View className="flex-row bg-muted/30 p-1 rounded-2xl border border-border">
         <TouchableOpacity

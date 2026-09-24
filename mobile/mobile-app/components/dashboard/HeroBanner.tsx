@@ -5,7 +5,6 @@ import { useTranslation } from '../../src/utils/i18n';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 400);
 const BANNER_HEIGHT = Math.round((BANNER_WIDTH - 8) * (216 / 472));
-
 export interface BannerItem {
   id: string;
   image: any;
@@ -73,19 +72,22 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
   const handleScrollEnd = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffsetX / BANNER_WIDTH);
-    setActiveIndex(index);
+    if (index >= 0 && index < BANNERS.length) {
+      setActiveIndex(index);
+    }
   };
 
   return (
-    <View className="gap-2.5 my-2">
+    <View className="w-full py-1">
       <ScrollView
         ref={scrollViewRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScrollEnd}
-        snapToInterval={BANNER_WIDTH}
         decelerationRate="fast"
+        snapToInterval={BANNER_WIDTH}
+        snapToAlignment="center"
       >
         {BANNERS.map((banner) => (
           <TouchableOpacity

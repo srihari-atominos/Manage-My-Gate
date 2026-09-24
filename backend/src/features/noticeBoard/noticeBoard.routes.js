@@ -29,7 +29,7 @@ router.use(isAuthenticated)
 router.post(
   '/',
   tenantContext,
-  authorizePermission('notices', 'manage_notices'),
+  authorizePermission('notices', ['manage_notices', 'create']),
   noticeUpload.array('images', 5),
   noticeImageSignatureValidator,
   validate(createNoticeRules),
@@ -85,7 +85,7 @@ router.get(
 router.put(
   '/:id',
   tenantContext,
-  authorizePermission('notices', 'manage_notices'),
+  authorizePermission('notices', ['manage_notices', 'update']),
   noticeUpload.array('images', 5),
   noticeImageSignatureValidator,
   validate(updateNoticeRules),
@@ -101,7 +101,7 @@ router.put(
 router.delete(
   '/:id',
   tenantContext,
-  authorizePermission('notices', 'manage_notices'),
+  authorizePermission('notices', ['manage_notices', 'delete']),
   validate(noticeParamRules),
   noticeController.delete,
 )
@@ -115,7 +115,7 @@ router.delete(
 router.patch(
   '/:id/pin',
   tenantContext,
-  authorizePermission('notices', 'manage_notices'),
+  authorizePermission('notices', ['manage_notices', 'update', 'pin']),
   validate(pinNoticeRules),
   noticeController.togglePin,
 )
@@ -148,4 +148,16 @@ router.patch(
   noticeController.bookmark,
 )
 
+// Governance Sub-features (Acknowledgement, Version History, Comments, Reactions)
+import noticeAcknowledgementRouter from '../noticeAcknowledgement/noticeAcknowledgement.routes.js';
+import noticeVersionRouter from '../noticeVersion/noticeVersion.routes.js';
+import noticeCommentRouter from '../noticeComment/noticeComment.routes.js';
+import noticeReactionRouter from '../noticeReaction/noticeReaction.routes.js';
+
+router.use('/:id', noticeAcknowledgementRouter);
+router.use('/:id/versions', noticeVersionRouter);
+router.use('/:id/comments', noticeCommentRouter);
+router.use('/:id/reactions', noticeReactionRouter);
+
 export default router
+

@@ -7,7 +7,7 @@ import i18n from '../../src/utils/i18n';
 
 const textVariants = cva(
   cn(
-    'text-foreground text-[18px] leading-7 font-normal text-left',
+    'text-foreground text-sm font-normal text-left',
     Platform.select({
       web: 'select-text',
     })
@@ -17,24 +17,24 @@ const textVariants = cva(
       variant: {
         default: '',
         h1: cn(
-          'text-center text-4xl font-extrabold tracking-tight',
+          'text-center text-3xl font-extrabold tracking-tight text-left',
           Platform.select({ web: 'scroll-m-20 text-balance' })
         ),
         h2: cn(
-          'border-border border-b pb-2 text-3xl font-bold tracking-tight text-left',
+          'border-border border-b pb-1.5 text-2xl font-bold tracking-tight text-left',
           Platform.select({ web: 'scroll-m-20 first:mt-0' })
         ),
-        h3: cn('text-2xl font-bold tracking-tight text-left', Platform.select({ web: 'scroll-m-20' })),
-        h4: cn('text-xl font-bold tracking-tight text-left', Platform.select({ web: 'scroll-m-20' })),
-        p: 'mt-3 text-[18px] leading-7 sm:mt-6 text-left',
-        blockquote: 'mt-4 border-l-2 pl-3 italic sm:mt-6 sm:pl-6 text-left',
+        h3: cn('text-xl font-bold tracking-tight text-left', Platform.select({ web: 'scroll-m-20' })),
+        h4: cn('text-lg font-bold tracking-tight text-left', Platform.select({ web: 'scroll-m-20' })),
+        p: 'mt-2 text-sm leading-relaxed text-left',
+        blockquote: 'mt-3 border-l-2 pl-3 italic sm:pl-6 text-left',
         code: cn(
-          'bg-muted relative rounded px-[0.35rem] py-[0.2rem] font-mono text-[15.5px] font-semibold'
+          'bg-muted relative rounded px-[0.35rem] py-[0.2rem] font-mono text-xs font-semibold'
         ),
-        lead: 'text-muted-foreground text-xl leading-7 text-left',
-        large: 'text-xl font-bold tracking-tight text-left',
-        small: 'text-[15.5px] font-medium leading-tight text-left',
-        muted: 'text-muted-foreground text-[15px] leading-normal text-left',
+        lead: 'text-muted-foreground text-base leading-relaxed text-left',
+        large: 'text-base font-semibold tracking-tight text-left',
+        small: 'text-xs font-medium leading-tight text-left',
+        muted: 'text-muted-foreground text-xs leading-normal text-left',
       },
     },
     defaultVariants: {
@@ -81,11 +81,14 @@ function Text({
   variant = 'default',
   children,
   style,
+  skipTranslate,
   ...props
 }: React.ComponentProps<typeof RNText> &
   React.RefAttributes<typeof RNText> &
   TextVariantProps & {
     asChild?: boolean;
+    skipTranslate?: boolean;
+    noTranslate?: boolean;
   }) {
   const textClass = React.useContext(TextClassContext);
   const Component = asChild ? Slot : RNText;
@@ -97,9 +100,15 @@ function Text({
 
   const isArabic = currentLang === 'ar';
 
+  const shouldSkipTranslate =
+    skipTranslate || (props as any).noTranslate || (props as any).translate === false;
+
   const translatedChildren = React.useMemo(() => {
+    if (shouldSkipTranslate) {
+      return children;
+    }
     return translateChildren(children);
-  }, [children, currentLang]);
+  }, [children, currentLang, shouldSkipTranslate]);
 
   const resolvedStyle = React.useMemo(() => {
     if (!isArabic || !style) return style;

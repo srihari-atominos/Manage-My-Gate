@@ -36,10 +36,9 @@ const ROLE_PERMISSIONS = {
     'villas:create', 'villas:read', 'villas:update', 'villas:delete',
     // Integrations
     'integrations:create', 'integrations:read', 'integrations:update', 'integrations:delete',
-    // Amenities — full admin access
+    // Amenities — approved admin v2 feature matrix
     'amenities:dashboard', 'amenities:admin_calander', 'amenities:ledgers',
     'amenities:amenities', 'amenities:maintenance', 'amenities:settings',
-    'amenities:scanner', 'amenities:security_logs',
     // Complaints — full management
     'complaints:view', 'complaints:create', 'complaints:update', 'complaints:delete',
     'complaints:assign', 'complaints:dashboard', 'complaints:reports',
@@ -48,7 +47,7 @@ const ROLE_PERMISSIONS = {
     'complaints:staff', 'complaints:raise_ticket', 'complaints:track_requests',
     'complaints:complaint_management', 'complaints:assignee',
     // Visitor
-    'visitor:admin', 'visitor:resident', 'visitor:guard',
+    'visitor:admin',
     // Notices
     'notices:create', 'notices:read', 'notices:update', 'notices:delete',
     // Billing
@@ -58,10 +57,9 @@ const ROLE_PERMISSIONS = {
   'Facility Manager': [
     // Villas — read only
     'villas:read',
-    // Amenities — full admin operations
+    // Amenities — approved admin v2 operations
     'amenities:dashboard', 'amenities:admin_calander', 'amenities:ledgers',
     'amenities:amenities', 'amenities:maintenance', 'amenities:settings',
-    'amenities:scanner', 'amenities:security_logs',
     // Complaints — full assignment/management
     'complaints:view', 'complaints:create', 'complaints:update',
     'complaints:assign', 'complaints:dashboard', 'complaints:reports',
@@ -79,6 +77,9 @@ const ROLE_PERMISSIONS = {
   'Security Guard': [
     // Visitor — guard access (gate control, log scanning)
     'visitor:guard',
+    // Amenities — approved guard v2 features
+    'amenities:scanner',
+    'amenities:security_logs',
     // Notices — read only
     'notices:read',
     // Villas — read only

@@ -49,7 +49,11 @@ export const errorHandler = (err, req, res, next) => {
         const field = keys[0];
         const value = err.keyValue[field];
         const formattedField = field.charAt(0).toUpperCase() + field.slice(1);
-        message = `${formattedField} '${value}' is already registered or in use.`;
+        if (value !== null && value !== undefined && value !== 'null' && value !== '') {
+          message = `${formattedField} '${value}' is already registered or in use.`;
+        } else {
+          message = `A record with a duplicate or unassigned ${formattedField.toLowerCase()} already exists.`;
+        }
       } else {
         const fieldDetails = keys
           .filter(k => k !== 'orgId')
@@ -76,12 +80,19 @@ export const errorHandler = (err, req, res, next) => {
     message = `Invalid ID format provided for ${err.path || 'resource'}: ${err.value}`;
   }
 
-  // Log error using Winston logger
-  logger.error(`HTTP ${statusCode} - ${message}`, {
-    statusCode,
-    stack: err.stack,
-    requestId: req.id
-  });
+  // Log error using Winston logger: 5xx server errors get error level with stack; 4xx client errors get warn level
+  if (statusCode >= 500) {
+    logger.error(`HTTP ${statusCode} - ${message}`, {
+      statusCode,
+      stack: err.stack,
+      requestId: req.id
+    });
+  } else {
+    logger.warn(`HTTP ${statusCode} - ${message}`, {
+      statusCode,
+      requestId: req.id
+    });
+  }
 
   try {
     fs.writeFileSync('last_error.json', JSON.stringify({ statusCode, message, stack: err.stack, details, body: req.body }), 'utf-8');
@@ -89,8 +100,13 @@ export const errorHandler = (err, req, res, next) => {
     // ignore
   }
 
+  const code = err.code || (details && details.code) || undefined;
+  const reason = err.reason || (details && details.reason) || undefined;
+
   const response = {
     success: false,
+    ...(code && typeof code === 'string' && { code }),
+    ...(reason && typeof reason === 'string' && { reason }),
     message,
     ...(details && { details }),
     ...(config.nodeEnv === 'development' && { stack: err.stack }),

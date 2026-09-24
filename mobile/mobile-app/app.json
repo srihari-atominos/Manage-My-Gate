@@ -2,13 +2,14 @@
   "expo": {
     "name": "Nahom",
     "slug": "atominos",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": [
       "mobile-app",
       "managemygate",
-      "com.atominosconsulting.nahom"
+      "com.atominosconsulting.nahom",
+      "com.googleusercontent.apps.512495714957-ppgtahfr70hmjclhmq7n3c7822aacd41"
     ],
     "userInterfaceStyle": "automatic",
     "jsEngine": "hermes",
@@ -21,7 +22,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "11",
+      "buildNumber": "14",
       "associatedDomains": [
         "applinks:managemygate.e3esg.com",
         "applinks:app.managemygate.com",
@@ -33,8 +34,8 @@
           "fetch",
           "remote-notification"
         ],
-        "NSCameraUsageDescription": "ManageMyGate requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints.",
-        "NSPhotoLibraryUsageDescription": "ManageMyGate requires photo library access to upload images for amenity bookings and complaint tickets.",
+        "NSCameraUsageDescription": "Nahom requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints.",
+        "NSPhotoLibraryUsageDescription": "Nahom requires photo library access to upload images for amenity bookings and complaint tickets.",
         "LSApplicationQueriesSchemes": [
           "tel",
           "whatsapp"
@@ -44,10 +45,10 @@
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
-      "versionCode": 13,
+      "versionCode": 18,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0D1015"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
@@ -61,8 +62,8 @@
           "data": [
             {
               "scheme": "https",
-              "host": "app.managemygate.com",
-              "pathPrefix": "/invite"
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite/handoff"
             },
             {
               "scheme": "https",
@@ -76,13 +77,8 @@
             },
             {
               "scheme": "https",
-              "host": "managemygate.e3esg.com",
-              "pathPrefix": "/invite/handoff"
-            },
-            {
-              "scheme": "https",
-              "host": "managemygate.e3esg.com",
-              "pathPrefix": "/invite/app"
+              "host": "app.managemygate.com",
+              "pathPrefix": "/invite"
             }
           ],
           "category": [
@@ -95,17 +91,8 @@
           "data": [
             {
               "scheme": "managemygate",
-              "host": "invite"
-            },
-            {
-              "scheme": "managemygate",
               "host": "invite",
               "pathPrefix": "/handoff"
-            },
-            {
-              "scheme": "managemygate",
-              "host": "invite",
-              "pathPrefix": "/app"
             },
             {
               "scheme": "managemygate",
@@ -121,7 +108,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -137,14 +124,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "ManageMyGate requires photo library access to upload images for amenity bookings and complaint tickets.",
-          "cameraPermission": "ManageMyGate requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints."
+          "photosPermission": "Nahom requires photo library access to upload images for amenity bookings and complaint tickets.",
+          "cameraPermission": "Nahom requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "ManageMyGate requires camera access to scan visitor QR passes and verify amenity tickets."
+          "cameraPermission": "Nahom requires camera access to scan visitor QR passes and verify amenity tickets."
         }
       ],
       "expo-secure-store",

@@ -21,8 +21,13 @@ import directoryReducer from '../features/directory/store/directorySlice';
 import communityNoteReducer from '../features/directory/store/communityNoteSlice';
 import directoryMessagingReducer from '../features/directory/store/directoryMessagingSlice';
 import organizationReducer from '../features/organization/store/organizationSlice';
+import communityEngagementReducer from '../features/communityEngagement/store/communityEngagementSlice';
 
 import { injectStore } from '../services/apiClient';
+
+import visitorReducer from '../modules/visitor-management/visitorSlice';
+import staffReducer from '../modules/staff-operations/staffSlice';
+import automationReducer from '../modules/automation-engine/automationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -48,6 +53,10 @@ export const store = configureStore({
     communityNote: communityNoteReducer,
     directoryMessaging: directoryMessagingReducer,
     organization: organizationReducer,
+    communityEngagement: communityEngagementReducer,
+    visitor: visitorReducer,
+    staff: staffReducer,
+    automation: automationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

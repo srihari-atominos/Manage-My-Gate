@@ -22,6 +22,7 @@ export const dispatchIncomingNotification = (recipientId, notification) => {
       body: notification.body,
       actionUrl: notification.actionUrl,
       type: notification.type,
+      metadata: notification.metadata || {},
       isRead: notification.isRead,
       readAt: notification.readAt,
       createdAt: notification.createdAt,

@@ -17,37 +17,37 @@ export interface AppFeatureItem {
 export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   // 1. Visitor & Gate Security
   { id: 'visitor_resident_passes', name: 'Resident Passes', subtitle: 'Digital Verified Pass', iconName: 'TicketCheck', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_gate_pass', name: 'Gate Pass', subtitle: 'Visitor PIN', iconName: 'ScanLine', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/invite', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security', badge: 'FAST', badgeColor: '#10B981' },
+  { id: 'visitor_invite', name: 'Invite Visitor', subtitle: 'Pre-Approve Entry', iconName: 'UserPlus', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#10B981', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/invite', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security', badge: 'NEW', badgeColor: '#10B981' },
   { id: 'visitor_admin_dashboard', name: 'Admin Console', subtitle: 'Visitor Monitoring', iconName: 'MonitorCog', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/admin', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
   { id: 'visitor_community_passes', name: 'Community Passes', subtitle: 'Pass Registry', iconName: 'TicketCheck', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/admin/community-passes', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
   { id: 'visitor_blacklist', name: 'Visitor Blacklist', subtitle: 'Restricted Registry', iconName: 'ShieldBan', colorBg: 'bg-rose-50 dark:bg-rose-950/40', colorIcon: '#DC2626', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/admin/blacklist', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
   { id: 'visitor_admin_logs', name: 'Admin Gate Logs', subtitle: 'Security Activity', iconName: 'History', colorBg: 'bg-slate-100 dark:bg-slate-800/40', colorIcon: '#475569', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/admin-logs', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_gate_console', name: 'Gate Console', subtitle: 'Access Control', iconName: 'DoorOpen', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/gate-console', permission: 'visitor:guard', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
+  { id: 'visitor_gate_console', name: 'Gate Console', subtitle: 'Access Control', iconName: 'DoorOpen', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/visitor/gate-console', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
 
   // 2. Amenities & Booking
-  { id: 'amenities_dashboard', name: 'Amenity Dashboard', subtitle: 'Executive Analytics', iconName: 'LayoutDashboard', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/dashboard', permission: 'amenities:dashboard', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_discover', name: 'Amenities', subtitle: 'Book Facility', iconName: 'Compass', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/discover', permission: 'amenities:discover', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
+  { id: 'amenities_discover', name: 'Discover Amenities', subtitle: 'Book Facility', iconName: 'Compass', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/discover', permission: 'amenities:discover', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
   { id: 'amenities_my_booking', name: 'My Bookings', subtitle: 'Active Reservations', iconName: 'CalendarCheck', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/my-bookings', permission: 'amenities:my_booking', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
   { id: 'amenities_wallet', name: 'Digital Wallet', subtitle: 'Prepaid Credits', iconName: 'WalletCards', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/wallet', permission: 'amenities:wallet', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
   { id: 'amenities_master', name: 'Amenity Master', subtitle: 'Pricing & Slots', iconName: 'SlidersHorizontal', colorBg: 'bg-orange-50 dark:bg-orange-950/40', colorIcon: '#EA580C', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/admin-master', permission: 'amenities:amenities', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
   { id: 'amenities_admin_calendar', name: 'Admin Calendar', subtitle: 'Master Schedule', iconName: 'CalendarCog', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/admin-calendar', permission: 'amenities:admin_calander', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_ledgers', name: 'Ledgers', subtitle: 'Revenue & Refunds', iconName: 'BookOpenCheck', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/ledgers', permission: 'amenities:ledgers', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
   { id: 'amenities_maintenance', name: 'Maintenance', subtitle: 'Facility Downtime', iconName: 'Wrench', colorBg: 'bg-orange-50 dark:bg-orange-950/40', colorIcon: '#EA580C', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/maintenance', permission: 'amenities:maintenance', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
+  { id: 'amenities_dashboard', name: 'Amenity Dashboard', subtitle: 'Executive Analytics', iconName: 'LayoutDashboard', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/dashboard', permission: 'amenities:dashboard', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
+  { id: 'amenities_ledgers', name: 'Ledgers', subtitle: 'Revenue & Refunds', iconName: 'BookOpenCheck', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/ledgers', permission: 'amenities:ledgers', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
   { id: 'amenities_scanner', name: 'Security Scanner', subtitle: 'Gate Scanner', iconName: 'ScanQrCode', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/scanner', permission: 'amenities:scanner', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
+  { id: 'amenities_security_logs', name: 'Security Logs', subtitle: 'Access Records', iconName: 'History', colorBg: 'bg-slate-100 dark:bg-slate-800/40', colorIcon: '#475569', iconShapeClass: 'rounded-[18px]', route: '/(resident)/amenities/security-logs', permission: 'amenities:security_logs', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
 
   // 3. Complaints & Maintenance
-  { id: 'complaints_dashboard', name: 'Complaints Stats', subtitle: 'SLA Tracking', iconName: 'ChartBar', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', permission: 'complaints:dashboard', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-  { id: 'complaints_raise_ticket', name: 'Raise Ticket', subtitle: 'Report Issue', iconName: 'TicketPlus', colorBg: 'bg-orange-50 dark:bg-orange-950/40', colorIcon: '#EA580C', iconShapeClass: 'rounded-[18px]', permission: 'complaints:raise_ticket', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-  { id: 'complaints_track_requests', name: 'Track Tickets', subtitle: 'Live Status', iconName: 'Route', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', permission: 'complaints:track_requests', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance', badge: '5', badgeColor: '#EF4444' },
-  { id: 'complaints_complaint_management', name: 'Complaint Queue', subtitle: 'Admin Board', iconName: 'ListTodo', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', permission: 'complaints:complaint_management', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-  { id: 'complaints_staff', name: 'Staff & Vendors', subtitle: 'Roster & Contacts', iconName: 'UsersRound', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', permission: 'complaints:staff', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-  { id: 'complaints_assignee', name: 'Assignee Console', subtitle: 'Work Orders', iconName: 'UserCheck', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', permission: 'complaints:assignee', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
+  { id: 'complaints_dashboard', name: 'Complaints Stats', subtitle: 'SLA Tracking', iconName: 'ChartBar', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', route: '/(resident)/complaints/dashboard', permission: 'complaints:dashboard', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
+  { id: 'complaints_raise_ticket', name: 'Raise Ticket', subtitle: 'Report Issue', iconName: 'TicketPlus', colorBg: 'bg-orange-50 dark:bg-orange-950/40', colorIcon: '#EA580C', iconShapeClass: 'rounded-[18px]', route: '/(resident)/complaints/raise-ticket', permission: 'complaints:raise_ticket', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
+  { id: 'complaints_track_requests', name: 'Track Tickets', subtitle: 'Live Status', iconName: 'Route', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/complaints/my-tickets', permission: 'complaints:track_requests', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance', badge: '5', badgeColor: '#EF4444' },
+  { id: 'complaints_complaint_management', name: 'Complaint Queue', subtitle: 'Admin Board', iconName: 'ListTodo', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', route: '/(resident)/complaints/manage', permission: 'complaints:complaint_management', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
+  { id: 'complaints_staff', name: 'Staff & Vendors', subtitle: 'Roster & Contacts', iconName: 'UsersRound', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/complaints/staff', permission: 'complaints:staff', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
+  { id: 'complaints_assignee', name: 'Assignee Console', subtitle: 'Work Orders', iconName: 'UserCheck', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/complaints/assignee', permission: 'complaints:assignee', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
 
   // 4. Notice Board & Polls
-  { id: 'notices_active_board', name: 'Notice Board', subtitle: 'Circulars', iconName: 'Megaphone', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board', badge: '1', badgeColor: '#EF4444' },
-  { id: 'notices_dashboard', name: 'Notice Stats', subtitle: 'Broadcasts', iconName: 'ChartBar', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', permission: 'notices:dashboard', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
-  { id: 'notices_manage_notices', name: 'Manage Notices', subtitle: 'Draft & Publish', iconName: 'FilePenLine', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', permission: 'notices:manage_notices', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
-  { id: 'notices_polls', name: 'Community Polls', subtitle: 'Resident Voting', iconName: 'Vote', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', permission: 'notices:polls', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
+  { id: 'community_engagement', name: 'Community Engagement', subtitle: 'Broadcasts & Polls Hub', iconName: 'Megaphone', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/community-engagement', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board', badge: 'NEW', badgeColor: '#6366F1' },
+  { id: 'notices_active_board', name: 'Resident View', subtitle: 'Circulars & Live Polls', iconName: 'Users', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#10B981', iconShapeClass: 'rounded-[18px]', route: '/(resident)/notices/active-board', permission: 'notices:active_board', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
+  { id: 'community_engagement_manage', name: 'Manage Engagement', subtitle: 'Draft, Publish & Ledger', iconName: 'FilePenLine', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#DB2777', iconShapeClass: 'rounded-[18px]', route: '/(resident)/community-engagement/ledger', permission: 'notices:manage_notices', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
 
   // 5. Financial Suite & Billing
   { id: 'billing_dashboard', name: 'Billing Hub', subtitle: 'Collection Overview', iconName: 'ChartPie', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing', permission: 'billing:action_center', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing', badge: 'PAID', badgeColor: '#F59E0B' },
@@ -76,10 +76,9 @@ export const DEFAULT_8_QUICK_ACTIONS = [
   'billing_dashboard',
   'community_directory',
   'visitor_resident_passes',
-  'notices_active_board',
+  'community_engagement',
   'amenities_discover',
   'complaints_track_requests',
-  'visitor_gate_pass',
 ];
 
 export const DEFAULT_6_QUICK_ACTIONS = DEFAULT_8_QUICK_ACTIONS;
@@ -92,14 +91,14 @@ export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
     'admin_users',
     'admin_villas',
     'amenities_dashboard',
-    'notices_dashboard',
+    'community_engagement_manage',
     'complaints_complaint_management',
     'admin_workspace_settings',
   ],
   guard: [
     'visitor_gate_console',
     'amenities_scanner',
-    'notices_active_board',
+    'community_engagement',
     'complaints_track_requests',
     'complaints_raise_ticket',
     'amenities_security_logs',
@@ -108,12 +107,10 @@ export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
   ],
   resident: [
     'visitor_resident_passes',
-    'visitor_gate_pass',
     'billing_dashboard',
     'billing_my_dues',
     'amenities_discover',
-    'amenities_my_booking',
-    'notices_active_board',
+    'community_engagement',
     'complaints_track_requests',
   ],
 };

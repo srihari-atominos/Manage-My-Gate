@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import enquiryRepository from './enquiry.repository.js';
 import enquiryEvents from './enquiry.events.js';
 import HttpError from '../../utils/httpError.utils.js';
+import { normalizePhone } from '../../utils/phone.utils.js';
 import EnquiryActivity from './enquiryActivity.model.js';
 import EnquiryStageHistory from './enquiryStageHistory.model.js';
 import EnquiryInsight from './enquiryInsight.model.js';
@@ -212,13 +213,16 @@ class EnquiryService {
     session.startTransaction();
 
     try {
+      const rawPhone = enquiry.phone ? String(enquiry.phone).trim() : '';
+      const normalizedPhone = rawPhone ? (normalizePhone(rawPhone) || rawPhone) : '';
+
       // 1. Create Organization
       const Organization = mongoose.model('Organization');
       const [organization] = await Organization.create([{
         name: enquiry.organizationName,
         totalUnits: enquiry.totalUnits,
         contactEmail: enquiry.email,
-        contactPhone: enquiry.phone,
+        contactPhone: normalizedPhone || enquiry.phone,
         status: 'ACTIVE',
       }], { session });
 
@@ -235,12 +239,15 @@ class EnquiryService {
       if (user) {
         user.status = 'Active';
         user.password = hashedPassword;
+        if (normalizedPhone && !user.phone) {
+          user.phone = normalizedPhone;
+        }
         await user.save({ session });
       } else {
         [user] = await User.create([{
           username: enquiry.username,
           email: enquiry.email,
-          phone: enquiry.phone,
+          phone: normalizedPhone,
           status: 'Active',
           password: hashedPassword
         }], { session });

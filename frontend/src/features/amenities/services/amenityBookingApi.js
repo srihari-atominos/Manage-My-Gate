@@ -25,9 +25,17 @@ export const adminCancelBooking = async (id, reason) => {
   return response.data
 }
 
-export const checkInBooking = async (id) => {
-  const response = await apiClient.post(`/amenity-bookings/${id}/checkin`)
-  return response.data
+export const checkInBooking = async (tokenOrId) => {
+  try {
+    const response = await apiClient.post('/amenity-management/passes/check-in', { rawToken: tokenOrId })
+    return response.data?.data || response.data
+  } catch (err) {
+    if (err.response?.status === 404) {
+      const response = await apiClient.post(`/amenity-bookings/${encodeURIComponent(tokenOrId)}/checkin`)
+      return response.data?.data || response.data
+    }
+    throw err
+  }
 }
 
 export const fetchRecentScans = async () => {

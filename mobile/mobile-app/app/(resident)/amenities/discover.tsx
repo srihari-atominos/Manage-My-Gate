@@ -1,59 +1,123 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { SearchFilterBar, SortOption } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CalendarCheck } from 'lucide-react-native';
 
-import { useResidentDiscover } from '../../../src/features/amenities/hooks/useResidentDiscover';
+import { useResidentAmenities } from '../../../src/features/amenities/hooks/useResidentAmenities';
 import { ResidentAmenityDetailSheet } from '../../../src/features/amenities/components/ResidentAmenityDetailSheet';
 import { AmenityCatalogCard } from '../../../src/features/amenities/components/AmenityCatalogCard';
-import { Amenity } from '../../../src/features/amenities/store/amenitySlice';
+import { AmenityFacility, AmenityArchetype } from '../../../src/features/amenities/types/amenityDomain.types';
+import { useAuth } from '../../../src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '../../../src/utils/rbac';
+
+const ARCHETYPE_FILTER_OPTIONS: SortOption[] = [
+  { label: 'All Facilities', value: 'All' },
+  { label: 'Shared Capacity', value: 'SHARED_CAPACITY' },
+  { label: 'Exclusive Hourly', value: 'EXCLUSIVE_HOURLY' },
+  { label: 'Event Space', value: 'EVENT_SPACE' },
+  { label: 'Room Resource', value: 'ROOM_RESOURCE' },
+  { label: 'Inventory & Tools', value: 'INVENTORY_TOOLS' },
+];
 
 import { useTranslation } from '@/src/utils/i18n';
 
 export default function DiscoverAmenitiesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { t, translateText, language } = useTranslation();
+
+  // Guard: Users without discover/resident amenity permissions are redirected
+  const hasDiscoverAccess =
+    isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user);
+
+  if (user && !hasDiscoverAccess) {
+    if (isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
+      return <Redirect href="/(resident)/amenities/scanner" />;
+    }
+    return <Redirect href="/(resident)/dashboard" />;
+  }
+
   const {
-    amenities,
-    categories,
-    selectedCategory,
+    facilities,
+    selectedFacility,
+    resources,
+    selectedArchetype,
     searchQuery,
     pagination,
-    stats,
-    selectedAmenityPreview,
-    setSelectedAmenityPreview,
     loading,
     error,
-    handleCategorySelect,
-    handleSearchChange,
-    handleRefresh,
+    setSelectedArchetype,
+    setSearchQuery,
+    selectFacility,
     handleLoadMore,
-    handleRetry,
-    navigateToBooking,
-  } = useResidentDiscover();
+    handleRefresh,
+    clearError,
+  } = useResidentAmenities();
 
-  const categorySortOptions = React.useMemo(() => {
-    return categories.map((cat) => ({
-      label: cat.toLowerCase() === 'all' ? t('all', 'All') : translateText(cat),
-      value: cat,
-    }));
-  }, [categories, language, t, translateText]);
+  const [previewFacility, setPreviewFacility] = useState<AmenityFacility | null>(null);
+
+  const stats = useMemo(() => {
+    let activeCount = 0;
+    let maintenanceCount = 0;
+
+    facilities.forEach((f) => {
+      if (f.status === 'ACTIVE') {
+        activeCount++;
+      } else if (f.status === 'MAINTENANCE') {
+        maintenanceCount++;
+      }
+    });
+
+    return {
+      totalCount: pagination.totalRecords || facilities.length,
+      activeCount,
+      maintenanceCount,
+    };
+  }, [facilities, pagination.totalRecords]);
+
+  const handleArchetypeChange = (value: string) => {
+    if (value === 'All') {
+      setSelectedArchetype(undefined);
+    } else {
+      setSelectedArchetype(value as AmenityArchetype);
+    }
+  };
+
+  const handleCardPress = async (facility: AmenityFacility) => {
+    setPreviewFacility(facility);
+    const targetId = facility?._id || (facility as any)?.id;
+    try {
+      if (targetId) {
+        await selectFacility(String(targetId));
+      }
+    } catch (e) {}
+  };
+
+  const navigateToBooking = (facilityId: string) => {
+    setPreviewFacility(null);
+    router.push({
+      pathname: '/(resident)/amenities/booking/[id]' as any,
+      params: { id: facilityId },
+    });
+  };
 
   const renderHeader = () => (
     <View className="mb-3 gap-3">
-      {/* Unified Search & Category Filter Bar */}
+      {/* Unified Search & Exact v2 Archetype Filter Bar */}
       <SearchFilterBar
         searchValue={searchQuery}
-        onSearchChange={handleSearchChange}
-        searchPlaceholder={t('search_amenities_placeholder', 'Search amenities, clubhouse, pool...')}
-        sortOptions={categorySortOptions}
-        currentSort={selectedCategory}
-        onSortChange={handleCategorySelect}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder={t('search_amenities_placeholder', 'Search facilities, gym, courts, tools...')}
+        sortOptions={ARCHETYPE_FILTER_OPTIONS}
+        currentSort={selectedArchetype || 'All'}
+        onSortChange={handleArchetypeChange}
         className="px-0 py-0 border-0"
       />
 
@@ -82,11 +146,11 @@ export default function DiscoverAmenitiesScreen() {
     </View>
   );
 
-  const renderAmenityItem = (item: Amenity) => (
+  const renderAmenityItem = (item: AmenityFacility) => (
     <AmenityCatalogCard
       key={`${item._id}-${language}`}
       amenity={item}
-      onPress={setSelectedAmenityPreview}
+      onPress={handleCardPress}
       onBookClick={navigateToBooking}
     />
   );
@@ -96,9 +160,12 @@ export default function DiscoverAmenitiesScreen() {
       title={t('discover_amenities', 'Discover Amenities')}
       subtitle={t('discover_amenities_subtitle', 'Browse & reserve community facilities')}
       iconName="Search"
-      loading={false}
-      error={error}
-      onRetry={handleRetry}
+      loading={loading && facilities.length === 0}
+      error={error?.message || null}
+      onRetry={() => {
+        clearError();
+        handleRefresh();
+      }}
       headerRight={
         <Button
           variant="outline"
@@ -116,7 +183,7 @@ export default function DiscoverAmenitiesScreen() {
       <View className="flex-1 bg-background">
         {/* Catalog Paginated List */}
         <PaginatedList
-          data={amenities}
+          data={facilities}
           renderItem={renderAmenityItem}
           extraData={language}
           keyExtractor={(item) => `${item._id}-${language}`}
@@ -126,18 +193,23 @@ export default function DiscoverAmenitiesScreen() {
           loading={loading}
           ListHeaderComponent={renderHeader()}
           emptyIcon="Building2"
-          emptyTitle={t('no_amenities_found', 'No Amenities Found')}
-          emptySubtitle={t('adjust_search_filter', 'Try adjusting your search query or category filter.')}
+          emptyTitle={searchQuery ? t('no_matching_amenities', 'No Matching Amenities') : t('no_amenities_found', 'No Amenities Found')}
+          emptySubtitle={
+            searchQuery
+              ? t('adjust_search_filter', 'Try adjusting your search query or filter category.')
+              : t('no_facilities_registered', 'There are currently no community facilities registered in this estate.')
+          }
           contentContainerClassName="px-4 pt-3 pb-28"
           contentContainerStyle={{ paddingBottom: 110 }}
         />
       </View>
 
-      {/* Resident Amenity Specification & Booking Preview Sheet */}
+      {/* Resident Amenity Specification & Detail Sheet */}
       <ResidentAmenityDetailSheet
-        visible={!!selectedAmenityPreview}
-        onClose={() => setSelectedAmenityPreview(null)}
-        amenity={selectedAmenityPreview}
+        visible={!!previewFacility}
+        onClose={() => setPreviewFacility(null)}
+        amenity={selectedFacility || previewFacility}
+        resources={resources}
         onBookClick={navigateToBooking}
       />
     </ScreenShell>

@@ -5,6 +5,7 @@ import AmenityGrid from '../components/master/AmenityGrid.jsx'
 import AmenityFormModal from '../components/master/AmenityFormModal.jsx'
 import AmenityDetailsDrawer from '../components/master/AmenityDetailsDrawer.jsx'
 import DeleteConfirmationModal from '../components/common/DeleteConfirmationModal.jsx'
+import AmenityDeactivationConflictModal from '../components/master/AmenityDeactivationConflictModal.jsx'
 import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx'
 import toast from 'react-hot-toast'
 import '../styles/_amenities.scss'
@@ -33,6 +34,7 @@ const AmenitiesMasterView = () => {
   const [selectedAmenity, setSelectedAmenity] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [statusModalVisible, setStatusModalVisible] = useState(false)
+  const [deactivationConflict, setDeactivationConflict] = useState(null)
 
   useEffect(() => {
     loadAmenities()
@@ -55,15 +57,54 @@ const AmenitiesMasterView = () => {
 
   const handleSave = async (data) => {
     try {
+      if (!data) throw new Error("Form data is undefined")
+
+      // Map the legacy UI data to the new Domain schema required by backend V2
+      const mappedPayload = {
+        ...data,
+        code: data.code || (data.name || 'FACILITY').toUpperCase().replace(/\s+/g, '-').substring(0, 15) + '-' + Math.floor(1000 + Math.random() * 9000),
+        archetype:
+          data.type === 'Event Space'
+            ? 'EVENT_SPACE'
+            : data.type === 'Sports'
+            ? 'EXCLUSIVE_HOURLY'
+            : 'SHARED_CAPACITY',
+        operatingHours:
+          data.openDays?.map((day) => ({
+            dayOfWeek: day,
+            openTime: data.bookingRules?.openTime || '06:00',
+            closeTime: data.bookingRules?.closeTime || '22:00',
+            isOpen: true,
+          })) || [],
+        slotDurationMinutes: data.bookingRules?.slotDurationMinutes || 60,
+        setupBufferMinutes: data.bookingRules?.bufferTimeMinutes || 0,
+        advanceBookingDays: data.bookingRules?.advanceBookingDays || 7,
+        maxCapacity: data.capacity || 1,
+        maxHeadcountPerReservation: data.maxBookingsPerUserPerSlot || 1,
+        pricingConfig: {
+          pricingType: (data.pricing?.pricingType || 'FREE').toUpperCase(),
+          baseRate: data.pricing?.baseRate || 0,
+        },
+        cancellationPolicy: {
+          isAllowed: data.bookingRules?.isCancellationEnabled || false,
+          refundCutoffHours: data.bookingRules?.cancellationRefundRules?.[0]?.cancelBeforeHours || 0,
+          refundPercentage: data.bookingRules?.cancellationRefundRules?.[0]?.refundPercentage || 0,
+        },
+        location: data.location || 'N/A',
+        status: (String(data.status || 'ACTIVE')).toUpperCase(),
+      }
+
       if (selectedAmenity) {
-        await updateAmenity(selectedAmenity._id, data)
+        await updateAmenity(selectedAmenity._id, mappedPayload)
         toast.success('Amenity updated successfully!')
       } else {
-        await createAmenity(data)
+        await createAmenity(mappedPayload)
         toast.success('Amenity created successfully!')
       }
       setFormModalVisible(false)
+      loadAmenities()
     } catch (err) {
+      console.error('Failed to save amenity:', err)
       toast.error(typeof err === 'string' ? err : err.message || 'Failed to save amenity')
     }
   }
@@ -95,19 +136,50 @@ const AmenitiesMasterView = () => {
 
   const confirmStatusChange = async () => {
     if (selectedAmenity) {
+      const target = selectedAmenity
+      const newStatus = target.status === 'active' ? 'inactive' : 'active'
+      setStatusModalVisible(false)
       setIsDeleting(true)
       try {
-        const newStatus = selectedAmenity.status === 'active' ? 'inactive' : 'active'
-        await updateAmenityStatus(selectedAmenity._id, newStatus)
-        setStatusModalVisible(false)
+        await updateAmenityStatus(target._id, newStatus)
         toast.success(
-          `${selectedAmenity.name} ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
+          `${target.name} ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
         )
       } catch (err) {
-        toast.error(typeof err === 'string' ? err : err.message || 'Failed to update amenity status')
+        const errMsg = typeof err === 'string' ? err : err.message || ''
+        if (errMsg.includes('bookingAction') || errMsg.includes('upcoming confirmed booking')) {
+          const match = errMsg.match(/(\d+)\s+upcoming/i)
+          const count = match ? parseInt(match[1], 10) : 1
+          setDeactivationConflict({
+            amenity: target,
+            count,
+            message: errMsg,
+          })
+        } else {
+          toast.error(errMsg || 'Failed to update amenity status')
+        }
       } finally {
         setIsDeleting(false)
       }
+    }
+  }
+
+  const handleResolveDeactivationConflict = async (bookingAction) => {
+    if (!deactivationConflict?.amenity) return
+    setIsDeleting(true)
+    const target = deactivationConflict.amenity
+    try {
+      await updateAmenityStatus(target._id, 'inactive', bookingAction)
+      setDeactivationConflict(null)
+      toast.success(
+        bookingAction === 'HONOR_EXISTING'
+          ? `${target.name} deactivated. Existing bookings will be honored.`
+          : `${target.name} deactivated. Existing bookings cancelled with 100% full refund.`
+      )
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : err.message || 'Failed to deactivate facility')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -224,6 +296,16 @@ const AmenitiesMasterView = () => {
               ? `Are you sure you want to ${selectedAmenity.status === 'active' ? 'deactivate' : 'activate'} ${selectedAmenity.name}? ${selectedAmenity.status === 'active' ? 'It will no longer be available for booking.' : 'It will become available for booking.'}`
               : ''
           }
+        />
+
+        <AmenityDeactivationConflictModal
+          visible={!!deactivationConflict}
+          amenity={deactivationConflict?.amenity}
+          bookingsCount={deactivationConflict?.count || 1}
+          isLoading={isDeleting}
+          onHonorExisting={() => handleResolveDeactivationConflict('HONOR_EXISTING')}
+          onCancelAndRefund={() => handleResolveDeactivationConflict('CANCEL_AND_REFUND')}
+          onClose={() => setDeactivationConflict(null)}
         />
 
         <DeleteConfirmationModal
