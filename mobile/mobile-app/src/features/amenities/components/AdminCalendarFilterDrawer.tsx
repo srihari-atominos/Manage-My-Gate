@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, TextInput as RNTextInput, Pressable, ScrollView } from 'react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { View, TextInput as RNTextInput, Pressable, ScrollView, TouchableOpacity } from 'react-native';
+import { GlobalFilterPanel, FilterCategoryConfig } from '@/components/ui/GlobalFilterPanel';
 import { Chip } from '@/components/common/Chip';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import {
@@ -12,8 +11,6 @@ import {
   Boxes,
   Tag,
   CircleDollarSign,
-  RotateCcw,
-  Check,
 } from 'lucide-react-native';
 
 export interface CalendarFilterState {
@@ -34,19 +31,26 @@ export interface AdminCalendarFilterDrawerProps {
   availableResources?: Array<{ _id: string; name: string; facilityId?: string }>;
 }
 
+const AVAILABILITY_OPTIONS = [
+  { id: 'ALL', label: 'All Availability' },
+  { id: 'AVAILABLE', label: 'Available' },
+  { id: 'PARTIALLY_AVAILABLE', label: 'Partially Available' },
+  { id: 'FULLY_BOOKED', label: 'Fully Booked' },
+];
+
 const STATUS_OPTIONS = [
-  { label: 'Confirmed', value: 'CONFIRMED' },
-  { label: 'Checked In', value: 'CHECKED_IN' },
-  { label: 'Completed', value: 'COMPLETED' },
-  { label: 'Cancelled', value: 'CANCELLED' },
+  { id: 'CONFIRMED', label: 'Confirmed' },
+  { id: 'CHECKED_IN', label: 'Checked In' },
+  { id: 'COMPLETED', label: 'Completed' },
+  { id: 'CANCELLED', label: 'Cancelled' },
 ];
 
 const PAYMENT_OPTIONS = [
-  { label: 'Paid', value: 'PAID' },
-  { label: 'Partially Paid', value: 'PARTIALLY_PAID' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'Not Required', value: 'NOT_REQUIRED' },
-  { label: 'Refunded', value: 'REFUNDED' },
+  { id: 'PAID', label: 'Paid' },
+  { id: 'PARTIALLY_PAID', label: 'Partially Paid' },
+  { id: 'PENDING', label: 'Pending' },
+  { id: 'NOT_REQUIRED', label: 'Not Required' },
+  { id: 'REFUNDED', label: 'Refunded' },
 ];
 
 export function AdminCalendarFilterDrawer({
@@ -76,19 +80,20 @@ export function AdminCalendarFilterDrawer({
   );
   const isAllFacilities = specificFacilityIds.length === 0;
 
-  // Filtered available facilities based on search (user searches to find them; no default chips shown)
+  // Filtered available facilities based on search
   const filteredAmenities = useMemo(() => {
     if (!facilitySearch.trim()) return [];
     const q = facilitySearch.toLowerCase().trim();
     return amenities.filter((a) => a.name.toLowerCase().includes(q));
   }, [amenities, facilitySearch]);
 
-  // Resources available for the selected facilities
+  // Derived applicable resources based on selected facilities
   const applicableResources = useMemo(() => {
-    if (isAllFacilities) return availableResources;
-    const facIdSet = new Set(specificFacilityIds);
-    return availableResources.filter((r) => r.facilityId && facIdSet.has(r.facilityId));
-  }, [availableResources, specificFacilityIds, isAllFacilities]);
+    if (specificFacilityIds.length === 0) return availableResources;
+    return availableResources.filter((res) =>
+      res.facilityId ? specificFacilityIds.includes(res.facilityId) : true
+    );
+  }, [specificFacilityIds, availableResources]);
 
   // Handle facility toggle
   const handleToggleFacility = (id: string) => {
@@ -113,7 +118,9 @@ export function AdminCalendarFilterDrawer({
     }
     setDraft((p) => {
       const isSelected = p.resourceIds.includes(id);
-      const next = isSelected ? p.resourceIds.filter((rid) => rid !== id) : [...p.resourceIds, id];
+      const next = isSelected
+        ? p.resourceIds.filter((rid) => rid !== id)
+        : [...p.resourceIds, id];
       return { ...p, resourceIds: next };
     });
   };
@@ -148,263 +155,164 @@ export function AdminCalendarFilterDrawer({
     });
   };
 
-  const currentSelectionCount =
-    specificFacilityIds.length +
-    draft.resourceIds.length +
-    draft.bookingStatuses.length +
-    draft.paymentStatuses.length;
-
+  // Apply filters
   const handleApply = () => {
     onApply(draft);
     onClose();
   };
 
+  // Reset filters
   const handleReset = () => {
-    setDraft({
+    const cleared: CalendarFilterState = {
       facilityIds: [],
       resourceIds: [],
       availability: 'ALL',
       bookingStatuses: [],
       paymentStatuses: [],
-    });
+    };
+    setDraft(cleared);
     setFacilitySearch('');
     onReset();
     onClose();
   };
 
-  return (
-    <BottomSheet visible={visible} onClose={onClose} title="Filter Reservations & Schedule">
-      <View className="gap-5 pb-6">
-        {/* 1. FACILITY / FEATURE (Multi-Select with Search) */}
-        <View className="gap-2.5">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-2">
-              <Layers size={16} className="text-primary" />
-              <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
-                Facility / Feature ({amenities.length})
-              </Text>
-            </View>
-            {specificFacilityIds.length > 0 && (
-              <Text className="text-[11px] font-semibold text-primary">
-                Selected ({specificFacilityIds.length})
-              </Text>
-            )}
-          </View>
+  const currentSelectionCount =
+    (isAllFacilities ? 0 : specificFacilityIds.length) +
+    draft.resourceIds.length +
+    (draft.availability !== 'ALL' ? 1 : 0) +
+    draft.bookingStatuses.length +
+    draft.paymentStatuses.length;
 
-          {/* Facility Search Field */}
-          <View className="flex-row items-center bg-card border border-border/80 rounded-xl px-3 h-9 shadow-2xs">
-            <Icon as={Search} size={14} className="text-muted-foreground mr-2" />
-            <RNTextInput
-              value={facilitySearch}
-              onChangeText={setFacilitySearch}
-              placeholder="Search facility or feature..."
-              placeholderTextColor="#9ca3af"
-              className="flex-1 text-xs text-foreground font-normal py-0"
-              accessibilityLabel="Search facility or feature"
-            />
-            {Boolean(facilitySearch) && (
-              <Pressable onPress={() => setFacilitySearch('')} className="p-1">
-                <Icon as={X} size={13} className="text-muted-foreground" />
-              </Pressable>
-            )}
-          </View>
-
-          {/* Selected Facilities Chips Row (with X) */}
-          {specificFacilityIds.length > 0 && (
-            <View className="gap-1">
-              <Text className="text-[11px] text-muted-foreground font-medium">Selected:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-1.5 py-0.5">
-                {specificFacilityIds.map((facId) => {
-                  const facility = amenities.find((a) => a._id === facId);
-                  return (
-                    <Chip
-                      key={`selected-fac-${facId}`}
-                      label={facility ? facility.name : facId}
-                      onRemove={() => handleToggleFacility(facId)}
-                      className="bg-primary border-primary h-7 px-2.5"
-                      labelClassName="text-primary-foreground font-medium text-xs"
-                    />
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Available Facilities Options */}
-          <View className="flex-row flex-wrap gap-2">
-            {/* All Facilities Option (shown by default when not searching or when searching 'all') */}
-            {(!facilitySearch.trim() || 'all facilities'.includes(facilitySearch.trim().toLowerCase())) && (
-              <Chip
-                label="All Facilities"
-                selected={isAllFacilities}
-                className={isAllFacilities ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                onPress={() => handleToggleFacility('All')}
-              />
-            )}
-
-            {filteredAmenities.map((a) => {
-              const isSelected = specificFacilityIds.includes(a._id);
-              return (
-                <Chip
-                  key={a._id}
-                  label={a.name}
-                  selected={isSelected}
-                  className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                  onPress={() => handleToggleFacility(a._id)}
-                />
-              );
-            })}
-
-            {Boolean(facilitySearch.trim()) && filteredAmenities.length === 0 && (
-              <Text className="text-xs text-muted-foreground italic py-1">
-                No facilities found matching "{facilitySearch}"
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {/* 2. RESOURCE FILTER (Dependent on Selected Facilities) */}
-        {applicableResources.length > 0 && (
-          <View className="gap-2.5">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <Boxes size={16} className="text-primary" />
-                <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
-                  Resource ({applicableResources.length})
-                </Text>
-              </View>
-              {draft.resourceIds.length > 0 && (
-                <Text className="text-[11px] font-semibold text-primary">
-                  Selected ({draft.resourceIds.length})
-                </Text>
-              )}
-            </View>
-            <View className="flex-row flex-wrap gap-2">
-              <Chip
-                label="All Resources"
-                selected={draft.resourceIds.length === 0}
-                className={draft.resourceIds.length === 0 ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                onPress={() => handleToggleResource('All')}
-              />
-              {applicableResources.map((res) => {
-                const isSelected = draft.resourceIds.includes(res._id);
-                return (
-                  <Chip
-                    key={res._id}
-                    label={res.name}
-                    selected={isSelected}
-                    className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                    onPress={() => handleToggleResource(res._id)}
-                  />
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        {/* 3. BOOKING STATUS (Multi-Select) */}
-        <View className="gap-2.5">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-2">
-              <Tag size={16} className="text-primary" />
-              <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
-                Booking Status
-              </Text>
-            </View>
-            {draft.bookingStatuses.length > 0 && (
-              <Text className="text-[11px] font-semibold text-primary">
-                Selected ({draft.bookingStatuses.length})
-              </Text>
-            )}
-          </View>
-          <View className="flex-row flex-wrap gap-2">
-            <Chip
-              label="All"
-              selected={draft.bookingStatuses.length === 0}
-              className={draft.bookingStatuses.length === 0 ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-              onPress={() => handleToggleBookingStatus('All')}
-            />
-            {STATUS_OPTIONS.map((opt) => {
-              const isSelected = draft.bookingStatuses.includes(opt.value);
-              return (
-                <Chip
-                  key={opt.value}
-                  label={opt.label}
-                  selected={isSelected}
-                  className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                  onPress={() => handleToggleBookingStatus(opt.value)}
-                />
-              );
-            })}
-          </View>
-        </View>
-
-        {/* 4. PAYMENT STATUS (Multi-Select) */}
-        <View className="gap-2.5">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-2">
-              <CircleDollarSign size={16} className="text-primary" />
-              <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
-                Payment Status
-              </Text>
-            </View>
-            {draft.paymentStatuses.length > 0 && (
-              <Text className="text-[11px] font-semibold text-primary">
-                Selected ({draft.paymentStatuses.length})
-              </Text>
-            )}
-          </View>
-          <View className="flex-row flex-wrap gap-2">
-            <Chip
-              label="All"
-              selected={draft.paymentStatuses.length === 0}
-              className={draft.paymentStatuses.length === 0 ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-              onPress={() => handleTogglePaymentStatus('All')}
-            />
-            {PAYMENT_OPTIONS.map((opt) => {
-              const isSelected = draft.paymentStatuses.includes(opt.value);
-              return (
-                <Chip
-                  key={opt.value}
-                  label={opt.label}
-                  selected={isSelected}
-                  className={isSelected ? 'bg-primary border-primary' : 'bg-card border-border/70'}
-                  onPress={() => handleTogglePaymentStatus(opt.value)}
-                />
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ACTION BUTTONS */}
-        <View className="flex-row gap-3 pt-3 border-t border-border/60 mt-2">
-          <Button
-            variant="outline"
-            className="flex-1 flex-row items-center justify-center gap-2 border-border"
-            onPress={handleReset}
-            accessibilityRole="button"
-            accessibilityLabel="Reset all filters"
-          >
-            <RotateCcw size={16} className="text-foreground" />
-            <Text className="font-semibold text-foreground text-sm font-sans">Reset All</Text>
-          </Button>
-          <Button
-            variant="default"
-            className="flex-1 flex-row items-center justify-center gap-2 bg-primary"
-            onPress={handleApply}
-            accessibilityRole="button"
-            accessibilityLabel="Apply selected filters"
-          >
-            <Check size={16} className="text-primary-foreground" />
-            <Text className="font-semibold text-primary-foreground text-sm font-sans">
-              {currentSelectionCount > 0
-                ? `Apply Filters (${currentSelectionCount})`
-                : 'Apply Filters'}
-            </Text>
-          </Button>
-        </View>
+  const renderFacilitySection = () => (
+    <View className="gap-3 pt-1">
+      {/* Search Input for Facilities */}
+      <View className="flex-row items-center bg-card border border-border/80 rounded-xl px-2.5 h-10">
+        <Icon as={Search} size={14} className="text-muted-foreground me-2 shrink-0" />
+        <RNTextInput
+          value={facilitySearch}
+          onChangeText={setFacilitySearch}
+          placeholder="Search facility or feature..."
+          placeholderTextColor="#9ca3af"
+          className="flex-1 text-xs text-foreground font-sans p-0"
+        />
+        {facilitySearch ? (
+          <Pressable onPress={() => setFacilitySearch('')} hitSlop={6}>
+            <Icon as={X} size={14} className="text-muted-foreground" />
+          </Pressable>
+        ) : null}
       </View>
-    </BottomSheet>
+
+      {/* Quick All Chip */}
+      <View className="flex-row flex-wrap gap-2">
+        <Chip
+          label="All Facilities"
+          selected={isAllFacilities}
+          onPress={() => handleToggleFacility('All')}
+          className="py-1.5 px-3"
+        />
+        {amenities.map((a) => {
+          const isSelected = specificFacilityIds.includes(a._id);
+          // Only show when searched or selected
+          const isSearching = Boolean(facilitySearch.trim());
+          const matches = isSearching && a.name.toLowerCase().includes(facilitySearch.toLowerCase().trim());
+          if (!isSearching && !isSelected) return null;
+          if (isSearching && !matches) return null;
+
+          return (
+            <Chip
+              key={a._id}
+              label={a.name}
+              selected={isSelected}
+              onPress={() => handleToggleFacility(a._id)}
+              className="py-1.5 px-3"
+            />
+          );
+        })}
+      </View>
+
+      {/* Resources section if applicable */}
+      {applicableResources.length > 0 && (
+        <View className="gap-2 pt-2 border-t border-border/40 mt-1">
+          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
+            Resources
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            <Chip
+              label="All Resources"
+              selected={draft.resourceIds.length === 0}
+              onPress={() => handleToggleResource('All')}
+              className="py-1.5 px-3"
+            />
+            {applicableResources.map((res) => {
+              const isSelected = draft.resourceIds.includes(res._id);
+              return (
+                <Chip
+                  key={res._id}
+                  label={res.name}
+                  selected={isSelected}
+                  onPress={() => handleToggleResource(res._id)}
+                  className="py-1.5 px-3"
+                />
+              );
+            })}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+
+  const categoryConfigs: FilterCategoryConfig[] = useMemo(() => [
+    {
+      id: 'facilities',
+      label: 'Facilities',
+      icon: Layers,
+      type: 'custom',
+      selectedCount: (isAllFacilities ? 0 : specificFacilityIds.length) + draft.resourceIds.length,
+      renderCustom: renderFacilitySection,
+    },
+    {
+      id: 'availability',
+      label: 'Availability Status',
+      icon: Boxes,
+      type: 'radio',
+      options: AVAILABILITY_OPTIONS,
+      selectedValues: draft.availability,
+      selectedCount: draft.availability !== 'ALL' ? 1 : 0,
+      onOptionSelect: (val) => setDraft((p) => ({ ...p, availability: val })),
+    },
+    {
+      id: 'bookingStatus',
+      label: 'Booking Status',
+      icon: Tag,
+      type: 'checkbox',
+      options: STATUS_OPTIONS,
+      selectedValues: draft.bookingStatuses,
+      selectedCount: draft.bookingStatuses.length,
+      onOptionToggle: handleToggleBookingStatus,
+    },
+    {
+      id: 'paymentStatus',
+      label: 'Payment Status',
+      icon: CircleDollarSign,
+      type: 'checkbox',
+      options: PAYMENT_OPTIONS,
+      selectedValues: draft.paymentStatuses,
+      selectedCount: draft.paymentStatuses.length,
+      onOptionToggle: handleTogglePaymentStatus,
+    },
+  ], [draft, isAllFacilities, specificFacilityIds, facilitySearch, amenities, applicableResources]);
+
+  return (
+    <GlobalFilterPanel
+      visible={visible}
+      onClose={onClose}
+      title="Filter Calendar Schedule"
+      categories={categoryConfigs}
+      onApply={handleApply}
+      onClearAll={handleReset}
+      applyLabel={currentSelectionCount > 0 ? `Apply Filters (${currentSelectionCount})` : 'Apply Filters'}
+      totalActiveCount={currentSelectionCount}
+    />
   );
 }
 

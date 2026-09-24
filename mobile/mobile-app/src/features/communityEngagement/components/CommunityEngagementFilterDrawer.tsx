@@ -1,23 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
 import { Chip } from '@/components/common/Chip';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { GlobalFilterPanel, FilterCategoryConfig } from '@/components/ui/GlobalFilterPanel';
 import { DatePicker } from '@/components/common/DatePicker';
 import { formatDateString } from '@/components/common/DatePickerModal';
-import { TextInput } from '@/components/forms/TextInput';
 import {
   Calendar,
   AlertCircle,
   Tag,
   Users,
   CheckSquare,
-  Pin,
   BarChart3,
-  RotateCcw,
-  Check,
   Search,
   Shield,
   KeyRound,
@@ -30,6 +25,7 @@ import {
   LedgerDatePreset,
 } from '../types/communityEngagement.types';
 import { fetchRoles } from '@/src/features/roleBuilder/services/roleService';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface CommunityEngagementFilterDrawerProps {
   visible: boolean;
@@ -40,37 +36,6 @@ export interface CommunityEngagementFilterDrawerProps {
   activeTypeFilter?: 'ALL' | 'NOTICES' | 'POLLS';
 }
 
-const DATE_PRESETS: { id: LedgerDatePreset; label: string }[] = [
-  { id: 'ALL_TIME', label: 'All Time' },
-  { id: 'THIS_WEEK', label: 'This Week' },
-  { id: 'THIS_MONTH', label: 'This Month' },
-  { id: 'PAST_30_DAYS', label: 'Past 30 Days' },
-  { id: 'CUSTOM', label: 'Custom Range' },
-];
-
-const PRIORITIES: { id: NoticePriority; label: string; iconColor: string }[] = [
-  { id: 'Critical', label: 'Critical', iconColor: 'text-destructive' },
-  { id: 'High', label: 'High', iconColor: 'text-amber-500' },
-  { id: 'Medium', label: 'Medium', iconColor: 'text-blue-500' },
-  { id: 'Low', label: 'Low', iconColor: 'text-muted-foreground' },
-];
-
-const CATEGORIES: { id: NoticeCategory; label: string }[] = [
-  { id: 'General', label: 'General' },
-  { id: 'Maintenance', label: 'Maintenance' },
-  { id: 'Events', label: 'Events' },
-  { id: 'Emergency', label: 'Emergency' },
-  { id: 'Meetings', label: 'Meetings' },
-  { id: 'Rules', label: 'Rules' },
-];
-
-const AUDIENCE_SCOPES = [
-  { id: 'ALL', label: 'All Community', icon: Users },
-  { id: 'OWNERS_ONLY', label: 'Owners Only', icon: KeyRound },
-  { id: 'STAFF_ONLY', label: 'Staff Only', icon: Shield },
-  { id: 'SPECIFIC_ROLE', label: 'By Role', icon: Building2 },
-];
-
 export const CommunityEngagementFilterDrawer: React.FC<CommunityEngagementFilterDrawerProps> = ({
   visible,
   onClose,
@@ -79,6 +44,8 @@ export const CommunityEngagementFilterDrawer: React.FC<CommunityEngagementFilter
   onReset,
   activeTypeFilter = 'ALL',
 }) => {
+  const { t } = useTranslation();
+
   const [datePreset, setDatePreset] = useState<LedgerDatePreset>(filters.datePreset);
   const [startDate, setStartDate] = useState<string>(filters.startDate || '');
   const [endDate, setEndDate] = useState<string>(filters.endDate || '');
@@ -97,12 +64,52 @@ export const CommunityEngagementFilterDrawer: React.FC<CommunityEngagementFilter
     filters.requiresAcknowledgementOnly || false
   );
 
-  // Search roles state
   const [roleSearch, setRoleSearch] = useState<string>('');
   const [availableRoles, setAvailableRoles] = useState<{ id: string; name: string }[]>([]);
-  const [loadingRoles, setLoadingRoles] = useState<boolean>(false);
 
-  // Sync internal state when opened or filters prop change
+  const datePresets = useMemo<{ id: LedgerDatePreset; label: string }[]>(
+    () => [
+      { id: 'ALL_TIME', label: t('all_time') },
+      { id: 'THIS_WEEK', label: t('this_week') },
+      { id: 'THIS_MONTH', label: t('this_month') },
+      { id: 'PAST_30_DAYS', label: t('past_30_days') },
+      { id: 'CUSTOM', label: t('custom_range') },
+    ],
+    [t]
+  );
+
+  const prioritiesOptions = useMemo<{ id: NoticePriority; label: string }[]>(
+    () => [
+      { id: 'Critical', label: t('priority_critical', 'Critical') },
+      { id: 'High', label: t('priority_high', 'High Priority') },
+      { id: 'Medium', label: t('priority_medium', 'Medium') },
+      { id: 'Low', label: t('priority_low', 'Low') },
+    ],
+    [t]
+  );
+
+  const categoriesOptions = useMemo<{ id: NoticeCategory; label: string }[]>(
+    () => [
+      { id: 'General', label: t('cat_general', 'General') },
+      { id: 'Maintenance', label: t('cat_maintenance', 'Maintenance') },
+      { id: 'Events', label: t('cat_events', 'Events') },
+      { id: 'Emergency', label: t('cat_emergency', 'Emergency') },
+      { id: 'Meetings', label: t('cat_meetings', 'Meetings') },
+      { id: 'Rules', label: t('cat_rules', 'Rules') },
+    ],
+    [t]
+  );
+
+  const audienceScopes = useMemo(
+    () => [
+      { id: 'ALL', label: t('all_community'), icon: Users },
+      { id: 'OWNERS_ONLY', label: t('owners_only'), icon: KeyRound },
+      { id: 'STAFF_ONLY', label: t('staff_security'), icon: Shield },
+      { id: 'SPECIFIC_ROLE', label: t('by_specific_role'), icon: Building2 },
+    ],
+    [t]
+  );
+
   useEffect(() => {
     if (visible) {
       setDatePreset(filters.datePreset || 'ALL_TIME');
@@ -116,16 +123,12 @@ export const CommunityEngagementFilterDrawer: React.FC<CommunityEngagementFilter
       setPollChoiceTypes(filters.pollChoiceTypes || []);
       setIsPinnedOnly(filters.isPinnedOnly || false);
       setRequiresAcknowledgementOnly(filters.requiresAcknowledgementOnly || false);
-      setRoleSearch('');
 
-      // Fetch distinct estate roles
-      setLoadingRoles(true);
-      fetchRoles({ page: 1, limit: 100 })
+      fetchRoles()
         .then((res: any) => {
-          const raw = res?.data?.data || res?.data || [];
-          const items = Array.isArray(raw) ? raw : [];
+          const list = res?.data?.data || res?.data || res || [];
           setAvailableRoles(
-            items
+            list
               .map((r: any) => ({
                 id: r._id || r.id,
                 name: r.name || r.roleName || 'Unnamed Role',
@@ -133,74 +136,59 @@ export const CommunityEngagementFilterDrawer: React.FC<CommunityEngagementFilter
               .filter((r: any) => Boolean(r.id) && Boolean(r.name))
           );
         })
-        .catch(() => {})
-        .finally(() => setLoadingRoles(false));
+        .catch(() => {});
     }
   }, [visible, filters]);
 
-  const handleSelectDatePreset = (preset: LedgerDatePreset) => {
-    setDatePreset(preset);
+  const handleSelectDatePreset = (presetId: LedgerDatePreset) => {
+    setDatePreset(presetId);
     const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
 
-    if (preset === 'ALL_TIME') {
+    if (presetId === 'ALL_TIME') {
       setStartDate('');
       setEndDate('');
-    } else if (preset === 'THIS_WEEK') {
+    } else if (presetId === 'THIS_WEEK') {
       const day = now.getDay();
-      const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(now.setDate(diffToMonday));
-      const sunday = new Date(now.setDate(monday.getDate() + 6));
-      setStartDate(formatDateString(monday));
-      setEndDate(formatDateString(sunday));
-    } else if (preset === 'THIS_MONTH') {
-      const y = now.getFullYear();
-      const m = now.getMonth();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(now.setDate(diff));
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      setStartDate(formatDateString(mon));
+      setEndDate(formatDateString(sun));
+    } else if (presetId === 'THIS_MONTH') {
       const firstDay = new Date(y, m, 1);
       const lastDay = new Date(y, m + 1, 0);
       setStartDate(formatDateString(firstDay));
       setEndDate(formatDateString(lastDay));
-    } else if (preset === 'PAST_30_DAYS') {
-      const past30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      setStartDate(formatDateString(past30));
-      setEndDate(formatDateString(now));
+    } else if (presetId === 'PAST_30_DAYS') {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      setStartDate(formatDateString(thirtyDaysAgo));
+      setEndDate(formatDateString(new Date()));
     }
   };
 
-  const togglePriority = (p: NoticePriority) => {
-    setPriorities((prev) =>
-      prev.includes(p) ? prev.filter((item) => item !== p) : [...prev, p]
-    );
-  };
-
-  const toggleCategory = (c: NoticeCategory) => {
+  const toggleCategory = (catId: string) => {
+    const cat = catId as NoticeCategory;
     setCategories((prev) =>
-      prev.includes(c) ? prev.filter((item) => item !== c) : [...prev, c]
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
   };
 
-  const toggleRoleId = (roleId: string) => {
+  const togglePriority = (prioId: string) => {
+    const prio = prioId as NoticePriority;
+    setPriorities((prev) =>
+      prev.includes(prio) ? prev.filter((p) => p !== prio) : [...prev, prio]
+    );
+  };
+
+  const toggleRole = (roleId: string) => {
     setSelectedRoleIds((prev) =>
-      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
+      prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId]
     );
   };
-
-  const toggleVotingMode = (mode: 'PUBLIC' | 'ANONYMOUS') => {
-    setPollVotingModes((prev) =>
-      prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]
-    );
-  };
-
-  const toggleChoiceType = (choice: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE') => {
-    setPollChoiceTypes((prev) =>
-      prev.includes(choice) ? prev.filter((c) => c !== choice) : [...prev, choice]
-    );
-  };
-
-  const filteredRoles = useMemo(() => {
-    if (!roleSearch.trim()) return availableRoles;
-    const term = roleSearch.trim().toLowerCase();
-    return availableRoles.filter((r) => r.name.toLowerCase().includes(term));
-  }, [availableRoles, roleSearch]);
 
   const handleApply = () => {
     onApply({
@@ -210,7 +198,7 @@ export const CommunityEngagementFilterDrawer: React.FC<CommunityEngagementFilter
       priorities,
       categories,
       audienceScope,
-      selectedRoleIds,
+      selectedRoleIds: audienceScope === 'SPECIFIC_ROLE' ? selectedRoleIds : [],
       pollVotingModes,
       pollChoiceTypes,
       isPinnedOnly,
@@ -219,7 +207,7 @@ export const CommunityEngagementFilterDrawer: React.FC<CommunityEngagementFilter
     onClose();
   };
 
-  const handleResetInternal = () => {
+  const handleReset = () => {
     setDatePreset('ALL_TIME');
     setStartDate('');
     setEndDate('');
@@ -231,257 +219,243 @@ export const CommunityEngagementFilterDrawer: React.FC<CommunityEngagementFilter
     setPollChoiceTypes([]);
     setIsPinnedOnly(false);
     setRequiresAcknowledgementOnly(false);
-    setRoleSearch('');
     onReset();
     onClose();
   };
 
-  const showNoticeFilters = activeTypeFilter === 'ALL' || activeTypeFilter === 'NOTICES';
-  const showPollFilters = activeTypeFilter === 'ALL' || activeTypeFilter === 'POLLS';
+  const totalActiveCount =
+    categories.length +
+    priorities.length +
+    (audienceScope !== 'ALL' ? (audienceScope === 'SPECIFIC_ROLE' ? selectedRoleIds.length || 1 : 1) : 0) +
+    (isPinnedOnly ? 1 : 0) +
+    (requiresAcknowledgementOnly ? 1 : 0) +
+    pollVotingModes.length +
+    pollChoiceTypes.length +
+    (datePreset !== 'ALL_TIME' || startDate || endDate ? 1 : 0);
 
-  return (
-    <BottomSheet
-      visible={visible}
-      onClose={onClose}
-      title="Advanced Filters"
-      snapPoints={['88%']}
-    >
-      <ScrollView className="flex-1 px-4 py-2" showsVerticalScrollIndicator={false}>
-        <View className="gap-5 pb-16">
-          {/* Section 1: Date Range Presets */}
-          <View className="gap-2">
-            <View className="flex-row items-center gap-2">
-              <Calendar size={16} className="text-primary" />
-              <Text className="font-bold text-sm text-foreground">Date Range</Text>
-            </View>
-            <View className="flex-row flex-wrap gap-2">
-              {DATE_PRESETS.map((p) => (
-                <Chip
-                  key={p.id}
-                  label={p.label}
-                  selected={datePreset === p.id}
-                  onPress={() => handleSelectDatePreset(p.id)}
-                />
-              ))}
-            </View>
-
-            {/* Custom Date Pickers */}
-            {datePreset === 'CUSTOM' ? (
-              <View className="flex-row items-center gap-3 pt-2">
-                <View className="flex-1">
-                  <DatePicker
-                    label="Start Date"
-                    value={startDate ? new Date(`${startDate}T00:00:00`) : null}
-                    onChange={(d: Date) => {
-                      setStartDate(formatDateString(d));
-                      setDatePreset('CUSTOM');
-                    }}
-                    placeholder="Start Date"
-                  />
+  const renderAudienceSection = () => (
+    <View className="gap-3 pt-1">
+      <View className="gap-2">
+        {audienceScopes.map((scope) => {
+          const isSelected = audienceScope === scope.id;
+          const ScopeIcon = scope.icon;
+          return (
+            <TouchableOpacity
+              key={scope.id}
+              onPress={() => setAudienceScope(scope.id)}
+              activeOpacity={0.7}
+              className={`flex-row items-center justify-between p-3 rounded-xl border ${
+                isSelected ? 'bg-primary/10 border-primary' : 'bg-card border-border/70'
+              }`}
+            >
+              <View className="flex-row items-center gap-2.5">
+                <View className="w-4 h-4 rounded-full border items-center justify-center">
+                  {isSelected && <View className="w-2 h-2 rounded-full bg-primary" />}
                 </View>
-                <View className="flex-1">
-                  <DatePicker
-                    label="End Date"
-                    value={endDate ? new Date(`${endDate}T00:00:00`) : null}
-                    onChange={(d: Date) => {
-                      setEndDate(formatDateString(d));
-                      setDatePreset('CUSTOM');
-                    }}
-                    placeholder="End Date"
-                  />
-                </View>
+                <ScopeIcon size={14} className={isSelected ? 'text-primary' : 'text-muted-foreground'} />
+                <Text className={`text-xs font-sans ${isSelected ? 'font-bold text-primary' : 'font-medium text-foreground'}`}>
+                  {scope.label}
+                </Text>
               </View>
-            ) : null}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {audienceScope === 'SPECIFIC_ROLE' && (
+        <View className="pt-2 border-t border-border/40 gap-2">
+          <View className="flex-row items-center bg-card border border-border/80 rounded-xl px-2.5 h-9">
+            <Icon as={Search} size={13} className="text-muted-foreground me-2 shrink-0" />
+            <RNTextInput
+              value={roleSearch}
+              onChangeText={setRoleSearch}
+              placeholder={t('search_roles')}
+              placeholderTextColor="#9ca3af"
+              className="flex-1 text-xs text-foreground font-sans p-0"
+            />
           </View>
-
-          {/* Section 2: Notice Priorities (Multi-Select Chips) */}
-          {showNoticeFilters && (
-            <View className="gap-2">
-              <View className="flex-row items-center gap-2">
-                <AlertCircle size={16} className="text-primary" />
-                <Text className="font-bold text-sm text-foreground">
-                  Notice Priority (Multi-Select)
-                </Text>
-              </View>
-              <View className="flex-row flex-wrap gap-2">
-                {PRIORITIES.map((item) => (
-                  <Chip
-                    key={item.id}
-                    label={item.label}
-                    selected={priorities.includes(item.id)}
-                    onPress={() => togglePriority(item.id)}
-                  />
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Section 3: Notice Categories (Multi-Select Chips) */}
-          {showNoticeFilters && (
-            <View className="gap-2">
-              <View className="flex-row items-center gap-2">
-                <Tag size={16} className="text-primary" />
-                <Text className="font-bold text-sm text-foreground">
-                  Notice Category (Multi-Select)
-                </Text>
-              </View>
-              <View className="flex-row flex-wrap gap-2">
-                {CATEGORIES.map((item) => (
-                  <Chip
-                    key={item.id}
-                    label={item.label}
-                    selected={categories.includes(item.id)}
-                    onPress={() => toggleCategory(item.id)}
-                  />
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Section 4: Target Audience Scope & Searchable Roles */}
-          <View className="gap-2">
-            <View className="flex-row items-center gap-2">
-              <Users size={16} className="text-primary" />
-              <Text className="font-bold text-sm text-foreground">Target Audience Scope</Text>
-            </View>
-            <View className="flex-row flex-wrap gap-2">
-              {AUDIENCE_SCOPES.map((scope) => {
-                const IconComp = scope.icon;
+          <View className="flex-row flex-wrap gap-1.5 max-h-40">
+            {availableRoles
+              .filter((r) => !roleSearch || r.name.toLowerCase().includes(roleSearch.toLowerCase()))
+              .map((r) => {
+                const isSelected = selectedRoleIds.includes(r.id);
                 return (
                   <Chip
-                    key={scope.id}
-                    label={scope.label}
-                    icon={IconComp}
-                    selected={audienceScope === scope.id}
-                    onPress={() => setAudienceScope(scope.id as any)}
+                    key={r.id}
+                    label={r.name}
+                    selected={isSelected}
+                    onPress={() => toggleRole(r.id)}
+                    className="py-1 px-2.5"
                   />
                 );
               })}
-            </View>
-
-            {/* If By Role is selected: Search box + dynamic selectable role chips */}
-            {audienceScope === 'SPECIFIC_ROLE' && (
-              <View className="mt-2 p-3 bg-muted/30 border border-border/70 rounded-2xl gap-2.5">
-                <Text className="text-xs font-semibold text-foreground">
-                  Filter by Specific Estate Roles ({selectedRoleIds.length} selected):
-                </Text>
-
-                {/* Role search text field */}
-                <View className="flex-row items-center bg-card border border-border rounded-xl px-3 py-1.5">
-                  <Icon as={Search} size={15} className="text-muted-foreground me-2 shrink-0" />
-                  <TextInput
-                    value={roleSearch}
-                    onChangeText={setRoleSearch}
-                    placeholder="Search roles (e.g. Guard, Admin, Committee)..."
-                    className="flex-1 text-xs text-foreground p-0 bg-transparent border-0"
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                {/* Role chips */}
-                <View className="flex-row flex-wrap gap-1.5 max-h-36">
-                  {loadingRoles ? (
-                    <Text className="text-xs text-muted-foreground py-2">Loading roles...</Text>
-                  ) : filteredRoles.length > 0 ? (
-                    filteredRoles.map((role) => (
-                      <Chip
-                        key={role.id}
-                        label={role.name}
-                        selected={selectedRoleIds.includes(role.id)}
-                        onPress={() => toggleRoleId(role.id)}
-                      />
-                    ))
-                  ) : (
-                    <Text className="text-xs text-muted-foreground py-2">
-                      No roles matching &quot;{roleSearch}&quot;
-                    </Text>
-                  )}
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Section 5: Poll Attributes (Multi-Select Chips) */}
-          {showPollFilters && (
-            <View className="gap-2">
-              <View className="flex-row items-center gap-2">
-                <BarChart3 size={16} className="text-primary" />
-                <Text className="font-bold text-sm text-foreground">
-                  Poll Attributes (Multi-Select)
-                </Text>
-              </View>
-              <View className="flex-row flex-wrap gap-2">
-                <Chip
-                  label="🗳️ Anonymous Voting"
-                  selected={pollVotingModes.includes('ANONYMOUS')}
-                  onPress={() => toggleVotingMode('ANONYMOUS')}
-                />
-                <Chip
-                  label="👤 Public Voting"
-                  selected={pollVotingModes.includes('PUBLIC')}
-                  onPress={() => toggleVotingMode('PUBLIC')}
-                />
-                <Chip
-                  label="☑️ Multiple Choice"
-                  selected={pollChoiceTypes.includes('MULTIPLE_CHOICE')}
-                  onPress={() => toggleChoiceType('MULTIPLE_CHOICE')}
-                />
-                <Chip
-                  label="🔘 Single Choice"
-                  selected={pollChoiceTypes.includes('SINGLE_CHOICE')}
-                  onPress={() => toggleChoiceType('SINGLE_CHOICE')}
-                />
-              </View>
-            </View>
-          )}
-
-          {/* Section 6: Governance Flags (Multi-Select Chips) */}
-          <View className="gap-2">
-            <View className="flex-row items-center gap-2">
-              <CheckSquare size={16} className="text-primary" />
-              <Text className="font-bold text-sm text-foreground">Governance Flags</Text>
-            </View>
-            <View className="flex-row flex-wrap gap-2">
-              <Chip
-                label="📌 Pinned to Top"
-                selected={isPinnedOnly}
-                onPress={() => setIsPinnedOnly((prev) => !prev)}
-              />
-              <Chip
-                label="✍️ Sign-off Required"
-                selected={requiresAcknowledgementOnly}
-                onPress={() => setRequiresAcknowledgementOnly((prev) => !prev)}
-              />
-            </View>
-          </View>
-
-          {/* Action Buttons */}
-          <View className="flex-row items-center gap-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex-1"
-              onPress={handleResetInternal}
-              accessibilityLabel="Reset Filters"
-            >
-              <RotateCcw size={16} className="me-2 text-muted-foreground" />
-              <Text className="font-bold text-sm text-foreground">Reset All</Text>
-            </Button>
-
-            <Button
-              variant="default"
-              size="lg"
-              className="flex-1 bg-primary"
-              onPress={handleApply}
-              accessibilityLabel="Apply Filters"
-            >
-              <Check size={16} className="me-2 text-primary-foreground" />
-              <Text className="font-bold text-sm text-primary-foreground">Apply Filters</Text>
-            </Button>
           </View>
         </View>
-      </ScrollView>
-    </BottomSheet>
+      )}
+    </View>
+  );
+
+  const renderDateSection = () => (
+    <View className="gap-3 pt-1">
+      <View className="flex-row flex-wrap gap-2">
+        {datePresets.map((p) => (
+          <Chip
+            key={p.id}
+            label={p.label}
+            selected={datePreset === p.id}
+            onPress={() => handleSelectDatePreset(p.id)}
+            className="py-1.5 px-3"
+          />
+        ))}
+      </View>
+
+      {datePreset === 'CUSTOM' || startDate || endDate ? (
+        <View className="gap-3 pt-2 border-t border-border/40">
+          <DatePicker
+            label={t('start_date', 'Start Date')}
+            value={startDate ? new Date(`${startDate}T00:00:00`) : null}
+            onChange={(d) => {
+              setStartDate(formatDateString(d));
+              setDatePreset('CUSTOM');
+            }}
+            placeholder={t('start_date', 'Start Date')}
+          />
+          <DatePicker
+            label={t('end_date', 'End Date')}
+            value={endDate ? new Date(`${endDate}T00:00:00`) : null}
+            onChange={(d) => {
+              setEndDate(formatDateString(d));
+              setDatePreset('CUSTOM');
+            }}
+            placeholder={t('end_date', 'End Date')}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const categoryConfigs: FilterCategoryConfig[] = useMemo(() => {
+    const configs: FilterCategoryConfig[] = [
+      {
+        id: 'category',
+        label: t('category', 'Category'),
+        icon: Tag,
+        type: 'checkbox',
+        options: categoriesOptions,
+        selectedValues: categories,
+        selectedCount: categories.length,
+        onOptionToggle: toggleCategory,
+      },
+      {
+        id: 'priority',
+        label: t('urgency_priority', 'Urgency & Priority'),
+        icon: AlertCircle,
+        type: 'checkbox',
+        options: prioritiesOptions,
+        selectedValues: priorities,
+        selectedCount: priorities.length,
+        onOptionToggle: togglePriority,
+      },
+      {
+        id: 'audience',
+        label: t('target_audience', 'Target Audience'),
+        icon: Users,
+        type: 'custom',
+        selectedCount: audienceScope !== 'ALL' ? (audienceScope === 'SPECIFIC_ROLE' ? selectedRoleIds.length || 1 : 1) : 0,
+        renderCustom: renderAudienceSection,
+      },
+      {
+        id: 'governance',
+        label: t('action_governance', 'Action & Governance'),
+        icon: CheckSquare,
+        type: 'toggle',
+        options: [
+          { id: 'pinned', label: t('pinned_announcements_only'), description: t('pinned_to_top') },
+          { id: 'ack', label: t('needs_my_signoff'), description: t('mandatory_signoff') },
+        ],
+        selectedValues: [
+          ...(isPinnedOnly ? ['pinned'] : []),
+          ...(requiresAcknowledgementOnly ? ['ack'] : []),
+        ],
+        selectedCount: (isPinnedOnly ? 1 : 0) + (requiresAcknowledgementOnly ? 1 : 0),
+        onOptionToggle: (id) => {
+          if (id === 'pinned') setIsPinnedOnly((prev) => !prev);
+          if (id === 'ack') setRequiresAcknowledgementOnly((prev) => !prev);
+        },
+      },
+    ];
+
+    if (activeTypeFilter === 'POLLS' || activeTypeFilter === 'ALL') {
+      configs.push({
+        id: 'polls',
+        label: t('poll_options'),
+        icon: BarChart3,
+        type: 'checkbox',
+        options: [
+          { id: 'PUBLIC', label: t('public_voting') },
+          { id: 'ANONYMOUS', label: t('anonymous_voting') },
+          { id: 'SINGLE_CHOICE', label: t('single_choice_polls') },
+          { id: 'MULTIPLE_CHOICE', label: t('multiple_choice_polls') },
+        ],
+        selectedValues: [...pollVotingModes, ...pollChoiceTypes],
+        selectedCount: pollVotingModes.length + pollChoiceTypes.length,
+        onOptionToggle: (id) => {
+          if (id === 'PUBLIC' || id === 'ANONYMOUS') {
+            const mode = id as 'PUBLIC' | 'ANONYMOUS';
+            setPollVotingModes((prev) =>
+              prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]
+            );
+          } else if (id === 'SINGLE_CHOICE' || id === 'MULTIPLE_CHOICE') {
+            const choice = id as 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE';
+            setPollChoiceTypes((prev) =>
+              prev.includes(choice) ? prev.filter((c) => c !== choice) : [...prev, choice]
+            );
+          }
+        },
+      });
+    }
+
+    configs.push({
+      id: 'date',
+      label: t('date_range'),
+      icon: Calendar,
+      type: 'custom',
+      selectedCount: datePreset !== 'ALL_TIME' || startDate || endDate ? 1 : 0,
+      renderCustom: renderDateSection,
+    });
+
+    return configs;
+  }, [
+    categories,
+    priorities,
+    audienceScope,
+    selectedRoleIds,
+    availableRoles,
+    roleSearch,
+    isPinnedOnly,
+    requiresAcknowledgementOnly,
+    pollVotingModes,
+    pollChoiceTypes,
+    datePreset,
+    startDate,
+    endDate,
+    activeTypeFilter,
+    t,
+    categoriesOptions,
+    prioritiesOptions,
+    datePresets,
+  ]);
+
+  return (
+    <GlobalFilterPanel
+      visible={visible}
+      onClose={onClose}
+      title={t('filter_engagement_feed')}
+      categories={categoryConfigs}
+      onApply={handleApply}
+      onClearAll={handleReset}
+      totalActiveCount={totalActiveCount}
+    />
   );
 };
 

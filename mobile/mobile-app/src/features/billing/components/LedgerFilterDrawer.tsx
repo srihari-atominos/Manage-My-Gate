@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Button } from '@/components/common/Button';
 import { Chip } from '@/components/common/Chip';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { GlobalFilterPanel, FilterCategoryConfig } from '@/components/ui/GlobalFilterPanel';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { DatePicker } from '@/components/common/DatePicker';
 import { formatDateString } from '@/components/common/DatePickerModal';
-import { Calendar, Building2, CreditCard, RotateCcw, Check } from 'lucide-react-native';
+import { Calendar, Building2, CreditCard } from 'lucide-react-native';
 import { fetchVillaBlocks } from '@/src/features/villa/services/villaService';
 
 export interface LedgerFilterValues {
@@ -138,120 +137,110 @@ export const LedgerFilterDrawer: React.FC<LedgerFilterDrawerProps> = ({
     onClose();
   };
 
-  const blockOptions = [
-    { label: 'All Blocks & Buildings', value: 'ALL' },
-    ...availableBlocks.map((b) => ({ label: `Block ${b}`, value: b })),
-  ];
+  const blockOptions = useMemo(() => {
+    const opts = [{ label: 'All Blocks', value: 'ALL' }];
+    availableBlocks.forEach((blk) => {
+      opts.push({ label: `Block ${blk}`, value: blk });
+    });
+    return opts;
+  }, [availableBlocks]);
 
-  return (
-    <BottomSheet visible={visible} onClose={onClose} title="Advanced Ledger Filters">
-      <View className="gap-5 py-2">
-        {/* Section 1: Date Range */}
-        <View className="gap-2.5">
-          <View className="flex-row items-center gap-2">
-            <Calendar size={16} className="text-primary" />
-            <Text className="font-bold text-sm text-foreground">Date Range</Text>
-          </View>
-          
-          {/* Date Preset Chips using catalog Chip component */}
-          <View className="flex-row flex-wrap gap-2">
-            {DATE_PRESETS.map((preset) => (
-              <Chip
-                key={preset.id}
-                label={preset.label}
-                selected={datePreset === preset.id}
-                onPress={() => handleSelectPreset(preset.id)}
-              />
-            ))}
-          </View>
+  const totalActiveCount =
+    (datePreset !== 'ALL_TIME' || startDate || endDate ? 1 : 0) +
+    (selectedBlock !== 'ALL' && selectedBlock !== '' ? 1 : 0) +
+    (selectedPaymentMethod !== 'ALL' && selectedPaymentMethod !== '' ? 1 : 0);
 
-          {/* Reusable DatePicker components for Start and End Date */}
-          {datePreset === 'CUSTOM' || startDate || endDate ? (
-            <View className="flex-row items-center gap-3 pt-1">
-              <View className="flex-1">
-                <DatePicker
-                  label="Start Date"
-                  value={startDate ? new Date(`${startDate}T00:00:00`) : null}
-                  onChange={(d) => {
-                    setStartDate(formatDateString(d));
-                    setDatePreset('CUSTOM');
-                  }}
-                  placeholder="Select Start Date"
-                />
-              </View>
-              <View className="flex-1">
-                <DatePicker
-                  label="End Date"
-                  value={endDate ? new Date(`${endDate}T00:00:00`) : null}
-                  onChange={(d) => {
-                    setEndDate(formatDateString(d));
-                    setDatePreset('CUSTOM');
-                  }}
-                  placeholder="Select End Date"
-                />
-              </View>
-            </View>
-          ) : null}
-        </View>
+  const renderDateSection = () => (
+    <View className="gap-3 pt-1">
+      {/* Date Preset Chips */}
+      <View className="flex-row flex-wrap gap-2">
+        {DATE_PRESETS.map((preset) => (
+          <Chip
+            key={preset.id}
+            label={preset.label}
+            selected={datePreset === preset.id}
+            onPress={() => handleSelectPreset(preset.id)}
+            className="py-1.5 px-3"
+          />
+        ))}
+      </View>
 
-        {/* Section 2: Block / Building */}
-        <View className="gap-2">
-          <View className="flex-row items-center gap-2">
-            <Building2 size={16} className="text-primary" />
-            <Text className="font-bold text-sm text-foreground">Block / Building</Text>
-          </View>
-          <DropdownSelect
-            options={blockOptions}
-            value={selectedBlock}
-            onValueChange={setSelectedBlock}
-            placeholder="Select Community Block"
+      {/* DatePicker inputs for Start and End Date */}
+      {datePreset === 'CUSTOM' || startDate || endDate ? (
+        <View className="gap-2.5 pt-2 border-t border-border/40 mt-1">
+          <DatePicker
+            label="Start Date"
+            value={startDate ? new Date(`${startDate}T00:00:00`) : null}
+            onChange={(d) => {
+              setStartDate(formatDateString(d));
+              setDatePreset('CUSTOM');
+            }}
+            placeholder="Select Start Date"
+          />
+          <DatePicker
+            label="End Date"
+            value={endDate ? new Date(`${endDate}T00:00:00`) : null}
+            onChange={(d) => {
+              setEndDate(formatDateString(d));
+              setDatePreset('CUSTOM');
+            }}
+            placeholder="Select End Date"
           />
         </View>
+      ) : null}
+    </View>
+  );
 
-        {/* Section 3: Payment Method */}
-        <View className="gap-2">
-          <View className="flex-row items-center gap-2">
-            <CreditCard size={16} className="text-primary" />
-            <Text className="font-bold text-sm text-foreground">Payment Method</Text>
-          </View>
-          <View className="flex-row flex-wrap gap-2">
-            {PAYMENT_METHODS.map((pm) => (
-              <Chip
-                key={pm.id}
-                label={pm.label}
-                selected={selectedPaymentMethod === pm.id}
-                onPress={() => setSelectedPaymentMethod(pm.id)}
-              />
-            ))}
-          </View>
-        </View>
+  const renderBlockSection = () => (
+    <View className="gap-3 pt-1">
+      <DropdownSelect
+        options={blockOptions}
+        value={selectedBlock}
+        onValueChange={setSelectedBlock}
+        placeholder="Select Community Block"
+      />
+    </View>
+  );
 
-        {/* Action Buttons */}
-        <View className="flex-row items-center gap-3 pt-4 border-t border-border">
-          <Button
-            variant="outline"
-            size="lg"
-            className="flex-1"
-            onPress={handleResetInternal}
-            accessibilityLabel="Reset Filters"
-          >
-            <RotateCcw size={16} className="me-2 text-muted-foreground" />
-            <Text className="font-bold text-sm text-foreground">Reset All</Text>
-          </Button>
+  const categoryConfigs: FilterCategoryConfig[] = useMemo(() => [
+    {
+      id: 'date',
+      label: 'Date Range',
+      icon: Calendar,
+      type: 'custom',
+      selectedCount: datePreset !== 'ALL_TIME' || startDate || endDate ? 1 : 0,
+      renderCustom: renderDateSection,
+    },
+    {
+      id: 'block',
+      label: 'Block / Building',
+      icon: Building2,
+      type: 'custom',
+      selectedCount: selectedBlock !== 'ALL' && selectedBlock !== '' ? 1 : 0,
+      renderCustom: renderBlockSection,
+    },
+    {
+      id: 'paymentMethod',
+      label: 'Payment Method',
+      icon: CreditCard,
+      type: 'radio',
+      options: PAYMENT_METHODS,
+      selectedValues: selectedPaymentMethod,
+      selectedCount: selectedPaymentMethod !== 'ALL' && selectedPaymentMethod !== '' ? 1 : 0,
+      onOptionSelect: (val) => setSelectedPaymentMethod(val),
+    },
+  ], [datePreset, startDate, endDate, selectedBlock, selectedPaymentMethod, blockOptions]);
 
-          <Button
-            variant="default"
-            size="lg"
-            className="flex-1 bg-primary"
-            onPress={handleApply}
-            accessibilityLabel="Apply Filters"
-          >
-            <Check size={16} className="me-2 text-primary-foreground" />
-            <Text className="font-bold text-sm text-primary-foreground">Apply Filters</Text>
-          </Button>
-        </View>
-      </View>
-    </BottomSheet>
+  return (
+    <GlobalFilterPanel
+      visible={visible}
+      onClose={onClose}
+      title="Advanced Ledger Filters"
+      categories={categoryConfigs}
+      onApply={handleApply}
+      onClearAll={handleResetInternal}
+      totalActiveCount={totalActiveCount}
+    />
   );
 };
 

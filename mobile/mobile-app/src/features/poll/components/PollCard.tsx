@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import PollOptionRow from './PollOptionRow';
 import { checkIsAdmin } from '../../../utils/rbac';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface PollCardProps {
   poll: any;
@@ -38,6 +39,7 @@ export function PollCard({
   currentUser,
   showViewDetails,
 }: PollCardProps) {
+  const { t, translateText } = useTranslation();
   if (!poll) return null;
 
   const isCommunityAdmin = checkIsAdmin(currentUser);
@@ -74,17 +76,17 @@ export function PollCard({
 
   return (
     <ListCard
-      title={questionText}
-      subtitle={poll.description || undefined}
+      title={translateText(questionText)}
+      subtitle={poll.description ? translateText(poll.description) : undefined}
       leftIcon="BarChart2"
       leftIconBgColor="bg-primary/10"
       onPress={handlePress}
       status={{
-        label: poll.status,
+        label: t(`status_${poll.status.toLowerCase()}`, poll.status),
         variant: getPollStatusVariant(poll.status),
       }}
       secondaryBadge={{
-        label: `${totalVotes} ${totalVotes === 1 ? 'Vote' : 'Votes'}`,
+        label: `${totalVotes} ${totalVotes === 1 ? t('vote', 'Vote') : t('votes', 'Votes')}`,
         variant: 'neutral',
       }}
     >

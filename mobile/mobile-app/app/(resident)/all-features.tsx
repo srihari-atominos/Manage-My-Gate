@@ -7,7 +7,6 @@ import {
   X,
   Search,
   ChevronRight,
-  SlidersHorizontal,
   RotateCcw,
   Layers,
 } from 'lucide-react-native';
@@ -17,7 +16,6 @@ import FeatureIcon from '@/components/ui/FeatureIcon';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
 import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 import { isFeatureAllowedForUser, checkIsAdmin } from '@/src/utils/rbac';
 import { useTranslation } from '@/src/utils/i18n';
@@ -33,12 +31,11 @@ export default function AllFeaturesScreen() {
   const { scrollHandlerProps } = useBottomNavScroll();
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [customiseOpen, setCustomiseOpen] = useState(false);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(params.category || null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   
   const { user } = useAuth();
-  const { featureCatalog, allFeaturesList, activeQuickActions, saveQuickActions } = useQuickActions();
+  const { featureCatalog, allFeaturesList } = useQuickActions();
 
   // Smart Back Button Handler: Clears category filter first, then search query, then navigates back to Home/Dashboard
   const handleBackPress = useCallback(() => {
@@ -109,18 +106,7 @@ export default function AllFeaturesScreen() {
     }));
   };
 
-  const handleSaveCustomisation = async (selectedIds: string[]) => {
-    await saveQuickActions(selectedIds);
-  };
-
   const isAdminRole = checkIsAdmin(user);
-
-  const filteredAvailableFeatures = React.useMemo(() => {
-    if (!isAdminRole) return allFeaturesList;
-    return allFeaturesList.filter(
-      (item) => item.id !== 'visitor_resident_passes' && item.id !== 'visitor_passes'
-    );
-  }, [allFeaturesList, isAdminRole]);
   const activeCategory = featureCatalog?.find(cat => cat.categoryKey === selectedCategoryKey);
 
   const { colorScheme } = useColorScheme();
@@ -134,22 +120,7 @@ export default function AllFeaturesScreen() {
       scrollable={false}
       showBackButton={true}
       onBackPress={handleBackPress}
-      headerRight={
-        <TouchableOpacity
-          onPress={() => setCustomiseOpen(true)}
-          activeOpacity={0.75}
-          style={{
-            backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
-            borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
-          }}
-          className="flex-row items-center gap-1.5 border px-3 py-1.5 rounded-full shadow-2xs"
-          accessibilityRole="button"
-          accessibilityLabel={t('customise', 'Customise')}
-        >
-          <SlidersHorizontal size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
-          <Text className="text-[12px] font-bold text-[#172B70] dark:text-[#93C5FD] font-sans">{t('customise', 'Customise')}</Text>
-        </TouchableOpacity>
-      }
+      showGlobalNavButton={true}
     >
       <ScrollView
         className="flex-1 px-4 pt-3"
@@ -278,15 +249,6 @@ export default function AllFeaturesScreen() {
           ) : null}
         </View>
       </ScrollView>
-
-      {/* Customise Dashboard Slide-Up Sheet Modal */}
-      <CustomiseSheetModal
-        visible={customiseOpen}
-        onClose={() => setCustomiseOpen(false)}
-        activeFeatureIds={activeQuickActions}
-        availableFeatures={filteredAvailableFeatures}
-        onSave={handleSaveCustomisation}
-      />
     </ScreenShell>
   );
 }
