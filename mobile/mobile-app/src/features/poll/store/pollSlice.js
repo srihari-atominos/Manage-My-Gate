@@ -212,7 +212,13 @@ export const pollSlice = createSlice({
   initialState,
   reducers: {
     selectPoll: (state, action) => {
-      state.selectedPoll = action.payload;
+      const payload = action.payload;
+      state.selectedPoll =
+        payload?.data?.poll ||
+        payload?.data?.data ||
+        payload?.data ||
+        payload?.poll ||
+        payload;
     },
     clearPollErrors: (state) => {
       state.error = null;
@@ -227,7 +233,7 @@ export const pollSlice = createSlice({
     socketPollCreated: (state, action) => {
       const newPoll = action.payload;
       if (newPoll && newPoll.status === 'Active') {
-        const exists = state.activePolls.data.some((p) => p._id === newPoll._id);
+        const exists = state.activePolls.data.some((p) => String(p._id || p.id) === String(newPoll._id || newPoll.id));
         if (!exists) {
           state.activePolls.data.unshift(newPoll);
           state.activePolls.total += 1;
@@ -236,45 +242,47 @@ export const pollSlice = createSlice({
     },
     socketPollUpdated: (state, action) => {
       const updated = action.payload;
-      if (!updated || !updated._id) return;
+      if (!updated || (!updated._id && !updated.id)) return;
+      const targetId = updated._id || updated.id;
 
-      const updateItem = (item) => (item._id === updated._id ? { ...item, ...updated } : item);
+      const updateItem = (item) => (String(item._id || item.id) === String(targetId) ? { ...item, ...updated } : item);
       state.activePolls.data = state.activePolls.data.map(updateItem);
       state.closedPolls.data = state.closedPolls.data.map(updateItem);
       state.myPolls.data = state.myPolls.data.map(updateItem);
 
-      if (state.selectedPoll && state.selectedPoll._id === updated._id) {
+      if (state.selectedPoll && String(state.selectedPoll._id || state.selectedPoll.id) === String(targetId)) {
         state.selectedPoll = { ...state.selectedPoll, ...updated };
       }
     },
     socketPollClosed: (state, action) => {
       const closed = action.payload;
-      if (!closed || !closed._id) return;
+      if (!closed || (!closed._id && !closed.id)) return;
+      const targetId = closed._id || closed.id;
 
       // Remove from active
-      state.activePolls.data = state.activePolls.data.filter((p) => p._id !== closed._id);
+      state.activePolls.data = state.activePolls.data.filter((p) => String(p._id || p.id) !== String(targetId));
       // Add or update in closed
-      const existingInClosed = state.closedPolls.data.some((p) => p._id === closed._id);
+      const existingInClosed = state.closedPolls.data.some((p) => String(p._id || p.id) === String(targetId));
       if (!existingInClosed) {
         state.closedPolls.data.unshift(closed);
         state.closedPolls.total += 1;
       } else {
-        state.closedPolls.data = state.closedPolls.data.map((p) => (p._id === closed._id ? closed : p));
+        state.closedPolls.data = state.closedPolls.data.map((p) => (String(p._id || p.id) === String(targetId) ? closed : p));
       }
 
-      if (state.selectedPoll && state.selectedPoll._id === closed._id) {
+      if (state.selectedPoll && String(state.selectedPoll._id || state.selectedPoll.id) === String(targetId)) {
         state.selectedPoll = { ...state.selectedPoll, ...closed, status: 'Closed' };
       }
     },
     socketVoteAdded: (state, action) => {
       const { pollId, updatedPoll, residentId, optionIndex } = action.payload;
-      const targetId = pollId || updatedPoll?._id;
+      const targetId = pollId || updatedPoll?._id || updatedPoll?.id;
       if (!targetId) return;
 
       if (updatedPoll) {
-        const updateItem = (item) => (item._id === targetId ? { ...item, ...updatedPoll } : item);
+        const updateItem = (item) => (String(item._id || item.id) === String(targetId) ? { ...item, ...updatedPoll } : item);
         state.activePolls.data = state.activePolls.data.map(updateItem);
-        if (state.selectedPoll && state.selectedPoll._id === targetId) {
+        if (state.selectedPoll && String(state.selectedPoll._id || state.selectedPoll.id) === String(targetId)) {
           state.selectedPoll = { ...state.selectedPoll, ...updatedPoll };
         }
       }
@@ -337,7 +345,13 @@ export const pollSlice = createSlice({
       })
       .addCase(fetchPollById.fulfilled, (state, action) => {
         state.loading = false;
-        const poll = action.payload?.data || action.payload;
+        const payload = action.payload;
+        const poll =
+          payload?.data?.poll ||
+          payload?.data?.data ||
+          payload?.data ||
+          payload?.poll ||
+          payload;
         state.selectedPoll = poll;
       })
       .addCase(fetchPollById.rejected, (state, action) => {
@@ -358,7 +372,7 @@ export const pollSlice = createSlice({
           action.payload?.data?.poll ||
           action.payload?.data?.data ||
           action.payload?.data;
-        const targetId = pollPayload?._id || action.payload?.id;
+        const targetId = pollPayload?._id || pollPayload?.id || action.payload?.id;
         const votedOptionIndex =
           typeof pollPayload?.votedOptionIndex === 'number'
             ? pollPayload.votedOptionIndex
@@ -369,7 +383,7 @@ export const pollSlice = createSlice({
             : (typeof votedOptionIndex === 'number' ? [votedOptionIndex] : []);
 
         const updateItem = (p) => {
-          const merged = pollPayload && pollPayload._id ? { ...p, ...pollPayload } : { ...p };
+          const merged = pollPayload && (pollPayload._id || pollPayload.id) ? { ...p, ...pollPayload } : { ...p };
           return {
             ...merged,
             hasVoted: true,
@@ -379,11 +393,11 @@ export const pollSlice = createSlice({
         };
 
         if (targetId) {
-          if (state.selectedPoll && state.selectedPoll._id === targetId) {
+          if (state.selectedPoll && String(state.selectedPoll._id || state.selectedPoll.id) === String(targetId)) {
             state.selectedPoll = updateItem(state.selectedPoll);
           }
           state.activePolls.data = state.activePolls.data.map((p) =>
-            p._id === targetId ? updateItem(p) : p
+            String(p._id || p.id) === String(targetId) ? updateItem(p) : p
           );
         }
       })

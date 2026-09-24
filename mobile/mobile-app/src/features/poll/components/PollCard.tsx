@@ -41,7 +41,7 @@ export function PollCard({
   if (!poll) return null;
 
   const isCommunityAdmin = checkIsAdmin(currentUser);
-  const canShowDetails = showViewDetails !== undefined ? showViewDetails : isCommunityAdmin;
+  const canShowDetails = showViewDetails !== undefined ? showViewDetails : true;
 
   const [submittingIndex, setSubmittingIndex] = useState<number | null>(null);
   const isClosed = poll.status === 'Closed';
