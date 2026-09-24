@@ -50,12 +50,11 @@ export const SYSTEM_FEATURE_CATALOG = [
   {
     categoryKey: 'notice_board_polls',
     categoryName: 'Notice Board & Polls',
-    actionButton: { label: 'View all', type: 'link', route: '/(resident)/notices/active-board' },
+    actionButton: { label: 'View all', type: 'link', route: '/(resident)/community-engagement' },
     items: [
-      { id: 'notices_active_board', name: 'Active Notice Board', permission: 'notices:active_board', iconName: 'Megaphone', colorBg: 'bg-orange-500/15', colorIcon: '#f97316', route: '/(resident)/notices/active-board', badge: '8', badgeColor: 'bg-orange-600 text-white' },
-      { id: 'notices_dashboard', name: 'Notice Dashboard', permission: 'notices:dashboard', iconName: 'LayoutDashboard', colorBg: 'bg-indigo-500/15', colorIcon: '#6366f1', route: '/(resident)/notices/dashboard' },
-      { id: 'notices_manage_notices', name: 'Manage Notices', permission: 'notices:manage_notices', iconName: 'FileEdit', colorBg: 'bg-sky-500/15', colorIcon: '#0ea5e9', route: '/(resident)/notices/manage' },
-      { id: 'notices_polls', name: 'Community Polls', permission: 'notices:polls', iconName: 'Vote', colorBg: 'bg-fuchsia-500/15', colorIcon: '#d946ef', route: '/(resident)/notices/polls' }
+      { id: 'community_engagement', name: 'Community Engagement', permission: 'notices:active_board', iconName: 'Megaphone', colorBg: 'bg-indigo-500/15', colorIcon: '#6366f1', route: '/(resident)/community-engagement', badge: 'NEW', badgeColor: 'bg-indigo-600 text-white' },
+      { id: 'notices_active_board', name: 'Resident View', permission: 'notices:active_board', iconName: 'Users', colorBg: 'bg-emerald-500/15', colorIcon: '#10b981', route: '/(resident)/notices/active-board' },
+      { id: 'community_engagement_manage', name: 'Manage Engagement', permission: 'notices:manage_notices', iconName: 'FileEdit', colorBg: 'bg-pink-500/15', colorIcon: '#ec4899', route: '/(resident)/community-engagement/ledger' }
     ]
   },
   {
@@ -89,5 +88,5 @@ export const DEFAULT_ACTIVE_QUICK_ACTIONS = [
   'billing_dashboard',
   'complaints_track_requests',
   'amenities_discover',
-  'notices_active_board'
+  'community_engagement'
 ];

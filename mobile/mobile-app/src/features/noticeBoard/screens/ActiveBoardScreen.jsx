@@ -29,10 +29,13 @@ import {
   RotateCcw,
 } from 'lucide-react-native';
 
+import { usePolls } from '@/src/features/poll/hooks/usePolls.js';
+
 export default function ActiveBoardScreen() {
   const router = useRouter();
   const { openNoticeId } = useLocalSearchParams();
   const { t, language } = useTranslation();
+  const { selectCurrentPoll } = usePolls();
 
   // Real-time socket sync
   useNoticeSocket();
@@ -160,12 +163,15 @@ export default function ActiveBoardScreen() {
 
   const handlePollPress = useCallback(
     (poll) => {
+      if (poll) {
+        selectCurrentPoll(poll);
+      }
       router.push({
         pathname: '/(resident)/polls/[id]',
         params: { id: poll._id || poll.id },
       });
     },
-    [router]
+    [router, selectCurrentPoll]
   );
 
   const handleBookmarkPress = useCallback(

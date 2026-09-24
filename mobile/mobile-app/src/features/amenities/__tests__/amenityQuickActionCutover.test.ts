@@ -211,11 +211,8 @@ describe('Amenity v2 — Frontend Quick Action Go-Live Cutover', () => {
       const complaintsRaise = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'complaints_raise_ticket');
       expect(complaintsRaise?.route).toBe('/(resident)/complaints/raise-ticket');
 
-      const noticesBoard = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'notices_active_board');
-      expect(noticesBoard?.route).toBe('/(resident)/notices/active-board');
-
-      const noticesPolls = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'notices_polls');
-      expect(noticesPolls?.route).toBe('/(resident)/notices/polls');
+      const communityEngagement = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'community_engagement');
+      expect(communityEngagement?.route).toBe('/(resident)/community-engagement');
     });
   });
 });

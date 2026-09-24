@@ -115,7 +115,7 @@ export default function PollDashboardScreen() {
   };
 
   const handleCardPress = (poll) => {
-    if (!isCommunityAdmin) return;
+    if (!poll || !poll._id) return;
     selectCurrentPoll(poll);
     router.push(`/(resident)/polls/${poll._id}`);
   };
@@ -309,8 +309,8 @@ export default function PollDashboardScreen() {
             <PollCard
               poll={item}
               currentUser={user}
-              showViewDetails={isCommunityAdmin}
-              onPress={isCommunityAdmin ? () => handleCardPress(item) : undefined}
+              showViewDetails={true}
+              onPress={() => handleCardPress(item)}
               onVote={(optionIndex) => handleDirectVote(item, optionIndex)}
             />
           )}
