@@ -692,8 +692,9 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
         optionIndex: selected[0],
         updatedPoll
       });
+      const updatedPollObj = typeof updatedPoll.toObject === 'function' ? updatedPoll.toObject() : updatedPoll;
       return {
-        ...updatedPoll.toObject(),
+        ...updatedPollObj,
         hasVoted: false,
         votedOptions: [],
         votedOptionIndex: null
@@ -709,8 +710,9 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
       updatedPoll
     });
 
+    const updatedPollObj = typeof updatedPoll.toObject === 'function' ? updatedPoll.toObject() : updatedPoll;
     return {
-      ...updatedPoll.toObject(),
+      ...updatedPollObj,
       hasVoted: true,
       votedOptions: selected,
       votedOptionIndex: selected[0]

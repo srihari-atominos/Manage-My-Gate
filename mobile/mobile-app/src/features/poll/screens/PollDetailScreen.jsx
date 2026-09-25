@@ -187,7 +187,7 @@ export default function PollDetailScreen() {
             </View>
             <View className="bg-muted/60 px-2 py-0.5 rounded-md border border-border/40">
               <Text className="text-[10px] text-muted-foreground font-medium">
-                Ends: {new Date(poll.endDate).toLocaleDateString()}
+                Ends: {poll.endDate ? new Date(poll.endDate).toLocaleDateString() : 'No expiry set'}
               </Text>
             </View>
             {hasVoted && (
@@ -200,6 +200,33 @@ export default function PollDetailScreen() {
           </View>
         </View>
 
+        {/* Draft Poll Notice Callout */}
+        {poll.status === 'Draft' && (
+          <View className="bg-amber-500/10 rounded-2xl border border-amber-500/20 p-4 mb-4 flex-row items-center gap-3">
+            <Lock size={20} className="text-amber-600 dark:text-amber-400" />
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-foreground">Draft Poll (Not Published)</Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">
+                This poll is currently saved as a draft. Voting will open once it is published.
+              </Text>
+            </View>
+            {isCommunityAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(resident)/community-engagement/edit' as any,
+                    params: { mode: 'edit', id: poll._id || poll.id, type: 'POLL' },
+                  })
+                }
+              >
+                Edit Poll
+              </Button>
+            )}
+          </View>
+        )}
+
         {/* Social Engagement & Reactions Bar: 👍 Helpful  ❤️ Important  🙏 Thanks */}
         <PollEngagementBar
           reactions={poll.reactionCounts || poll.reactions}
@@ -210,8 +237,8 @@ export default function PollDetailScreen() {
           onLikePress={() => reactToPoll(poll._id, 'HELPFUL')}
         />
 
-        {/* Voting Section (Shown only if Active and not yet voted, or if editing ballot is supported) */}
-        {!isClosed && !hasVoted && (
+        {/* Voting Section (Shown only if Active and not yet voted) */}
+        {poll.status === 'Active' && !hasVoted && (
           <PollVotingSection
             poll={poll}
             onVote={handleVote}

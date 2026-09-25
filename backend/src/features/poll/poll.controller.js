@@ -70,8 +70,9 @@ export const getPollById = async (req, res, next) => {
           : [userVote.optionIndex])
       : [];
 
+    const pollObj = typeof poll.toObject === 'function' ? poll.toObject() : poll;
     const basePoll = {
-      ...poll.toObject(),
+      ...pollObj,
       hasVoted,
       votedOptions,
       votedOptionIndex: votedOptions[0] ?? null
