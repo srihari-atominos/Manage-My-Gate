@@ -13,8 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import {
   Home,
-  Users,
-  ShieldCheck,
+  LayoutGrid,
   Settings,
 } from 'lucide-react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -33,7 +32,7 @@ import Animated, {
 import { cn } from '../../lib/utils';
 import { useBottomNavScroll } from './BottomNavScrollContext';
 
-export type MainTabKey = 'dashboard' | 'community' | 'security' | 'settings';
+export type MainTabKey = 'dashboard' | 'view_all' | 'settings';
 
 interface TabItem {
   key: MainTabKey;
@@ -50,16 +49,10 @@ const TAB_ITEMS: TabItem[] = [
     icon: Home,
   },
   {
-    key: 'community',
-    label: 'Community',
-    route: '/(resident)/notices/active-board',
-    icon: Users,
-  },
-  {
-    key: 'security',
-    label: 'Security',
-    route: '/(resident)/visitor',
-    icon: ShieldCheck,
+    key: 'view_all',
+    label: 'View All',
+    route: '/(resident)/all-features',
+    icon: LayoutGrid,
   },
   {
     key: 'settings',
@@ -96,13 +89,30 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
 }) => {
   const { t, language } = useTranslation();
   const IconComponent = item.icon;
+  const viewAllScale = useSharedValue(1);
+  const isViewAll = item.key === 'view_all';
   const activeColor = isDark ? THEME_ACTIVE_DARK : THEME_ACTIVE_LIGHT;
   const iconColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
   const isArabic = language === 'ar';
-  const tabFontSize = isArabic ? 13.5 : 12;
-  const tabLineHeight = isArabic ? 17 : 15;
+  const isNarrowScreen = Dimensions.get('window').width <= 350;
+  const tabFontSize = isNarrowScreen ? 12 : isArabic ? 14.5 : 13.5;
+  const tabLineHeight = isNarrowScreen ? 16 : isArabic ? 19 : 17;
   const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key, item.label);
+
+  // Give the feature catalogue entry a clear, modern response when selected.
+  useEffect(() => {
+    viewAllScale.value = isViewAll && isActive
+      ? withSequence(
+          withTiming(1.18, { duration: 110, easing: Easing.out(Easing.quad) }),
+          withSpring(1.05, { damping: 12, stiffness: 260 })
+        )
+      : withTiming(1, { duration: 140, easing: Easing.out(Easing.quad) });
+  }, [isActive, isViewAll, viewAllScale]);
+
+  const viewAllAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: viewAllScale.value }],
+  }));
 
   return (
     <Pressable
@@ -124,19 +134,19 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={translatedLabel}
     >
-      <View
-        style={{
+      <Animated.View
+        style={[viewAllAnimatedStyle, {
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: 3,
-        }}
+        }]}
       >
         <IconComponent
           size={22}
           color={iconColor}
           strokeWidth={isActive ? 2.4 : 1.8}
         />
-      </View>
+      </Animated.View>
 
       <Text
         style={{
@@ -175,16 +185,19 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   const pressScale = useSharedValue(1.0);
   const pressBlur = useSharedValue(0);
   const labelOpacity = useSharedValue(1.0);
+  const isViewAll = item.key === 'view_all';
   const isArabic = language === 'ar';
-  const tabFontSize = isArabic ? 13.5 : 12;
-  const tabLineHeight = isArabic ? 17 : 15;
-  const labelHeight = useSharedValue(isArabic ? 18 : 16);
+  const isNarrowScreen = Dimensions.get('window').width <= 350;
+  const tabFontSize = isNarrowScreen ? 12 : isArabic ? 14.5 : 13.5;
+  const tabLineHeight = isNarrowScreen ? 16 : isArabic ? 19 : 17;
+  const animatedLabelHeight = isNarrowScreen ? 17 : isArabic ? 20 : 18;
+  const labelHeight = useSharedValue(animatedLabelHeight);
 
   // Height is constant; no vertical collapsing
   useEffect(() => {
     labelOpacity.value = 1.0;
-    labelHeight.value = isArabic ? 18 : 16;
-  }, [isArabic, labelHeight, labelOpacity]);
+    labelHeight.value = animatedLabelHeight;
+  }, [animatedLabelHeight, labelHeight, labelOpacity]);
 
   // Zooming & motion-blur opacity effect on touch
   const animatedIconStyle = useAnimatedStyle(() => ({
@@ -208,13 +221,18 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   // Active state drives zoom and blur glow (for both tap and slide)
   useEffect(() => {
     if (isActive) {
-      pressScale.value = withSpring(1.22, { damping: 13, stiffness: 320 });
+      pressScale.value = isViewAll
+        ? withSequence(
+            withTiming(1.34, { duration: 110, easing: Easing.out(Easing.quad) }),
+            withSpring(1.18, { damping: 13, stiffness: 320 })
+          )
+        : withSpring(1.22, { damping: 13, stiffness: 320 });
       pressBlur.value = withTiming(1, { duration: 100, easing: Easing.out(Easing.quad) });
     } else {
       pressScale.value = withSpring(1.0, { damping: 15, stiffness: 280 });
       pressBlur.value = withTiming(0, { duration: 140, easing: Easing.out(Easing.quad) });
     }
-  }, [isActive, pressScale, pressBlur]);
+  }, [isActive, isViewAll, pressScale, pressBlur]);
 
   // Icons & labels: Active uses theme active color; inactive uses clear readable neutral
   const activeColor = isDark ? THEME_ACTIVE_DARK : THEME_ACTIVE_LIGHT;
@@ -254,6 +272,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
               isActive ? 'font-bold' : 'font-medium'
             )}
             numberOfLines={1}
+            ellipsizeMode="tail"
           >
             {translatedLabel}
           </Text>
@@ -301,8 +320,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   }, [isCompact, ANDROID_FULL_BREADTH, ANDROID_COMPACT_BREADTH, androidBreadth]);
 
   const activeTab: MainTabKey = useMemo(() => {
-    if (pathname.includes('/visitor')) return 'security';
-    if (pathname.includes('/notices') || pathname.includes('/directory') || pathname.includes('/polls') || pathname.includes('/notes')) return 'community';
+    if (pathname.includes('/all-features')) return 'view_all';
     if (pathname.includes('/settings')) return 'settings';
     return 'dashboard';
   }, [pathname]);

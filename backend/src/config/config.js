@@ -78,11 +78,18 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   avatarUploadPath: process.env.AVATAR_UPLOAD_PATH || 'uploads/avatars',
   sso: {
-    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
-    googleAndroidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID || '',
+    // Public OAuth client IDs are safe fallbacks for the released mobile app;
+    // deployment variables still override them for another environment.
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com',
+    googleAndroidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID || '610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com',
     googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     microsoftClientId: process.env.MICROSOFT_CLIENT_ID || '',
     microsoftTenantId: process.env.MICROSOFT_TENANT_ID || '',
+    // Native Sign in with Apple tokens are issued to the iOS bundle identifier.
+    // APPLE_SERVICE_ID is optional and is only needed if a web/Android OAuth flow
+    // is added later with an Apple Services ID.
+    appleClientId: process.env.APPLE_CLIENT_ID || 'com.atominosconsulting.nahom',
+    appleServiceId: process.env.APPLE_SERVICE_ID || '',
   },
   mobile: {
     scheme: process.env.MOBILE_APP_SCHEME || 'managemygate',

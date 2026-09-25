@@ -91,8 +91,10 @@ export class AuthController {
 
   async acceptInviteWithSSO(req, res, next) {
     try {
-      const { inviteToken, ssoCredential, code, codeVerifier, redirectUri, clientId, provider } = req.body;
-      const credentialOrOptions = ssoCredential ? ssoCredential : { code, codeVerifier, redirectUri, clientId };
+      const { inviteToken, ssoCredential, code, codeVerifier, redirectUri, clientId, nonce, fullName, provider } = req.body;
+      const credentialOrOptions = ssoCredential
+        ? { ssoCredential, nonce, fullName }
+        : { code, codeVerifier, redirectUri, clientId };
       const data = await authService.acceptInvitationWithSSO(inviteToken, credentialOrOptions, provider);
       
       if (data && data.token) {
@@ -196,6 +198,21 @@ export class AuthController {
         setRefreshTokenCookie(res, data.refreshToken);
       }
       res.success(data, 'Microsoft login successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async appleLogin(req, res, next) {
+    try {
+      const { token, inviteToken, nonce, fullName } = req.body;
+      const data = await authService.loginWithApple({ token, nonce, fullName }, inviteToken);
+
+      setAuthCookie(res, data.token);
+      if (data.refreshToken) {
+        setRefreshTokenCookie(res, data.refreshToken);
+      }
+      res.success(data, 'Apple login successful');
     } catch (error) {
       next(error);
     }

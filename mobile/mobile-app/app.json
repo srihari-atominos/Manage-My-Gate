@@ -21,6 +21,7 @@
     },
     "ios": {
       "supportsTablet": false,
+      "usesAppleSignIn": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
       "buildNumber": "16",
       "associatedDomains": [

@@ -208,6 +208,24 @@ const amenityReservationSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Paid amount cannot be negative'],
     },
+    paymentMethod: {
+      type: String,
+      enum: ['NONE', 'WALLET', 'RAZORPAY'],
+      default: 'NONE',
+    },
+    // Audit references are written only after the backend has settled the
+    // selected payment method; they are never accepted as proof from the app.
+    paymentReference: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    paymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Payment',
+      default: null,
+      index: true,
+    },
     depositAmount: {
       type: Number,
       default: 0,

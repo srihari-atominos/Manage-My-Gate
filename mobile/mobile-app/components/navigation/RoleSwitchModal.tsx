@@ -219,7 +219,13 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
                   </View>
                   <Text className="text-lg font-bold text-foreground">{t('switch_role', 'Switch Role Context')}</Text>
                 </View>
-                <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
+                <TouchableOpacity
+                  onPress={onClose}
+                  activeOpacity={0.7}
+                  className="h-11 w-11 items-center justify-center rounded-full bg-secondary active:bg-muted"
+                  accessibilityRole="button"
+                  accessibilityLabel={t('close', 'Close')}
+                >
                   <X size={16} className="text-muted-foreground" />
                 </TouchableOpacity>
               </View>

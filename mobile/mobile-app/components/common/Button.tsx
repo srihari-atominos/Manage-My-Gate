@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Pressable, View, PressableProps } from 'react-native';
-import { Text } from '../ui/text';
+import { Text, TextClassContext } from '../ui/text';
 import { LucideIcon } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
@@ -93,47 +93,57 @@ export const Button = forwardRef<View, ButtonProps>(
     };
 
     const sizeClasses = {
-      default: 'h-10 px-4 py-2 rounded-xl',
-      sm: 'h-8 rounded-lg px-2.5',
+      // Every mobile action keeps the 44pt minimum touch target. Visual density
+      // is preserved through padding and typography, not undersized press areas.
+      default: 'h-11 px-4 py-2 rounded-xl',
+      sm: 'h-11 rounded-lg px-3',
       lg: 'h-12 rounded-xl px-6',
-      icon: 'h-9 w-9 rounded-xl',
+      icon: 'h-11 w-11 rounded-xl',
     };
 
     const isDisabled = disabled || loading;
+    const minimumTouchTarget = variant === 'link'
+      ? ''
+      : size === 'icon'
+        ? 'min-h-11 min-w-11'
+        : 'min-h-11';
+
+    const foregroundClass = cn(
+      'text-center leading-tight flex-shrink',
+      textClasses[variant],
+      textClassName
+    );
 
     return (
-      <Pressable
-        ref={ref}
-        disabled={isDisabled}
-        className={cn(
-          'flex-row items-center justify-center',
-          variantClasses[variant],
-          sizeClasses[size],
-          isDisabled && 'opacity-50',
-          className
-        )}
-        {...props}
-      >
-        {({ pressed }) => (
-          <View className={cn('flex-row items-center', pressed && variant !== 'link' && 'opacity-80')}>
-            {LeftIcon && !loading && (
-              <LeftIcon size={16} className={cn('me-1.5', textClasses[variant])} />
-            )}
-            <Text
-              className={cn(
-                'text-sm font-semibold',
-                textClasses[variant],
-                textClassName
+      <TextClassContext.Provider value={foregroundClass}>
+        <Pressable
+          ref={ref}
+          disabled={isDisabled}
+          className={cn(
+            'flex-row items-center justify-center min-w-0',
+            variantClasses[variant],
+            sizeClasses[size],
+            isDisabled && 'opacity-50',
+            className,
+            minimumTouchTarget
+          )}
+          {...props}
+        >
+          {({ pressed }) => (
+            <View className={cn('flex-row items-center justify-center min-w-0', pressed && variant !== 'link' && 'opacity-80')}>
+              {LeftIcon && !loading && (
+                <LeftIcon size={16} className={cn('me-1.5', textClasses[variant])} />
               )}
-            >
-              {loading ? 'Loading...' : children}
-            </Text>
-            {RightIcon && !loading && (
-              <RightIcon size={16} className={cn('ms-1.5', textClasses[variant])} />
-            )}
-          </View>
-        )}
-      </Pressable>
+              <Text className={cn('text-center leading-tight flex-shrink text-sm font-semibold', foregroundClass)}>
+                {loading ? 'Loading...' : children}
+              </Text>
+              {RightIcon && !loading && (
+                <RightIcon size={16} className={cn('ms-1.5', textClasses[variant])} />
+              )}
+            </View>
+          )}
+        </Pressable>
+      </TextClassContext.Provider>
     );
   }
 );

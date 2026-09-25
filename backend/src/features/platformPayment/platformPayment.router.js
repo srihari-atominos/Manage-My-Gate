@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import platformPaymentController from './platformPayment.controller.js';
-import { optionalAuth } from '../../middlewares/auth.middleware.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
 
-router.use(optionalAuth);
+// Platform finance operations are internal. The customer-facing, signed
+// payment webhook remains at /payments/webhook/razorpay.
+router.use(isAuthenticated, tenantContext({ requirePlatformContext: true }));
 
 router.get('/', platformPaymentController.getAll);
 router.get('/outbox', platformPaymentController.getOutboxEvents);

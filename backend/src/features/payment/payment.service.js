@@ -12,6 +12,35 @@ import mongoose from 'mongoose';
 
 export class PaymentService {
   /**
+   * Rehydrates a previously-created Razorpay order for a safe checkout retry.
+   * Reusing the pending order prevents a resident from being charged twice by
+   * repeatedly opening checkout for the same reservation hold.
+   */
+  async getCheckoutDetails(payment) {
+    if (!payment || payment.gateway !== 'razorpay' || payment.status !== 'pending') {
+      throw new HttpError(400, 'This payment is not available for checkout.');
+    }
+
+    const credentials = await integrationHubService.getDecryptedCredentials(payment.orgId, 'razorpay');
+    const razorpayKeyId = credentials?.keyId || credentials?.key_id;
+    if (!razorpayKeyId) {
+      throw new HttpError(400, 'Razorpay credentials configured for your community are invalid. Please contact your community admin.');
+    }
+
+    return {
+      success: true,
+      paymentId: payment._id,
+      orderId: payment.gatewayTransactionId,
+      amount: payment.amount,
+      amountFormatted: formatINR(payment.amount),
+      currency: payment.currency,
+      status: payment.status,
+      gateway: payment.gateway,
+      razorpayKeyId,
+    };
+  }
+
+  /**
    * Initiate a payment order using the configured provider strategy
    */
   async createPaymentOrder({ orgId, userId, referenceId, referenceType, amount, currency = 'INR', gateway = null }, session = null) {
@@ -25,6 +54,9 @@ export class PaymentService {
         const Invoice = (await import('../invoice/invoice.model.js')).default;
         const invoice = await Invoice.findById(referenceId);
         if (!invoice) {
+          throw new HttpError(404, 'Invoice not found.');
+        }
+        if (String(invoice.orgId) !== String(orgId)) {
           throw new HttpError(404, 'Invoice not found.');
         }
         if (invoice.status === 'PAID') {
@@ -136,6 +168,9 @@ export class PaymentService {
     try {
       const payment = await Payment.findById(paymentId);
       if (!payment) throw new HttpError(404, 'Payment record not found.');
+      if (orgId && String(payment.orgId) !== String(orgId)) {
+        throw new HttpError(404, 'Payment record not found.');
+      }
 
       if (payment.status === 'success') {
         logger.info(`Payment transaction ${paymentId} already settled (success). Idempotent response returned.`);
@@ -223,26 +258,68 @@ export class PaymentService {
   /**
    * Process refund via strategy provider
    */
-  async processRefund(paymentId, amount = null, notes = {}) {
+  async assertPaymentAccess(paymentId, { orgId, userId, isAdmin = false } = {}) {
+    const payment = await Payment.findById(paymentId);
+    if (!payment || (orgId && String(payment.orgId) !== String(orgId))) {
+      throw new HttpError(404, 'Payment record not found.');
+    }
+    if (!isAdmin && userId && String(payment.userId) !== String(userId)) {
+      throw new HttpError(403, 'Forbidden. This payment belongs to another user.');
+    }
+    return payment;
+  }
+
+  async processRefund(paymentId, amount = null, notes = {}, context = {}) {
     try {
       const payment = await Payment.findById(paymentId);
       if (!payment) throw new HttpError(404, 'Payment record not found.');
+      if (context.orgId && String(payment.orgId) !== String(context.orgId)) {
+        throw new HttpError(404, 'Payment record not found.');
+      }
 
       if (payment.status !== 'success') {
         throw new HttpError(400, 'Only successful payments can be refunded.');
       }
 
       const activeGateway = payment.gateway || 'mock';
-      const refundAmount = amount || payment.amount; // Allow partial refunds
+      const refundAmount = amount === null || amount === undefined ? payment.amount : Number(amount);
+      if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+        throw new HttpError(400, 'Refund amount must be a positive number.');
+      }
+
+      const previousRefunds = await Payment.find({
+        parentPaymentId: payment._id,
+        type: 'Refund',
+        status: 'success',
+        isDeleted: false,
+      }).select('amount').lean();
+      const alreadyRefunded = previousRefunds.reduce((sum, refund) => sum + Math.abs(Number(refund.amount) || 0), 0);
+      const refundableAmount = Math.max(0, Number(payment.amount) - alreadyRefunded);
+      if (refundAmount > refundableAmount + 0.01) {
+        throw new HttpError(400, `Refund amount exceeds the remaining refundable amount of ₹${refundableAmount}.`);
+      }
       
       let gatewayRefund = { id: `refund_mock_${Date.now()}` };
       
-      if (process.env.NODE_ENV !== 'production' && activeGateway === 'mock') {
+      if (
+        process.env.NODE_ENV !== 'production'
+        && (activeGateway === 'mock' || payment.gatewayTransactionId?.startsWith('pay_mock_'))
+      ) {
         logger.info('Bypassing gateway refund for mock payment in non-production environment');
       } else {
         const credentials = await integrationHubService.getDecryptedCredentials(payment.orgId, activeGateway);
         const provider = getPaymentProvider(activeGateway);
-        gatewayRefund = await provider.initiateRefund(payment.gatewayTransactionId, refundAmount, notes, credentials);
+        // Providers implement the common `refund` contract. Calling a
+        // non-existent `initiateRefund` meant real Razorpay refunds failed
+        // before any money could be sent back to the payer.
+        gatewayRefund = await provider.refund(
+          {
+            paymentId: payment.gatewayTransactionId,
+            amount: refundAmount,
+            notes,
+          },
+          credentials
+        );
       }
 
       // 1. Mark original payment status as partially refunded or fully refunded (Optional but good practice)
@@ -258,8 +335,10 @@ export class PaymentService {
         type: 'Refund',
         parentPaymentId: payment._id,
         status: 'success',
-        gatewayTransactionId: gatewayRefund.id,
-        paymentMethod: payment.paymentMethod
+        gateway: activeGateway,
+        gatewayTransactionId: gatewayRefund.refundId || gatewayRefund.id,
+        paymentMethod: payment.paymentMethod,
+        currency: payment.currency,
       });
 
       paymentEventEmitter.emit(PAYMENT_REFUNDED, refundRecord);
@@ -284,7 +363,7 @@ export class PaymentService {
             action: 'PAYMENT_REFUNDED',
             details: `Refund of ₹${refundAmount} processed. New Paid Amount: ₹${sumPaid}`,
             date: new Date(),
-            performedBy: null
+            performedBy: context.actorId || null
           });
           
           await invoice.save(); // Pre-save hook adjusts outstandingAmount and status
@@ -456,7 +535,3 @@ export class PaymentService {
 }
 
 export default new PaymentService();
-
-
-
-

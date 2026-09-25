@@ -2,12 +2,14 @@ import UserIdentity from './userIdentity.model.js';
 import HttpError from '../../utils/httpError.utils.js';
 import googleProvider from './providerAdapters/google.provider.js';
 import microsoftProvider from './providerAdapters/microsoft.provider.js';
+import appleProvider from './providerAdapters/apple.provider.js';
 
 export class UserIdentityService {
   constructor() {
     this.adapters = {
       google: googleProvider,
       microsoft: microsoftProvider,
+      apple: appleProvider,
     };
   }
 
@@ -17,13 +19,13 @@ export class UserIdentityService {
    * @param {string} token - The raw ID token from the provider
    * @returns {Promise<object>} - Normalized identity data { provider, providerId, providerEmail, profileData }
    */
-  async verifyAndNormalizeProviderToken(provider, token) {
+  async verifyAndNormalizeProviderToken(provider, token, options = {}) {
     const adapter = this.adapters[provider];
     if (!adapter) {
       throw new HttpError(400, `SSO Provider '${provider}' is not supported yet.`);
     }
-    const rawPayload = await adapter.verifyToken(token);
-    return adapter.normalizeIdentity(rawPayload);
+    const rawPayload = await adapter.verifyToken(token, options);
+    return adapter.normalizeIdentity(rawPayload, options);
   }
 
   /**

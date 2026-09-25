@@ -29,6 +29,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
+import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
 import {
   NahomEmblem,
   NahomWordmark,
@@ -746,11 +747,11 @@ export default function SignupScreen() {
                 {/* Social Authentication: Google ID & Apple ID */}
                 <View className="flex-row items-center gap-3 w-full">
                   <SocialAuthButton
-                    provider="google"
-                    onPress={handleGoogleSignIn}
-                    loading={googleLoading}
-                  />
-                  <SocialAuthButton provider="apple" />
+                  provider="google"
+                  onPress={handleGoogleSignIn}
+                  loading={googleLoading}
+                />
+                <AppleSignInButton disabled={googleLoading} />
                 </View>
 
                 {/* Bottom Hint (Transparent container without underline) */}

@@ -6,8 +6,8 @@ import { cn } from '@/lib/utils';
 export interface SettingsCtaRowProps {
   label: string;
   subLabel?: string;
-  buttonLabel: string;
-  onPress: () => void;
+  buttonLabel?: string;
+  onPress?: () => void;
   className?: string;
 }
 
@@ -36,15 +36,17 @@ export const SettingsCtaRow: React.FC<SettingsCtaRowProps> = ({
         ) : null}
       </View>
 
-      <Pressable
-        onPress={onPress}
-        className="bg-primary px-3.5 py-1.5 rounded-full active:opacity-85 shadow-2xs shrink-0"
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={buttonLabel}
-      >
-        <Text className="text-xs font-bold text-white font-sans">{buttonLabel}</Text>
-      </Pressable>
+      {buttonLabel && onPress ? (
+        <Pressable
+          onPress={onPress}
+          className="bg-primary px-3.5 py-1.5 rounded-full active:opacity-85 shadow-2xs shrink-0"
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={buttonLabel}
+        >
+          <Text className="text-xs font-bold text-white font-sans">{buttonLabel}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 };

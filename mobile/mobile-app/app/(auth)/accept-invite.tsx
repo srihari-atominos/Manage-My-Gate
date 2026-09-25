@@ -705,7 +705,11 @@ export default function AcceptInviteScreen() {
                     />
                   </View>
                   <View className="flex-1">
-                    <AppleSignInButton />
+                    <AppleSignInButton
+                      inviteToken={currentInviteToken}
+                      onSuccess={handleSsoSuccess}
+                      onError={handleSsoError}
+                    />
                   </View>
                 </View>
 

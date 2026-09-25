@@ -14,8 +14,10 @@ export class NotificationService {
    */
   async createNotification(notificationData) {
     const session = await mongoose.startSession();
-    session.startTransaction();
+    let transactionStarted = false;
     try {
+      session.startTransaction();
+      transactionStarted = true;
       const newNotification = await notificationRepository.create(notificationData, session);
       await session.commitTransaction();
 
@@ -24,7 +26,28 @@ export class NotificationService {
 
       return newNotification;
     } catch (error) {
-      await session.abortTransaction();
+      if (transactionStarted) {
+        try {
+          await session.abortTransaction();
+        } catch {
+          // Preserve the original notification error below.
+        }
+      }
+
+      // Some local/managed standalone MongoDB deployments reject writes made
+      // through a transaction session with "retryable writes" errors. An
+      // amenity notification must not be lost because that deployment cannot
+      // offer multi-document transactions; a single notification insert is
+      // atomic on its own and is safe to retry without the session.
+      const canUseSingleWriteFallback =
+        /retryable writes|Transaction numbers are only allowed|does not support transactions/i.test(
+          error?.message || ''
+        );
+      if (canUseSingleWriteFallback) {
+        const newNotification = await notificationRepository.create(notificationData);
+        notificationEvents.emit('notification_created', newNotification);
+        return newNotification;
+      }
       throw error;
     } finally {
       await session.endSession();

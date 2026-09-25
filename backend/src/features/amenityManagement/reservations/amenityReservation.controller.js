@@ -69,7 +69,8 @@ export class AmenityReservationController {
         orgId,
         residentId,
         unitId,
-        paymentReference: req.body.paymentReference,
+        paymentMethod: req.body.paymentMethod,
+        paymentId: req.body.paymentId,
         notes: req.body.notes,
       };
 

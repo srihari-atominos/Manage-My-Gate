@@ -229,7 +229,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <TouchableOpacity
                 onPress={() => setVillaModalVisible(true)}
                 activeOpacity={0.75}
-                className="flex-row items-center gap-1 bg-secondary/90 border border-border/70 px-2.5 py-1.5 rounded-full shadow-2xs shrink-0"
+                className="flex-row min-h-11 items-center gap-1 bg-secondary/90 border border-border/70 px-2.5 py-1.5 rounded-full shadow-2xs shrink-0"
                 accessibilityRole="button"
                 accessibilityLabel={`Unit ${activeVilla}. Tap to switch villa unit.`}
               >
@@ -263,7 +263,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             }}
             activeOpacity={hasMultipleOrgs ? 0.75 : 1}
             disabled={!hasMultipleOrgs}
-            className="flex-row items-center gap-1.5 bg-secondary/90 border border-border/70 px-2.5 py-1.5 rounded-full shadow-2xs flex-1 min-w-0"
+            className="flex-row min-h-11 items-center gap-1.5 bg-secondary/90 border border-border/70 px-2.5 py-1.5 rounded-full shadow-2xs flex-1 min-w-0"
             accessibilityRole={hasMultipleOrgs ? 'button' : 'none'}
             accessibilityLabel={`Community ${activeCommunity}.${hasMultipleOrgs ? ' Tap to switch community.' : ''}`}
           >
@@ -289,7 +289,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={toggleTheme}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center active:bg-secondary shadow-2xs"
+            className="size-11 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Toggle Light and Dark Theme"
           >
@@ -304,7 +304,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center relative active:bg-secondary shadow-2xs"
+            className="size-11 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center relative active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
@@ -322,7 +322,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={() => router.push('/(resident)/profile' as any)}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center overflow-hidden active:bg-secondary shadow-2xs"
+            className="size-11 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center overflow-hidden active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel={t('profile', 'Profile')}
           >

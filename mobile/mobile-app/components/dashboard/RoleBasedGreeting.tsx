@@ -147,7 +147,7 @@ export const getUserDisplayName = (user: any): string => {
 /**
  * Extracts and formats the dynamic unit / villa / house number from user session.
  */
-export const formatUnitLocation = (user: any, propUnitName?: string | null): string => {
+export const formatUnitLocation = (user: any, propUnitName?: string | null): string | null => {
   if (propUnitName && typeof propUnitName === 'string' && propUnitName.trim() !== '') {
     const pTrim = propUnitName.trim();
     const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|gate|house|#)/i.test(pTrim);
@@ -383,7 +383,7 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
                 backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
                 borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
               }}
-              className="flex-row items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
+              className="flex-row min-h-11 items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
               accessibilityRole="button"
               accessibilityLabel={`Current location: ${localizedLocation}. Tap to switch.`}
             >
@@ -432,4 +432,3 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 };
 
 export default RoleBasedGreeting;
-

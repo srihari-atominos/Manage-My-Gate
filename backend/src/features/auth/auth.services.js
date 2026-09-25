@@ -1464,6 +1464,30 @@ export class AuthService {
   }
 
   /**
+   * Verifies an Apple identity token and signs the account in. The first
+   * verified authorization creates and links the local account atomically:
+   * Apple only exposes email on that first authorization, so deferring the
+   * link would make a returning private-relay user impossible to identify.
+   */
+  async loginWithApple(appleTokenOrPayload, inviteToken = null) {
+    const appleToken =
+      typeof appleTokenOrPayload === 'string' ? appleTokenOrPayload : appleTokenOrPayload?.token;
+    if (!appleToken) {
+      throw new HttpError(400, 'Apple identity token is required.');
+    }
+
+    const identityData = await userIdentityService.verifyAndNormalizeProviderToken('apple', appleToken, {
+      nonce: typeof appleTokenOrPayload === 'object' ? appleTokenOrPayload?.nonce : undefined,
+      fullName: typeof appleTokenOrPayload === 'object' ? appleTokenOrPayload?.fullName : undefined,
+    });
+    if (inviteToken) {
+      identityData.inviteToken = inviteToken;
+    }
+
+    return await this._handleSsoAuthentication(identityData);
+  }
+
+  /**
    * Registers a new user via SSO and creates an organization atomically.
    */
   async registerSsoWithOrg(payload) {
@@ -1604,11 +1628,14 @@ export class AuthService {
       }
     }
 
-    if (!user.emailVerified && user.email === providerEmail) {
+    if (providerEmail && !user.emailVerified && user.email === providerEmail) {
       updateData.emailVerified = true;
     }
 
     const existingIdentity = await userIdentityService.getIdentityByProviderId(provider, providerId, session);
+    if (existingIdentity && existingIdentity.userId?.toString() !== user._id?.toString()) {
+      throw new HttpError(409, `This ${provider} account is already linked to another user.`);
+    }
     if (!existingIdentity) {
       await userIdentityService.linkIdentity(user._id, identityData, session);
       authEvents.emit('USER_LINKED_PROVIDER', { userId: user._id, provider });
@@ -1653,12 +1680,18 @@ export class AuthService {
         }
       } 
       
-      if (!user) {
+      if (!user && email) {
         // Fallback: Check if user exists by email to link them
         user = await userService.getUserByEmail(email, session);
       }
 
       if (!user) {
+        if (!email) {
+          throw new HttpError(
+            400,
+            'Apple did not return an email for this account. Please complete the first Apple sign-in on this app or use your existing sign-in method.'
+          );
+        }
         user = await this._registerSsoUser(identityData, session);
       } else {
         user = await this._updateExistingSsoUser(user, identityData, session);
@@ -2088,10 +2121,10 @@ export class AuthService {
   }
 
   /**
-   * Accepts a workspace invitation using SSO (Google or Microsoft).
+   * Accepts a workspace invitation using SSO (Google, Microsoft, or Apple).
    * @param {string} inviteToken - Decodable JWT invitation token containing user context
    * @param {string|object} ssoCredentialOrPayload - Provider credential token (ID token) or code payload
-   * @param {string} provider - SSO Provider ('google' or 'microsoft')
+   * @param {string} provider - SSO Provider ('google', 'microsoft', or 'apple')
    */
   async acceptInvitationWithSSO(inviteToken, ssoCredentialOrPayload, provider) {
     let ssoCredential =
@@ -2113,8 +2146,10 @@ export class AuthService {
     }
 
     // 1. Verify SSO token using provider adapters through UserIdentityService
-    const identityData = await userIdentityService.verifyAndNormalizeProviderToken(provider, ssoCredential);
-    const ssoEmail = identityData.providerEmail;
+    const identityData = await userIdentityService.verifyAndNormalizeProviderToken(provider, ssoCredential, {
+      nonce: provider === 'apple' ? ssoCredentialOrPayload?.nonce : undefined,
+      fullName: provider === 'apple' ? ssoCredentialOrPayload?.fullName : undefined,
+    });
 
     // 2. Database transaction for atomic operations
     const mongoose = (await import('mongoose')).default;
@@ -2125,6 +2160,15 @@ export class AuthService {
     session.startTransaction();
 
     try {
+      // Apple only includes email on the first authorization. Resolve the
+      // stored, verified email for repeat sign-ins by the stable provider ID.
+      const existingIdentity = await userIdentityService.getIdentityByProviderId(
+        provider,
+        identityData.providerId,
+        session
+      );
+      const ssoEmail = identityData.providerEmail || existingIdentity?.providerEmail;
+
       // Validate invitation token without consuming it before identity verification
       const { userId, orgId } = await tokenService.validateInvitationToken(inviteToken, session);
 
@@ -2137,8 +2181,14 @@ export class AuthService {
         throw new HttpError(400, 'User account is inactive or suspended.');
       }
 
-      if (!user.email || ssoEmail.toLowerCase() !== user.email.toLowerCase()) {
+      if (!ssoEmail || !user.email || ssoEmail.toLowerCase() !== user.email.toLowerCase()) {
         throw new HttpError(403, 'Email in SSO token does not match the invitation email.');
+      }
+
+      // Never allow an SSO account already linked to one person to activate a
+      // different invitation. This protects every provider, not just Apple.
+      if (existingIdentity && existingIdentity.userId?.toString() !== user._id?.toString()) {
+        throw new HttpError(409, `This ${provider} account is already linked to another user.`);
       }
 
       // Transition invitation token to ACCEPTED only after identity verification succeeds
@@ -2182,7 +2232,6 @@ export class AuthService {
       }
 
       // Check if identity already linked, if not link it
-      const existingIdentity = await userIdentityService.getIdentityByProviderId(provider, identityData.providerId, session);
       if (!existingIdentity) {
         if (typeof userIdentityService.createIdentity === 'function') {
           await userIdentityService.createIdentity(userId, identityData, session);

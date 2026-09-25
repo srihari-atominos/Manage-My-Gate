@@ -128,6 +128,15 @@ export interface WalletState {
   transactionHistory?: any[];
   transactions?: any[];
   isPaymentGatewayConfigured?: boolean;
+  minimumRefundAmount?: number;
+  refundEligibleBalance?: number;
+  refundableSources?: Array<{
+    paymentId: string;
+    amount: number;
+    availableAmount: number;
+    paymentMethod?: string;
+    paidAt?: string;
+  }>;
   loading?: boolean;
   pagination?: InvoicesGridPagination;
   isLoading: boolean;

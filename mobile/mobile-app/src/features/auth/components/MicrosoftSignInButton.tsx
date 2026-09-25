@@ -21,7 +21,7 @@ export interface MicrosoftSignInButtonProps {
 }
 
 export function MicrosoftSignInButton({ inviteToken, onSuccess, onError }: MicrosoftSignInButtonProps = {}) {
-  const { loginWithMicrosoft, acceptSsoInvite, loading } = useAuth();
+  const { loginWithMicrosoft, acceptSsoInvite } = useAuth();
   const [submitting, setSubmitting] = React.useState(false);
 
   const redirectUri = AuthSession.makeRedirectUri({
@@ -147,7 +147,9 @@ export function MicrosoftSignInButton({ inviteToken, onSuccess, onError }: Micro
     }
   }, [response, request, inviteToken, acceptSsoInvite, loginWithMicrosoft, onSuccess, onError, redirectUri]);
 
-  const isLoading = loading || submitting;
+  // Keep the loading indicator scoped to Microsoft. A separate authentication
+  // request must not make this provider look active.
+  const isLoading = submitting;
 
   return (
     <Button

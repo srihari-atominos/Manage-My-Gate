@@ -2,7 +2,8 @@ import { body, param, query } from 'express-validator';
 
 export const confirmReservationRules = [
   body('holdId').notEmpty().withMessage('holdId is required').isMongoId().withMessage('Invalid holdId'),
-  body('paymentReference').optional().isString().trim(),
+  body('paymentMethod').optional().isIn(['WALLET', 'RAZORPAY']).withMessage('Invalid payment method'),
+  body('paymentId').optional().isMongoId().withMessage('Invalid payment ID'),
   body('notes').optional().isString().trim(),
 ];
 

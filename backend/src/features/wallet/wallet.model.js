@@ -34,6 +34,21 @@ const walletTransactionSchema = new mongoose.Schema({
     index: true,
     sparse: true
   },
+  // For a wallet cash-refund, this identifies the successful wallet top-up
+  // Payment that Razorpay will refund back to its original UPI/card account.
+  // Keeping this separate from referenceId avoids overloading booking links.
+  sourcePaymentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Payment',
+    default: null,
+    index: true
+  },
+  razorpay_refund_id: {
+    type: String,
+    default: null,
+    index: true,
+    sparse: true
+  },
   type: {
     type: String,
     enum: ['Debit', 'Credit'],
@@ -73,6 +88,7 @@ const walletTransactionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 walletTransactionSchema.index({ userId: 1, orgId: 1, createdAt: -1 });
+walletTransactionSchema.index({ sourcePaymentId: 1, paymentStatus: 1 });
 
 export const WalletTransaction = mongoose.model('WalletTransaction', walletTransactionSchema);
 

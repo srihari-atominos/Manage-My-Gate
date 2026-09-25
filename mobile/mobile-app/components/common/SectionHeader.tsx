@@ -176,7 +176,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         <View className="flex-1 min-w-0 justify-center">
           <Text
             numberOfLines={1}
-            className="text-[17.5px] sm:text-[18.5px] font-bold font-sans text-foreground tracking-tight"
+            className="text-[19px] sm:text-[20px] font-bold font-sans text-foreground tracking-tight"
           >
             {localizedTitle}
           </Text>
@@ -184,7 +184,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           {displaySubtitle ? (
             <Text
               numberOfLines={1}
-              className="text-[12.5px] sm:text-[13px] font-normal font-sans text-muted-foreground mt-1 tracking-normal"
+              className="text-[14px] sm:text-[14.5px] font-normal font-sans text-muted-foreground mt-1 tracking-normal"
             >
               {localizedSubtitle}
             </Text>
@@ -196,11 +196,11 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       {actionLabel && onAction && (
         <Pressable
           onPress={onAction}
-          className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-3 py-1.5 rounded-full active:scale-95 transition-transform shrink-0 shadow-2xs"
+          className="flex-row min-h-11 items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-3 py-1.5 rounded-full active:scale-95 transition-transform shrink-0 shadow-2xs"
           accessibilityRole="button"
           accessibilityLabel={localizedActionLabel}
         >
-          <Text className="text-[11.5px] font-bold font-sans text-primary">
+          <Text className="text-[13px] font-bold font-sans text-primary">
             {localizedActionLabel}
           </Text>
           {isExpanded !== undefined ? (

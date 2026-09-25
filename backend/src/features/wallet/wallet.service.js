@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import walletRepository from './wallet.repository.js';
+import { WalletTransaction } from './wallet.model.js';
+import Payment from '../payment/payment.model.js';
 import { walletEventEmitter, WALLET_UPDATED, WALLET_TRANSACTION_CREATED } from './wallet.events.js';
 import { paymentEventEmitter, PAYMENT_SUCCESS, PAYMENT_REFUNDED } from '../payment/payment.events.js';
 import { amenityBookingEventEmitter, AMENITY_BOOKING_CONFIRMED } from '../amenityBooking/amenityBooking.events.js';
@@ -9,6 +11,10 @@ import HttpError from '../../utils/httpError.utils.js';
 import logger from '../../utils/logger.utils.js';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
+
+const MINIMUM_WALLET_REFUND_AMOUNT = 10;
+
+const toCurrency = (amount) => Math.round((Number(amount) || 0) * 100) / 100;
 
 class WalletService {
   constructor() {
@@ -342,6 +348,7 @@ class WalletService {
 
     const transactionHistory = transactionsList.map((t) => (t.toObject ? t.toObject() : t));
     const gateway = await this.getGatewayCredentials(orgId);
+    const refundEligibility = await this.getRefundEligibility(userId, orgId, wallet);
 
     return {
       balance: displayBalance,
@@ -349,8 +356,257 @@ class WalletService {
       transactionHistory,
       transactions: transactionHistory,
       isPaymentGatewayConfigured: gateway.isConfigured,
-      isMockGateway: gateway.isMock
+      isMockGateway: gateway.isMock,
+      minimumRefundAmount: MINIMUM_WALLET_REFUND_AMOUNT,
+      refundEligibleBalance: refundEligibility.maximumRefundAmount,
+      refundableSources: refundEligibility.sources,
     };
+  }
+
+  /**
+   * A wallet balance can contain refunds, admin adjustments, and online
+   * top-ups. Only money from a verified WalletRecharge is eligible to travel
+   * back through Razorpay, because Razorpay refunds always return to the
+   * original UPI/card account. This method exposes only safe source payments.
+   */
+  async getRefundEligibility(userId, orgId, existingWallet = null) {
+    const wallet = existingWallet || await walletRepository.getWallet(userId, orgId);
+    const walletBalance = Math.max(0, toCurrency(wallet?.balance));
+    const targetOrgId = orgId || wallet?.orgId;
+    if (!targetOrgId) {
+      return { walletBalance, maximumRefundAmount: 0, sources: [] };
+    }
+    const allowedGateways = process.env.NODE_ENV === 'test'
+      ? ['razorpay', 'mock']
+      : ['razorpay'];
+
+    const sourcePayments = await Payment.find({
+      userId,
+      orgId: targetOrgId,
+      referenceType: 'WalletRecharge',
+      type: 'Payment',
+      status: 'success',
+      gateway: { $in: allowedGateways },
+      gatewayTransactionId: { $exists: true, $ne: null },
+      isDeleted: false,
+    })
+      .select('_id amount paymentMethod paymentDate createdAt gateway gatewayTransactionId')
+      .sort({ paymentDate: -1, createdAt: -1 })
+      .lean();
+
+    if (sourcePayments.length === 0 || walletBalance <= 0) {
+      return { walletBalance, maximumRefundAmount: 0, sources: [] };
+    }
+
+    const sourcePaymentIds = sourcePayments.map((payment) => payment._id);
+    const [completedRefunds, pendingRefunds] = await Promise.all([
+      Payment.aggregate([
+        {
+          $match: {
+            parentPaymentId: { $in: sourcePaymentIds },
+            type: 'Refund',
+            status: 'success',
+            isDeleted: false,
+          },
+        },
+        {
+          $group: {
+            _id: '$parentPaymentId',
+            amount: { $sum: { $abs: '$amount' } },
+          },
+        },
+      ]),
+      WalletTransaction.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(String(userId)),
+            orgId: new mongoose.Types.ObjectId(String(targetOrgId)),
+            sourcePaymentId: { $in: sourcePaymentIds },
+            type: 'Debit',
+            referenceType: 'Refund',
+            paymentStatus: 'pending',
+          },
+        },
+        {
+          $group: {
+            _id: '$sourcePaymentId',
+            amount: { $sum: '$amount' },
+          },
+        },
+      ]),
+    ]);
+
+    const completedByPaymentId = new Map(
+      completedRefunds.map((refund) => [String(refund._id), toCurrency(refund.amount)])
+    );
+    const pendingByPaymentId = new Map(
+      pendingRefunds.map((refund) => [String(refund._id), toCurrency(refund.amount)])
+    );
+
+    const sources = sourcePayments
+      .map((payment) => {
+        const alreadyRefunded = completedByPaymentId.get(String(payment._id)) || 0;
+        const pendingAmount = pendingByPaymentId.get(String(payment._id)) || 0;
+        const availableAmount = Math.max(
+          0,
+          toCurrency(Number(payment.amount) - alreadyRefunded - pendingAmount)
+        );
+
+        return {
+          paymentId: String(payment._id),
+          amount: toCurrency(payment.amount),
+          availableAmount,
+          paymentMethod: payment.paymentMethod || 'Razorpay',
+          paidAt: payment.paymentDate || payment.createdAt,
+        };
+      })
+      .filter((source) => source.availableAmount >= MINIMUM_WALLET_REFUND_AMOUNT);
+
+    const sourceRefundableBalance = toCurrency(
+      sources.reduce((sum, source) => sum + source.availableAmount, 0)
+    );
+
+    return {
+      walletBalance,
+      // Do not allow a cash refund to exceed the current balance, even if an
+      // older top-up has not itself been fully refunded.
+      maximumRefundAmount: toCurrency(Math.min(walletBalance, sourceRefundableBalance)),
+      sources,
+    };
+  }
+
+  /**
+   * Refunds a resident's available wallet credit to the exact payment method
+   * used for a verified online wallet top-up. A caller never supplies a bank
+   * account or UPI ID; Razorpay routes the money to the original payer.
+   */
+  async refundToOriginalPayment({ userId, orgId, paymentId, amount }) {
+    const refundAmount = toCurrency(amount);
+    if (!Number.isFinite(refundAmount) || refundAmount < MINIMUM_WALLET_REFUND_AMOUNT) {
+      throw new HttpError(400, `Wallet refunds must be at least ₹${MINIMUM_WALLET_REFUND_AMOUNT}.`);
+    }
+    if (!paymentId || !mongoose.isValidObjectId(paymentId)) {
+      throw new HttpError(400, 'Select the original wallet top-up payment to refund.');
+    }
+
+    const eligibility = await this.getRefundEligibility(userId, orgId);
+    const source = eligibility.sources.find((item) => item.paymentId === String(paymentId));
+    if (!source) {
+      throw new HttpError(404, 'This wallet top-up is not eligible for a refund.');
+    }
+
+    const maximumForSource = toCurrency(
+      Math.min(eligibility.walletBalance, source.availableAmount)
+    );
+    if (refundAmount > maximumForSource) {
+      throw new HttpError(
+        400,
+        `You can refund up to ₹${maximumForSource.toLocaleString('en-IN')} from this top-up.`
+      );
+    }
+
+    const sourcePayment = await Payment.findOne({
+      _id: paymentId,
+      userId,
+      orgId,
+      referenceType: 'WalletRecharge',
+      type: 'Payment',
+      status: 'success',
+      isDeleted: false,
+    });
+    if (!sourcePayment) {
+      throw new HttpError(404, 'The original wallet top-up payment was not found.');
+    }
+
+    // Create an auditable reservation before calling the external gateway.
+    // Other refund attempts see this pending entry and cannot over-refund the
+    // same paid transaction while Razorpay is processing it.
+    const refundTransaction = await walletRepository.createTransaction({
+      orgId,
+      userId,
+      type: 'Debit',
+      amount: refundAmount,
+      paymentMethod: 'RAZORPAY_REFUND',
+      paymentStatus: 'pending',
+      referenceType: 'Refund',
+      sourcePaymentId: sourcePayment._id,
+      description: 'Wallet refund pending to the original Razorpay payment account',
+    });
+
+    const updatedWallet = await walletRepository.debitBalanceIfSufficient(userId, orgId, refundAmount);
+    if (!updatedWallet) {
+      await walletRepository.updateTransaction(refundTransaction._id, {
+        $set: {
+          paymentStatus: 'failed',
+          description: 'Wallet refund could not start because the available balance changed.',
+        },
+      });
+      throw new HttpError(400, 'Your wallet balance changed. Refresh and try the refund again.');
+    }
+
+    try {
+      const refundResult = await paymentService.processRefund(
+        sourcePayment._id,
+        refundAmount,
+        { reason: 'Resident wallet balance refund' },
+        { orgId, actorId: userId }
+      );
+      const gatewayRefundId = refundResult?.refund?.gatewayTransactionId;
+      const completedTransaction = await walletRepository.updateTransaction(refundTransaction._id, {
+        $set: {
+          paymentStatus: 'refunded',
+          razorpay_refund_id: gatewayRefundId || null,
+          description: 'Wallet refund sent to the original Razorpay payment account',
+        },
+      });
+
+      walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, completedTransaction);
+      walletEventEmitter.emit(WALLET_UPDATED, {
+        userId,
+        orgId,
+        balance: updatedWallet.balance,
+      });
+
+      return {
+        transaction: completedTransaction,
+        balance: updatedWallet.balance,
+        walletBalance: updatedWallet.balance,
+        amount: refundAmount,
+        message: 'Refund has been sent to the original account used for this wallet top-up.',
+      };
+    } catch (error) {
+      const isDefinitivelyRejected = error instanceof HttpError
+        && error.statusCode >= 400
+        && error.statusCode < 500;
+
+      if (isDefinitivelyRejected) {
+        const restoredWallet = await walletRepository.updateBalance(userId, orgId, refundAmount);
+        await walletRepository.updateTransaction(refundTransaction._id, {
+          $set: {
+            paymentStatus: 'failed',
+            description: `Wallet refund rejected: ${error.message}`,
+          },
+        });
+        walletEventEmitter.emit(WALLET_UPDATED, {
+          userId,
+          orgId,
+          balance: restoredWallet.balance,
+        });
+      } else {
+        // A timeout or 5xx response can happen after Razorpay accepts a
+        // refund. Keeping the entry pending avoids a duplicate payout; the
+        // gateway webhook/reconciliation can safely settle it later.
+        await walletRepository.updateTransaction(refundTransaction._id, {
+          $set: {
+            paymentStatus: 'pending',
+            description: 'Wallet refund is awaiting Razorpay confirmation. Do not submit it again.',
+          },
+        });
+      }
+
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(503, 'Refund status is pending confirmation. Please do not retry this refund.');
+    }
   }
 
   async getGatewayCredentials(orgId) {
@@ -677,6 +933,92 @@ class WalletService {
     walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
     walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
     return transaction;
+  }
+
+  /**
+   * Settles an Amenity Management v2 reservation from the resident's wallet.
+   * This is deliberately server-side: the mobile client must never be able to
+   * mark a reservation as paid merely by supplying a transaction reference.
+   */
+  async chargeAmenityReservationWithWallet({ userId, orgId, amount, reservationId, amenityName }, session = null) {
+    const numericAmount = Number(amount);
+    if (!orgId || !reservationId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+      throw new HttpError(400, 'A valid wallet payment amount and reservation are required');
+    }
+
+    const updatedWallet = await walletRepository.debitBalanceIfSufficient(
+      userId,
+      orgId,
+      numericAmount,
+      session
+    );
+
+    if (!updatedWallet) {
+      throw new HttpError(400, 'Insufficient wallet balance for this amenity reservation');
+    }
+
+    const walletTxn = await walletRepository.createTransaction(
+      {
+        orgId,
+        userId,
+        type: 'Debit',
+        amount: numericAmount,
+        paymentMethod: 'WALLET',
+        paymentStatus: 'success',
+        referenceType: 'AmenityBooking',
+        referenceId: reservationId,
+        amenityName: amenityName || 'Amenity',
+        description: `Amenity reservation payment${amenityName ? ` for ${amenityName}` : ''}`,
+      },
+      session
+    );
+
+    walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, walletTxn);
+    walletEventEmitter.emit(WALLET_UPDATED, {
+      userId,
+      orgId,
+      balance: updatedWallet.balance,
+    });
+
+    return { updatedWallet, walletTxn };
+  }
+
+  /**
+   * Returns a previously-debited V2 amenity payment to the same tenant wallet.
+   * Gateway payments follow their Razorpay refund workflow instead; no gateway
+   * transfer is fabricated for a wallet-only settlement.
+   */
+  async refundAmenityReservationToWallet({ userId, orgId, amount, reservationId, amenityName, reason }, session = null) {
+    const numericAmount = Number(amount);
+    if (!orgId || !reservationId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+      throw new HttpError(400, 'A valid wallet refund amount and reservation are required');
+    }
+
+    const updatedWallet = await walletRepository.updateBalance(userId, orgId, numericAmount, session);
+    const walletTxn = await walletRepository.createTransaction(
+      {
+        orgId,
+        userId,
+        type: 'Credit',
+        amount: numericAmount,
+        paymentMethod: 'WALLET',
+        paymentStatus: 'refunded',
+        referenceType: 'AmenityBooking',
+        referenceId: reservationId,
+        amenityName: amenityName || 'Amenity',
+        description: reason || `Amenity reservation refund${amenityName ? ` for ${amenityName}` : ''}`,
+      },
+      session
+    );
+
+    walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, walletTxn);
+    walletEventEmitter.emit(WALLET_UPDATED, {
+      userId,
+      orgId,
+      balance: updatedWallet.balance,
+    });
+
+    return { updatedWallet, walletTxn };
   }
 
   async getWallet(userId, orgId, session = null) {

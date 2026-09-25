@@ -12,3 +12,14 @@ export const paymentWebhookRules = [
     .withMessage("status must be 'PAID' or 'FAILED'"),
   body('paymentAmount').optional().isFloat({ min: 0 }).withMessage('paymentAmount must be non-negative'),
 ];
+
+export const createAmenityPaymentOrderRules = [
+  body('holdId').notEmpty().withMessage('holdId is required').isMongoId().withMessage('Invalid holdId'),
+];
+
+export const verifyAmenityPaymentRules = [
+  body('paymentId').notEmpty().withMessage('paymentId is required').isMongoId().withMessage('Invalid paymentId'),
+  body('orderId').notEmpty().withMessage('orderId is required').isString().trim(),
+  body('razorpayPaymentId').notEmpty().withMessage('razorpayPaymentId is required').isString().trim(),
+  body('razorpaySignature').notEmpty().withMessage('razorpaySignature is required').isString().trim(),
+];

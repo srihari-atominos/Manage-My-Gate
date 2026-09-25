@@ -63,6 +63,7 @@ export const SocialAuthButton = ({
   loading = false,
   disabled = false,
 }: SocialAuthButtonProps) => {
+  const { colorScheme } = useColorScheme();
   const [modalVisible, setModalVisible] = React.useState(false);
   const pressScale = React.useRef(new Animated.Value(1)).current;
 
@@ -93,6 +94,9 @@ export const SocialAuthButton = ({
   const isGoogle = provider === 'google';
   const isApple = provider === 'apple';
   const providerName = isGoogle ? 'Google' : isApple ? 'Apple' : 'Microsoft';
+  const buttonLabel = isApple ? 'Sign in with Apple' : variant === 'full' ? `Sign in with ${providerName}` : providerName;
+  const contentClass = 'text-[#1C1917] dark:text-white';
+  const indicatorColor = isGoogle ? '#4285F4' : isApple ? (colorScheme === 'dark' ? '#FFFFFF' : '#1C1917') : '#00A4EF';
 
   return (
     <>
@@ -103,21 +107,24 @@ export const SocialAuthButton = ({
           onPressOut={handlePressOut}
           disabled={disabled || loading}
           activeOpacity={0.82}
+          accessibilityRole="button"
+          accessibilityLabel={buttonLabel}
+          accessibilityHint={`Continue authentication with ${providerName}`}
           className={`h-12 bg-white/75 dark:bg-[#1C1917]/75 border border-white/80 dark:border-white/20 rounded-xl flex-row items-center justify-center gap-2 shadow-2xs backdrop-blur-sm active:bg-white/90 dark:active:bg-[#292524] ${disabled || loading ? 'opacity-60' : ''} ${className}`}
         >
         {loading ? (
-          <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : isApple ? '#1C1917' : '#00a4ef'} />
+          <ActivityIndicator size="small" color={indicatorColor} />
         ) : (
           <>
             {isGoogle ? (
               <GoogleIcon size={18} />
             ) : isApple ? (
-              <AppleIcon size={18} color="#1C1917" />
+              <AppleIcon size={18} />
             ) : (
               <MicrosoftIcon size={18} />
             )}
-            <Text className="text-xs font-bold text-[#1C1917] dark:text-white font-sans">
-              {variant === 'full' ? `Sign in with ${providerName}` : providerName}
+            <Text className={`text-xs font-bold ${contentClass} font-sans`}>
+              {buttonLabel}
             </Text>
           </>
         )}

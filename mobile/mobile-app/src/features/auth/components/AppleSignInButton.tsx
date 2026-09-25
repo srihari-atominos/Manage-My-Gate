@@ -1,34 +1,56 @@
 import * as React from 'react';
-import { Button } from '@/components/ui/button';
-import { Text, Alert } from 'react-native';
-import { useAuth } from '../hooks/useAuth';
-import { AppleIcon } from '@/components/auth/SocialAuthButton';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { ActivityIndicator, Platform, View } from 'react-native';
+import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
+import { useAppleAuthSession } from '../hooks/useAppleAuthSession';
 
-import { useColorScheme } from 'nativewind';
+export interface AppleSignInButtonProps {
+  inviteToken?: string;
+  onSuccess?: (data: any) => void;
+  onError?: (error: string) => void;
+  disabled?: boolean;
+}
 
-export function AppleSignInButton() {
-  const { loading } = useAuth();
-  const { colorScheme } = useColorScheme();
+export function AppleSignInButton(props: AppleSignInButtonProps = {}) {
+  const { disabled = false, ...authOptions } = props;
+  const { handleAppleSignIn, loading, isAvailable } = useAppleAuthSession(authOptions);
 
-  const handlePress = () => {
-    Alert.alert(
-      'Apple ID Sign-In',
-      'Apple Sign-In is not configured yet. Please sign in using your Email/Password or Phone OTP.'
+  // Apple provides its approved system control on iOS. Android and web still
+  // show a standards-compliant Apple entry point so the auth choice is never
+  // silently removed from a mobile preview. Their press handler explains the
+  // required Services ID setup until the hosted Apple OAuth flow is enabled.
+  if (Platform.OS !== 'ios' || !isAvailable) {
+    return (
+      <SocialAuthButton
+        provider="apple"
+        variant="full"
+        onPress={handleAppleSignIn}
+        loading={loading}
+        disabled={disabled || loading}
+      />
     );
-  };
+  }
 
   return (
-    <Button
-      className="h-12 w-full rounded-xl flex-row items-center justify-center bg-black dark:bg-white border border-border px-3"
-      onPress={handlePress}
-      disabled={loading}
-      loading={loading}
+    <View
+      pointerEvents={disabled ? 'none' : 'auto'}
+      className={`h-12 w-full overflow-hidden rounded-xl ${disabled ? 'opacity-60' : ''}`}
     >
-      <AppleIcon size={18} color={colorScheme === 'dark' ? '#000000' : '#FFFFFF'} />
-      <Text className="text-white dark:text-black font-semibold text-sm ms-2">
-        Apple
-      </Text>
-    </Button>
+      <AppleAuthentication.AppleAuthenticationButton
+        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+        cornerRadius={12}
+        style={{ width: '100%', height: 48, opacity: loading ? 0.6 : 1 }}
+        onPress={() => {
+          if (!disabled) void handleAppleSignIn();
+        }}
+      />
+      {loading ? (
+        <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
