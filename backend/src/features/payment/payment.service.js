@@ -27,6 +27,9 @@ export class PaymentService {
         if (!invoice) {
           throw new HttpError(404, 'Invoice not found.');
         }
+        if (String(invoice.orgId) !== String(orgId)) {
+          throw new HttpError(404, 'Invoice not found.');
+        }
         if (invoice.status === 'PAID') {
           throw new HttpError(400, 'Invoice has already been fully paid.');
         }
@@ -136,6 +139,9 @@ export class PaymentService {
     try {
       const payment = await Payment.findById(paymentId);
       if (!payment) throw new HttpError(404, 'Payment record not found.');
+      if (orgId && String(payment.orgId) !== String(orgId)) {
+        throw new HttpError(404, 'Payment record not found.');
+      }
 
       if (payment.status === 'success') {
         logger.info(`Payment transaction ${paymentId} already settled (success). Idempotent response returned.`);
@@ -223,17 +229,46 @@ export class PaymentService {
   /**
    * Process refund via strategy provider
    */
-  async processRefund(paymentId, amount = null, notes = {}) {
+  async assertPaymentAccess(paymentId, { orgId, userId, isAdmin = false } = {}) {
+    const payment = await Payment.findById(paymentId);
+    if (!payment || (orgId && String(payment.orgId) !== String(orgId))) {
+      throw new HttpError(404, 'Payment record not found.');
+    }
+    if (!isAdmin && userId && String(payment.userId) !== String(userId)) {
+      throw new HttpError(403, 'Forbidden. This payment belongs to another user.');
+    }
+    return payment;
+  }
+
+  async processRefund(paymentId, amount = null, notes = {}, context = {}) {
     try {
       const payment = await Payment.findById(paymentId);
       if (!payment) throw new HttpError(404, 'Payment record not found.');
+      if (context.orgId && String(payment.orgId) !== String(context.orgId)) {
+        throw new HttpError(404, 'Payment record not found.');
+      }
 
       if (payment.status !== 'success') {
         throw new HttpError(400, 'Only successful payments can be refunded.');
       }
 
       const activeGateway = payment.gateway || 'mock';
-      const refundAmount = amount || payment.amount; // Allow partial refunds
+      const refundAmount = amount === null || amount === undefined ? payment.amount : Number(amount);
+      if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+        throw new HttpError(400, 'Refund amount must be a positive number.');
+      }
+
+      const previousRefunds = await Payment.find({
+        parentPaymentId: payment._id,
+        type: 'Refund',
+        status: 'success',
+        isDeleted: false,
+      }).select('amount').lean();
+      const alreadyRefunded = previousRefunds.reduce((sum, refund) => sum + Math.abs(Number(refund.amount) || 0), 0);
+      const refundableAmount = Math.max(0, Number(payment.amount) - alreadyRefunded);
+      if (refundAmount > refundableAmount + 0.01) {
+        throw new HttpError(400, `Refund amount exceeds the remaining refundable amount of ₹${refundableAmount}.`);
+      }
       
       let gatewayRefund = { id: `refund_mock_${Date.now()}` };
       
@@ -284,7 +319,7 @@ export class PaymentService {
             action: 'PAYMENT_REFUNDED',
             details: `Refund of ₹${refundAmount} processed. New Paid Amount: ₹${sumPaid}`,
             date: new Date(),
-            performedBy: null
+            performedBy: context.actorId || null
           });
           
           await invoice.save(); // Pre-save hook adjusts outstandingAmount and status
@@ -456,7 +491,6 @@ export class PaymentService {
 }
 
 export default new PaymentService();
-
 
 
 

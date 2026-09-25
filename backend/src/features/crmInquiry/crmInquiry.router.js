@@ -8,9 +8,13 @@ import {
   queryInquiryRules,
   validateStatusTransition,
 } from './crmInquiry.validator.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 import './crmInquiry.listeners.js';
 
 const router = Router();
+
+router.use(isAuthenticated, tenantContext({ requirePlatformContext: true }));
 
 router.get('/', validate(queryInquiryRules), crmInquiryController.getAll);
 router.get('/:id', validate(getInquiryRules), crmInquiryController.getById);

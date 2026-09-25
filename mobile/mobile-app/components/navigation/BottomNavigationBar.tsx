@@ -14,7 +14,7 @@ import { useColorScheme } from 'nativewind';
 import {
   Home,
   Users,
-  ShieldCheck,
+  CircleUserRound,
   Settings,
 } from 'lucide-react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -33,7 +33,7 @@ import Animated, {
 import { cn } from '../../lib/utils';
 import { useBottomNavScroll } from './BottomNavScrollContext';
 
-export type MainTabKey = 'dashboard' | 'community' | 'security' | 'settings';
+export type MainTabKey = 'dashboard' | 'community' | 'settings' | 'profile';
 
 interface TabItem {
   key: MainTabKey;
@@ -52,20 +52,20 @@ const TAB_ITEMS: TabItem[] = [
   {
     key: 'community',
     label: 'Community',
-    route: '/(resident)/notices/active-board',
+    route: '/(resident)/directory',
     icon: Users,
-  },
-  {
-    key: 'security',
-    label: 'Security',
-    route: '/(resident)/visitor',
-    icon: ShieldCheck,
   },
   {
     key: 'settings',
     label: 'Settings',
     route: '/(resident)/settings',
     icon: Settings,
+  },
+  {
+    key: 'profile',
+    label: 'Profile',
+    route: '/(resident)/profile',
+    icon: CircleUserRound,
   },
 ];
 
@@ -301,7 +301,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   }, [isCompact, ANDROID_FULL_BREADTH, ANDROID_COMPACT_BREADTH, androidBreadth]);
 
   const activeTab: MainTabKey = useMemo(() => {
-    if (pathname.includes('/visitor')) return 'security';
+    if (pathname.includes('/profile') || pathname.includes('/account')) return 'profile';
     if (pathname.includes('/notices') || pathname.includes('/directory') || pathname.includes('/polls') || pathname.includes('/notes')) return 'community';
     if (pathname.includes('/settings')) return 'settings';
     return 'dashboard';

@@ -2,8 +2,14 @@ import { Router } from 'express';
 import bookingController from './booking.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import { createBookingRules, updateBookingStatusRules } from './booking.validateRules.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
+
+// This legacy API remains available for existing clients, but identity and
+// workspace scope must always come from the authenticated session.
+router.use(isAuthenticated, tenantContext);
 
 // GET / - Retrieve all bookings (Admin can see all, Residents should pass their userId as a filter)
 router.get('/', bookingController.getAll);

@@ -1,5 +1,12 @@
 import paymentService from './payment.service.js';
 import HttpError from '../../utils/httpError.utils.js';
+import { checkIsAdmin } from '../../middlewares/rbac.middleware.js';
+import config from '../../config/config.js';
+
+const getRequestActor = (req) => ({
+  orgId: req.tenant?.orgId,
+  userId: req.user?.id || req.user?._id,
+});
 
 class PaymentController {
   /**
@@ -8,8 +15,7 @@ class PaymentController {
   async createOrder(req, res, next) {
     try {
       const { referenceId, referenceType, amount, currency, gateway } = req.body;
-      const orgId = req.user?.orgId || req.user?.communityId || req.tenant?.orgId || req.body.orgId || req.headers['x-organization-id'];
-      const userId = req.user?.id || req.user?._id || req.body.userId;
+      const { orgId, userId } = getRequestActor(req);
 
       if (!orgId || !userId) {
         throw new HttpError(400, 'Organization ID and User ID are required.');
@@ -41,7 +47,13 @@ class PaymentController {
   async verifySignature(req, res, next) {
     try {
       const { paymentId, orderId, razorpayPaymentId, razorpaySignature } = req.body;
-      const orgId = req.user?.orgId || req.user?.communityId || req.tenant?.orgId || req.body.orgId || req.headers['x-organization-id'];
+      if (!paymentId) {
+        throw new HttpError(400, 'paymentId is required for payment verification.');
+      }
+      const { orgId, userId } = getRequestActor(req);
+      const isAdmin = await checkIsAdmin(req);
+
+      await paymentService.assertPaymentAccess(paymentId, { orgId, userId, isAdmin });
 
       const verificationResult = await paymentService.verifyPaymentSignature({
         orgId,
@@ -77,7 +89,15 @@ class PaymentController {
         throw new HttpError(400, 'paymentId is required for refund.');
       }
 
-      const refundResult = await paymentService.processRefund(paymentId, amount, notes);
+      const { orgId, userId } = getRequestActor(req);
+      const isAdmin = await checkIsAdmin(req);
+      if (!isAdmin) {
+        throw new HttpError(403, 'Forbidden. Only a community administrator can issue a refund.');
+      }
+
+      await paymentService.assertPaymentAccess(paymentId, { orgId, userId, isAdmin });
+
+      const refundResult = await paymentService.processRefund(paymentId, amount, notes, { orgId, actorId: userId });
 
       res.status(200).json({
         success: true,
@@ -97,6 +117,14 @@ class PaymentController {
       const { paymentId, isSuccess, errorReason, paymentMethod } = req.body;
       if (!paymentId) throw new HttpError(400, 'paymentId is required');
 
+      if (config.nodeEnv !== 'test') {
+        throw new HttpError(404, 'Payment simulation is unavailable outside automated tests.');
+      }
+
+      const { orgId, userId } = getRequestActor(req);
+      const isAdmin = await checkIsAdmin(req);
+      await paymentService.assertPaymentAccess(paymentId, { orgId, userId, isAdmin });
+
       const payment = await paymentService.simulatePaymentCallback(paymentId, isSuccess, errorReason, paymentMethod);
       
       res.status(200).json({
@@ -114,7 +142,7 @@ class PaymentController {
    */
   async getGatewayStatus(req, res, next) {
     try {
-      const orgId = req.user?.orgId || req.user?.communityId || req.tenant?.orgId || req.headers['x-organization-id'];
+      const { orgId } = getRequestActor(req);
       const status = await paymentService.isGatewayConfigured(orgId);
       res.status(200).json({
         success: true,

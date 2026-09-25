@@ -35,10 +35,17 @@ export const handleRazorpayWebhook = async (req, res, next) => {
     const signature = req.headers['x-razorpay-signature'];
     const rawBody = req.rawBody || req.body;
 
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || 'default_webhook_secret_key';
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
     // 1. Signature Verification
-    if (signature && process.env.NODE_ENV !== 'test') {
+    if (process.env.NODE_ENV !== 'test') {
+      if (!webhookSecret) {
+        logger.error('Razorpay webhook secret is not configured');
+        return res.status(503).json({ success: false, message: 'Webhook verification is not configured' });
+      }
+      if (!signature) {
+        return res.status(400).json({ success: false, message: 'Missing Razorpay webhook signature' });
+      }
       const isValid = verifyRazorpaySignature(rawBody, signature, webhookSecret);
       if (!isValid) {
         logger.warn('Razorpay webhook signature verification failed');

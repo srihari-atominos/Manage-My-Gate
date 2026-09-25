@@ -7,8 +7,12 @@ import {
   getMeetingByIdRules,
   queryMeetingRules,
 } from './crmMeeting.validator.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
+
+router.use(isAuthenticated, tenantContext({ requirePlatformContext: true }));
 
 router.get('/', validate(queryMeetingRules), crmMeetingController.getAll);
 router.get('/:id', validate(getMeetingByIdRules), crmMeetingController.getById);

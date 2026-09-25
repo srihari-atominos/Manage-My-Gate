@@ -7,8 +7,12 @@ import {
   acceptQuoteRules,
   queryQuoteRules,
 } from './platformQuote.validator.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
+
+router.use(isAuthenticated, tenantContext({ requirePlatformContext: true }));
 
 router.get('/', validate(queryQuoteRules), platformQuoteController.getAll);
 router.get('/:id', validate(quoteIdRules), platformQuoteController.getById);
