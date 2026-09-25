@@ -95,8 +95,8 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
   const iconColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
   const isArabic = language === 'ar';
-  const tabFontSize = isArabic ? 13.5 : 12;
-  const tabLineHeight = isArabic ? 17 : 15;
+  const tabFontSize = isArabic ? 14.5 : 13.5;
+  const tabLineHeight = isArabic ? 19 : 17;
   const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key, item.label);
 
   // Give the feature catalogue entry a clear, modern response when selected.
@@ -186,14 +186,14 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   const labelOpacity = useSharedValue(1.0);
   const isViewAll = item.key === 'view_all';
   const isArabic = language === 'ar';
-  const tabFontSize = isArabic ? 13.5 : 12;
-  const tabLineHeight = isArabic ? 17 : 15;
-  const labelHeight = useSharedValue(isArabic ? 18 : 16);
+  const tabFontSize = isArabic ? 14.5 : 13.5;
+  const tabLineHeight = isArabic ? 19 : 17;
+  const labelHeight = useSharedValue(isArabic ? 20 : 18);
 
   // Height is constant; no vertical collapsing
   useEffect(() => {
     labelOpacity.value = 1.0;
-    labelHeight.value = isArabic ? 18 : 16;
+    labelHeight.value = isArabic ? 20 : 18;
   }, [isArabic, labelHeight, labelOpacity]);
 
   // Zooming & motion-blur opacity effect on touch

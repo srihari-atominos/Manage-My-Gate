@@ -104,7 +104,7 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
   cn(
-    'text-foreground text-[15px] font-bold tracking-tight font-sans',
+    'text-foreground text-[16px] font-bold tracking-tight font-sans',
     Platform.select({ web: 'pointer-events-none transition-colors' })
   ),
   {
@@ -134,8 +134,8 @@ const buttonTextVariants = cva(
       },
       size: {
         default: '',
-        sm: 'text-[13px]',
-        lg: 'text-[16px]',
+        sm: 'text-[14px]',
+        lg: 'text-[17px]',
         icon: '',
       },
     },

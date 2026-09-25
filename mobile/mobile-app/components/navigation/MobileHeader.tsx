@@ -208,14 +208,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <>
                 <Text
                   numberOfLines={1}
-                  className="text-[14px] font-bold font-sans text-foreground shrink-0"
+                  className="text-[15.5px] font-bold font-sans text-foreground shrink-0"
                 >
                   {activeVilla}
                 </Text>
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  className="text-[12.5px] font-medium font-sans text-muted-foreground flex-1 ms-1"
+                  className="text-[14px] font-medium font-sans text-muted-foreground flex-1 ms-1"
                 >
                   • {activeCommunity ? translateText(activeCommunity) : t('community', 'Community')}
                 </Text>
@@ -224,7 +224,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                className="text-[14px] font-bold font-sans text-foreground flex-1"
+                className="text-[15.5px] font-bold font-sans text-foreground flex-1"
               >
                 {activeCommunity ? translateText(activeCommunity) : t('community_workspace', 'Community Workspace')}
               </Text>

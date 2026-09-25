@@ -150,11 +150,11 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         </View>
 
         {/* Clean Label Container Below Squircle */}
-        <View className="w-full mt-2 min-h-[32px] justify-start items-center px-0.5">
+        <View className="w-full mt-2 min-h-[38px] justify-start items-center px-0.5">
           <Text
             numberOfLines={2}
-            style={language === 'ar' ? { fontSize: 11, lineHeight: 14 } : undefined}
-            className="text-[12.5px] font-bold font-sans text-foreground text-center leading-[16px] tracking-tight"
+            style={language === 'ar' ? { fontSize: 12.5, lineHeight: 17 } : undefined}
+            className="text-[14px] font-bold font-sans text-foreground text-center leading-[18px] tracking-tight"
           >
             {translatedLabel}
           </Text>
