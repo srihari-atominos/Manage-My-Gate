@@ -163,6 +163,17 @@ export const ssoVerifyRules = [
     .isString()
     .withMessage('redirectUri must be a string')
     .trim(),
+  body('nonce')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('nonce must be a string')
+    .trim(),
+  body('fullName')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .isLength({ max: 200 })
+    .withMessage('fullName must be a string of 200 characters or fewer')
+    .trim(),
 ];
 
 /**
@@ -407,8 +418,8 @@ export const acceptInviteSsoRules = [
   body('provider')
     .notEmpty()
     .withMessage('Provider is required')
-    .isIn(['google', 'microsoft'])
-    .withMessage('Provider must be google or microsoft')
+    .isIn(['google', 'microsoft', 'apple'])
+    .withMessage('Provider must be google, microsoft, or apple')
     .trim(),
   body('codeVerifier')
     .optional({ nullable: true, checkFalsy: true })
@@ -419,6 +430,17 @@ export const acceptInviteSsoRules = [
     .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('redirectUri must be a string')
+    .trim(),
+  body('nonce')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('nonce must be a string')
+    .trim(),
+  body('fullName')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .isLength({ max: 200 })
+    .withMessage('fullName must be a string of 200 characters or fewer')
     .trim(),
 ];
 

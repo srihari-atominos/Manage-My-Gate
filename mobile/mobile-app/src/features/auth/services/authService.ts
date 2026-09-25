@@ -20,7 +20,9 @@ export const acceptSsoInvite = async (payload: {
   codeVerifier?: string;
   redirectUri?: string;
   clientId?: string;
-  provider: 'google' | 'microsoft';
+  nonce?: string;
+  fullName?: string;
+  provider: 'google' | 'microsoft' | 'apple';
 }) => {
   return await apiClient.post('/auth/accept-invite/sso', payload);
 };
@@ -48,6 +50,14 @@ export const loginWithGoogle = async (payload: any) => {
 export const loginWithMicrosoft = async (payload: any) => {
   const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
   return await apiClient.post('/auth/microsoft', body);
+};
+
+export const loginWithApple = async (payload: {
+  token: string;
+  nonce: string;
+  fullName?: string;
+}) => {
+  return await apiClient.post('/auth/apple', payload);
 };
 
 export const initiatePhoneLogin = async (phone: string) => {
@@ -206,6 +216,7 @@ export default {
   validateInvite,
   loginWithGoogle,
   loginWithMicrosoft,
+  loginWithApple,
   initiatePhoneLogin,
   verifyPhoneLogin,
   initiateEmailOtpLogin,

@@ -704,9 +704,15 @@ export default function AcceptInviteScreen() {
                       onError={handleSsoError}
                     />
                   </View>
-                  <View className="flex-1">
-                    <AppleSignInButton />
-                  </View>
+                  {Platform.OS === 'ios' ? (
+                    <View className="flex-1">
+                      <AppleSignInButton
+                        inviteToken={currentInviteToken}
+                        onSuccess={handleSsoSuccess}
+                        onError={handleSsoError}
+                      />
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* Return to Login Link */}

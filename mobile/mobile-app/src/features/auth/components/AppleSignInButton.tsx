@@ -1,34 +1,36 @@
 import * as React from 'react';
-import { Button } from '@/components/ui/button';
-import { Text, Alert } from 'react-native';
-import { useAuth } from '../hooks/useAuth';
-import { AppleIcon } from '@/components/auth/SocialAuthButton';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { ActivityIndicator, Platform, View } from 'react-native';
+import { useAppleAuthSession } from '../hooks/useAppleAuthSession';
 
-import { useColorScheme } from 'nativewind';
+export interface AppleSignInButtonProps {
+  inviteToken?: string;
+  onSuccess?: (data: any) => void;
+  onError?: (error: string) => void;
+}
 
-export function AppleSignInButton() {
-  const { loading } = useAuth();
-  const { colorScheme } = useColorScheme();
+export function AppleSignInButton(props: AppleSignInButtonProps = {}) {
+  const { handleAppleSignIn, loading, isAvailable } = useAppleAuthSession(props);
 
-  const handlePress = () => {
-    Alert.alert(
-      'Apple ID Sign-In',
-      'Apple Sign-In is not configured yet. Please sign in using your Email/Password or Phone OTP.'
-    );
-  };
+  // Apple only permits this native control on iOS. Android keeps its complete,
+  // native auth experience without exposing a button that cannot complete.
+  if (Platform.OS !== 'ios' || !isAvailable) return null;
 
   return (
-    <Button
-      className="h-12 w-full rounded-xl flex-row items-center justify-center bg-black dark:bg-white border border-border px-3"
-      onPress={handlePress}
-      disabled={loading}
-      loading={loading}
-    >
-      <AppleIcon size={18} color={colorScheme === 'dark' ? '#000000' : '#FFFFFF'} />
-      <Text className="text-white dark:text-black font-semibold text-sm ms-2">
-        Apple
-      </Text>
-    </Button>
+    <View className="h-12 w-full overflow-hidden rounded-xl bg-black">
+      <AppleAuthentication.AppleAuthenticationButton
+        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+        cornerRadius={12}
+        style={{ width: '100%', height: 48, opacity: loading ? 0.6 : 1 }}
+        onPress={handleAppleSignIn}
+      />
+      {loading ? (
+        <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        </View>
+      ) : null}
+    </View>
   );
 }
 

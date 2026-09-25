@@ -93,6 +93,7 @@ export const SocialAuthButton = ({
   const isGoogle = provider === 'google';
   const isApple = provider === 'apple';
   const providerName = isGoogle ? 'Google' : isApple ? 'Apple' : 'Microsoft';
+  const buttonLabel = isApple ? 'Sign in with Apple' : variant === 'full' ? `Sign in with ${providerName}` : providerName;
 
   return (
     <>
@@ -117,7 +118,7 @@ export const SocialAuthButton = ({
               <MicrosoftIcon size={18} />
             )}
             <Text className="text-xs font-bold text-[#1C1917] dark:text-white font-sans">
-              {variant === 'full' ? `Sign in with ${providerName}` : providerName}
+              {buttonLabel}
             </Text>
           </>
         )}

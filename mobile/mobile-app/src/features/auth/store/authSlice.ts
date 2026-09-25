@@ -323,9 +323,11 @@ export const loginWithGoogleThunk = createAsyncThunk(
       }
 
       const token = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
       const user = innerData?.user;
 
       if (token) await storage.setItem('token', token);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
       if (user) await storage.setItem('user', JSON.stringify(user));
 
       return innerData as any;
@@ -348,14 +350,45 @@ export const loginWithMicrosoftThunk = createAsyncThunk(
       }
 
       const token = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
       const user = innerData?.user;
 
       if (token) await storage.setItem('token', token);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
       if (user) await storage.setItem('user', JSON.stringify(user));
 
       return innerData as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Microsoft Login failed');
+    }
+  }
+);
+
+export const loginWithAppleThunk = createAsyncThunk(
+  'auth/loginWithApple',
+  async (tokenPayload: { token: string; nonce: string; fullName?: string }, { rejectWithValue }) => {
+    try {
+      const response = await authService.loginWithApple(tokenPayload);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+
+      if (innerData?.isNewUser) {
+        return { isNewUser: true, appleData: innerData.appleData || innerData };
+      }
+
+      const token = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
+      const rawUser = innerData?.user;
+      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+      const user = rawUser ? { ...rawUser, availableWorkspaces } : null;
+
+      if (token) await storage.setItem('token', token);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+
+      return { ...innerData, user, availableWorkspaces } as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Apple Login failed');
     }
   }
 );
@@ -404,7 +437,9 @@ export const acceptSsoInviteThunk = createAsyncThunk(
       codeVerifier?: string;
       redirectUri?: string;
       clientId?: string;
-      provider: 'google' | 'microsoft';
+      nonce?: string;
+      fullName?: string;
+      provider: 'google' | 'microsoft' | 'apple';
     },
     { rejectWithValue }
   ) => {
@@ -925,6 +960,7 @@ const authSlice = createSlice({
           return;
         }
         state.token = action.payload?.token || action.payload?.data?.token || null;
+        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
         const rawUser = action.payload?.user || action.payload?.data?.user || null;
         state.user = normalizeUser(rawUser);
         state.isAuthenticated = !!(state.token && state.user?.id);
@@ -947,6 +983,7 @@ const authSlice = createSlice({
           return;
         }
         state.token = action.payload?.token || action.payload?.data?.token || null;
+        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
         const rawUser = action.payload?.user || action.payload?.data?.user || null;
         state.user = normalizeUser(rawUser);
         state.isAuthenticated = !!(state.token && state.user?.id);
@@ -955,6 +992,29 @@ const authSlice = createSlice({
       .addCase(loginWithMicrosoftThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Microsoft Login failed';
+      })
+      // Apple SSO
+      .addCase(loginWithAppleThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(loginWithAppleThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload?.isNewUser) {
+          state.successMsg = 'Apple account verified. Please complete registration.';
+          return;
+        }
+        state.token = action.payload?.token || action.payload?.data?.token || null;
+        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.successMsg = action.payload?.message || 'Login successful!';
+      })
+      .addCase(loginWithAppleThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Apple Login failed';
       })
       // Accept Invitation
       .addCase(acceptInviteThunk.pending, (state) => {

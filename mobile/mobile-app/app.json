@@ -21,8 +21,9 @@
     },
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "14",
+      "buildNumber": "15",
       "associatedDomains": [
         "applinks:managemygate.e3esg.com",
         "applinks:app.managemygate.com",
@@ -45,7 +46,7 @@
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
-      "versionCode": 18,
+      "versionCode": 19,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D1015"
@@ -135,6 +136,7 @@
         }
       ],
       "expo-secure-store",
+      "expo-apple-authentication",
       "expo-asset",
       [
         "expo-notifications",

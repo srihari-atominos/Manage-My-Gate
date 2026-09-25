@@ -33,6 +33,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
+import { useAppleAuthSession } from '../../src/features/auth/hooks/useAppleAuthSession';
 import {
   NahomEmblem,
   NahomWordmark,
@@ -49,6 +50,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { clearPendingRoute } from '../../src/features/notification/store/notificationSlice';
 import { useTranslation } from '@/src/utils/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -89,6 +91,7 @@ export default function LoginScreen() {
   const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
   const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
+  const { handleAppleSignIn, loading: appleLoading, isAvailable: appleAvailable } = useAppleAuthSession();
   const params = useLocalSearchParams<{
     intent?: string;
     email?: string;
@@ -757,16 +760,20 @@ export default function LoginScreen() {
               </View>
 
               {/* Form Card Container (Frosted Glass Card with Welcome Back Header) */}
-              <View
+              <BlurView
+                intensity={Platform.OS === 'ios' ? 42 : 16}
+                tint="default"
                 style={{
+                  borderRadius: 24,
+                  overflow: 'hidden',
                   shadowColor: '#1C1917',
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.08,
                   shadowRadius: 16,
                   elevation: 4,
                 }}
-                className="bg-white/75 dark:bg-[#1C1917]/75 backdrop-blur-xl border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-3.5 shadow-xl shadow-black/5"
               >
+              <View className="bg-white/55 dark:bg-[#1C1917]/60 border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-3.5">
                 {/* Welcome Back Header Section */}
                 <Text className="text-base font-bold text-[#1C1917] dark:text-white text-center pb-0.5 font-sans">
                   {t('welcome_back', 'Welcome Back')}
@@ -938,7 +945,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handleBasicSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || appleLoading}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -1038,7 +1045,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handlePhoneSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || appleLoading}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -1099,6 +1106,7 @@ export default function LoginScreen() {
                   </View>
                 )}
               </View>
+              </BlurView>
 
               {/* OR CONTINUE WITH Divider (Frosted Glass Pill) */}
               <View className="flex-row items-center my-2 gap-2.5">
@@ -1117,12 +1125,16 @@ export default function LoginScreen() {
                   provider="google"
                   onPress={handleGoogleSignIn}
                   loading={googleLoading}
-                  disabled={isSubmittingBasic || isSubmittingPhone}
+                  disabled={isSubmittingBasic || isSubmittingPhone || appleLoading}
                 />
-                <SocialAuthButton
-                  provider="apple"
-                  disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
-                />
+                {Platform.OS === 'ios' && appleAvailable ? (
+                  <SocialAuthButton
+                    provider="apple"
+                    onPress={handleAppleSignIn}
+                    loading={appleLoading}
+                    disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                  />
+                ) : null}
               </View>
 
               {/* Create Organisation Prompt */}
