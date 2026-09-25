@@ -30,7 +30,7 @@ const formatFullName = (fullName: AppleAuthentication.AppleAuthenticationFullNam
 /** Native Sign in with Apple flow for iOS, with an explicit Android/web setup notice. */
 export function useAppleAuthSession(options: UseAppleAuthSessionOptions = {}) {
   const { inviteToken, onSuccess, onError } = options;
-  const { loginWithApple, acceptSsoInvite, loading } = useAuth();
+  const { loginWithApple, acceptSsoInvite } = useAuth();
   const [isAvailable, setIsAvailable] = React.useState(false);
   const [authInProgress, setAuthInProgress] = React.useState(false);
 
@@ -141,9 +141,12 @@ export function useAppleAuthSession(options: UseAppleAuthSessionOptions = {}) {
 
   return {
     handleAppleSignIn,
-    loading: loading || authInProgress,
+    // Do not couple this button to the shared auth loading flag. That flag is
+    // also set by email/password and OTP requests, which must not make Apple
+    // look as though it is signing in.
+    loading: authInProgress,
     isAvailable,
-    disabled: !isAvailable || loading || authInProgress,
+    disabled: !isAvailable || authInProgress,
   };
 }
 

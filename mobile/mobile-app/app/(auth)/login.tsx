@@ -89,7 +89,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
-  const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
+  const { user, login: performLogin, requestOtp, error, isAuthenticated, otpSent, clearStatus } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{
     intent?: string;

@@ -14,7 +14,7 @@ const DEFAULT_GOOGLE_ANDROID_CLIENT_ID = '610778456829-6g1bvqtplfrgva93sbdsvgbuq
 const DEFAULT_GOOGLE_IOS_CLIENT_ID = '512495714957-ppgtahfr70hmjclhmq7n3c7822aacd41.apps.googleusercontent.com';
 
 export function useGoogleAuthSession() {
-  const { loginWithGoogle, loading } = useAuth();
+  const { loginWithGoogle } = useAuth();
   const [authInProgress, setAuthInProgress] = React.useState(false);
   const processedRef = React.useRef<Set<string>>(new Set());
 
@@ -176,8 +176,11 @@ export function useGoogleAuthSession() {
 
   return {
     handleGoogleSignIn,
-    loading: loading || authInProgress,
-    disabled: !request || loading || authInProgress,
+    // `auth.loading` represents every authentication request (including a
+    // password or OTP submission). Restrict the social control to its own
+    // in-flight flow so a password sign-in cannot turn this into a spinner.
+    loading: authInProgress,
+    disabled: !request || authInProgress,
   };
 }
 

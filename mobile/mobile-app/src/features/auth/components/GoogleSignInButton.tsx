@@ -22,7 +22,7 @@ export interface GoogleSignInButtonProps {
 }
 
 export function GoogleSignInButton({ inviteToken, onSuccess, onError }: GoogleSignInButtonProps = {}) {
-  const { loginWithGoogle, acceptSsoInvite, loading } = useAuth();
+  const { loginWithGoogle, acceptSsoInvite } = useAuth();
   const [submitting, setSubmitting] = React.useState(false);
   const processedRef = React.useRef<Set<string>>(new Set());
 
@@ -206,7 +206,9 @@ export function GoogleSignInButton({ inviteToken, onSuccess, onError }: GoogleSi
     }
   }, [request, promptAsync, processAuthResult, onError]);
 
-  const isLoading = loading || submitting;
+  // The shared auth loading flag also covers password, OTP, and registration
+  // requests. This control should only indicate work started by Google SSO.
+  const isLoading = submitting;
 
   return (
     <Button
