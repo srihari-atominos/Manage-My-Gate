@@ -95,8 +95,9 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
   const iconColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
   const isArabic = language === 'ar';
-  const tabFontSize = isArabic ? 14.5 : 13.5;
-  const tabLineHeight = isArabic ? 19 : 17;
+  const isNarrowScreen = Dimensions.get('window').width <= 350;
+  const tabFontSize = isNarrowScreen ? 12 : isArabic ? 14.5 : 13.5;
+  const tabLineHeight = isNarrowScreen ? 16 : isArabic ? 19 : 17;
   const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key, item.label);
 
   // Give the feature catalogue entry a clear, modern response when selected.
@@ -186,15 +187,17 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   const labelOpacity = useSharedValue(1.0);
   const isViewAll = item.key === 'view_all';
   const isArabic = language === 'ar';
-  const tabFontSize = isArabic ? 14.5 : 13.5;
-  const tabLineHeight = isArabic ? 19 : 17;
-  const labelHeight = useSharedValue(isArabic ? 20 : 18);
+  const isNarrowScreen = Dimensions.get('window').width <= 350;
+  const tabFontSize = isNarrowScreen ? 12 : isArabic ? 14.5 : 13.5;
+  const tabLineHeight = isNarrowScreen ? 16 : isArabic ? 19 : 17;
+  const animatedLabelHeight = isNarrowScreen ? 17 : isArabic ? 20 : 18;
+  const labelHeight = useSharedValue(animatedLabelHeight);
 
   // Height is constant; no vertical collapsing
   useEffect(() => {
     labelOpacity.value = 1.0;
-    labelHeight.value = isArabic ? 20 : 18;
-  }, [isArabic, labelHeight, labelOpacity]);
+    labelHeight.value = animatedLabelHeight;
+  }, [animatedLabelHeight, labelHeight, labelOpacity]);
 
   // Zooming & motion-blur opacity effect on touch
   const animatedIconStyle = useAnimatedStyle(() => ({
@@ -269,6 +272,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
               isActive ? 'font-bold' : 'font-medium'
             )}
             numberOfLines={1}
+            ellipsizeMode="tail"
           >
             {translatedLabel}
           </Text>

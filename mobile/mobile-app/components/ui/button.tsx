@@ -205,6 +205,11 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
     const isDisabled = disabled || loading;
     const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
     const loadingColor = SOLID_LOADING_VARIANTS.has(variant || 'default') ? '#FFFFFF' : '#172B70';
+    const minimumTouchTarget = variant === 'link'
+      ? ''
+      : size === 'icon'
+        ? 'min-h-11 min-w-11'
+        : 'min-h-11';
 
     return (
       <TextClassContext.Provider value={cn(buttonTextVariants({ variant: variant as any, size }), textClassName)}>
@@ -214,7 +219,8 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
           className={cn(
             isDisabled && 'opacity-50',
             buttonVariants({ variant: variant as any, size }),
-            className
+            className,
+            minimumTouchTarget
           )}
           role="button"
           {...props}

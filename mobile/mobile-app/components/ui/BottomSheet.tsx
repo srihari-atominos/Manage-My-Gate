@@ -90,6 +90,9 @@ function BottomSheet({
                 onPress={handleClose}
                 activeOpacity={0.7}
                 className="p-1.5 rounded-full bg-secondary border border-border/60"
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
               >
                 <X size={16} className="text-foreground" />
               </TouchableOpacity>

@@ -93,13 +93,20 @@ export const Button = forwardRef<View, ButtonProps>(
     };
 
     const sizeClasses = {
-      default: 'h-10 px-4 py-2 rounded-xl',
-      sm: 'h-8 rounded-lg px-2.5',
+      // Every mobile action keeps the 44pt minimum touch target. Visual density
+      // is preserved through padding and typography, not undersized press areas.
+      default: 'h-11 px-4 py-2 rounded-xl',
+      sm: 'h-11 rounded-lg px-3',
       lg: 'h-12 rounded-xl px-6',
-      icon: 'h-9 w-9 rounded-xl',
+      icon: 'h-11 w-11 rounded-xl',
     };
 
     const isDisabled = disabled || loading;
+    const minimumTouchTarget = variant === 'link'
+      ? ''
+      : size === 'icon'
+        ? 'min-h-11 min-w-11'
+        : 'min-h-11';
 
     return (
       <Pressable
@@ -110,7 +117,8 @@ export const Button = forwardRef<View, ButtonProps>(
           variantClasses[variant],
           sizeClasses[size],
           isDisabled && 'opacity-50',
-          className
+          className,
+          minimumTouchTarget
         )}
         {...props}
       >

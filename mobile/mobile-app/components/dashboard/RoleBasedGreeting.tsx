@@ -321,7 +321,7 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
               backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
               borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
             }}
-            className="flex-row items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
+            className="flex-row min-h-11 items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
             accessibilityRole="button"
             accessibilityLabel={`Current location: ${localizedLocation}`}
           >
@@ -347,4 +347,3 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 };
 
 export default RoleBasedGreeting;
-

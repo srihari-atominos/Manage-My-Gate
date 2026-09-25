@@ -196,7 +196,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       {actionLabel && onAction && (
         <Pressable
           onPress={onAction}
-          className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-3 py-1.5 rounded-full active:scale-95 transition-transform shrink-0 shadow-2xs"
+          className="flex-row min-h-11 items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-3 py-1.5 rounded-full active:scale-95 transition-transform shrink-0 shadow-2xs"
           accessibilityRole="button"
           accessibilityLabel={localizedActionLabel}
         >

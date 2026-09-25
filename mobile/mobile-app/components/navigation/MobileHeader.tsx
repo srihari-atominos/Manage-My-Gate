@@ -193,7 +193,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-2 flex-1 max-w-[65%] me-2 bg-secondary/90 border border-border/70 px-3 py-1.5 rounded-full shadow-2xs"
+          className="flex-row min-h-11 items-center gap-2 flex-1 max-w-[65%] me-2 bg-secondary/90 border border-border/70 px-3 py-1.5 rounded-full shadow-2xs"
         >
           <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/20 shrink-0 shadow-2xs">
             {hasUnit ? (
@@ -242,7 +242,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={toggleTheme}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center active:bg-secondary shadow-2xs"
+            className="size-11 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Toggle Light and Dark Theme"
           >
@@ -257,7 +257,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center relative active:bg-secondary shadow-2xs"
+            className="size-11 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center relative active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
@@ -275,7 +275,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={() => router.push('/(resident)/profile' as any)}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center overflow-hidden active:bg-secondary shadow-2xs"
+            className="size-11 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center overflow-hidden active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel={t('profile', 'Profile')}
           >

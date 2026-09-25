@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable, Platform } from 'react-native';
+import { View, Pressable, Platform, useWindowDimensions } from 'react-native';
 import { Text } from '../ui/text';
 import { ArrowUpRight } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -54,6 +54,9 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isAndroid = Platform.OS === 'android';
+  const { width: screenWidth } = useWindowDimensions();
+  const isNarrowScreen = screenWidth <= 350;
+  const iconBoxSize = isNarrowScreen ? 64 : 70;
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -87,8 +90,8 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         {/* Squircle Icon Box */}
         <View
           style={{
-            width: 70,
-            height: 70,
+            width: iconBoxSize,
+            height: iconBoxSize,
             borderRadius: 22,
             backgroundColor: isAccent
               ? accentBg || (isDark ? '#FF6A00' : '#EA580C')
@@ -150,10 +153,16 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         </View>
 
         {/* Clean Label Container Below Squircle */}
-        <View className="w-full mt-2 min-h-[38px] justify-start items-center px-0.5">
+        <View className={`w-full mt-2 ${isNarrowScreen ? 'min-h-[36px]' : 'min-h-[38px]'} justify-start items-center px-0.5`}>
           <Text
             numberOfLines={2}
-            style={language === 'ar' ? { fontSize: 12.5, lineHeight: 17 } : undefined}
+            style={
+              language === 'ar'
+                ? { fontSize: isNarrowScreen ? 12 : 12.5, lineHeight: isNarrowScreen ? 16 : 17 }
+                : isNarrowScreen
+                  ? { fontSize: 13, lineHeight: 17 }
+                  : undefined
+            }
             className="text-[14px] font-bold font-sans text-foreground text-center leading-[18px] tracking-tight"
           >
             {translatedLabel}
