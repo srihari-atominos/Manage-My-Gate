@@ -145,8 +145,14 @@ export default function PollDetailScreen() {
   const hasVoted = Boolean(poll.hasVoted);
   const isCreator = poll.createdBy?._id === user?.id || poll.createdBy === user?.id;
 
-  // Decide whether to show results based on role (Restricted strictly to Community Admin)
-  const canSeeResults = isCommunityAdmin;
+  // Decide whether to show results based on resultsVisibility policy (Strictly Community Admin only)
+  const canSeeResults =
+    isCommunityAdmin &&
+    (poll.resultsVisibility === 'ALWAYS' ||
+      (poll.resultsVisibility === 'AFTER_VOTE' && (hasVoted || isClosed)) ||
+      (poll.resultsVisibility === 'AFTER_EXPIRY' && isClosed) ||
+      (poll.resultsVisibility === 'ADMIN_ONLY' && (canClose || isCreator)) ||
+      isCommunityAdmin);
 
   return (
     <ScreenShell
@@ -269,20 +275,22 @@ export default function PollDetailScreen() {
           </View>
         )}
 
-        {/* Results View - Restricted strictly to Community Admin */}
-        {isCommunityAdmin ? (
-          <PollResultsView poll={poll} results={results} />
-        ) : (
-          <View className="bg-card rounded-2xl border border-border p-4 mb-4 items-center justify-center py-8">
-            <Lock size={28} color="#94a3b8" />
-            <Text className="text-sm font-bold text-foreground mt-2">Results are Hidden</Text>
-            <Text className="text-xs text-muted-foreground text-center mt-1 px-4">
-              Results breakdown is restricted to community administrators.
-            </Text>
-          </View>
+        {/* Results View (Restricted strictly to Community Admin) */}
+        {isCommunityAdmin && (
+          canSeeResults ? (
+            <PollResultsView poll={poll} results={results} />
+          ) : (
+            <View className="bg-card rounded-2xl border border-border p-4 mb-4 items-center justify-center py-8">
+              <Lock size={28} color="#94a3b8" />
+              <Text className="text-sm font-bold text-foreground mt-2">Results are Hidden</Text>
+              <Text className="text-xs text-muted-foreground text-center mt-1 px-4">
+                Results are restricted to community administrators.
+              </Text>
+            </View>
+          )
         )}
 
-        {/* Governance & Rules DetailSection - Restricted strictly to Community Admin */}
+        {/* Governance & Rules DetailSection (Restricted strictly to Community Admin) */}
         {isCommunityAdmin && (
           <DetailSection title="Poll Governance Rules" iconName="Shield">
             <DetailRow
