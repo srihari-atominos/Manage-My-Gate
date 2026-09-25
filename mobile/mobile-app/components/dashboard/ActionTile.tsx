@@ -45,7 +45,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   badgeColor,
   iconBgColor,
   iconShapeClass,
-  containerClassName = 'w-[23%]',
+  containerClassName = 'w-[31.6%]',
   showArrow = false,
   isAccent = false,
   accentBg,

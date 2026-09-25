@@ -31,7 +31,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  // Permitted features for the user's role (up to 7 cards, 8th is View More).
+  // Permitted features for the user's role (up to 7 cards, plus View More).
   const displayFeatures = React.useMemo(() => {
     // 1. If equipped features passed from hook, filter strictly to permitted items
     if (propEquippedFeatures && propEquippedFeatures.length > 0) {
@@ -84,7 +84,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* 4-Column Grid with Equal-Size Rounded Tiles */}
+      {/* 3-column grid gives each mobile action a more comfortable visual target. */}
       <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-4">
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
@@ -96,7 +96,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           return (
             <ActionTile
               key={tile.id}
-              containerClassName="w-[23%]"
+              containerClassName="w-[31.6%]"
               icon={<FeatureIcon iconName={iconName} color={colorIcon} size={34} strokeWidth={2.0} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
@@ -108,10 +108,10 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           );
         })}
 
-        {/* 8th Tile: Explore More (+) with Navy Blue Theme Accent Squircle */}
+        {/* View More tile with Navy Blue Theme Accent Squircle */}
         <ActionTile
           key="view_more_tile"
-          containerClassName="w-[23%]"
+          containerClassName="w-[31.6%]"
           isAccent={true}
           accentBg={isDark ? '#1E3A8A' : '#172B70'}
           icon={<Plus size={32} color="#FFFFFF" strokeWidth={2.5} />}
