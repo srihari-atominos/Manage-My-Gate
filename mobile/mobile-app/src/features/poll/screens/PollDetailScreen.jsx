@@ -145,12 +145,8 @@ export default function PollDetailScreen() {
   const hasVoted = Boolean(poll.hasVoted);
   const isCreator = poll.createdBy?._id === user?.id || poll.createdBy === user?.id;
 
-  // Decide whether to show results based on resultsVisibility policy
-  const canSeeResults =
-    poll.resultsVisibility === 'ALWAYS' ||
-    (poll.resultsVisibility === 'AFTER_VOTE' && (hasVoted || isClosed)) ||
-    (poll.resultsVisibility === 'AFTER_EXPIRY' && isClosed) ||
-    (poll.resultsVisibility === 'ADMIN_ONLY' && (canClose || isCreator));
+  // Decide whether to show results based on role (Restricted strictly to Community Admin)
+  const canSeeResults = isCommunityAdmin;
 
   return (
     <ScreenShell
@@ -267,57 +263,55 @@ export default function PollDetailScreen() {
             <View className="flex-1">
               <Text className="text-sm font-bold text-foreground">Poll Closed</Text>
               <Text className="text-xs text-muted-foreground mt-0.5">
-                Voting has concluded for this poll. Final results are displayed below.
+                Voting has concluded for this poll.
               </Text>
             </View>
           </View>
         )}
 
-        {/* Results View */}
-        {canSeeResults ? (
+        {/* Results View - Restricted strictly to Community Admin */}
+        {isCommunityAdmin ? (
           <PollResultsView poll={poll} results={results} />
         ) : (
           <View className="bg-card rounded-2xl border border-border p-4 mb-4 items-center justify-center py-8">
             <Lock size={28} color="#94a3b8" />
             <Text className="text-sm font-bold text-foreground mt-2">Results are Hidden</Text>
             <Text className="text-xs text-muted-foreground text-center mt-1 px-4">
-              {poll.resultsVisibility === 'AFTER_VOTE'
-                ? 'Cast your ballot to unlock real-time results.'
-                : poll.resultsVisibility === 'AFTER_EXPIRY'
-                ? 'Results will be published once the poll has concluded.'
-                : 'Results are restricted to community administrators.'}
+              Results breakdown is restricted to community administrators.
             </Text>
           </View>
         )}
 
-        {/* Governance & Rules DetailSection */}
-        <DetailSection title="Poll Governance Rules" iconName="Shield">
-          <DetailRow
-            label="Ballot Selection"
-            value={
-              poll.choiceType === 'MULTIPLE_CHOICE'
-                ? `Multiple Choice (Max ${poll.maxChoices || 1})`
-                : 'Single Choice'
-            }
-          />
-          <DetailRow
-            label="Voting Policy"
-            value={poll.votingMode === 'ONE_PER_UNIT' ? 'One Vote Per Villa / Unit' : 'One Vote Per Registered Resident'}
-          />
-          <DetailRow
-            label="Results Visibility"
-            value={poll.resultsVisibility}
-          />
-          <DetailRow
-            label="Quorum Required"
-            value={`${poll.quorumPercentage || 0}%`}
-          />
-          <DetailRow
-            label="Anonymous Ballot"
-            value={poll.isAnonymous ? 'Yes (Encrypted)' : 'No (Public Turnout)'}
-            isLast
-          />
-        </DetailSection>
+        {/* Governance & Rules DetailSection - Restricted strictly to Community Admin */}
+        {isCommunityAdmin && (
+          <DetailSection title="Poll Governance Rules" iconName="Shield">
+            <DetailRow
+              label="Ballot Selection"
+              value={
+                poll.choiceType === 'MULTIPLE_CHOICE'
+                  ? `Multiple Choice (Max ${poll.maxChoices || 1})`
+                  : 'Single Choice'
+              }
+            />
+            <DetailRow
+              label="Voting Policy"
+              value={poll.votingMode === 'ONE_PER_UNIT' ? 'One Vote Per Villa / Unit' : 'One Vote Per Registered Resident'}
+            />
+            <DetailRow
+              label="Results Visibility"
+              value={poll.resultsVisibility}
+            />
+            <DetailRow
+              label="Quorum Required"
+              value={`${poll.quorumPercentage || 0}%`}
+            />
+            <DetailRow
+              label="Anonymous Ballot"
+              value={poll.isAnonymous ? 'Yes (Encrypted)' : 'No (Public Turnout)'}
+              isLast
+            />
+          </DetailSection>
+        )}
 
         {/* Administrative & Accountability Actions */}
         {(canClose || canViewVoters || isCreator) && (
