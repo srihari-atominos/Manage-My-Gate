@@ -216,7 +216,7 @@ export default function PollDetailScreen() {
                 size="sm"
                 onPress={() =>
                   router.push({
-                    pathname: '/(resident)/community-engagement/edit' as any,
+                    pathname: '/(resident)/community-engagement/edit',
                     params: { mode: 'edit', id: poll._id || poll.id, type: 'POLL' },
                   })
                 }
