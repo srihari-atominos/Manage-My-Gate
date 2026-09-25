@@ -670,53 +670,29 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
   }
 
   let session = null;
-  let useTransaction = true;
+  let useTransaction = false;
   try {
     session = await mongoose.startSession();
     session.startTransaction();
+    useTransaction = true;
   } catch (tErr) {
     session = null;
     useTransaction = false;
   }
 
   try {
-    let updatedPoll, action;
-    try {
-      const voteRes = await pollRepo.recordVote(
-        pollId,
-        orgId,
-        residentId,
-        selected,
-        unitId,
-        poll.votingMode,
-        useTransaction ? session : null
-      );
-      updatedPoll = voteRes.poll;
-      action = voteRes.action;
-      if (useTransaction && session) {
-        await session.commitTransaction();
-      }
-    } catch (txnErr) {
-      if (useTransaction && session) {
-        try { await session.abortTransaction(); } catch (e) {}
-      }
-      if (txnErr?.message?.includes('Transaction numbers') || txnErr?.code === 20) {
-        useTransaction = false;
-        session = null;
-        const voteRes = await pollRepo.recordVote(
-          pollId,
-          orgId,
-          residentId,
-          selected,
-          unitId,
-          poll.votingMode,
-          null
-        );
-        updatedPoll = voteRes.poll;
-        action = voteRes.action;
-      } else {
-        throw txnErr;
-      }
+    const { poll: updatedPoll, action } = await pollRepo.recordVote(
+      pollId,
+      orgId,
+      residentId,
+      selected,
+      unitId,
+      poll.votingMode,
+      useTransaction ? session : null
+    );
+
+    if (useTransaction && session) {
+      await session.commitTransaction();
     }
 
     if (action === 'unvoted') {
@@ -754,6 +730,9 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
       votedOptionIndex: selected[0]
     };
   } catch (error) {
+    if (useTransaction && session) {
+      try { await session.abortTransaction(); } catch (e) {}
+    }
     if (error.code === 11000) {
       throw new HttpError(409, 'You have already voted on this poll');
     }

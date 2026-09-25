@@ -139,7 +139,7 @@ export function usePolls() {
 
   const castVote = useCallback(
     (id, voteData) => {
-      return dispatch(castVoteThunk({ id, voteData }));
+      return dispatch(castVoteThunk({ id, voteData })).unwrap();
     },
     [dispatch]
   );

@@ -2,14 +2,15 @@ import mongoose from 'mongoose';
 import { hashPassword } from '../utils/crypto.utils.js';
 
 async function seedSecurityUser() {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/manage-my-gate';
+  const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/database_name';
   await mongoose.connect(mongoUri);
   const db = mongoose.connection.db;
 
   const hashedPassword = await hashPassword('password@123');
 
-  const orgId = new mongoose.Types.ObjectId('6a4cd87a7510954cedec7734');
-  const guardRoleId = new mongoose.Types.ObjectId('6a4cd87a7510954cedec7763');
+  const orgId = new mongoose.Types.ObjectId('6a6efd60f62f21f2b26eb9a0');
+  const guardRoles = await db.collection('roles').find({ orgId: orgId }).toArray();
+  const guardRoleId = guardRoles.length > 0 ? guardRoles[0]._id : new mongoose.Types.ObjectId('6a6efd60f62f21f2b26eb9a1');
 
   // 1. Find or Create User
   let user = await db.collection('users').findOne({ email: 'security@enterprise.com' });
@@ -82,6 +83,13 @@ async function seedSecurityUser() {
     );
     console.log('✅ Updated active OrgMembership for Security Guard');
   }
+
+  // 3. Set password for kavyat2201@gmail.com
+  await db.collection('users').updateOne(
+    { email: 'kavyat2201@gmail.com' },
+    { $set: { password: hashedPassword, status: 'Active' } }
+  );
+  console.log('✅ Updated password for kavyat2201@gmail.com');
 
   await mongoose.disconnect();
 }

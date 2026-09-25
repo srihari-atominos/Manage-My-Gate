@@ -210,6 +210,8 @@ export const recordVote = async (
   votingMode = 'ONE_PER_USER',
   session = null
 ) => {
+  const activeSession = (session && typeof session.inTransaction === 'function' && session.inTransaction()) ? session : null;
+
   // Normalize selectedOptions to array of integers
   const optionsToRecord = Array.isArray(selectedOptions)
     ? selectedOptions.map(Number)
@@ -217,12 +219,13 @@ export const recordVote = async (
 
   // 1. Enforce ONE_PER_UNIT duplicate protection
   if (votingMode === 'ONE_PER_UNIT' && unitId) {
-    const unitVote = await PollVote.findOne({
+    const unitVoteQuery = PollVote.findOne({
       pollId: new mongoose.Types.ObjectId(pollId),
       orgId: new mongoose.Types.ObjectId(orgId),
       unitId: new mongoose.Types.ObjectId(unitId),
       residentId: { $ne: new mongoose.Types.ObjectId(residentId) }
-    }).session(session);
+    });
+    const unitVote = activeSession ? await unitVoteQuery.session(activeSession) : await unitVoteQuery;
 
     if (unitVote) {
       throw new HttpError(409, 'A vote has already been submitted for your unit on this poll.');
@@ -230,11 +233,12 @@ export const recordVote = async (
   }
 
   // 2. Check existing vote by this resident
-  const existingVote = await PollVote.findOne({
+  const existingVoteQuery = PollVote.findOne({
     pollId: new mongoose.Types.ObjectId(pollId),
     orgId: new mongoose.Types.ObjectId(orgId),
     residentId: new mongoose.Types.ObjectId(residentId)
-  }).session(session);
+  });
+  const existingVote = activeSession ? await existingVoteQuery.session(activeSession) : await existingVoteQuery;
 
   if (existingVote) {
     throw new HttpError(409, 'You have already voted on this poll. Each user may only vote once.');
@@ -249,22 +253,34 @@ export const recordVote = async (
   const updatedPoll = await Poll.findOneAndUpdate(
     { _id: pollId, orgId },
     { $inc: incOps },
-    { new: true, session }
+    { new: true, ...(activeSession ? { session: activeSession } : {}) }
   );
 
-  await PollVote.create(
-    [
-      {
-        orgId,
-        pollId,
-        residentId,
-        unitId,
-        selectedOptions: optionsToRecord,
-        optionIndex: optionsToRecord[0]
-      }
-    ],
-    { session }
-  );
+  if (activeSession) {
+    await PollVote.create(
+      [
+        {
+          orgId,
+          pollId,
+          residentId,
+          unitId,
+          selectedOptions: optionsToRecord,
+          optionIndex: optionsToRecord[0]
+        }
+      ],
+      { session: activeSession }
+    );
+  } else {
+    const newVote = new PollVote({
+      orgId,
+      pollId,
+      residentId,
+      unitId,
+      selectedOptions: optionsToRecord,
+      optionIndex: optionsToRecord[0]
+    });
+    await newVote.save();
+  }
 
   return { poll: updatedPoll, action: 'voted' };
 };
