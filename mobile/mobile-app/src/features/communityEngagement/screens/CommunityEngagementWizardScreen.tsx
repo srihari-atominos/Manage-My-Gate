@@ -25,8 +25,13 @@ export default function CommunityEngagementWizardScreen() {
     }
   };
 
-  const handleSuccess = (_result: any) => {
-    router.replace('/(resident)/community-engagement/ledger' as any);
+  const handleSuccess = (result: any) => {
+    const itemStatus = result?.data?.status || result?.status;
+    if (itemStatus === 'Draft') {
+      router.replace('/(resident)/community-engagement/ledger?status=DRAFT' as any);
+    } else {
+      router.replace('/(resident)/community-engagement/ledger' as any);
+    }
   };
 
   return (

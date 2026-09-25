@@ -92,9 +92,10 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
     if (success && createdResult) {
       if (onSuccess) {
         onSuccess(createdResult);
+      } else {
+        onClose();
       }
       reset();
-      onClose();
     }
   }, [success, createdResult, onSuccess, onClose, reset]);
 
