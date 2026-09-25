@@ -185,16 +185,21 @@ export class NoticeBoardService {
     } else if (queryParams.status) {
       // If client requests All or ALL, don't filter by status
       if (queryParams.status.toUpperCase() !== 'ALL') {
-        filters.status = queryParams.status;
+        const statusVal = queryParams.status.trim();
+        if (statusVal.toUpperCase() === 'ACTIVE') {
+          filters.status = { $in: [/published/i, /active/i] };
+        } else {
+          filters.status = { $regex: new RegExp(`^${statusVal}$`, 'i') };
+        }
       }
     }
 
     if (queryParams.category && queryParams.category.toUpperCase() !== 'ALL') {
-      filters.category = queryParams.category;
+      filters.category = { $regex: new RegExp(`^${queryParams.category.trim()}$`, 'i') };
     }
 
     if (queryParams.priority && queryParams.priority.toUpperCase() !== 'ALL') {
-      filters.priority = queryParams.priority;
+      filters.priority = { $regex: new RegExp(`^${queryParams.priority.trim()}$`, 'i') };
     }
 
     if (queryParams.isPinned !== undefined && queryParams.isPinned !== '') {
