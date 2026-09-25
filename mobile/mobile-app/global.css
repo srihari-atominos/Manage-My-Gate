@@ -26,6 +26,13 @@
     text-align: left;
   }
 
+  /* React Native Web turns a Pressable into a role=button wrapper. Keep
+     button labels centered even when NativeWind compiles utility classes to
+     opaque class names, which otherwise bypasses the selector above. */
+  [role="button"] [dir="ltr"] {
+    text-align: center;
+  }
+
   /* Arabic typography scale enhancement for readability */
   html[lang="ar"], body[lang="ar"], [data-lang="ar"] {
     font-size: 112%;
@@ -53,6 +60,7 @@
     --accent: 21 92% 50%; /* #F45A0A Brand Orange Accent */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
     --border: 30 30% 91%; /* #EFE6DC Subtle Warm Border */
     --input: 30 30% 91%;
     --ring: 21 92% 50%;
@@ -80,6 +88,7 @@
     --accent: 24 100% 62%; /* #FF8A3D Soft Bright Orange */
     --accent-foreground: 227 50% 8%;
     --destructive: 0 84% 60%; /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
     --border: 227 25% 25%; /* #304269 Subtle Navy Border */
     --input: 227 25% 25%;
     --ring: 25 100% 50%;

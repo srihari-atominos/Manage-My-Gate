@@ -124,6 +124,30 @@ class WalletRepository {
     return await Wallet.findOneAndUpdate(query, update, options);
   }
 
+  /**
+   * Atomically debits a tenant-scoped wallet only when sufficient funds remain.
+   *
+   * A read-then-write balance check can overdraw a wallet when two booking
+   * requests arrive at the same time. Keeping the balance guard in the query
+   * makes the debit authoritative even under concurrent requests.
+   */
+  async debitBalanceIfSufficient(userId, orgId, amount, session = null) {
+    const numericAmount = Number(amount);
+    if (!orgId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return null;
+    }
+
+    const activeSession = this._getActiveSession(session);
+    const options = { returnDocument: 'after', new: true };
+    if (activeSession) options.session = activeSession;
+
+    return Wallet.findOneAndUpdate(
+      { userId, orgId, balance: { $gte: numericAmount } },
+      { $inc: { balance: -numericAmount } },
+      options
+    );
+  }
+
   async updateTransactionDescription(referenceId, type, appendText) {
     const transaction = await WalletTransaction.findOne({ referenceId, type });
     if (transaction) {
@@ -144,6 +168,13 @@ class WalletRepository {
     if (!razorpayOrderId) return null;
     const activeSession = this._getActiveSession(session);
     return await WalletTransaction.findOne({ razorpay_order_id: razorpayOrderId }).session(activeSession);
+  }
+
+  async updateTransaction(transactionId, updates, session = null) {
+    const activeSession = this._getActiveSession(session);
+    const options = { new: true, returnDocument: 'after' };
+    if (activeSession) options.session = activeSession;
+    return WalletTransaction.findByIdAndUpdate(transactionId, updates, options);
   }
 
   async createRazorpayTransaction(data, session = null) {

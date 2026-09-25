@@ -104,7 +104,9 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
   cn(
-    'text-foreground text-[16px] font-bold tracking-tight font-sans',
+    // Buttons are touch targets, not text blocks. Center labels by default so
+    // wrapped labels remain visually balanced with their icon and surface.
+    'text-foreground text-center leading-tight flex-shrink text-[16px] font-bold tracking-tight font-sans',
     Platform.select({ web: 'pointer-events-none transition-colors' })
   ),
   {
@@ -219,6 +221,7 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
           className={cn(
             isDisabled && 'opacity-50',
             buttonVariants({ variant: variant as any, size }),
+            'min-w-0',
             className,
             minimumTouchTarget
           )}

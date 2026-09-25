@@ -232,6 +232,16 @@ export const billingService = {
   },
 
   /**
+   * Send available wallet credit back through Razorpay. The backend validates
+   * the selected top-up and returns funds to its original UPI/card account.
+   */
+  async refundWalletToOriginalPayment(paymentId: string, amount: number): Promise<any> {
+    const response: any = await apiClient.post('/wallet/refund', { paymentId, amount });
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
+
+  /**
    * Create a new community assessment rule (Admin/Finance).
    * @param payload
    */

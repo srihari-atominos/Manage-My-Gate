@@ -3,13 +3,16 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, Plus } from 'lucide-react-native';
+import { ShieldCheck, Plus, RotateCcw } from 'lucide-react-native';
 
 export interface WalletHeroCardProps {
   balance: number;
   onTopUpPress?: () => void;
+  onRefundPress?: () => void;
   isVerified?: boolean;
   topUpLabel?: string;
+  refundLabel?: string;
+  refundDisabled?: boolean;
   className?: string;
   loading?: boolean;
 }
@@ -17,8 +20,11 @@ export interface WalletHeroCardProps {
 export function WalletHeroCard({
   balance = 0,
   onTopUpPress,
+  onRefundPress,
   isVerified = true,
-  topUpLabel = 'Add Money to Wallet',
+  topUpLabel = 'Add Money',
+  refundLabel = 'Refund',
+  refundDisabled = false,
   className = '',
   loading = false,
 }: WalletHeroCardProps) {
@@ -52,19 +58,38 @@ export function WalletHeroCard({
         {formattedBalance}
       </Text>
 
-      {/* Instant Top-Up CTA */}
-      {onTopUpPress ? (
-        <Button
-          size="lg"
-          className="w-full flex-row items-center justify-center bg-emerald-600 active:bg-emerald-700"
-          onPress={onTopUpPress}
-          loading={loading}
-          accessibilityRole="button"
-          accessibilityLabel={topUpLabel}
-        >
-          <Icon as={Plus} size={18} color="#FFFFFF" className="me-2 shrink-0" />
-          <Text className="font-bold text-base text-white">{topUpLabel}</Text>
-        </Button>
+      {/* Wallet actions use the app's orange and dark-navy controls. */}
+      {onTopUpPress || onRefundPress ? (
+        <View className="flex-row gap-3">
+          {onTopUpPress ? (
+            <Button
+              variant="default"
+              size="lg"
+              className="flex-1"
+              onPress={onTopUpPress}
+              loading={loading}
+              leftIcon={Plus}
+              accessibilityRole="button"
+              accessibilityLabel={topUpLabel}
+            >
+              <Text className="font-bold text-base text-primary-foreground">{topUpLabel}</Text>
+            </Button>
+          ) : null}
+          {onRefundPress ? (
+            <Button
+              variant="navy"
+              size="lg"
+              className="flex-1"
+              onPress={onRefundPress}
+              disabled={refundDisabled || loading}
+              leftIcon={RotateCcw}
+              accessibilityRole="button"
+              accessibilityLabel={refundLabel}
+            >
+              <Text className="font-bold text-base text-white">{refundLabel}</Text>
+            </Button>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );

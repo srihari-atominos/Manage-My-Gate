@@ -16,6 +16,7 @@ import {
   ApiAmenityHold,
   ApiAmenityReservation,
   ApiAmenityAccessPass,
+  ApiAmenityPaymentOrder,
   ApiAmenityMaintenanceBlock,
   CreateHoldApiPayload,
   ConfirmReservationApiPayload,
@@ -307,6 +308,31 @@ export const amenityManagementService = {
     return extractEnvelope(response);
   },
 
+  // ==========================================
+  // 6A. Amenity Payment (/payments)
+  // ==========================================
+  async createReservationPaymentOrder(
+    holdId: string
+  ): Promise<ApiResponse<ApiAmenityPaymentOrder>> {
+    const url = getAmenityV2Url('/payments/orders');
+    const response = await apiClient.post<ApiResponse<ApiAmenityPaymentOrder>>(url, { holdId });
+    return extractEnvelope(response);
+  },
+
+  async verifyReservationPayment(payload: {
+    paymentId: string;
+    orderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+  }): Promise<ApiResponse<{ payment: { _id: string }; paymentId: string }>> {
+    const url = getAmenityV2Url('/payments/verify');
+    const response = await apiClient.post<ApiResponse<{ payment: { _id: string }; paymentId: string }>>(
+      url,
+      payload
+    );
+    return extractEnvelope(response);
+  },
+
   async getReservations(params: {
     page?: number;
     limit?: number;
@@ -537,4 +563,3 @@ export const amenityManagementService = {
 };
 
 export default amenityManagementService;
-

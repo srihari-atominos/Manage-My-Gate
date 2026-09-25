@@ -12,6 +12,35 @@ import mongoose from 'mongoose';
 
 export class PaymentService {
   /**
+   * Rehydrates a previously-created Razorpay order for a safe checkout retry.
+   * Reusing the pending order prevents a resident from being charged twice by
+   * repeatedly opening checkout for the same reservation hold.
+   */
+  async getCheckoutDetails(payment) {
+    if (!payment || payment.gateway !== 'razorpay' || payment.status !== 'pending') {
+      throw new HttpError(400, 'This payment is not available for checkout.');
+    }
+
+    const credentials = await integrationHubService.getDecryptedCredentials(payment.orgId, 'razorpay');
+    const razorpayKeyId = credentials?.keyId || credentials?.key_id;
+    if (!razorpayKeyId) {
+      throw new HttpError(400, 'Razorpay credentials configured for your community are invalid. Please contact your community admin.');
+    }
+
+    return {
+      success: true,
+      paymentId: payment._id,
+      orderId: payment.gatewayTransactionId,
+      amount: payment.amount,
+      amountFormatted: formatINR(payment.amount),
+      currency: payment.currency,
+      status: payment.status,
+      gateway: payment.gateway,
+      razorpayKeyId,
+    };
+  }
+
+  /**
    * Initiate a payment order using the configured provider strategy
    */
   async createPaymentOrder({ orgId, userId, referenceId, referenceType, amount, currency = 'INR', gateway = null }, session = null) {
@@ -272,12 +301,25 @@ export class PaymentService {
       
       let gatewayRefund = { id: `refund_mock_${Date.now()}` };
       
-      if (process.env.NODE_ENV !== 'production' && activeGateway === 'mock') {
+      if (
+        process.env.NODE_ENV !== 'production'
+        && (activeGateway === 'mock' || payment.gatewayTransactionId?.startsWith('pay_mock_'))
+      ) {
         logger.info('Bypassing gateway refund for mock payment in non-production environment');
       } else {
         const credentials = await integrationHubService.getDecryptedCredentials(payment.orgId, activeGateway);
         const provider = getPaymentProvider(activeGateway);
-        gatewayRefund = await provider.initiateRefund(payment.gatewayTransactionId, refundAmount, notes, credentials);
+        // Providers implement the common `refund` contract. Calling a
+        // non-existent `initiateRefund` meant real Razorpay refunds failed
+        // before any money could be sent back to the payer.
+        gatewayRefund = await provider.refund(
+          {
+            paymentId: payment.gatewayTransactionId,
+            amount: refundAmount,
+            notes,
+          },
+          credentials
+        );
       }
 
       // 1. Mark original payment status as partially refunded or fully refunded (Optional but good practice)
@@ -293,8 +335,10 @@ export class PaymentService {
         type: 'Refund',
         parentPaymentId: payment._id,
         status: 'success',
-        gatewayTransactionId: gatewayRefund.id,
-        paymentMethod: payment.paymentMethod
+        gateway: activeGateway,
+        gatewayTransactionId: gatewayRefund.refundId || gatewayRefund.id,
+        paymentMethod: payment.paymentMethod,
+        currency: payment.currency,
       });
 
       paymentEventEmitter.emit(PAYMENT_REFUNDED, refundRecord);
@@ -491,6 +535,3 @@ export class PaymentService {
 }
 
 export default new PaymentService();
-
-
-

@@ -297,8 +297,22 @@ export interface CreateHoldApiPayload {
 
 export interface ConfirmReservationApiPayload {
   holdId: string;
+  paymentMethod?: 'WALLET' | 'RAZORPAY';
+  // Backend Payment record ID. Razorpay identifiers alone are never accepted
+  // as proof of payment for a reservation.
+  paymentId?: string;
+  /** @deprecated Kept only so older callers compile. The backend never uses this as payment proof. */
   paymentReference?: string;
   notes?: string;
+}
+
+export interface ApiAmenityPaymentOrder {
+  paymentId: string;
+  orderId?: string;
+  amount?: number;
+  currency?: string;
+  razorpayKeyId?: string;
+  alreadyVerified?: boolean;
 }
 
 export interface CalculatePricingApiPayload {
