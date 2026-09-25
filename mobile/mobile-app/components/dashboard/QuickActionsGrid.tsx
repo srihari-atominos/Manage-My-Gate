@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from '../ui/text';
-import { SlidersHorizontal, Plus } from 'lucide-react-native';
+import { SlidersHorizontal } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import FeatureIcon from '../ui/FeatureIcon';
 import ActionTile from './ActionTile';
@@ -15,7 +15,6 @@ interface QuickActionsGridProps {
   activeFeatureIds?: string[];
   equippedFeatures?: FeatureItem[];
   onOpenCustomise: () => void;
-  onOpenViewMore: () => void;
   onTilePress?: (tileId: string) => void;
 }
 
@@ -23,7 +22,6 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   activeFeatureIds,
   equippedFeatures: propEquippedFeatures,
   onOpenCustomise,
-  onOpenViewMore,
   onTilePress,
 }) => {
   const { user } = useAuth();
@@ -61,7 +59,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   }, [propEquippedFeatures, activeFeatureIds, user, language]);
 
   return (
-    <View className="gap-3 my-2.5">
+    <View className="gap-5 my-3">
       {/* Section Header with Customise Button */}
       <View className="flex-row items-center justify-between px-1">
         <Text className="text-[18px] font-bold font-sans text-foreground tracking-tight">
@@ -108,16 +106,6 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           );
         })}
 
-        {/* View More tile with Navy Blue Theme Accent Squircle */}
-        <ActionTile
-          key="view_more_tile"
-          containerClassName="w-[31.6%]"
-          isAccent={true}
-          accentBg={isDark ? '#1E3A8A' : '#172B70'}
-          icon={<Plus size={32} color="#FFFFFF" strokeWidth={2.5} />}
-          label={t('explore_more', 'Explore More')}
-          onPress={onOpenViewMore}
-        />
       </View>
     </View>
   );

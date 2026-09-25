@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import {
   Home,
-  Grid2X2,
+  LayoutGrid,
   Settings,
 } from 'lucide-react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -52,7 +52,7 @@ const TAB_ITEMS: TabItem[] = [
     key: 'view_all',
     label: 'View All',
     route: '/(resident)/all-features',
-    icon: Grid2X2,
+    icon: LayoutGrid,
   },
   {
     key: 'settings',
@@ -89,6 +89,8 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
 }) => {
   const { t, language } = useTranslation();
   const IconComponent = item.icon;
+  const viewAllScale = useSharedValue(1);
+  const isViewAll = item.key === 'view_all';
   const activeColor = isDark ? THEME_ACTIVE_DARK : THEME_ACTIVE_LIGHT;
   const iconColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
@@ -96,6 +98,20 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
   const tabFontSize = isArabic ? 13.5 : 12;
   const tabLineHeight = isArabic ? 17 : 15;
   const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key, item.label);
+
+  // Give the feature catalogue entry a clear, modern response when selected.
+  useEffect(() => {
+    viewAllScale.value = isViewAll && isActive
+      ? withSequence(
+          withTiming(1.18, { duration: 110, easing: Easing.out(Easing.quad) }),
+          withSpring(1.05, { damping: 12, stiffness: 260 })
+        )
+      : withTiming(1, { duration: 140, easing: Easing.out(Easing.quad) });
+  }, [isActive, isViewAll, viewAllScale]);
+
+  const viewAllAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: viewAllScale.value }],
+  }));
 
   return (
     <Pressable
@@ -117,19 +133,19 @@ const AndroidTabButton: React.FC<AndroidTabButtonProps> = ({
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={translatedLabel}
     >
-      <View
-        style={{
+      <Animated.View
+        style={[viewAllAnimatedStyle, {
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: 3,
-        }}
+        }]}
       >
         <IconComponent
           size={22}
           color={iconColor}
           strokeWidth={isActive ? 2.4 : 1.8}
         />
-      </View>
+      </Animated.View>
 
       <Text
         style={{
@@ -168,6 +184,7 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   const pressScale = useSharedValue(1.0);
   const pressBlur = useSharedValue(0);
   const labelOpacity = useSharedValue(1.0);
+  const isViewAll = item.key === 'view_all';
   const isArabic = language === 'ar';
   const tabFontSize = isArabic ? 13.5 : 12;
   const tabLineHeight = isArabic ? 17 : 15;
@@ -201,13 +218,18 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   // Active state drives zoom and blur glow (for both tap and slide)
   useEffect(() => {
     if (isActive) {
-      pressScale.value = withSpring(1.22, { damping: 13, stiffness: 320 });
+      pressScale.value = isViewAll
+        ? withSequence(
+            withTiming(1.34, { duration: 110, easing: Easing.out(Easing.quad) }),
+            withSpring(1.18, { damping: 13, stiffness: 320 })
+          )
+        : withSpring(1.22, { damping: 13, stiffness: 320 });
       pressBlur.value = withTiming(1, { duration: 100, easing: Easing.out(Easing.quad) });
     } else {
       pressScale.value = withSpring(1.0, { damping: 15, stiffness: 280 });
       pressBlur.value = withTiming(0, { duration: 140, easing: Easing.out(Easing.quad) });
     }
-  }, [isActive, pressScale, pressBlur]);
+  }, [isActive, isViewAll, pressScale, pressBlur]);
 
   // Icons & labels: Active uses theme active color; inactive uses clear readable neutral
   const activeColor = isDark ? THEME_ACTIVE_DARK : THEME_ACTIVE_LIGHT;
