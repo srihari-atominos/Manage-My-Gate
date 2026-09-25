@@ -669,19 +669,55 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
     }
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let session = null;
+  let useTransaction = true;
   try {
-    const { poll: updatedPoll, action } = await pollRepo.recordVote(
-      pollId,
-      orgId,
-      residentId,
-      selected,
-      unitId,
-      poll.votingMode,
-      session
-    );
-    await session.commitTransaction();
+    session = await mongoose.startSession();
+    session.startTransaction();
+  } catch (tErr) {
+    session = null;
+    useTransaction = false;
+  }
+
+  try {
+    let updatedPoll, action;
+    try {
+      const voteRes = await pollRepo.recordVote(
+        pollId,
+        orgId,
+        residentId,
+        selected,
+        unitId,
+        poll.votingMode,
+        useTransaction ? session : null
+      );
+      updatedPoll = voteRes.poll;
+      action = voteRes.action;
+      if (useTransaction && session) {
+        await session.commitTransaction();
+      }
+    } catch (txnErr) {
+      if (useTransaction && session) {
+        try { await session.abortTransaction(); } catch (e) {}
+      }
+      if (txnErr?.message?.includes('Transaction numbers') || txnErr?.code === 20) {
+        useTransaction = false;
+        session = null;
+        const voteRes = await pollRepo.recordVote(
+          pollId,
+          orgId,
+          residentId,
+          selected,
+          unitId,
+          poll.votingMode,
+          null
+        );
+        updatedPoll = voteRes.poll;
+        action = voteRes.action;
+      } else {
+        throw txnErr;
+      }
+    }
 
     if (action === 'unvoted') {
       pollEvents.emit('poll_vote_removed', {
@@ -718,13 +754,14 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
       votedOptionIndex: selected[0]
     };
   } catch (error) {
-    await session.abortTransaction();
     if (error.code === 11000) {
       throw new HttpError(409, 'You have already voted on this poll');
     }
     throw error;
   } finally {
-    session.endSession();
+    if (session) {
+      try { session.endSession(); } catch (e) {}
+    }
   }
 };
 

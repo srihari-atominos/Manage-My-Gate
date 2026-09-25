@@ -47,7 +47,9 @@ pollVoteSchema.pre('save', function (next) {
   } else if (typeof this.optionIndex === 'number') {
     this.selectedOptions = [this.optionIndex];
   }
-  next();
+  if (typeof next === 'function') {
+    next();
+  }
 });
 
 // Prevent a resident from voting twice on the same poll
