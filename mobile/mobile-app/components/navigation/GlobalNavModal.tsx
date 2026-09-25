@@ -169,7 +169,13 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
               </View>
             </View>
 
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-2 rounded-full bg-secondary border border-border/60">
+            <TouchableOpacity
+              onPress={onClose}
+              activeOpacity={0.7}
+              className="h-11 w-11 items-center justify-center rounded-full bg-secondary border border-border/60 active:bg-muted"
+              accessibilityRole="button"
+              accessibilityLabel={t('close', 'Close')}
+            >
               <Icon as={X} size={17} className="text-foreground" />
             </TouchableOpacity>
           </View>

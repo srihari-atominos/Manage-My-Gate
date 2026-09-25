@@ -34,11 +34,11 @@ export function AppleSignInButton(props: AppleSignInButtonProps = {}) {
   return (
     <View
       pointerEvents={disabled ? 'none' : 'auto'}
-      className={`h-12 w-full overflow-hidden rounded-xl bg-black ${disabled ? 'opacity-60' : ''}`}
+      className={`h-12 w-full overflow-hidden rounded-xl ${disabled ? 'opacity-60' : ''}`}
     >
       <AppleAuthentication.AppleAuthenticationButton
         buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
         cornerRadius={12}
         style={{ width: '100%', height: 48, opacity: loading ? 0.6 : 1 }}
         onPress={() => {

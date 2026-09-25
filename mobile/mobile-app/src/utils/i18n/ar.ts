@@ -3686,6 +3686,16 @@ export const ar: Record<string, string> = {
   'notice_desc_elevator_maint': 'ستخضع المصاعد في المبنى A و B للصيانة الوقائية ربع السنوية هذا السبت من الساعة 10 صباحًا حتى 1 ظهرًا.',
   'notice_desc_welcome': 'يسعدنا أن نرحب بجميع السكان! يرجى التواصل مع الإدارة لأي طلبات تتعلق بالمرافق.',
 
+  // Profile photo controls
+  'building': 'المبنى',
+  'explore_more': 'استكشاف المزيد',
+  'failed_to_remove_photo': 'تعذرت إزالة صورة الملف الشخصي.',
+  'profile_photo_removed': 'تمت إزالة صورة الملف الشخصي.',
+  'remove_photo': 'إزالة الصورة',
+  'remove_photo_desc': 'إزالة صورة ملفك الشخصي الحالية',
+  'upload_from_device': 'تحميل من الجهاز',
+  'upload_from_device_desc': 'اختر صورة من جهازك',
+
 };
 
 export default ar;

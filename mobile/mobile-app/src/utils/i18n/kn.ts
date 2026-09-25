@@ -3685,6 +3685,17 @@ export const kn: Record<string, string> = {
   'notice_desc_elevator_maint': 'ಬ್ಲಾಕ್ ಎ ಮತ್ತು ಬಿ ಯಲ್ಲಿರುವ ಎಲಿವೇಟರ್‌ಗಳು ಈ ಶನಿವಾರ ಬೆಳಿಗ್ಗೆ 10 ರಿಂದ ಮಧ್ಯಾಹ್ನ 1 ರವರೆಗೆ ತ್ರೈಮಾಸಿಕ ತಡೆಗಟ್ಟುವ ನಿರ್ವಹಣೆಗೆ ಒಳಗಾಗುತ್ತವೆ.',
   'notice_desc_welcome': 'ಎಲ್ಲಾ ನಿವಾಸಿಗಳನ್ನು ಸ್ವಾಗತಿಸಲು ನಾವು ಸಂತೋಷಪಡುತ್ತೇವೆ! ಯಾವುದೇ ಸೌಲಭ್ಯದ ವಿನಂತಿಗಳಿಗಾಗಿ ದಯವಿಟ್ಟು ನಿರ್ವಹಣೆಯನ್ನು ಸಂಪರ್ಕಿಸಿ.',
 
+  // Profile photo controls
+  'building': 'ಕಟ್ಟಡ',
+  'explore_more': 'ಇನ್ನಷ್ಟು ಅನ್ವೇಷಿಸಿ',
+  'failed_to_remove_photo': 'ಪ್ರೊಫೈಲ್ ಫೋಟೋವನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
+  'press_back_again_to_exit': 'ನಿರ್ಗಮಿಸಲು ಮತ್ತೆ ಹಿಂದಕ್ಕೆ ಒತ್ತಿರಿ',
+  'profile_photo_removed': 'ಪ್ರೊಫೈಲ್ ಫೋಟೋ ತೆಗೆದುಹಾಕಲಾಗಿದೆ.',
+  'remove_photo': 'ಫೋಟೋ ತೆಗೆದುಹಾಕಿ',
+  'remove_photo_desc': 'ನಿಮ್ಮ ಪ್ರಸ್ತುತ ಪ್ರೊಫೈಲ್ ಫೋಟೋ ತೆಗೆದುಹಾಕಿ',
+  'upload_from_device': 'ಸಾಧನದಿಂದ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
+  'upload_from_device_desc': 'ನಿಮ್ಮ ಸಾಧನದಿಂದ ಫೋಟೋ ಆಯ್ಕೆಮಾಡಿ',
+
 };
 
 export default kn;

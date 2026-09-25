@@ -137,7 +137,13 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
               </View>
               <Text className="text-lg font-bold text-foreground">{t('switch_community', 'Switch Community')}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
+            <TouchableOpacity
+              onPress={onClose}
+              activeOpacity={0.7}
+              className="h-11 w-11 items-center justify-center rounded-full bg-secondary active:bg-muted"
+              accessibilityRole="button"
+              accessibilityLabel={t('close', 'Close')}
+            >
               <X size={16} className="text-muted-foreground" />
             </TouchableOpacity>
           </View>
@@ -225,7 +231,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
               });
             }}
             activeOpacity={0.8}
-            className="flex-row items-center justify-center p-3 rounded-2xl border border-dashed border-primary/50 bg-primary/5 active:bg-primary/10 mt-1 gap-2"
+            className="min-h-11 flex-row items-center justify-center px-3 py-2 rounded-2xl border border-dashed border-primary/50 bg-primary/5 active:bg-primary/10 mt-1 gap-2"
             accessibilityRole="button"
             accessibilityLabel={t('create_new_organization', '+ Create New Organization')}
           >

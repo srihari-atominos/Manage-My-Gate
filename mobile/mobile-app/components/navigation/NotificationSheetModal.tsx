@@ -131,7 +131,13 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary border border-border/60">
+              <TouchableOpacity
+                onPress={onClose}
+                activeOpacity={0.7}
+                className="h-11 w-11 items-center justify-center rounded-full bg-secondary border border-border/60 active:bg-muted"
+                accessibilityRole="button"
+                accessibilityLabel={t('close', 'Close')}
+              >
                 <X size={16} className="text-muted-foreground" />
               </TouchableOpacity>
             </View>

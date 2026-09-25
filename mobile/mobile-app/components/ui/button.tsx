@@ -146,6 +146,18 @@ const buttonTextVariants = cva(
   }
 );
 
+const SOLID_LOADING_VARIANTS = new Set([
+  'default',
+  'primary',
+  'destructive',
+  'stop',
+  'success',
+  'warning-solid',
+  'info-solid',
+  'navy',
+  'secondary',
+]);
+
 export interface ButtonProps
   extends React.ComponentPropsWithoutRef<typeof Pressable> {
   variant?: 
@@ -192,6 +204,7 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
   ) => {
     const isDisabled = disabled || loading;
     const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
+    const loadingColor = SOLID_LOADING_VARIANTS.has(variant || 'default') ? '#FFFFFF' : '#172B70';
 
     return (
       <TextClassContext.Provider value={cn(buttonTextVariants({ variant: variant as any, size }), textClassName)}>
@@ -211,7 +224,7 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
               {loading ? (
                 <ActivityIndicator
                   size="small"
-                  color={variant === 'default' || variant === 'destructive' ? '#ffffff' : '#737373'}
+                  color={loadingColor}
                 />
               ) : (
                 LeftIcon && <LeftIcon size={iconSize} className={cn(buttonTextVariants({ variant }))} />

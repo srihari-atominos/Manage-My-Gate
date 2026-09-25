@@ -35,6 +35,7 @@ jest.mock('expo-constants', () => ({
 }));
 
 jest.mock('expo-secure-store', () => ({
+  isAvailableAsync: jest.fn().mockResolvedValue(true),
   getItemAsync: jest.fn().mockResolvedValue('mock-secure-token'),
   setItemAsync: jest.fn().mockResolvedValue(true),
   deleteItemAsync: jest.fn().mockResolvedValue(true),

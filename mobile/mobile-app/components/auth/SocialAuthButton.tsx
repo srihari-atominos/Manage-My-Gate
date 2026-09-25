@@ -63,6 +63,7 @@ export const SocialAuthButton = ({
   loading = false,
   disabled = false,
 }: SocialAuthButtonProps) => {
+  const { colorScheme } = useColorScheme();
   const [modalVisible, setModalVisible] = React.useState(false);
   const pressScale = React.useRef(new Animated.Value(1)).current;
 
@@ -94,10 +95,8 @@ export const SocialAuthButton = ({
   const isApple = provider === 'apple';
   const providerName = isGoogle ? 'Google' : isApple ? 'Apple' : 'Microsoft';
   const buttonLabel = isApple ? 'Sign in with Apple' : variant === 'full' ? `Sign in with ${providerName}` : providerName;
-  const surfaceClass = isApple
-    ? 'bg-black border border-black active:bg-neutral-800'
-    : 'bg-white/75 dark:bg-[#1C1917]/75 border border-white/80 dark:border-white/20 active:bg-white/90 dark:active:bg-[#292524]';
-  const contentClass = isApple ? 'text-white' : 'text-[#1C1917] dark:text-white';
+  const contentClass = 'text-[#1C1917] dark:text-white';
+  const indicatorColor = isGoogle ? '#4285F4' : isApple ? (colorScheme === 'dark' ? '#FFFFFF' : '#1C1917') : '#00A4EF';
 
   return (
     <>
@@ -111,16 +110,16 @@ export const SocialAuthButton = ({
           accessibilityRole="button"
           accessibilityLabel={buttonLabel}
           accessibilityHint={`Continue authentication with ${providerName}`}
-          className={`h-12 ${surfaceClass} rounded-xl flex-row items-center justify-center gap-2 shadow-2xs ${disabled || loading ? 'opacity-60' : ''} ${className}`}
+          className={`h-12 bg-white/75 dark:bg-[#1C1917]/75 border border-white/80 dark:border-white/20 rounded-xl flex-row items-center justify-center gap-2 shadow-2xs backdrop-blur-sm active:bg-white/90 dark:active:bg-[#292524] ${disabled || loading ? 'opacity-60' : ''} ${className}`}
         >
         {loading ? (
-          <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : isApple ? '#FFFFFF' : '#00a4ef'} />
+          <ActivityIndicator size="small" color={indicatorColor} />
         ) : (
           <>
             {isGoogle ? (
               <GoogleIcon size={18} />
             ) : isApple ? (
-              <AppleIcon size={18} color="#FFFFFF" />
+              <AppleIcon size={18} />
             ) : (
               <MicrosoftIcon size={18} />
             )}

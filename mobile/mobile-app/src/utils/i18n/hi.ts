@@ -3685,6 +3685,17 @@ export const hi: Record<string, string> = {
   'notice_desc_elevator_maint': 'ब्लॉक ए और बी में लिफ्टों का इस शनिवार सुबह 10 बजे से दोपहर 1 बजे तक त्रैमासिक निवारक रखरखाव होगा।',
   'notice_desc_welcome': 'हम सभी निवासियों का स्वागत करते हुए प्रसन्न हैं! किसी भी सुविधा अनुरोध के लिए कृपया प्रबंधन से संपर्क करें।',
 
+  // Profile photo controls
+  'building': 'भवन',
+  'explore_more': 'और जानें',
+  'failed_to_remove_photo': 'प्रोफ़ाइल फ़ोटो हटाई नहीं जा सकी।',
+  'press_back_again_to_exit': 'बाहर निकलने के लिए फिर से बैक दबाएं',
+  'profile_photo_removed': 'प्रोफ़ाइल फ़ोटो हटा दी गई।',
+  'remove_photo': 'फ़ोटो हटाएं',
+  'remove_photo_desc': 'अपनी वर्तमान प्रोफ़ाइल फ़ोटो हटाएं',
+  'upload_from_device': 'डिवाइस से अपलोड करें',
+  'upload_from_device_desc': 'अपने डिवाइस से एक फ़ोटो चुनें',
+
 };
 
 export default hi;

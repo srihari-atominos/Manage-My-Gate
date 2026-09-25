@@ -3685,6 +3685,17 @@ export const te: Record<string, string> = {
   'notice_desc_elevator_maint': 'బ్లాక్ A & B లోని ఎలివేటర్లు ఈ శనివారం ఉదయం 10 నుండి మధ్యాహ్నం 1 వరకు త్రైమాసిక నివారణ నిర్వహణకు లోనవుతాయి.',
   'notice_desc_welcome': 'నివాసితులందరినీ స్వాగతిస్తున్నందుకు మేము సంతోషిస్తున్నాము! ఏదైనా సౌకర్యం అభ్యర్థనల కోసం దయచేసి నిర్వహణను సంప్రదించండి.',
 
+  // Profile photo controls
+  'building': 'భవనం',
+  'explore_more': 'మరింత తెలుసుకోండి',
+  'failed_to_remove_photo': 'ప్రొఫైల్ ఫోటోను తొలగించలేకపోయాము.',
+  'press_back_again_to_exit': 'నిష్క్రమించడానికి మళ్లీ బ్యాక్ నొక్కండి',
+  'profile_photo_removed': 'ప్రొఫైల్ ఫోటో తొలగించబడింది.',
+  'remove_photo': 'ఫోటో తొలగించండి',
+  'remove_photo_desc': 'మీ ప్రస్తుత ప్రొఫైల్ ఫోటోను తొలగించండి',
+  'upload_from_device': 'పరికరం నుండి అప్‌లోడ్ చేయండి',
+  'upload_from_device_desc': 'మీ పరికరం నుండి ఒక ఫోటోను ఎంచుకోండి',
+
 };
 
 export default te;
