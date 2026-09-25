@@ -5,19 +5,37 @@ export const createPollRules = () => {
     body('question')
       .trim()
       .notEmpty().withMessage('Poll question is required')
-      .isLength({ min: 5, max: 200 }).withMessage('Question must be between 5 and 200 characters'),
+      .isLength({ min: 3, max: 200 }).withMessage('Question must be between 3 and 200 characters'),
     body('description')
       .optional()
       .trim()
       .isLength({ max: 1000 }).withMessage('Description cannot exceed 1000 characters'),
     body('options')
-      .isArray({ min: 2, max: 10 }).withMessage('Poll must have between 2 and 10 options'),
+      .custom((options, { req }) => {
+        if (req.body?.status === 'Draft') {
+          if (!options || !Array.isArray(options)) return true;
+          if (options.length > 10) {
+            throw new Error('Poll cannot exceed 10 options');
+          }
+          return true;
+        }
+        if (!Array.isArray(options) || options.length < 2 || options.length > 10) {
+          throw new Error('Poll must have between 2 and 10 options');
+        }
+        return true;
+      }),
     body('options.*.text')
-      .trim()
-      .notEmpty().withMessage('Option text cannot be empty')
-      .isLength({ min: 1, max: 100 }).withMessage('Option text must be between 1 and 100 characters'),
+      .custom((text, { req }) => {
+        if (req.body?.status === 'Draft') return true;
+        if (!text || typeof text !== 'string' || text.trim().length === 0) {
+          throw new Error('Option text cannot be empty');
+        }
+        return true;
+      }),
     body('options')
-      .custom((options) => {
+      .custom((options, { req }) => {
+        if (req.body?.status === 'Draft') return true;
+        if (!Array.isArray(options)) return true;
         const texts = options.map((opt) => (opt && opt.text ? opt.text.trim().toLowerCase() : ''));
         const validTexts = texts.filter((t) => t.length > 0);
         const uniqueTexts = new Set(validTexts);
@@ -27,9 +45,20 @@ export const createPollRules = () => {
         return true;
       }),
     body('endDate')
-      .notEmpty().withMessage('End date is required')
-      .isISO8601().withMessage('Must be a valid date format')
-      .custom((value) => {
+      .custom((value, { req }) => {
+        if (req.body?.status === 'Draft') {
+          if (!value) return true;
+          if (isNaN(new Date(value).getTime())) {
+            throw new Error('Must be a valid date format');
+          }
+          return true;
+        }
+        if (!value) {
+          throw new Error('End date is required');
+        }
+        if (isNaN(new Date(value).getTime())) {
+          throw new Error('Must be a valid date format');
+        }
         if (new Date(value) <= new Date()) {
           throw new Error('End date must be in the future');
         }

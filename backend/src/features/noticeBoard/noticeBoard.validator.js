@@ -14,13 +14,16 @@ export const createNoticeRules = [
     .withMessage('Title cannot exceed 100 characters'),
 
   body('description')
-    .notEmpty()
-    .withMessage('Description is required')
-    .isString()
-    .withMessage('Description must be a string')
-    .trim()
-    .isLength({ max: 1000 })
-    .withMessage('Description cannot exceed 1000 characters'),
+    .custom((val, { req }) => {
+      if (req.body?.status === 'Draft') return true;
+      if (!val || typeof val !== 'string' || !val.trim()) {
+        throw new Error('Description is required');
+      }
+      if (val.length > 1000) {
+        throw new Error('Description cannot exceed 1000 characters');
+      }
+      return true;
+    }),
 
   body('category')
     .notEmpty()
@@ -81,12 +84,22 @@ export const createNoticeRules = [
     .trim(),
 
   body('expiryDate')
-    .notEmpty()
-    .withMessage('Expiry date is required')
-    .isISO8601()
-    .withMessage('Expiry date must be a valid ISO 8601 date format')
-    .custom((value) => {
+    .custom((value, { req }) => {
+      if (req.body?.status === 'Draft') {
+        if (!value) return true;
+        const inputDate = new Date(value);
+        if (isNaN(inputDate.getTime())) {
+          throw new Error('Expiry date must be a valid ISO 8601 date format');
+        }
+        return true;
+      }
+      if (!value) {
+        throw new Error('Expiry date is required');
+      }
       const inputDate = new Date(value);
+      if (isNaN(inputDate.getTime())) {
+        throw new Error('Expiry date must be a valid ISO 8601 date format');
+      }
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
       if (inputDate < today) {
