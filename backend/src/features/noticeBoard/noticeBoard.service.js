@@ -43,6 +43,10 @@ export class NoticeBoardService {
     const callerRoles = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
     const isCallerAdmin = adminRoleNames.includes(callerRole) || callerRoles.some((r) => adminRoleNames.includes(r));
 
+    if (notice.status === 'Draft' && !isCallerAdmin) {
+      throw new HttpError(403, 'Draft notices are restricted to community administrators');
+    }
+
     if (!isCallerAdmin && userId && orgId && notice.targetAudience) {
       const resolvedUserId = typeof userId === 'object' && userId !== null ? (userId._id || userId.id || userId.userId) : userId;
       const isEligible = await audienceService.checkEligibility(resolvedUserId, notice.targetAudience, orgId, session);
@@ -185,16 +189,21 @@ export class NoticeBoardService {
     } else if (queryParams.status) {
       // If client requests All or ALL, don't filter by status
       if (queryParams.status.toUpperCase() !== 'ALL') {
-        filters.status = queryParams.status;
+        const statusVal = queryParams.status.trim();
+        if (statusVal.toUpperCase() === 'ACTIVE') {
+          filters.status = { $in: [/published/i, /active/i] };
+        } else {
+          filters.status = { $regex: new RegExp(`^${statusVal}$`, 'i') };
+        }
       }
     }
 
     if (queryParams.category && queryParams.category.toUpperCase() !== 'ALL') {
-      filters.category = queryParams.category;
+      filters.category = { $regex: new RegExp(`^${queryParams.category.trim()}$`, 'i') };
     }
 
     if (queryParams.priority && queryParams.priority.toUpperCase() !== 'ALL') {
-      filters.priority = queryParams.priority;
+      filters.priority = { $regex: new RegExp(`^${queryParams.priority.trim()}$`, 'i') };
     }
 
     if (queryParams.isPinned !== undefined && queryParams.isPinned !== '') {

@@ -2,6 +2,16 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { CFormCheck, CRow, CCol } from '@coreui/react'
 
+const PERMISSION_LABEL_MAP = {
+  active_board: 'Resident Feed',
+  resident_feed: 'Resident Feed',
+  polls: 'Community Engagement',
+  community_engagement: 'Community Engagement',
+  manage_notices: 'Manage Engagement',
+  manage_engagement: 'Manage Engagement',
+  dashboard: 'Manage Engagement',
+}
+
 const formatPermissionLabel = (permissionString) => {
   if (!permissionString) return ''
   const str = String(permissionString).toLowerCase()
@@ -19,6 +29,10 @@ const formatPermissionLabel = (permissionString) => {
   if (label.includes(':')) {
     const parts = label.split(':')
     label = parts[parts.length - 1]
+  }
+  const key = label.toLowerCase()
+  if (PERMISSION_LABEL_MAP[key]) {
+    return PERMISSION_LABEL_MAP[key]
   }
   label = label.replace(/_/g, ' ')
   return label.charAt(0).toUpperCase() + label.slice(1)
@@ -91,6 +105,39 @@ const AMENITY_TIERS = [
   },
 ]
 
+const isPermissionSelected = (selectedIds, perm) => {
+  if (!selectedIds || !Array.isArray(selectedIds) || selectedIds.length === 0 || !perm) return false
+  const pId = String(perm._id || '')
+  const pName = String(perm.name || '').trim().toLowerCase()
+  const pCode = String(perm.code || '').trim().toLowerCase()
+  const pAction = String(perm.action || '').trim().toLowerCase()
+
+  return selectedIds.some((selected) => {
+    if (!selected) return false
+    const selStr = typeof selected === 'object' ? String(selected.name || selected._id || '') : String(selected)
+    const selTrimmed = selStr.trim().toLowerCase()
+    const selNormalized = selTrimmed.replace(':', '.')
+    const pNameNormalized = pName.replace(':', '.')
+
+    if (
+      selTrimmed === pId ||
+      selTrimmed === pName ||
+      selTrimmed === pCode ||
+      selNormalized === pNameNormalized
+    ) {
+      return true
+    }
+
+    const selAction = selTrimmed.includes(':') ? selTrimmed.split(':')[1] : selTrimmed
+    const pActionName = pName.includes(':') ? pName.split(':')[1] : pName
+    if (selAction && (selAction === pAction || selAction === pActionName)) {
+      return true
+    }
+
+    return false
+  })
+}
+
 const PermissionMatrix = ({
   groupedPermissions,
   selectedIds,
@@ -136,7 +183,8 @@ const PermissionMatrix = ({
 
         // Filter notices permissions down to strictly 3 granular options:
         // Resident Feed, Community Engagement, Manage Engagement
-        if (category.toLowerCase() === 'notices') {
+        const catKey = category.toLowerCase()
+        if (catKey === 'notices' || catKey === 'noticeboard' || catKey === 'notices board') {
           const allowedNoticeActions = ['active_board', 'polls', 'manage_notices']
           perms = perms.filter((p) => {
             const permName = p.name || p.code || p._id || ''

@@ -41,13 +41,12 @@ const pollVoteSchema = new mongoose.Schema(
 );
 
 // Pre-save hook: ensure optionIndex and selectedOptions stay synchronized
-pollVoteSchema.pre('save', function (next) {
+pollVoteSchema.pre('save', async function () {
   if (Array.isArray(this.selectedOptions) && this.selectedOptions.length > 0) {
     this.optionIndex = this.selectedOptions[0];
   } else if (typeof this.optionIndex === 'number') {
     this.selectedOptions = [this.optionIndex];
   }
-  next();
 });
 
 // Prevent a resident from voting twice on the same poll
@@ -55,6 +54,9 @@ pollVoteSchema.index({ pollId: 1, residentId: 1 }, { unique: true });
 // Fast query for unit votes in ONE_PER_UNIT mode
 pollVoteSchema.index({ pollId: 1, unitId: 1 });
 
+if (mongoose.models.PollVote) {
+  delete mongoose.models.PollVote;
+}
 const PollVote = mongoose.model('PollVote', pollVoteSchema);
 
 export default PollVote;

@@ -565,7 +565,7 @@ export class UserService {
       const roleIds = [];
       const foundRoleNames = [];
       
-      const roleNames = Array.isArray(roles) ? roles : [roles].filter(Boolean);
+      const roleNames = (Array.isArray(roles) ? roles : [roles]).filter(Boolean);
       
       for (const name of roleNames) {
         const role = await roleService.getRoleByName(name, orgId, currentSession);

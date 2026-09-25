@@ -17,8 +17,14 @@ const noticeSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: [true, 'Description is required'],
+      required: [
+        function () {
+          return this.status !== 'Draft';
+        },
+        'Description is required',
+      ],
       trim: true,
+      default: '',
       maxlength: [1000, 'Description cannot exceed 1000 characters'],
     },
     category: {
@@ -71,7 +77,12 @@ const noticeSchema = new mongoose.Schema(
     },
     expiryDate: {
       type: Date,
-      required: [true, 'Expiry date is required'],
+      required: [
+        function () {
+          return this.status !== 'Draft';
+        },
+        'Expiry date is required',
+      ],
     },
     isPinned: {
       type: Boolean,

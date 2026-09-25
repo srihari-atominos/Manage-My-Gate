@@ -5,6 +5,16 @@ import { Icon } from '../../../../components/ui/icon';
 import { ShieldCheck, Compass, Check, Layers, Users, Key, Landmark, Sparkles } from 'lucide-react-native';
 import { PermissionGroupMap, PermissionItem } from '../store/roleSlice';
 
+const PERMISSION_LABEL_MAP: Record<string, string> = {
+  active_board: 'Resident Feed',
+  resident_feed: 'Resident Feed',
+  polls: 'Community Engagement',
+  community_engagement: 'Community Engagement',
+  manage_notices: 'Manage Engagement',
+  manage_engagement: 'Manage Engagement',
+  dashboard: 'Manage Engagement',
+};
+
 const formatPermissionLabel = (permissionString?: string): string => {
   if (!permissionString) return '';
   const str = String(permissionString).toLowerCase();
@@ -22,6 +32,10 @@ const formatPermissionLabel = (permissionString?: string): string => {
   if (label.includes(':')) {
     const parts = label.split(':');
     label = parts[parts.length - 1];
+  }
+  const key = label.toLowerCase();
+  if (PERMISSION_LABEL_MAP[key]) {
+    return PERMISSION_LABEL_MAP[key];
   }
   label = label.replace(/_/g, ' ');
   return label.charAt(0).toUpperCase() + label.slice(1);
@@ -167,7 +181,8 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
 
         // Filter notices permissions down to strictly 3 granular options:
         // Resident Feed, Community Engagement, Manage Engagement
-        if (category.toLowerCase() === 'notices') {
+        const catKey = category.toLowerCase();
+        if (catKey === 'notices' || catKey === 'noticeboard' || catKey === 'notices board') {
           const allowedNoticeActions = ['active_board', 'polls', 'manage_notices'];
           perms = perms.filter((p) => {
             const permName = p.name || p.code || p._id || '';

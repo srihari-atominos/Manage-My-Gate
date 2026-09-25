@@ -29,7 +29,7 @@
   },
   {
     "feature": "notices",
-    "actions": ["dashboard", "active_board", "manage_notices", "polls", "read", "create", "update", "delete", "publish", "acknowledge"]
+    "actions": ["active_board", "polls", "manage_notices"]
   },
   {
     "feature": "polls",

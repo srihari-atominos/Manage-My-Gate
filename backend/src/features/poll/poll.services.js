@@ -258,6 +258,10 @@ export const getPollById = async (pollId, orgId, userId = null, isCommunityAdmin
     throw new HttpError(404, 'Poll not found');
   }
 
+  if (poll.status === 'Draft' && !isCommunityAdmin) {
+    throw new HttpError(403, 'Draft polls are restricted to community administrators');
+  }
+
   // Auto-activate if scheduled date has passed
   if (poll.status === 'Scheduled' && poll.scheduleDate && poll.scheduleDate <= new Date()) {
     poll.status = 'Active';
@@ -669,8 +673,17 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
     }
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let session = null;
+  let useTransaction = false;
+  try {
+    session = await mongoose.startSession();
+    session.startTransaction();
+    useTransaction = true;
+  } catch (tErr) {
+    session = null;
+    useTransaction = false;
+  }
+
   try {
     const { poll: updatedPoll, action } = await pollRepo.recordVote(
       pollId,
@@ -679,9 +692,12 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
       selected,
       unitId,
       poll.votingMode,
-      session
+      useTransaction ? session : null
     );
-    await session.commitTransaction();
+
+    if (useTransaction && session) {
+      await session.commitTransaction();
+    }
 
     if (action === 'unvoted') {
       pollEvents.emit('poll_vote_removed', {
@@ -692,8 +708,9 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
         optionIndex: selected[0],
         updatedPoll
       });
+      const updatedPollObj = typeof updatedPoll.toObject === 'function' ? updatedPoll.toObject() : updatedPoll;
       return {
-        ...updatedPoll.toObject(),
+        ...updatedPollObj,
         hasVoted: false,
         votedOptions: [],
         votedOptionIndex: null
@@ -709,20 +726,25 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
       updatedPoll
     });
 
+    const updatedPollObj = typeof updatedPoll.toObject === 'function' ? updatedPoll.toObject() : updatedPoll;
     return {
-      ...updatedPoll.toObject(),
+      ...updatedPollObj,
       hasVoted: true,
       votedOptions: selected,
       votedOptionIndex: selected[0]
     };
   } catch (error) {
-    await session.abortTransaction();
+    if (useTransaction && session) {
+      try { await session.abortTransaction(); } catch (e) {}
+    }
     if (error.code === 11000) {
       throw new HttpError(409, 'You have already voted on this poll');
     }
     throw error;
   } finally {
-    session.endSession();
+    if (session) {
+      try { session.endSession(); } catch (e) {}
+    }
   }
 };
 

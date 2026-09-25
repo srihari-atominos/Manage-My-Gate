@@ -93,7 +93,6 @@ const ManageRolesModal = ({ visible, user, unit, onClose, onSave, availableRoles
                   <input
                     className="form-check-input mt-1"
                     type="checkbox"
-                    name="roleSelection"
                     id={safeId}
                     checked={isChecked}
                     disabled={!hasPermission}

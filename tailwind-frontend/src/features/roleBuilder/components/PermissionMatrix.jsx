@@ -2,6 +2,16 @@ import React from 'react';
 import { Checkbox } from 'src/components/ui/checkbox';
 import { Label } from 'src/components/ui/label';
 
+const PERMISSION_LABEL_MAP = {
+  active_board: 'Resident Feed',
+  resident_feed: 'Resident Feed',
+  polls: 'Community Engagement',
+  community_engagement: 'Community Engagement',
+  manage_notices: 'Manage Engagement',
+  manage_engagement: 'Manage Engagement',
+  dashboard: 'Manage Engagement',
+};
+
 const formatPermissionLabel = (permissionString) => {
   if (!permissionString) return '';
   const str = String(permissionString).toLowerCase();
@@ -19,6 +29,10 @@ const formatPermissionLabel = (permissionString) => {
   if (label.includes(':')) {
     const parts = label.split(':');
     label = parts[parts.length - 1];
+  }
+  const key = label.toLowerCase();
+  if (PERMISSION_LABEL_MAP[key]) {
+    return PERMISSION_LABEL_MAP[key];
   }
   label = label.replace(/_/g, ' ');
   return label.charAt(0).toUpperCase() + label.slice(1);
@@ -104,6 +118,34 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
           if (!existingActions.includes('manage_notices')) {
             perms.push({ name: 'notices:manage_notices', code: 'notices:manage_notices', _id: 'notices:manage_notices' });
           }
+        }
+        
+        // Filter noticeboard permissions as requested: only Resident Feed, Community Engagement, and Manage Engagement
+        const catKey = category.toLowerCase();
+        if (catKey === 'notices' || catKey === 'noticeboard' || catKey === 'notices board') {
+          const allowedNoticesPerms = [
+            'active_board',
+            'resident_feed',
+            'polls',
+            'community_engagement',
+            'manage_notices',
+            'manage_engagement',
+            'dashboard',
+          ];
+          const seenLabels = new Set();
+          perms = perms.filter((p) => {
+            const permName = p.name || p.code || p._id || '';
+            const action = (permName.includes(':') ? permName.split(':')[1] : permName).toLowerCase();
+            if (allowedNoticesPerms.includes(action)) {
+              const displayLabel = PERMISSION_LABEL_MAP[action] || action;
+              if (seenLabels.has(displayLabel)) {
+                return false;
+              }
+              seenLabels.add(displayLabel);
+              return true;
+            }
+            return false;
+          });
         }
         
         const groupCodes = perms.map((p) => p.name || p.code || p._id);

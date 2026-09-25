@@ -147,6 +147,37 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     }
   }, [role, visible, reset])
 
+const NOTICE_ACTION_GROUPS = {
+  active_board: ['active_board', 'resident_feed', 'read'],
+  resident_feed: ['active_board', 'resident_feed', 'read'],
+  polls: ['polls', 'community_engagement'],
+  community_engagement: ['polls', 'community_engagement'],
+  manage_notices: ['manage_notices', 'manage_engagement', 'dashboard', 'create', 'update', 'delete', 'publish', 'acknowledge'],
+  manage_engagement: ['manage_notices', 'manage_engagement', 'dashboard', 'create', 'update', 'delete', 'publish', 'acknowledge'],
+  dashboard: ['manage_notices', 'manage_engagement', 'dashboard', 'create', 'update', 'delete', 'publish', 'acknowledge'],
+}
+
+const ALL_NOTICE_ACTIONS = [
+  'active_board',
+  'resident_feed',
+  'polls',
+  'community_engagement',
+  'manage_notices',
+  'manage_engagement',
+  'dashboard',
+  'create',
+  'update',
+  'delete',
+  'publish',
+  'acknowledge',
+  'read',
+]
+
+const getPermAction = (p) => {
+  const str = typeof p === 'object' ? String(p.name || p._id || '') : String(p)
+  return (str.includes(':') ? str.split(':')[1] : str).toLowerCase().trim()
+}
+
   const handleSelectAllGroup = (groupCodes, checked) => {
     const currentPermissions = getValues('permissions') || []
     let newValue
@@ -186,6 +217,8 @@ export const useRoleForm = ({ role, visible, onSave }) => {
       return
     }
 
+    const targetAction = getPermAction(permValue)
+
     if (checked) {
       if (String(permValue).toLowerCase().startsWith('visitor:')) {
         // Replace all visitor permissions with the newly selected one
@@ -194,7 +227,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
           permValue,
         ]
       } else {
-        newValue = [...currentPermissions, permValue]
+        newValue = Array.from(new Set([...currentPermissions, permValue]))
       }
     } else {
       // Remove permission - cleanly purge associated action groups if it's a notice permission

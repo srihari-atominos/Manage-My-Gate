@@ -92,9 +92,10 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
     if (success && createdResult) {
       if (onSuccess) {
         onSuccess(createdResult);
+      } else {
+        onClose();
       }
       reset();
-      onClose();
     }
   }, [success, createdResult, onSuccess, onClose, reset]);
 
@@ -117,6 +118,14 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
 
   const handleSaveDraft = async () => {
     setStepError(null);
+    if (!formData.title || formData.title.trim().length < 3) {
+      setStepError(
+        contentType === 'POLL'
+          ? 'Please enter a poll question (at least 3 characters) to save draft.'
+          : 'Please enter a title (at least 3 characters) to save draft.'
+      );
+      return;
+    }
     setSavingDraft(true);
     try {
       await saveDraft();

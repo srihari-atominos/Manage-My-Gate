@@ -145,12 +145,14 @@ export default function PollDetailScreen() {
   const hasVoted = Boolean(poll.hasVoted);
   const isCreator = poll.createdBy?._id === user?.id || poll.createdBy === user?.id;
 
-  // Decide whether to show results based on resultsVisibility policy
+  // Decide whether to show results based on resultsVisibility policy (Strictly Community Admin only)
   const canSeeResults =
-    poll.resultsVisibility === 'ALWAYS' ||
-    (poll.resultsVisibility === 'AFTER_VOTE' && (hasVoted || isClosed)) ||
-    (poll.resultsVisibility === 'AFTER_EXPIRY' && isClosed) ||
-    (poll.resultsVisibility === 'ADMIN_ONLY' && (canClose || isCreator));
+    isCommunityAdmin &&
+    (poll.resultsVisibility === 'ALWAYS' ||
+      (poll.resultsVisibility === 'AFTER_VOTE' && (hasVoted || isClosed)) ||
+      (poll.resultsVisibility === 'AFTER_EXPIRY' && isClosed) ||
+      (poll.resultsVisibility === 'ADMIN_ONLY' && (canClose || isCreator)) ||
+      isCommunityAdmin);
 
   return (
     <ScreenShell
@@ -187,7 +189,7 @@ export default function PollDetailScreen() {
             </View>
             <View className="bg-muted/60 px-2 py-0.5 rounded-md border border-border/40">
               <Text className="text-[10px] text-muted-foreground font-medium">
-                Ends: {new Date(poll.endDate).toLocaleDateString()}
+                Ends: {poll.endDate ? new Date(poll.endDate).toLocaleDateString() : 'No expiry set'}
               </Text>
             </View>
             {hasVoted && (
@@ -200,6 +202,33 @@ export default function PollDetailScreen() {
           </View>
         </View>
 
+        {/* Draft Poll Notice Callout */}
+        {poll.status === 'Draft' && (
+          <View className="bg-amber-500/10 rounded-2xl border border-amber-500/20 p-4 mb-4 flex-row items-center gap-3">
+            <Lock size={20} className="text-amber-600 dark:text-amber-400" />
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-foreground">Draft Poll (Not Published)</Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">
+                This poll is currently saved as a draft. Voting will open once it is published.
+              </Text>
+            </View>
+            {isCommunityAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(resident)/community-engagement/edit',
+                    params: { mode: 'edit', id: poll._id || poll.id, type: 'POLL' },
+                  })
+                }
+              >
+                Edit Poll
+              </Button>
+            )}
+          </View>
+        )}
+
         {/* Social Engagement & Reactions Bar: 👍 Helpful  ❤️ Important  🙏 Thanks */}
         <PollEngagementBar
           reactions={poll.reactionCounts || poll.reactions}
@@ -210,8 +239,8 @@ export default function PollDetailScreen() {
           onLikePress={() => reactToPoll(poll._id, 'HELPFUL')}
         />
 
-        {/* Voting Section (Shown only if Active and not yet voted, or if editing ballot is supported) */}
-        {!isClosed && !hasVoted && (
+        {/* Voting Section (Shown only if Active and not yet voted) */}
+        {poll.status === 'Active' && !hasVoted && (
           <PollVotingSection
             poll={poll}
             onVote={handleVote}
@@ -240,57 +269,57 @@ export default function PollDetailScreen() {
             <View className="flex-1">
               <Text className="text-sm font-bold text-foreground">Poll Closed</Text>
               <Text className="text-xs text-muted-foreground mt-0.5">
-                Voting has concluded for this poll. Final results are displayed below.
+                Voting has concluded for this poll.
               </Text>
             </View>
           </View>
         )}
 
-        {/* Results View */}
-        {canSeeResults ? (
-          <PollResultsView poll={poll} results={results} />
-        ) : (
-          <View className="bg-card rounded-2xl border border-border p-4 mb-4 items-center justify-center py-8">
-            <Lock size={28} color="#94a3b8" />
-            <Text className="text-sm font-bold text-foreground mt-2">Results are Hidden</Text>
-            <Text className="text-xs text-muted-foreground text-center mt-1 px-4">
-              {poll.resultsVisibility === 'AFTER_VOTE'
-                ? 'Cast your ballot to unlock real-time results.'
-                : poll.resultsVisibility === 'AFTER_EXPIRY'
-                ? 'Results will be published once the poll has concluded.'
-                : 'Results are restricted to community administrators.'}
-            </Text>
-          </View>
+        {/* Results View (Restricted strictly to Community Admin) */}
+        {isCommunityAdmin && (
+          canSeeResults ? (
+            <PollResultsView poll={poll} results={results} />
+          ) : (
+            <View className="bg-card rounded-2xl border border-border p-4 mb-4 items-center justify-center py-8">
+              <Lock size={28} color="#94a3b8" />
+              <Text className="text-sm font-bold text-foreground mt-2">Results are Hidden</Text>
+              <Text className="text-xs text-muted-foreground text-center mt-1 px-4">
+                Results are restricted to community administrators.
+              </Text>
+            </View>
+          )
         )}
 
-        {/* Governance & Rules DetailSection */}
-        <DetailSection title="Poll Governance Rules" iconName="Shield">
-          <DetailRow
-            label="Ballot Selection"
-            value={
-              poll.choiceType === 'MULTIPLE_CHOICE'
-                ? `Multiple Choice (Max ${poll.maxChoices || 1})`
-                : 'Single Choice'
-            }
-          />
-          <DetailRow
-            label="Voting Policy"
-            value={poll.votingMode === 'ONE_PER_UNIT' ? 'One Vote Per Villa / Unit' : 'One Vote Per Registered Resident'}
-          />
-          <DetailRow
-            label="Results Visibility"
-            value={poll.resultsVisibility}
-          />
-          <DetailRow
-            label="Quorum Required"
-            value={`${poll.quorumPercentage || 0}%`}
-          />
-          <DetailRow
-            label="Anonymous Ballot"
-            value={poll.isAnonymous ? 'Yes (Encrypted)' : 'No (Public Turnout)'}
-            isLast
-          />
-        </DetailSection>
+        {/* Governance & Rules DetailSection (Restricted strictly to Community Admin) */}
+        {isCommunityAdmin && (
+          <DetailSection title="Poll Governance Rules" iconName="Shield">
+            <DetailRow
+              label="Ballot Selection"
+              value={
+                poll.choiceType === 'MULTIPLE_CHOICE'
+                  ? `Multiple Choice (Max ${poll.maxChoices || 1})`
+                  : 'Single Choice'
+              }
+            />
+            <DetailRow
+              label="Voting Policy"
+              value={poll.votingMode === 'ONE_PER_UNIT' ? 'One Vote Per Villa / Unit' : 'One Vote Per Registered Resident'}
+            />
+            <DetailRow
+              label="Results Visibility"
+              value={poll.resultsVisibility}
+            />
+            <DetailRow
+              label="Quorum Required"
+              value={`${poll.quorumPercentage || 0}%`}
+            />
+            <DetailRow
+              label="Anonymous Ballot"
+              value={poll.isAnonymous ? 'Yes (Encrypted)' : 'No (Public Turnout)'}
+              isLast
+            />
+          </DetailSection>
+        )}
 
         {/* Administrative & Accountability Actions */}
         {(canClose || canViewVoters || isCreator) && (

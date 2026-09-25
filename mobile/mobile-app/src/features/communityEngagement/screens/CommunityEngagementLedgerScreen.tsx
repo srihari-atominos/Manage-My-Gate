@@ -109,6 +109,8 @@ export function CommunityEngagementLedgerScreen() {
 
         const promises: Promise<any>[] = [];
 
+        const statusFilter = selectedStatus !== 'ALL' ? selectedStatus : undefined;
+
         // 1. Notices query
         if (fetchNotices) {
           promises.push(
@@ -117,6 +119,7 @@ export function CommunityEngagementLedgerScreen() {
                 page: currentPage,
                 limit: 50,
                 search: debouncedSearch || undefined,
+                status: statusFilter,
                 priority: params.priority || undefined,
                 sortBy: 'createdAt',
                 sortOrder: 'desc',
@@ -135,6 +138,7 @@ export function CommunityEngagementLedgerScreen() {
                 page: currentPage,
                 limit: 50,
                 search: debouncedSearch || undefined,
+                status: statusFilter,
                 sort: 'latest',
               })
               .catch(() => ({ data: { data: { polls: [] } } }))
@@ -228,7 +232,7 @@ export function CommunityEngagementLedgerScreen() {
         setRefreshing(false);
       }
     },
-    [perspectiveMode, debouncedSearch, params.priority]
+    [perspectiveMode, debouncedSearch, selectedStatus, params.priority]
   );
 
   useEffect(() => {

@@ -219,7 +219,8 @@ export class OrgMembershipRepository {
       query.villaId = villaId;
     }
     
-    const updatePayload = { roleIds, roleId: roleIds.length > 0 ? roleIds[0] : null };
+    const cleanRoleIds = (Array.isArray(roleIds) ? roleIds : [roleIds]).filter(Boolean);
+    const updatePayload = { roleIds: cleanRoleIds, roleId: cleanRoleIds.length > 0 ? cleanRoleIds[0] : null };
     if (residentType) {
       updatePayload.residentType = residentType;
     }

@@ -88,7 +88,7 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Multiple Role Checkbox List */}
+            {/* Multi-Role Selection List */}
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }} className="mb-4">
               <Text className="text-xs font-semibold text-muted-foreground text-start mb-2">
                 Select user access roles:

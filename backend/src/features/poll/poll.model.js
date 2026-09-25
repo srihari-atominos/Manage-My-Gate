@@ -27,7 +27,7 @@ const pollSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Poll question is required'],
       trim: true,
-      minlength: [5, 'Poll question must be at least 5 characters'],
+      minlength: [3, 'Poll question must be at least 3 characters'],
       maxlength: [200, 'Poll question cannot exceed 200 characters']
     },
     description: {
@@ -40,20 +40,24 @@ const pollSchema = new mongoose.Schema(
       validate: [
         {
           validator: function (v) {
+            if (this.status === 'Draft') {
+              return !v || (v.length >= 0 && v.length <= 10);
+            }
             return v && v.length >= 2 && v.length <= 10;
           },
           message: 'Poll must have between 2 and 10 options.'
         },
         {
           validator: function (v) {
-            const texts = v.map((opt) => opt.text.trim().toLowerCase());
+            if (!v || v.length === 0) return true;
+            const texts = v.map((opt) => (opt.text ? opt.text.trim().toLowerCase() : '')).filter(Boolean);
             const uniqueTexts = new Set(texts);
             return uniqueTexts.size === texts.length;
           },
           message: 'Poll options must be unique.'
         }
       ],
-      required: true
+      required: false
     },
     status: {
       type: String,
@@ -68,7 +72,12 @@ const pollSchema = new mongoose.Schema(
     },
     endDate: {
       type: Date,
-      required: [true, 'End date is required']
+      required: [
+        function () {
+          return this.status !== 'Draft';
+        },
+        'End date is required'
+      ]
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

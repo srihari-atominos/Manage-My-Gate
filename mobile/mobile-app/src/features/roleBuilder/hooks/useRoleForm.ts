@@ -153,6 +153,37 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     }
   }, [role, visible, reset]);
 
+const NOTICE_ACTION_GROUPS: Record<string, string[]> = {
+  active_board: ['active_board', 'resident_feed', 'read'],
+  resident_feed: ['active_board', 'resident_feed', 'read'],
+  polls: ['polls', 'community_engagement'],
+  community_engagement: ['polls', 'community_engagement'],
+  manage_notices: ['manage_notices', 'manage_engagement', 'dashboard', 'create', 'update', 'delete', 'publish', 'acknowledge'],
+  manage_engagement: ['manage_notices', 'manage_engagement', 'dashboard', 'create', 'update', 'delete', 'publish', 'acknowledge'],
+  dashboard: ['manage_notices', 'manage_engagement', 'dashboard', 'create', 'update', 'delete', 'publish', 'acknowledge'],
+};
+
+const ALL_NOTICE_ACTIONS = [
+  'active_board',
+  'resident_feed',
+  'polls',
+  'community_engagement',
+  'manage_notices',
+  'manage_engagement',
+  'dashboard',
+  'create',
+  'update',
+  'delete',
+  'publish',
+  'acknowledge',
+  'read',
+];
+
+const getPermAction = (p: any): string => {
+  const str = typeof p === 'object' ? String(p.name || p._id || '') : String(p);
+  return (str.includes(':') ? str.split(':')[1] : str).toLowerCase().trim();
+};
+
   const handleSelectAllGroup = (groupCodes: string[], checked: boolean) => {
     const currentPermissions = getValues('permissions') || [];
     let newValue: string[];
@@ -184,6 +215,8 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
       setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true });
       return;
     }
+
+    const targetAction = getPermAction(permValue);
 
     if (checked) {
       if (String(permValue).toLowerCase().startsWith('visitor:')) {
