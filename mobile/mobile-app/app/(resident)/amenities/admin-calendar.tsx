@@ -148,14 +148,11 @@ export default function AdminAmenityCalendarScreen() {
 
   const renderHeader = () => (
     <View className="mb-2.5 gap-2.5">
-      {/* Search & Availability Quick Filter Bar with Filter Drawer Trigger */}
+      {/* Search Bar with Filter Drawer Trigger */}
       <SearchFilterBar
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search resident, villa #, ref ID..."
-        sortOptions={availabilitySortOptions}
-        currentSort={filters.availability}
-        onSortChange={handleAvailabilityQuickFilter}
         onFilterPress={() => setIsFilterDrawerOpen(true)}
         activeFilterCount={activeFilterCount}
         variant="default"
@@ -267,20 +264,6 @@ export default function AdminAmenityCalendarScreen() {
       iconName="Calendar"
       loading={loading && adminBookings.length === 0}
       error={error}
-      headerRight={
-        <View className="flex-row items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
-            className="flex-row items-center gap-1 rounded-full px-2.5 h-8 bg-amber-500/10 border-amber-500/30 active:bg-amber-500/20"
-            accessibilityLabel="Maintenance Schedule"
-          >
-            <Wrench size={12} className="text-amber-600 dark:text-amber-400" />
-            <Text className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">Maintenance</Text>
-          </Button>
-        </View>
-      }
     >
       <View className="flex-1 bg-background">
         <PaginatedList<{ date: string; formattedDate: string; bookings: AmenityBooking[] }>

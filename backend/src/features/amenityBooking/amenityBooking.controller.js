@@ -160,7 +160,9 @@ export class AmenityBookingController {
 
   async getDashboardData(req, res, next) {
     try {
-      const data = await amenityBookingService.getDashboardData(req.tenant.orgId);
+      const scopedFacilityId = req.user?.activeAssignment?.type === 'facility' ? req.user.activeAssignment.id : req.query?.facilityId;
+      const scopedFacilityName = req.user?.activeAssignment?.type === 'facility' ? req.user.activeAssignment.name : null;
+      const data = await amenityBookingService.getDashboardData(req.tenant.orgId, scopedFacilityId, scopedFacilityName);
       res.success(data, 'Dashboard data retrieved successfully');
     } catch (error) { next(error); }
   }

@@ -71,11 +71,11 @@ export const VisitorPassFlowHeader: React.FC<VisitorPassFlowHeaderProps> = ({
       </View>
 
       <View className="mt-1">
-        <Text variant="large" className="text-foreground font-bold">
+        <Text variant="large" className="text-foreground font-bold text-lg">
           {translateText(stepTitle)}
         </Text>
         {stepSubtitle ? (
-          <Text variant="muted" className="text-xs mt-0.5">
+          <Text variant="muted" className="text-xs text-muted-foreground mt-1 font-normal">
             {translateText(stepSubtitle)}
           </Text>
         ) : null}

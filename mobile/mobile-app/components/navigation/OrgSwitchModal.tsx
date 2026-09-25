@@ -15,7 +15,6 @@ import {
 import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 export interface WorkspaceItem {
   orgId: string;
@@ -50,7 +49,6 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   const activeRole = user?.role || (user as any)?.activeRole;
 
   const [pendingOrg, setPendingOrg] = React.useState<WorkspaceItem | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
   const [isSwitching, setIsSwitching] = React.useState(false);
 
   const workspacesList: WorkspaceItem[] = React.useMemo(() => {
@@ -74,7 +72,6 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
       return;
     }
     setPendingOrg(ws);
-    setShowConfirmModal(true);
   };
 
   const handleConfirmSwitch = async () => {
@@ -97,7 +94,6 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
 
       // 2. Notify parent callback & close modal
       onSelectCommunity(ws.name, ws.orgId);
-      setShowConfirmModal(false);
       setPendingOrg(null);
       onClose();
 
@@ -129,134 +125,185 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/60 justify-center items-center p-4">
         <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-3.5">
-          {/* Header */}
-          <View className="flex-row justify-between items-center pb-2.5 border-b border-border/80">
-            <View className="flex-row items-center gap-2">
-              <View className="bg-indigo-500/15 border border-indigo-500/25 p-2 rounded-xl">
-                <Building2 size={19} color="#6366f1" />
-              </View>
-              <Text className="text-lg font-bold text-foreground">{t('switch_community', 'Switch Community')}</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
-              <X size={16} className="text-muted-foreground" />
-            </TouchableOpacity>
-          </View>
-
-          <Text className="text-xs text-muted-foreground">
-            {t('select_community_org_sub', 'Select a community organization to switch your workspace context:')}
-          </Text>
-
-          {/* Workspaces List */}
-          <ScrollView className="max-h-60" showsVerticalScrollIndicator={false}>
-            <View className="gap-2.5">
-              {workspacesList.length === 0 ? (
-                <View className="py-6 items-center justify-center">
-                  <Text className="text-xs text-muted-foreground text-center">
-                    {t('no_workspaces_found', 'No other community workspaces found for this account.')}
-                  </Text>
+          {pendingOrg ? (
+            /* Inline Confirmation View */
+            <View className="gap-4 py-1">
+              <View className="items-center gap-2">
+                <View className="bg-indigo-500/15 border border-indigo-500/25 p-3.5 rounded-2xl">
+                  <Building2 size={26} color="#6366f1" />
                 </View>
-              ) : (
-                workspacesList.map((ws, index) => {
-                const isOrgMatch = ws.orgId ? ws.orgId === activeOrgId : ws.name === activeCommunity;
-                const isRoleMatch = !ws.roleName || !activeRole || 
-                  ws.roleName.toLowerCase().includes(activeRole.toLowerCase()) || 
-                  activeRole.toLowerCase().includes(ws.roleName.toLowerCase());
-                const isSelected = isOrgMatch && isRoleMatch;
+                <Text className="text-base font-bold text-foreground text-center">
+                  {t('confirm_switch_org_title', 'Switch Community Workspace?')}
+                </Text>
+                <Text className="text-xs text-muted-foreground text-center px-2">
+                  {t('confirm_switch_org_msg', 'Are you sure you want to switch to')}{' '}
+                  <Text className="font-bold text-foreground">{pendingOrg.name}</Text>?
+                </Text>
+              </View>
 
-                return (
-                  <TouchableOpacity
-                    key={`${ws.orgId || 'ws'}-${ws.roleName || ''}-${index}`}
-                    onPress={() => handleSelect(ws)}
-                    activeOpacity={0.8}
-                    className={`flex-row items-center justify-between p-3.5 rounded-2xl border shadow-xs ${
-                      isSelected
-                        ? 'bg-primary/10 border-primary/40'
-                        : 'bg-card border-border/80 active:bg-secondary/50'
-                    }`}
-                  >
-                    <View className="flex-row items-center gap-3 flex-1">
-                      <View
-                        className={`p-2.5 rounded-xl border ${
-                          isSelected ? 'bg-primary/20 border-primary/30' : 'bg-secondary border-border/50'
+              {/* Summary Details */}
+              <View className="bg-secondary/60 border border-border/80 rounded-2xl p-3.5 gap-2">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-xs text-muted-foreground">{t('community', 'Community')}</Text>
+                  <Text className="text-xs font-bold text-foreground">{pendingOrg.name}</Text>
+                </View>
+                {pendingOrg.roleName ? (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs text-muted-foreground">{t('role', 'Role')}</Text>
+                    <Text className="text-xs font-semibold text-foreground">
+                      {tRole(pendingOrg.roleName, pendingOrg.roleName)}
+                    </Text>
+                  </View>
+                ) : null}
+                {pendingOrg.villaNumber ? (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs text-muted-foreground">{t('unit_label', 'Unit')}</Text>
+                    <Text className="text-xs font-semibold text-foreground">{pendingOrg.villaNumber}</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <View className="gap-2 pt-1">
+                <Button
+                  onPress={handleConfirmSwitch}
+                  loading={isSwitching}
+                  className="h-11 bg-primary"
+                >
+                  <Text className="font-bold text-primary-foreground text-sm">
+                    {t('yes_switch', 'Yes, Switch')}
+                  </Text>
+                </Button>
+                <Button
+                  onPress={() => {
+                    if (isSwitching) return;
+                    setPendingOrg(null);
+                  }}
+                  variant="secondary"
+                  className="h-11"
+                  disabled={isSwitching}
+                >
+                  <Text className="font-bold text-foreground text-sm">
+                    {t('no_cancel', 'No, Cancel')}
+                  </Text>
+                </Button>
+              </View>
+            </View>
+          ) : (
+            /* Workspaces List View */
+            <>
+              {/* Header */}
+              <View className="flex-row justify-between items-center pb-2.5 border-b border-border/80">
+                <View className="flex-row items-center gap-2">
+                  <View className="bg-indigo-500/15 border border-indigo-500/25 p-2 rounded-xl">
+                    <Building2 size={19} color="#6366f1" />
+                  </View>
+                  <Text className="text-lg font-bold text-foreground">{t('switch_community', 'Switch Community')}</Text>
+                </View>
+                <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
+                  <X size={16} className="text-muted-foreground" />
+                </TouchableOpacity>
+              </View>
+
+              <Text className="text-xs text-muted-foreground">
+                {t('select_community_org_sub', 'Select a community organization to switch your workspace context:')}
+              </Text>
+
+              {/* Workspaces List */}
+              <ScrollView className="max-h-60" showsVerticalScrollIndicator={false}>
+                <View className="gap-2.5">
+                  {workspacesList.length === 0 ? (
+                    <View className="py-6 items-center justify-center">
+                      <Text className="text-xs text-muted-foreground text-center">
+                        {t('no_workspaces_found', 'No other community workspaces found for this account.')}
+                      </Text>
+                    </View>
+                  ) : (
+                    workspacesList.map((ws, index) => {
+                    const isOrgMatch = ws.orgId ? ws.orgId === activeOrgId : ws.name === activeCommunity;
+                    const isRoleMatch = !ws.roleName || !activeRole || 
+                      ws.roleName.toLowerCase().includes(activeRole.toLowerCase()) || 
+                      activeRole.toLowerCase().includes(ws.roleName.toLowerCase());
+                    const isSelected = isOrgMatch && isRoleMatch;
+
+                    return (
+                      <TouchableOpacity
+                        key={`${ws.orgId || 'ws'}-${ws.roleName || ''}-${index}`}
+                        onPress={() => handleSelect(ws)}
+                        activeOpacity={0.8}
+                        className={`flex-row items-center justify-between p-3.5 rounded-2xl border shadow-xs ${
+                          isSelected
+                            ? 'bg-primary/10 border-primary/40'
+                            : 'bg-card border-border/80 active:bg-secondary/50'
                         }`}
                       >
-                        <Building2
-                          size={18}
-                          color={isSelected ? '#172B70' : '#a1a1aa'}
-                        />
-                      </View>
-                      <View className="flex-1">
-                        <View className="flex-row items-center gap-2">
-                          <Text
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                            className={`text-sm font-bold flex-1 ${
-                              isSelected ? 'text-primary font-extrabold' : 'text-foreground'
+                        <View className="flex-row items-center gap-3 flex-1">
+                          <View
+                            className={`p-2.5 rounded-xl border ${
+                              isSelected ? 'bg-primary/20 border-primary/30' : 'bg-secondary border-border/50'
                             }`}
                           >
-                            {ws.name}
-                          </Text>
-                          {ws.isPlatform && (
-                            <View className="bg-primary/15 border border-primary/25 px-1.5 py-0.5 rounded-md">
-                              <Text className="text-primary text-[9px] font-bold">{t('platform_badge', 'Platform')}</Text>
+                            <Building2
+                              size={18}
+                              color={isSelected ? '#172B70' : '#a1a1aa'}
+                            />
+                          </View>
+                          <View className="flex-1">
+                            <View className="flex-row items-center gap-2">
+                              <Text
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                className={`text-sm font-bold flex-1 ${
+                                  isSelected ? 'text-primary font-extrabold' : 'text-foreground'
+                                }`}
+                              >
+                                {ws.name}
+                              </Text>
+                              {ws.isPlatform && (
+                                <View className="bg-primary/15 border border-primary/25 px-1.5 py-0.5 rounded-md">
+                                  <Text className="text-primary text-[9px] font-bold">{t('platform_badge', 'Platform')}</Text>
+                                </View>
+                              )}
                             </View>
-                          )}
+                            <Text className="text-[10px] text-muted-foreground mt-0.5">
+                              {t('role_label_prefix', 'Role:')} {tRole(ws.roleName, ws.roleName || 'Member')}{ws.villaNumber ? ` • ${t('unit_label', 'Unit')} ${ws.villaNumber}` : ''}
+                            </Text>
+                          </View>
                         </View>
-                        <Text className="text-[10px] text-muted-foreground mt-0.5">
-                          {t('role_label_prefix', 'Role:')} {tRole(ws.roleName, ws.roleName || 'Member')}{ws.villaNumber ? ` • ${t('unit_label', 'Unit')} ${ws.villaNumber}` : ''}
-                        </Text>
-                      </View>
-                    </View>
 
-                    {isSelected && <Check size={18} className="text-primary" />}
-                  </TouchableOpacity>
-                );
-              }))}
-            </View>
-          </ScrollView>
+                        {isSelected && <Check size={18} className="text-primary" />}
+                      </TouchableOpacity>
+                    );
+                  }))}
+                </View>
+              </ScrollView>
 
-          {/* Create New Organization CTA */}
-          <TouchableOpacity
-            onPress={() => {
-              onClose();
-              router.push({
-                pathname: '/(auth)/setup-organization' as any,
-                params: { intent: 'create-org', canGoBack: 'true' },
-              });
-            }}
-            activeOpacity={0.8}
-            className="flex-row items-center justify-center p-3 rounded-2xl border border-dashed border-primary/50 bg-primary/5 active:bg-primary/10 mt-1 gap-2"
-            accessibilityRole="button"
-            accessibilityLabel={t('create_new_organization', '+ Create New Organization')}
-          >
-            <Plus size={16} color="#03A9F4" />
-            <Text className="text-xs font-bold text-primary">
-              {t('create_new_organization', '+ Create New Organization')}
-            </Text>
-          </TouchableOpacity>
+              {/* Create New Organization CTA */}
+              <TouchableOpacity
+                onPress={() => {
+                  onClose();
+                  router.push({
+                    pathname: '/(auth)/setup-organization' as any,
+                    params: { intent: 'create-org', canGoBack: 'true' },
+                  });
+                }}
+                activeOpacity={0.8}
+                className="flex-row items-center justify-center p-3 rounded-2xl border border-dashed border-primary/50 bg-primary/5 active:bg-primary/10 mt-1 gap-2"
+                accessibilityRole="button"
+                accessibilityLabel={t('create_new_organization', '+ Create New Organization')}
+              >
+                <Plus size={16} color="#03A9F4" />
+                <Text className="text-xs font-bold text-primary">
+                  {t('create_new_organization', '+ Create New Organization')}
+                </Text>
+              </TouchableOpacity>
 
-          <Button onPress={onClose} variant="secondary" className="mt-1 h-11">
-            <Text className="font-bold text-foreground text-sm">{t('cancel', 'Cancel')}</Text>
-          </Button>
+              <Button onPress={onClose} variant="secondary" className="mt-1 h-11">
+                <Text className="font-bold text-foreground text-sm">{t('cancel', 'Cancel')}</Text>
+              </Button>
+            </>
+          )}
         </View>
       </View>
-
-      {/* Yes/No Switch Confirmation Dialog */}
-      <ConfirmationModal
-        visible={showConfirmModal}
-        variant="info"
-        loading={isSwitching}
-        title={t('confirm_switch_org_title', 'Switch Community Workspace?')}
-        message={`${t('confirm_switch_org_msg', 'Are you sure you want to switch to')} ${pendingOrg?.name || ''}?`}
-        confirmLabel={t('yes_switch', 'Yes, Switch')}
-        cancelLabel={t('no_cancel', 'No, Cancel')}
-        onConfirm={handleConfirmSwitch}
-        onCancel={() => {
-          if (isSwitching) return;
-          setShowConfirmModal(false);
-          setPendingOrg(null);
-        }}
-      />
     </Modal>
   );
 };

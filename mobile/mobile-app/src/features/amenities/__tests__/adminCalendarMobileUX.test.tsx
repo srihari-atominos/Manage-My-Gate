@@ -522,9 +522,19 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
         fireEvent.press(screen.getByText('Weight Section'));
       });
 
+      // Navigate to Booking Status category
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Booking Status category'));
+      });
+
       // Tap Confirmed status
       await act(async () => {
         fireEvent.press(screen.getByText('Confirmed'));
+      });
+
+      // Navigate to Payment Status category
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Payment Status category'));
       });
 
       // Tap Paid payment status
@@ -777,22 +787,28 @@ describe('Admin Calendar Mobile UX & Behavior Tests', () => {
       expect(emptyElement).toBeTruthy();
     });
 
-    it('renders Availability quick action filter row on the outside and updates filter on tap', async () => {
+    it('opens Filter Drawer via filter button and updates availability filter', async () => {
       await render(<AdminAmenityCalendarScreen />);
 
-      // Verify quick action availability pills outside with live counts
-      expect(screen.getByText(/^All \(/)).toBeTruthy();
-      expect(screen.getByText(/^Available \(/)).toBeTruthy();
-      expect(screen.getByText(/^Maintenance \(/)).toBeTruthy();
+      // Filter button is present near search bar
+      const filterBtn = screen.getByLabelText('Open filter options');
+      expect(filterBtn).toBeTruthy();
 
-      // Tap on Maintenance quick action pill
-      const maintPill = screen.getByText(/^Maintenance \(/);
+      // Open drawer
       await act(async () => {
-        fireEvent.press(maintPill);
+        fireEvent.press(filterBtn);
       });
 
-      // Active filter chip for availability appears
-      expect(screen.getByText('Avail: Maintenance')).toBeTruthy();
+      // Tap Availability Status tab
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Availability Status category'));
+      });
+
+      // Verify availability status options are inside the drawer
+      expect(screen.getByText('Availability Status')).toBeTruthy();
+      expect(screen.getAllByText('Available').length).toBeGreaterThan(0);
+      expect(screen.getByText('Partially Available')).toBeTruthy();
+      expect(screen.getByText('Fully Booked')).toBeTruthy();
     });
   });
 });

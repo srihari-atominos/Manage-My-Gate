@@ -8,10 +8,12 @@ export const getLogs = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
+    const activeGate = req.user?.activeAssignment?.type === 'gate' ? req.user.activeAssignment.name : (req.query.gateName || null);
     const filters = {
       search: req.query.search,
       status: req.query.status,
       scanType: req.query.scanType,
+      gateName: activeGate,
       amenityId: req.query.amenityId,
       checkedInBy: req.query.checkedInBy,
       dateRange: req.query.dateRange, // 'today', 'yesterday', '7days', '30days', 'custom'
@@ -39,7 +41,8 @@ export const getLogs = async (req, res, next) => {
 export const getDashboardStats = async (req, res, next) => {
   try {
     const { orgId } = req.user;
-    const stats = await securityLogService.getDashboardStats(orgId);
+    const activeGate = req.user?.activeAssignment?.type === 'gate' ? req.user.activeAssignment.name : (req.query.gateName || null);
+    const stats = await securityLogService.getDashboardStats(orgId, activeGate);
     res.json({ success: true, stats });
   } catch (error) {
     next(error);

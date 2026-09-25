@@ -17,6 +17,17 @@ const PERMISSION_LABEL_MAP: Record<string, string> = {
 
 const formatPermissionLabel = (permissionString?: string): string => {
   if (!permissionString) return '';
+  const str = String(permissionString).toLowerCase();
+  if (str === 'notices:active_board' || str === 'notices.active_board' || str === 'active_board') {
+    return 'Resident Feed';
+  }
+  if (str === 'notices:polls' || str === 'notices.polls' || str === 'polls') {
+    return 'Community Engagement';
+  }
+  if (str === 'notices:manage_notices' || str === 'notices.manage_notices' || str === 'manage_notices') {
+    return 'Manage Engagement';
+  }
+
   let label = permissionString;
   if (label.includes(':')) {
     const parts = label.split(':');
@@ -28,6 +39,35 @@ const formatPermissionLabel = (permissionString?: string): string => {
   }
   label = label.replace(/_/g, ' ');
   return label.charAt(0).toUpperCase() + label.slice(1);
+};
+
+export const isPermissionSelected = (perm: PermissionItem | string, selectedIds: string[] = []): boolean => {
+  if (!perm || !selectedIds || selectedIds.length === 0) return false;
+  const permValue = typeof perm === 'object' ? (perm?.name || perm?.code || perm?._id || '') : perm;
+  if (selectedIds.includes(permValue)) return true;
+  if (typeof perm === 'object' && perm?._id && selectedIds.includes(String(perm._id))) return true;
+
+  if (typeof permValue === 'string') {
+    const dot = permValue.replace(/:/g, '.');
+    const colon = permValue.replace(/\./g, ':');
+    if (selectedIds.includes(dot) || selectedIds.includes(colon)) return true;
+
+    const action = permValue.includes(':')
+      ? permValue.split(':')[1]
+      : permValue.includes('.')
+      ? permValue.split('.')[1]
+      : permValue;
+
+    if (selectedIds.includes(action)) return true;
+
+    if (
+      (action === 'active_board' || permValue === 'notices:active_board') &&
+      (selectedIds.includes('notices:read') || selectedIds.includes('notices.read'))
+    ) {
+      return true;
+    }
+  }
+  return false;
 };
 
 const getCategoryDisplayName = (category: string): string => {
@@ -139,70 +179,39 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
           });
         }
 
-        // Filter noticeboard permissions as requested: only Resident Feed, Community Engagement, and Manage Engagement
+        // Filter notices permissions down to strictly 3 granular options:
+        // Resident Feed, Community Engagement, Manage Engagement
         const catKey = category.toLowerCase();
         if (catKey === 'notices' || catKey === 'noticeboard' || catKey === 'notices board') {
-          const allowedNoticesPerms = [
-            'active_board',
-            'resident_feed',
-            'polls',
-            'community_engagement',
-            'manage_notices',
-            'manage_engagement',
-            'dashboard',
-          ];
-          const seenLabels = new Set<string>();
+          const allowedNoticeActions = ['active_board', 'polls', 'manage_notices'];
           perms = perms.filter((p) => {
             const permName = p.name || p.code || p._id || '';
-            const action = (permName.includes(':') ? permName.split(':')[1] : permName).toLowerCase();
-            if (allowedNoticesPerms.includes(action)) {
-              const displayLabel = PERMISSION_LABEL_MAP[action] || action;
-              if (seenLabels.has(displayLabel)) {
-                return false;
-              }
-              seenLabels.add(displayLabel);
-              return true;
-            }
-            return false;
+            const action = permName.includes(':')
+              ? permName.split(':')[1]
+              : permName.includes('.')
+              ? permName.split('.')[1]
+              : permName;
+            return allowedNoticeActions.includes(action.toLowerCase());
           });
+
+          const existingActions = perms.map((p) => {
+            const name = p.name || p.code || p._id || '';
+            return name.includes(':') ? name.split(':')[1] : (name.includes('.') ? name.split('.')[1] : name);
+          });
+          if (!existingActions.includes('active_board')) {
+            perms.push({ name: 'notices:active_board', code: 'notices:active_board', _id: 'notices:active_board' });
+          }
+          if (!existingActions.includes('polls')) {
+            perms.push({ name: 'notices:polls', code: 'notices:polls', _id: 'notices:polls' });
+          }
+          if (!existingActions.includes('manage_notices')) {
+            perms.push({ name: 'notices:manage_notices', code: 'notices:manage_notices', _id: 'notices:manage_notices' });
+          }
         }
 
-const isPermissionSelected = (selectedIds: string[], perm: PermissionItem): boolean => {
-  if (!selectedIds || !Array.isArray(selectedIds) || selectedIds.length === 0 || !perm) return false;
-  const pId = String(perm._id || '');
-  const pName = String(perm.name || '').trim().toLowerCase();
-  const pCode = String(perm.code || '').trim().toLowerCase();
-  const pAction = String(perm.action || '').trim().toLowerCase();
-
-  return selectedIds.some((selected) => {
-    if (!selected) return false;
-    const selStr = typeof selected === 'object' ? String((selected as any).name || (selected as any)._id || '') : String(selected);
-    const selTrimmed = selStr.trim().toLowerCase();
-    const selNormalized = selTrimmed.replace(':', '.');
-    const pNameNormalized = pName.replace(':', '.');
-
-    if (
-      selTrimmed === pId ||
-      selTrimmed === pName ||
-      selTrimmed === pCode ||
-      selNormalized === pNameNormalized
-    ) {
-      return true;
-    }
-
-    const selAction = selTrimmed.includes(':') ? selTrimmed.split(':')[1] : selTrimmed;
-    const pActionName = pName.includes(':') ? pName.split(':')[1] : pName;
-    if (selAction && (selAction === pAction || selAction === pActionName)) {
-      return true;
-    }
-
-    return false;
-  });
-};
-
         const groupCodes = perms.map((p) => p.name || p.code || p._id || '');
-        const selectedGroupCount = perms.filter((p) => isPermissionSelected(selectedIds || [], p)).length;
-        const isAllGroupSelected = perms.length > 0 && selectedGroupCount === perms.length;
+        const selectedGroupCount = perms.filter((p) => isPermissionSelected(p, selectedIds)).length;
+        const isAllGroupSelected = groupCodes.length > 0 && selectedGroupCount === groupCodes.length;
 
         const CategoryIcon = getCategoryIcon(category);
         const activeAmenityTier = isAmenities ? currentAmenityTier : null;
@@ -302,7 +311,7 @@ const isPermissionSelected = (selectedIds: string[], perm: PermissionItem): bool
               <View className="bg-card border border-border/80 rounded-2xl overflow-hidden shadow-xs">
                 {perms.map((perm, idx) => {
                   const permValue = perm.name || perm.code || perm._id || '';
-                  const isChecked = isPermissionSelected(selectedIds || [], perm);
+                  const isChecked = isPermissionSelected(perm, selectedIds);
                   const isLast = idx === perms.length - 1;
 
                   return (

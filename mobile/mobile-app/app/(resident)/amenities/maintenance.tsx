@@ -2,11 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { TextInput } from '@/components/forms/TextInput';
-import { Plus, Search, X, RotateCcw } from 'lucide-react-native';
+import { Plus, RotateCcw } from 'lucide-react-native';
 
 import { useAdminMaintenance } from '../../../src/features/amenities/hooks/useAdminMaintenance';
 import { AmenityMaintenanceCard } from '../../../src/features/amenities/components/AmenityMaintenanceCard';
@@ -179,6 +179,15 @@ export default function AmenityMaintenanceScheduleScreen() {
     });
   }, [amenityMaintenanceItems, statusFilter, searchQuery]);
 
+  const statusSortOptions = useMemo(
+    () => [
+      { label: `All (${counts.all})`, value: 'ALL' },
+      { label: `Under Maintenance (${counts.maintenance})`, value: 'MAINTENANCE' },
+      { label: `Operational (${counts.operational})`, value: 'OPERATIONAL' },
+    ],
+    [counts]
+  );
+
   const resetFilters = () => {
     setSearchQuery('');
     setStatusFilter('ALL');
@@ -212,68 +221,21 @@ export default function AmenityMaintenanceScheduleScreen() {
   const renderListHeader = () => {
     return (
       <View className="gap-3 mb-2">
-        {/* Search Bar */}
-        <View className="relative">
-          <TextInput
-            placeholder="Search amenities by name, category, upkeep task..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            leftIcon={<Search size={16} className="text-muted-foreground" />}
-            rightIcon={
-              searchQuery ? (
-                <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
-                  <X size={15} className="text-muted-foreground" />
-                </TouchableOpacity>
-              ) : undefined
-            }
-          />
-        </View>
-
-        {/* Status Filter Chips */}
-        <View className="flex-row items-center gap-2">
-          {[
-            { key: 'ALL', label: 'All', count: counts.all },
-            { key: 'MAINTENANCE', label: 'Under Maintenance', count: counts.maintenance },
-            { key: 'OPERATIONAL', label: 'Operational', count: counts.operational },
-          ].map((item) => {
-            const isSelected = statusFilter === item.key;
-            return (
-              <TouchableOpacity
-                key={item.key}
-                onPress={() => setStatusFilter(item.key as StatusFilterType)}
-                activeOpacity={0.7}
-                className={`flex-1 py-2 px-2 rounded-xl border items-center justify-center flex-row gap-1.5 ${
-                  isSelected ? 'bg-primary border-primary' : 'bg-card border-border/80'
-                }`}
-              >
-                <Text
-                  className={`text-xs font-semibold ${
-                    isSelected ? 'text-primary-foreground font-bold' : 'text-foreground'
-                  }`}
-                >
-                  {item.label}
-                </Text>
-                <View
-                  className={`px-1.5 py-0.2 rounded-full ${
-                    isSelected ? 'bg-white/20' : 'bg-muted'
-                  }`}
-                >
-                  <Text
-                    className={`text-[10px] font-bold ${
-                      isSelected ? 'text-white' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {item.count}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {/* Search & Status Filter Bar with Filter Icon Modal */}
+        <SearchFilterBar
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search amenities by name, category, upkeep task..."
+          sortOptions={statusSortOptions}
+          currentSort={statusFilter}
+          onSortChange={(val) => setStatusFilter(val as StatusFilterType)}
+          filterTitle="Filter Maintenance Facilities"
+          className="px-0 py-0 border-0"
+        />
 
         {/* Section Counter & Reset */}
         <View className="flex-row items-center justify-between mt-1">
-          <Text className="text-sm font-bold text-foreground">
+          <Text className="text-sm font-bold text-foreground font-sans">
             Facilities ({filteredItems.length}
             {filteredItems.length !== amenityMaintenanceItems.length
               ? ` of ${amenityMaintenanceItems.length}`

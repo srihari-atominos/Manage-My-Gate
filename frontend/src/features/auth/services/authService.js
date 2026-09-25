@@ -95,8 +95,8 @@ export const acceptSsoInvite = async (payload) => {
   return await apiClient.post('/auth/accept-invite/sso', payload)
 }
 
-export const switchContext = async ({ targetOrgId, targetVillaId, targetRole }) => {
-  return await apiClient.post('/auth/switch-context', { targetOrgId, targetVillaId, targetRole })
+export const switchContext = async (payload) => {
+  return await apiClient.post('/auth/switch-context', payload)
 }
 
 export const registerSsoWithOrg = async (payload) => {

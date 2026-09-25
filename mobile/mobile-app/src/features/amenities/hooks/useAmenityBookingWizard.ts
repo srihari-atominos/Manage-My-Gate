@@ -196,12 +196,12 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
 
             // Fallback synthesis: If inventory tools have no discrete child resource, provide facility-level bulk resource
             if (normalized.length === 0 && facility?.archetype === 'INVENTORY_TOOLS') {
-              const fallbackResource: AmenityResource = {
+              const fallbackResource: any = {
                 _id: String(targetFacilityId),
                 facilityId: String(targetFacilityId),
                 name: facility.name || 'Equipment Item',
                 identifier: `${facility.code || 'FAC'}-ITEM-01`,
-                totalBulkStock: (facility as any).availableStock || (facility as any).capacity || 1,
+                totalBulkStock: (facility as any)?.availableStock || (facility as any)?.capacity || 1,
                 assetState: 'AVAILABLE',
                 isSerializedAsset: false,
               } as any;
@@ -220,12 +220,12 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
           console.error('[useAmenityBookingWizard] Failed to fetch resources:', err);
           if (isMounted) {
             if (facility?.archetype === 'INVENTORY_TOOLS') {
-              const fallbackResource: AmenityResource = {
+              const fallbackResource: any = {
                 _id: String(targetFacilityId),
                 facilityId: String(targetFacilityId),
                 name: facility.name || 'Equipment Item',
                 identifier: `${facility.code || 'FAC'}-ITEM-01`,
-                totalBulkStock: (facility as any).availableStock || (facility as any).capacity || 1,
+                totalBulkStock: (facility as any)?.availableStock || (facility as any)?.capacity || 1,
                 assetState: 'AVAILABLE',
                 isSerializedAsset: false,
               } as any;

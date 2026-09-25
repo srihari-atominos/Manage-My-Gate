@@ -9,12 +9,13 @@ import { TextInput } from '@/components/forms/TextInput';
 import { SuccessToast } from '@/components/feedback/SuccessToast';
 import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
 import { ProfileHeaderCard, VerifyEmailOtpModal } from '@/src/features/profile/components';
+import { RoleSwitchModal, OrgSwitchModal, AssignmentSwitchModal, VillaSwitchModal } from '@/components/navigation';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
 import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
 import authService from '@/src/features/auth/services/authService';
 import { updateProfileThunk } from '@/src/features/auth/store/authSlice';
 import { useTranslation } from '@/src/utils/i18n';
-import { Save, Camera, Image as ImageIcon, FileUp, Trash2, Settings, CheckCircle2 } from 'lucide-react-native';
+import { Save, Camera, Image as ImageIcon, FileUp, Trash2, Settings, CheckCircle2, Building2, ShieldCheck, MapPin, Home, ChevronRight } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { validateEmail, validatePhone, parseBackendError } from '@/src/utils/validation';
@@ -35,6 +36,22 @@ export default function ProfileScreen() {
     dynamicUnit,
     dynamicCommunity,
     dynamicRole,
+    dynamicAssignment,
+    isResidentRole,
+    isSecurity,
+    isFacility,
+    hasMultipleOrgs,
+    hasMultipleRoles,
+    hasMultipleUnits,
+    hasMultipleAssignments,
+    villaModalOpen,
+    setVillaModalOpen,
+    roleModalOpen,
+    setRoleModalOpen,
+    orgModalOpen,
+    setOrgModalOpen,
+    assignmentModalOpen,
+    setAssignmentModalOpen,
   } = useProfile();
   const { scrollHandlerProps } = useBottomNavScroll();
 
@@ -505,14 +522,178 @@ export default function ProfileScreen() {
           name={displayName}
           email={email || user?.email}
           phone={phone || user?.phone}
-          unitName={dynamicUnit}
+          unitName={isResidentRole ? dynamicUnit : undefined}
           roleName={tRole(dynamicRole, dynamicRole)}
           communityName={dynamicCommunity}
           avatarUrl={avatarUri}
           showCameraBadge={true}
           isAvatarLoading={avatarUploading}
           onAvatarPress={() => setShowPhotoOptions(true)}
+          onUnitPress={isResidentRole ? () => setVillaModalOpen(true) : undefined}
         />
+
+        {/* Section: Organisation, Role & Villa Switching */}
+        <View className="gap-2.5">
+          <Text className="text-[12px] font-bold font-sans text-muted-foreground uppercase px-1 tracking-wider">
+            {t('workspace_context', 'Organisation, Role & Villa')}
+          </Text>
+
+          <View className="bg-card border border-border/70 rounded-3xl p-5 shadow-2xs gap-4">
+            {/* Current Organisation */}
+            <View className="flex-row items-center justify-between gap-3">
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="size-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 items-center justify-center">
+                  <Building2 size={18} color="#6366f1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {t('current_organisation', 'Current Organisation')}
+                  </Text>
+                  <Text className="text-base font-bold text-foreground mt-0.5" numberOfLines={1}>
+                    {dynamicCommunity}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Current Role */}
+            <View className="flex-row items-center justify-between gap-3">
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="size-10 rounded-2xl bg-primary/10 border border-primary/20 items-center justify-center">
+                  <ShieldCheck size={18} color="#03A9F4" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {t('current_role', 'Current Role')}
+                  </Text>
+                  <Text className="text-base font-bold text-foreground mt-0.5" numberOfLines={1}>
+                    {tRole(dynamicRole, dynamicRole)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Current Property Unit (Resident roles only) */}
+            {isResidentRole ? (
+              <Pressable
+                onPress={() => setVillaModalOpen(true)}
+                className="flex-row items-center justify-between gap-3 p-2 -m-2 rounded-2xl active:bg-secondary/60"
+                accessibilityRole="button"
+                accessibilityLabel={t('switch_unit', 'Switch Villa Unit')}
+              >
+                <View className="flex-row items-center gap-3 flex-1">
+                  <View className="size-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 items-center justify-center">
+                    <Home size={18} color="#10b981" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      {t('current_unit', 'Current Property Unit')}
+                    </Text>
+                    <Text className="text-base font-bold text-foreground mt-0.5" numberOfLines={1}>
+                      {dynamicUnit ? `Unit ${dynamicUnit}` : t('no_unit_assigned', 'No Unit Assigned')}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Explicit Switch Unit trigger button */}
+                <View className="flex-row items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    {t('switch', 'Switch')}
+                  </Text>
+                  <ChevronRight size={14} color="#10b981" />
+                </View>
+              </Pressable>
+            ) : null}
+
+            {/* Current Assignment (Security / Facility roles only) */}
+            {(isSecurity || isFacility) && dynamicAssignment ? (
+              <View className="flex-row items-center justify-between gap-3">
+                <View className="flex-row items-center gap-3 flex-1">
+                  <View className="size-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 items-center justify-center">
+                    <MapPin size={18} color="#0ea5e9" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      {t('current_assignment', 'Current Assignment')}
+                    </Text>
+                    <Text className="text-base font-bold text-foreground mt-0.5" numberOfLines={1}>
+                      {dynamicAssignment}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Action Buttons (Rendered if multiple switchable options exist) */}
+            {(hasMultipleOrgs || hasMultipleRoles || (isResidentRole && hasMultipleUnits) || hasMultipleAssignments) && (
+              <View className="flex-row flex-wrap gap-2.5 pt-2 border-t border-border/50">
+                {hasMultipleOrgs && (
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="flex-1 min-w-[130px] h-11 rounded-2xl border-indigo-500/40 bg-indigo-500/5 active:bg-indigo-500/10"
+                    onPress={() => setOrgModalOpen(true)}
+                  >
+                    <View className="flex-row items-center justify-center gap-2">
+                      <Building2 size={15} color="#6366f1" />
+                      <Text className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                        {t('switch_organisation', 'Switch Organisation')}
+                      </Text>
+                    </View>
+                  </Button>
+                )}
+
+                {hasMultipleRoles && (
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="flex-1 min-w-[130px] h-11 rounded-2xl border-primary/40 bg-primary/5 active:bg-primary/10"
+                    onPress={() => setRoleModalOpen(true)}
+                  >
+                    <View className="flex-row items-center justify-center gap-2">
+                      <ShieldCheck size={15} color="#03A9F4" />
+                      <Text className="text-xs font-bold text-primary">
+                        {t('switch_role', 'Switch Role')}
+                      </Text>
+                    </View>
+                  </Button>
+                )}
+
+                {isResidentRole && hasMultipleUnits && (
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="flex-1 min-w-[130px] h-11 rounded-2xl border-emerald-500/40 bg-emerald-500/5 active:bg-emerald-500/10"
+                    onPress={() => setVillaModalOpen(true)}
+                  >
+                    <View className="flex-row items-center justify-center gap-2">
+                      <Home size={15} color="#10b981" />
+                      <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        {t('switch_unit', 'Switch Villa Unit')}
+                      </Text>
+                    </View>
+                  </Button>
+                )}
+
+                {hasMultipleAssignments && (
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="w-full h-11 rounded-2xl border-sky-500/40 bg-sky-500/5 active:bg-sky-500/10 mt-1"
+                    onPress={() => setAssignmentModalOpen(true)}
+                  >
+                    <View className="flex-row items-center justify-center gap-2">
+                      <MapPin size={15} color="#0ea5e9" />
+                      <Text className="text-xs font-bold text-sky-600 dark:text-sky-400">
+                        {t('switch_assignment', 'Switch Assignment / Scope')}
+                      </Text>
+                    </View>
+                  </Button>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
 
         {/* Section: Personal Details & Edit Form */}
         <View className="gap-2.5">
@@ -750,6 +931,34 @@ export default function ProfileScreen() {
         resending={emailOtpResending}
         errorMessage={emailOtpError}
         devCode={devOtpCode}
+      />
+
+      {/* Role Switch Modal */}
+      <RoleSwitchModal
+        visible={roleModalOpen}
+        onClose={() => setRoleModalOpen(false)}
+      />
+
+      {/* Organisation Switch Modal */}
+      <OrgSwitchModal
+        visible={orgModalOpen}
+        onClose={() => setOrgModalOpen(false)}
+        activeCommunity={dynamicCommunity}
+        onSelectCommunity={() => {}}
+      />
+
+      {/* Villa Switch Modal */}
+      <VillaSwitchModal
+        visible={villaModalOpen}
+        onClose={() => setVillaModalOpen(false)}
+        activeVilla={dynamicUnit}
+        onSelectVilla={() => {}}
+      />
+
+      {/* Assignment Switch Modal */}
+      <AssignmentSwitchModal
+        visible={assignmentModalOpen}
+        onClose={() => setAssignmentModalOpen(false)}
       />
     </ScreenShell>
   );

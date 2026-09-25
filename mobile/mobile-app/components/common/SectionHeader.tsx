@@ -176,7 +176,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         <View className="flex-1 min-w-0 justify-center">
           <Text
             numberOfLines={1}
-            className="text-[16px] sm:text-[17px] font-bold font-sans text-foreground tracking-tight"
+            className="text-[17.5px] sm:text-[18.5px] font-bold font-sans text-foreground tracking-tight"
           >
             {localizedTitle}
           </Text>
@@ -184,7 +184,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           {displaySubtitle ? (
             <Text
               numberOfLines={1}
-              className="text-[12px] font-medium font-sans text-muted-foreground mt-0.5 tracking-normal"
+              className="text-[12.5px] sm:text-[13px] font-normal font-sans text-muted-foreground mt-1 tracking-normal"
             >
               {localizedSubtitle}
             </Text>

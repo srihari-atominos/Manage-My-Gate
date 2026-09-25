@@ -170,6 +170,10 @@ export const assignExistingUserRules = [
     .withMessage('Residency type must be a string')
     .trim()
     .escape(),
+  body('isPrimary')
+    .optional({ nullable: true })
+    .isBoolean()
+    .withMessage('isPrimary must be a boolean'),
 ];
 
 export const updateResidencyTypeRules = [

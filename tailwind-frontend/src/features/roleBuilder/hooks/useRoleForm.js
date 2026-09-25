@@ -13,6 +13,51 @@ const schema = yup.object().shape({
   integrationMappings: yup.object().optional().default({}),
 })
 
+export const NOTICE_ACTION_GROUPS = {
+  'notices:manage_notices': [
+    'notices:manage_notices',
+    'notices:dashboard',
+    'notices:create',
+    'notices:update',
+    'notices:delete',
+    'notices:publish',
+    'notices:acknowledge',
+    'notices.manage_notices',
+    'notices.dashboard',
+    'notices.create',
+    'notices.update',
+    'notices.delete',
+    'notices.publish',
+    'notices.acknowledge',
+    'manage_notices',
+    'dashboard',
+    'create',
+    'update',
+    'delete',
+    'publish',
+    'acknowledge',
+  ],
+  'notices:active_board': [
+    'notices:active_board',
+    'notices:read',
+    'notices.active_board',
+    'notices.read',
+    'active_board',
+    'read',
+  ],
+  'notices:polls': [
+    'notices:polls',
+    'notices.polls',
+    'polls',
+  ],
+};
+
+export const ALL_NOTICE_ACTIONS = [
+  ...NOTICE_ACTION_GROUPS['notices:manage_notices'],
+  ...NOTICE_ACTION_GROUPS['notices:active_board'],
+  ...NOTICE_ACTION_GROUPS['notices:polls'],
+];
+
 export const useRoleForm = ({ role, visible, onSave }) => {
   const dispatch = useDispatch()
 
@@ -69,19 +114,50 @@ export const useRoleForm = ({ role, visible, onSave }) => {
       }
       newValue = Array.from(new Set([...selectedPermissions, ...filteredGroupCodes]))
     } else {
-      newValue = selectedPermissions.filter((code) => !groupCodes.includes(code))
+      let toRemove = new Set(groupCodes)
+      const hasNoticeCodes = groupCodes.some((c) => String(c).toLowerCase().startsWith('notices'))
+      if (hasNoticeCodes) {
+        ALL_NOTICE_ACTIONS.forEach((a) => toRemove.add(a))
+      }
+      newValue = selectedPermissions.filter((code) => !toRemove.has(code))
     }
     setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true })
   }
 
   const handleTogglePermission = (permValue, checked) => {
-    let newValue = checked
-      ? [...selectedPermissions, permValue]
-      : selectedPermissions.filter((p) => p !== permValue)
-
-    // Enforce mutual exclusivity for visitor context permissions (single select)
-    if (checked && permValue.startsWith('visitor:')) {
-      newValue = newValue.filter((p) => !p.startsWith('visitor:') || p === permValue)
+    let newValue
+    if (checked) {
+      newValue = [...selectedPermissions, permValue]
+      // Enforce mutual exclusivity for visitor context permissions (single select)
+      if (permValue.startsWith('visitor:')) {
+        newValue = newValue.filter((p) => !p.startsWith('visitor:') || p === permValue)
+      }
+    } else {
+      const normalizedValue = String(permValue).toLowerCase()
+      if (
+        normalizedValue === 'notices:manage_notices' ||
+        normalizedValue === 'notices.manage_notices' ||
+        normalizedValue === 'manage_notices'
+      ) {
+        const purgeSet = new Set(NOTICE_ACTION_GROUPS['notices:manage_notices'])
+        newValue = selectedPermissions.filter((p) => !purgeSet.has(p))
+      } else if (
+        normalizedValue === 'notices:active_board' ||
+        normalizedValue === 'notices.active_board' ||
+        normalizedValue === 'active_board'
+      ) {
+        const purgeSet = new Set(NOTICE_ACTION_GROUPS['notices:active_board'])
+        newValue = selectedPermissions.filter((p) => !purgeSet.has(p))
+      } else if (
+        normalizedValue === 'notices:polls' ||
+        normalizedValue === 'notices.polls' ||
+        normalizedValue === 'polls'
+      ) {
+        const purgeSet = new Set(NOTICE_ACTION_GROUPS['notices:polls'])
+        newValue = selectedPermissions.filter((p) => !purgeSet.has(p))
+      } else {
+        newValue = selectedPermissions.filter((p) => p !== permValue)
+      }
     }
 
     setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true })

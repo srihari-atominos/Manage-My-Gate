@@ -10,6 +10,7 @@ import { CheckCircle2 } from 'lucide-react-native';
 import { useComplaints } from '../hooks/useComplaints';
 import { ComplaintCard } from '../components/ComplaintCard';
 import { ComplaintDetailSheet } from '../components/ComplaintDetailSheet';
+import { ComplaintFilterDrawer, ComplaintFilterValues } from '../components/ComplaintFilterDrawer';
 import { Complaint } from '../types';
 import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 import { useTranslation } from '@/src/utils/i18n';
@@ -31,6 +32,12 @@ export function ResidentMyTicketsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusTab, setSelectedStatusTab] = useState<string>('ALL');
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [drawerFilters, setDrawerFilters] = useState<ComplaintFilterValues>({
+    status: 'ALL',
+    priority: 'ALL',
+    category: 'ALL',
+  });
 
   // Modal States
   const [cancelTicketId, setCancelTicketId] = useState<string | null>(null);
@@ -59,7 +66,7 @@ export function ResidentMyTicketsScreen() {
     return { total, inProgress, actionNeeded, resolved };
   }, [complaints]);
 
-  // Filtered List based on Search Query & Tab Filter
+  // Filtered List based on Search Query, Tab Filter & Drawer Filters
   const filteredTickets = useMemo(() => {
     return complaints.filter((item: Complaint) => {
       // 1. Search Query Filter
@@ -73,21 +80,38 @@ export function ResidentMyTicketsScreen() {
 
       // 2. Tab Filter
       if (selectedStatusTab === 'OPEN') {
-        return ['Submitted', 'Open', 'Waiting For Assignment'].includes(item.status);
+        if (!['Submitted', 'Open', 'Waiting For Assignment'].includes(item.status)) return false;
+      } else if (selectedStatusTab === 'IN_PROGRESS') {
+        if (!['Assigned', 'In Progress', 'Accepted'].includes(item.status)) return false;
+      } else if (selectedStatusTab === 'ACTION_NEEDED') {
+        if (!['Work Completed', 'Waiting For Resident Confirmation'].includes(item.status)) return false;
+      } else if (selectedStatusTab === 'COMPLETED') {
+        if (!['Closed', 'Completed'].includes(item.status)) return false;
       }
-      if (selectedStatusTab === 'IN_PROGRESS') {
-        return ['Assigned', 'In Progress', 'Accepted'].includes(item.status);
+
+      // 3. Drawer Priority Filter
+      if (drawerFilters.priority && drawerFilters.priority !== 'ALL') {
+        if (item.priority?.toLowerCase() !== drawerFilters.priority.toLowerCase()) return false;
       }
-      if (selectedStatusTab === 'ACTION_NEEDED') {
-        return ['Work Completed', 'Waiting For Resident Confirmation'].includes(item.status);
+
+      // 4. Drawer Category Filter
+      if (drawerFilters.category && drawerFilters.category !== 'ALL') {
+        if (item.category?.toLowerCase() !== drawerFilters.category.toLowerCase()) return false;
       }
-      if (selectedStatusTab === 'COMPLETED') {
-        return ['Closed', 'Completed'].includes(item.status);
+
+      // 5. Drawer Status Filter
+      if (drawerFilters.status && drawerFilters.status !== 'ALL') {
+        if (item.status?.toLowerCase() !== drawerFilters.status.toLowerCase()) return false;
       }
 
       return true;
     });
-  }, [complaints, searchQuery, selectedStatusTab]);
+  }, [complaints, searchQuery, selectedStatusTab, drawerFilters]);
+
+  const activeDrawerCount =
+    (drawerFilters.status !== 'ALL' && drawerFilters.status ? 1 : 0) +
+    (drawerFilters.priority !== 'ALL' && drawerFilters.priority ? 1 : 0) +
+    (drawerFilters.category !== 'ALL' && drawerFilters.category ? 1 : 0);
 
   const handleConfirmCancelTicket = async () => {
     if (!cancelTicketId) return;
@@ -166,6 +190,8 @@ export function ResidentMyTicketsScreen() {
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
             searchPlaceholder={t('search_ticket_placeholder', 'Search ticket # or title...')}
+            onFilterPress={() => setIsFilterOpen(true)}
+            activeFilterCount={activeDrawerCount}
           />
 
           {/* SECTION 2: HORIZONTAL FILTER CHIPS */}
@@ -268,6 +294,21 @@ export function ResidentMyTicketsScreen() {
           confirmLabel="Yes, Cancel Ticket"
           cancelLabel="Keep Ticket"
           variant="danger"
+        />
+
+        {/* COMPLAINT FILTER DRAWER */}
+        <ComplaintFilterDrawer
+          visible={isFilterOpen}
+          onClose={() => setIsFilterOpen(false)}
+          filters={drawerFilters}
+          onApply={setDrawerFilters}
+          onReset={() =>
+            setDrawerFilters({
+              status: 'ALL',
+              priority: 'ALL',
+              category: 'ALL',
+            })
+          }
         />
       </View>
     </ScreenShell>

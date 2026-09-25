@@ -76,7 +76,12 @@ export const tenantContext = (optionsOrReq, res, next) => {
             const Role = (await import('../features/role/role.model.js')).default;
             const roles = await Role.find({ _id: { $in: targetRoleIds } }).lean();
             if (roles.length > 0) {
-              targetRoleName = roles[0].name;
+              const matchingRole = roles.find((r) => r.name === req.user?.role);
+              if (matchingRole) {
+                targetRoleName = matchingRole.name;
+              } else {
+                targetRoleName = roles[0].name;
+              }
             }
 
             const { getPermissionsForUser } = await import('./rbac.middleware.js');
@@ -107,11 +112,13 @@ export const tenantContext = (optionsOrReq, res, next) => {
         req.tenantPermissions = targetPermissions;
         req.organization = requestedOrgIdStr;
         req.orgId = requestedOrgIdStr;
+        req.assignment = req.user?.activeAssignment || null;
         req.tenant = {
           orgId: requestedOrgIdStr,
           role: targetRoleName,
           permissions: targetPermissions,
           isPlatform: userIsPlatform,
+          assignment: req.user?.activeAssignment || null,
         };
 
         // Synchronize request-scoped user context for downstream handlers expecting req.user

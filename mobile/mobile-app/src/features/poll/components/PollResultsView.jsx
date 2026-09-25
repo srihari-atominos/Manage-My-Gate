@@ -4,6 +4,7 @@ import { Trophy, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ProgressBar } from '@/components/common/ProgressBar';
+import { useTranslation } from '@/src/utils/i18n';
 
 /**
  * PollResultsView Component (Pure JSX)
@@ -11,6 +12,7 @@ import { ProgressBar } from '@/components/common/ProgressBar';
  * percentages, quorum tracker, and outcome banner.
  */
 export function PollResultsView({ poll, results }) {
+  const { t, translateText } = useTranslation();
   if (!poll) return null;
 
   const totalVotes = poll.totalVotes || (Array.isArray(poll.options) ? poll.options.reduce((sum, opt) => sum + (opt.votesCount || 0), 0) : 0);
@@ -50,7 +52,7 @@ export function PollResultsView({ poll, results }) {
             </Text>
             {winningOption?.text ? (
               <Text className="text-[11px] text-muted-foreground">
-                Winning choice: {winningOption.text} ({winningOption.votesCount || 0} votes)
+                {t('winning_choice', 'Winning choice')}: {translateText(winningOption.text)} ({winningOption.votesCount || 0} {t('votes', 'votes')})
               </Text>
             ) : null}
           </View>
@@ -115,7 +117,7 @@ export function PollResultsView({ poll, results }) {
                         : 'font-medium text-foreground'
                     }`}
                   >
-                    {opt.text}
+                    {translateText(opt.text)}
                   </Text>
                 </View>
                 <Text

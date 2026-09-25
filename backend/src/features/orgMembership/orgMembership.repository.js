@@ -22,6 +22,7 @@ export class OrgMembershipRepository {
       .populate({ path: 'roleIds', select: 'name' })
       .populate({ path: 'villaId' })
       .populate({ path: 'units.villaId' })
+      .populate({ path: 'assignments.roleId', select: 'name' })
       .session(session || null);
   }
 

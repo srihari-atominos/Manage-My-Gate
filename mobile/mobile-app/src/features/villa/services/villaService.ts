@@ -90,10 +90,11 @@ export const downloadBulkUploadTemplate = async () => {
   });
 };
 
-export const assignExistingUser = async (villaId: string, userId: string, residencyType: string) => {
+export const assignExistingUser = async (villaId: string, userId: string, residencyType: string, isPrimary?: boolean) => {
   return await apiClient.post(`/villas/${villaId}/assign-resident`, {
     userId,
     residencyType,
+    isPrimary,
   });
 };
 

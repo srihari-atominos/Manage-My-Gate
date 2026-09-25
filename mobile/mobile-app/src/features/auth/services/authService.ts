@@ -196,6 +196,11 @@ export const exchangeHandoff = async (handoffId: string, deviceInfo?: any) => {
   return await apiClient.post('/auth/invite/handoff/exchange', { handoffId, deviceInfo });
 };
 
+export const getCurrentContext = async (orgId?: string) => {
+  const query = orgId ? `?orgId=${encodeURIComponent(orgId)}` : '';
+  return await apiClient.get(`/auth/current-context${query}`);
+};
+
 export default {
   login,
   register,
@@ -225,4 +230,5 @@ export default {
   createWorkspace,
   updateOrganizationFeatures,
   exchangeHandoff,
+  getCurrentContext,
 };

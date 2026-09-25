@@ -38,45 +38,65 @@ export const normalizeUser = (user: any): User | null => {
 
   const canonicalOrgId =
     extractId(user.orgId) ||
+    extractId(user.activeOrgId) ||
     extractId(user.organizationId) ||
     extractId(user.org) ||
     extractId(user.organization) ||
-    extractId(user.activeOrgId) ||
     extractId(user.activeOrganizationId) ||
-    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.orgId)) ||
-    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?._id)) ||
-    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.id)) ||
+    (Array.isArray(user.availableWorkspaces) && (extractId(user.availableWorkspaces[0]?.orgId) || extractId(user.availableWorkspaces[0]?._id) || extractId(user.availableWorkspaces[0]?.id))) ||
     '';
 
-  const canonicalVillaId =
-    extractId(user.activeVillaId) ||
-    extractId(user.villaId) ||
-    extractId(user.villa?._id) ||
-    extractId(user.villa?.id) ||
-    (Array.isArray(user.accessibleUnits) && extractId(user.accessibleUnits[0]?.villaId)) ||
-    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.villaId)) ||
-    '';
+  // Find workspace item matching the active organization
+  const currentWorkspace = Array.isArray(user.availableWorkspaces)
+    ? user.availableWorkspaces.find((w: any) => {
+        const wId = extractId(w.orgId) || extractId(w._id) || extractId(w.id);
+        return canonicalOrgId && wId ? wId === canonicalOrgId : false;
+      })
+    : null;
 
   const orgName =
     user.organizationName ||
     user.orgName ||
     user.activeOrganizationName ||
     user.organization?.name ||
+    currentWorkspace?.name ||
     (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0]?.name) ||
     '';
 
-  const vNum =
-    user.villaNumber ||
-    user.activeVillaNumber ||
-    user.unitNumber ||
-    user.activeUnitNumber ||
-    user.apartmentNumber ||
-    user.flatNumber ||
-    user.villa?.unitNumber ||
-    user.villa?.villaNumber ||
-    (Array.isArray(user.accessibleUnits) && (user.accessibleUnits[0]?.villaNumber || user.accessibleUnits[0]?.unitNumber)) ||
-    (Array.isArray(user.availableWorkspaces) && (user.availableWorkspaces[0]?.villaNumber || user.availableWorkspaces[0]?.unitNumber)) ||
-    '';
+  const effectiveRole = user.role || (Array.isArray(user.roles) && user.roles[0]) || '';
+  const isResidentRole = /resident|tenant|owner|family/i.test(effectiveRole);
+
+  // Filter accessibleUnits belonging to the active organization strictly for Resident roles
+  const accessibleUnits = isResidentRole && Array.isArray(user.accessibleUnits)
+    ? user.accessibleUnits.filter((u: any) => {
+        if (!u) return false;
+        if (!canonicalOrgId) return true;
+        const uOrg = extractId(u.orgId) || extractId(u.organizationId);
+        return !uOrg || uOrg === canonicalOrgId;
+      })
+    : [];
+
+  // Determine villa unit context strictly for the active organization and Resident roles
+  let vNum = '';
+  let canonicalVillaId = '';
+
+  if (isResidentRole) {
+    if (user.villaNumber || user.activeVillaNumber || user.unitNumber || user.villa?.unitNumber) {
+      vNum = user.villaNumber || user.activeVillaNumber || user.unitNumber || user.villa?.unitNumber || '';
+    } else if (currentWorkspace?.villaNumber || currentWorkspace?.unitNumber) {
+      vNum = currentWorkspace.villaNumber || currentWorkspace.unitNumber || '';
+    } else if (accessibleUnits.length > 0 && (accessibleUnits[0]?.villaNumber || accessibleUnits[0]?.unitNumber)) {
+      vNum = accessibleUnits[0].villaNumber || accessibleUnits[0].unitNumber || '';
+    }
+
+    if (extractId(user.activeVillaId) || extractId(user.villaId) || extractId(user.villa?._id) || extractId(user.villa?.id)) {
+      canonicalVillaId = extractId(user.activeVillaId) || extractId(user.villaId) || extractId(user.villa?._id) || extractId(user.villa?.id);
+    } else if (currentWorkspace?.villaId || currentWorkspace?.unitId) {
+      canonicalVillaId = extractId(currentWorkspace.villaId) || extractId(currentWorkspace.unitId);
+    } else if (accessibleUnits.length > 0 && extractId(accessibleUnits[0]?.villaId)) {
+      canonicalVillaId = extractId(accessibleUnits[0].villaId);
+    }
+  }
 
   return {
     ...user,
@@ -87,12 +107,18 @@ export const normalizeUser = (user: any): User | null => {
     orgName,
     organizationName: orgName,
     activeOrganizationName: orgName,
-    villaId: canonicalVillaId,
-    activeVillaId: canonicalVillaId,
-    villaNumber: vNum,
-    activeVillaNumber: vNum,
-    unitNumber: vNum,
-    accessibleUnits: user.accessibleUnits || [],
+    villaId: isResidentRole ? canonicalVillaId : null,
+    activeVillaId: isResidentRole ? canonicalVillaId : null,
+    villaNumber: isResidentRole ? vNum : '',
+    activeVillaNumber: isResidentRole ? vNum : '',
+    unitNumber: isResidentRole ? vNum : '',
+    residentType: isResidentRole ? (user.residentType || 'Resident') : 'None',
+    activeAssignment: user.activeAssignment || null,
+    availableAssignments: user.availableAssignments || [],
+    accessibleAssignments: user.accessibleAssignments || {},
+    assignedGate: user.assignedGate || '',
+    assignedFacility: user.assignedFacility || '',
+    accessibleUnits,
     availableWorkspaces: user.availableWorkspaces || [],
     allowedFeatures: user.allowedFeatures || user.organization?.allowedFeatures || [],
   };
@@ -508,11 +534,25 @@ export const verifyOtpLogin = createAsyncThunk(
 
 export const switchWorkspaceContextThunk = createAsyncThunk<
   any,
-  { targetOrgId?: string; targetRole?: string; targetVillaId?: string },
+  {
+    targetOrgId?: string;
+    targetRole?: string;
+    targetVillaId?: string;
+    targetAssignmentId?: string;
+    targetAssignmentName?: string;
+    targetAssignmentType?: string;
+  },
   { rejectValue: string }
 >('auth/switchWorkspaceContext', async (payload, { dispatch, rejectWithValue }) => {
   try {
-    const cleanPayload: { targetOrgId?: string; targetRole?: string; targetVillaId?: string } = {};
+    const cleanPayload: {
+      targetOrgId?: string;
+      targetRole?: string;
+      targetVillaId?: string;
+      targetAssignmentId?: string;
+      targetAssignmentName?: string;
+      targetAssignmentType?: string;
+    } = {};
     if (payload?.targetOrgId && typeof payload.targetOrgId === 'string' && /^[0-9a-fA-F]{24}$/.test(payload.targetOrgId.trim())) {
       cleanPayload.targetOrgId = payload.targetOrgId.trim();
     }
@@ -521,6 +561,15 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
     }
     if (payload?.targetRole && typeof payload.targetRole === 'string' && payload.targetRole.trim()) {
       cleanPayload.targetRole = payload.targetRole.trim();
+    }
+    if (payload?.targetAssignmentId && typeof payload.targetAssignmentId === 'string' && payload.targetAssignmentId.trim()) {
+      cleanPayload.targetAssignmentId = payload.targetAssignmentId.trim();
+    }
+    if (payload?.targetAssignmentName && typeof payload.targetAssignmentName === 'string' && payload.targetAssignmentName.trim()) {
+      cleanPayload.targetAssignmentName = payload.targetAssignmentName.trim();
+    }
+    if (payload?.targetAssignmentType && typeof payload.targetAssignmentType === 'string' && payload.targetAssignmentType.trim()) {
+      cleanPayload.targetAssignmentType = payload.targetAssignmentType.trim();
     }
 
     let response;
@@ -812,12 +861,28 @@ const authSlice = createSlice({
     ) => {
       if (state.user) {
         const { orgId, orgName } = action.payload;
+        const workspaces = (state.user as any)?.availableWorkspaces || [];
+        const targetWs = Array.isArray(workspaces)
+          ? workspaces.find((w: any) => {
+              const wId = w.orgId || w._id || w.id;
+              return orgId && wId ? wId.toString() === orgId.toString() : false;
+            })
+          : null;
+
         const updated = {
           ...state.user,
           orgName,
           organizationName: orgName,
           activeOrganizationName: orgName,
           ...(orgId ? { orgId, activeOrgId: orgId } : {}),
+          // Cleanly reset or align villa unit to target community workspace
+          villaNumber: targetWs?.villaNumber || targetWs?.unitNumber || '',
+          activeVillaNumber: targetWs?.villaNumber || targetWs?.unitNumber || '',
+          unitNumber: targetWs?.villaNumber || targetWs?.unitNumber || '',
+          villaId: targetWs?.villaId || targetWs?.unitId || '',
+          activeVillaId: targetWs?.villaId || targetWs?.unitId || '',
+          // Cleanly align role if specified on target workspace
+          ...(targetWs?.roleName ? { role: targetWs.roleName.split(',')[0].trim(), activeRole: targetWs.roleName.split(',')[0].trim() } : {}),
         };
         state.user = normalizeUser(updated);
         if (state.user) {
@@ -835,6 +900,22 @@ const authSlice = createSlice({
           ...state.user,
           role,
           activeRole: role,
+        };
+        state.user = normalizeUser(updated);
+        if (state.user) {
+          storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
+        }
+      }
+    },
+    setActiveAssignment: (
+      state,
+      action: PayloadAction<{ assignment: any }>
+    ) => {
+      if (state.user) {
+        const { assignment } = action.payload;
+        const updated = {
+          ...state.user,
+          activeAssignment: assignment,
         };
         state.user = normalizeUser(updated);
         if (state.user) {
@@ -1043,9 +1124,14 @@ const authSlice = createSlice({
         if (action.payload?.refreshToken) {
           state.refreshToken = action.payload.refreshToken;
         }
-        if (action.payload?.user) {
-          state.user = normalizeUser(action.payload.user);
+        const rawUser = action.payload?.user || action.payload?.data?.user;
+        if (rawUser) {
+          state.user = normalizeUser(rawUser);
+          if (state.user) {
+            storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
+          }
         }
+        state.isAuthenticated = !!(state.token && state.user?.id);
         state.successMsg = 'Workspace context updated';
       })
       .addCase(switchWorkspaceContextThunk.rejected, (state, action) => {
@@ -1221,5 +1307,6 @@ export const {
   setActiveVillaUnit,
   setActiveCommunityOrg,
   setActiveRolePersona,
+  setActiveAssignment,
 } = authSlice.actions;
 export default authSlice.reducer;

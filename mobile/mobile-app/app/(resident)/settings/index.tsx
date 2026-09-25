@@ -9,7 +9,6 @@ import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
 import {
   SettingsRow,
   SettingsCard,
-  SettingsPlanBanner,
   SettingsProfileBlock,
   SettingsNudgeRow,
   SettingsCtaRow,
@@ -37,9 +36,7 @@ import {
   Users,
   ChevronLeft,
   Globe,
-  Shield,
   UserX,
-  ExternalLink,
   HelpCircle,
   Building2,
   Home,
@@ -63,12 +60,13 @@ export default function SettingsScreen() {
 
   const userAny = user as any;
 
+  const roleLower = ((user?.role || (Array.isArray(userAny?.roles) ? userAny?.roles[0] : '') || '') as string).toLowerCase();
+  const isResidentRole = /resident|tenant|owner|family/i.test(roleLower);
+
   // Active villa & community info
-  const dynamicUnit =
-    userAny?.villaNumber ||
-    userAny?.activeVillaNumber ||
-    userAny?.unitNumber ||
-    '#104';
+  const dynamicUnit = isResidentRole
+    ? (userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber || '')
+    : '';
 
   const dynamicCommunity = React.useMemo(() => {
     const userOrg =
@@ -89,9 +87,15 @@ export default function SettingsScreen() {
     return t('community_workspace', 'Community Workspace');
   }, [userAny, t]);
 
+  const workspaces = (userAny?.availableWorkspaces || []) as any[];
+  const hasMultipleOrgs = Array.isArray(workspaces) && workspaces.length > 1;
+
+  const accessibleUnits = isResidentRole && Array.isArray(userAny?.accessibleUnits) ? userAny.accessibleUnits : [];
+  const hasMultipleUnits = isResidentRole && accessibleUnits.length > 1;
+
   const dynamicRole =
     user?.role ||
-    (userAny?.roles && userAny?.roles.length > 0 ? userAny?.roles[0] : 'Resident');
+    (userAny?.roles && userAny?.roles.length > 0 ? userAny?.roles[0] : 'Member');
 
   // Avatar resolution
   const userAvatar = user?.avatar || userAny?.avatarUrl;
@@ -255,18 +259,7 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 80 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* 2. Status / Plan Banner */}
-        <SettingsPlanBanner
-          title={t('plan_status_active', 'Active Community Membership')}
-          description={t(
-            'plan_banner_desc',
-            'All premium gate & community features are fully unlocked for your residence.'
-          )}
-          actionLabel={t('learn_more', 'Learn more')}
-          onActionPress={() => router.push('/(resident)/profile' as any)}
-        />
-
-        {/* 3. Profile Block */}
+        {/* 2. Profile Block */}
         <SettingsProfileBlock
           name={user?.name || user?.username || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident Member'))}
           unitId={dynamicUnit}
@@ -277,7 +270,7 @@ export default function SettingsScreen() {
           onPressQr={() => router.push('/(resident)/visitor' as any)}
         />
 
-        {/* 4. Nudge Row */}
+        {/* 3. Nudge Row */}
         <SettingsNudgeRow
           title={t('profile_nudge_title', 'Profile Completion')}
           percentage={85}
@@ -286,34 +279,38 @@ export default function SettingsScreen() {
           onActionPress={() => router.push('/(resident)/profile' as any)}
         />
 
-        {/* 5. Update / CTA Row */}
+        {/* 4. Update / CTA Row */}
         <SettingsCtaRow
           label={t('workspace_context_cta', 'Active Workspace Context')}
           subLabel={dynamicCommunity}
-          buttonLabel={t('switch_context', 'Switch')}
-          onPress={() => setOrgModalVisible(true)}
+          buttonLabel={hasMultipleOrgs ? t('switch_context', 'Switch') : undefined}
+          onPress={hasMultipleOrgs ? () => setOrgModalVisible(true) : undefined}
         />
 
-        {/* 6. Section Groups */}
+        {/* 5. Section Groups */}
 
         {/* Group A: Household & Access */}
         <SettingsCard title={t('household_group', 'Household & Access')}>
-          <SettingsRow
-            icon={Building2}
-            iconColor="#6366f1"
-            iconBgColor="rgba(99, 102, 241, 0.12)"
-            title={t('switch_community', 'Switch Community')}
-            subtitle={dynamicCommunity}
-            onPress={() => setOrgModalVisible(true)}
-          />
-          <SettingsRow
-            icon={Home}
-            iconColor="#10b981"
-            iconBgColor="rgba(16, 185, 129, 0.12)"
-            title={t('switch_unit', 'Switch Villa Unit')}
-            subtitle={dynamicUnit}
-            onPress={() => setVillaModalVisible(true)}
-          />
+          {hasMultipleOrgs && (
+            <SettingsRow
+              icon={Building2}
+              iconColor="#6366f1"
+              iconBgColor="rgba(99, 102, 241, 0.12)"
+              title={t('switch_community', 'Switch Community')}
+              subtitle={dynamicCommunity}
+              onPress={() => setOrgModalVisible(true)}
+            />
+          )}
+          {hasMultipleUnits && (
+            <SettingsRow
+              icon={Home}
+              iconColor="#10b981"
+              iconBgColor="rgba(16, 185, 129, 0.12)"
+              title={t('switch_unit', 'Switch Villa Unit')}
+              subtitle={dynamicUnit}
+              onPress={() => setVillaModalVisible(true)}
+            />
+          )}
           <SettingsRow
             icon={Users}
             iconColor="#0ea5e9"
@@ -349,21 +346,15 @@ export default function SettingsScreen() {
           </View>
         </SettingsCard>
 
-        {/* Group C: Legal & Information */}
-        <SettingsCard title={t('legal_privacy_group', 'Legal & Information')}>
+        {/* Group C: Help & Support */}
+        <SettingsCard title={t('help_support_group', 'Help & Support')}>
           <SettingsRow
-            icon={Shield}
-            title={t('privacy_policy', 'Privacy Policy')}
-            subtitle={t('privacy_policy_desc', 'View data collection & protection policy')}
-            rightElement={<Icon as={ExternalLink} size={16} className="text-muted-foreground" />}
-            onPress={handleOpenPrivacyPolicy}
-          />
-          <SettingsRow
-            icon={Shield}
-            title={t('terms_conditions', 'Terms & Conditions')}
-            subtitle={t('terms_conditions_desc', 'View terms of service & user agreement')}
-            rightElement={<Icon as={ExternalLink} size={16} className="text-muted-foreground" />}
-            onPress={handleOpenTerms}
+            icon={HelpCircle}
+            iconColor="#f59e0b"
+            iconBgColor="rgba(245, 158, 11, 0.12)"
+            title={t('report_an_issue', 'Report an Issue')}
+            subtitle={t('report_an_issue_desc', 'Report a problem or suggest an improvement')}
+            onPress={() => router.push('/(resident)/settings/report-issue' as any)}
             isLast={true}
           />
         </SettingsCard>

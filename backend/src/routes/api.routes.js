@@ -49,6 +49,7 @@ import technicianRouter from '../features/technician/technician.router.js';
 import directoryRouter from '../features/directory/directory.router.js';
 import communityNoteRouter from '../features/communityNote/communityNote.router.js';
 import directoryMessageRouter from '../features/directoryMessage/directoryMessage.router.js';
+import issueReportRouter, { platformReportRouter } from '../features/issueReport/issueReport.router.js';
 
 const router = Router();
 
@@ -120,5 +121,9 @@ import onboardingWizardRouter from '../features/onboardingWizard/onboardingWizar
 
 router.use('/onboarding-wizard', onboardingWizardRouter);
 router.use('/onboarding', onboardingWizardRouter);
+
+// Issue Report feature routes
+router.use('/support/reports', issueReportRouter);
+router.use('/platform/reports', platformReportRouter);
 
 export default router;

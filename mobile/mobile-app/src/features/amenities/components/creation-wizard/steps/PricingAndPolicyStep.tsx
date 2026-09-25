@@ -121,7 +121,7 @@ export const PricingAndPolicyStep: React.FC<PricingAndPolicyStepProps> = ({
                   value={
                     data.baseRate === undefined ||
                     data.baseRate === null ||
-                    (data.baseRate === 0 && (currentPricingType as any) !== 'FREE')
+                    (data.baseRate === 0 && (currentPricingType as string) !== 'FREE')
                       ? ''
                       : String(data.baseRate)
                   }

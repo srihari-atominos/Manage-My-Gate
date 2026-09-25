@@ -36,7 +36,7 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
       const userRoles = typeof user.role === 'string'
         ? user.role.split(',').map((r) => r.trim()).filter(Boolean)
         : [];
-      reset({ selectedRoles: userRoles.length > 0 ? [userRoles[0]] : [] });
+      reset({ selectedRoles: userRoles });
     } else if (!visible) {
       reset({ selectedRoles: [] });
     }
@@ -48,9 +48,9 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
     if (!hasPermission) return;
     let newRoles;
     if (checked) {
-      newRoles = [role]; // Single selection: replace instead of append
+      newRoles = [...selectedRoles, role];
     } else {
-      newRoles = [];
+      newRoles = selectedRoles.filter((r) => r !== role);
     }
     setValue('selectedRoles', newRoles, { shouldValidate: true, shouldDirty: true });
   };

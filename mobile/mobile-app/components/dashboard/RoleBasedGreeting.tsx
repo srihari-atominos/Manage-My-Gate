@@ -15,6 +15,7 @@ import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { getUserRoleName } from '../../src/utils/rbac';
 import { useTranslation } from '../../src/utils/i18n';
 import { VillaSwitchModal } from '../navigation/VillaSwitchModal';
+import { AssignmentSwitchModal } from '../navigation/AssignmentSwitchModal';
 
 export interface RoleBasedGreetingProps {
   unitName?: string | null;
@@ -194,80 +195,79 @@ export const formatUnitLocation = (user: any, propUnitName?: string | null): str
   };
 
   if (user) {
-    // 1. Security / Guard persona check (only if gate is explicitly assigned)
     const roleLower = (user.role || (Array.isArray(user.roles) ? user.roles[0] : '') || '').toLowerCase();
-    if (roleLower.includes('guard') || roleLower.includes('security')) {
+    const isResident = /resident|tenant|owner|family/i.test(roleLower);
+    const isSecurity = /guard|security/i.test(roleLower);
+    const isFacility = /facility|amenity|staff|maintenance/i.test(roleLower);
+
+    // 1. Security / Guard persona check (only if gate is explicitly assigned)
+    if (isSecurity) {
+      if (user.activeAssignment && user.activeAssignment.type === 'gate' && user.activeAssignment.name) {
+        return user.activeAssignment.name.trim();
+      }
       const gateVal = user.gate || user.assignedGate || user.gateName;
       if (gateVal && typeof gateVal === 'string' && gateVal.trim() !== '') {
         return gateVal.trim();
       }
+      return null;
     }
 
-    // 2. Check direct unit / villa / house fields on user session object
-    const directCandidates = [
-      user.villaNumber,
-      user.activeVillaNumber,
-      user.unitNumber,
-      user.activeUnitNumber,
-      user.houseNumber,
-      user.activeHouseNumber,
-      user.house,
-      user.doorNumber,
-      user.unitName,
-      user.villaName,
-      user.assignedVilla,
-      user.assignedUnit,
-      user.villa,
-      user.unit,
-      user.flatNumber,
-      user.apartmentNumber,
-      user.address?.unitNumber,
-      user.address?.villaNumber,
-      user.address?.houseNumber,
-    ];
-
-    const blockOrTower = user.block || user.blockOrBuilding || user.tower || user.building || user.villaBlock;
-
-    for (const c of directCandidates) {
-      const parsed = extractUnitStr(c);
-      if (parsed) {
-        return formatUnitDisplay(parsed, blockOrTower);
+    // 2. Facility Staff persona check (only if facility is explicitly assigned)
+    if (isFacility) {
+      if (user.activeAssignment && user.activeAssignment.type === 'facility' && user.activeAssignment.name) {
+        return user.activeAssignment.name.trim();
       }
+      const facVal = user.assignedFacility || user.facilityName;
+      if (facVal && typeof facVal === 'string' && facVal.trim() !== '') {
+        return facVal.trim();
+      }
+      return null;
     }
 
-    // 3. Check accessibleUnits array if available
-    if (Array.isArray(user.accessibleUnits) && user.accessibleUnits.length > 0) {
-      for (const u of user.accessibleUnits) {
-        const parsed =
-          extractUnitStr(u.villaNumber) ||
-          extractUnitStr(u.unitNumber) ||
-          extractUnitStr(u.houseNumber) ||
-          extractUnitStr(u.name) ||
-          extractUnitStr(u.villaId);
+    // 3. Resident persona check (strictly only for resident roles)
+    if (isResident) {
+      if (user.activeAssignment && user.activeAssignment.type === 'villa' && user.activeAssignment.name) {
+        return user.activeAssignment.name.trim();
+      }
+
+      const blockOrTower = user.block || user.blockOrBuilding || user.tower || user.building || user.villaBlock;
+      const directCandidates = [
+        user.villaNumber,
+        user.activeVillaNumber,
+        user.unitNumber,
+        user.activeUnitNumber,
+        user.houseNumber,
+        user.activeHouseNumber,
+        user.house,
+        user.doorNumber,
+        user.unitName,
+        user.villaName,
+      ];
+
+      for (const c of directCandidates) {
+        const parsed = extractUnitStr(c);
         if (parsed) {
-          return formatUnitDisplay(parsed, u.block || u.villaBlock || blockOrTower);
+          return formatUnitDisplay(parsed, blockOrTower);
         }
       }
-    }
 
-    // 4. Check availableWorkspaces array
-    if (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces.length > 0) {
-      for (const w of user.availableWorkspaces) {
-        const parsed =
-          extractUnitStr(w.villaNumber) ||
-          extractUnitStr(w.unitNumber) ||
-          extractUnitStr(w.houseNumber) ||
-          extractUnitStr(w.villa) ||
-          extractUnitStr(w.unit);
-        if (parsed) {
-          return formatUnitDisplay(parsed, w.block || w.villaBlock || blockOrTower);
+      if (Array.isArray(user.accessibleUnits) && user.accessibleUnits.length > 0) {
+        for (const u of user.accessibleUnits) {
+          const parsed =
+            extractUnitStr(u.villaNumber) ||
+            extractUnitStr(u.unitNumber) ||
+            extractUnitStr(u.houseNumber) ||
+            extractUnitStr(u.name);
+          if (parsed) {
+            return formatUnitDisplay(parsed, u.block || u.villaBlock || blockOrTower);
+          }
         }
       }
     }
   }
 
-  // 5. Standard resident fallback when session unit is not yet bound
-  return 'Villa A-104';
+  // Non-resident personas (e.g. Community, Admin) or unassigned accounts have no unit location pill
+  return null;
 };
 
 export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
@@ -278,6 +278,7 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [villaModalVisible, setVillaModalVisible] = React.useState(false);
+  const [assignmentModalVisible, setAssignmentModalVisible] = React.useState(false);
 
   // 1. Time of day calculation
   const timeGreeting = React.useMemo(() => getTimeOfDayGreeting(), [language]);
@@ -293,8 +294,68 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
   }, [unitName, user]);
 
   const localizedLocation = React.useMemo(() => {
-    return translateText(dynamicLocation);
+    return dynamicLocation ? translateText(dynamicLocation) : null;
   }, [dynamicLocation, translateText, language]);
+
+  const roleLower = React.useMemo(() => {
+    return ((user?.role || (Array.isArray(user?.roles) ? user?.roles[0] : '') || '') as string).toLowerCase();
+  }, [user]);
+
+  const isResident = React.useMemo(() => /resident|tenant|owner|family/i.test(roleLower), [roleLower]);
+  const isSecurity = React.useMemo(() => /guard|security/i.test(roleLower), [roleLower]);
+  const isFacility = React.useMemo(() => /facility|amenity|staff|maintenance/i.test(roleLower), [roleLower]);
+
+  const userUnits = React.useMemo(() => {
+    if (!isResident) return [];
+    const unitsMap = new Map<string, any>();
+    const userAny = user as any;
+    const activeOrgId = userAny?.orgId || userAny?.activeOrgId;
+
+    if (Array.isArray(userAny?.accessibleUnits)) {
+      userAny.accessibleUnits.forEach((u: any, idx: number) => {
+        const uOrg = u.orgId || u.organizationId;
+        if (activeOrgId && uOrg && uOrg !== activeOrgId) return;
+        const uId = u.villaId || u.id || String(idx + 1);
+        const uNum = u.villaNumber || u.unitNumber;
+        if (uNum) unitsMap.set(uId, u);
+      });
+    }
+
+    const workspaces = userAny?.availableWorkspaces;
+    if (Array.isArray(workspaces)) {
+      workspaces.forEach((w: any, idx: number) => {
+        const matchesOrg = !activeOrgId || w.orgId === activeOrgId || w._id === activeOrgId;
+        const wsHasResident =
+          (w.roles && Array.isArray(w.roles) && w.roles.some((r: string) => /resident|tenant|owner|family/i.test(r))) ||
+          /resident|tenant|owner|family/i.test(w.roleName || '');
+        if (matchesOrg && wsHasResident && (w.villaId || w.unitId || w.villaNumber || w.unitNumber)) {
+          const uId = w.villaId || w.unitId || `ws-unit-${idx}`;
+          if (!unitsMap.has(uId)) unitsMap.set(uId, w);
+        }
+      });
+    }
+
+    return Array.from(unitsMap.values());
+  }, [isResident, user]);
+
+  const availAssignments = React.useMemo(() => {
+    return (isSecurity || isFacility) && Array.isArray((user as any)?.availableAssignments)
+      ? (user as any).availableAssignments
+      : [];
+  }, [isSecurity, isFacility, user]);
+
+  const canSwitchUnit = isResident && (userUnits.length > 1 || (userUnits.length > 0 && Boolean(dynamicLocation)));
+  const canSwitchAssignment = (isSecurity || isFacility) && availAssignments.length > 1;
+  const canPressPill = canSwitchAssignment || canSwitchUnit;
+
+  const handlePillPress = () => {
+    if (!canPressPill) return;
+    if (canSwitchAssignment) {
+      setAssignmentModalVisible(true);
+    } else if (canSwitchUnit) {
+      setVillaModalVisible(true);
+    }
+  };
 
   return (
     <>
@@ -314,22 +375,38 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
 
         {/* Right: Location / Villa Badge Pill adopting Navy Blue UI color with location symbol */}
         {localizedLocation ? (
-          <TouchableOpacity
-            onPress={() => setVillaModalVisible(true)}
-            activeOpacity={0.75}
-            style={{
-              backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
-              borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
-            }}
-            className="flex-row items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
-            accessibilityRole="button"
-            accessibilityLabel={`Current location: ${localizedLocation}`}
-          >
-            <MapPin size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
-            <Text className="text-[12px] font-bold font-sans text-[#172B70] dark:text-[#93C5FD]">
-              {localizedLocation}
-            </Text>
-          </TouchableOpacity>
+          canPressPill ? (
+            <TouchableOpacity
+              onPress={handlePillPress}
+              activeOpacity={0.75}
+              style={{
+                backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
+                borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
+              }}
+              className="flex-row items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
+              accessibilityRole="button"
+              accessibilityLabel={`Current location: ${localizedLocation}. Tap to switch.`}
+            >
+              <MapPin size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
+              <Text className="text-[12px] font-bold font-sans text-[#172B70] dark:text-[#93C5FD]">
+                {localizedLocation}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View
+              style={{
+                backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
+                borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
+              }}
+              className="flex-row items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
+              accessibilityLabel={`Current location: ${localizedLocation}`}
+            >
+              <MapPin size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
+              <Text className="text-[12px] font-bold font-sans text-[#172B70] dark:text-[#93C5FD]">
+                {localizedLocation}
+              </Text>
+            </View>
+          )
         ) : null}
       </View>
 
@@ -338,8 +415,16 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
         <VillaSwitchModal
           visible={villaModalVisible}
           onClose={() => setVillaModalVisible(false)}
-          activeVilla={dynamicLocation}
+          activeVilla={dynamicLocation || ''}
           onSelectVilla={(_v) => setVillaModalVisible(false)}
+        />
+      )}
+
+      {/* Assignment / Gate / Facility Switch Modal */}
+      {assignmentModalVisible && (
+        <AssignmentSwitchModal
+          visible={assignmentModalVisible}
+          onClose={() => setAssignmentModalVisible(false)}
         />
       )}
     </>

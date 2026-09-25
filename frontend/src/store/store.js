@@ -9,6 +9,7 @@ import integrationHubReducer from '../features/integrationHub/store/integrationH
 import workspaceReducer from '../features/workspace/store/workspaceSlice.js'
 import organizationReducer from '../features/organization/store/organizationSlice.js'
 import auditLogReducer from '../features/auditLog/store/auditLogSlice.js'
+import issueReportReducer from '../features/issueReport/store/issueReportSlice.js'
 
 import messageTemplateReducer from '../features/messageTemplate/store/messageTemplateSlice.js'
 import villaReducer from '../features/villa/store/villaSlice.js'
@@ -60,6 +61,7 @@ export const store = configureStore({
     workspace: workspaceReducer,
     organization: organizationReducer,
     auditLog: auditLogReducer,
+    issueReport: issueReportReducer,
 
     messageTemplate: messageTemplateReducer,
     villa: villaReducer,

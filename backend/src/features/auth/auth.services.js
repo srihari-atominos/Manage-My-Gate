@@ -225,7 +225,12 @@ export class AuthService {
    * @param {string} [targetOrgId=null] - Optional target organization ID to scope the context to
    * @returns {Promise<{tokenPayload: object, availableWorkspaces: Array}>}
    */
-  async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetVillaId = null) {
+  async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetVillaId = null, targetAssignment = null) {
+    // If targetVillaId was passed as an assignment object, normalize arguments
+    if (typeof targetVillaId === 'object' && targetVillaId !== null && !targetVillaId._bsontype && (targetVillaId.id || targetVillaId.targetAssignmentId || targetVillaId.name)) {
+      targetAssignment = targetVillaId;
+      targetVillaId = targetVillaId.villaId || null;
+    }
     const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
     const memberships = await orgMembershipService.getUserMemberships(user._id);
 
@@ -285,26 +290,41 @@ export class AuthService {
     let orgId = null;
     let isPlatform = false;
     let activeRoleObj = null;
+    let roleNames = [];
 
     if (selectedMembership) {
       orgId = selectedMembership.orgId._id.toString();
       isPlatform = selectedMembership.orgId.isPlatform || false;
 
+      // Consolidate all roles assigned to this user within the selected organization
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === orgId);
       const roles = [];
-      if (selectedMembership.roleIds && selectedMembership.roleIds.length > 0) {
-        roles.push(...selectedMembership.roleIds.filter(Boolean));
-      } else if (selectedMembership.roleId) {
-        roles.push(selectedMembership.roleId);
+      for (const m of sameOrgMemberships) {
+        if (m.roleIds && m.roleIds.length > 0) {
+          roles.push(...m.roleIds.filter(Boolean));
+        } else if (m.roleId) {
+          roles.push(m.roleId);
+        }
       }
 
-      const roleNames = roles.map(r => r?.name).filter(Boolean);
+      // Deduplicate roles by name
+      const uniqueRoles = [];
+      const seenRoleNames = new Set();
+      for (const r of roles) {
+        if (r && r.name && !seenRoleNames.has(r.name)) {
+          seenRoleNames.add(r.name);
+          uniqueRoles.push(r);
+        }
+      }
+
+      roleNames = uniqueRoles.map(r => r?.name).filter(Boolean);
 
       if (targetRole) {
         if (!roleNames.includes(targetRole)) {
           throw new HttpError(400, `User does not have role '${targetRole}' in this organization.`);
         }
         roleName = targetRole;
-        activeRoleObj = roles.find(r => r?.name === roleName);
+        activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
         if (activeRoleObj) {
           const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
           permissions = permissionsList.map((permission) => permission.name);
@@ -312,7 +332,7 @@ export class AuthService {
       } else {
         roleName = roleNames.length > 0 ? roleNames[0] : null;
         if (roleName) {
-          activeRoleObj = roles.find(r => r?.name === roleName);
+          activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
           if (activeRoleObj) {
             const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
             permissions = permissionsList.map((permission) => permission.name);
@@ -321,37 +341,72 @@ export class AuthService {
       }
     }
 
-    const availableWorkspaces = activeMemberships.map((m) => {
-      const roles = [];
+    // Consolidate active memberships by organization for availableWorkspaces
+    const orgWorkspaceMap = new Map();
+    for (const m of activeMemberships) {
+      if (!m.orgId || !m.orgId._id) continue;
+      const oId = m.orgId._id.toString();
+      const mRoles = [];
       if (m.roleIds && m.roleIds.length > 0) {
-        roles.push(...m.roleIds.filter(Boolean));
+        mRoles.push(...m.roleIds.filter(Boolean));
       } else if (m.roleId) {
-        roles.push(m.roleId);
+        mRoles.push(m.roleId);
       }
-      const validRoles = roles.filter(Boolean);
+      const validRoles = mRoles.filter(Boolean);
+      const hasResidentInWs = validRoles.some(r => /resident|tenant|owner|family/i.test(r.name || ''));
       const firstUnit = m.units && m.units.length > 0 ? m.units[0] : null;
-      const primaryVillaDoc = m.villaId || firstUnit?.villaId || null;
+      const primaryVillaDoc = hasResidentInWs ? (m.villaId || firstUnit?.villaId || null) : null;
       const primaryVillaId = primaryVillaDoc
         ? (primaryVillaDoc._id ? primaryVillaDoc._id.toString() : primaryVillaDoc.toString())
         : null;
       const primaryVillaNumber = primaryVillaDoc?.unitNumber || null;
-      const residentType = m.residentType || firstUnit?.residentType || 'None';
+      const residentType = hasResidentInWs ? (m.residentType || firstUnit?.residentType || 'None') : 'None';
 
-      return {
-        orgId: m.orgId._id.toString(),
-        name: m.orgId.name,
-        isPlatform: m.orgId.isPlatform || false,
-        roleName: validRoles.map(r => r.name).join(', ') || m.roleName || m.role || null,
-        roles: validRoles.map(r => r.name),
-        villaId: primaryVillaId,
-        villaNumber: primaryVillaNumber,
-        residentType,
-      };
-    });
+      if (!orgWorkspaceMap.has(oId)) {
+        orgWorkspaceMap.set(oId, {
+          orgId: oId,
+          name: m.orgId.name,
+          isPlatform: m.orgId.isPlatform || false,
+          roleNames: validRoles.map(r => r.name),
+          villaId: primaryVillaId,
+          villaNumber: primaryVillaNumber,
+          residentType,
+        });
+      } else {
+        const existing = orgWorkspaceMap.get(oId);
+        for (const r of validRoles) {
+          if (!existing.roleNames.includes(r.name)) {
+            existing.roleNames.push(r.name);
+          }
+        }
+        if (hasResidentInWs && !existing.villaId && primaryVillaId) {
+          existing.villaId = primaryVillaId;
+          existing.villaNumber = primaryVillaNumber;
+          existing.residentType = residentType;
+        }
+      }
+    }
 
-    // Discover accessible units for this user in the active organization
+    const availableWorkspaces = Array.from(orgWorkspaceMap.values()).map((ws) => ({
+      orgId: ws.orgId,
+      name: ws.name,
+      isPlatform: ws.isPlatform,
+      roleName: ws.roleNames.join(', ') || null,
+      roles: ws.roleNames,
+      villaId: ws.villaId,
+      villaNumber: ws.villaNumber,
+      residentType: ws.residentType,
+    }));
+
+    // Role type flags
+    const isResidentRole = /resident|tenant|owner|family/i.test(roleName || '');
+    if (!isResidentRole) {
+      targetVillaId = null;
+    }
+
+    // Discover accessible units for this user in the active organization ONLY if active role is a Resident role
     const accessibleUnits = [];
-    if (selectedMembership) {
+    if (selectedMembership && isResidentRole) {
       const selectedOrgIdStr = selectedMembership.orgId._id.toString();
       const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === selectedOrgIdStr);
       for (const m of sameOrgMemberships) {
@@ -413,12 +468,112 @@ export class AuthService {
       }
     }
 
+    // --- ASSIGNMENT & SCOPE RESOLUTION ---
+    const allAssignmentsByRole = {};
+    for (const rName of roleNames) {
+      allAssignmentsByRole[rName] = [];
+    }
+
+    if (selectedMembership) {
+      const selectedOrgIdStr = selectedMembership.orgId._id.toString();
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === selectedOrgIdStr);
+
+      // 1. Explicit assignments configured directly in OrgMembership.assignments
+      for (const m of sameOrgMemberships) {
+        if (m.assignments && Array.isArray(m.assignments) && m.assignments.length > 0) {
+          for (const asg of m.assignments) {
+            const asgRole = asg.roleName || (asg.roleId?.name) || roleName;
+            const item = {
+              id: asg._id ? asg._id.toString() : (asg.entityId ? asg.entityId.toString() : asg.name),
+              name: asg.name,
+              type: asg.assignmentType || 'general',
+              role: asgRole,
+              metadata: asg.metadata || {}
+            };
+            if (!allAssignmentsByRole[asgRole]) {
+              allAssignmentsByRole[asgRole] = [];
+            }
+            if (!allAssignmentsByRole[asgRole].some(x => x.name.toLowerCase() === item.name.toLowerCase())) {
+              allAssignmentsByRole[asgRole].push(item);
+            }
+          }
+        }
+      }
+
+      // 2. Resident / Unit Assignments (ONLY for resident roles)
+      const residentRoles = roleNames.filter(r => /resident|tenant|owner|family/i.test(r));
+      for (const rRole of residentRoles) {
+        if (allAssignmentsByRole[rRole].length === 0) {
+          for (const u of accessibleUnits) {
+            const uName = u.villaNumber ? `Villa ${u.villaNumber}` : (u.block ? `${u.block} Unit` : 'Villa Unit');
+            if (!allAssignmentsByRole[rRole].some(x => x.id === u.villaId)) {
+              allAssignmentsByRole[rRole].push({
+                id: u.villaId,
+                name: uName,
+                type: 'villa',
+                role: rRole,
+                metadata: {
+                  villaId: u.villaId,
+                  villaNumber: u.villaNumber,
+                  block: u.block,
+                  residentType: u.residentType
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Available assignments for the active role persona
+    const availableAssignments = (roleName && allAssignmentsByRole[roleName]) ? allAssignmentsByRole[roleName] : [];
+
+    // Resolve Active Assignment
+    let activeAssignment = null;
+    let targetAssignmentId = null;
+    let targetAssignmentName = null;
+
+    if (targetAssignment) {
+      if (typeof targetAssignment === 'string') {
+        targetAssignmentId = targetAssignment;
+      } else if (typeof targetAssignment === 'object') {
+        targetAssignmentId = targetAssignment.id || targetAssignment.targetAssignmentId || null;
+        targetAssignmentName = targetAssignment.name || targetAssignment.targetAssignmentName || null;
+      }
+    }
+
+    if (targetAssignmentId || targetAssignmentName) {
+      // STRICT AUTHORIZATION: Validate target assignment belongs to this user, role, and organization
+      const matched = availableAssignments.find(a => 
+        (targetAssignmentId && a.id.toString() === targetAssignmentId.toString()) ||
+        (targetAssignmentName && a.name.toLowerCase() === targetAssignmentName.toLowerCase())
+      );
+      if (!matched) {
+        throw new HttpError(400, `Access denied: Invalid assignment for role '${roleName}' in this organisation.`);
+      }
+      activeAssignment = matched;
+    } else if (targetVillaId) {
+      const targetVillaIdStr = targetVillaId.toString();
+      const matchedVilla = availableAssignments.find(a => a.id.toString() === targetVillaIdStr || a.metadata?.villaId?.toString() === targetVillaIdStr);
+      if (matchedVilla) {
+        activeAssignment = matchedVilla;
+      }
+    }
+
+    if (!activeAssignment && availableAssignments.length > 0) {
+      activeAssignment = availableAssignments[0];
+    }
+
+    // If active assignment is a villa, ensure targetVillaId matches it
+    if (activeAssignment && activeAssignment.type === 'villa') {
+      targetVillaId = activeAssignment.id;
+    }
+
     // Resolve primary unit (validating permission if a specific targetVillaId is requested)
     let primaryUnit = null;
-    if (selectedMembership) {
+    if (selectedMembership && isResidentRole) {
       if (targetVillaId) {
         const targetVillaIdStr = targetVillaId.toString();
-        // Strict Authorization: If targetVillaId is explicitly requested, user must be invited / assigned to it
         const isTargetVillaAccessible = accessibleUnits.some(u => u.villaId === targetVillaIdStr);
         if (!isTargetVillaAccessible) {
           throw new HttpError(403, 'Access denied. You are not assigned or invited to this property unit.');
@@ -473,7 +628,7 @@ export class AuthService {
       }
     }
 
-    const villaInfo = primaryUnit?.villaId ? {
+    const villaInfo = (isResidentRole && primaryUnit?.villaId) ? {
       id: primaryUnit.villaId._id ? primaryUnit.villaId._id.toString() : primaryUnit.villaId.toString(),
       villaNumber: primaryUnit.villaId.unitNumber || '',
       block: primaryUnit.villaId.blockOrBuilding || '',
@@ -502,18 +657,29 @@ export class AuthService {
         username: user.username,
         role: roleName,
         roleId: activeRoleObj ? activeRoleObj._id.toString() : null,
-        roles: selectedMembership ? (selectedMembership.roleIds && selectedMembership.roleIds.length > 0 ? selectedMembership.roleIds.map(r => r.name) : (selectedMembership.roleId ? [selectedMembership.roleId.name] : [])) : [],
+        roles: roleNames || [],
         orgId,
         orgName: activeOrgName,
         organizationName: activeOrgName,
         activeOrganizationName: activeOrgName,
         isPlatform,
         visitorContext,
-        villaId: villaInfo ? villaInfo.id : null,
-        villaNumber: villaInfo ? villaInfo.villaNumber : '',
-        villaBlock: villaInfo ? villaInfo.block : '',
-        residentType: villaInfo ? villaInfo.residentType : (selectedMembership?.residentType || 'None'),
-        accessibleUnits,
+        activeAssignment: activeAssignment ? {
+          id: activeAssignment.id,
+          name: activeAssignment.name,
+          type: activeAssignment.type,
+          role: activeAssignment.role,
+          metadata: activeAssignment.metadata || {},
+        } : null,
+        availableAssignments,
+        accessibleAssignments: allAssignmentsByRole,
+        assignedGate: activeAssignment?.type === 'gate' ? activeAssignment.name : (user.gate || ''),
+        assignedFacility: activeAssignment?.type === 'facility' ? activeAssignment.name : '',
+        villaId: isResidentRole && villaInfo ? villaInfo.id : null,
+        villaNumber: isResidentRole && villaInfo ? villaInfo.villaNumber : '',
+        villaBlock: isResidentRole && villaInfo ? villaInfo.block : '',
+        residentType: isResidentRole && villaInfo ? villaInfo.residentType : 'None',
+        accessibleUnits: isResidentRole ? accessibleUnits : [],
       },
       permissions,
       availableWorkspaces,
@@ -542,6 +708,11 @@ export class AuthService {
       activeOrganizationName: tokenPayload.activeOrganizationName,
       isPlatform: tokenPayload.isPlatform,
       visitorContext: tokenPayload.visitorContext,
+      activeAssignment: tokenPayload.activeAssignment || null,
+      availableAssignments: tokenPayload.availableAssignments || [],
+      accessibleAssignments: tokenPayload.accessibleAssignments || {},
+      assignedGate: tokenPayload.assignedGate || '',
+      assignedFacility: tokenPayload.assignedFacility || '',
       villaId: tokenPayload.villaId,
       villaNumber: tokenPayload.villaNumber,
       activeVillaNumber: tokenPayload.villaNumber,
@@ -678,22 +849,28 @@ export class AuthService {
    * @param {string} userId - User ID
    * @param {string} targetOrgId - Target organization ID
    */
-  async switchContext(userId, targetOrgId = null, targetVillaId = null, targetRole = null) {
+  async switchContext(userId, targetOrgId = null, targetVillaId = null, targetRole = null, targetAssignment = null) {
     let orgIdArg = targetOrgId;
     let villaIdArg = targetVillaId;
     let roleArg = targetRole;
+    let asgArg = targetAssignment;
 
     if (typeof targetOrgId === 'object' && targetOrgId !== null && typeof targetOrgId.toString === 'function' && targetOrgId.toString() === '[object Object]') {
       orgIdArg = targetOrgId.targetOrgId || targetOrgId.orgId || null;
       villaIdArg = targetOrgId.targetVillaId || targetOrgId.villaId || targetVillaId;
       roleArg = targetOrgId.targetRole || targetOrgId.role || targetRole;
+      asgArg = targetOrgId.targetAssignment || targetOrgId.assignment || {
+        id: targetOrgId.targetAssignmentId,
+        name: targetOrgId.targetAssignmentName,
+        type: targetOrgId.targetAssignmentType,
+      };
     }
 
     // Fetch user details for the token payload
     const user = await userService.getUserById(userId);
 
-    // Resolve context for the target organization
-    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, orgIdArg, roleArg, villaIdArg);
+    // Resolve context for the target organization with active role and assignment scoping
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, orgIdArg, roleArg, villaIdArg, asgArg);
 
     // Generate fresh JWT token
     const token = signToken(tokenPayload);
@@ -702,6 +879,135 @@ export class AuthService {
       token,
       user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
       availableWorkspaces,
+    };
+  }
+
+  /**
+   * Retrieves the current user's authenticated context and assigned roles for a specific organization.
+   * Strictly resolves roles actually assigned to the user within the selected organization.
+   * @param {string} userId - Authenticated user ID
+   * @param {string} [targetOrgId=null] - Optional target organization ID (defaults to active org)
+   * @returns {Promise<object>}
+   */
+  async getCurrentContext(userId, targetOrgId = null) {
+    const user = await userService.getUserById(userId);
+    if (!user) {
+      throw new HttpError(404, 'User not found');
+    }
+
+    const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+    const memberships = await orgMembershipService.getUserMemberships(user._id);
+
+    const activeMemberships = memberships.filter((m) => 
+      m.orgId && 
+      (!m.orgId.status || m.orgId.status.toLowerCase() === 'active') && 
+      (!m.status || m.status.toLowerCase() === 'active')
+    );
+
+    let selectedMembership = null;
+    if (targetOrgId) {
+      selectedMembership = activeMemberships.find(
+        (m) => m.orgId._id.toString() === targetOrgId.toString()
+      );
+    } else {
+      selectedMembership = activeMemberships[0] || null;
+    }
+
+    if (!selectedMembership) {
+      return {
+        organisationId: targetOrgId || null,
+        organisationName: '',
+        activeRole: null,
+        roles: [],
+        accessibleUnits: [],
+      };
+    }
+
+    const orgId = selectedMembership.orgId._id.toString();
+    const orgName = selectedMembership.orgId.name;
+
+    // Consolidate ONLY roles assigned to this user in this organization
+    const sameOrgMemberships = activeMemberships.filter(
+      (m) => m.orgId && m.orgId._id.toString() === orgId
+    );
+
+    const rolesList = [];
+    for (const m of sameOrgMemberships) {
+      if (m.roleIds && m.roleIds.length > 0) {
+        rolesList.push(...m.roleIds.filter(Boolean));
+      } else if (m.roleId) {
+        rolesList.push(m.roleId);
+      }
+    }
+
+    // Deduplicate roles by ID or name
+    const uniqueRoles = [];
+    const seenRoleNames = new Set();
+    for (const r of rolesList) {
+      const rName = r?.name || (typeof r === 'string' ? r : null);
+      if (rName && !seenRoleNames.has(rName)) {
+        seenRoleNames.add(rName);
+        uniqueRoles.push(r);
+      }
+    }
+
+    // Extract accessible units for resident roles
+    const accessibleUnits = [];
+    for (const m of sameOrgMemberships) {
+      if (m.units && m.units.length > 0) {
+        for (const unit of m.units) {
+          if (unit.villaId) {
+            const vId = unit.villaId._id ? unit.villaId._id.toString() : unit.villaId.toString();
+            if (!accessibleUnits.some((u) => u.villaId === vId)) {
+              accessibleUnits.push({
+                villaId: vId,
+                villaNumber: unit.villaId.unitNumber || '',
+                block: unit.villaId.blockOrBuilding || '',
+                residentType: unit.residentType || m.residentType || 'Resident',
+              });
+            }
+          }
+        }
+      }
+      if (m.villaId) {
+        const vId = m.villaId._id ? m.villaId._id.toString() : m.villaId.toString();
+        if (!accessibleUnits.some((u) => u.villaId === vId)) {
+          accessibleUnits.push({
+            villaId: vId,
+            villaNumber: m.villaId.unitNumber || '',
+            block: m.villaId.blockOrBuilding || '',
+            residentType: m.residentType || 'Resident',
+          });
+        }
+      }
+    }
+
+    const assignedRoles = uniqueRoles.map((r) => {
+      const roleName = r.name || r;
+      const isResident = /resident|tenant|owner|family/i.test(roleName);
+      const isSecurity = /guard|security/i.test(roleName);
+      const isFacility = /facility|amenity|staff|maintenance/i.test(roleName);
+
+      let scopeType = 'ORGANISATION';
+      if (isResident) scopeType = 'VILLA';
+      else if (isSecurity) scopeType = 'GATE';
+      else if (isFacility) scopeType = 'FACILITY';
+
+      return {
+        roleId: r._id ? r._id.toString() : null,
+        roleName,
+        scopeType,
+        isAssigned: true,
+        units: isResident ? accessibleUnits : [],
+      };
+    });
+
+    return {
+      organisationId: orgId,
+      organisationName: orgName,
+      activeRole: assignedRoles.length > 0 ? assignedRoles[0].roleName : null,
+      roles: assignedRoles,
+      accessibleUnits,
     };
   }
 

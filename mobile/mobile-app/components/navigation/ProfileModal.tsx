@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useRouter } from 'expo-router';
-import { Home, X, Settings, Mail, Building2, ChevronRight, Users, Sparkles } from 'lucide-react-native';
+import { Home, X, Settings, Mail, Building2, ChevronRight, Users, Sparkles, ShieldCheck } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useSettings } from '@/src/features/settings/hooks/useSettings';
 import { ThemeToggleSwitch } from '@/components/settings/ThemeToggleSwitch';
@@ -57,6 +57,36 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     return 'Community Workspace';
   }, [communityName, userAny]);
   const dynamicRole = user?.role || (userAny?.roles && userAny?.roles.length > 0 ? userAny?.roles[0] : 'Member');
+
+  const roleLower = ((user?.role || (Array.isArray(user?.roles) ? user?.roles[0] : '') || '') as string).toLowerCase();
+  const isResidentRole = /resident|tenant|owner|family/i.test(roleLower);
+
+  const workspaces = (userAny?.availableWorkspaces || []) as any[];
+  const hasMultipleOrgs = Array.isArray(workspaces) && workspaces.length > 1;
+
+  const activeOrgId = userAny?.activeOrgId || userAny?.orgId;
+  const currentWs = Array.isArray(workspaces)
+    ? workspaces.find((w: any) => {
+        const wId = w.orgId || w._id || w.id;
+        return activeOrgId && wId ? wId.toString() === activeOrgId.toString() : false;
+      })
+    : null;
+
+  const userRoles = React.useMemo(() => {
+    if (currentWs?.roles && Array.isArray(currentWs.roles) && currentWs.roles.length > 0) {
+      return Array.from(new Set(currentWs.roles.filter((r: any): r is string => Boolean(r && typeof r === 'string'))));
+    }
+    if (userAny?.roles && Array.isArray(userAny.roles) && userAny.orgId === activeOrgId) {
+      return Array.from(new Set(userAny.roles.filter((r: any): r is string => Boolean(r && typeof r === 'string'))));
+    }
+    return user?.role ? [user.role] : [];
+  }, [currentWs, userAny, activeOrgId, user?.role]);
+  const hasMultipleRoles = userRoles.length > 1;
+
+  const accessibleUnits = isResidentRole && Array.isArray(userAny?.accessibleUnits) ? userAny.accessibleUnits : [];
+  const hasMultipleUnits = isResidentRole && accessibleUnits.length > 1;
+
+  const hasAnyContextSwitcher = (onOpenOrgModal && hasMultipleOrgs) || (onOpenRoleModal && hasMultipleRoles) || (onOpenVillaModal && hasMultipleUnits);
 
   const { themeMode, setThemeMode } = useSettings();
   const userAvatar = user?.avatar || userAny?.avatarUrl;
@@ -125,11 +155,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </View>
 
                 <View className="flex-row gap-2 mt-1">
-                  <View className="bg-primary/15 px-2.5 py-0.5 rounded-full border border-primary/30">
-                    <Text className="text-primary text-[10px] font-bold">
-                      {dynamicUnit}
-                    </Text>
-                  </View>
+                  {isResidentRole && dynamicUnit && dynamicUnit !== 'No Unit Assigned' ? (
+                    <View className="bg-primary/15 px-2.5 py-0.5 rounded-full border border-primary/30">
+                      <Text className="text-primary text-[10px] font-bold">
+                        {dynamicUnit}
+                      </Text>
+                    </View>
+                  ) : null}
                   <View className="bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/25">
                     <Text className="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
                       {dynamicRole}
@@ -150,57 +182,89 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 />
               </View>
 
-              {/* 2. Context Switchers Section */}
-              <View className="gap-2">
-                <Text className="text-[11px] font-bold text-muted-foreground uppercase px-1">
-                  {t('context_switchers', 'Context Switchers')}
-                </Text>
+              {/* 2. Context Switchers Section (Only rendered if user has switchable contexts) */}
+              {hasAnyContextSwitcher && (
+                <View className="gap-2">
+                  <Text className="text-[11px] font-bold text-muted-foreground uppercase px-1">
+                    {t('context_switchers', 'Context Switchers')}
+                  </Text>
 
-                {/* Switch Community */}
-                <TouchableOpacity
-                  onPress={() => {
-                    onClose();
-                    if (onOpenOrgModal) onOpenOrgModal();
-                  }}
-                  activeOpacity={0.7}
-                  className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
-                >
-                  <View className="flex-row items-center gap-3">
-                    <View className="bg-indigo-500/10 border border-indigo-500/20 p-2 rounded-lg">
-                      <Building2 size={16} color="#6366f1" />
-                    </View>
-                    <View>
-                      <Text className="text-xs font-bold text-foreground">{t('switch_community', 'Switch Community')}</Text>
-                      <Text className="text-[10px] text-muted-foreground">{dynamicCommunity}</Text>
-                    </View>
-                  </View>
-                  <ChevronRight size={15} className="text-muted-foreground" />
-                </TouchableOpacity>
+                  {/* Switch Community (Only if user has multiple orgs) */}
+                  {onOpenOrgModal && hasMultipleOrgs && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        onClose();
+                        setTimeout(() => {
+                          if (onOpenOrgModal) onOpenOrgModal();
+                        }, 250);
+                      }}
+                      activeOpacity={0.7}
+                      className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
+                    >
+                      <View className="flex-row items-center gap-3">
+                        <View className="bg-indigo-500/10 border border-indigo-500/20 p-2 rounded-lg">
+                          <Building2 size={16} color="#6366f1" />
+                        </View>
+                        <View>
+                          <Text className="text-xs font-bold text-foreground">{t('switch_community', 'Switch Community')}</Text>
+                          <Text className="text-[10px] text-muted-foreground">{dynamicCommunity}</Text>
+                        </View>
+                      </View>
+                      <ChevronRight size={15} className="text-muted-foreground" />
+                    </TouchableOpacity>
+                  )}
 
+                  {/* Switch Role (Only if user has multiple roles in active org) */}
+                  {onOpenRoleModal && hasMultipleRoles && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        onClose();
+                        setTimeout(() => {
+                          if (onOpenRoleModal) onOpenRoleModal();
+                        }, 250);
+                      }}
+                      activeOpacity={0.7}
+                      className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
+                    >
+                      <View className="flex-row items-center gap-3">
+                        <View className="bg-primary/10 border border-primary/20 p-2 rounded-lg">
+                          <ShieldCheck size={16} color="#03A9F4" />
+                        </View>
+                        <View>
+                          <Text className="text-xs font-bold text-foreground">{t('switch_role', 'Switch Role Context')}</Text>
+                          <Text className="text-[10px] text-muted-foreground">{dynamicRole}</Text>
+                        </View>
+                      </View>
+                      <ChevronRight size={15} className="text-muted-foreground" />
+                    </TouchableOpacity>
+                  )}
 
-
-
-                {/* Switch Villa Unit */}
-                <TouchableOpacity
-                  onPress={() => {
-                    onClose();
-                    if (onOpenVillaModal) onOpenVillaModal();
-                  }}
-                  activeOpacity={0.7}
-                  className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
-                >
-                  <View className="flex-row items-center gap-3">
-                    <View className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-lg">
-                      <Home size={16} color="#10b981" />
-                    </View>
-                    <View>
-                      <Text className="text-xs font-bold text-foreground">{t('switch_unit', 'Switch Villa Unit')}</Text>
-                      <Text className="text-[10px] text-muted-foreground">{dynamicUnit}</Text>
-                    </View>
-                  </View>
-                  <ChevronRight size={15} className="text-muted-foreground" />
-                </TouchableOpacity>
-              </View>
+                  {/* Switch Villa Unit (Only for Resident roles with multiple assigned units) */}
+                  {onOpenVillaModal && hasMultipleUnits && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        onClose();
+                        setTimeout(() => {
+                          if (onOpenVillaModal) onOpenVillaModal();
+                        }, 250);
+                      }}
+                      activeOpacity={0.7}
+                      className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
+                    >
+                      <View className="flex-row items-center gap-3">
+                        <View className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-lg">
+                          <Home size={16} color="#10b981" />
+                        </View>
+                        <View>
+                          <Text className="text-xs font-bold text-foreground">{t('switch_unit', 'Switch Villa Unit')}</Text>
+                          <Text className="text-[10px] text-muted-foreground">{dynamicUnit}</Text>
+                        </View>
+                      </View>
+                      <ChevronRight size={15} className="text-muted-foreground" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
 
               {/* 3. Community & Directory Section */}
               <View className="gap-2">

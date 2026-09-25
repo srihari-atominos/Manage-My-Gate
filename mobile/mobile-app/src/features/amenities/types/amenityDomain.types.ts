@@ -107,6 +107,7 @@ export interface AmenityResource {
   serialNumber?: string;
   assetState: AmenityAssetState;
   totalBulkStock: number;
+  isActive?: boolean;
   createdAt: string;
   updatedAt: string;
 }

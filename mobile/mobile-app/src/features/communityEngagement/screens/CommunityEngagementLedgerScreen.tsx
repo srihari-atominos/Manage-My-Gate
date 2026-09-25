@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar, SortOption } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { CommunityEngagementTypeSheet } from '../components/CommunityEngagementTypeSheet';
@@ -18,6 +19,7 @@ import {
 } from '../types/communityEngagement.types';
 import * as noticeBoardService from '@/src/features/noticeBoard/services/noticeBoardService';
 import { pollApi } from '@/src/features/poll/services/pollApi';
+import { useTranslation } from '@/src/utils/i18n';
 
 const DEFAULT_FILTERS: CommunityEngagementFilterValues = {
   datePreset: 'ALL_TIME',
@@ -35,6 +37,7 @@ const DEFAULT_FILTERS: CommunityEngagementFilterValues = {
 
 export function CommunityEngagementLedgerScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ tab?: string; status?: string; priority?: string }>();
 
   // Row 4: Perspective mode state ('ALL' | 'NOTICES' | 'POLLS')
@@ -280,12 +283,12 @@ export function CommunityEngagementLedgerScreen() {
   // Row 2: Status pill options with dynamic count badges
   const statusSortOptions: SortOption[] = useMemo(
     () => [
-      { label: `All (${statusCounts.all})`, value: 'ALL' },
-      { label: `🟢 Active (${statusCounts.active})`, value: 'ACTIVE' },
-      { label: `🟡 Draft (${statusCounts.draft})`, value: 'DRAFT' },
-      { label: `⚪ Expired (${statusCounts.expired})`, value: 'EXPIRED' },
+      { label: `${t('all')} (${statusCounts.all})`, value: 'ALL' },
+      { label: `🟢 ${t('status_active')} (${statusCounts.active})`, value: 'ACTIVE' },
+      { label: `🟡 ${t('status_draft')} (${statusCounts.draft})`, value: 'DRAFT' },
+      { label: `⚪ ${t('status_expired')} (${statusCounts.expired})`, value: 'EXPIRED' },
     ],
-    [statusCounts]
+    [statusCounts, t]
   );
 
   // Apply Advanced Filters + Status Filter on combined dataset
@@ -376,21 +379,23 @@ export function CommunityEngagementLedgerScreen() {
 
   return (
     <ScreenShell
-      title="Community Engagements"
-      subtitle={`Total ${combinedRawItems.length} community notices & polls`}
-      iconName="Layers"
+      title={t('manage_engagement', 'Manage Engagement')}
+      subtitle={t('total_engagements_count', { count: combinedRawItems.length })}
+      iconName="FilePenLine"
+      scrollable={false}
       showBackButton={true}
+      showIconWithBackButton={false}
       loading={loading && combinedRawItems.length === 0}
       headerRight={
         <Button
-          variant="default"
           size="sm"
           onPress={() => setTypeSheetVisible(true)}
-          className="flex-row items-center px-3"
+          className="bg-emerald-600 active:bg-emerald-700 flex-row items-center gap-1.5 px-3 py-1.5 rounded-xl shadow-2xs"
           accessibilityRole="button"
-          accessibilityLabel="Create Engagement"
+          accessibilityLabel={t('create_engagement')}
         >
-          <Text className="text-primary-foreground font-semibold text-xs">+ Create Engagement</Text>
+          <Plus size={14} color="#ffffff" strokeWidth={2.5} />
+          <Text className="text-xs font-bold text-white">{t('create_engagement', 'Create')}</Text>
         </Button>
       }
     >
@@ -402,19 +407,20 @@ export function CommunityEngagementLedgerScreen() {
           </View>
         ) : null}
 
-        {/* Row 2: Status Pill Badges & Row 3: Search Input + Advanced Filter Trigger */}
+        {/* 1. Search Bar First */}
         <SearchFilterBar
           searchValue={searchInput}
           onSearchChange={setSearchInput}
-          searchPlaceholder="Search notices, polls, keywords..."
+          searchPlaceholder={t('search_engagements_placeholder', 'Search notices, polls, keywords...')}
           sortOptions={statusSortOptions}
           currentSort={selectedStatus}
           onSortChange={(val) => setSelectedStatus(val as any)}
           onFilterPress={() => setFilterDrawerVisible(true)}
           activeFilterCount={activeFilterCount}
+          className="px-4 py-2"
         />
 
-        {/* Row 4: Perspective Grouping Toggle (All / Notices / Polls) */}
+        {/* 2. Below Search Bar: Perspective Grouping Boxes */}
         <EngagementGroupingToggle
           mode={perspectiveMode}
           onModeChange={setPerspectiveMode}
@@ -422,7 +428,7 @@ export function CommunityEngagementLedgerScreen() {
           pollCount={rawPolls.length}
         />
 
-        {/* Row 5: Paginated Record Feed */}
+        {/* 3. Paginated Record Feed */}
         <PaginatedList<EngagementCardItem>
           data={filteredItems}
           pagination={paginationMeta}
@@ -431,23 +437,21 @@ export function CommunityEngagementLedgerScreen() {
           loading={loading && !refreshing}
           refreshing={refreshing}
           emptyIcon="Megaphone"
-          emptyTitle="No engagements found"
+          emptyTitle={t('no_engagements_found')}
           emptySubtitle={
             searchInput.trim() || activeFilterCount > 0 || selectedStatus !== 'ALL'
-              ? 'No items match your active filters. Try resetting search or filter criteria.'
-              : 'No community notices or polls exist yet. Click "+ Create Engagement" to publish one.'
+              ? t('no_engagements_match_filters')
+              : t('no_engagements_yet')
           }
           keyExtractor={(item) => `${item.type}-${item.id}`}
-          contentContainerClassName="px-4 py-2 pb-28"
+          contentContainerClassName="px-4 pt-2 pb-28 gap-2.5"
           contentContainerStyle={{ paddingBottom: 110 }}
           renderItem={(item) => (
-            <View className="mb-2">
-              <EngagementCard
-                key={`${item.type}-${item.id}`}
-                item={item}
-                onPress={() => setSelectedItem(item)}
-              />
-            </View>
+            <EngagementCard
+              key={`${item.type}-${item.id}`}
+              item={item}
+              onPress={() => setSelectedItem(item)}
+            />
           )}
         />
 

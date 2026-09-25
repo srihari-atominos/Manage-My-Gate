@@ -5,6 +5,7 @@ import { Button } from '@/components/common/Button';
 import { TextInput } from '@/components/forms/TextInput';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/src/utils/i18n';
 
 /**
  * PollVotingSection Component (Pure JSX)
@@ -19,6 +20,7 @@ export function PollVotingSection({
   submitting = false,
   userUnit = '',
 }) {
+  const { t, translateText } = useTranslation();
   if (!poll || poll.status !== 'Active') return null;
 
   const isMultiple = poll.choiceType === 'MULTIPLE_CHOICE';
@@ -128,7 +130,7 @@ export function PollVotingSection({
                   isSelected ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-foreground'
                 )}
               >
-                {opt.text}
+                {translateText(opt.text)}
               </Text>
             </TouchableOpacity>
           );

@@ -2,6 +2,7 @@ import React from 'react'
 
 // Lazy-loaded Components
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
+const ProfileView = React.lazy(() => import('./features/auth/views/ProfileView'))
 const SampleFeature = React.lazy(() => import('./features/sampleFeature/SampleFeatureView'))
 const RoleBuilder = React.lazy(() => import('./features/roleBuilder/RoleBuilderList'))
 const UserList = React.lazy(() => import('./features/userManagement/UserList'))
@@ -30,6 +31,7 @@ const PlatformBillingLayout = React.lazy(
   () => import('./features/platformBilling/views/PlatformBillingLayout'),
 )
 const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'))
+const IssueReportsView = React.lazy(() => import('./features/issueReport/views/IssueReportsView'))
 const NoticeBoardRedirector = React.lazy(
   () => import('./features/noticeBoard/views/NoticeBoardRedirector'),
 )
@@ -124,6 +126,7 @@ export const routes = [
   { path: '/onboarding', name: 'Data Import Wizard', element: OnboardingWizardView },
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+  { path: '/profile', name: 'Profile', element: ProfileView },
   {
     path: '/dashboard/community-notices/:id',
     name: 'Notice Deep Link',
@@ -222,6 +225,12 @@ export const routes = [
     path: '/super-admin/audit-logs',
     name: 'Audit Logs',
     element: AuditLogViewer,
+    requirePlatform: true,
+  },
+  {
+    path: '/super-admin/issue-reports',
+    name: 'Issue Reports',
+    element: IssueReportsView,
     requirePlatform: true,
   },
   { path: '/notices', name: 'Notice Board', element: NoticeBoardRedirector },

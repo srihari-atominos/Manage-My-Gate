@@ -54,6 +54,7 @@ import AmenityBooking from './src/features/amenityBooking/amenityBooking.model.j
 import VisitorPass    from './src/features/visitorPass/visitorPass.model.js';
 import VisitorLog     from './src/features/visitorLog/visitorLog.model.js';
 import Notice         from './src/features/noticeBoard/noticeBoard.model.js';
+import Poll           from './src/features/poll/poll.model.js';
 import { Wallet, WalletTransaction } from './src/features/wallet/wallet.model.js';
 
 const MONGO_URI           = process.env.MONGODB_URI || 'mongodb://localhost:27017/manage_my_gate_dev';
@@ -78,7 +79,8 @@ const ROLE_PERMISSIONS = {
     'complaints:staff', 'complaints:raise_ticket', 'complaints:track_requests',
     'complaints:complaint_management', 'complaints:assignee',
     'visitor:admin', 'visitor:resident', 'visitor:guard',
-    'notices:create', 'notices:read', 'notices:update', 'notices:delete',
+    'notices:create', 'notices:read', 'notices:update', 'notices:delete', 'notices:dashboard', 'notices:active_board', 'notices:manage_notices', 'notices:polls', 'notices:publish', 'notices:acknowledge',
+    'polls:read', 'polls:create', 'polls:update', 'polls:delete', 'polls:publish', 'polls:vote', 'polls:view_voters', 'polls:close', 'polls:export',
     'billing:dashboard', 'billing:assessment_manager', 'billing:action_center',
   ],
   'Facility Manager': [
@@ -91,13 +93,14 @@ const ROLE_PERMISSIONS = {
     'complaints:calendar', 'complaints:settings', 'complaints:comments',
     'complaints:timeline', 'complaints:staff', 'complaints:track_requests',
     'complaints:complaint_management', 'complaints:assignee',
-    'notices:create', 'notices:read', 'notices:update',
+    'notices:create', 'notices:read', 'notices:update', 'notices:active_board', 'notices:dashboard', 'notices:manage_notices', 'notices:polls',
+    'polls:read', 'polls:create', 'polls:update', 'polls:vote', 'polls:view_voters', 'polls:close',
     'visitor:admin',
     'billing:dashboard', 'billing:action_center',
   ],
   'Security Guard': [
     'visitor:guard',
-    'notices:read',
+    'notices:read', 'notices:active_board',
     'villas:read',
     'complaints:raise_ticket', 'complaints:track_requests',
   ],
@@ -107,7 +110,8 @@ const ROLE_PERMISSIONS = {
     'complaints:raise_ticket', 'complaints:track_requests',
     'complaints:view', 'complaints:comments', 'complaints:timeline',
     'visitor:resident',
-    'notices:read',
+    'notices:read', 'notices:active_board', 'notices:polls', 'notices:acknowledge',
+    'polls:read', 'polls:vote',
     'billing:action_center',
   ],
   'Resident Tenant': [
@@ -116,11 +120,13 @@ const ROLE_PERMISSIONS = {
     'complaints:raise_ticket', 'complaints:track_requests',
     'complaints:view', 'complaints:comments', 'complaints:timeline',
     'visitor:resident',
-    'notices:read',
+    'notices:read', 'notices:active_board', 'notices:polls', 'notices:acknowledge',
+    'polls:read', 'polls:vote',
     'billing:action_center',
   ],
   'Family Member': [
-    'notices:read',
+    'notices:read', 'notices:active_board', 'notices:polls', 'notices:acknowledge',
+    'polls:read', 'polls:vote',
     'visitor:resident',
     'complaints:raise_ticket', 'complaints:track_requests',
     'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
@@ -313,6 +319,7 @@ async function seedMultiCommunity() {
         VisitorPass.deleteMany({ orgId: oid }),
         VisitorLog.deleteMany({ orgId: oid }),
         Notice.deleteMany({ orgId: oid }),
+        Poll.deleteMany({ orgId: oid }),
         OrgMembership.deleteMany({ orgId: oid }),
         Villa.deleteMany({ orgId: oid }),
         RolePermission.deleteMany({ roleId: { $in: (await Role.find({ orgId: oid })).map(r => r._id) } }),
@@ -774,7 +781,7 @@ async function seedMultiCommunity() {
       console.log(`   ✔ Visitor Pass & Entry Logs Created.`);
     }
 
-    // 10. Notice Board
+    // 10. Notice Board & Polls
     if (communityAdmins.length > 0) {
       await Notice.insertMany([
         {
@@ -800,7 +807,83 @@ async function seedMultiCommunity() {
           createdBy: communityAdmins[0]._id,
         }
       ]);
-      console.log(`   ✔ Notice Board Announcements Published.`);
+
+      await Poll.insertMany([
+        {
+          orgId: org._id,
+          question: `Should we upgrade the clubhouse fitness centre with new equipment?`,
+          description: `Resident feedback requested for proposed Q4 gym upgrades including new elliptical trainers and squat racks.`,
+          options: [
+            { text: 'Yes, fully approve', votesCount: 6 },
+            { text: 'No, current facilities are adequate', votesCount: 2 },
+            { text: 'Need alternative equipment options', votesCount: 1 },
+          ],
+          status: 'Active',
+          endDate: daysAhead(14),
+          createdBy: communityAdmins[0]._id,
+          visibility: 'Everyone',
+          targetAudience: { targetType: 'ALL' },
+          choiceType: 'SINGLE_CHOICE',
+          maxChoices: 1,
+          votingMode: 'ONE_PER_USER',
+          resultsVisibility: 'ALWAYS',
+          isAnonymous: false,
+          quorumPercentage: 25,
+          totalEligibleVoters: 25,
+          totalVotes: 9,
+          outcome: 'PENDING',
+        },
+        {
+          orgId: org._id,
+          question: `Preferred weekend community yoga & wellness time slot?`,
+          description: `We are introducing complimentary weekend wellness sessions in the Central Park lawn.`,
+          options: [
+            { text: 'Saturday 7:00 AM - 8:00 AM', votesCount: 4 },
+            { text: 'Saturday 8:00 AM - 9:00 AM', votesCount: 3 },
+            { text: 'Sunday 7:30 AM - 8:30 AM', votesCount: 5 },
+          ],
+          status: 'Active',
+          endDate: daysAhead(21),
+          createdBy: communityAdmins[0]._id,
+          visibility: 'Everyone',
+          targetAudience: { targetType: 'ALL' },
+          choiceType: 'SINGLE_CHOICE',
+          maxChoices: 1,
+          votingMode: 'ONE_PER_USER',
+          resultsVisibility: 'ALWAYS',
+          isAnonymous: false,
+          quorumPercentage: 20,
+          totalEligibleVoters: 25,
+          totalVotes: 12,
+          outcome: 'PENDING',
+        },
+        {
+          orgId: org._id,
+          question: `Should EV charging stations be installed in Visitor Parking?`,
+          description: `Community resolution on allocating 4 visitor parking bays for Level 2 EV charging stations.`,
+          options: [
+            { text: 'Yes, install EV chargers', votesCount: 16 },
+            { text: 'No, reserve all visitor parking', votesCount: 4 },
+          ],
+          status: 'Closed',
+          endDate: daysAgo(2),
+          closedAt: daysAgo(2),
+          createdBy: communityAdmins[0]._id,
+          visibility: 'Everyone',
+          targetAudience: { targetType: 'ALL' },
+          choiceType: 'SINGLE_CHOICE',
+          maxChoices: 1,
+          votingMode: 'ONE_PER_USER',
+          resultsVisibility: 'ALWAYS',
+          isAnonymous: false,
+          quorumPercentage: 30,
+          totalEligibleVoters: 25,
+          totalVotes: 20,
+          outcome: 'PASSED',
+          winningOption: { index: 0, text: 'Yes, install EV chargers', votesCount: 16 },
+        },
+      ]);
+      console.log(`   ✔ Notice Board Announcements & Community Polls Published.`);
     }
 
     // 11. Assessments & Invoices

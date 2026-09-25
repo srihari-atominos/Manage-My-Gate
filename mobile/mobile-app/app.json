@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nahom",
     "slug": "atominos",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": [
@@ -20,9 +20,9 @@
       "enabled": false
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "14",
+      "buildNumber": "16",
       "associatedDomains": [
         "applinks:managemygate.e3esg.com",
         "applinks:app.managemygate.com",
@@ -45,7 +45,7 @@
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
-      "versionCode": 18,
+      "versionCode": 19,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D1015"

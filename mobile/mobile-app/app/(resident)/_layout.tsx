@@ -6,12 +6,14 @@ export default function ResidentLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="showcase" />
+      <Stack.Screen name="all-features" />
       <Stack.Screen name="admin" />
       <Stack.Screen name="amenities" />
       <Stack.Screen name="billing" />
       <Stack.Screen name="complaints" />
       <Stack.Screen name="notices" />
-      <Stack.Screen name="polls" />
+      <Stack.Screen name="polls/index" />
+      <Stack.Screen name="polls/[id]" />
       <Stack.Screen name="community-engagement" />
       <Stack.Screen name="visitor" />
       <Stack.Screen name="profile/index" />
@@ -20,6 +22,7 @@ export default function ResidentLayout() {
       <Stack.Screen name="directory/conversation/[id]" options={{ animation: 'default' }} />
       <Stack.Screen name="notes/index" />
       <Stack.Screen name="settings/index" />
+      <Stack.Screen name="settings/report-issue" options={{ animation: 'default' }} />
       <Stack.Screen name="notifications" options={{ animation: 'default' }} />
     </Stack>
   );

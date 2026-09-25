@@ -51,6 +51,38 @@ const orgMembershipSchema = new mongoose.Schema(
         },
       }
     ],
+    // Role-based assignments/scopes for this member within the organization
+    assignments: [
+      {
+        roleName: {
+          type: String,
+          trim: true,
+        },
+        roleId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Role',
+          default: null,
+        },
+        assignmentType: {
+          type: String,
+          enum: ['villa', 'gate', 'facility', 'general'],
+          default: 'general',
+        },
+        entityId: {
+          type: mongoose.Schema.Types.ObjectId,
+          default: null,
+        },
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        metadata: {
+          type: mongoose.Schema.Types.Mixed,
+          default: {},
+        },
+      }
+    ],
     status: {
       type: String,
       enum: ['Pending', 'Active', 'Rejected'],

@@ -128,13 +128,38 @@ export class AuthController {
 
   async switchContext(req, res, next) {
     try {
-      const { targetOrgId, targetVillaId, targetRole } = req.body;
+      const { targetOrgId, targetVillaId, targetRole, targetAssignmentId, targetAssignmentName, targetAssignmentType } = req.body;
       const userId = req.user.id;
-      const data = await authService.switchContext(userId, targetOrgId, targetVillaId, targetRole);
+      // Default to active organization context if targetOrgId is not explicitly provided
+      const orgId = targetOrgId || req.user?.orgId || null;
+      
+      // Determine if effective role is a resident role before considering any villa context
+      const effectiveRole = targetRole || req.user?.role || '';
+      const isResidentRole = /resident|tenant|owner|family/i.test(effectiveRole);
+      const villaId = isResidentRole
+        ? (targetVillaId || (orgId === req.user?.orgId ? req.user?.villaId : null))
+        : null;
+      
+      const targetAssignment = (targetAssignmentId || targetAssignmentName || targetAssignmentType)
+        ? { id: targetAssignmentId, name: targetAssignmentName, type: targetAssignmentType }
+        : null;
+
+      const data = await authService.switchContext(userId, orgId, villaId, targetRole, targetAssignment);
 
       setAuthCookie(res, data.token);
 
       res.success(data, 'Workspace context switched successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCurrentContext(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const targetOrgId = req.query.orgId || req.user.orgId || null;
+      const data = await authService.getCurrentContext(userId, targetOrgId);
+      res.success(data, 'Current workspace context retrieved successfully');
     } catch (error) {
       next(error);
     }

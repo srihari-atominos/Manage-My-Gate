@@ -121,6 +121,21 @@ export const switchContextRules = [
     .isString()
     .withMessage('targetRole must be a string')
     .trim(),
+  body('targetAssignmentId')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('targetAssignmentId must be a string')
+    .trim(),
+  body('targetAssignmentName')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('targetAssignmentName must be a string')
+    .trim(),
+  body('targetAssignmentType')
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(['villa', 'gate', 'facility', 'general', 'location'])
+    .withMessage('targetAssignmentType must be one of: villa, gate, facility, general, location')
+    .trim(),
 ];
 
 /**

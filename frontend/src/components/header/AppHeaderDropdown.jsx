@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import config from '../../config/config.js'
@@ -27,16 +27,19 @@ const AppHeaderDropdown = () => {
   // Derive avatar letter: first char of username, fallback to 'A'
   const avatarLetter = currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'A'
 
-  // Derive roles list from currentUser
-  const roles =
-    currentUser?.roles && currentUser.roles.length > 0
-      ? currentUser.roles
-      : currentUser?.role
-        ? currentUser.role
-            .split(',')
-            .map((r) => r.trim())
-            .filter(Boolean)
-        : []
+  const availableWorkspaces = useSelector((state) => state.workspace.availableWorkspaces) || []
+  const currentWs = availableWorkspaces.find((w) => (w.orgId || w._id) === activeOrganizationId)
+
+  // Derive roles list strictly for current organisation
+  const roles = useMemo(() => {
+    if (currentWs?.roles && Array.isArray(currentWs.roles) && currentWs.roles.length > 0) {
+      return Array.from(new Set(currentWs.roles.filter(Boolean)))
+    }
+    if (currentUser?.roles && Array.isArray(currentUser.roles) && (currentUser.orgId === activeOrganizationId || !currentUser.orgId)) {
+      return Array.from(new Set(currentUser.roles.filter(Boolean)))
+    }
+    return currentUser?.role ? [currentUser.role] : []
+  }, [currentWs, currentUser, activeOrganizationId])
   const activeRole = currentUser?.role || ''
 
   const handleSwitchRole = async (roleName) => {
@@ -49,8 +52,6 @@ const AppHeaderDropdown = () => {
       console.error('Failed to switch role context:', err)
     }
   }
-
-  const availableWorkspaces = useSelector((state) => state.workspace.availableWorkspaces) || []
 
   const handleSwitchWorkspace = async (targetOrgId, targetVillaId) => {
     if (targetOrgId === activeOrganizationId && (targetVillaId || null) === (currentUser?.villaId || null)) return
@@ -102,48 +103,45 @@ const AppHeaderDropdown = () => {
           {t('header.dropdown.profile', { defaultValue: 'Profile' })}
         </CDropdownItem>
 
-        <CDropdownDivider />
+        {/* Role Switcher Section (Rendered only when multiple roles are assigned in active org) */}
+        {roles.length > 1 && (
+          <>
+            <CDropdownDivider />
+            <CDropdownHeader className="fw-semibold text-uppercase py-1 px-3 header-dropdown-role-header">
+              {t('header.dropdown.switchRole', { defaultValue: 'Switch Role' })}
+            </CDropdownHeader>
 
-        {/* Role Switcher Section */}
-        <CDropdownHeader className="fw-semibold text-uppercase py-1 px-3 header-dropdown-role-header">
-          {t('header.dropdown.switchRole', { defaultValue: 'Switch Role' })}
-        </CDropdownHeader>
-
-        {roles.length === 0 ? (
-          <CDropdownItem disabled className="text-body-secondary small py-1 px-3">
-            No roles assigned
-          </CDropdownItem>
-        ) : (
-          roles.map((roleName) => {
-            const isActive = roleName === activeRole
-            return (
-              <CDropdownItem
-                key={roleName}
-                component="button"
-                id={`dropdown-role-${roleName.toLowerCase().replace(/\s+/g, '-')}`}
-                className={`d-flex align-items-center justify-content-between py-1 px-3 ${isActive ? 'fw-semibold' : ''}`}
-                onClick={() => handleSwitchRole(roleName)}
-              >
-                {roleName}
-                {isActive && (
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="13"
-                    height="13"
-                    stroke="var(--cui-primary, #321fdb)"
-                    strokeWidth="2.5"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-label="Active role"
-                    className="flex-shrink-0"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-              </CDropdownItem>
-            )
-          })
+            {roles.map((roleName) => {
+              const isActive = roleName === activeRole
+              return (
+                <CDropdownItem
+                  key={roleName}
+                  component="button"
+                  id={`dropdown-role-${roleName.toLowerCase().replace(/\s+/g, '-')}`}
+                  className={`d-flex align-items-center justify-content-between py-1 px-3 ${isActive ? 'fw-semibold' : ''}`}
+                  onClick={() => handleSwitchRole(roleName)}
+                >
+                  {roleName}
+                  {isActive && (
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="13"
+                      height="13"
+                      stroke="var(--cui-primary, #321fdb)"
+                      strokeWidth="2.5"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-label="Active role"
+                      className="flex-shrink-0"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </CDropdownItem>
+              )
+            })}
+          </>
         )}
 
         <CDropdownDivider />

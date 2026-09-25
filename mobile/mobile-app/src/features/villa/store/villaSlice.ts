@@ -201,11 +201,11 @@ export const bulkUploadVillasThunk = createAsyncThunk(
 export const assignExistingUserThunk = createAsyncThunk(
   'villa/assignExistingUser',
   async (
-    { villaId, userId, residencyType }: { villaId: string; userId: string; residencyType: string },
+    { villaId, userId, residencyType, isPrimary }: { villaId: string; userId: string; residencyType: string; isPrimary?: boolean },
     { rejectWithValue }
   ) => {
     try {
-      const response = await villaService.assignExistingUser(villaId, userId, residencyType);
+      const response = await villaService.assignExistingUser(villaId, userId, residencyType, isPrimary);
       return response as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to assign resident');
@@ -442,6 +442,69 @@ const villaSlice = createSlice({
         if (state.currentVilla?._id === deletedId) {
           state.currentVilla = null;
         }
+      })
+
+      // assignExistingUser
+      .addCase(assignExistingUserThunk.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(assignExistingUserThunk.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const resData = action.payload?.data !== undefined ? action.payload.data : action.payload;
+        const updated = resData;
+        if (updated && updated._id) {
+          state.villas = state.villas.map((v) => (v._id === updated._id ? { ...v, ...updated } : v));
+          if (state.currentVilla?._id === updated._id) {
+            state.currentVilla = { ...state.currentVilla, ...updated };
+          }
+        }
+      })
+      .addCase(assignExistingUserThunk.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = (action.payload as string) || 'Failed to assign resident';
+      })
+
+      // updateResidencyType
+      .addCase(updateResidencyTypeThunk.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(updateResidencyTypeThunk.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const resData = action.payload?.data !== undefined ? action.payload.data : action.payload;
+        const updated = resData;
+        if (updated && updated._id) {
+          state.villas = state.villas.map((v) => (v._id === updated._id ? { ...v, ...updated } : v));
+          if (state.currentVilla?._id === updated._id) {
+            state.currentVilla = { ...state.currentVilla, ...updated };
+          }
+        }
+      })
+      .addCase(updateResidencyTypeThunk.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = (action.payload as string) || 'Failed to update residency type';
+      })
+
+      // removeResident
+      .addCase(removeResidentThunk.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(removeResidentThunk.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const resData = action.payload?.data?.data !== undefined ? action.payload.data.data : (action.payload?.data || action.payload);
+        const updated = resData;
+        if (updated && updated._id) {
+          state.villas = state.villas.map((v) => (v._id === updated._id ? { ...v, ...updated } : v));
+          if (state.currentVilla?._id === updated._id) {
+            state.currentVilla = { ...state.currentVilla, ...updated };
+          }
+        }
+      })
+      .addCase(removeResidentThunk.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = (action.payload as string) || 'Failed to remove resident';
       });
   },
 });

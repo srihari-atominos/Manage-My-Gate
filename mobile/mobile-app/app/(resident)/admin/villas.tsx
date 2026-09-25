@@ -8,7 +8,7 @@ import { FAB } from '@/components/ui/FAB';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/ui/icon';
 import { EmptyState } from '@/components/feedback/EmptyState';
-import { FileSpreadsheet, PlusCircle, Zap, FilterX, Building2, Plus } from 'lucide-react-native';
+import { FileSpreadsheet, Zap, Building2, Plus } from 'lucide-react-native';
 import { useVilla } from '@/src/features/villa/hooks/useVilla';
 import { useVillaSocket } from '@/src/features/villa/hooks/useVillaSocket';
 import { VillaCard } from '@/src/features/villa/components/VillaCard';
@@ -16,9 +16,9 @@ import { VillaDetailsModal } from '@/src/features/villa/components/VillaDetailsM
 import { VillaFormModal } from '@/src/features/villa/components/VillaFormModal';
 import { BatchGenerateModal } from '@/src/features/villa/components/BatchGenerateModal';
 import { BulkUploadVillasModal } from '@/src/features/villa/components/BulkUploadVillasModal';
+import { VillaFilterSheet } from '@/src/features/villa/components/VillaFilterSheet';
 import { Villa } from '@/src/features/villa/store/villaSlice';
 import { VillaPayload, BatchGenerateParams } from '@/src/features/villa/services/villaService';
-import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 import { useTranslation } from '@/src/utils/i18n';
 
 export default function VillaManagementScreen() {
@@ -55,6 +55,7 @@ export default function VillaManagementScreen() {
   const [editingVilla, setEditingVilla] = useState<Villa | null>(null);
   const [batchModalVisible, setBatchModalVisible] = useState(false);
   const [bulkUploadModalVisible, setBulkUploadModalVisible] = useState(false);
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
 
   useEffect(() => {
     fetchVillas();
@@ -68,15 +69,13 @@ export default function VillaManagementScreen() {
   };
 
   const handleStatusFilter = (statusVal: string) => {
-    const nextStatus = filters.status === statusVal ? '' : statusVal;
-    setStatus(nextStatus);
-    fetchVillas({ status: nextStatus, page: 1 });
+    setStatus(statusVal);
+    fetchVillas({ status: statusVal, page: 1 });
   };
 
   const handleBlockFilter = (blockVal: string) => {
-    const nextBlock = filters.blockOrBuilding === blockVal ? '' : blockVal;
-    setBlock(nextBlock);
-    fetchVillas({ blockOrBuilding: nextBlock, page: 1 });
+    setBlock(blockVal);
+    fetchVillas({ blockOrBuilding: blockVal, page: 1 });
   };
 
   const handleClearFilters = () => {
@@ -127,9 +126,13 @@ export default function VillaManagementScreen() {
     let count = 0;
     if (filters.blockOrBuilding) count++;
     if (filters.status) count++;
-    if (filters.search) count++;
     return count;
-  }, [filters]);
+  }, [filters.blockOrBuilding, filters.status]);
+
+  const activeSelectedVilla = useMemo(() => {
+    if (!selectedVilla) return null;
+    return villas.find((v) => v._id === selectedVilla._id) || selectedVilla;
+  }, [selectedVilla, villas]);
 
   const availableStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
 
@@ -172,38 +175,49 @@ export default function VillaManagementScreen() {
           </ScrollView>
         </View>
 
-        {/* Primary Creation Action Toolbar */}
-        <View className="px-4 py-2 border-b border-border/40 bg-card/20 shrink-0">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          >
-            <View className="flex-row items-center gap-2">
-              <TouchableOpacity
-                onPress={handleOpenCreateForm}
-                className="px-3 py-2 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center gap-1.5 active:bg-emerald-700 shadow-xs"
-              >
-                <Icon as={PlusCircle} size={15} color="#ffffff" className="text-white" />
-                <Text className="text-xs font-bold text-white">{t('create_unit', 'Create Unit')}</Text>
-              </TouchableOpacity>
+        {/* Action Toolbar (Responsive Mini Cards) */}
+        <View className="px-4 py-2.5 border-b border-border/40 bg-card/20 shrink-0">
+          <View className="flex-row items-stretch gap-2.5">
+            <TouchableOpacity
+              onPress={() => setBulkUploadModalVisible(true)}
+              activeOpacity={0.7}
+              className="flex-1 p-2.5 rounded-xl border border-blue-500/25 bg-blue-500/5 active:bg-blue-500/10 flex-row items-center gap-2.5 shadow-2xs"
+              accessibilityRole="button"
+              accessibilityLabel="Bulk Upload Units"
+            >
+              <View className="w-9 h-9 rounded-lg bg-blue-500/15 items-center justify-center shrink-0">
+                <FileSpreadsheet size={18} color="#2563eb" />
+              </View>
+              <View className="flex-1 justify-center">
+                <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
+                  {t('bulk_upload', 'Bulk Upload')}
+                </Text>
+                <Text className="text-[10px] text-muted-foreground mt-0.5" numberOfLines={1}>
+                  {t('bulk_upload_sub', 'Import via CSV')}
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => setBulkUploadModalVisible(true)}
-                className="px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/30 flex-row items-center gap-1.5 active:bg-blue-500/20"
-              >
-                <Icon as={FileSpreadsheet} size={15} color="#2563eb" className="text-blue-600" />
-                <Text className="text-xs font-bold text-blue-600 dark:text-blue-400">{t('bulk_upload', 'Bulk Upload')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setBatchModalVisible(true)}
-                className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-row items-center gap-1.5 active:bg-amber-500/20"
-              >
-                <Icon as={Zap} size={15} color="#d97706" className="text-amber-600" />
-                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">{t('batch_generate', 'Batch Generate')}</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+            <TouchableOpacity
+              onPress={() => setBatchModalVisible(true)}
+              activeOpacity={0.7}
+              className="flex-1 p-2.5 rounded-xl border border-amber-500/25 bg-amber-500/5 active:bg-amber-500/10 flex-row items-center gap-2.5 shadow-2xs"
+              accessibilityRole="button"
+              accessibilityLabel="Batch Generate Units"
+            >
+              <View className="w-9 h-9 rounded-lg bg-amber-500/15 items-center justify-center shrink-0">
+                <Zap size={18} color="#d97706" />
+              </View>
+              <View className="flex-1 justify-center">
+                <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
+                  {t('batch_generate', 'Batch Generate')}
+                </Text>
+                <Text className="text-[10px] text-muted-foreground mt-0.5" numberOfLines={1}>
+                  {t('batch_generate_sub', 'Auto-create units')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Search & Filter Bar */}
@@ -211,73 +225,40 @@ export default function VillaManagementScreen() {
           searchValue={filters.search}
           onSearchChange={handleSearchChange}
           searchPlaceholder={t('search_unit_number', 'Search unit number...')}
-          onFilterPress={handleClearFilters}
+          onFilterPress={() => setFilterSheetVisible(true)}
           activeFilterCount={activeFilterCount}
         />
 
-        {/* Inline Filter Chips Row */}
-        <View className="px-4 py-2 border-b border-border/40 shrink-0 space-y-1.5">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          >
-            <View className="flex-row items-center gap-2">
-              {activeFilterCount > 0 && (
-                <TouchableOpacity
-                  onPress={handleClearFilters}
-                  className="px-2.5 py-1.5 rounded-full bg-destructive/10 border border-destructive/20 flex-row items-center gap-1"
-                >
-                  <Icon as={FilterX} size={13} className="text-destructive" />
-                  <Text className="text-xs font-bold text-destructive">{t('clear', 'Clear')} ({activeFilterCount})</Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                onPress={() => handleStatusFilter('')}
-                className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${
-                  !filters.status ? 'bg-blue-600 border-blue-600' : 'bg-card border-border'
-                }`}
-              >
-                <Text className={`text-xs font-semibold ${!filters.status ? 'text-white' : 'text-foreground'}`}>
-                  {t('all_statuses', 'All Statuses')}
-                </Text>
-              </TouchableOpacity>
-
-              {availableStatuses.map((st) => {
-                const isSel = filters.status === st;
-                const statusStyle = getStatusTabStyle(st, isSel);
-                return (
-                  <TouchableOpacity
-                    key={st}
-                    onPress={() => handleStatusFilter(st)}
-                    className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${statusStyle.containerClass}`}
-                  >
-                    <Text className={`text-xs ${statusStyle.textClass}`}>
-                      {t(st, st)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-
-              {blocks && blocks.length > 0 && blocks.map((blk) => {
-                const isSel = filters.blockOrBuilding === blk;
-                return (
-                  <TouchableOpacity
-                    key={blk}
-                    onPress={() => handleBlockFilter(blk)}
-                    className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${
-                      isSel ? 'bg-secondary border-secondary' : 'bg-muted/80 border-border'
-                    }`}
-                  >
-                    <Text className={`text-xs font-semibold ${isSel ? 'text-secondary-foreground' : 'text-foreground'}`}>
-                      {blk}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+        {/* Active Filters Pill Bar (when filtered) */}
+        {activeFilterCount > 0 && (
+          <View className="px-4 py-2 bg-muted/20 border-b border-border/40 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1.5 flex-wrap flex-1">
+              <Text className="text-[11px] font-medium text-muted-foreground">
+                {t('active_filters', 'Filtered by')}:
+              </Text>
+              {filters.status ? (
+                <View className="px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20">
+                  <Text className="text-[11px] font-semibold text-primary">{filters.status}</Text>
+                </View>
+              ) : null}
+              {filters.blockOrBuilding ? (
+                <View className="px-2 py-0.5 rounded-md bg-secondary border border-border">
+                  <Text className="text-[11px] font-semibold text-foreground">
+                    {t('block', 'Block')} {filters.blockOrBuilding}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-          </ScrollView>
-        </View>
+            <TouchableOpacity
+              onPress={handleClearFilters}
+              className="p-1"
+              accessibilityRole="button"
+              accessibilityLabel="Clear active filters"
+            >
+              <Text className="text-[11px] font-bold text-destructive">{t('clear', 'Clear')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Main Directory & List Container */}
         {loading && villas.length === 0 ? (
@@ -321,11 +302,11 @@ export default function VillaManagementScreen() {
       </View>
 
       {/* Details Bottom Sheet Modal */}
-      {detailsModalVisible && selectedVilla ? (
+      {detailsModalVisible && activeSelectedVilla ? (
         <VillaDetailsModal
           visible={detailsModalVisible}
           onClose={() => setDetailsModalVisible(false)}
-          villa={selectedVilla}
+          villa={activeSelectedVilla}
           onEdit={handleOpenEditForm}
           onDelete={handleDeleteUnit}
         />
@@ -371,6 +352,19 @@ export default function VillaManagementScreen() {
         }}
         onDownloadTemplate={downloadTemplate}
         loading={actionLoading}
+      />
+
+      {/* Villa Filter Sheet */}
+      <VillaFilterSheet
+        visible={filterSheetVisible}
+        onClose={() => setFilterSheetVisible(false)}
+        availableStatuses={availableStatuses}
+        selectedStatus={filters.status}
+        onSelectStatus={handleStatusFilter}
+        availableBlocks={blocks}
+        selectedBlock={filters.blockOrBuilding}
+        onSelectBlock={handleBlockFilter}
+        onClearAll={handleClearFilters}
       />
     </ScreenShell>
   );

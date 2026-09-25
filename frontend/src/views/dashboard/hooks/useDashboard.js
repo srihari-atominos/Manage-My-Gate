@@ -56,7 +56,11 @@ export const useDashboard = () => {
   const isPlatform = activeWorkspace?.isPlatform || false
   console.log('--- DEBUG useDashboard allowedFeatures:', allowedFeatures)
 
-  const SUPER_ADMIN_PATHS = new Set(['/super-admin/organizations', '/super-admin/audit-logs'])
+  const SUPER_ADMIN_PATHS = new Set([
+    '/super-admin/organizations',
+    '/super-admin/audit-logs',
+    '/super-admin/issue-reports',
+  ])
 
   // Match the logic in AppSidebar.jsx minus the dashboard itself
   const PORTAL_CATEGORIES = navigation.filter(
@@ -64,7 +68,7 @@ export const useDashboard = () => {
   )
 
   const SUPER_ADMIN_CATEGORIES = navigation.filter(
-    (item) => item.to === '/super-admin/organizations' || item.to === '/super-admin/audit-logs',
+    (item) => SUPER_ADMIN_PATHS.has(item.to),
   )
 
   let navigationItems = isPlatform

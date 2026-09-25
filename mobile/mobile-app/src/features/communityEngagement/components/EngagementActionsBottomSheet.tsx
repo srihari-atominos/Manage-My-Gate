@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Share, Platform, Alert } from 'react-native';
+import { View, ScrollView, Share, Platform, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { DetailSection } from '@/components/ui/DetailSection';
-import { DetailRow } from '@/components/ui/DetailRow';
-import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
-import { Button } from '@/components/common/Button';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
@@ -15,22 +11,24 @@ import {
   Share2,
   Trash2,
   Users,
-  CheckCircle2,
-  CheckSquare,
+  Vote,
+  FileText,
+  Calendar,
   BarChart2,
   Download,
-  AlertCircle,
-  ExternalLink,
   Lock,
   RefreshCw,
-  Clock,
-  Shield,
   Edit3,
+  SlidersHorizontal,
+  ChevronRight,
+  ArrowUpRight,
+  Megaphone,
 } from 'lucide-react-native';
 import { EngagementCardItem } from './EngagementCard';
 import * as noticeBoardService from '@/src/features/noticeBoard/services/noticeBoardService';
 import { pollApi } from '@/src/features/poll/services/pollApi';
 import { PollVotersModal } from '@/src/features/poll/components/PollVotersModal';
+import { useTranslation } from '@/src/utils/i18n';
 
 const VotersModal = PollVotersModal as React.ComponentType<any>;
 
@@ -48,6 +46,7 @@ export const EngagementActionsBottomSheet: React.FC<EngagementActionsBottomSheet
   onActionSuccess,
 }) => {
   const router = useRouter();
+  const { t, translateText } = useTranslation();
 
   // Pinning state
   const [isPinning, setIsPinning] = useState(false);
@@ -61,6 +60,9 @@ export const EngagementActionsBottomSheet: React.FC<EngagementActionsBottomSheet
   const [votersModalVisible, setVotersModalVisible] = useState(false);
   const [voters, setVoters] = useState<any[]>([]);
   const [loadingVoters, setLoadingVoters] = useState(false);
+
+  // Nested actions bottom sheet
+  const [actionsSheetVisible, setActionsSheetVisible] = useState(false);
 
   // Confirmation Modals
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
@@ -89,15 +91,24 @@ export const EngagementActionsBottomSheet: React.FC<EngagementActionsBottomSheet
 
   const isNotice = item.type === 'NOTICE';
 
-  // Format date helper
-  const formatDateDisplay = (d?: string) => {
+  const formatExpiryDisplay = (d?: string) => {
     if (!d) return '—';
     try {
-      return new Date(d).toLocaleDateString([], {
-        day: '2-digit',
+      const date = new Date(d);
+      if (isNaN(date.getTime())) return d;
+      const datePart = date.toLocaleDateString('en-GB', {
+        day: 'numeric',
         month: 'short',
         year: 'numeric',
       });
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const hasTime = !(hours === 0 && minutes === 0);
+      if (hasTime) {
+        const timePart = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `${datePart}, ${timePart}`;
+      }
+      return datePart;
     } catch {
       return d;
     }
@@ -238,302 +249,333 @@ export const EngagementActionsBottomSheet: React.FC<EngagementActionsBottomSheet
       <BottomSheet
         visible={visible}
         onClose={onClose}
-        title={isNotice ? 'Notice Overview & Actions' : 'Poll Overview & Actions'}
+        title={isNotice ? t('notice_actions_title') : t('poll_actions_title')}
         snapPoints={['88%']}
       >
         <ScrollView className="flex-1 px-4 py-2" showsVerticalScrollIndicator={false}>
-          <View className="gap-5 pb-16">
-            {/* Header Preview Card */}
-            <View className="bg-card border border-border rounded-2xl p-4 gap-2.5">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-1.5">
-                  <StatusBadge
-                    label={isNotice ? 'Notice' : 'Poll'}
-                    variant={isNotice ? 'info' : 'gold'}
-                    size="sm"
-                  />
-                  <StatusBadge
-                    label={item.status}
-                    variant={getStatusVariant(item.status)}
-                    size="sm"
-                  />
-                </View>
-                <Text variant="muted" className="text-xs">
-                  {formatDateDisplay(item.createdAt)}
+          <View className="gap-4 pb-14">
+            {/* Card 1: Expiry / Voting Closes Date */}
+            <View className="bg-card border border-border/70 rounded-2xl p-3.5 flex-row items-center gap-3.5">
+              <View className="w-11 h-11 rounded-xl bg-orange-500/10 items-center justify-center">
+                <Icon as={Calendar} size={20} className="text-orange-600 dark:text-orange-400" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-xs text-muted-foreground font-medium">
+                  {isNotice ? t('expiry_date', 'Expiry Date') : t('voting_closes')}
+                </Text>
+                <Text className="text-sm font-bold text-foreground mt-0.5">
+                  {formatExpiryDisplay(item.expiryDate)}
                 </Text>
               </View>
-
-              <Text className="text-base font-bold text-foreground">{item.title}</Text>
-              <Text variant="muted" className="text-xs">
-                {item.subtitle}
-              </Text>
             </View>
 
-            {/* Specifications Section */}
-            <DetailSection title="Core Specifications">
-              {isNotice ? (
-                <>
-                  <DetailRow label="Category" value={item.category || 'General'} />
-                  <DetailRow label="Priority" value={item.priority || 'Medium'} />
-                  <DetailRow
-                    label="Sign-off Compliance"
-                    value={item.requiresAcknowledgement ? 'Mandatory Sign-off' : 'Not Required'}
-                  />
-                  <DetailRow
-                    label="Pinned Status"
-                    value={pinnedLocal ? '📌 Pinned to Top' : 'Standard Feed'}
-                  />
-                  <DetailRow label="Expiry Date" value={formatDateDisplay(item.expiryDate)} />
-                </>
-              ) : (
-                <>
-                  <DetailRow
-                    label="Voting Format"
-                    value={item.votingMode === 'ANONYMOUS' ? 'Anonymous Ballot' : 'Public Vote'}
-                  />
-                  <DetailRow
-                    label="Choice Type"
-                    value={
-                      item.choiceType === 'MULTIPLE_CHOICE' ? 'Multiple Choice' : 'Single Choice'
-                    }
-                  />
-                  <DetailRow label="Voting Closes" value={formatDateDisplay(item.expiryDate)} />
-                </>
-              )}
-            </DetailSection>
+            {/* Card 2: Live Results & Quorum (Poll) OR Core Specs (Notice) */}
+            {!isNotice ? (
+              <View className="bg-card border border-border/70 rounded-2xl p-4 gap-3">
+                <View className="flex-row items-center gap-3">
+                  <View className="w-11 h-11 rounded-xl bg-orange-500/10 items-center justify-center">
+                    <Icon as={BarChart2} size={20} className="text-orange-600 dark:text-orange-400" />
+                  </View>
+                  <Text className="text-sm font-bold text-foreground">
+                    {t('live_results_quorum')}
+                  </Text>
+                </View>
 
-            {/* Live Poll Results & Quorum Section (Poll Only) */}
-            {!isNotice && (
-              <DetailSection title="Live Results & Quorum">
                 {loadingResults ? (
                   <Text className="text-xs text-muted-foreground py-2">
-                    Loading live ballot distribution...
+                    {t('loading_live_ballot_distribution')}
                   </Text>
                 ) : pollResults?.options && pollResults.options.length > 0 ? (
-                  <View className="gap-2.5 pt-1">
-                    {/* Quorum indicator if present */}
+                  <View className="gap-3 pt-1">
+                    {/* Quorum indicator callout */}
                     {pollResults.quorumPercentage ? (
-                      <View className="p-2.5 bg-muted/30 border border-border/70 rounded-xl mb-1">
+                      <View className="p-3 bg-[#FFF8F3] dark:bg-muted/30 border border-[#FDDBC9] dark:border-border/60 rounded-xl">
                         <Text className="text-xs font-semibold text-foreground">
-                          Participation Quorum: {pollResults.quorumPercentage}% Required
+                          {t('participation_quorum', { pct: pollResults.quorumPercentage })}
                         </Text>
                         <Text variant="muted" className="text-[11px] mt-0.5">
-                          {pollResults.totalVotes || 0} Total Votes Recorded
+                          {t('total_votes_recorded', { count: pollResults.totalVotes || 0 })}
                         </Text>
                       </View>
                     ) : null}
 
                     {/* Option tallies */}
-                    {pollResults.options.map((opt: any, idx: number) => {
-                      const total = pollResults.totalVotes || 1;
-                      const count = opt.votesCount || 0;
-                      const pct = Math.round((count / (pollResults.totalVotes || 1)) * 100);
+                    <View className="gap-3">
+                      {pollResults.options.map((opt: any, idx: number) => {
+                        const total = pollResults.totalVotes || 0;
+                        const count = opt.votesCount || 0;
+                        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
 
-                      return (
-                        <View key={opt._id || idx} className="gap-1">
-                          <View className="flex-row items-center justify-between">
-                            <Text className="text-xs font-semibold text-foreground flex-1 me-2">
-                              {opt.text}
-                            </Text>
-                            <Text className="text-xs font-bold text-primary">
-                              {count} ({pct}%)
-                            </Text>
+                        return (
+                          <View key={opt._id || idx} className="gap-1.5">
+                            <View className="flex-row items-center justify-between">
+                              <Text className="text-xs font-medium text-foreground flex-1 me-2">
+                                {translateText(opt.text)}
+                              </Text>
+                              <Text className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                                {count} ({pct}%)
+                              </Text>
+                            </View>
+                            <View className="h-2 rounded-full bg-secondary/80 overflow-hidden">
+                              <View
+                                className="h-full bg-orange-500 rounded-full"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </View>
                           </View>
-                          <View className="h-2 rounded-full bg-secondary overflow-hidden">
-                            <View
-                              className="h-full bg-primary rounded-full"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </View>
-                        </View>
-                      );
-                    })}
+                        );
+                      })}
+                    </View>
                   </View>
                 ) : (
                   <Text className="text-xs text-muted-foreground py-2">
                     {item.status.toUpperCase() === 'DRAFT'
-                      ? 'Poll has not been published yet.'
-                      : 'No votes recorded on this poll yet.'}
+                      ? t('poll_has_not_been_published')
+                      : t('no_votes_recorded_yet')}
                   </Text>
                 )}
-              </DetailSection>
+              </View>
+            ) : (
+              <View className="bg-card border border-border/70 rounded-2xl p-4 gap-3">
+                <View className="flex-row items-center gap-3">
+                  <View className="w-11 h-11 rounded-xl bg-orange-500/10 items-center justify-center">
+                    <Icon as={Megaphone} size={20} className="text-orange-600 dark:text-orange-400" />
+                  </View>
+                  <Text className="text-sm font-bold text-foreground">
+                    {t('core_specifications')}
+                  </Text>
+                </View>
+
+                <View className="gap-2 pt-1 border-t border-border/40">
+                  <View className="flex-row justify-between py-1">
+                    <Text className="text-xs text-muted-foreground">{t('category', 'Category')}</Text>
+                    <Text className="text-xs font-semibold text-foreground">{translateText(item.category) || t('general', 'General')}</Text>
+                  </View>
+                  <View className="flex-row justify-between py-1">
+                    <Text className="text-xs text-muted-foreground">{t('priority', 'Priority')}</Text>
+                    <Text className="text-xs font-semibold text-foreground">{translateText(item.priority) || t('priority_medium', 'Medium')}</Text>
+                  </View>
+                  <View className="flex-row justify-between py-1">
+                    <Text className="text-xs text-muted-foreground">{t('signoff_compliance')}</Text>
+                    <Text className="text-xs font-semibold text-foreground">
+                      {item.requiresAcknowledgement ? t('mandatory_signoff') : t('not_required', 'Not Required')}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between py-1">
+                    <Text className="text-xs text-muted-foreground">{t('pinned_status')}</Text>
+                    <Text className="text-xs font-semibold text-foreground">
+                      {pinnedLocal ? t('pinned_to_top') : t('standard_feed')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
             )}
 
-            {/* Administrative Actions */}
+            {/* MANAGEMENT Section */}
             <View className="gap-2.5">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Management Actions
+                {t('management')}
               </Text>
 
-              {/* Notice Actions */}
-              {isNotice ? (
-                <View className="gap-2">
-                  <View className="flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onPress={handleEdit}
-                      accessibilityLabel="Edit Notice"
-                    >
-                      <Icon as={Edit3} size={15} className="text-foreground me-1.5" />
-                      <Text className="text-xs font-semibold text-foreground">Edit Notice</Text>
-                    </Button>
-
-                    <Button
-                      variant={pinnedLocal ? 'secondary' : 'outline'}
-                      size="sm"
-                      className="flex-1"
-                      onPress={handleTogglePin}
-                      disabled={isPinning}
-                      accessibilityLabel="Toggle Pin"
-                    >
-                      <Icon
-                        as={pinnedLocal ? PinOff : Pin}
-                        size={15}
-                        className={pinnedLocal ? 'text-amber-500 me-1.5' : 'text-foreground me-1.5'}
-                      />
-                      <Text className="text-xs font-semibold">
-                        {pinnedLocal ? 'Unpin' : 'Pin to Top'}
-                      </Text>
-                    </Button>
-                  </View>
-
-                  <View className="flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onPress={handleShare}
-                      accessibilityLabel="Share Notice"
-                    >
-                      <Icon as={Share2} size={15} className="text-foreground me-1.5" />
-                      <Text className="text-xs font-semibold text-foreground">Share</Text>
-                    </Button>
-
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="flex-1"
-                      onPress={() => setDeleteConfirmVisible(true)}
-                      accessibilityLabel="Delete Notice"
-                    >
-                      <Icon as={Trash2} size={15} className="text-destructive-foreground me-1.5" />
-                      <Text className="text-xs font-semibold text-destructive-foreground">
-                        Delete
-                      </Text>
-                    </Button>
-                  </View>
+              {/* Actions Button */}
+              <TouchableOpacity
+                onPress={() => setActionsSheetVisible(true)}
+                activeOpacity={0.7}
+                className="p-3.5 rounded-2xl bg-[#FFF8F3] dark:bg-card border border-[#FDDBC9] dark:border-border flex-row items-center justify-between"
+                accessibilityRole="button"
+                accessibilityLabel={t('actions')}
+              >
+                <View className="flex-row items-center">
+                  <Icon as={SlidersHorizontal} size={18} className="text-orange-600 dark:text-orange-400" />
+                  <Text className="text-sm font-semibold text-foreground ms-2.5">
+                    {t('actions')}
+                  </Text>
                 </View>
-              ) : (
-                /* Poll Actions */
-                <View className="gap-2">
-                  <View className="flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onPress={handleEdit}
-                      accessibilityLabel="Edit Poll"
-                    >
-                      <Icon as={Edit3} size={15} className="text-foreground me-1.5" />
-                      <Text className="text-xs font-semibold text-foreground">Edit Poll</Text>
-                    </Button>
-
-                    {item.status.toUpperCase() === 'ACTIVE' ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onPress={() => setClosePollConfirmVisible(true)}
-                        accessibilityLabel="Close Poll Early"
-                      >
-                        <Icon as={Lock} size={15} className="text-amber-500 me-1.5" />
-                        <Text className="text-xs font-semibold text-foreground">Close Early</Text>
-                      </Button>
-                    ) : item.status.toUpperCase() === 'CLOSED' ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onPress={handleReopenPoll}
-                        disabled={actionLoading}
-                        accessibilityLabel="Reopen Poll"
-                      >
-                        <Icon as={RefreshCw} size={15} className="text-primary me-1.5" />
-                        <Text className="text-xs font-semibold text-foreground">Reopen Poll</Text>
-                      </Button>
-                    ) : null}
-                  </View>
-
-                  <View className="flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onPress={handleOpenVoters}
-                      accessibilityLabel="Audit Voters"
-                    >
-                      <Icon as={Users} size={15} className="text-foreground me-1.5" />
-                      <Text className="text-xs font-semibold text-foreground">Audit Voters</Text>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onPress={handleExportCSV}
-                      accessibilityLabel="Export CSV"
-                    >
-                      <Icon as={Download} size={15} className="text-foreground me-1.5" />
-                      <Text className="text-xs font-semibold text-foreground">Export CSV</Text>
-                    </Button>
-
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="flex-1"
-                      onPress={() => setDeleteConfirmVisible(true)}
-                      accessibilityLabel="Delete Poll"
-                    >
-                      <Icon as={Trash2} size={15} className="text-destructive-foreground me-1.5" />
-                      <Text className="text-xs font-semibold text-destructive-foreground">
-                        Delete
-                      </Text>
-                    </Button>
-                  </View>
-                </View>
-              )}
+                <Icon as={ChevronRight} size={18} className="text-orange-600 dark:text-orange-400" />
+              </TouchableOpacity>
             </View>
 
-            {/* Full View Navigation CTA */}
-            <View className="pt-2 border-t border-border">
-              <Button
-                variant="default"
-                size="lg"
+            {/* Primary View Action Button */}
+            <View className="pt-2">
+              <TouchableOpacity
                 onPress={handleViewFullDetails}
-                accessibilityLabel="View Full Screen Details"
+                activeOpacity={0.8}
+                className="w-full py-3.5 px-4 rounded-2xl bg-[#F95700] active:bg-[#EA580C] flex-row items-center justify-center gap-2.5 shadow-sm"
+                accessibilityRole="button"
+                accessibilityLabel={isNotice ? t('view_full_notice') : t('view_full_ballot')}
               >
-                <Text className="text-sm font-bold text-primary-foreground me-2">
-                  {isNotice
-                    ? 'View Full Notice & Discussion'
-                    : 'View Full Ballot & Cast Vote'}
+                <Icon as={isNotice ? FileText : Vote} size={20} className="text-white" />
+                <Text className="text-sm font-bold text-white">
+                  {isNotice ? t('view_full_notice') : t('view_full_ballot')}
                 </Text>
-                <Icon as={ExternalLink} size={16} className="text-primary-foreground" />
-              </Button>
+                <Icon as={ArrowUpRight} size={18} className="text-white" />
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </BottomSheet>
 
+      {/* Secondary Management Actions Bottom Sheet */}
+      <BottomSheet
+        visible={actionsSheetVisible}
+        onClose={() => setActionsSheetVisible(false)}
+        title={t('actions')}
+      >
+        <View className="gap-2.5 px-2 pb-6 pt-1">
+          {/* Edit */}
+          <TouchableOpacity
+            onPress={() => {
+              setActionsSheetVisible(false);
+              handleEdit();
+            }}
+            activeOpacity={0.7}
+            className="flex-row items-center p-3.5 rounded-xl bg-card border border-border/80"
+          >
+            <View className="w-9 h-9 rounded-lg bg-primary/10 items-center justify-center me-3">
+              <Icon as={Edit3} size={18} className="text-primary" />
+            </View>
+            <Text className="text-sm font-semibold text-foreground">
+              {isNotice ? t('edit_notice') : t('edit_poll')}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Close Early / Reopen or Pin / Unpin */}
+          {isNotice ? (
+            <TouchableOpacity
+              onPress={() => {
+                setActionsSheetVisible(false);
+                handleTogglePin();
+              }}
+              activeOpacity={0.7}
+              className="flex-row items-center p-3.5 rounded-xl bg-card border border-border/80"
+            >
+              <View className="w-9 h-9 rounded-lg bg-amber-500/10 items-center justify-center me-3">
+                <Icon
+                  as={pinnedLocal ? PinOff : Pin}
+                  size={18}
+                  className="text-amber-600 dark:text-amber-400"
+                />
+              </View>
+              <Text className="text-sm font-semibold text-foreground">
+                {pinnedLocal ? t('unpin') : t('pin_to_top')}
+              </Text>
+            </TouchableOpacity>
+          ) : item.status.toUpperCase() === 'ACTIVE' ? (
+            <TouchableOpacity
+              onPress={() => {
+                setActionsSheetVisible(false);
+                setClosePollConfirmVisible(true);
+              }}
+              activeOpacity={0.7}
+              className="flex-row items-center p-3.5 rounded-xl bg-card border border-border/80"
+            >
+              <View className="w-9 h-9 rounded-lg bg-amber-500/10 items-center justify-center me-3">
+                <Icon as={Lock} size={18} className="text-amber-600 dark:text-amber-400" />
+              </View>
+              <Text className="text-sm font-semibold text-foreground">
+                {t('close_early')}
+              </Text>
+            </TouchableOpacity>
+          ) : item.status.toUpperCase() === 'CLOSED' ? (
+            <TouchableOpacity
+              onPress={() => {
+                setActionsSheetVisible(false);
+                handleReopenPoll();
+              }}
+              activeOpacity={0.7}
+              className="flex-row items-center p-3.5 rounded-xl bg-card border border-border/80"
+            >
+              <View className="w-9 h-9 rounded-lg bg-primary/10 items-center justify-center me-3">
+                <Icon as={RefreshCw} size={18} className="text-primary" />
+              </View>
+              <Text className="text-sm font-semibold text-foreground">
+                {t('reopen_poll')}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Audit Voters (Poll only) */}
+          {!isNotice ? (
+            <TouchableOpacity
+              onPress={() => {
+                setActionsSheetVisible(false);
+                handleOpenVoters();
+              }}
+              activeOpacity={0.7}
+              className="flex-row items-center p-3.5 rounded-xl bg-card border border-border/80"
+            >
+              <View className="w-9 h-9 rounded-lg bg-blue-500/10 items-center justify-center me-3">
+                <Icon as={Users} size={18} className="text-blue-600 dark:text-blue-400" />
+              </View>
+              <Text className="text-sm font-semibold text-foreground">
+                {t('audit_voters')}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Export CSV (Poll only) */}
+          {!isNotice ? (
+            <TouchableOpacity
+              onPress={() => {
+                setActionsSheetVisible(false);
+                handleExportCSV();
+              }}
+              activeOpacity={0.7}
+              className="flex-row items-center p-3.5 rounded-xl bg-card border border-border/80"
+            >
+              <View className="w-9 h-9 rounded-lg bg-emerald-500/10 items-center justify-center me-3">
+                <Icon as={Download} size={18} className="text-emerald-600 dark:text-emerald-400" />
+              </View>
+              <Text className="text-sm font-semibold text-foreground">
+                {t('export_csv')}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Share */}
+          <TouchableOpacity
+            onPress={() => {
+              setActionsSheetVisible(false);
+              handleShare();
+            }}
+            activeOpacity={0.7}
+            className="flex-row items-center p-3.5 rounded-xl bg-card border border-border/80"
+          >
+            <View className="w-9 h-9 rounded-lg bg-purple-500/10 items-center justify-center me-3">
+              <Icon as={Share2} size={18} className="text-purple-600 dark:text-purple-400" />
+            </View>
+            <Text className="text-sm font-semibold text-foreground">
+              {isNotice ? t('share_notice') : t('share_poll')}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Delete */}
+          <TouchableOpacity
+            onPress={() => {
+              setActionsSheetVisible(false);
+              setDeleteConfirmVisible(true);
+            }}
+            activeOpacity={0.7}
+            className="flex-row items-center p-3.5 rounded-xl bg-destructive/10 border border-destructive/30"
+          >
+            <View className="w-9 h-9 rounded-lg bg-destructive/20 items-center justify-center me-3">
+              <Icon as={Trash2} size={18} className="text-destructive" />
+            </View>
+            <Text className="text-sm font-semibold text-destructive">
+              {t('delete')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
+
       {/* Confirmation Modal for Delete */}
       <ConfirmationModal
         visible={deleteConfirmVisible}
-        title={`Delete ${isNotice ? 'Notice' : 'Poll'}?`}
-        message={`Are you sure you want to delete "${item.title}"? This action cannot be undone.`}
+        title={`${t('delete')} ${isNotice ? t('notice') : t('poll')}?`}
+        message={`${t('confirm_delete', 'Are you sure you want to delete')} "${item.title}"?`}
         variant="danger"
-        confirmLabel="Yes, Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('delete')}
+        cancelLabel={t('cancel')}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteConfirmVisible(false)}
         loading={actionLoading}
@@ -542,11 +584,11 @@ export const EngagementActionsBottomSheet: React.FC<EngagementActionsBottomSheet
       {/* Confirmation Modal for Closing Poll Early */}
       <ConfirmationModal
         visible={closePollConfirmVisible}
-        title="Close Poll Early?"
-        message="Closing this poll will prevent residents from submitting any further votes. The current results will be finalized."
+        title={t('close_poll_early')}
+        message={t('close_poll_confirm_msg', 'Closing this poll will prevent residents from submitting any further votes. The current results will be finalized.')}
         variant="warning"
-        confirmLabel="Yes, Close Poll"
-        cancelLabel="Cancel"
+        confirmLabel={t('close_early')}
+        cancelLabel={t('cancel')}
         onConfirm={handleConfirmClosePoll}
         onCancel={() => setClosePollConfirmVisible(false)}
         loading={actionLoading}

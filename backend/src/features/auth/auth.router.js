@@ -294,6 +294,8 @@ router.get('/validate-invite', authController.validateInvite);
  *         description: Access denied.
  */
 router.post('/switch-context', isAuthenticated, validate(switchContextRules), authController.switchContext);
+router.get('/current-context', isAuthenticated, authController.getCurrentContext);
+router.get('/context', isAuthenticated, authController.getCurrentContext);
 
 router.post('/google', authLimiter, validate(ssoVerifyRules), authController.googleLogin);
 router.post('/microsoft', authLimiter, validate(ssoVerifyRules), authController.microsoftLogin);

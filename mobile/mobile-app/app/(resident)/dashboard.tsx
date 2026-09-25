@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, BackHandler } from 'react-native';
+import { View, BackHandler, Platform } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -18,6 +18,7 @@ import BottomNavigationBar from '@/components/navigation/BottomNavigationBar';
 import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
 import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
+import { useDoubleBackToExit } from '@/src/hooks/useDoubleBackToExit';
 import { useTranslation } from '@/src/utils/i18n';
 
 export default function DashboardScreen() {
@@ -58,8 +59,21 @@ export default function DashboardScreen() {
     },
   });
 
-  // Hardware Back Button Handler for Dashboard
+  // Android: Double Back Press to Exit Application (Home / Root Screen)
+  useDoubleBackToExit({
+    onBeforeExitCheck: () => {
+      if (customiseOpen) {
+        setCustomiseOpen(false);
+        return true;
+      }
+      return false;
+    },
+  });
+
+  // Non-Android platforms (iOS / Web): Existing hardware back fallback
   React.useEffect(() => {
+    if (Platform.OS === 'android') return;
+
     const onHardwareBack = () => {
       if (customiseOpen) {
         setCustomiseOpen(false);

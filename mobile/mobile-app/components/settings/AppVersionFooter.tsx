@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/src/utils/i18n';
@@ -16,8 +17,11 @@ export const AppVersionFooter = ({
   className,
 }: AppVersionFooterProps) => {
   const { t } = useTranslation();
-  const version = '2.4.0';
-  const buildNumber = '1042';
+  const version = Constants.expoConfig?.version || '1.0.1';
+  const buildNumber =
+    Platform.OS === 'ios'
+      ? Constants.expoConfig?.ios?.buildNumber || '15'
+      : Constants.expoConfig?.android?.versionCode?.toString() || '18';
 
   return (
     <View className={cn('pt-6 pb-4 items-center justify-center gap-2', className)}>

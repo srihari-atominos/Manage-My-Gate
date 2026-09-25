@@ -33,6 +33,51 @@ export const AMENITY_V2_TIER_PERMISSIONS: Record<string, string[]> = {
   none: [],
 };
 
+export const NOTICE_ACTION_GROUPS: Record<string, string[]> = {
+  'notices:manage_notices': [
+    'notices:manage_notices',
+    'notices:dashboard',
+    'notices:create',
+    'notices:update',
+    'notices:delete',
+    'notices:publish',
+    'notices:acknowledge',
+    'notices.manage_notices',
+    'notices.dashboard',
+    'notices.create',
+    'notices.update',
+    'notices.delete',
+    'notices.publish',
+    'notices.acknowledge',
+    'manage_notices',
+    'dashboard',
+    'create',
+    'update',
+    'delete',
+    'publish',
+    'acknowledge',
+  ],
+  'notices:active_board': [
+    'notices:active_board',
+    'notices:read',
+    'notices.active_board',
+    'notices.read',
+    'active_board',
+    'read',
+  ],
+  'notices:polls': [
+    'notices:polls',
+    'notices.polls',
+    'polls',
+  ],
+};
+
+export const ALL_NOTICE_ACTIONS: string[] = [
+  ...NOTICE_ACTION_GROUPS['notices:manage_notices'],
+  ...NOTICE_ACTION_GROUPS['notices:active_board'],
+  ...NOTICE_ACTION_GROUPS['notices:polls'],
+];
+
 export const detectInitialAmenityTier = (permissions: string[] = []): string => {
   const amenityPerms = (permissions || []).filter((p) => String(p).toLowerCase().startsWith('amenities:'));
   if (amenityPerms.length === 0) return 'none';
@@ -146,21 +191,12 @@ const getPermAction = (p: any): string => {
     if (checked) {
       newValue = Array.from(new Set([...currentPermissions, ...groupCodes]));
     } else {
-      const groupActions = groupCodes.map((c) => getPermAction(c));
-      const allRelatedActions = groupActions.flatMap((a) => NOTICE_ACTION_GROUPS[a] || [a]);
-      newValue = currentPermissions.filter((p) => {
-        if (groupCodes.includes(p)) return false;
-        const pStr = String(p).toLowerCase().trim();
-        const action = getPermAction(p);
-        const isNoticePerm =
-          pStr.startsWith('notices:') ||
-          pStr.includes('notice') ||
-          ALL_NOTICE_ACTIONS.includes(action);
-        if (isNoticePerm && allRelatedActions.includes(action)) {
-          return false;
-        }
-        return true;
-      });
+      const toRemove = new Set(groupCodes);
+      const hasNoticeCodes = groupCodes.some((c) => String(c).toLowerCase().startsWith('notices'));
+      if (hasNoticeCodes) {
+        ALL_NOTICE_ACTIONS.forEach((a) => toRemove.add(a));
+      }
+      newValue = currentPermissions.filter((code) => !toRemove.has(code));
     }
 
     setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true });
@@ -192,21 +228,32 @@ const getPermAction = (p: any): string => {
         newValue = Array.from(new Set([...currentPermissions, permValue]));
       }
     } else {
-      const relatedActions = NOTICE_ACTION_GROUPS[targetAction] || [targetAction];
-      
-      newValue = currentPermissions.filter((p) => {
-        if (p === permValue) return false;
-        const pStr = String(p).toLowerCase().trim();
-        const action = getPermAction(p);
-        const isNoticePerm =
-          pStr.startsWith('notices:') ||
-          pStr.includes('notice') ||
-          ALL_NOTICE_ACTIONS.includes(action);
-        if (isNoticePerm && relatedActions.includes(action)) {
-          return false;
-        }
-        return action !== targetAction;
-      });
+      // Remove permission - cleanly purge associated action groups if it's a notice permission
+      const normalizedValue = String(permValue).toLowerCase();
+      if (
+        normalizedValue === 'notices:manage_notices' ||
+        normalizedValue === 'notices.manage_notices' ||
+        normalizedValue === 'manage_notices'
+      ) {
+        const purgeSet = new Set(NOTICE_ACTION_GROUPS['notices:manage_notices']);
+        newValue = currentPermissions.filter((p) => !purgeSet.has(p));
+      } else if (
+        normalizedValue === 'notices:active_board' ||
+        normalizedValue === 'notices.active_board' ||
+        normalizedValue === 'active_board'
+      ) {
+        const purgeSet = new Set(NOTICE_ACTION_GROUPS['notices:active_board']);
+        newValue = currentPermissions.filter((p) => !purgeSet.has(p));
+      } else if (
+        normalizedValue === 'notices:polls' ||
+        normalizedValue === 'notices.polls' ||
+        normalizedValue === 'polls'
+      ) {
+        const purgeSet = new Set(NOTICE_ACTION_GROUPS['notices:polls']);
+        newValue = currentPermissions.filter((p) => !purgeSet.has(p));
+      } else {
+        newValue = currentPermissions.filter((p) => p !== permValue);
+      }
     }
 
     setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true });

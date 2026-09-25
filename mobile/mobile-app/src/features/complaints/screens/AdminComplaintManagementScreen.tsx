@@ -11,6 +11,7 @@ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { CheckCircle2, Star } from 'lucide-react-native';
 import { useComplaints } from '../hooks/useComplaints';
 import { ComplaintCard } from '../components/ComplaintCard';
+import { ComplaintFilterDrawer } from '../components/ComplaintFilterDrawer';
 import { AssignTechnicianSheet } from '../components/AssignTechnicianSheet';
 import { ComplaintDetailSheet } from '../components/ComplaintDetailSheet';
 import { ResidentFeedbackSheet } from '../components/ResidentFeedbackSheet';
@@ -127,7 +128,7 @@ export function AdminComplaintManagementScreen() {
           contentContainerStyle={{ paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadData} tintColor="#6366f1" />}
         >
-          {/* CANONICAL SEARCH FILTER BAR WITH MOVEABLE STATUS SLIDE PILLS */}
+          {/* CANONICAL SEARCH FILTER BAR WITH FILTER DRAWER TRIGGER */}
           <View className="px-4 pt-3 pb-1">
             <SearchFilterBar
               searchValue={searchQuery}
@@ -139,79 +140,28 @@ export function AdminComplaintManagementScreen() {
               }))}
               currentSort={selectedStatusTab}
               onSortChange={(val) => setSelectedStatusTab(val as any)}
+              onFilterPress={() => setShowAdvancedFilters(true)}
+              activeFilterCount={
+                (selectedStatusTab !== 'ALL' ? 1 : 0) +
+                (selectedPriority && selectedPriority !== 'ALL' ? 1 : 0) +
+                (selectedCategory && selectedCategory !== 'ALL' ? 1 : 0)
+              }
               variant="default"
               className="px-0 py-0 border-0"
             />
           </View>
 
-          {/* ADVANCED FILTER & VIEW FEEDBACK BUTTON BAR */}
+          {/* VIEW FEEDBACK BUTTON BAR */}
           <View className="px-4 py-1 flex-row items-center justify-end gap-2">
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={`p-3 rounded-xl border ${
-                showAdvancedFilters || selectedPriority || selectedCategory
-                  ? 'bg-primary border-primary'
-                  : 'bg-card border-border active:bg-muted'
-              }`}
-            >
-              <Text
-                className={
-                  showAdvancedFilters || selectedPriority || selectedCategory
-                    ? 'text-primary-foreground font-bold text-xs'
-                    : 'text-foreground font-bold text-xs'
-                }
-              >
-                Filter
-              </Text>
-            </TouchableOpacity>
-
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setShowRatingsSheet(true)}
-              className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl flex-row items-center justify-center"
+              className="bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-xl flex-row items-center justify-center gap-1.5"
             >
               <Icon as={Star} size={15} className="text-amber-500" />
+              <Text className="text-xs font-bold text-amber-600 dark:text-amber-400 font-sans">Ratings & Feedback</Text>
             </TouchableOpacity>
           </View>
-
-          {/* ADVANCED PRIORITY & CATEGORY DROPDOWN EXPANSION */}
-          {showAdvancedFilters && (
-            <View className="px-4 py-2 bg-muted/30 border-y border-border/50 gap-2">
-              <View className="flex-row gap-2">
-                <View className="flex-1">
-                  <DropdownSelect
-                    label="Filter Priority"
-                    value={selectedPriority}
-                    options={[
-                      { label: 'All Priorities', value: '' },
-                      { label: 'Critical', value: 'Critical' },
-                      { label: 'High', value: 'High' },
-                      { label: 'Medium', value: 'Medium' },
-                      { label: 'Low', value: 'Low' },
-                    ]}
-                    onValueChange={(val) => setSelectedPriority(val)}
-                  />
-                </View>
-                <View className="flex-1">
-                  <DropdownSelect
-                    label="Filter Category"
-                    value={selectedCategory}
-                    options={[
-                      { label: 'All Categories', value: '' },
-                      { label: 'Plumbing', value: 'Plumbing' },
-                      { label: 'Electrical', value: 'Electrical' },
-                      { label: 'Carpentry', value: 'Carpentry' },
-                      { label: 'Elevators', value: 'Elevators' },
-                      { label: 'AC & HVAC', value: 'AC & HVAC' },
-                    ]}
-                    onValueChange={(val) => setSelectedCategory(val)}
-                  />
-                </View>
-              </View>
-            </View>
-          )}
 
           {/* TICKETS QUEUE FEED */}
           <View className="px-4 pt-2">
@@ -270,6 +220,33 @@ export function AdminComplaintManagementScreen() {
           visible={showRatingsSheet}
           complaints={complaints}
           onClose={() => setShowRatingsSheet(false)}
+        />
+
+        {/* TWO-PANE GLOBAL COMPLAINT FILTER DRAWER */}
+        <ComplaintFilterDrawer
+          visible={showAdvancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          filters={{
+            status: selectedStatusTab,
+            priority: selectedPriority,
+            category: selectedCategory,
+          }}
+          onApply={(newFilters) => {
+            setSelectedStatusTab(newFilters.status);
+            setSelectedPriority(newFilters.priority);
+            setSelectedCategory(newFilters.category);
+          }}
+          onReset={() => {
+            setSelectedStatusTab('ALL');
+            setSelectedPriority('');
+            setSelectedCategory('');
+          }}
+          statusCounts={{
+            ALL: kpiMetrics.total,
+            UNASSIGNED: kpiMetrics.open,
+            IN_PROGRESS: kpiMetrics.inProgress,
+            ESCALATED: kpiMetrics.slaBreached,
+          }}
         />
       </View>
     </ScreenShell>

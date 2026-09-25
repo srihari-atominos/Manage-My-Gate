@@ -24,6 +24,20 @@ export const WorkspaceSwitcher = () => {
     return null
   }
 
+  const hasMultipleWorkspaces = availableWorkspaces.length > 1
+
+  // If user belongs to only 1 workspace and is not platform admin, render static badge
+  if (!hasMultipleWorkspaces && !activeWorkspace.isPlatform) {
+    return (
+      <div className="py-0 nav-link d-flex align-items-center text-body" id="workspace-current-badge">
+        <CIcon icon={cilBuilding} className="me-2" size="lg" />
+        <span className="d-none d-md-inline text-truncate" style={{ maxWidth: '160px' }}>
+          {activeWorkspace.name || t('workspace.defaultName', { defaultValue: 'Workspace' })}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <CDropdown variant="nav-item">
       <CDropdownToggle
