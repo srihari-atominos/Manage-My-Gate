@@ -94,6 +94,10 @@ export const SocialAuthButton = ({
   const isApple = provider === 'apple';
   const providerName = isGoogle ? 'Google' : isApple ? 'Apple' : 'Microsoft';
   const buttonLabel = isApple ? 'Sign in with Apple' : variant === 'full' ? `Sign in with ${providerName}` : providerName;
+  const surfaceClass = isApple
+    ? 'bg-black border border-black active:bg-neutral-800'
+    : 'bg-white/75 dark:bg-[#1C1917]/75 border border-white/80 dark:border-white/20 active:bg-white/90 dark:active:bg-[#292524]';
+  const contentClass = isApple ? 'text-white' : 'text-[#1C1917] dark:text-white';
 
   return (
     <>
@@ -104,20 +108,23 @@ export const SocialAuthButton = ({
           onPressOut={handlePressOut}
           disabled={disabled || loading}
           activeOpacity={0.82}
-          className={`h-12 bg-white/75 dark:bg-[#1C1917]/75 border border-white/80 dark:border-white/20 rounded-xl flex-row items-center justify-center gap-2 shadow-2xs backdrop-blur-sm active:bg-white/90 dark:active:bg-[#292524] ${disabled || loading ? 'opacity-60' : ''} ${className}`}
+          accessibilityRole="button"
+          accessibilityLabel={buttonLabel}
+          accessibilityHint={`Continue authentication with ${providerName}`}
+          className={`h-12 ${surfaceClass} rounded-xl flex-row items-center justify-center gap-2 shadow-2xs ${disabled || loading ? 'opacity-60' : ''} ${className}`}
         >
         {loading ? (
-          <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : isApple ? '#1C1917' : '#00a4ef'} />
+          <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : isApple ? '#FFFFFF' : '#00a4ef'} />
         ) : (
           <>
             {isGoogle ? (
               <GoogleIcon size={18} />
             ) : isApple ? (
-              <AppleIcon size={18} color="#1C1917" />
+              <AppleIcon size={18} color="#FFFFFF" />
             ) : (
               <MicrosoftIcon size={18} />
             )}
-            <Text className="text-xs font-bold text-[#1C1917] dark:text-white font-sans">
+            <Text className={`text-xs font-bold ${contentClass} font-sans`}>
               {buttonLabel}
             </Text>
           </>

@@ -69,7 +69,7 @@ const buttonVariants = cva(
           Platform.OS === 'web' ? 'hover:bg-purple-100' : ''
         ),
         navy: cn(
-          'bg-[#172B70] dark:bg-[#1E3A8A] active:opacity-90 shadow-2xs',
+          'bg-[#172B70] dark:bg-[#27448F] active:opacity-90 shadow-2xs',
           Platform.OS === 'web' ? 'hover:opacity-90' : ''
         ),
         outline: cn(
@@ -77,7 +77,7 @@ const buttonVariants = cva(
           Platform.OS === 'web' ? 'hover:bg-secondary/70' : ''
         ),
         secondary: cn(
-          'bg-[#172B70] dark:bg-[#1E3A8A] active:opacity-90 shadow-2xs',
+          'bg-[#172B70] dark:bg-[#27448F] active:opacity-90 shadow-2xs',
           Platform.OS === 'web' ? 'hover:opacity-90' : ''
         ),
         ghost: cn(
@@ -88,7 +88,9 @@ const buttonVariants = cva(
       },
       size: {
         default: cn('h-12 px-5 py-2.5 sm:h-11 rounded-2xl', Platform.select({ web: 'has-[>svg]:px-4' })),
-        sm: cn('h-9.5 gap-1.5 rounded-xl px-4 sm:h-8.5', Platform.select({ web: 'has-[>svg]:px-3' })),
+        // Keep every shared compact action at least 44pt on phones. Desktop
+        // layouts retain the denser visual treatment at the Tailwind sm breakpoint.
+        sm: cn('h-11 gap-1.5 rounded-xl px-4 sm:h-9.5', Platform.select({ web: 'has-[>svg]:px-3' })),
         lg: cn('h-14 rounded-2xl px-7 sm:h-12', Platform.select({ web: 'has-[>svg]:px-5' })),
         icon: 'h-11 w-11 sm:h-10 sm:w-10 rounded-xl shadow-2xs',
       },

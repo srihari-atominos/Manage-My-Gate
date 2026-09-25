@@ -29,7 +29,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
-import { useAppleAuthSession } from '../../src/features/auth/hooks/useAppleAuthSession';
+import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
 import {
   NahomEmblem,
   NahomWordmark,
@@ -155,7 +155,6 @@ export default function SignupScreen() {
   const { t } = useTranslation();
   const { register: performRegister, login: performLogin, requestOtp, otpSent, loading, error, clearStatus, isAuthenticated } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
-  const { handleAppleSignIn, loading: appleLoading, isAvailable: appleAvailable } = useAppleAuthSession();
 
   const [userType, setUserType] = React.useState<'new' | 'existing'>('new');
   const [existingAuthMode, setExistingAuthMode] = React.useState<'basic' | 'phone'>('basic');
@@ -748,19 +747,11 @@ export default function SignupScreen() {
                 {/* Social Authentication: Google ID & Apple ID */}
                 <View className="flex-row items-center gap-3 w-full">
                   <SocialAuthButton
-                    provider="google"
-                    onPress={handleGoogleSignIn}
-                    loading={googleLoading}
-                    disabled={appleLoading}
-                  />
-                  {Platform.OS === 'ios' && appleAvailable ? (
-                    <SocialAuthButton
-                      provider="apple"
-                      onPress={handleAppleSignIn}
-                      loading={appleLoading}
-                      disabled={googleLoading}
-                    />
-                  ) : null}
+                  provider="google"
+                  onPress={handleGoogleSignIn}
+                  loading={googleLoading}
+                />
+                <AppleSignInButton disabled={googleLoading} />
                 </View>
 
                 {/* Bottom Hint (Transparent container without underline) */}

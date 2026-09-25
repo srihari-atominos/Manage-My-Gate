@@ -1,29 +1,49 @@
 import * as React from 'react';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { ActivityIndicator, Platform, View } from 'react-native';
+import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
 import { useAppleAuthSession } from '../hooks/useAppleAuthSession';
 
 export interface AppleSignInButtonProps {
   inviteToken?: string;
   onSuccess?: (data: any) => void;
   onError?: (error: string) => void;
+  disabled?: boolean;
 }
 
 export function AppleSignInButton(props: AppleSignInButtonProps = {}) {
-  const { handleAppleSignIn, loading, isAvailable } = useAppleAuthSession(props);
+  const { disabled = false, ...authOptions } = props;
+  const { handleAppleSignIn, loading, isAvailable } = useAppleAuthSession(authOptions);
 
-  // Apple only permits this native control on iOS. Android keeps its complete,
-  // native auth experience without exposing a button that cannot complete.
-  if (Platform.OS !== 'ios' || !isAvailable) return null;
+  // Apple provides its approved system control on iOS. Android and web still
+  // show a standards-compliant Apple entry point so the auth choice is never
+  // silently removed from a mobile preview. Their press handler explains the
+  // required Services ID setup until the hosted Apple OAuth flow is enabled.
+  if (Platform.OS !== 'ios' || !isAvailable) {
+    return (
+      <SocialAuthButton
+        provider="apple"
+        variant="full"
+        onPress={handleAppleSignIn}
+        loading={loading}
+        disabled={disabled || loading}
+      />
+    );
+  }
 
   return (
-    <View className="h-12 w-full overflow-hidden rounded-xl bg-black">
+    <View
+      pointerEvents={disabled ? 'none' : 'auto'}
+      className={`h-12 w-full overflow-hidden rounded-xl bg-black ${disabled ? 'opacity-60' : ''}`}
+    >
       <AppleAuthentication.AppleAuthenticationButton
         buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
         buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
         cornerRadius={12}
         style={{ width: '100%', height: 48, opacity: loading ? 0.6 : 1 }}
-        onPress={handleAppleSignIn}
+        onPress={() => {
+          if (!disabled) void handleAppleSignIn();
+        }}
       />
       {loading ? (
         <View pointerEvents="none" className="absolute inset-0 items-center justify-center">

@@ -33,7 +33,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
-import { useAppleAuthSession } from '../../src/features/auth/hooks/useAppleAuthSession';
+import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
 import {
   NahomEmblem,
   NahomWordmark,
@@ -91,7 +91,6 @@ export default function LoginScreen() {
   const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
   const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
-  const { handleAppleSignIn, loading: appleLoading, isAvailable: appleAvailable } = useAppleAuthSession();
   const params = useLocalSearchParams<{
     intent?: string;
     email?: string;
@@ -945,7 +944,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handleBasicSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || appleLoading}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -1045,7 +1044,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handlePhoneSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || appleLoading}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -1125,16 +1124,9 @@ export default function LoginScreen() {
                   provider="google"
                   onPress={handleGoogleSignIn}
                   loading={googleLoading}
-                  disabled={isSubmittingBasic || isSubmittingPhone || appleLoading}
+                  disabled={isSubmittingBasic || isSubmittingPhone}
                 />
-                {Platform.OS === 'ios' && appleAvailable ? (
-                  <SocialAuthButton
-                    provider="apple"
-                    onPress={handleAppleSignIn}
-                    loading={appleLoading}
-                    disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
-                  />
-                ) : null}
+                <AppleSignInButton disabled={isSubmittingBasic || isSubmittingPhone || googleLoading} />
               </View>
 
               {/* Create Organisation Prompt */}
