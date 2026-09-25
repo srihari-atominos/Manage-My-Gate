@@ -258,6 +258,10 @@ export const getPollById = async (pollId, orgId, userId = null, isCommunityAdmin
     throw new HttpError(404, 'Poll not found');
   }
 
+  if (poll.status === 'Draft' && !isCommunityAdmin) {
+    throw new HttpError(403, 'Draft polls are restricted to community administrators');
+  }
+
   // Auto-activate if scheduled date has passed
   if (poll.status === 'Scheduled' && poll.scheduleDate && poll.scheduleDate <= new Date()) {
     poll.status = 'Active';

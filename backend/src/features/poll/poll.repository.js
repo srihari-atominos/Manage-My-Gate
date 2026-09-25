@@ -65,6 +65,10 @@ const buildMatchStage = (baseMatch, search, userContext = null, audienceOr = nul
     conditions.push({ question: { $regex: search, $options: 'i' } });
   }
 
+  if (userContext && !userContext.isCommunityAdmin) {
+    conditions.push({ status: { $ne: 'Draft' } });
+  }
+
   if (audienceOr && audienceOr.length > 0) {
     conditions.push({ $or: audienceOr });
   } else if (userContext) {

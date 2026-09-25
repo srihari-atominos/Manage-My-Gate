@@ -43,6 +43,10 @@ export class NoticeBoardService {
     const callerRoles = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
     const isCallerAdmin = adminRoleNames.includes(callerRole) || callerRoles.some((r) => adminRoleNames.includes(r));
 
+    if (notice.status === 'Draft' && !isCallerAdmin) {
+      throw new HttpError(403, 'Draft notices are restricted to community administrators');
+    }
+
     if (!isCallerAdmin && userId && orgId && notice.targetAudience) {
       const resolvedUserId = typeof userId === 'object' && userId !== null ? (userId._id || userId.id || userId.userId) : userId;
       const isEligible = await audienceService.checkEligibility(resolvedUserId, notice.targetAudience, orgId, session);
