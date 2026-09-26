@@ -12,6 +12,8 @@ import amenityAccessPassService from '../passes/amenityAccessPass.service.js';
 import pricingService from '../domain/pricing/pricing.service.js';
 import { withTransactionRetry } from '../domain/concurrency/transaction.utils.js';
 import amenityManagementEvents, { AMENITY_EVENTS } from '../amenityManagement.events.js';
+import walletService from '../../wallet/wallet.service.js';
+import Payment from '../../payment/payment.model.js';
 
 export class AmenityReservationService {
   /**
@@ -24,7 +26,8 @@ export class AmenityReservationService {
    * @param {string|mongoose.Types.ObjectId} params.orgId
    * @param {string|mongoose.Types.ObjectId} params.residentId
    * @param {string|mongoose.Types.ObjectId} params.unitId
-   * @param {string} [params.paymentReference]
+   * @param {'WALLET'|'RAZORPAY'} [params.paymentMethod]
+   * @param {string|mongoose.Types.ObjectId} [params.paymentId]
    * @param {string} [params.notes]
    * @param {mongoose.ClientSession} [session]
    * @returns {Promise<{ reservation: any, pass?: any, rawToken?: string }>}
@@ -61,7 +64,7 @@ export class AmenityReservationService {
    * @private
    */
   async _executeConfirmReservation(
-    { holdId, orgId, residentId, unitId, paymentReference, notes },
+    { holdId, orgId, residentId, unitId, paymentMethod, paymentId, notes },
     session
   ) {
     // 1. Verify Active Hold
@@ -77,7 +80,71 @@ export class AmenityReservationService {
       throw new HttpError(403, 'Reservation hold does not match user or organization');
     }
 
-    // 2. State-Guarded Hold Transition (ACTIVE -> PROMOTED)
+    // 2. Facility Lookup for Pricing & Workflow Rules
+    const facility = await amenityFacilityRepository.findById(hold.facilityId, orgId, session);
+    if (!facility) {
+      throw new HttpError(404, 'Amenity facility not found');
+    }
+
+    // 3. Compute Final Pricing Snapshot
+    const pricingSnapshot = pricingService.calculatePricingSnapshot({
+      pricingConfig: facility.pricingConfig || facility.pricing,
+      startDateTime: hold.requestedStartDateTime,
+      endDateTime: hold.requestedEndDateTime,
+      headcount: hold.headcount,
+      quantity: hold.quantity,
+    });
+
+    // 4. Resolve payment exclusively from server-side state. The old flow
+    // trusted a client-provided paymentReference, which meant a booking could
+    // be marked PAID without a wallet debit or verified gateway capture.
+    const totalAmount = Number(pricingSnapshot.totalAmount || 0);
+    const normalizedPaymentMethod = String(paymentMethod || '').toUpperCase();
+    let paymentStatus = 'NOT_REQUIRED';
+    let paidAmount = 0;
+    let persistedPaymentMethod = 'NONE';
+    let persistedPaymentReference = null;
+    let persistedPaymentId = null;
+
+    if (totalAmount > 0) {
+      if (normalizedPaymentMethod === 'WALLET') {
+        paymentStatus = 'PAID';
+        paidAmount = totalAmount;
+        persistedPaymentMethod = 'WALLET';
+      } else if (normalizedPaymentMethod === 'RAZORPAY') {
+        if (!paymentId || !mongoose.isValidObjectId(paymentId)) {
+          throw new HttpError(400, 'A verified Razorpay payment is required to confirm this reservation');
+        }
+
+        const payment = await Payment.findById(paymentId).session(session || null);
+        const matchesHold =
+          payment &&
+          payment.referenceType === 'AmenityReservationHold' &&
+          String(payment.referenceId) === String(hold._id);
+        const amountMatches = payment && Math.abs(Number(payment.amount) - totalAmount) < 0.01;
+
+        if (
+          !matchesHold ||
+          !amountMatches ||
+          String(payment.orgId) !== String(orgId) ||
+          String(payment.userId) !== String(residentId) ||
+          payment.gateway !== 'razorpay' ||
+          payment.status !== 'success'
+        ) {
+          throw new HttpError(400, 'The Razorpay payment is not valid for this reservation');
+        }
+
+        paymentStatus = 'PAID';
+        paidAmount = totalAmount;
+        persistedPaymentMethod = 'RAZORPAY';
+        persistedPaymentReference = payment.gatewayTransactionId || null;
+        persistedPaymentId = payment._id;
+      } else {
+        throw new HttpError(400, 'Select Digital Wallet or Razorpay to complete this paid reservation');
+      }
+    }
+
+    // 5. State-Guarded Hold Transition (ACTIVE -> PROMOTED)
     const promotedHold = await amenityReservationHoldRepository.transitionStatus(
       { holdId, fromStatus: 'ACTIVE', toStatus: 'PROMOTED' },
       session
@@ -87,22 +154,7 @@ export class AmenityReservationService {
       throw new HttpError(409, 'Reservation hold has already been promoted or expired');
     }
 
-    // 3. Facility Lookup for Pricing & Workflow Rules
-    const facility = await amenityFacilityRepository.findById(hold.facilityId, orgId, session);
-    if (!facility) {
-      throw new HttpError(404, 'Amenity facility not found');
-    }
-
-    // 4. Compute Final Pricing Snapshot
-    const pricingSnapshot = pricingService.calculatePricingSnapshot({
-      pricingConfig: facility.pricingConfig || facility.pricing,
-      startDateTime: hold.requestedStartDateTime,
-      endDateTime: hold.requestedEndDateTime,
-      headcount: hold.headcount,
-      quantity: hold.quantity,
-    });
-
-    // 5. Determine the 5 Orthogonal Dimensions
+    // 6. Determine the 5 Orthogonal Dimensions
     const requiresApproval =
       facility.requiresApproval || facility.approvalWorkflow?.requireAdminApproval || false;
     const bookingStatus = requiresApproval ? 'PENDING_APPROVAL' : 'CONFIRMED';
@@ -111,25 +163,38 @@ export class AmenityReservationService {
       ? new Date(Date.now() + (facility.approvalWorkflow?.approvalTimeoutHours || 24) * 3600000)
       : null;
 
-    let paymentStatus = 'NOT_REQUIRED';
-    if (pricingSnapshot.totalAmount > 0) {
-      paymentStatus = paymentReference ? 'PAID' : 'PENDING';
-    }
-
     const shouldIssuePass =
       !requiresApproval && (paymentStatus === 'NOT_REQUIRED' || paymentStatus === 'PAID');
     const accessStatus = shouldIssuePass ? 'PASS_GENERATED' : 'NOT_APPLICABLE';
     const completionStatus = 'PENDING';
 
-    // 6. Generate Tenant-Scoped Sequential Reservation Number
+    // 7. Generate Tenant-Scoped Sequential Reservation Number
     const reservationNumber = await amenityCounterService.generateReservationNumber(
       { orgId },
       session
     );
 
-    // 7. Create AmenityReservation Document
+    // A reservation ID is allocated before the wallet debit so the immutable
+    // ledger entry can reference the reservation in the same transaction.
+    const reservationId = new mongoose.Types.ObjectId();
+    if (persistedPaymentMethod === 'WALLET') {
+      const { walletTxn } = await walletService.chargeAmenityReservationWithWallet(
+        {
+          userId: residentId,
+          orgId,
+          amount: totalAmount,
+          reservationId,
+          amenityName: facility.name,
+        },
+        session
+      );
+      persistedPaymentReference = walletTxn.transactionId;
+    }
+
+    // 8. Create AmenityReservation Document
     const reservation = await amenityReservationRepository.create(
       {
+        _id: reservationId,
         orgId,
         facilityId: hold.facilityId,
         resourceId: hold.resourceId,
@@ -148,7 +213,11 @@ export class AmenityReservationService {
         accessStatus,
         completionStatus,
         pricingSnapshot,
-        totalAmount: pricingSnapshot.totalAmount,
+        totalAmount,
+        paidAmount,
+        paymentMethod: persistedPaymentMethod,
+        paymentReference: persistedPaymentReference,
+        paymentId: persistedPaymentId,
         depositAmount: pricingSnapshot.depositAmount,
         approvalDeadline,
         approvalHistory: requiresApproval
@@ -165,7 +234,7 @@ export class AmenityReservationService {
       session
     );
 
-    // 8. Promote Ledger Entries & Discrete Slot
+    // 9. Promote Ledger Entries & Discrete Slot
     await amenityAllocationLedgerRepository.transitionStatus(
       {
         holdId: hold._id,
@@ -182,7 +251,7 @@ export class AmenityReservationService {
       await amenitySlotAllocationRepository.promoteDiscreteSlot(slotId, reservation._id, session);
     }
 
-    // 9. Consume Household Quota (Promote from reserved to consumed)
+    // 10. Consume Household Quota (Promote from reserved to consumed)
     const requestedUnits = Math.ceil(
       (hold.effectiveEndDateTime.getTime() - hold.effectiveStartDateTime.getTime()) / 60000
     );
@@ -197,7 +266,7 @@ export class AmenityReservationService {
       session
     );
 
-    // 10. Generate Access Pass if Confirmed
+    // 11. Generate Access Pass if Confirmed
     let pass = null;
     let rawToken = null;
     if (shouldIssuePass) {
@@ -215,7 +284,7 @@ export class AmenityReservationService {
       rawToken = passResult.rawToken;
     }
 
-    // 11. Record Transactional Outbox Events
+    // 12. Record Transactional Outbox Events
     const outboxEventType = requiresApproval ? 'APPROVAL_REQUESTED' : 'RESERVATION_CONFIRMED';
     await amenityOutboxEventRepository.createEvent(
       {
@@ -231,6 +300,7 @@ export class AmenityReservationService {
           bookingStatus,
           approvalStatus,
           paymentStatus,
+          paymentMethod: persistedPaymentMethod,
         },
       },
       session
@@ -253,7 +323,7 @@ export class AmenityReservationService {
       );
     }
 
-    // 12. Emit Domain Events
+    // 13. Emit Domain Events
     amenityManagementEvents.emit(
       requiresApproval ? AMENITY_EVENTS.APPROVAL_REQUESTED : AMENITY_EVENTS.RESERVATION_CONFIRMED,
       reservation
@@ -493,24 +563,14 @@ export class AmenityReservationService {
       throw new HttpError(400, 'Cannot cancel a rejected reservation');
     }
 
-    // 2. Determine updated payment status & execute instant refund
+    // 2. Determine updated payment status
+    const isWalletPayment =
+      (reservation.paymentStatus === 'PAID' || reservation.paymentStatus === 'REFUND_PENDING') &&
+      reservation.paymentMethod === 'WALLET';
+    const refundAmount = Number(reservation.paidAmount || reservation.totalAmount || 0);
     let newPaymentStatus = reservation.paymentStatus;
     if (reservation.paymentStatus === 'PAID' || reservation.paymentStatus === 'REFUND_PENDING') {
-      if (reservation.totalAmount > 0) {
-        try {
-          const walletService = (await import('../../wallet/wallet.service.js')).default;
-          await walletService.addMoney(
-            reservation.residentId,
-            orgId,
-            reservation.totalAmount,
-            'WALLET',
-            `Instant Refund for Cancelled Reservation #${reservation.reservationNumber || reservation._id}`
-          );
-        } catch (err) {
-          console.error('[AmenityReservationService] Failed wallet refund during cancellation:', err?.message || err);
-        }
-      }
-      newPaymentStatus = 'REFUNDED';
+      newPaymentStatus = isWalletPayment ? 'REFUNDED' : 'REFUND_PENDING';
     } else if (reservation.paymentStatus === 'NOT_APPLICABLE') {
       newPaymentStatus = 'NOT_REQUIRED';
     }
@@ -528,6 +588,20 @@ export class AmenityReservationService {
       },
       session
     );
+
+    if (isWalletPayment && refundAmount > 0) {
+      await walletService.refundAmenityReservationToWallet(
+        {
+          userId: reservation.residentId,
+          orgId,
+          amount: refundAmount,
+          reservationId: reservation._id,
+          amenityName: reservation.facilityId?.name,
+          reason: `Refund for cancelled amenity reservation #${reservation.reservationNumber}`,
+        },
+        session
+      );
+    }
 
     // 4. Release Allocations & Capacity via Ledger
     const ledgerEntries = await amenityAllocationLedgerRepository.findByReservationId(
@@ -603,6 +677,8 @@ export class AmenityReservationService {
           reservationNumber: reservation.reservationNumber,
           residentId: reservation.residentId,
           cancellationReason,
+          refundMethod: isWalletPayment ? 'WALLET' : null,
+          refundAmount: isWalletPayment ? refundAmount : null,
         },
       },
       session
@@ -771,23 +847,13 @@ export class AmenityReservationService {
     }
 
     if (action === 'REJECTED') {
+      const isWalletPayment =
+        (reservation.paymentStatus === 'PAID' || reservation.paymentStatus === 'REFUND_PENDING') &&
+        reservation.paymentMethod === 'WALLET';
+      const refundAmount = Number(reservation.paidAmount || reservation.totalAmount || 0);
       let newPaymentStatus = reservation.paymentStatus;
       if (reservation.paymentStatus === 'PAID' || reservation.paymentStatus === 'REFUND_PENDING') {
-        if (reservation.totalAmount > 0) {
-          try {
-            const walletService = (await import('../../wallet/wallet.service.js')).default;
-            await walletService.addMoney(
-              reservation.residentId,
-              orgId,
-              reservation.totalAmount,
-              'WALLET',
-              `Instant Refund for Rejected Reservation #${reservation.reservationNumber || reservation._id}`
-            );
-          } catch (err) {
-            console.error('[AmenityReservationService] Failed wallet refund on rejection:', err?.message || err);
-          }
-        }
-        newPaymentStatus = 'REFUNDED';
+        newPaymentStatus = isWalletPayment ? 'REFUNDED' : 'REFUND_PENDING';
       }
 
       await amenityReservationRepository.appendApprovalHistory(
@@ -811,6 +877,20 @@ export class AmenityReservationService {
         },
         session
       );
+
+      if (isWalletPayment && refundAmount > 0) {
+        await walletService.refundAmenityReservationToWallet(
+          {
+            userId: reservation.residentId,
+            orgId,
+            amount: refundAmount,
+            reservationId: reservation._id,
+            amenityName: reservation.facilityId?.name,
+            reason: `Refund for rejected amenity reservation #${reservation.reservationNumber}`,
+          },
+          session
+        );
+      }
 
       // Release Allocations & Ledger
       const ledgerEntries = await amenityAllocationLedgerRepository.findByReservationId(
@@ -876,11 +956,34 @@ export class AmenityReservationService {
           payload: {
             reservationId: reservation._id,
             reservationNumber: reservation.reservationNumber,
+            residentId: reservation.residentId,
             reason: notes || 'Rejected by administrator',
+            refundMethod: isWalletPayment ? 'WALLET' : null,
+            refundAmount: isWalletPayment ? refundAmount : null,
           },
         },
         session
       );
+
+      if (newPaymentStatus === 'REFUND_PENDING') {
+        await amenityOutboxEventRepository.createEvent(
+          {
+            orgId,
+            eventType: 'REFUND_DISPATCH_REQUIRED',
+            aggregateId: reservation._id,
+            aggregateType: 'AmenityReservation',
+            payload: {
+              reservationId: reservation._id,
+              reservationNumber: reservation.reservationNumber,
+              residentId: reservation.residentId,
+              paymentReference: reservation.paymentReference,
+              amount: refundAmount,
+              reason: notes || 'Rejected by administrator',
+            },
+          },
+          session
+        );
+      }
 
       amenityManagementEvents.emit(AMENITY_EVENTS.RESERVATION_CANCELLED, updatedReservation);
 

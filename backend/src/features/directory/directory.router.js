@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import directoryController from './directory.controller.js';
 import { isAuthenticated } from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 import { query } from 'express-validator';
 import { validate } from '../../middlewares/validator.middleware.js';
 
 const router = Router();
 
-router.use(isAuthenticated);
+// A directory is community-scoped personal data. Authentication alone is not
+// enough because the organization header is client controlled.
+router.use(isAuthenticated, tenantContext);
 
 router.get(
   '/',

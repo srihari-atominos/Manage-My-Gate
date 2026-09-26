@@ -85,23 +85,23 @@ export const THEME_2_VENTOREX_ORANGE = {
   },
 
   dark: {
-    background: 'hsl(240 5% 7%)', // #121214 Deep Obsidian Base
+    background: 'hsl(227 50% 8%)', // #0A1126 Deep NAHOM Navy Base
     foreground: 'hsl(0 0% 98%)', // #FAFAFA Soft Crisp White
-    card: 'hsl(240 4% 11%)', // #1C1C20 Elevated Obsidian Surface
+    card: 'hsl(227 38% 13%)', // #15203A Elevated Navy Surface
     cardForeground: 'hsl(0 0% 98%)',
-    popover: 'hsl(240 4% 13%)', // #222226
+    popover: 'hsl(227 35% 16%)', // #1A2948
     popoverForeground: 'hsl(0 0% 98%)',
     primary: 'hsl(25 100% 50%)', // #FF6A00 Ventorex Bright Orange
-    primaryForeground: 'hsl(0 0% 8%)', // #141416
-    secondary: 'hsl(240 4% 14%)', // #24242A Obsidian Secondary
+    primaryForeground: 'hsl(227 50% 8%)', // #0A1126
+    secondary: 'hsl(227 30% 18%)', // #203052 Navy Secondary
     secondaryForeground: 'hsl(0 0% 98%)',
-    muted: 'hsl(240 4% 15%)',
-    mutedForeground: 'hsl(0 0% 70%)', // #B3B3B3
+    muted: 'hsl(227 28% 18%)',
+    mutedForeground: 'hsl(218 18% 70%)', // #A7B5C9
     accent: 'hsl(24 100% 62%)', // #FF8A3D Soft Bright Orange
-    accentForeground: 'hsl(0 0% 8%)',
+    accentForeground: 'hsl(227 50% 8%)',
     destructive: 'hsl(0 84% 60%)', // #EF4444
-    border: 'hsl(240 4% 20%)', // #323238 Subtle Dark Border
-    input: 'hsl(240 4% 20%)',
+    border: 'hsl(227 25% 25%)', // #304269 Subtle Navy Border
+    input: 'hsl(227 25% 25%)',
     ring: 'hsl(25 100% 50%)',
     radius: '1.125rem', // 18px
     chart1: 'hsl(25 100% 50%)',

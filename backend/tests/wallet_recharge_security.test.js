@@ -256,6 +256,51 @@ async function runWalletSecurityTests() {
     assert.strictEqual(walletAfterDupWebhook.balance, 1500, 'Balance must remain 1500, no double crediting');
     console.log('  ✓ Duplicate webhook safely ignored without re-crediting.');
 
+    // --------------------------------------------------------------------------
+    // Test 6: Resident Refund Goes Back to Original Wallet Top-Up Account
+    // --------------------------------------------------------------------------
+    console.log('\n--- Test 6: Wallet Refund to Original Paid Account ---');
+    const refundEligibility = await walletService.getRefundEligibility(testUserId, testOrgId);
+    const originalTopUp = refundEligibility.sources.find(
+      (source) => source.paymentId === orderData.paymentId.toString()
+    );
+    assert.ok(originalTopUp, 'Verified wallet recharge must be eligible for refund');
+
+    let minimumRefundBlocked = false;
+    try {
+      await walletService.refundToOriginalPayment({
+        userId: testUserId,
+        orgId: testOrgId,
+        paymentId: originalTopUp.paymentId,
+        amount: 9,
+      });
+    } catch (err) {
+      minimumRefundBlocked = err.statusCode === 400 && err.message.includes('at least ₹10');
+    }
+    assert.strictEqual(minimumRefundBlocked, true, 'Refunds below ₹10 must be rejected');
+
+    const refundResult = await walletService.refundToOriginalPayment({
+      userId: testUserId,
+      orgId: testOrgId,
+      paymentId: originalTopUp.paymentId,
+      amount: 100,
+    });
+    assert.strictEqual(refundResult.balance, 1400, 'Wallet balance must be debited after a successful refund');
+
+    const refundLedger = await WalletTransaction.findById(refundResult.transaction._id);
+    assert.strictEqual(refundLedger.type, 'Debit');
+    assert.strictEqual(refundLedger.paymentStatus, 'refunded');
+    assert.strictEqual(String(refundLedger.sourcePaymentId), originalTopUp.paymentId);
+
+    const gatewayRefund = await Payment.findOne({
+      parentPaymentId: orderData.paymentId,
+      type: 'Refund',
+      status: 'success',
+    });
+    assert.ok(gatewayRefund, 'A Razorpay refund record must be created for the original paid account');
+    assert.strictEqual(gatewayRefund.amount, -100);
+    console.log('  ✓ ₹10 minimum enforced and ₹100 refund safely returned to the original payment account');
+
     console.log('\n==================================================================');
     console.log('  🎉 ALL WALLET SECURITY & IDEMPOTENCY TESTS PASSED CLEANLY!');
     console.log('==================================================================\n');

@@ -49,6 +49,21 @@ export const verifyWalletPayment = createAsyncThunk(
   }
 );
 
+export const refundWalletToOriginalPayment = createAsyncThunk(
+  'wallet/refundWalletToOriginalPayment',
+  async ({ paymentId, amount }: { paymentId: string; amount: number }, { rejectWithValue, dispatch }) => {
+    try {
+      const data = await billingService.refundWalletToOriginalPayment(paymentId, amount);
+      dispatch(fetchWalletBalance());
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Unable to refund wallet balance'
+      );
+    }
+  }
+);
+
 export const topUpWalletDirect = createAsyncThunk(
   'wallet/topUpWalletDirect',
   async ({ amount }: { amount: number }, { rejectWithValue, dispatch }) => {
@@ -128,6 +143,9 @@ export const walletSlice = createSlice({
           if (action.payload.isPaymentGatewayConfigured !== undefined) {
             state.isPaymentGatewayConfigured = action.payload.isPaymentGatewayConfigured;
           }
+          state.minimumRefundAmount = action.payload.minimumRefundAmount || 10;
+          state.refundEligibleBalance = action.payload.refundEligibleBalance || 0;
+          state.refundableSources = action.payload.refundableSources || [];
           state.transactions = state.transactionHistory;
 
           if (action.payload.isPaymentGatewayConfigured !== undefined) {
@@ -188,6 +206,31 @@ export const walletSlice = createSlice({
         }
       })
       .addCase(verifyWalletPayment.rejected, (state, action) => {
+        state.isLoading = false;
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Refund back to original UPI/card account
+      .addCase(refundWalletToOriginalPayment.pending, (state) => {
+        state.isLoading = true;
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(refundWalletToOriginalPayment.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.loading = false;
+        const payload = action.payload?.data || action.payload;
+        const updatedBalance = payload?.balance ?? payload?.walletBalance;
+        if (updatedBalance !== undefined && typeof updatedBalance === 'number') {
+          state.balance = updatedBalance;
+        }
+        const transaction = payload?.transaction;
+        if (transaction && (transaction._id || transaction.transactionId)) {
+          state.transactionHistory = [transaction, ...(state.transactionHistory || [])];
+          state.transactions = state.transactionHistory;
+        }
+      })
+      .addCase(refundWalletToOriginalPayment.rejected, (state, action) => {
         state.isLoading = false;
         state.loading = false;
         state.error = action.payload as string;

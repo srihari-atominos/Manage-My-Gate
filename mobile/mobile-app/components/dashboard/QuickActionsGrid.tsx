@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from '../ui/text';
-import { SlidersHorizontal, Plus } from 'lucide-react-native';
+import { SlidersHorizontal } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import FeatureIcon from '../ui/FeatureIcon';
 import ActionTile from './ActionTile';
@@ -15,7 +15,6 @@ interface QuickActionsGridProps {
   activeFeatureIds?: string[];
   equippedFeatures?: FeatureItem[];
   onOpenCustomise: () => void;
-  onOpenViewMore: () => void;
   onTilePress?: (tileId: string) => void;
 }
 
@@ -23,7 +22,6 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   activeFeatureIds,
   equippedFeatures: propEquippedFeatures,
   onOpenCustomise,
-  onOpenViewMore,
   onTilePress,
 }) => {
   const { user } = useAuth();
@@ -31,7 +29,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  // Permitted features for the user's role (up to 7 cards, 8th is View More).
+  // Permitted features for the user's role (up to 7 cards, plus View More).
   const displayFeatures = React.useMemo(() => {
     // 1. If equipped features passed from hook, filter strictly to permitted items
     if (propEquippedFeatures && propEquippedFeatures.length > 0) {
@@ -61,10 +59,10 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   }, [propEquippedFeatures, activeFeatureIds, user, language]);
 
   return (
-    <View className="gap-3 my-2.5">
+    <View className="gap-5 my-3">
       {/* Section Header with Customise Button */}
       <View className="flex-row items-center justify-between px-1">
-        <Text className="text-[18px] font-bold font-sans text-foreground tracking-tight">
+        <Text className="text-[20px] font-bold font-sans text-foreground tracking-tight">
           {t('quick_actions', 'Quick Actions')}
         </Text>
 
@@ -75,16 +73,16 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
             backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
             borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
           }}
-          className="flex-row items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs"
+          className="flex-row min-h-11 items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs"
           accessibilityRole="button"
           accessibilityLabel={t('customise', 'Customise')}
         >
           <SlidersHorizontal size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
-          <Text className="text-[12px] font-bold font-sans text-[#172B70] dark:text-[#93C5FD]">{t('customise', 'Customise')}</Text>
+          <Text className="text-[13px] font-bold font-sans text-[#172B70] dark:text-[#93C5FD]">{t('customise', 'Customise')}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* 4-Column Grid with Equal-Size Rounded Tiles */}
+      {/* 3-column grid gives each mobile action a more comfortable visual target. */}
       <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-4">
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
@@ -96,7 +94,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           return (
             <ActionTile
               key={tile.id}
-              containerClassName="w-[23%]"
+              containerClassName="w-[31.6%]"
               icon={<FeatureIcon iconName={iconName} color={colorIcon} size={34} strokeWidth={2.0} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
@@ -108,16 +106,6 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           );
         })}
 
-        {/* 8th Tile: Explore More (+) with Navy Blue Theme Accent Squircle */}
-        <ActionTile
-          key="view_more_tile"
-          containerClassName="w-[23%]"
-          isAccent={true}
-          accentBg={isDark ? '#1E3A8A' : '#172B70'}
-          icon={<Plus size={32} color="#FFFFFF" strokeWidth={2.5} />}
-          label={t('explore_more', 'Explore More')}
-          onPress={onOpenViewMore}
-        />
       </View>
     </View>
   );

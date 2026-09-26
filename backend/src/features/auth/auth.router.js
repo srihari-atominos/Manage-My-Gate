@@ -182,7 +182,7 @@ router.post('/reject-invite', authController.rejectInvite);
  *                 description: Identity token from SSO provider
  *               provider:
  *                 type: string
- *                 enum: [google, microsoft]
+ *                 enum: [google, microsoft, apple]
  *     responses:
  *       200:
  *         description: Invitation accepted and user activated via SSO.
@@ -299,6 +299,7 @@ router.get('/context', isAuthenticated, authController.getCurrentContext);
 
 router.post('/google', authLimiter, validate(ssoVerifyRules), authController.googleLogin);
 router.post('/microsoft', authLimiter, validate(ssoVerifyRules), authController.microsoftLogin);
+router.post('/apple', authLimiter, validate(ssoVerifyRules), authController.appleLogin);
 
 // OTP & Verification Routes with validation schemas
 router.post('/login/phone', otpLimiter, validate(phoneLoginRules), authController.initiatePhoneLogin);

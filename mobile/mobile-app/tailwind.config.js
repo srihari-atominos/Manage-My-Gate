@@ -8,15 +8,17 @@ module.exports = {
   theme: {
     extend: {
       fontSize: {
-        '2xs': ['11px', { lineHeight: '15px' }],
-        xs: ['12.5px', { lineHeight: '17px' }],
-        sm: ['14px', { lineHeight: '19px' }],
-        base: ['15.5px', { lineHeight: '21px' }],
-        lg: ['17.5px', { lineHeight: '23px' }],
-        xl: ['19.5px', { lineHeight: '25px' }],
-        '2xl': ['23px', { lineHeight: '28px' }],
-        '3xl': ['27px', { lineHeight: '33px' }],
-        '4xl': ['32px', { lineHeight: '38px' }],
+        // Readable mobile scale: standard text is intentionally 8–12% larger
+        // than the browser defaults while retaining space for touch controls.
+        '2xs': ['12px', { lineHeight: '16px' }],
+        xs: ['13.5px', { lineHeight: '18px' }],
+        sm: ['15.5px', { lineHeight: '21px' }],
+        base: ['17px', { lineHeight: '23px' }],
+        lg: ['19px', { lineHeight: '25px' }],
+        xl: ['21.5px', { lineHeight: '27px' }],
+        '2xl': ['25px', { lineHeight: '30px' }],
+        '3xl': ['29px', { lineHeight: '35px' }],
+        '4xl': ['34px', { lineHeight: '40px' }],
       },
       fontFamily: {
         sans: ['HankenGrotesk_400Regular', 'sans-serif'],

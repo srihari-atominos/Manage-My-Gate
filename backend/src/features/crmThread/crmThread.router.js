@@ -8,8 +8,12 @@ import {
   getThreadByIdRules,
   queryThreadRules,
 } from './crmThread.validator.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
+
+router.use(isAuthenticated, tenantContext({ requirePlatformContext: true }));
 
 router.get('/', validate(queryThreadRules), crmThreadController.getAll);
 router.get('/inquiry/:inquiryId', validate(getThreadByInquiryRules), crmThreadController.getByInquiryId);

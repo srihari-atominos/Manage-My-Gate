@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import platformInvoiceController from './platformInvoice.controller.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
+
+router.use(isAuthenticated, tenantContext({ requirePlatformContext: true }));
 
 router.get('/', platformInvoiceController.getAll);
 router.get('/:id', platformInvoiceController.getById);

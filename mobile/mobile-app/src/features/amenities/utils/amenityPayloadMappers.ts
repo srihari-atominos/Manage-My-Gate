@@ -81,11 +81,18 @@ export const mapHoldFormToApiPayload = (params: {
  */
 export const mapConfirmFormToApiPayload = (params: {
   holdId: string;
+  paymentMethod?: 'WALLET' | 'RAZORPAY';
+  paymentId?: string;
+  /** @deprecated A client payment reference is intentionally not sent to the API. */
   paymentReference?: string;
   notes?: string;
 }): ConfirmReservationApiPayload => {
   return {
     holdId: params.holdId.trim(),
+    paymentMethod: params.paymentMethod,
+    paymentId: params.paymentId?.trim() || undefined,
+    // Retained for backwards-compatible UI/read-model callers. The backend
+    // ignores it for settlement and derives the stored reference itself.
     paymentReference: params.paymentReference?.trim() || undefined,
     notes: params.notes?.trim() || undefined,
   };

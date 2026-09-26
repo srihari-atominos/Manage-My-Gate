@@ -88,6 +88,7 @@ export const SearchBar = ({
             if (onSearchDebounced) onSearchDebounced('');
           }}
           className="ms-2 rounded-full bg-muted-foreground/20 p-1"
+          hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel="Clear search text"
         >

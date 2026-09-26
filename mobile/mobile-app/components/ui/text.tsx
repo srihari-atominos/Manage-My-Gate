@@ -126,9 +126,12 @@ function Text({
       dir="ltr"
       className={cn(
         textVariants({ variant }),
-        textClass,
         isNonLatin && 'tracking-normal',
-        className
+        className,
+        // A Button/FAB provides the semantic foreground for its surface. Keep
+        // that contract last so a nested `text-foreground` cannot make text
+        // disappear on a navy, orange, or destructive mobile action.
+        textClass
       )}
       role={variant ? ROLE[variant] : undefined}
       aria-level={variant ? ARIA_LEVEL[variant] : undefined}

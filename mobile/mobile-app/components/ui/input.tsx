@@ -21,7 +21,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
     return (
       <View className="w-full gap-1">
         {Boolean(label) && (
-          <Text className="text-foreground font-bold font-sans text-[13.5px] ms-1">
+          <Text className="text-foreground font-bold font-sans text-[15px] ms-1">
             {label}
           </Text>
         )}
@@ -36,7 +36,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
             ref={ref}
             secureTextEntry={isPassword ? secureTextEntry : props.secureTextEntry}
             placeholderTextColor={props.placeholderTextColor || (isDark ? '#737c88' : '#9ca3af')}
-            className={cn(`flex-1 text-foreground py-3.5 text-[15px] font-sans`, className)}
+            className={cn(`flex-1 text-foreground py-3.5 text-[16px] font-sans`, className)}
             {...props}
           />
 
@@ -67,4 +67,3 @@ export const Input = React.forwardRef<TextInput, InputProps>(
 
 Input.displayName = 'Input';
 export default Input;
-

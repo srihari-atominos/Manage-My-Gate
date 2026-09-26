@@ -225,16 +225,22 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
                 </View>
 
                 {/* Header Bar */}
-                <View className="flex-row justify-between items-center px-5 py-3 border-b border-border">
-                  <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="py-1 px-2 rounded-lg active:bg-secondary">
-                    <Text className="text-sm font-semibold text-muted-foreground">{t('cancel', 'Cancel')}</Text>
-                  </TouchableOpacity>
+                <View className="flex-row items-center px-4 py-3 border-b border-border">
+                  <View className="w-16">
+                    <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="self-start py-1 px-1.5 rounded-lg active:bg-secondary">
+                      <Text className="text-sm font-semibold text-muted-foreground">{t('cancel', 'Cancel')}</Text>
+                    </TouchableOpacity>
+                  </View>
 
-                  <Text className="text-base font-extrabold text-foreground">{t('customise_dashboard', 'Customise Dashboard')}</Text>
+                  <Text numberOfLines={1} className="flex-1 text-center text-base font-extrabold text-foreground">
+                    {t('customise_dashboard', 'Customise Dashboard')}
+                  </Text>
 
-                  <TouchableOpacity onPress={handleSave} activeOpacity={0.8} className="bg-primary px-4 py-1.5 rounded-full">
-                    <Text className="text-xs font-bold text-primary-foreground">{t('save', 'Save')}</Text>
-                  </TouchableOpacity>
+                  <View className="w-16 items-end">
+                    <TouchableOpacity onPress={handleSave} activeOpacity={0.8} className="w-16 items-center bg-primary py-2 rounded-full">
+                      <Text className="text-xs font-bold text-primary-foreground">{t('save', 'Save')}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </GestureDetector>
@@ -256,10 +262,10 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
             {/* Divider Sub-header */}
             <View
               style={{ backgroundColor: isDark ? '#292524' : '#F5F5F4' }}
-              className="px-5 py-2.5 border-b border-border flex-row items-center justify-between"
+              className="px-4 py-2.5 border-b border-border flex-row items-center justify-between"
             >
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                {t('available_actions', 'Available Actions')} ({selectedIds.length}/6 {t('selected', 'Selected')})
+                {t('available_actions', 'Available Actions')}
               </Text>
               <Sparkles size={14} color="#C2410C" />
             </View>

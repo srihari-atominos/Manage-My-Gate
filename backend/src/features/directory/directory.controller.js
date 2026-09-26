@@ -3,7 +3,7 @@ import directoryService from './directory.services.js';
 export const directoryController = {
   async getDirectory(req, res, next) {
     try {
-      const orgId = req.headers['x-organization-id'] || req.user?.orgId;
+      const orgId = req.tenant?.orgId;
       const { role, search, page, limit } = req.query;
 
       const result = await directoryService.getDirectory({

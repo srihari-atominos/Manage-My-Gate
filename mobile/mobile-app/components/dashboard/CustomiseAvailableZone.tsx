@@ -88,7 +88,7 @@ const AvailableFeatureCard: React.FC<AvailableFeatureCardProps> = React.memo(({
               ? (isDark ? '#2A1F1B' : '#FFF7ED')
               : (isDark ? '#262626' : '#FFFFFF'),
           }}
-          className={`p-2.5 rounded-2xl border items-center justify-between min-h-[114px] gap-1.5 ${
+          className={`h-[122px] p-2.5 rounded-2xl border items-center justify-between ${
             isSelected
               ? 'border-primary/60 shadow-xs'
               : 'border-border/80 shadow-xs'
@@ -96,13 +96,13 @@ const AvailableFeatureCard: React.FC<AvailableFeatureCardProps> = React.memo(({
           accessibilityRole="button"
           accessibilityLabel={`${meta?.name || feature.name}, ${isSelected ? 'Added' : 'Tap or Drag to Add'}`}
         >
-          <View className={`w-[52px] h-[52px] items-center justify-center rounded-[18px] border border-border/40 ${colorBg}`}>
-            <FeatureIcon iconName={iconName} color={colorIcon} size={24} strokeWidth={1.9} />
+          <View className={`w-12 h-12 items-center justify-center rounded-[17px] border border-border/40 ${colorBg}`}>
+            <FeatureIcon iconName={iconName} color={colorIcon} size={23} strokeWidth={1.9} />
           </View>
 
-          <View className="items-center w-full px-0.5">
+          <View className="h-[29px] items-center justify-center w-full px-0.5">
             <Text
-              className="text-[11px] font-medium font-sans text-foreground text-center leading-tight w-full"
+              className="text-[11px] font-semibold font-sans text-foreground text-center leading-tight w-full"
               numberOfLines={2}
             >
               {tFeatureName(feature.id, meta?.name || feature.name)}
@@ -170,7 +170,7 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
           </View>
 
           {/* 3-Column Grid for Category Items */}
-          <View className="flex-row flex-wrap gap-y-3 -mx-1">
+          <View className="flex-row flex-wrap gap-y-2.5 -mx-1">
             {group.items.map((feature) => (
               <AvailableFeatureCard
                 key={feature.id}

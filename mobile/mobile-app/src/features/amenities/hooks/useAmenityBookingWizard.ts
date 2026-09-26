@@ -29,7 +29,11 @@ import {
   resetV2BookingState,
   clearV2Errors,
 } from '../store/amenityBookingSlice';
-import { fetchWalletThunk, topUpWalletThunk } from '../store/walletSlice';
+import {
+  fetchWalletThunk,
+  createWalletRazorpayOrder,
+  verifyWalletPayment,
+} from '../store/walletSlice';
 import {
   calculateHoldRemainingSeconds,
   canDisplayAmenityAccessPass,
@@ -42,6 +46,10 @@ import {
   normalizeResourceFromApi,
 } from '../utils/amenityPayloadMappers';
 import amenityManagementService, { generateUUID } from '../services/amenityManagementService';
+import type {
+  RazorpayCheckoutOptions,
+  RazorpaySuccessPayload,
+} from '../../billing/components/RazorpayCheckoutModal';
 
 export type WizardStepKey = 'resource' | 'datetime' | 'quantity' | 'review' | 'payment' | 'result';
 
@@ -150,6 +158,9 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
   const [isTopUpOpen, setIsTopUpOpen] = useState<boolean>(false);
   const [isRazorpayOpen, setIsRazorpayOpen] = useState<boolean>(false);
+  const [razorpayOptions, setRazorpayOptions] = useState<RazorpayCheckoutOptions | null>(null);
+  const [checkoutPurpose, setCheckoutPurpose] = useState<'AMENITY' | 'WALLET_TOP_UP' | null>(null);
+  const [walletTopUpAmount, setWalletTopUpAmount] = useState<number>(0);
 
   // Live Hold Countdown derived from activeHold.expiresAt
   const [holdRemainingSeconds, setHoldRemainingSeconds] = useState<number>(0);
@@ -557,7 +568,10 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
   // ==========================================
   // Confirmation & Payment Operations
   // ==========================================
-  const handleConfirmReservation = useCallback(async () => {
+  const completeReservation = useCallback(async (params?: {
+    paymentMethod?: 'WALLET' | 'RAZORPAY';
+    paymentId?: string;
+  }) => {
     if (!activeHold?._id) {
       setStepError('No active reservation hold found.');
       return;
@@ -568,31 +582,12 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
       return;
     }
 
-    // Determine if payment is required based on authoritative pricing
-    const totalAmount = pricingSnapshot?.totalAmount ?? activeHold?.pricingSnapshot?.totalAmount ?? 0;
-    const isPaymentRequired = totalAmount > 0;
-
-    let finalRef = paymentReference;
-    if (isPaymentRequired) {
-      if (paymentMethod === 'WALLET') {
-        if (balance < totalAmount) {
-          const currency = pricingSnapshot?.currency || 'INR';
-          setStepError(`Insufficient wallet balance (${balance} ${currency}). Please top up.`);
-          setIsTopUpOpen(true);
-          return;
-        }
-        finalRef = finalRef || `WALLET_TXN_${Date.now()}`;
-      } else if (paymentMethod === 'RAZORPAY' && !finalRef) {
-        setIsRazorpayOpen(true);
-        return;
-      }
-    }
-
     setStepError(null);
     try {
       const payload = mapConfirmFormToApiPayload({
         holdId: activeHold._id,
-        paymentReference: isPaymentRequired ? finalRef : undefined,
+        paymentMethod: params?.paymentMethod,
+        paymentId: params?.paymentId,
         notes: bookingNotes,
       });
 
@@ -608,6 +603,12 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
         dispatch(fetchPassesByReservationThunk(reservation._id));
       }
 
+      // Refresh the authoritative ledger immediately after a wallet booking,
+      // so the payment step and wallet screen both show the new balance.
+      if (params?.paymentMethod === 'WALLET') {
+        dispatch(fetchWalletThunk());
+      }
+
       // Transition to Result Step
       const resultIdx = steps.findIndex((s) => s.key === 'result');
       if (resultIdx >= 0) {
@@ -618,57 +619,172 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
     }
   }, [
     activeHold?._id,
-    activeHold?.pricingSnapshot?.totalAmount,
     isHoldExpired,
-    pricingSnapshot?.totalAmount,
-    paymentReference,
-    paymentMethod,
-    balance,
     bookingNotes,
     dispatch,
     steps,
   ]);
 
+  const handleLaunchRazorpay = useCallback(async () => {
+    if (!activeHold?._id || isHoldExpired) {
+      setStepError('Your reservation hold has expired. Please select a new slot.');
+      return;
+    }
+
+    setStepError(null);
+    try {
+      const response = await amenityManagementService.createReservationPaymentOrder(activeHold._id);
+      const order = response.data;
+
+      // A checkout response can be replayed after an app interruption. If the
+      // order was already verified, finish the reservation without opening a
+      // second checkout or charging the resident again.
+      if (order?.alreadyVerified && order?.paymentId) {
+        await completeReservation({ paymentMethod: 'RAZORPAY', paymentId: order.paymentId });
+        return;
+      }
+
+      if (!order?.paymentId || !order?.orderId || !order?.razorpayKeyId) {
+        throw new Error('The payment gateway did not return a valid checkout order.');
+      }
+
+      setRazorpayOptions({
+        paymentId: order.paymentId,
+        orderId: order.orderId,
+        razorpayKeyId: order.razorpayKeyId,
+        amount: Number(order.amount || 0),
+        currency: order.currency || 'INR',
+        description: `Amenity Booking: ${facility.name}`,
+      });
+      setCheckoutPurpose('AMENITY');
+      setIsRazorpayOpen(true);
+    } catch (err: any) {
+      setStepError(err?.message || 'Unable to start secure Razorpay checkout.');
+    }
+  }, [activeHold?._id, completeReservation, facility.name, isHoldExpired]);
+
+  const handleConfirmReservation = useCallback(async () => {
+    const totalAmount = pricingSnapshot?.totalAmount ?? activeHold?.pricingSnapshot?.totalAmount ?? 0;
+    if (totalAmount <= 0) {
+      await completeReservation();
+      return;
+    }
+
+    if (paymentMethod === 'RAZORPAY') {
+      await handleLaunchRazorpay();
+      return;
+    }
+
+    if (balance < totalAmount) {
+      const currency = pricingSnapshot?.currency || 'INR';
+      setStepError(`Insufficient wallet balance (${balance} ${currency}). Please top up.`);
+      setIsTopUpOpen(true);
+      return;
+    }
+
+    await completeReservation({ paymentMethod: 'WALLET' });
+  }, [
+    activeHold?.pricingSnapshot?.totalAmount,
+    balance,
+    completeReservation,
+    handleLaunchRazorpay,
+    paymentMethod,
+    pricingSnapshot?.currency,
+    pricingSnapshot?.totalAmount,
+  ]);
+
   const handleRazorpaySuccess = useCallback(
-    async (result: { razorpayPaymentId: string }) => {
-      setIsRazorpayOpen(false);
-      setPaymentReference(result.razorpayPaymentId);
-
-      // Auto trigger confirmation with verified payment ID
-      if (activeHold?._id) {
-        const payload = mapConfirmFormToApiPayload({
-          holdId: activeHold._id,
-          paymentReference: result.razorpayPaymentId,
-          notes: bookingNotes,
-        });
-
-        const idempotencyKey = `confirm_hold_${activeHold._id}`;
+    async (result: RazorpaySuccessPayload) => {
+      if (checkoutPurpose === 'WALLET_TOP_UP') {
         try {
-          const confirmResult = await dispatch(
-            confirmReservationThunk({ payload, idempotencyKey })
+          await dispatch(
+            verifyWalletPayment({
+              ...result,
+              paymentId: razorpayOptions?.paymentId,
+              amount: walletTopUpAmount,
+            })
           ).unwrap();
-          const reservation = confirmResult.reservation;
-
-          if (canDisplayAmenityAccessPass(reservation)) {
-            dispatch(fetchPassesByReservationThunk(reservation._id));
-          }
-
-          const resultIdx = steps.findIndex((s) => s.key === 'result');
-          if (resultIdx >= 0) setCurrentStepIndex(resultIdx);
+          await dispatch(fetchWalletThunk()).unwrap();
+          setIsRazorpayOpen(false);
+          setRazorpayOptions(null);
+          setCheckoutPurpose(null);
+          setWalletTopUpAmount(0);
+          return;
         } catch (err: any) {
-          setStepError(err?.message || 'Payment recorded but confirmation encountered an issue.');
+          setIsRazorpayOpen(false);
+          setRazorpayOptions(null);
+          setCheckoutPurpose(null);
+          setWalletTopUpAmount(0);
+          setStepError(err?.message || 'Wallet top-up could not be verified. Your balance was not updated.');
+          return;
         }
       }
+
+      try {
+        const verification = await amenityManagementService.verifyReservationPayment({
+          paymentId: result.paymentId || razorpayOptions?.paymentId || '',
+          orderId: result.razorpayOrderId || razorpayOptions?.orderId || '',
+          razorpayPaymentId: result.razorpayPaymentId,
+          razorpaySignature: result.razorpaySignature,
+        });
+        const verifiedPaymentId = verification.data?.paymentId || verification.data?.payment?._id;
+        if (!verifiedPaymentId) {
+          throw new Error('Payment verification did not return a payment record.');
+        }
+
+        setPaymentReference(result.razorpayPaymentId);
+        setIsRazorpayOpen(false);
+        setRazorpayOptions(null);
+        setCheckoutPurpose(null);
+        await completeReservation({ paymentMethod: 'RAZORPAY', paymentId: verifiedPaymentId });
+      } catch (err: any) {
+        setIsRazorpayOpen(false);
+        setRazorpayOptions(null);
+        setCheckoutPurpose(null);
+        setStepError(err?.message || 'Your payment could not be verified. Please contact community support if money was debited.');
+      }
     },
-    [activeHold?._id, bookingNotes, dispatch, steps]
+    [
+      checkoutPurpose,
+      completeReservation,
+      dispatch,
+      razorpayOptions?.orderId,
+      razorpayOptions?.paymentId,
+      walletTopUpAmount,
+    ]
   );
+
+  const handleRazorpayDismiss = useCallback(() => {
+    setIsRazorpayOpen(false);
+    setRazorpayOptions(null);
+    setCheckoutPurpose(null);
+    setWalletTopUpAmount(0);
+  }, []);
 
   const handleTopUpSubmit = useCallback(
     async (amount: number) => {
       if (amount <= 0) return;
-      const res = await dispatch(topUpWalletThunk(amount));
-      if (topUpWalletThunk.fulfilled.match(res)) {
+      try {
+        const order: any = await dispatch(createWalletRazorpayOrder({ amount })).unwrap();
+        const razorpayKeyId = order?.razorpayKeyId || order?.keyId || order?.key;
+        const orderId = order?.orderId || order?.id;
+        if (!razorpayKeyId || !orderId || !order?.paymentId) {
+          throw new Error('The wallet top-up gateway did not return a valid checkout order.');
+        }
         setIsTopUpOpen(false);
+        setWalletTopUpAmount(amount);
+        setRazorpayOptions({
+          razorpayKeyId,
+          orderId,
+          paymentId: order.paymentId,
+          amount,
+          currency: order.currency || 'INR',
+          description: `Digital Wallet Top-Up (₹${amount})`,
+        });
+        setCheckoutPurpose('WALLET_TOP_UP');
+        setIsRazorpayOpen(true);
+      } catch (err: any) {
+        setStepError(err?.message || 'Unable to create a secure wallet top-up order.');
       }
     },
     [dispatch]
@@ -745,6 +861,7 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
     setIsTopUpOpen,
     isRazorpayOpen,
     setIsRazorpayOpen,
+    razorpayOptions,
     balance,
     walletLoading,
 
@@ -756,7 +873,9 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
     handleCreateHold,
     handleReleaseHoldAndExit,
     handleConfirmReservation,
+    handleLaunchRazorpay,
     handleRazorpaySuccess,
+    handleRazorpayDismiss,
     handleTopUpSubmit,
     handleRestartBooking,
   };

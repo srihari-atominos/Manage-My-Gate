@@ -10,11 +10,12 @@ import { Icon } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { TextInput } from '@/components/forms/TextInput';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Wallet, Plus, ArrowDownLeft, ArrowUpRight, Receipt, ShieldCheck, ChevronRight, AlertCircle } from 'lucide-react-native';
-import { fetchWalletBalance, createWalletRazorpayOrder, verifyWalletPayment, clearWalletError } from '../store/walletSlice';
+import { Wallet, Plus, ArrowDownLeft, ArrowUpRight, Receipt, ShieldCheck, ChevronRight, AlertCircle, RotateCcw } from 'lucide-react-native';
+import { fetchWalletBalance, createWalletRazorpayOrder, verifyWalletPayment, refundWalletToOriginalPayment, clearWalletError } from '../store/walletSlice';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { RazorpayCheckoutModal } from '../components/RazorpayCheckoutModal';
 import { WalletHeroCard } from '../components/WalletHeroCard';
@@ -30,6 +31,9 @@ export function WalletScreen() {
   const isLoading = walletState?.isLoading || (walletState as any)?.loading || false;
   const error = walletState?.error || null;
   const isGatewayReady = walletState?.isPaymentGatewayConfigured === true;
+  const minimumRefundAmount = walletState?.minimumRefundAmount || 10;
+  const refundEligibleBalance = Number(walletState?.refundEligibleBalance || 0);
+  const refundableSources = walletState?.refundableSources || [];
 
   // Real-time socket listener
   useBillingSocket();
@@ -39,6 +43,13 @@ export function WalletScreen() {
   const [selectedPreset, setSelectedPreset] = useState<number | 'CUSTOM'>(1000);
   const [customAmountStr, setCustomAmountStr] = useState<string>('');
   const [isProcessingTopUp, setIsProcessingTopUp] = useState(false);
+  const [showRefundSheet, setShowRefundSheet] = useState(false);
+  const [selectedRefundPaymentId, setSelectedRefundPaymentId] = useState<string | null>(null);
+  const [refundAmountStr, setRefundAmountStr] = useState('');
+  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+  const [showRefundConfirmation, setShowRefundConfirmation] = useState(false);
+  const [refundErrorMessage, setRefundErrorMessage] = useState<string | null>(null);
+  const [refundSuccessMessage, setRefundSuccessMessage] = useState<string | null>(null);
 
   const loadWallet = useCallback(() => {
     dispatch(fetchWalletBalance());
@@ -78,6 +89,69 @@ export function WalletScreen() {
   const isTopUpInvalid = topUpAmount <= 0 || topUpAmount > 50000;
 
   const [razorpayOptions, setRazorpayOptions] = useState<any>(null);
+
+  const selectedRefundSource = useMemo(
+    () => refundableSources.find((source) => source.paymentId === selectedRefundPaymentId) || null,
+    [refundableSources, selectedRefundPaymentId]
+  );
+  const selectedRefundMaximum = useMemo(
+    () => Math.min(refundEligibleBalance, Number(selectedRefundSource?.availableAmount || 0)),
+    [refundEligibleBalance, selectedRefundSource]
+  );
+  const refundAmount = useMemo(() => {
+    const parsed = Number.parseFloat(refundAmountStr);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }, [refundAmountStr]);
+  const isRefundInvalid = !selectedRefundSource
+    || refundAmount < minimumRefundAmount
+    || refundAmount > selectedRefundMaximum;
+
+  const openRefundSheet = useCallback(() => {
+    const firstSource = refundableSources[0];
+    if (!firstSource || refundEligibleBalance < minimumRefundAmount) {
+      Alert.alert(
+        'No Refundable Balance',
+        'Only unused wallet money added through a verified online top-up can be refunded. The minimum refund is ₹10.'
+      );
+      return;
+    }
+    setSelectedRefundPaymentId(firstSource.paymentId);
+    setRefundAmountStr('');
+    setRefundErrorMessage(null);
+    setShowRefundSheet(true);
+  }, [refundableSources, refundEligibleBalance, minimumRefundAmount]);
+
+  const executeWalletRefund = async () => {
+    if (isRefundInvalid || !selectedRefundSource || isProcessingRefund) return;
+    setIsProcessingRefund(true);
+    try {
+      await dispatch(refundWalletToOriginalPayment({
+        paymentId: selectedRefundSource.paymentId,
+        amount: refundAmount,
+      })).unwrap();
+      setShowRefundConfirmation(false);
+      setShowRefundSheet(false);
+      setRefundAmountStr('');
+      dispatch(fetchWalletBalance());
+      setRefundSuccessMessage(
+        `₹${refundAmount.toLocaleString('en-IN')} has been sent to Razorpay for return to the original UPI or card account used for this wallet top-up.`
+      );
+    } catch (err: any) {
+      setShowRefundConfirmation(false);
+      setRefundErrorMessage(err?.message || err || 'Unable to start this wallet refund.');
+    } finally {
+      setIsProcessingRefund(false);
+    }
+  };
+
+  const confirmWalletRefund = () => {
+    if (isRefundInvalid || !selectedRefundSource || isProcessingRefund) return;
+    // React Native Web intentionally implements Alert.alert as a no-op.
+    // Use the app's reusable modal so this confirmation works on Web, iOS,
+    // and Android before money is sent to Razorpay.
+    setRefundErrorMessage(null);
+    setShowRefundConfirmation(true);
+  };
 
   // Handle Top-Up Execution via Razorpay Order Creation
   const handleProceedTopUp = async () => {
@@ -175,6 +249,8 @@ export function WalletScreen() {
                 <WalletHeroCard
                   balance={balance}
                   onTopUpPress={() => setShowTopUpSheet(true)}
+                  onRefundPress={openRefundSheet}
+                  refundDisabled={!isGatewayReady || refundEligibleBalance < minimumRefundAmount || refundableSources.length === 0}
                 />
 
                 {/* Transaction Statement Section Header */}
@@ -294,6 +370,94 @@ export function WalletScreen() {
           </KeyboardAvoidingView>
         </BottomSheet>
 
+        {/* Refund always returns via Razorpay to the original payment account. */}
+        <BottomSheet
+          visible={showRefundSheet}
+          onClose={() => !isProcessingRefund && setShowRefundSheet(false)}
+          title="Refund Wallet Balance"
+        >
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="w-full">
+            <View className="py-2 gap-4">
+              {refundErrorMessage ? (
+                <ErrorBanner
+                  title="Refund Unavailable"
+                  message={refundErrorMessage}
+                  onDismiss={() => setRefundErrorMessage(null)}
+                />
+              ) : null}
+
+              <View className="bg-primary/10 border border-primary/20 rounded-2xl p-3.5 flex-row items-start">
+                <Icon as={RotateCcw} size={18} className="text-primary mt-0.5 me-2.5 shrink-0" />
+                <View className="flex-1">
+                  <Text className="font-bold text-sm text-foreground mb-1">Refund to your paid account</Text>
+                  <Text className="text-xs leading-5 text-muted-foreground">
+                    Refunds go only to the original UPI or card account used for the selected wallet top-up. Minimum refund: ₹{minimumRefundAmount}.
+                  </Text>
+                </View>
+              </View>
+
+              <View className="bg-muted/40 border border-border/60 rounded-xl p-3 flex-row items-center justify-between">
+                <Text className="text-xs text-muted-foreground">Available to refund now</Text>
+                <Text className="text-base font-extrabold text-foreground">₹{refundEligibleBalance.toLocaleString('en-IN')}</Text>
+              </View>
+
+              <View className="gap-2">
+                <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Choose original top-up</Text>
+                {refundableSources.map((source) => {
+                  const isSelected = selectedRefundPaymentId === source.paymentId;
+                  const paidDate = source.paidAt
+                    ? new Date(source.paidAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : 'Verified top-up';
+                  return (
+                    <Button
+                      key={source.paymentId}
+                      variant={isSelected ? 'navy' : 'outline'}
+                      size="default"
+                      onPress={() => setSelectedRefundPaymentId(source.paymentId)}
+                      className="w-full h-auto min-h-14 px-4"
+                      accessibilityLabel={`Select wallet top-up of ₹${source.availableAmount.toLocaleString('en-IN')}`}
+                    >
+                      <View className="flex-1 items-start">
+                        <Text className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-foreground'}`}>
+                          Wallet top-up • ₹{source.availableAmount.toLocaleString('en-IN')}
+                        </Text>
+                        <Text className={`text-xs mt-0.5 ${isSelected ? 'text-white/75' : 'text-muted-foreground'}`}>
+                          {paidDate} • Original payment account
+                        </Text>
+                      </View>
+                    </Button>
+                  );
+                })}
+              </View>
+
+              <TextInput
+                label="Refund amount (₹)"
+                value={refundAmountStr}
+                onChangeText={setRefundAmountStr}
+                placeholder={`Enter ₹${minimumRefundAmount} to ₹${selectedRefundMaximum.toLocaleString('en-IN')}`}
+                keyboardType="decimal-pad"
+                helperText={`You can refund up to ₹${selectedRefundMaximum.toLocaleString('en-IN')} from this top-up.`}
+                inputClassName="font-bold text-base"
+              />
+
+              <Button
+                variant="navy"
+                size="lg"
+                className="w-full mt-1"
+                leftIcon={RotateCcw}
+                disabled={isRefundInvalid || isProcessingRefund}
+                loading={isProcessingRefund}
+                onPress={confirmWalletRefund}
+                accessibilityLabel={`Refund ₹${refundAmount || 0} to original payment account`}
+              >
+                <Text className="font-bold text-base text-white">
+                  {isProcessingRefund ? 'Starting Refund…' : 'Refund to Paid Account'}
+                </Text>
+              </Button>
+            </View>
+          </KeyboardAvoidingView>
+        </BottomSheet>
+
         {/* Razorpay WebView Checkout Modal for Top-Up */}
         <RazorpayCheckoutModal
           visible={!!razorpayOptions}
@@ -308,10 +472,32 @@ export function WalletScreen() {
             Alert.alert('Top-Up Error', err.description || 'Razorpay checkout encountered an error.');
           }}
         />
+
+        <ConfirmationModal
+          visible={showRefundConfirmation}
+          title="Confirm Wallet Refund"
+          message={`Refund ₹${refundAmount.toLocaleString('en-IN')} to the original UPI or card account used for this wallet top-up? This cannot be undone after Razorpay accepts it.`}
+          confirmLabel={`Refund ₹${refundAmount.toLocaleString('en-IN')}`}
+          cancelLabel="Keep Balance"
+          variant="warning"
+          loading={isProcessingRefund}
+          onConfirm={executeWalletRefund}
+          onCancel={() => setShowRefundConfirmation(false)}
+        />
+
+        <ConfirmationModal
+          visible={Boolean(refundSuccessMessage)}
+          title="Refund Initiated"
+          message={refundSuccessMessage || ''}
+          confirmLabel="Done"
+          cancelLabel="Close"
+          variant="success"
+          onConfirm={() => setRefundSuccessMessage(null)}
+          onCancel={() => setRefundSuccessMessage(null)}
+        />
       </View>
     </ScreenShell>
   );
 }
 
 export default WalletScreen;
-

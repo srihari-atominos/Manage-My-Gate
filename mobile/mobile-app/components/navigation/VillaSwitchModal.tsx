@@ -148,7 +148,13 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
               </View>
               <Text className="text-lg font-bold text-foreground">{t('switch_unit', 'Switch Villa Unit')}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
+            <TouchableOpacity
+              onPress={onClose}
+              activeOpacity={0.7}
+              className="h-11 w-11 items-center justify-center rounded-full bg-secondary active:bg-muted"
+              accessibilityRole="button"
+              accessibilityLabel={t('close', 'Close')}
+            >
               <X size={16} className="text-muted-foreground" />
             </TouchableOpacity>
           </View>

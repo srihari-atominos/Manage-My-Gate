@@ -4,6 +4,7 @@ import {
   loginUser,
   loginWithGoogleThunk,
   loginWithMicrosoftThunk,
+  loginWithAppleThunk,
   registerUserThunk,
   verifyRegistrationThunk,
   acceptInviteThunk,
@@ -59,6 +60,13 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const handleLoginWithApple = useCallback(
+    (payload: { token: string; nonce: string; fullName?: string }) => {
+      return dispatch ? dispatch(loginWithAppleThunk(payload)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
   const handleRegister = useCallback(
     (userData: any) => {
       return dispatch ? dispatch(registerUserThunk(userData)) : Promise.resolve();
@@ -88,7 +96,9 @@ export const useAuth = () => {
       codeVerifier?: string;
       redirectUri?: string;
       clientId?: string;
-      provider: 'google' | 'microsoft';
+      nonce?: string;
+      fullName?: string;
+      provider: 'google' | 'microsoft' | 'apple';
     }) => {
       return dispatch ? dispatch(acceptSsoInviteThunk(payload)) : Promise.resolve();
     },
@@ -190,6 +200,7 @@ export const useAuth = () => {
     checkOrganizationName: handleCheckOrganizationName,
     loginWithGoogle: handleLoginWithGoogle,
     loginWithMicrosoft: handleLoginWithMicrosoft,
+    loginWithApple: handleLoginWithApple,
     requestOtp: handleRequestOtp,
     verifyOtp: handleVerifyOtp,
     forgotPassword: handleForgotPassword,

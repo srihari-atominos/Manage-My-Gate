@@ -41,7 +41,7 @@ export const RowsPerPageDropdown: React.FC<RowsPerPageDropdownProps> = ({
       <TouchableOpacity
         onPress={() => setIsOpen(true)}
         activeOpacity={0.7}
-        className="flex-row items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-card border border-border/80 shadow-2xs hover:border-primary/50 transition-colors"
+        className="flex-row min-h-11 items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-card border border-border/80 shadow-2xs hover:border-primary/50 transition-colors"
         accessibilityRole="button"
         accessibilityLabel={`${displayLabel}: ${value}`}
       >
@@ -79,6 +79,7 @@ export const RowsPerPageDropdown: React.FC<RowsPerPageDropdownProps> = ({
               <TouchableOpacity
                 onPress={() => setIsOpen(false)}
                 className="p-1 rounded-full bg-secondary active:opacity-70"
+                hitSlop={10}
                 accessibilityLabel="Close"
               >
                 <X size={12} className="text-muted-foreground" />
@@ -95,7 +96,7 @@ export const RowsPerPageDropdown: React.FC<RowsPerPageDropdownProps> = ({
                     onPress={() => handleSelect(opt)}
                     activeOpacity={0.7}
                     className={cn(
-                      'flex-row items-center justify-between px-3 py-2 rounded-xl transition-colors',
+                      'flex-row min-h-11 items-center justify-between px-3 py-2 rounded-xl transition-colors',
                       isSelected
                         ? 'bg-primary/10 border border-primary/30'
                         : 'active:bg-muted/50'

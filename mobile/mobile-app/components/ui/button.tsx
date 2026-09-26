@@ -69,7 +69,7 @@ const buttonVariants = cva(
           Platform.OS === 'web' ? 'hover:bg-purple-100' : ''
         ),
         navy: cn(
-          'bg-[#172B70] dark:bg-[#1E3A8A] active:opacity-90 shadow-2xs',
+          'bg-[#172B70] dark:bg-[#27448F] active:opacity-90 shadow-2xs',
           Platform.OS === 'web' ? 'hover:opacity-90' : ''
         ),
         outline: cn(
@@ -77,7 +77,7 @@ const buttonVariants = cva(
           Platform.OS === 'web' ? 'hover:bg-secondary/70' : ''
         ),
         secondary: cn(
-          'bg-[#172B70] dark:bg-[#1E3A8A] active:opacity-90 shadow-2xs',
+          'bg-[#172B70] dark:bg-[#27448F] active:opacity-90 shadow-2xs',
           Platform.OS === 'web' ? 'hover:opacity-90' : ''
         ),
         ghost: cn(
@@ -88,7 +88,9 @@ const buttonVariants = cva(
       },
       size: {
         default: cn('h-12 px-5 py-2.5 sm:h-11 rounded-2xl', Platform.select({ web: 'has-[>svg]:px-4' })),
-        sm: cn('h-9.5 gap-1.5 rounded-xl px-4 sm:h-8.5', Platform.select({ web: 'has-[>svg]:px-3' })),
+        // Keep every shared compact action at least 44pt on phones. Desktop
+        // layouts retain the denser visual treatment at the Tailwind sm breakpoint.
+        sm: cn('h-11 gap-1.5 rounded-xl px-4 sm:h-9.5', Platform.select({ web: 'has-[>svg]:px-3' })),
         lg: cn('h-14 rounded-2xl px-7 sm:h-12', Platform.select({ web: 'has-[>svg]:px-5' })),
         icon: 'h-11 w-11 sm:h-10 sm:w-10 rounded-xl shadow-2xs',
       },
@@ -102,7 +104,9 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
   cn(
-    'text-foreground text-[15px] font-bold tracking-tight font-sans',
+    // Buttons are touch targets, not text blocks. Center labels by default so
+    // wrapped labels remain visually balanced with their icon and surface.
+    'text-foreground text-center leading-tight flex-shrink text-[16px] font-bold tracking-tight font-sans',
     Platform.select({ web: 'pointer-events-none transition-colors' })
   ),
   {
@@ -132,8 +136,8 @@ const buttonTextVariants = cva(
       },
       size: {
         default: '',
-        sm: 'text-[13px]',
-        lg: 'text-[16px]',
+        sm: 'text-[14px]',
+        lg: 'text-[17px]',
         icon: '',
       },
     },
@@ -143,6 +147,18 @@ const buttonTextVariants = cva(
     },
   }
 );
+
+const SOLID_LOADING_VARIANTS = new Set([
+  'default',
+  'primary',
+  'destructive',
+  'stop',
+  'success',
+  'warning-solid',
+  'info-solid',
+  'navy',
+  'secondary',
+]);
 
 export interface ButtonProps
   extends React.ComponentPropsWithoutRef<typeof Pressable> {
@@ -190,6 +206,12 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
   ) => {
     const isDisabled = disabled || loading;
     const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
+    const loadingColor = SOLID_LOADING_VARIANTS.has(variant || 'default') ? '#FFFFFF' : '#172B70';
+    const minimumTouchTarget = variant === 'link'
+      ? ''
+      : size === 'icon'
+        ? 'min-h-11 min-w-11'
+        : 'min-h-11';
 
     return (
       <TextClassContext.Provider value={cn(buttonTextVariants({ variant: variant as any, size }), textClassName)}>
@@ -199,7 +221,9 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
           className={cn(
             isDisabled && 'opacity-50',
             buttonVariants({ variant: variant as any, size }),
-            className
+            'min-w-0',
+            className,
+            minimumTouchTarget
           )}
           role="button"
           {...props}
@@ -209,7 +233,7 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
               {loading ? (
                 <ActivityIndicator
                   size="small"
-                  color={variant === 'default' || variant === 'destructive' ? '#ffffff' : '#737373'}
+                  color={loadingColor}
                 />
               ) : (
                 LeftIcon && <LeftIcon size={iconSize} className={cn(buttonTextVariants({ variant }))} />

@@ -181,7 +181,6 @@ export default function DashboardScreen() {
             activeFeatureIds={activeQuickActions}
             equippedFeatures={equippedFeatures}
             onOpenCustomise={() => setCustomiseOpen(true)}
-            onOpenViewMore={() => router.push('/(resident)/all-features' as any)}
             onTilePress={handleTilePress}
           />
         </View>
@@ -201,4 +200,3 @@ export default function DashboardScreen() {
     </View>
   );
 }
-

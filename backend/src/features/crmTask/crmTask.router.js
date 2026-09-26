@@ -7,8 +7,12 @@ import {
   getTaskRules,
   queryTaskRules,
 } from './crmTask.validator.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
+
+router.use(isAuthenticated, tenantContext({ requirePlatformContext: true }));
 
 router.get('/', validate(queryTaskRules), crmTaskController.getAll);
 router.get('/:id', validate(getTaskRules), crmTaskController.getById);

@@ -35,10 +35,12 @@ export class AmenityOutboxService {
         if (payload?.residentId) {
           await notificationService.createNotification({
             recipientId: payload.residentId,
+            orgId,
             title: 'Amenity Reservation Confirmed',
             body: `Your reservation #${payload.reservationNumber || 'amenity booking'} has been confirmed.`,
             type: 'SUCCESS',
             actionUrl: `/resident/amenities/reservations/${payload.reservationId || aggregateId}`,
+            metadata: { reservationId: payload.reservationId || aggregateId, eventType },
           });
         }
         logger.info(`[AmenityOutbox] RESERVATION_CONFIRMED downstream notification dispatched for reservation ${payload?.reservationNumber || aggregateId}`, {
@@ -52,10 +54,16 @@ export class AmenityOutboxService {
         if (payload?.residentId) {
           await notificationService.createNotification({
             recipientId: payload.residentId,
+            orgId,
             title: 'Amenity Reservation Cancelled',
-            body: `Your reservation #${payload.reservationNumber || ''} was cancelled. ${payload.cancellationReason || payload.reason || ''}`.trim(),
+            body: `Your reservation #${payload.reservationNumber || ''} was cancelled.${
+              payload.refundMethod === 'WALLET' && payload.refundAmount > 0
+                ? ` ₹${payload.refundAmount} has been returned to your Digital Wallet.`
+                : ''
+            } ${payload.cancellationReason || payload.reason || ''}`.trim(),
             type: 'WARNING',
             actionUrl: `/resident/amenities/reservations/${payload.reservationId || aggregateId}`,
+            metadata: { reservationId: payload.reservationId || aggregateId, eventType },
           });
         }
         logger.info(`[AmenityOutbox] RESERVATION_CANCELLED downstream notification dispatched for reservation ${payload?.reservationNumber || aggregateId}`, {
@@ -69,10 +77,12 @@ export class AmenityOutboxService {
         if (payload?.residentId) {
           await notificationService.createNotification({
             recipientId: payload.residentId,
+            orgId,
             title: 'Amenity Access Pass Issued',
             body: 'Your digital QR access pass is now active for facility entry.',
             type: 'INFO',
             actionUrl: `/resident/amenities/passes/${payload.passId || aggregateId}`,
+            metadata: { passId: payload.passId || aggregateId, reservationId: payload.reservationId, eventType },
           });
         }
         logger.info(`[AmenityOutbox] GATE_PASS_ISSUED downstream notification dispatched for pass ${payload?.passId || aggregateId}`, {
@@ -86,10 +96,12 @@ export class AmenityOutboxService {
         if (payload?.residentId) {
           await notificationService.createNotification({
             recipientId: payload.residentId,
+            orgId,
             title: 'Amenity Hold Expired',
             body: 'Your temporary reservation hold has expired and reserved capacity has been released.',
             type: 'INFO',
             actionUrl: '/resident/amenities',
+            metadata: { holdId: payload.holdId || aggregateId, eventType },
           });
         }
         logger.info(`[AmenityOutbox] HOLD_EXPIRED downstream notification dispatched for hold ${payload?.holdId || aggregateId}`, {
@@ -102,10 +114,12 @@ export class AmenityOutboxService {
         if (payload?.residentId) {
           await notificationService.createNotification({
             recipientId: payload.residentId,
+            orgId,
             title: 'Amenity Approval Requested',
             body: `Your reservation #${payload.reservationNumber || ''} has been submitted for community administrator review.`,
             type: 'INFO',
             actionUrl: `/resident/amenities/reservations/${payload.reservationId || aggregateId}`,
+            metadata: { reservationId: payload.reservationId || aggregateId, eventType },
           });
         }
         logger.info(`[AmenityOutbox] APPROVAL_REQUESTED downstream notification dispatched for reservation ${payload?.reservationNumber || aggregateId}`, {
@@ -142,10 +156,12 @@ export class AmenityOutboxService {
         if (payload?.residentId) {
           await notificationService.createNotification({
             recipientId: payload.residentId,
+            orgId,
             title: 'Refund Pending Reconciliation',
             body: `A refund of ₹${payload.amount || 0} for reservation #${payload.reservationNumber || ''} is pending external processing.`,
             type: 'INFO',
             actionUrl: `/resident/amenities/reservations/${payload.reservationId || aggregateId}`,
+            metadata: { reservationId: payload.reservationId || aggregateId, eventType },
           });
         }
         logger.info(

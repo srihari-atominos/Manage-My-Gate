@@ -1,4 +1,5 @@
 import walletService from './wallet.service.js';
+import HttpError from '../../utils/httpError.utils.js';
 
 export const getMyWallet = async (req, res, next) => {
   try {
@@ -33,6 +34,17 @@ export const addMoney = async (req, res, next) => {
     const targetUserId = (isFullAdmin && (req.body?.userId || req.body?.targetUserId))
       ? (req.body.userId || req.body.targetUserId)
       : (req.user.id || req.user._id);
+
+    // A resident must complete a Razorpay order and signature verification via
+    // /wallet/create-order and /wallet/verify-payment. Allowing this endpoint
+    // to credit a resident wallet directly would let a caller mint balance
+    // without paying the community merchant account.
+    if (!isFullAdmin) {
+      throw new HttpError(
+        403,
+        'Wallet top-ups must be completed through secure Razorpay checkout.'
+      );
+    }
 
     const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
     const { amount, paymentMethod, description } = req.body;
@@ -113,6 +125,34 @@ export const verifyPayment = async (req, res, next) => {
     const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
     const transaction = await walletService.verifyPaymentSignature(targetUserId, orgId, req.body);
     res.status(200).json({ success: true, data: transaction });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Resident wallet cash-out. The recipient is intentionally not accepted from
+ * the client: Razorpay returns money to the account used for the selected
+ * original wallet top-up payment.
+ */
+export const refundToOriginalPayment = async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
+    const { paymentId, amount } = req.body;
+
+    const result = await walletService.refundToOriginalPayment({
+      userId,
+      orgId,
+      paymentId,
+      amount,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
   } catch (error) {
     next(error);
   }
