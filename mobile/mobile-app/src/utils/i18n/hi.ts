@@ -1,4 +1,5 @@
 export const hi: Record<string, string> = {
+  'press_back_again_to_exit': 'बाहर निकलने के लिए फिर से वापस दबाएं',
   'accept': 'स्वीकार करें',
   'accept_and_join': 'स्वीकार करें और जुड़ें',
   'accepted': 'स्वीकृत',
@@ -1688,6 +1689,7 @@ export const hi: Record<string, string> = {
   'front_desk_fast_checkout': 'फ्रंट-डेस्क त्वरित चेक-आउट',
   'invoice_qr_pass': 'चालान क्यूआर पास',
   'date_range': 'तिथि सीमा',
+  'building': 'इमारत',
   'block_building': 'ब्लॉक / इमारत',
   'reset_all': 'सभी रीसेट करें',
   'apply_filters': 'फ़िल्टर लागू करें',
@@ -2833,6 +2835,7 @@ export const hi: Record<string, string> = {
   'all_queue': 'सभी कतार',
   'search_by_ticket_flat_or_title': 'अनुरोध #, फ्लैट या शीर्षक द्वारा खोजें...',
   'elevators': 'लिफ्ट',
+  'resident_feed': 'निवासी फ़ीड',
   'resident_feedback_suggestions': 'निवासी प्रतिक्रिया और सुझाव',
   'today_new': 'आज नया',
   'send_feedback_or_suggestions_directly_to_faci': 'सुविधा प्रबंधन को सीधे प्रतिक्रिया या सुझाव भेजें।',

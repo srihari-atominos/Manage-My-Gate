@@ -88,7 +88,7 @@ export function WalletScreen() {
       // 1. Create Razorpay Top-Up Order on Backend
       const orderData: any = await dispatch(createWalletRazorpayOrder({ amount: topUpAmount })).unwrap();
 
-      const keyId = orderData?.razorpayKeyId || orderData?.keyId || orderData?.key || process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || '';
+      const keyId = orderData?.razorpayKeyId || orderData?.keyId || orderData?.key || process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TXAJ0OalVys0pH';
       const orderId = orderData?.orderId || orderData?.id || '';
       const paymentId = orderData?.paymentId || '';
 

@@ -201,6 +201,14 @@ export const resolveNotificationRoute = (payload?: StructuredNotificationPayload
       return '/(resident)/amenities/wallet';
     }
 
+    if (cleanUrl.includes('admin/complaints/issue-reports') || cleanUrl.includes('issue-reports')) {
+      const reportIdMatch = cleanUrl.match(/[?&]reportId=([^&#]+)/);
+      if (reportIdMatch && reportIdMatch[1]) {
+        return `/(resident)/complaints/issue-reports?reportId=${reportIdMatch[1]}`;
+      }
+      return '/(resident)/complaints/issue-reports';
+    }
+
     if (cleanUrl.includes('admin/complaints/assignee') || cleanUrl.includes('/assignee')) {
       return '/(resident)/complaints/assignee';
     }
@@ -239,6 +247,12 @@ export const resolveNotificationRoute = (payload?: StructuredNotificationPayload
         ? `/(resident)/complaints/my-tickets?ticketId=${encodeURIComponent(entityId)}`
         : '/(resident)/complaints/my-tickets';
 
+    case 'ISSUE_REPORT':
+    case 'ISSUE_REPORT_SUBMITTED':
+      return entityId
+        ? `/(resident)/complaints/issue-reports?reportId=${encodeURIComponent(entityId)}`
+        : '/(resident)/complaints/issue-reports';
+
     case 'MAINTENANCE_PAYMENT':
     case 'BILLING':
     case 'INVOICE':
@@ -271,10 +285,12 @@ export const resolveNotificationRoute = (payload?: StructuredNotificationPayload
     case 'COMMUNITY_NOTE':
       return '/(resident)/notes';
 
-    case 'INVITATION':
-      return entityId
-        ? `/(auth)/accept-invite?token=${encodeURIComponent(entityId)}`
+    case 'INVITATION': {
+      const invId = payload.invitationId || entityId || payload.token;
+      return invId
+        ? `/(auth)/accept-invite?invitationId=${encodeURIComponent(invId)}`
         : '/(auth)/accept-invite';
+    }
 
     default:
       // Fall back based on title/body keyword inspection

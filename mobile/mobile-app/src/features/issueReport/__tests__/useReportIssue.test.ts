@@ -27,9 +27,9 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
 
   describe('1. Form Validation Invariants', () => {
     it('fails validation when reportType is missing', async () => {
-      const { result } = renderHook(() => useReportIssue());
+      const { result } = await renderHook(() => useReportIssue());
 
-      act(() => {
+      await act(async () => {
         result.current.setFeature('PAYMENTS');
         result.current.setTitle('Payment failed');
         result.current.setDescription('Transaction was deducted but receipt not shown');
@@ -46,9 +46,9 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
     });
 
     it('fails validation when feature module is missing', async () => {
-      const { result } = renderHook(() => useReportIssue());
+      const { result } = await renderHook(() => useReportIssue());
 
-      act(() => {
+      await act(async () => {
         result.current.setReportType('BUG');
         result.current.setTitle('Valid Title Here');
         result.current.setDescription('Valid description with more than ten chars');
@@ -65,9 +65,9 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
     });
 
     it('fails validation when title is shorter than 3 characters', async () => {
-      const { result } = renderHook(() => useReportIssue());
+      const { result } = await renderHook(() => useReportIssue());
 
-      act(() => {
+      await act(async () => {
         result.current.setReportType('BUG');
         result.current.setFeature('AMENITIES_BOOKING');
         result.current.setTitle('No');
@@ -85,9 +85,9 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
     });
 
     it('fails validation when description is shorter than 10 characters', async () => {
-      const { result } = renderHook(() => useReportIssue());
+      const { result } = await renderHook(() => useReportIssue());
 
-      act(() => {
+      await act(async () => {
         result.current.setReportType('FEATURE_REQUEST');
         result.current.setFeature('NOTIFICATIONS');
         result.current.setTitle('Dark mode push');
@@ -105,9 +105,9 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
     });
 
     it('rejects screenshots exceeding the 10 MB limit', async () => {
-      const { result } = renderHook(() => useReportIssue());
+      const { result } = await renderHook(() => useReportIssue());
 
-      act(() => {
+      await act(async () => {
         result.current.setScreenshot({
           uri: 'file:///oversized.png',
           name: 'huge.png',
@@ -128,9 +128,9 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
         createdAt: '2026-09-24T06:30:00.000Z',
       });
 
-      const { result } = renderHook(() => useReportIssue());
+      const { result } = await renderHook(() => useReportIssue());
 
-      act(() => {
+      await act(async () => {
         result.current.setReportType('BUG');
         result.current.setFeature('VISITORS_GATE_ACCESS');
         result.current.setTitle('Gate QR scanner delay');
@@ -162,9 +162,9 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
         },
       });
 
-      const { result } = renderHook(() => useReportIssue());
+      const { result } = await renderHook(() => useReportIssue());
 
-      act(() => {
+      await act(async () => {
         result.current.setReportType('OTHER');
         result.current.setFeature('COMMUNITY_DIRECTORY');
         result.current.setTitle('Directory search slow');
@@ -197,9 +197,9 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
 
       (issueReportService.submitReport as jest.Mock).mockReturnValue(deferredPromise);
 
-      const { result } = renderHook(() => useReportIssue());
+      const { result } = await renderHook(() => useReportIssue());
 
-      act(() => {
+      await act(async () => {
         result.current.setReportType('BUG');
         result.current.setFeature('PAYMENTS');
         result.current.setTitle('Duplicate check title');
@@ -208,7 +208,7 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
 
       // Fire first submit
       let p1: Promise<boolean>;
-      act(() => {
+      await act(async () => {
         p1 = result.current.handleSubmit();
       });
 
@@ -239,17 +239,17 @@ describe('useReportIssue Hook Unit & Validation Test Suite', () => {
   });
 
   describe('5. Form Reset', () => {
-    it('resets all form fields and submission state upon resetForm', () => {
-      const { result } = renderHook(() => useReportIssue());
+    it('resets all form fields and submission state upon resetForm', async () => {
+      const { result } = await renderHook(() => useReportIssue());
 
-      act(() => {
+      await act(async () => {
         result.current.setReportType('BUG');
         result.current.setFeature('AUTHENTICATION');
         result.current.setTitle('Login error');
         result.current.setDescription('Cannot log in with phone OTP');
       });
 
-      act(() => {
+      await act(async () => {
         result.current.resetForm();
       });
 

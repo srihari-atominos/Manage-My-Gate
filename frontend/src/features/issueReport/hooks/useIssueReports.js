@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import {
   loadPlatformReports,
   loadPlatformReportDetails,
+  loadCommunityReports,
+  loadCommunityReportDetails,
   setFilters,
   resetFilters,
   setSelectedReport,
@@ -83,6 +85,63 @@ export const useIssueReports = () => {
     [dispatch],
   )
 
+  const fetchCommunityReports = useCallback(
+    (params = {}) => {
+      dispatch(loadCommunityReports(params))
+    },
+    [dispatch],
+  )
+
+  const updateCommunityFilters = useCallback(
+    (newFilters = {}) => {
+      dispatch(setFilters(newFilters))
+      dispatch(loadCommunityReports({ page: 1, ...newFilters }))
+    },
+    [dispatch],
+  )
+
+  const changeCommunityPage = useCallback(
+    (newPage) => {
+      if (newPage >= 1 && newPage <= pagination.totalPages) {
+        dispatch(loadCommunityReports({ page: newPage }))
+      }
+    },
+    [dispatch, pagination.totalPages],
+  )
+
+  const changeCommunityLimit = useCallback(
+    (newLimit) => {
+      dispatch(loadCommunityReports({ page: 1, limit: newLimit }))
+    },
+    [dispatch],
+  )
+
+  const resetCommunityFilters = useCallback(() => {
+    dispatch(resetFilters())
+    dispatch(
+      loadCommunityReports({
+        page: 1,
+        search: '',
+        reportType: '',
+        feature: '',
+        startDate: '',
+        endDate: '',
+      }),
+    )
+  }, [dispatch])
+
+  const openCommunityReportDetails = useCallback(
+    (id, initialData = null) => {
+      if (initialData) {
+        dispatch(setSelectedReport(initialData))
+      }
+      if (id) {
+        dispatch(loadCommunityReportDetails(id))
+      }
+    },
+    [dispatch],
+  )
+
   const closeReportDetails = useCallback(() => {
     dispatch(clearSelectedReport())
   }, [dispatch])
@@ -106,6 +165,12 @@ export const useIssueReports = () => {
     changeLimit,
     resetAllFilters,
     openReportDetails,
+    fetchCommunityReports,
+    updateCommunityFilters,
+    changeCommunityPage,
+    changeCommunityLimit,
+    resetCommunityFilters,
+    openCommunityReportDetails,
     closeReportDetails,
     clearErrors,
   }

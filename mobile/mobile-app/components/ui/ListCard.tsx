@@ -121,8 +121,8 @@ const ListCard = React.forwardRef<View, ListCardProps>(
     const DynamicIcon = typeof leftIcon === 'string' ? (LucideIcons as Record<string, any>)[leftIcon] : leftIcon;
     const showDefaultChevron = showChevron && rightContent === undefined;
 
-    const renderCardHeader = () => (
-      <View className="flex-row items-center w-full">
+    const renderHeaderMainContent = () => (
+      <View className="flex-1 flex-row items-center shrink min-w-0">
         {/* Left Avatar / Image / Icon Container */}
         {leftAvatar ? (
           <Image
@@ -174,36 +174,64 @@ const ListCard = React.forwardRef<View, ListCardProps>(
           ) : null}
         </View>
 
-        {/* Right Action / Badges */}
-        <View className="items-end justify-center gap-1 ms-2 shrink-0">
-          {status ? (
-            <StatusBadge label={status.label} variant={status.variant} size="sm" />
-          ) : null}
-          {secondaryBadge ? (
-            <StatusBadge label={secondaryBadge.label} variant={secondaryBadge.variant} size="sm" />
-          ) : null}
-          {rightContent !== undefined ? (
-            rightContent
-          ) : showDefaultChevron ? (
-            <Icon as={ChevronRight} size={16} className={backgroundImage ? "text-white/70" : "text-muted-foreground"} />
-          ) : null}
-        </View>
+        {/* Badges */}
+        {(status || secondaryBadge) && (
+          <View className="items-end justify-center gap-1 ms-2 shrink-0">
+            {status ? (
+              <StatusBadge label={status.label} variant={status.variant} size="sm" />
+            ) : null}
+            {secondaryBadge ? (
+              <StatusBadge label={secondaryBadge.label} variant={secondaryBadge.variant} size="sm" />
+            ) : null}
+          </View>
+        )}
       </View>
     );
 
-    if (children) {
+    const renderCardHeaderRow = () => {
+      if (rightContent !== undefined) {
+        return (
+          <View className="flex-row items-center w-full">
+            {onPress ? (
+              <Pressable
+                onPress={onPress}
+                onLongPress={onLongPress}
+                className="flex-1 flex-row items-center shrink min-w-0"
+                accessibilityRole="button"
+                accessibilityLabel={props.accessibilityLabel || title}
+              >
+                {renderHeaderMainContent()}
+              </Pressable>
+            ) : (
+              renderHeaderMainContent()
+            )}
+            <View className="items-end justify-center ms-2 shrink-0">
+              {rightContent}
+            </View>
+          </View>
+        );
+      }
+
+      return (
+        <View className="flex-row items-center w-full">
+          {renderHeaderMainContent()}
+          {showDefaultChevron ? (
+            <View className="items-end justify-center ms-2 shrink-0">
+              <Icon as={ChevronRight} size={16} className={backgroundImage ? "text-white/70" : "text-muted-foreground"} />
+            </View>
+          ) : null}
+        </View>
+      );
+    };
+
+    if (children || rightContent !== undefined) {
       return (
         <View
           ref={ref}
           className={cn("bg-card rounded-2xl border border-border/70 mb-3 p-3.5 overflow-hidden shadow-2xs", className)}
           style={style as any}
         >
-          <Pressable
-            onPress={onPress}
-            onLongPress={onLongPress}
-          >
-            {renderCardHeader()}
-          </Pressable>
+          {renderCardHeaderRow()}
           {typeof children === 'function' ? (children as any)({ pressed: false }) : children}
         </View>
       );
@@ -216,7 +244,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         onLongPress={onLongPress}
         className={cn(listCardVariants(), 'overflow-hidden', className)}
         style={style}
-        accessibilityRole={rightContent !== undefined ? undefined : 'button'}
+        accessibilityRole="button"
         {...props}
       >
         {/* Background Image & Overlay */}
@@ -231,7 +259,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
           </>
         ) : null}
 
-        {renderCardHeader()}
+        {renderCardHeaderRow()}
       </Pressable>
     );
   }

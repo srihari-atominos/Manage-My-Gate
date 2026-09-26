@@ -9,6 +9,7 @@ import {
 } from './issueReport.validator.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
+import { authorizeRoles } from '../../middlewares/rbac.middleware.js';
 
 // Primary router mounted at /support/reports
 const router = Router();
@@ -26,6 +27,34 @@ router.post(
   imageSignatureValidator,
   validate(createReportRules),
   issueReportController.submitReport.bind(issueReportController)
+);
+
+/**
+ * @route   GET /api/v1/support/reports/community
+ * @desc    List issue reports for the authenticated tenant's Community Admin
+ * @access  Private (Authenticated Active User + Tenant Context + Community Admin Role)
+ */
+router.get(
+  '/community',
+  isAuthenticated,
+  tenantContext(),
+  authorizeRoles('Admin', 'Community Admin', 'Facility Manager', 'Super Admin', 'Platform Admin', 'Platform Super Admin'),
+  validate(queryPlatformReportsRules),
+  issueReportController.getCommunityReports.bind(issueReportController)
+);
+
+/**
+ * @route   GET /api/v1/support/reports/community/:id
+ * @desc    Get detailed report view by MongoDB ID (Tenant Scoped)
+ * @access  Private (Authenticated Active User + Tenant Context + Community Admin Role)
+ */
+router.get(
+  '/community/:id',
+  isAuthenticated,
+  tenantContext(),
+  authorizeRoles('Admin', 'Community Admin', 'Facility Manager', 'Super Admin', 'Platform Admin', 'Platform Super Admin'),
+  validate(getReportByIdRules),
+  issueReportController.getCommunityReportById.bind(issueReportController)
 );
 
 // Platform Admin router mounted at /platform/reports

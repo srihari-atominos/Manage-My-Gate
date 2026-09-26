@@ -1,7 +1,6 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import { ImageCarousel } from '@/components/common/ImageCarousel';
-import apiClient from '../../../services/apiClient';
+import getImageUrl from '@/src/utils/imageUrl';
 
 /**
  * Normalizes and resolves image URLs to full network paths.
@@ -17,37 +16,7 @@ export function resolveImageUrl(rawUrl) {
     return '';
   }
 
-  // Normalize backslashes to forward slashes
-  uri = uri.replace(/\\/g, '/');
-
-  // If already absolute HTTP(S) or base64 data URI, return as-is
-  if (uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('data:')) {
-    return uri;
-  }
-
-  // Resolve relative backend paths
-  if (uri.startsWith('/') || uri.startsWith('public/') || uri.startsWith('uploads/')) {
-    if (!uri.startsWith('/')) uri = '/' + uri;
-
-    let apiBaseURL = '';
-    if (apiClient && apiClient.defaults && apiClient.defaults.baseURL) {
-      apiBaseURL = apiClient.defaults.baseURL;
-    } else if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) {
-      apiBaseURL = process.env.EXPO_PUBLIC_API_URL;
-    }
-
-    if (apiBaseURL) {
-      const host = apiBaseURL.replace(/\/api(\/v\d+)?\/?$/, '');
-      return `${host}${uri}`;
-    }
-
-    if (Platform.OS === 'android') {
-      return `http://10.0.2.2:5002${uri}`;
-    }
-    return `http://localhost:5002${uri}`;
-  }
-
-  return uri;
+  return getImageUrl(uri);
 }
 
 /**

@@ -92,6 +92,9 @@ const ComplaintManagement = React.lazy(
 )
 const StaffAndVendor = React.lazy(() => import('./features/complaints/views/StaffAndVendor'))
 const AssigneeView = React.lazy(() => import('./features/complaints/views/Assignee'))
+const CommunityIssueReportsView = React.lazy(
+  () => import('./features/issueReport/views/CommunityIssueReportsView'),
+)
 
 // Visitor Management Views
 const ResidentVisitorManagementView = React.lazy(
@@ -387,6 +390,12 @@ export const routes = [
     name: 'Assignee',
     element: AssigneeView,
     requiredPermission: 'complaints:assignee',
+  },
+  {
+    path: '/admin/complaints/issue-reports',
+    name: 'Issue Reports',
+    element: CommunityIssueReportsView,
+    requiredPermission: 'complaints:complaint_management',
   },
 
   // Financial Suite Routes

@@ -148,7 +148,7 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
             endTime={wizard.endTime}
             headcount={wizard.headcount}
             quantity={wizard.quantity}
-            pricingSnapshot={wizard.pricingSnapshot}
+            pricingSnapshot={wizard.pricingSnapshot ?? wizard.activeHold?.pricingSnapshot ?? null}
             calculatingPricing={wizard.calculatingPricing}
             notes={wizard.bookingNotes}
             error={wizard.stepError}
@@ -160,8 +160,8 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
             activeHold={wizard.activeHold}
             holdRemainingSeconds={wizard.holdRemainingSeconds}
             isHoldExpired={wizard.isHoldExpired}
-            totalAmount={wizard.pricingSnapshot?.totalAmount || 0}
-            currency={wizard.pricingSnapshot?.currency || 'INR'}
+            totalAmount={wizard.pricingSnapshot?.totalAmount ?? wizard.activeHold?.pricingSnapshot?.totalAmount ?? 0}
+            currency={wizard.pricingSnapshot?.currency ?? wizard.activeHold?.pricingSnapshot?.currency ?? 'INR'}
             paymentMethod={wizard.paymentMethod}
             onPaymentMethodChange={wizard.setPaymentMethod}
             balance={wizard.balance}
@@ -194,8 +194,8 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
           canGoBack={!wizard.isFirstStep}
           isLastStep={wizard.isLastStep}
           isHoldStep={isReviewStep}
-          priceTotal={wizard.pricingSnapshot?.totalAmount}
-          currency={wizard.pricingSnapshot?.currency || 'INR'}
+          priceTotal={wizard.pricingSnapshot?.totalAmount ?? wizard.activeHold?.pricingSnapshot?.totalAmount}
+          currency={wizard.pricingSnapshot?.currency ?? wizard.activeHold?.pricingSnapshot?.currency ?? 'INR'}
           loading={wizard.checkingAvailability || wizard.calculatingPricing || wizard.v2Holding}
           disabled={
             (wizard.currentStep.key === 'datetime' && wizard.availabilityResult?.available === false) ||
@@ -228,11 +228,11 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
       <RazorpayCheckoutModal
         visible={wizard.isRazorpayOpen}
         options={{
-          razorpayKeyId: 'rzp_test_mockkey',
+          razorpayKeyId: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TXAJ0OalVys0pH',
           orderId: `order_amenity_${Date.now()}`,
           paymentId: `pay_rec_${Date.now()}`,
-          amount: wizard.pricingSnapshot?.totalAmount || 0,
-          currency: wizard.pricingSnapshot?.currency || 'INR',
+          amount: wizard.pricingSnapshot?.totalAmount ?? wizard.activeHold?.pricingSnapshot?.totalAmount ?? 0,
+          currency: wizard.pricingSnapshot?.currency ?? wizard.activeHold?.pricingSnapshot?.currency ?? 'INR',
           description: `Amenity Booking: ${facility.name}`,
         }}
         onSuccess={wizard.handleRazorpaySuccess}

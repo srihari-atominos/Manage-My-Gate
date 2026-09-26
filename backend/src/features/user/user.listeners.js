@@ -69,6 +69,10 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
 
       if (targetUser && isExistingAccount) {
         const notificationService = (await import('../notification/notification.service.js')).default;
+        const tokenService = (await import('../token/token.services.js')).default;
+        const tokenDoc = await tokenService.getInvitationToken(invitationToken, 'INVITATION').catch(() => null);
+        const invitationId = tokenDoc && tokenDoc._id ? tokenDoc._id.toString() : null;
+
         const detailStr = [villaLabel, roleName].filter(Boolean).join(' • ');
         const descStr = detailStr ? ` (${detailStr})` : '';
         await notificationService.createNotification({
@@ -80,8 +84,8 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
           actionUrl: baseInviteLink,
           type: 'INVITATION',
           metadata: {
-            token: invitationToken,
-            invitationToken,
+            invitationId,
+            entityId: invitationId,
             orgId: orgId ? orgId.toString() : null,
             communityName,
             roleName: roleName || '',

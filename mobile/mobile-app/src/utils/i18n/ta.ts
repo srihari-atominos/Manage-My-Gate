@@ -1,4 +1,5 @@
 export const ta: Record<string, string> = {
+  'press_back_again_to_exit': 'வெளியேற மீண்டும் பின்னால் அழுத்தவும்',
   'accept': 'ஏற்றுக்கொள்',
   'accept_and_join': 'ஏற்றுக்கொண்டு இணையுங்கள்',
   'accepted': 'ஏற்றுக்கொள்ளப்பட்டது',
@@ -1688,6 +1689,7 @@ export const ta: Record<string, string> = {
   'front_desk_fast_checkout': 'முன்பக்க மேசை விரைவு செக்-அவுட்',
   'invoice_qr_pass': 'விலைப்பட்டியல் QR அனுமதிச்சீட்டு',
   'date_range': 'தேதி வரம்பு',
+  'building': 'கட்டிடம்',
   'block_building': 'பிளாக் / கட்டிடம்',
   'reset_all': 'அனைத்தையும் மீட்டமை',
   'apply_filters': 'வடிகட்டிகளைப் பயன்படுத்துக',
@@ -2833,6 +2835,7 @@ export const ta: Record<string, string> = {
   'all_queue': 'அனைத்து வரிசை',
   'search_by_ticket_flat_or_title': 'டிக்கெட் எண், பிளாட் அல்லது தலைப்பு மூலம் தேடுங்கள்...',
   'elevators': 'மின்தூக்கிகள்',
+  'resident_feed': 'குடியிருப்பாளர் ஊட்டம்',
   'resident_feedback_suggestions': 'குடியிருப்பாளர் கருத்து & பரிந்துரைகள்',
   'today_new': 'இன்று புதியது',
   'send_feedback_or_suggestions_directly_to_faci': 'வசதி நிர்வாகத்திற்கு நேரடியாக கருத்து அல்லது பரிந்துரைகளை அனுப்பவும்.',

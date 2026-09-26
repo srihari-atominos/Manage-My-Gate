@@ -94,48 +94,48 @@ export const createReportRules = [
 
 export const queryPlatformReportsRules = [
   query('page')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isInt({ min: 1 })
     .withMessage('Page must be a positive integer >= 1.'),
 
   query('limit')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isInt({ min: 1, max: 100 })
     .withMessage('Limit must be an integer between 1 and 100.'),
 
   query('reportType')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(Object.values(REPORT_TYPES))
     .withMessage(`Invalid reportType filter. Allowed values: ${Object.values(REPORT_TYPES).join(', ')}`),
 
   query('feature')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(Object.values(REPORT_MODULES))
     .withMessage(`Invalid feature filter. Allowed values: ${Object.values(REPORT_MODULES).join(', ')}`),
 
   query('platform')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(SUPPORTED_PLATFORMS)
     .withMessage(`Invalid platform filter. Allowed values: ${SUPPORTED_PLATFORMS.join(', ')}`),
 
   query('organisationId')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isMongoId()
     .withMessage('organisationId must be a valid Mongo ID.'),
 
   query('search')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .isLength({ max: 100 })
     .withMessage('Search term cannot exceed 100 characters.'),
 
   query('startDate')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isISO8601()
     .withMessage('startDate must be a valid ISO 8601 date.'),
 
   query('endDate')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isISO8601()
     .withMessage('endDate must be a valid ISO 8601 date.'),
 ];

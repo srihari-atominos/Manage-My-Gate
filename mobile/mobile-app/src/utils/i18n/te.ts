@@ -1,4 +1,5 @@
 export const te: Record<string, string> = {
+  'press_back_again_to_exit': 'నిష్క్రమించడానికి మళ్లీ వెనుకకు నొక్కండి',
   'accept': 'ఆమోదించండి',
   'accept_and_join': 'ఆమోదించండి మరియు చేరండి',
   'accepted': 'ఆమోదించబడింది',
@@ -1688,6 +1689,7 @@ export const te: Record<string, string> = {
   'front_desk_fast_checkout': 'ఫ్రంట్-డెస్క్ ఫాస్ట్ చెక్-అవుట్',
   'invoice_qr_pass': 'ఇన్‌వాయిస్ QR పాస్',
   'date_range': 'తేదీ పరిధి',
+  'building': 'భవనం',
   'block_building': 'బ్లాక్ / భవనం',
   'reset_all': 'అన్నీ రీసెట్ చేయండి',
   'apply_filters': 'ఫిల్టర్‌లను వర్తింపజేయండి',
@@ -2833,6 +2835,7 @@ export const te: Record<string, string> = {
   'all_queue': 'అన్ని క్యూలు',
   'search_by_ticket_flat_or_title': 'టికెట్ #, ఫ్లాట్ లేదా శీర్షిక ద్వారా శోధించండి...',
   'elevators': 'లిఫ్ట్‌లు',
+  'resident_feed': 'రెసిడెంట్ ఫీడ్',
   'resident_feedback_suggestions': 'నివాసితుల అభిప్రాయం & సూచనలు',
   'today_new': 'ఈ రోజు కొత్తది',
   'send_feedback_or_suggestions_directly_to_faci': 'సౌకర్య నిర్వహణకు నేరుగా అభిప్రాయాన్ని లేదా సూచనలను పంపండి.',

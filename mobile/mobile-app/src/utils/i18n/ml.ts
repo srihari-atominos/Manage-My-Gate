@@ -1,4 +1,5 @@
 export const ml: Record<string, string> = {
+  'press_back_again_to_exit': 'പുറത്തുകടക്കാൻ വീണ്ടും തിരികെ അമർത്തുക',
   'accept': 'സ്വീകരിക്കുക',
   'accept_and_join': 'സ്വീകരിച്ച് ചേരുക',
   'accepted': 'സ്വീകരിച്ചു',
@@ -1688,6 +1689,7 @@ export const ml: Record<string, string> = {
   'front_desk_fast_checkout': 'ഫ്രണ്ട്-ഡെസ്ക് വേഗത്തിലുള്ള ചെക്ക്-ഔട്ട്',
   'invoice_qr_pass': 'ഇൻവോയ്സ് QR പാസ്',
   'date_range': 'തീയതി പരിധി',
+  'building': 'കെട്ടിടം',
   'block_building': 'ബ്ലോക്ക് / കെട്ടിടം',
   'reset_all': 'എല്ലാം പുനഃക്രമീകരിക്കുക',
   'apply_filters': 'ഫിൽട്ടറുകൾ പ്രയോഗിക്കുക',
@@ -2833,6 +2835,7 @@ export const ml: Record<string, string> = {
   'all_queue': 'എല്ലാ ക്യൂവും',
   'search_by_ticket_flat_or_title': 'ടിക്കറ്റ് #, ഫ്ലാറ്റ് അല്ലെങ്കിൽ ശീർഷകം വഴി തിരയുക...',
   'elevators': 'എലിവേറ്ററുകൾ',
+  'resident_feed': 'റെസിഡന്റ് ഫീഡ്',
   'resident_feedback_suggestions': 'റസിഡന്റ് ഫീഡ്‌ബാക്കും നിർദ്ദേശങ്ങളും',
   'today_new': 'ഇന്ന് പുതിയത്',
   'send_feedback_or_suggestions_directly_to_faci': 'ഫെസിലിറ്റി മാനേജ്‌മെന്റിന് നേരിട്ട് ഫീഡ്‌ബാക്കോ നിർദ്ദേശങ്ങളോ അയയ്ക്കുക.',

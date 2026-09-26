@@ -29,7 +29,36 @@ export const fetchPlatformReportById = async (id) => {
   return await apiClient.get(`/platform/reports/${id}`)
 }
 
+/**
+ * Community Admin API service to query and view tenant-scoped issue reports.
+ */
+export const fetchCommunityReports = async ({
+  page = 1,
+  limit = 20,
+  search = '',
+  reportType = '',
+  feature = '',
+  startDate = '',
+  endDate = '',
+} = {}) => {
+  const params = { page, limit }
+
+  if (search && search.trim()) params.search = search.trim()
+  if (reportType) params.reportType = reportType
+  if (feature) params.feature = feature
+  if (startDate) params.startDate = startDate
+  if (endDate) params.endDate = endDate
+
+  return await apiClient.get('/support/reports/community', { params })
+}
+
+export const fetchCommunityReportById = async (id) => {
+  return await apiClient.get(`/support/reports/community/${id}`)
+}
+
 export default {
   fetchPlatformReports,
   fetchPlatformReportById,
+  fetchCommunityReports,
+  fetchCommunityReportById,
 }

@@ -35,7 +35,7 @@ type AcceptInviteFormValues = yup.InferType<typeof acceptInviteSchema>;
 
 export default function AcceptInviteScreen() {
   const { isAuthenticated, user, clearStatus, acceptInvite } = useAuth();
-  const searchParams = useLocalSearchParams<{ token?: string; code?: string; email?: string; action?: string; mode?: string }>();
+  const searchParams = useLocalSearchParams<{ token?: string; invitationId?: string; code?: string; email?: string; action?: string; mode?: string }>();
   const [submitting, setSubmitting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -49,16 +49,17 @@ export default function AcceptInviteScreen() {
   const [isInvalidTokenModalVisible, setIsInvalidTokenModalVisible] = useState(false);
   const [alreadyRegisteredEmail, setAlreadyRegisteredEmail] = useState('');
 
-  // Extract token from route searchParams, query params, or URL path
+  // Extract token or invitationId from route searchParams, query params, or URL path
   const getTokenFromContext = useCallback(() => {
     if (searchParams.token) return searchParams.token;
+    if (searchParams.invitationId) return searchParams.invitationId;
     if (searchParams.code) return searchParams.code;
     if (typeof window !== 'undefined' && window.location?.href) {
-      const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app\/|web\/)?([a-f0-9]{32,64}|[^/?&#]+)/i);
+      const match = window.location.href.match(/[\/?&](?:token|code|invitationId)=([^&#]+)|\/invite\/(?:app\/|web\/)?([a-f0-9]{32,64}|[^/?&#]+)/i);
       if (match) return match[1] || match[2];
     }
     return '';
-  }, [searchParams.token, searchParams.code]);
+  }, [searchParams.token, searchParams.invitationId, searchParams.code]);
 
   const getActionFromContext = useCallback(() => {
     if (searchParams.action) return searchParams.action;
@@ -204,34 +205,46 @@ export default function AcceptInviteScreen() {
         const res: any = await apiClient.get(`/auth/validate-invite?${query.toString()}`);
         const data = res?.data?.data || res?.data || res;
 
-        if (isMounted && data && data.valid) {
+        if (isMounted && data) {
           setInviteMeta(data);
-          setApiError(null);
+          if (data.valid) {
+            setApiError(null);
+            if (data.membershipStatus === 'Rejected' || data.invitationStatus === 'REJECTED') {
+              setIsRejectedState(true);
+            } else if (data.isExisting || data.isAlreadyRegistered) {
+              const userEmail = data.email || emailToValidate;
+              setIsAlreadyRegistered(true);
+              setAlreadyRegisteredEmail(userEmail);
 
-          if (data.membershipStatus === 'Rejected' || data.invitationStatus === 'REJECTED') {
-            setIsRejectedState(true);
-          } else if (data.isExisting || data.isAlreadyRegistered) {
-            const userEmail = data.email || emailToValidate;
-            setIsAlreadyRegistered(true);
-            setAlreadyRegisteredEmail(userEmail);
+              if (!isAuthenticated) {
+                setIsAlreadyRegisteredModalVisible(true);
 
-            // For unauthenticated users, prompt them to sign in.
-            // For authenticated users, let them review community details and Accept/Reject below.
-            if (!isAuthenticated) {
-              setIsAlreadyRegisteredModalVisible(true);
-
-              if (Platform.OS !== 'web') {
-                Alert.alert(
-                  'Already Registered',
-                  'Your account is already active and your password has been set. Please sign in to access your community workspace.',
-                  [
-                    {
-                      text: 'Sign In',
-                      onPress: () => handleNavigateToLogin(userEmail),
-                    },
-                  ]
-                );
+                if (Platform.OS !== 'web') {
+                  Alert.alert(
+                    'Already Registered',
+                    'Your account is already active and your password has been set. Please sign in to access your community workspace.',
+                    [
+                      {
+                        text: 'Sign In',
+                        onPress: () => handleNavigateToLogin(userEmail),
+                      },
+                    ]
+                  );
+                }
               }
+            }
+          } else {
+            // Handle non-valid status responses returned from backend state matrix
+            const invStatus = (data.invitationStatus || data.membershipStatus || '').toUpperCase();
+            if (invStatus === 'REJECTED') {
+              setIsRejectedState(true);
+            } else if (invStatus === 'ACCEPTED') {
+              const userEmail = data.email || emailToValidate;
+              setIsAlreadyRegistered(true);
+              setAlreadyRegisteredEmail(userEmail);
+            } else {
+              setIsInvalidTokenModalVisible(true);
+              setApiError(data.message || 'This invitation link is invalid or has expired.');
             }
           }
         }

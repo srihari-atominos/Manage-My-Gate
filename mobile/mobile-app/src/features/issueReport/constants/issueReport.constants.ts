@@ -41,6 +41,12 @@ export const REPORT_TYPE_OPTIONS: ReportTypeOption[] = [
   },
 ];
 
+export const REPORT_TYPES: Record<ReportType, { label: string; color: 'danger' | 'info' | 'neutral' }> = {
+  BUG: { label: 'Bug / Problem', color: 'danger' },
+  FEATURE_REQUEST: { label: 'Feature Request', color: 'info' },
+  OTHER: { label: 'Other', color: 'neutral' },
+};
+
 export const FEATURE_MODULE_OPTIONS: DropdownOption[] = [
   { label: 'Amenities & Booking', value: 'AMENITIES_BOOKING' },
   { label: 'Complaints & Maintenance', value: 'COMPLAINTS_MAINTENANCE' },
@@ -52,6 +58,18 @@ export const FEATURE_MODULE_OPTIONS: DropdownOption[] = [
   { label: 'Authentication', value: 'AUTHENTICATION' },
   { label: 'Other', value: 'OTHER' },
 ];
+
+export const FEATURE_MODULES: Record<FeatureModule, string> = {
+  AMENITIES_BOOKING: 'Amenities & Booking',
+  COMPLAINTS_MAINTENANCE: 'Complaints & Maintenance',
+  VISITORS_GATE_ACCESS: 'Visitors / Gate Access',
+  PAYMENTS: 'Payments',
+  COMMUNITY_DIRECTORY: 'Community Directory',
+  NOTIFICATIONS: 'Notifications',
+  PROFILE_ACCOUNT: 'Profile / Account',
+  AUTHENTICATION: 'Authentication',
+  OTHER: 'Other',
+};
 
 export const ISSUE_REPORT_CONSTRAINTS = {
   TITLE_MIN_LENGTH: 3,

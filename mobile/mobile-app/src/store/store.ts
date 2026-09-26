@@ -22,6 +22,7 @@ import communityNoteReducer from '../features/directory/store/communityNoteSlice
 import directoryMessagingReducer from '../features/directory/store/directoryMessagingSlice';
 import organizationReducer from '../features/organization/store/organizationSlice';
 import communityEngagementReducer from '../features/communityEngagement/store/communityEngagementSlice';
+import issueReportReducer from '../features/issueReport/store/issueReportSlice';
 
 import { injectStore } from '../services/apiClient';
 
@@ -54,6 +55,7 @@ export const store = configureStore({
     directoryMessaging: directoryMessagingReducer,
     organization: organizationReducer,
     communityEngagement: communityEngagementReducer,
+    issueReport: issueReportReducer,
     visitor: visitorReducer,
     staff: staffReducer,
     automation: automationReducer,

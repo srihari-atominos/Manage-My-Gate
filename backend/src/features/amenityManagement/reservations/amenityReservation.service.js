@@ -493,10 +493,24 @@ export class AmenityReservationService {
       throw new HttpError(400, 'Cannot cancel a rejected reservation');
     }
 
-    // 2. Determine updated payment status
+    // 2. Determine updated payment status & execute instant refund
     let newPaymentStatus = reservation.paymentStatus;
-    if (reservation.paymentStatus === 'PAID') {
-      newPaymentStatus = 'REFUND_PENDING';
+    if (reservation.paymentStatus === 'PAID' || reservation.paymentStatus === 'REFUND_PENDING') {
+      if (reservation.totalAmount > 0) {
+        try {
+          const walletService = (await import('../../wallet/wallet.service.js')).default;
+          await walletService.addMoney(
+            reservation.residentId,
+            orgId,
+            reservation.totalAmount,
+            'WALLET',
+            `Instant Refund for Cancelled Reservation #${reservation.reservationNumber || reservation._id}`
+          );
+        } catch (err) {
+          console.error('[AmenityReservationService] Failed wallet refund during cancellation:', err?.message || err);
+        }
+      }
+      newPaymentStatus = 'REFUNDED';
     } else if (reservation.paymentStatus === 'NOT_APPLICABLE') {
       newPaymentStatus = 'NOT_REQUIRED';
     }
@@ -758,8 +772,22 @@ export class AmenityReservationService {
 
     if (action === 'REJECTED') {
       let newPaymentStatus = reservation.paymentStatus;
-      if (reservation.paymentStatus === 'PAID') {
-        newPaymentStatus = 'REFUND_PENDING';
+      if (reservation.paymentStatus === 'PAID' || reservation.paymentStatus === 'REFUND_PENDING') {
+        if (reservation.totalAmount > 0) {
+          try {
+            const walletService = (await import('../../wallet/wallet.service.js')).default;
+            await walletService.addMoney(
+              reservation.residentId,
+              orgId,
+              reservation.totalAmount,
+              'WALLET',
+              `Instant Refund for Rejected Reservation #${reservation.reservationNumber || reservation._id}`
+            );
+          } catch (err) {
+            console.error('[AmenityReservationService] Failed wallet refund on rejection:', err?.message || err);
+          }
+        }
+        newPaymentStatus = 'REFUNDED';
       }
 
       await amenityReservationRepository.appendApprovalHistory(
@@ -1169,13 +1197,44 @@ export class AmenityReservationService {
     throw new HttpError(400, 'Invalid payment webhook payload: holdId or reservationId required');
   }
 
+  async _autoSettlePendingRefund(reservation, session) {
+    if (!reservation || reservation.paymentStatus !== 'REFUND_PENDING') {
+      return reservation;
+    }
+    try {
+      if (reservation.totalAmount > 0 && reservation.residentId) {
+        const walletService = (await import('../../wallet/wallet.service.js')).default;
+        await walletService.addMoney(
+          reservation.residentId,
+          reservation.orgId,
+          reservation.totalAmount,
+          'WALLET',
+          `Instant Refund for Cancelled Reservation #${reservation.reservationNumber || reservation._id}`
+        );
+      }
+      const updated = await amenityReservationRepository.updateStateDimensions(
+        reservation._id,
+        { paymentStatus: 'REFUNDED' },
+        session
+      );
+      return updated || reservation;
+    } catch (err) {
+      console.error('[AmenityReservationService] Auto refund error:', err?.message || err);
+      return reservation;
+    }
+  }
+
   /**
    * Retrieves reservation by ID.
    * @param {string|mongoose.Types.ObjectId} reservationId
    * @param {mongoose.ClientSession} [session]
    */
   async getReservationById(reservationId, session) {
-    return amenityReservationRepository.findById(reservationId, session);
+    let reservation = await amenityReservationRepository.findById(reservationId, session);
+    if (reservation && reservation.paymentStatus === 'REFUND_PENDING') {
+      reservation = await this._autoSettlePendingRefund(reservation, session);
+    }
+    return reservation;
   }
 
   /**
@@ -1185,7 +1244,11 @@ export class AmenityReservationService {
    * @param {mongoose.ClientSession} [session]
    */
   async getReservationByNumber(orgId, reservationNumber, session) {
-    return amenityReservationRepository.findByReservationNumber(orgId, reservationNumber, session);
+    let reservation = await amenityReservationRepository.findByReservationNumber(orgId, reservationNumber, session);
+    if (reservation && reservation.paymentStatus === 'REFUND_PENDING') {
+      reservation = await this._autoSettlePendingRefund(reservation, session);
+    }
+    return reservation;
   }
 
   /**

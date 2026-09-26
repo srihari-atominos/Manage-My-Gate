@@ -71,6 +71,15 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
       colorBg: 'bg-purple-500/10',
       colorIcon: '#a855f7',
     },
+    {
+      id: 'community_issue_reports',
+      name: 'Issue Reports',
+      keywords: ['issue', 'reports', 'resident', 'bug', 'inquiry', 'report an issue'],
+      route: '/(resident)/complaints/issue-reports',
+      iconName: 'AlertCircle',
+      colorBg: 'bg-rose-500/10',
+      colorIcon: '#f43f5e',
+    },
   ];
 
   const filteredItems = navItems.filter((item) => {

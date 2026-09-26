@@ -54,6 +54,32 @@ export class IssueReportController {
       next(error);
     }
   }
+
+  /**
+   * Handle Community Admin report listing (GET /api/v1/support/reports/community)
+   */
+  async getCommunityReports(req, res, next) {
+    try {
+      const orgId = req.tenant?.orgId || req.orgId || req.headers['x-organization-id'] || req.user?.orgId;
+      const result = await issueReportService.getCommunityReports(orgId, req.query);
+      res.success(result, 'Community reports retrieved successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Handle Community Admin single report retrieval (GET /api/v1/support/reports/community/:id)
+   */
+  async getCommunityReportById(req, res, next) {
+    try {
+      const orgId = req.tenant?.orgId || req.orgId || req.headers['x-organization-id'] || req.user?.orgId;
+      const report = await issueReportService.getCommunityReportById(req.params.id, orgId);
+      res.success(report, 'Community report retrieved successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const issueReportController = new IssueReportController();

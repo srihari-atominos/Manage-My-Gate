@@ -40,6 +40,43 @@ export const loadPlatformReportDetails = createAsyncThunk(
   },
 )
 
+export const loadCommunityReports = createAsyncThunk(
+  'issueReport/loadCommunityReports',
+  async (queryParams = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState().issueReport
+      const mergedParams = {
+        page: queryParams.page || state.pagination.currentPage || 1,
+        limit: queryParams.limit || state.pagination.limit || DEFAULT_PAGE_LIMIT,
+        search: queryParams.search !== undefined ? queryParams.search : state.filters.search,
+        reportType: queryParams.reportType !== undefined ? queryParams.reportType : state.filters.reportType,
+        feature: queryParams.feature !== undefined ? queryParams.feature : state.filters.feature,
+        startDate: queryParams.startDate !== undefined ? queryParams.startDate : state.filters.startDate,
+        endDate: queryParams.endDate !== undefined ? queryParams.endDate : state.filters.endDate,
+      }
+
+      const response = await issueReportApi.fetchCommunityReports(mergedParams)
+      return response.data
+    } catch (error) {
+      const msg = error.response?.data?.message || error.message || 'Failed to fetch community issue reports'
+      return rejectWithValue(msg)
+    }
+  },
+)
+
+export const loadCommunityReportDetails = createAsyncThunk(
+  'issueReport/loadCommunityReportDetails',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await issueReportApi.fetchCommunityReportById(id)
+      return response?.data !== undefined ? response.data : response
+    } catch (error) {
+      const msg = error.response?.data?.message || error.message || 'This issue report could not be found or is no longer available.'
+      return rejectWithValue(msg)
+    }
+  },
+)
+
 const initialFilters = {
   search: '',
   reportType: '',
@@ -148,6 +185,64 @@ export const issueReportSlice = createSlice({
       .addCase(loadPlatformReportDetails.rejected, (state, action) => {
         state.detailsLoading = false
         state.detailsError = action.payload || 'Failed to load report details'
+      })
+
+      // Community Reports List
+      .addCase(loadCommunityReports.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(loadCommunityReports.fulfilled, (state, action) => {
+        state.loading = false
+        const payloadData = action.payload?.data || action.payload || {}
+        state.list = payloadData.reports || []
+
+        const totalRecords =
+          payloadData.total !== undefined
+            ? payloadData.total
+            : (payloadData.pagination?.totalRecords ?? 0)
+        const currentPage =
+          payloadData.page !== undefined
+            ? payloadData.page
+            : (payloadData.pagination?.currentPage ?? 1)
+        const limit =
+          payloadData.limit !== undefined
+            ? payloadData.limit
+            : (payloadData.pagination?.limit ?? DEFAULT_PAGE_LIMIT)
+        const totalPages =
+          payloadData.totalPages !== undefined
+            ? payloadData.totalPages
+            : (payloadData.pagination?.totalPages ?? (Math.ceil(totalRecords / limit) || 1))
+
+        state.pagination = {
+          currentPage,
+          totalPages,
+          totalRecords,
+          limit,
+          hasNextPage: currentPage < totalPages,
+          hasPrevPage: currentPage > 1,
+        }
+      })
+      .addCase(loadCommunityReports.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Failed to load community issue reports'
+      })
+
+      // Community Report Details
+      .addCase(loadCommunityReportDetails.pending, (state) => {
+        state.detailsLoading = true
+        state.detailsError = null
+      })
+      .addCase(loadCommunityReportDetails.fulfilled, (state, action) => {
+        state.detailsLoading = false
+        const payloadData = action.payload?.data || action.payload || null
+        if (payloadData && (payloadData._id || payloadData.id || payloadData.reportNumber || payloadData.title)) {
+          state.selectedReport = payloadData
+        }
+      })
+      .addCase(loadCommunityReportDetails.rejected, (state, action) => {
+        state.detailsLoading = false
+        state.detailsError = action.payload || 'This issue report could not be found or is no longer available.'
       })
   },
 })

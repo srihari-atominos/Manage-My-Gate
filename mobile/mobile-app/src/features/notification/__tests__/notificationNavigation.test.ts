@@ -107,14 +107,22 @@ describe('Notification Deep-Linking & Route Resolution', () => {
       expect(resolveNotificationRoute(payload)).toBe('/(resident)/directory/conversation/conv-abc-123');
     });
 
-    it('routes INVITATION with token to accept invite route', () => {
-      const payload = {
-        notificationId: 'notif-11',
+    it('routes INVITATION with invitationId or entityId to accept invite route', () => {
+      const payloadWithInvId = {
+        notificationId: 'notif-11a',
         type: 'INVITATION',
-        entityId: 'tok-secret-xyz',
+        invitationId: '650f1a90c1234567890abcde',
         title: 'Invitation to Green Meadows',
       };
-      expect(resolveNotificationRoute(payload)).toBe('/(auth)/accept-invite?token=tok-secret-xyz');
+      expect(resolveNotificationRoute(payloadWithInvId)).toBe('/(auth)/accept-invite?invitationId=650f1a90c1234567890abcde');
+
+      const payloadWithEntityId = {
+        notificationId: 'notif-11b',
+        type: 'INVITATION',
+        entityId: 'inv-entity-7788',
+        title: 'Invitation to Green Meadows',
+      };
+      expect(resolveNotificationRoute(payloadWithEntityId)).toBe('/(auth)/accept-invite?invitationId=inv-entity-7788');
     });
   });
 

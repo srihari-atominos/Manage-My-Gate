@@ -156,6 +156,25 @@ export class IssueReportRepository {
       totalPages,
     };
   }
+
+  /**
+   * Find a single report by MongoDB ObjectId strictly scoped to an organization boundary.
+   *
+   * @param {string} id
+   * @param {string} organisationId
+   * @param {mongoose.ClientSession|null} [session=null]
+   * @returns {Promise<Object|null>}
+   */
+  async findCommunityReportById(id, organisationId, session = null) {
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(organisationId)) return null;
+    const query = IssueReport.findOne({
+      _id: id,
+      'organisation.organisationId': organisationId,
+      isDeleted: false,
+    });
+    if (session) query.session(session);
+    return await query.exec();
+  }
 }
 
 export const issueReportRepository = new IssueReportRepository();

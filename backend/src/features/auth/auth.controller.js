@@ -51,9 +51,11 @@ export class AuthController {
 
   async validateInvite(req, res, next) {
     try {
-      const token = req.query.token;
+      const token = req.query.token || req.query.invitationId;
       const email = req.query.email;
-      const data = await authService.validateInvite(token, email);
+      const invitationId = req.query.invitationId;
+      const authenticatedUserId = req.user?.id || req.user?._id || null;
+      const data = await authService.validateInvite(token, email, invitationId, authenticatedUserId);
       res.success(data, 'Invitation token validated successfully');
     } catch (error) {
       next(error);

@@ -1,4 +1,5 @@
 export const kn: Record<string, string> = {
+  'press_back_again_to_exit': 'ನಿರ್ಗಮಿಸಲು ಮತ್ತೆ ಹಿಂದಕ್ಕೆ ಒತ್ತಿ',
   'accept': 'ಸ್ವೀಕರಿಸಿ',
   'accept_and_join': 'ಸ್ವೀಕರಿಸಿ ಮತ್ತು ಸೇರಿ',
   'accepted': 'ಸ್ವೀಕರಿಸಲಾಗಿದೆ',
@@ -1688,6 +1689,7 @@ export const kn: Record<string, string> = {
   'front_desk_fast_checkout': 'ಮುಂಭಾಗದ ಮೇಜಿನ ತ್ವರಿತ ಚೆಕ್-ಔಟ್',
   'invoice_qr_pass': 'ಇನ್‌ವಾಯ್ಸ್ QR ಪಾಸ್',
   'date_range': 'ದಿನಾಂಕ ಶ್ರೇಣಿ',
+  'building': 'ಕಟ್ಟಡ',
   'block_building': 'ಬ್ಲಾಕ್ / ಕಟ್ಟಡ',
   'reset_all': 'ಎಲ್ಲವನ್ನೂ ಮರುಹೊಂದಿಸಿ',
   'apply_filters': 'ಫಿಲ್ಟರ್‌ಗಳನ್ನು ಅನ್ವಯಿಸಿ',
@@ -2833,6 +2835,7 @@ export const kn: Record<string, string> = {
   'all_queue': 'ಎಲ್ಲಾ ಕ್ಯೂ',
   'search_by_ticket_flat_or_title': 'ಟಿಕೆಟ್ #, ಫ್ಲಾಟ್ ಅಥವಾ ಶೀರ್ಷಿಕೆಯ ಮೂಲಕ ಹುಡುಕಿ...',
   'elevators': 'ಎಲಿವೇಟರ್‌ಗಳು',
+  'resident_feed': 'ನಿವಾಸಿ ಫೀಡ್',
   'resident_feedback_suggestions': 'ನಿವಾಸಿಗಳ ಪ್ರತಿಕ್ರಿಯೆ ಮತ್ತು ಸಲಹೆಗಳು',
   'today_new': 'ಇಂದು ಹೊಸದು',
   'send_feedback_or_suggestions_directly_to_faci': 'ಸೌಲಭ್ಯ ನಿರ್ವಹಣೆಗೆ ನೇರವಾಗಿ ಪ್ರತಿಕ್ರಿಯೆ ಅಥವಾ ಸಲಹೆಗಳನ್ನು ಕಳುಹಿಸಿ.',

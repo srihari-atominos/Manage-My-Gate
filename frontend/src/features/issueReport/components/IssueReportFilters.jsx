@@ -19,7 +19,13 @@ import {
 } from '../constants/issueReport.constants.js'
 import { loadOrganizations } from '../../organization/store/organizationSlice.js'
 
-export const IssueReportFilters = ({ filters, onFilterChange, onReset, loading }) => {
+export const IssueReportFilters = ({
+  filters,
+  onFilterChange,
+  onReset,
+  loading,
+  hideOrganizationFilter = false,
+}) => {
   const { t } = useTranslation()
   const dispatch = useDispatch()
 
@@ -31,10 +37,10 @@ export const IssueReportFilters = ({ filters, onFilterChange, onReset, loading }
   }, [filters.search])
 
   useEffect(() => {
-    if (organizations.length === 0) {
+    if (!hideOrganizationFilter && organizations.length === 0) {
       dispatch(loadOrganizations({ page: 1, limit: 100 }))
     }
-  }, [dispatch, organizations.length])
+  }, [dispatch, organizations.length, hideOrganizationFilter])
 
   const handleSearchSubmit = (e) => {
     if (e) e.preventDefault()
@@ -138,21 +144,23 @@ export const IssueReportFilters = ({ filters, onFilterChange, onReset, loading }
         </CCol>
 
         {/* Organisation Filter */}
-        <CCol xs={12} sm={4} md={12} lg={3}>
-          <CFormSelect
-            size="sm"
-            value={filters.organisationId || ''}
-            onChange={(e) => onFilterChange({ organisationId: e.target.value })}
-            disabled={loading}
-          >
-            <option value="">{t('issueReport.allOrgs', { defaultValue: 'All Communities' })}</option>
-            {organizations.map((org) => (
-              <option key={org._id || org.id} value={org._id || org.id}>
-                {org.name}
-              </option>
-            ))}
-          </CFormSelect>
-        </CCol>
+        {!hideOrganizationFilter && (
+          <CCol xs={12} sm={4} md={12} lg={3}>
+            <CFormSelect
+              size="sm"
+              value={filters.organisationId || ''}
+              onChange={(e) => onFilterChange({ organisationId: e.target.value })}
+              disabled={loading}
+            >
+              <option value="">{t('issueReport.allOrgs', { defaultValue: 'All Communities' })}</option>
+              {organizations.map((org) => (
+                <option key={org._id || org.id} value={org._id || org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </CFormSelect>
+          </CCol>
+        )}
       </CRow>
 
       {/* Secondary Row: Date Pickers & Actions */}
@@ -217,6 +225,7 @@ IssueReportFilters.propTypes = {
   onFilterChange: PropTypes.func.isRequired,
   onReset: PropTypes.func.isRequired,
   loading: PropTypes.bool,
+  hideOrganizationFilter: PropTypes.bool,
 }
 
 export default IssueReportFilters

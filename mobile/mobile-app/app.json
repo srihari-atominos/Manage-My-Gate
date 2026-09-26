@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nahom",
     "slug": "atominos",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": [
@@ -25,8 +25,7 @@
       "buildNumber": "16",
       "associatedDomains": [
         "applinks:managemygate.e3esg.com",
-        "applinks:app.managemygate.com",
-        "applinks:managemygate.com"
+        "applinks:app.managemygate.com"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -45,7 +44,7 @@
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
-      "versionCode": 20,
+      "versionCode": 21,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D1015"
@@ -67,18 +66,8 @@
             },
             {
               "scheme": "https",
-              "host": "managemygate.e3esg.com",
-              "pathPrefix": "/invite"
-            },
-            {
-              "scheme": "https",
               "host": "app.managemygate.com",
               "pathPrefix": "/invite/handoff"
-            },
-            {
-              "scheme": "https",
-              "host": "app.managemygate.com",
-              "pathPrefix": "/invite"
             }
           ],
           "category": [

@@ -136,8 +136,9 @@ export class IssueReportService {
         issueReportEventEmitter.emit(ISSUE_REPORT_EVENTS.REPORT_SUBMITTED, {
           reportId: savedReport._id,
           reportNumber: savedReport.reportNumber,
-          organisationId: savedReport.organisation.id,
-          reporterId: savedReport.reporter.id,
+          organisationId: savedReport.organisation?.organisationId || orgIdStr,
+          reporterId: savedReport.reporter?.userId || userId,
+          title: savedReport.title,
         });
       } catch (emitErr) {
         logger.warn(`[IssueReport] Event emit warning: ${emitErr.message}`);
@@ -208,6 +209,71 @@ export class IssueReportService {
     }
 
     const report = await issueReportRepository.findById(id);
+    if (!report) {
+      throw new HttpError(404, 'Issue report not found.');
+    }
+
+    return report;
+  }
+
+  /**
+   * Community Admin listing of reports strictly scoped to their organization.
+   *
+   * @param {string} orgId - Authenticated tenant organization ID
+   * @param {Object} queryParams
+   * @returns {Promise<{ reports: Array, total: number, page: number, limit: number, totalPages: number }>}
+   */
+  async getCommunityReports(orgId, queryParams = {}) {
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      throw new HttpError(400, 'Valid workspace organization context is required.');
+    }
+
+    const {
+      search,
+      reportType,
+      feature,
+      platform,
+      startDate,
+      endDate,
+      page,
+      limit,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = queryParams;
+
+    const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+
+    // Always overwrite organisationId with the authenticated tenant orgId boundary
+    return await issueReportRepository.findPlatformReports({
+      search,
+      reportType,
+      feature,
+      organisationId: orgId,
+      platform,
+      startDate,
+      endDate,
+      page,
+      limit,
+      sort,
+    });
+  }
+
+  /**
+   * Community Admin retrieval of a single report strictly scoped to their organization.
+   *
+   * @param {string} id - Report ObjectId
+   * @param {string} orgId - Authenticated tenant organization ID
+   * @returns {Promise<Object>}
+   */
+  async getCommunityReportById(id, orgId) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      throw new HttpError(400, 'Invalid report ID format.');
+    }
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      throw new HttpError(400, 'Valid workspace organization context is required.');
+    }
+
+    const report = await issueReportRepository.findCommunityReportById(id, orgId);
     if (!report) {
       throw new HttpError(404, 'Issue report not found.');
     }

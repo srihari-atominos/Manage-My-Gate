@@ -12,6 +12,7 @@ import {
   cilSettings,
   cilPlus,
   cilBriefcase,
+  cilWarning,
 } from '@coreui/icons'
 import { useAuth } from '../../auth/hooks/useAuth'
 
@@ -51,6 +52,12 @@ const navItems = [
     to: '/admin/complaints/assignee',
     icon: cilBriefcase,
     requiredPermission: 'complaints:assignee',
+  },
+  {
+    name: 'Issue Reports',
+    to: '/admin/complaints/issue-reports',
+    icon: cilWarning,
+    requiredPermission: 'complaints:complaint_management',
   },
 ]
 

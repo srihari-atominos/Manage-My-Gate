@@ -2230,26 +2230,15 @@ export class AuthService {
     }
   }
 
-  async validateInvite(token, email = null) {
-    if (!token) {
-      throw new HttpError(400, 'Invitation token is required.');
+  async validateInvite(token = null, email = null, invitationId = null, authenticatedUserId = null) {
+    const queryToken = token || invitationId;
+    if (!queryToken) {
+      throw new HttpError(400, 'Invitation token or identifier is required.');
     }
 
-    const tokenDoc = await tokenService.getInvitationToken(token, 'INVITATION');
+    const tokenDoc = await tokenService.getInvitationToken(queryToken, 'INVITATION');
     if (!tokenDoc) {
       throw new HttpError(400, 'Invalid or expired invitation token.');
-    }
-    if (tokenDoc.status === 'EXPIRED' || (tokenDoc.expiresAt && new Date() > new Date(tokenDoc.expiresAt))) {
-      throw new HttpError(400, 'Invitation has expired. Please ask your administrator to resend the invitation.');
-    }
-    if (tokenDoc.status === 'REVOKED') {
-      throw new HttpError(400, 'Invitation has been revoked by the administrator.');
-    }
-    if (tokenDoc.status === 'REJECTED') {
-      throw new HttpError(400, 'Invitation has already been rejected.');
-    }
-    if (tokenDoc.status === 'ACCEPTED' || tokenDoc.used === true) {
-      throw new HttpError(400, 'Invitation has already been accepted.');
     }
 
     let user = null;
@@ -2258,6 +2247,14 @@ export class AuthService {
     }
     if (!user && tokenDoc.email) {
       user = await userService.getUserByEmail(tokenDoc.email.trim().toLowerCase()).catch(() => null);
+    }
+
+    // Server-side authorization check: If an authenticated user calls validate-invite, verify they own this invitation
+    if (authenticatedUserId && user && user._id.toString() !== authenticatedUserId.toString()) {
+      const authUser = await userService.getUserById(authenticatedUserId).catch(() => null);
+      if (authUser && authUser.email?.toLowerCase() !== user.email?.toLowerCase()) {
+        throw new HttpError(403, 'Access denied. This invitation belongs to another user account.');
+      }
     }
 
     const expectedEmail = (tokenDoc.email || user?.email || '').trim().toLowerCase();
@@ -2375,8 +2372,76 @@ export class AuthService {
       } catch (e) {}
     }
 
+    // Non-pending invitation state evaluation
+    if (tokenDoc.status === 'EXPIRED' || (tokenDoc.expiresAt && new Date() > new Date(tokenDoc.expiresAt))) {
+      return {
+        valid: false,
+        invitationId: tokenDoc._id,
+        invitationStatus: 'EXPIRED',
+        membershipStatus: 'Expired',
+        email: user?.email || expectedEmail,
+        orgId: resolvedOrgId,
+        orgName: orgName || 'Community Workspace',
+        villa: villaDetails || '',
+        unit: villaDetails || '',
+        role: roleDetails || '',
+        message: 'Invitation has expired. Please ask your administrator to resend the invitation.',
+      };
+    }
+
+    if (tokenDoc.status === 'REVOKED') {
+      return {
+        valid: false,
+        invitationId: tokenDoc._id,
+        invitationStatus: 'REVOKED',
+        membershipStatus: 'Revoked',
+        email: user?.email || expectedEmail,
+        orgId: resolvedOrgId,
+        orgName: orgName || 'Community Workspace',
+        villa: villaDetails || '',
+        unit: villaDetails || '',
+        role: roleDetails || '',
+        message: 'Invitation has been revoked by the administrator.',
+      };
+    }
+
+    if (tokenDoc.status === 'REJECTED') {
+      return {
+        valid: false,
+        invitationId: tokenDoc._id,
+        invitationStatus: 'REJECTED',
+        membershipStatus: 'Rejected',
+        email: user?.email || expectedEmail,
+        orgId: resolvedOrgId,
+        orgName: orgName || 'Community Workspace',
+        villa: villaDetails || '',
+        unit: villaDetails || '',
+        role: roleDetails || '',
+        message: 'Invitation has already been rejected.',
+      };
+    }
+
+    if (tokenDoc.status === 'ACCEPTED' || tokenDoc.used === true) {
+      return {
+        valid: false,
+        invitationId: tokenDoc._id,
+        invitationStatus: 'ACCEPTED',
+        membershipStatus: 'Accepted',
+        isAlreadyRegistered: true,
+        isExisting: true,
+        email: user?.email || expectedEmail,
+        orgId: resolvedOrgId,
+        orgName: orgName || 'Community Workspace',
+        villa: villaDetails || '',
+        unit: villaDetails || '',
+        role: roleDetails || '',
+        message: 'Invitation has already been accepted.',
+      };
+    }
+
     return {
       valid: true,
+      invitationId: tokenDoc._id,
       isExisting: isAlreadyRegistered,
       isAlreadyRegistered,
       isAlreadyMemberInOrg,

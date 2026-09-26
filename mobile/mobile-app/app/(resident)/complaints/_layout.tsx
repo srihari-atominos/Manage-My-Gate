@@ -10,6 +10,7 @@ export default function ComplaintsLayout() {
       <Stack.Screen name="manage" />
       <Stack.Screen name="assignee" />
       <Stack.Screen name="staff" />
+      <Stack.Screen name="issue-reports" />
     </Stack>
   );
 }

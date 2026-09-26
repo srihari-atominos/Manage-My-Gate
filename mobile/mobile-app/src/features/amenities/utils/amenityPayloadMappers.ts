@@ -226,6 +226,7 @@ export const normalizeHoldFromApi = (
   pricingSnapshot?: ApiPricingSnapshot
 ): AmenityHoldState => {
   const raw = payload?.hold ? payload.hold : payload;
+  const snapshotToUse = pricingSnapshot || raw?.pricingSnapshot || payload?.pricingSnapshot;
   return {
     _id: raw._id,
     orgId: raw.orgId,
@@ -240,7 +241,7 @@ export const normalizeHoldFromApi = (
     holdType: raw.holdType,
     status: raw.status,
     expiresAt: raw.expiresAt,
-    pricingSnapshot: pricingSnapshot ? normalizePricingSnapshot(pricingSnapshot) : undefined,
+    pricingSnapshot: snapshotToUse ? normalizePricingSnapshot(snapshotToUse) : undefined,
   };
 };
 

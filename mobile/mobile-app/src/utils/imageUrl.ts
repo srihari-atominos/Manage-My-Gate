@@ -1,4 +1,4 @@
-import apiClient from '../services/apiClient';
+import apiClient, { PRODUCTION_API_URL } from '../services/apiClient';
 
 /**
  * Normalizes an image path or URL into a fully-qualified absolute URL
@@ -21,7 +21,7 @@ export function getImageUrl(uri?: string | null): string {
   }
 
   const relativePath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  const apiBaseURL = apiClient.defaults.baseURL || 'http://localhost:5002/api/v1';
+  const apiBaseURL = apiClient.defaults.baseURL || PRODUCTION_API_URL;
   const host = apiBaseURL.replace(/\/api(\/v\d+)?\/?$/, '');
   return `${host}${relativePath}`;
 }
