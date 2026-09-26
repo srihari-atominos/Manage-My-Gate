@@ -35,12 +35,7 @@ export interface AssignTechnicianSheetProps {
   onAssign: (id: string, payload: any, techName?: string, notes?: string) => Promise<any>;
 }
 
-const DEFAULT_STAFF_LIST: StaffMember[] = [
-  { _id: 'tech_1', name: 'Ravi Kumar', department: 'Plumbing & Water', specialization: 'Plumber', phone: '+91 98765 43210', activeJobsCount: 0 },
-  { _id: 'tech_2', name: 'Suresh Verma', department: 'Electrical & Lighting', specialization: 'Electrician', phone: '+91 98765 43211', activeJobsCount: 1 },
-  { _id: 'tech_3', name: 'Amit Carpenter', department: 'Carpentry & Woodwork', specialization: 'Carpenter', phone: '+91 98765 43212', activeJobsCount: 0 },
-  { _id: 'tech_4', name: 'Rajesh Elevator Tech', department: 'Elevator & Lifts', specialization: 'Elevator Specialist', phone: '+91 98765 43213', activeJobsCount: 2 },
-];
+const DEFAULT_STAFF_LIST: StaffMember[] = [];
 
 export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
   visible,

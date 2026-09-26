@@ -24,15 +24,19 @@ class ComplaintRepository {
     if (query.$or) {
       query.$or = query.$or.map(cond => {
         const newCond = { ...cond };
-        if (newCond.residentId && typeof newCond.residentId === 'string') {
-          newCond.residentId = new mongoose.Types.ObjectId(newCond.residentId);
-        }
-        if (newCond.assignedTechnicianId && typeof newCond.assignedTechnicianId === 'string') {
-          newCond.assignedTechnicianId = new mongoose.Types.ObjectId(newCond.assignedTechnicianId);
-        }
-        if (newCond.broadcastTechnicianIds && typeof newCond.broadcastTechnicianIds === 'string') {
-          newCond.broadcastTechnicianIds = new mongoose.Types.ObjectId(newCond.broadcastTechnicianIds);
-        }
+        const castValue = (val) => {
+          if (typeof val === 'string' && mongoose.Types.ObjectId.isValid(val)) {
+            return new mongoose.Types.ObjectId(val);
+          }
+          if (val && typeof val === 'object' && Array.isArray(val.$in)) {
+            return { $in: val.$in.map(v => (typeof v === 'string' && mongoose.Types.ObjectId.isValid(v)) ? new mongoose.Types.ObjectId(v) : v) };
+          }
+          return val;
+        };
+
+        if (newCond.residentId) newCond.residentId = castValue(newCond.residentId);
+        if (newCond.assignedTechnicianId) newCond.assignedTechnicianId = castValue(newCond.assignedTechnicianId);
+        if (newCond.broadcastTechnicianIds) newCond.broadcastTechnicianIds = castValue(newCond.broadcastTechnicianIds);
         return newCond;
       });
     }
@@ -153,14 +157,34 @@ class ComplaintRepository {
     );
   }
 
+  async findByComplaintNumber(orgId, complaintNumber) {
+    return await Complaint.findOne({ orgId, complaintNumber });
+  }
+
   async findFuzzyDuplicates(orgId, residentId, titleText) {
+    if (!titleText || typeof titleText !== 'string' || !titleText.trim()) return [];
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    return await Complaint.find({
-      orgId,
-      residentId,
-      createdAt: { $gte: twentyFourHoursAgo },
-      $text: { $search: titleText }
-    }).limit(1);
+    const activeStatusFilter = { $nin: ['Closed', 'Completed', 'Resolved', 'Cancelled', 'Rejected'] };
+    try {
+      return await Complaint.find({
+        orgId,
+        residentId,
+        createdAt: { $gte: twentyFourHoursAgo },
+        status: activeStatusFilter,
+        $text: { $search: titleText.trim() }
+      }).limit(1);
+    } catch (err) {
+      // Fallback regex search if text index fails or title contains special characters
+      const escapedTitle = titleText.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const titleRegex = new RegExp(escapedTitle, 'i');
+      return await Complaint.find({
+        orgId,
+        residentId,
+        createdAt: { $gte: twentyFourHoursAgo },
+        status: activeStatusFilter,
+        title: titleRegex
+      }).limit(1);
+    }
   }
 
   async addTimelineEvent(id, orgId, eventData) {
@@ -334,36 +358,59 @@ class ComplaintRepository {
       withinSla: 0, nearSlaBreach: 0, totalSatisfaction: 0, ratedCount: 0
     };
 
+const safeNumber = (val, fallback = 0) => {
+  const num = Number(val);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const safeDiv = (numerator, denominator, fallback = 0) => {
+  const num = Number(numerator);
+  const den = Number(denominator);
+  if (!Number.isFinite(num) || !Number.isFinite(den) || den === 0) return fallback;
+  const res = num / den;
+  return Number.isFinite(res) ? res : fallback;
+};
+
+    const sanitizedTechPerformance = technicianPerformance.map(tech => ({
+      ...tech,
+      assigned: safeNumber(tech.assigned, 0),
+      completed: safeNumber(tech.completed, 0),
+      completedToday: safeNumber(tech.completedToday, 0),
+      pending: safeNumber(tech.pending, 0),
+      totalTime: safeNumber(tech.totalTime, 0),
+      averageResolutionHours: safeDiv(tech.totalTime, tech.completed, 0)
+    }));
+
     return {
       kpis: {
-        total: stats.total,
-        open: stats.open,
-        inProgress: stats.inProgress,
-        resolved: stats.resolved,
-        closed: stats.closed,
-        cancelled: stats.cancelled,
-        escalated: stats.escalated,
-        assigned: stats.assigned,
-        critical: stats.critical,
-        reopened: stats.reopened,
-        slaBreached: stats.slaBreached,
-        today: stats.today,
-        todayResolved: stats.todayResolved || 0,
-        thisWeek: stats.thisWeek,
-        thisMonth: stats.thisMonth,
-        averageResolutionHours: stats.resolvedCountForAvg > 0 ? (stats.totalResolutionTime / stats.resolvedCountForAvg) : 0,
-        averageResponseHours: stats.respondedCountForAvg > 0 ? (stats.totalResponseTime / stats.respondedCountForAvg) : 0,
-        fastestResolutionHours: stats.fastestResolutionTime || 0,
-        slowestResolutionHours: stats.slowestResolutionTime || 0,
-        withinSla: stats.withinSla,
-        nearSlaBreach: stats.nearSlaBreach,
-        residentSatisfactionPercentage: stats.ratedCount > 0 ? ((stats.totalSatisfaction / stats.ratedCount) / 5) * 100 : 0
+        total: safeNumber(stats.total, 0),
+        open: safeNumber(stats.open, 0),
+        inProgress: safeNumber(stats.inProgress, 0),
+        resolved: safeNumber(stats.resolved, 0),
+        closed: safeNumber(stats.closed, 0),
+        cancelled: safeNumber(stats.cancelled, 0),
+        escalated: safeNumber(stats.escalated, 0),
+        assigned: safeNumber(stats.assigned, 0),
+        critical: safeNumber(stats.critical, 0),
+        reopened: safeNumber(stats.reopened, 0),
+        slaBreached: safeNumber(stats.slaBreached, 0),
+        today: safeNumber(stats.today, 0),
+        todayResolved: safeNumber(stats.todayResolved, 0),
+        thisWeek: safeNumber(stats.thisWeek, 0),
+        thisMonth: safeNumber(stats.thisMonth, 0),
+        averageResolutionHours: safeDiv(stats.totalResolutionTime, stats.resolvedCountForAvg, 0),
+        averageResponseHours: safeDiv(stats.totalResponseTime, stats.respondedCountForAvg, 0),
+        fastestResolutionHours: safeNumber(stats.fastestResolutionTime, 0),
+        slowestResolutionHours: safeNumber(stats.slowestResolutionTime, 0),
+        withinSla: safeNumber(stats.withinSla, 0),
+        nearSlaBreach: safeNumber(stats.nearSlaBreach, 0),
+        residentSatisfactionPercentage: safeNumber(safeDiv(stats.totalSatisfaction, (stats.ratedCount || 0) * 5) * 100, 0)
       },
       categoryBreakdown,
       priorityBreakdown,
       statusBreakdown,
       trendData,
-      technicianPerformance,
+      technicianPerformance: sanitizedTechPerformance,
       recentComplaints,
       recentActivities,
       notices: [

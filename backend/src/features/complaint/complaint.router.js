@@ -149,7 +149,7 @@ router.post(
 );
 router.post(
   '/:id/confirm',
-  authorizePermission('complaints', ['view', 'assignee']),
+  authorizePermission('complaints', ['view', 'assignee', 'track_requests', 'raise_ticket', 'create']),
   complaintController.confirmCompletion
 );
 

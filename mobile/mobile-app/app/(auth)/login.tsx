@@ -46,8 +46,7 @@ import { Checkbox } from '@/components/forms/Checkbox';
 import { parseBackendError } from '@/src/utils/validation';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { storage, sessionStore } from '@/src/utils/storage';
-import { useSelector, useDispatch } from 'react-redux';
-import { clearPendingRoute } from '../../src/features/notification/store/notificationSlice';
+import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from '@/src/utils/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -519,9 +518,7 @@ export default function LoginScreen() {
         sessionStore.removeItem('mobile_auth_intent');
         router.replace({ pathname: '/(auth)/setup-organization', params: { intent: 'create-org' } });
       } else if (pendingRoute) {
-        console.log('[LoginScreen] Navigating to pending notification destination after login:', pendingRoute);
-        dispatch(clearPendingRoute());
-        router.replace(pendingRoute as any);
+        return;
       } else {
         router.replace('/(resident)/dashboard');
       }

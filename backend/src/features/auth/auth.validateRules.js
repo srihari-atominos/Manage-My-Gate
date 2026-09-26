@@ -1,4 +1,5 @@
 import { body } from 'express-validator';
+import { normalizePhone } from '../../utils/phone.utils.js';
 
 // Strict password policy validation regex matching the frontend policy:
 // Minimum 8 characters, at least 1 uppercase, 1 lowercase, 1 number, and 1 special character.
@@ -200,9 +201,9 @@ export const phoneLoginRules = [
     .withMessage('Phone number is required')
     .isString()
     .withMessage('Phone must be a string')
-    .trim()
-    .matches(/^\+?\d{8,15}$/)
-    .withMessage('Please enter a valid phone number (8-15 digits, optional + prefix)'),
+      .trim()
+      .custom((value) => Boolean(normalizePhone(value)))
+      .withMessage('Please enter a valid phone number with country code'),
 ];
 
 /**
@@ -214,9 +215,9 @@ export const phoneVerifyRules = [
     .withMessage('Phone number is required')
     .isString()
     .withMessage('Phone must be a string')
-    .trim()
-    .matches(/^\+?\d{8,15}$/)
-    .withMessage('Please enter a valid phone number (8-15 digits, optional + prefix)'),
+      .trim()
+      .custom((value) => Boolean(normalizePhone(value)))
+      .withMessage('Please enter a valid phone number with country code'),
   body('code')
     .notEmpty()
     .withMessage('Verification code is required')

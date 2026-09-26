@@ -23,6 +23,7 @@ import {
   Settings,
   Sparkles,
   Megaphone,
+  AlertCircle,
 } from 'lucide-react-native';
 
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
@@ -81,6 +82,7 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
         { id: 'c-my', labelKey: 'feature_complaints_track_requests_name', defaultLabel: 'Track My Tickets', route: '/(resident)/complaints/my-tickets', icon: Search, color: '#f59e0b' },
         { id: 'c-manage', labelKey: 'feature_complaints_complaint_management_name', defaultLabel: 'Management Board', route: '/(resident)/complaints/manage', icon: Sliders, color: '#6366f1' },
         { id: 'c-staff', labelKey: 'feature_complaints_staff_name', defaultLabel: 'Staff Directory', route: '/(resident)/complaints/staff', icon: Users, color: '#10b981' },
+        { id: 'c-issues', labelKey: 'issue_reports', defaultLabel: 'App Issue Reports', route: '/(resident)/complaints/issue-reports', icon: AlertCircle, color: '#f43f5e' },
       ],
     },
     {
@@ -112,7 +114,6 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       items: [
         { id: 'v-main', labelKey: 'feature_visitor_resident_passes_name', defaultLabel: 'Visitor Pass Hub', route: '/(resident)/visitor', icon: ShieldCheck, color: '#8b5cf6', permission: 'visitor:resident' },
         { id: 'v-gate-console', labelKey: 'feature_visitor_gate_console_name', defaultLabel: 'Gate Console', route: '/(resident)/visitor/gate-console', icon: QrCode, color: '#10b981', permission: 'visitor:resident' },
-        { id: 'v-invite', labelKey: 'feature_visitor_invite_name', defaultLabel: 'Invite Visitor', route: '/(resident)/visitor/invite', icon: PlusCircle, color: '#3b82f6', permission: 'visitor:resident' },
       ],
     },
     {

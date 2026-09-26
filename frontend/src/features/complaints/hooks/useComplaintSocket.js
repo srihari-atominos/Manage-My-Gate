@@ -22,29 +22,50 @@ export const useComplaintSocket = (token) => {
       transports: ['websocket'],
     })
 
-    socket.on('connect', () => {
+    const handleConnect = () => {
       console.log('Complaint socket connected')
-    })
+    }
 
-    socket.on('complaints:new', (complaint) => {
+    const handleCreated = (complaint) => {
       dispatch(addComplaintToList(complaint))
       dispatch(fetchDashboardAnalytics()) // Re-fetch analytics on new event
-    })
+    }
 
-    socket.on('complaints:updated', (complaint) => {
+    const handleUpdated = (complaint) => {
       dispatch(updateComplaintInList(complaint))
       dispatch(fetchDashboardAnalytics()) // Re-fetch analytics on update
-    })
+    }
 
-    socket.on('complaints:settings:updated', (settings) => {
+    const handleSettingsUpdated = (settings) => {
       dispatch(updateSettingsLocally(settings))
-    })
+    }
 
-    socket.on('disconnect', () => {
+    const handleDisconnect = () => {
       console.log('Complaint socket disconnected')
-    })
+    }
+
+    socket.on('connect', handleConnect)
+    socket.on('complaint_created', handleCreated)
+    socket.on('complaint_updated', handleUpdated)
+    socket.on('complaint_assigned', handleUpdated)
+    socket.on('complaint_started', handleUpdated)
+    socket.on('complaint_completed', handleUpdated)
+    socket.on('complaint_closed', handleUpdated)
+    socket.on('complaint_escalated', handleUpdated)
+    socket.on('complaints:settings:updated', handleSettingsUpdated)
+    socket.on('disconnect', handleDisconnect)
 
     return () => {
+      socket.off('connect', handleConnect)
+      socket.off('complaint_created', handleCreated)
+      socket.off('complaint_updated', handleUpdated)
+      socket.off('complaint_assigned', handleUpdated)
+      socket.off('complaint_started', handleUpdated)
+      socket.off('complaint_completed', handleUpdated)
+      socket.off('complaint_closed', handleUpdated)
+      socket.off('complaint_escalated', handleUpdated)
+      socket.off('complaints:settings:updated', handleSettingsUpdated)
+      socket.off('disconnect', handleDisconnect)
       socket.disconnect()
     }
   }, [token, dispatch])

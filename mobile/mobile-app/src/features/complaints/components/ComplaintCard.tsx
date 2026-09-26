@@ -68,7 +68,9 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
 }) => {
   const { t, translateText } = useTranslation();
   const isPendingConfirmation =
-    complaint.status === 'Work Completed' || complaint.status === 'Waiting For Resident Confirmation';
+    complaint.status === 'Completed' ||
+    complaint.status === 'Work Completed' ||
+    complaint.status === 'Waiting For Resident Confirmation';
   const isOpenState = ['Submitted', 'Open', 'Waiting For Assignment'].includes(complaint.status);
   const isUnassigned = !complaint.assignedTechnicianName && !complaint.vendor;
 
@@ -207,7 +209,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
                 onConfirmPress();
               }}
             >
-              {t('rate_action', 'Rate')} ⭐
+              {t('done_action', 'Done')} ✓
             </Button>
           ) : null}
         </View>

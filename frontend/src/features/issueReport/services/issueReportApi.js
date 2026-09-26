@@ -56,9 +56,22 @@ export const fetchCommunityReportById = async (id) => {
   return await apiClient.get(`/support/reports/community/${id}`)
 }
 
+/**
+ * Platform Admin API service to manage issue report notification email settings.
+ */
+export const fetchIssueReportConfig = async () => {
+  return await apiClient.get('/platform/reports/config')
+}
+
+export const updateIssueReportConfig = async (email) => {
+  return await apiClient.put('/platform/reports/config', { email })
+}
+
 export default {
   fetchPlatformReports,
   fetchPlatformReportById,
   fetchCommunityReports,
   fetchCommunityReportById,
+  fetchIssueReportConfig,
+  updateIssueReportConfig,
 }

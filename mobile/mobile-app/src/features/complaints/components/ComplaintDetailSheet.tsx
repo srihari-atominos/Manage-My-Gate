@@ -207,9 +207,11 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
   };
 
   const isPendingResidentConfirmation =
-    complaint.status === 'Work Completed' || complaint.status === 'Waiting For Resident Confirmation';
-  const isClosed = complaint.status === 'Closed' || complaint.status === 'Completed';
-  const isOpenState = ['Submitted', 'Open', 'Waiting For Assignment'].includes(complaint.status);
+    complaint.status === 'Completed' ||
+    complaint.status === 'Work Completed' ||
+    complaint.status === 'Waiting For Resident Confirmation';
+  const isClosed = complaint.status === 'Closed' || complaint.status === 'Cancelled';
+  const isOpenState = ['Submitted', 'Open', 'Waiting For Assignment'].includes(complaint.status as string);
   const isUnassigned = !complaint.assignedTechnicianName && !complaint.vendor;
 
   const locationStr = [
@@ -673,7 +675,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
                   onPress={handleConfirmAndRate}
                   className="bg-amber-600 border-amber-600 mt-2"
                 >
-                  Confirm & Submit Rating ⭐
+                  Mark as Done & Rate Service ✓
                 </Button>
               </View>
             </View>

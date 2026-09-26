@@ -10,6 +10,10 @@ class TechnicianRepository {
     return await Technician.findOne({ _id: id, orgId, isDeleted: false });
   }
 
+  async findActiveByUserId(userId, orgId) {
+    return await Technician.findOne({ userId, orgId, status: 'Active', isDeleted: false });
+  }
+
   async findAll(orgId, filter = {}) {
     return await Technician.find({ orgId, isDeleted: false, ...filter }).sort({ name: 1 });
   }

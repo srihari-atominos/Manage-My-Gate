@@ -33,6 +33,29 @@ export const initComplaintSockets = () => {
       }
     });
 
+    complaintEvents.on('complaint.reassigned', ({ orgId, complaint, previousAssigneeId }) => {
+      const io = getIO();
+      if (!io) return;
+      const recipients = [
+        `org:${orgId}:role:admin`, `org:${orgId}:role:facilitymanager`, `user:${complaint.residentId}`
+      ];
+      if (previousAssigneeId) recipients.push(`user:${previousAssigneeId}`);
+      if (complaint.assignedTechnicianId) {
+        const assigneeId = typeof complaint.assignedTechnicianId === 'object'
+          ? (complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id)
+          : complaint.assignedTechnicianId;
+        if (assigneeId) recipients.push(`user:${assigneeId}`);
+      }
+      (complaint.broadcastTechnicianIds || []).forEach(id => {
+        const technicianId = typeof id === 'object' ? (id._id || id.id) : id;
+        if (technicianId) recipients.push(`user:${technicianId}`);
+      });
+      [...new Set(recipients)].forEach(room => {
+        io.to(room).emit('complaint_assigned', complaint);
+        io.to(room).emit('complaint_updated', complaint);
+      });
+    });
+
     complaintEvents.on('complaint.updated', ({ orgId, complaint, action, previousBroadcastIds }) => {
       const io = getIO();
       if (io) {

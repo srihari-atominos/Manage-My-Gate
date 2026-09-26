@@ -64,8 +64,22 @@ complaintEvents.on('complaint.created', async ({ orgId, complaint }) => {
   await notifyRole(orgId, 'FacilityManager', 'Complaint Waiting For Assignment', `Complaint ${complaint.complaintNumber} is waiting for assignment.`);
 });
 
-complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, previousAssigneeName }) => {
-  logger.info(`Complaint ${complaint.complaintNumber} assigned in org ${orgId}`);
+const handleAssignmentNotification = async ({ orgId, complaint, previousAssigneeName, previousAssigneeId }) => {
+  const isReassignment = Boolean(previousAssigneeId || previousAssigneeName);
+  logger.info(`Complaint ${complaint.complaintNumber} ${isReassignment ? 'reassigned' : 'assigned'} in org ${orgId}`);
+
+  if (previousAssigneeId) {
+    try {
+      await notificationService.createNotification({
+        recipientId: previousAssigneeId,
+        orgId,
+        title: 'Complaint Reassigned',
+        body: `Complaint ${complaint.complaintNumber} has been reassigned and is no longer in your work queue.`,
+        actionUrl: `/admin/complaints/assignee`,
+        type: 'INFO'
+      });
+    } catch (err) { logger.error('Failed to notify previous assignee:', err); }
+  }
 
   if (complaint.isBroadcast && complaint.broadcastTechnicianIds && complaint.broadcastTechnicianIds.length > 0) {
     // Notify all broadcasted technicians
@@ -76,7 +90,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
           orgId,
           title: 'New Complaint Assignment Request',
           body: `You have a new assignment pending acceptance: ${complaint.complaintNumber}.`,
-          actionUrl: `/admin/complaints/assignee`,
+          actionUrl: `/admin/complaints/assignee?ticketId=${complaint.complaintNumber}`,
           type: 'INFO'
         });
       } catch (err) { logger.error('Failed to notify broadcast assignee:', err); }
@@ -87,13 +101,22 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
       ? complaint.assignedTechnicianId._id.toString() 
       : complaint.assignedTechnicianId.toString();
 
+    let recipientUserId = techIdStr;
+    try {
+      const Technician = (await import('../technician/technician.model.js')).default;
+      const techDoc = await Technician.findById(techIdStr);
+      if (techDoc && techDoc.userId) {
+        recipientUserId = techDoc.userId.toString();
+      }
+    } catch (err) {}
+
     try {
       await notificationService.createNotification({
-        recipientId: techIdStr,
+        recipientId: recipientUserId,
         orgId,
         title: 'New Complaint Assignment',
         body: `You have been directly assigned to complaint: ${complaint.complaintNumber}.`,
-        actionUrl: `/admin/complaints/assignee`,
+        actionUrl: `/admin/complaints/assignee?ticketId=${complaint.complaintNumber}`,
         type: 'INFO'
       });
 
@@ -125,7 +148,10 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
       });
     } catch (err) { logger.error('Failed to notify resident:', err); }
   }
-});
+};
+
+complaintEvents.on('complaint.assigned', handleAssignmentNotification);
+complaintEvents.on('complaint.reassigned', handleAssignmentNotification);
 
 complaintEvents.on('complaint.updated', async ({ orgId, complaint, action, previousBroadcastIds, acceptedById }) => {
   logger.info(`Complaint ${complaint.complaintNumber} updated with action ${action} in org ${orgId}`);

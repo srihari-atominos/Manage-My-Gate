@@ -139,10 +139,12 @@ export function useComplaintDispatch() {
     try {
       await complaintService.assignTechnician(ticketId, {
         technicianId,
-        notes,
+        assignmentType: 'direct',
+        instructions: notes,
+        technicianName: tech?.name,
       });
-    } catch {
-      // Optimistic
+    } catch (err) {
+      console.error('[useComplaintDispatch] Failed to dispatch ticket:', err);
     }
 
     // Remove from unassigned queue
@@ -160,12 +162,16 @@ export function useComplaintDispatch() {
 
   const broadcastTicket = useCallback(async (ticketId: string) => {
     try {
-      await complaintService.assignTechnician(ticketId, { isBroadcast: true });
-    } catch {
-      // Optimistic
+      const activeTechIds = staffRoster.filter(s => s._id && !s._id.startsWith('tech-')).map(s => s._id);
+      await complaintService.assignTechnician(ticketId, {
+        assignmentType: 'broadcast',
+        technicianIds: activeTechIds.length > 0 ? activeTechIds : undefined,
+      });
+    } catch (err) {
+      console.error('[useComplaintDispatch] Failed to broadcast ticket:', err);
     }
     setUnassignedTickets((prev) => prev.filter((t) => t._id !== ticketId));
-  }, []);
+  }, [staffRoster]);
 
   const kpis = useMemo(() => {
     const unassignedCount = unassignedTickets.length;

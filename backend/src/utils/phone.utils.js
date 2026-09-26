@@ -13,28 +13,20 @@ export function normalizePhone(rawPhone, defaultCountry = 'IN') {
 
   try {
     const phoneNumber = parsePhoneNumberFromString(trimmed, defaultCountry);
-    if (phoneNumber && phoneNumber.isValid()) {
+    const compactInternational = trimmed.replace(/[\s().-]/g, '');
+    const hasRepeatedNationalDigits = /^(?:\+?\d{1,3})?(\d)\1{6,}$/.test(compactInternational);
+    const isExplicitPossibleInternational = trimmed.startsWith('+')
+      && /^\+[\d\s().-]+$/.test(trimmed)
+      && phoneNumber?.isPossible()
+      && !hasRepeatedNationalDigits;
+    if (phoneNumber && (phoneNumber.isValid() || isExplicitPossibleInternational)) {
       return phoneNumber.format('E.164');
     }
   } catch (err) {
     // If parsing fails, fall back below
   }
 
-  // Fallback: If it starts with '+', preserve '+' and strip non-digits
-  if (trimmed.startsWith('+')) {
-    const digits = trimmed.slice(1).replace(/\D/g, '');
-    return digits ? `+${digits}` : null;
-  }
-
-  // Fallback for raw numeric string
-  const digitsOnly = trimmed.replace(/\D/g, '');
-  if (!digitsOnly) return null;
-
-  if (digitsOnly.length === 10 && defaultCountry === 'IN') {
-    return `+91${digitsOnly}`;
-  }
-
-  return `+${digitsOnly}`;
+  return null;
 }
 
 /**

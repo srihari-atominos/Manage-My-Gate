@@ -77,6 +77,34 @@ export const loadCommunityReportDetails = createAsyncThunk(
   },
 )
 
+export const loadIssueReportConfig = createAsyncThunk(
+  'issueReport/loadIssueReportConfig',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await issueReportApi.fetchIssueReportConfig()
+      const data = response?.data !== undefined ? response.data : response
+      return data
+    } catch (error) {
+      const msg = error.response?.data?.message || error.message || 'Failed to fetch email configuration'
+      return rejectWithValue(msg)
+    }
+  },
+)
+
+export const saveIssueReportConfig = createAsyncThunk(
+  'issueReport/saveIssueReportConfig',
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await issueReportApi.updateIssueReportConfig(email)
+      const data = response?.data !== undefined ? response.data : response
+      return data
+    } catch (error) {
+      const msg = error.response?.data?.message || error.message || 'Failed to save email configuration'
+      return rejectWithValue(msg)
+    }
+  },
+)
+
 const initialFilters = {
   search: '',
   reportType: '',
@@ -98,6 +126,13 @@ const initialState = {
   },
   filters: { ...initialFilters },
   selectedReport: null,
+  emailConfig: {
+    email: '',
+    loading: false,
+    saving: false,
+    error: null,
+    successMessage: null,
+  },
   loading: false,
   detailsLoading: false,
   error: null,
@@ -125,6 +160,10 @@ export const issueReportSlice = createSlice({
     clearError: (state) => {
       state.error = null
       state.detailsError = null
+    },
+    clearEmailConfigStatus: (state) => {
+      state.emailConfig.error = null
+      state.emailConfig.successMessage = null
     },
   },
   extraReducers: (builder) => {
@@ -244,6 +283,38 @@ export const issueReportSlice = createSlice({
         state.detailsLoading = false
         state.detailsError = action.payload || 'This issue report could not be found or is no longer available.'
       })
+
+      // Issue Report Email Config Load
+      .addCase(loadIssueReportConfig.pending, (state) => {
+        state.emailConfig.loading = true
+        state.emailConfig.error = null
+      })
+      .addCase(loadIssueReportConfig.fulfilled, (state, action) => {
+        state.emailConfig.loading = false
+        const payloadData = action.payload?.data || action.payload || {}
+        state.emailConfig.email = payloadData.email || ''
+      })
+      .addCase(loadIssueReportConfig.rejected, (state, action) => {
+        state.emailConfig.loading = false
+        state.emailConfig.error = action.payload || 'Failed to load email configuration'
+      })
+
+      // Issue Report Email Config Save
+      .addCase(saveIssueReportConfig.pending, (state) => {
+        state.emailConfig.saving = true
+        state.emailConfig.error = null
+        state.emailConfig.successMessage = null
+      })
+      .addCase(saveIssueReportConfig.fulfilled, (state, action) => {
+        state.emailConfig.saving = false
+        const payloadData = action.payload?.data || action.payload || {}
+        state.emailConfig.email = payloadData.email !== undefined ? payloadData.email : state.emailConfig.email
+        state.emailConfig.successMessage = 'Email configuration saved successfully'
+      })
+      .addCase(saveIssueReportConfig.rejected, (state, action) => {
+        state.emailConfig.saving = false
+        state.emailConfig.error = action.payload || 'Failed to save email configuration'
+      })
   },
 })
 
@@ -253,6 +324,7 @@ export const {
   setSelectedReport,
   clearSelectedReport,
   clearError,
+  clearEmailConfigStatus,
 } = issueReportSlice.actions
 
 export default issueReportSlice.reducer

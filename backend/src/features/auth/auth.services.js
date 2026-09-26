@@ -13,6 +13,7 @@ import integrationHubService from '../integrationHub/integrationHub.service.js';
 import config from '../../config/config.js';
 import authEvents from './auth.events.js';
 import userEvents from '../user/user.events.js';
+import { normalizePhone } from '../../utils/phone.utils.js';
 
 export class AuthService {
   /**
@@ -576,7 +577,7 @@ export class AuthService {
         const targetVillaIdStr = targetVillaId.toString();
         const isTargetVillaAccessible = accessibleUnits.some(u => u.villaId === targetVillaIdStr);
         if (!isTargetVillaAccessible) {
-          throw new HttpError(403, 'Access denied. You are not assigned or invited to this property unit.');
+          targetVillaId = null;
         }
 
         if (selectedMembership.units && selectedMembership.units.length > 0) {
@@ -1060,7 +1061,14 @@ export class AuthService {
 
       // Server-side identity verification: authenticated user check
       if (authenticatedUserId && user._id.toString() !== authenticatedUserId.toString()) {
-        throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
+        const authUser = await userService.getUserById(authenticatedUserId).catch(() => null);
+        if (authUser && authUser.email && user.email && authUser.email.trim().toLowerCase() === user.email.trim().toLowerCase()) {
+          const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+          await OrgMembership.updateMany({ userId: user._id }, { $set: { userId: authUser._id } }).session(session).catch(() => null);
+          user = authUser;
+        } else {
+          throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
+        }
       }
 
       // Server-side identity verification: email match check
@@ -1757,7 +1765,8 @@ export class AuthService {
    * @param {string} phone - User phone number
    */
   async initiatePhoneLogin(phone) {
-    const normalizedPhone = phone ? phone.replace(/\s+/g, '') : '';
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
     const user = await userService.getUserByPhone(normalizedPhone);
     if (!user) {
       throw new HttpError(404, 'This phone number is not registered. Please sign up first.');
@@ -1777,7 +1786,7 @@ export class AuthService {
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phoneNumber: phone.trim() }),
+          body: JSON.stringify({ phoneNumber: normalizedPhone }),
         });
 
         const responseData = await response.json();
@@ -1789,22 +1798,32 @@ export class AuthService {
         const sessionInfo = responseData.sessionInfo;
         
         // Save the sessionInfo in OTP service to verify later
-        await otpService.createOTP(phone, 'LOGIN', 5, null, sessionInfo);
+        await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, sessionInfo);
         
         return { message: 'OTP sent via Firebase successfully' };
       }
     }
 
+    if (process.env.NODE_ENV === 'production') {
+      const [twilio, messageCentral] = await Promise.all([
+        integrationHubService.getGlobalConnectionByProvider('twilio'),
+        integrationHubService.getGlobalConnectionByProvider('messagecentral')
+      ]);
+      if (!twilio && !messageCentral) {
+        throw new HttpError(503, 'SMS login is temporarily unavailable. Please use email login or contact support.');
+      }
+    }
+
     // Fallback: Generate local OTP
-    const plainCode = await otpService.createOTP(phone, 'LOGIN');
+    const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
 
     // Emit event for SMS delivery
-    authEvents.emit('OTP_SENT', { identifier: phone, code: plainCode, type: 'SMS' });
+    authEvents.emit('OTP_SENT', { identifier: normalizedPhone, code: plainCode, type: 'SMS' });
 
     const isDev = process.env.NODE_ENV !== 'production';
     if (isDev) {
       console.log('\n=========================================');
-      console.log(`[DEV MODE SMS] OTP for ${phone} is: ${plainCode}`);
+      console.log(`[DEV MODE SMS] OTP for ${normalizedPhone} is: ${plainCode}`);
       console.log('=========================================\n');
     }
 
@@ -1818,6 +1837,8 @@ export class AuthService {
    * @param {object} deviceInfo - Client device meta
    */
   async verifyPhoneLogin(phone, code, deviceInfo) {
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -1827,7 +1848,7 @@ export class AuthService {
 
     try {
       // 1. Verify OTP
-      const otpResult = await otpService.verifyOTP(phone, code, 'LOGIN');
+      const otpResult = await otpService.verifyOTP(normalizedPhone, code, 'LOGIN', session, false);
 
       if (otpResult && otpResult.sessionInfo) {
         // This was a Firebase managed OTP
@@ -1852,7 +1873,7 @@ export class AuthService {
       }
 
       // 2. Fetch user
-      const user = await userService.getUserByPhone(phone, session);
+      const user = await userService.getUserByPhone(normalizedPhone, session);
       if (!user) {
         throw new HttpError(404, 'User not found.');
       }
@@ -1865,6 +1886,8 @@ export class AuthService {
       if (!user.phoneVerified) {
         await userService.updateUser(user._id, { phoneVerified: true }, session);
       }
+
+      await otpService.clearOTP(normalizedPhone, 'LOGIN', session);
 
       // 3. Generate session refresh token
       const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);

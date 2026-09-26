@@ -1,11 +1,17 @@
+import path from 'path';
+import fs from 'fs';
 import issueReportEventEmitter, { ISSUE_REPORT_EVENTS } from './issueReport.events.js';
+import issueReportRepository from './issueReport.repository.js';
+import issueReportConfigService from '../issueReportConfig/issueReportConfig.service.js';
+import emailService from '../../utils/email.service.js';
 import notificationService from '../notification/notification.service.js';
 import Role from '../role/role.model.js';
+import User from '../user/user.model.js';
 import OrgMembership from '../orgMembership/orgMembership.model.js';
 import logger from '../../utils/logger.utils.js';
 
 /**
- * Helper to notify Community Admins within a target organization.
+ * Helper to notify Community Admins within a target organization via in-app notification.
  *
  * @param {string} orgId - Organization ID
  * @param {string} title - Notification title
@@ -16,10 +22,10 @@ export async function notifyCommunityAdmins(orgId, title, body, actionUrl) {
   try {
     if (!orgId) return;
     const adminRoleNames = ['Admin', 'Community Admin', 'Facility Manager', 'FacilityManager'];
-    
+
     // 1. Resolve role ObjectIds for the organization matching admin role names
     const roles = await Role.find({ orgId, name: { $in: adminRoleNames } }).lean();
-    
+
     let memberUserIds = [];
     if (roles && roles.length > 0) {
       const roleIds = roles.map((r) => r._id);
@@ -89,6 +95,55 @@ export async function notifyCommunityAdmins(orgId, title, body, actionUrl) {
 }
 
 /**
+ * Helper to notify Platform Super Admins via in-app notification.
+ *
+ * @param {string} title - Notification title
+ * @param {string} body - Notification text body
+ * @param {string} actionUrl - Deep link destination URI
+ */
+export async function notifyPlatformAdmins(title, body, actionUrl) {
+  try {
+    const platformUsers = await User.find({
+      status: 'Active',
+      $or: [
+        { isPlatform: true },
+        { isPlatformUser: true },
+        { role: { $in: ['Platform Super Admin', 'Platform Admin', 'Super Admin'] } },
+      ],
+    }).lean();
+
+    const uniqueUserIds = [...new Set(platformUsers.map((u) => u._id.toString()))];
+    logger.info(`[IssueReportListener] Found ${uniqueUserIds.length} Platform Admin(s) for in-app notification.`);
+
+    const Notification = (await import('../notification/notification.model.js')).default;
+    for (const userId of uniqueUserIds) {
+      try {
+        const existingNotif = await Notification.findOne({
+          recipientId: userId,
+          actionUrl,
+        }).lean();
+
+        if (existingNotif) {
+          continue;
+        }
+
+        await notificationService.createNotification({
+          recipientId: userId,
+          title,
+          body,
+          actionUrl,
+          type: 'INFO',
+        });
+      } catch (err) {
+        logger.error(`[IssueReportListener] Failed to create in-app notification for Platform Admin ${userId}:`, err.message);
+      }
+    }
+  } catch (error) {
+    logger.error('[IssueReportListener] Error notifying Platform Admins in-app:', error);
+  }
+}
+
+/**
  * Register Event Subscriber for REPORT_SUBMITTED lifecycle event.
  */
 issueReportEventEmitter.on(ISSUE_REPORT_EVENTS.REPORT_SUBMITTED, async (payload) => {
@@ -105,9 +160,66 @@ issueReportEventEmitter.on(ISSUE_REPORT_EVENTS.REPORT_SUBMITTED, async (payload)
     const notifBody = title
       ? `A resident has reported an issue: "${title}"`
       : `A new issue report (${reportNumber || 'Report'}) has been submitted.`;
-    const actionUrl = `/admin/complaints/issue-reports?reportId=${reportId}`;
+    const communityActionUrl = `/admin/complaints/issue-reports?reportId=${reportId}`;
+    const platformActionUrl = `/platform/reports/${reportId}`;
 
-    await notifyCommunityAdmins(organisationId, notifTitle, notifBody, actionUrl);
+    // 1. Existing Community Admin Notification Flow
+    await notifyCommunityAdmins(organisationId, notifTitle, notifBody, communityActionUrl);
+
+    // 2. Existing Platform Admin Notification Flow
+    await notifyPlatformAdmins(notifTitle, notifBody, platformActionUrl);
+
+    // 3. New Requirement: Configured Platform Admin Email Notification Flow
+    try {
+      const configuredEmail = await issueReportConfigService.getPlatformReportEmail();
+      if (configuredEmail) {
+        logger.info(`[IssueReportListener] Triggering issue report email to configured Platform Admin email: ${configuredEmail}`);
+        
+        const report = await issueReportRepository.findById(reportId);
+        if (report) {
+          // Prepare image attachments if present
+          const mailAttachments = [];
+          if (Array.isArray(report.attachments) && report.attachments.length > 0) {
+            const projectRoot = process.cwd();
+            for (const att of report.attachments) {
+              if (!att.url) continue;
+              let localPath = att.url;
+              if (localPath.startsWith('/')) {
+                localPath = path.join(projectRoot, localPath);
+              }
+              if (fs.existsSync(localPath)) {
+                mailAttachments.push({
+                  filename: att.fileName || path.basename(localPath),
+                  path: localPath,
+                  contentType: att.mimeType || 'image/jpeg',
+                });
+              } else {
+                logger.warn(`[IssueReportListener] Image file attachment path not found on disk: ${localPath}`);
+              }
+            }
+          }
+
+          const emailSent = await emailService.sendReportedIssueEmail({
+            to: configuredEmail,
+            report,
+            attachments: mailAttachments,
+          });
+
+          if (emailSent) {
+            logger.info(`[IssueReportListener] Configured Platform Admin email successfully sent to ${configuredEmail}`);
+          } else {
+            logger.error(`[IssueReportListener] Email service returned failure status for recipient ${configuredEmail}`);
+          }
+        } else {
+          logger.warn(`[IssueReportListener] Could not locate report document for ID ${reportId} when sending email.`);
+        }
+      } else {
+        logger.info('[IssueReportListener] No Platform Admin email configured; skipping email dispatch.');
+      }
+    } catch (emailErr) {
+      // Non-blocking error handling: Log failure appropriately so issue remains successfully reported
+      logger.error('[IssueReportListener] Non-fatal error while attempting to send Platform Admin email notification:', emailErr);
+    }
   } catch (err) {
     logger.error('[IssueReportListener] Error handling REPORT_SUBMITTED event:', err);
   }

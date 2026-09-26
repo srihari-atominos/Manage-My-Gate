@@ -49,10 +49,19 @@ const Assignee = () => {
     uploadFiles,
   } = useComplaints(activeFilters)
 
-  // Filter for currently logged-in user
+  // Filter for currently logged-in user or admin view
   const assignedComplaints = (complaints || []).filter((c) => {
     const uid = String(user?.id || user?._id || user?.userId || '')
-    if (!uid) return false
+    const techId = String(user?.technicianId || user?.techId || '')
+    const userRole = user?.role || ''
+    const userRoles = Array.isArray(user?.roles) ? user.roles : []
+    const isAdmin =
+      userRoles.some((r) =>
+        ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager'].includes(r),
+      ) ||
+      ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager'].includes(
+        userRole,
+      )
 
     // Explicitly exclude unassigned complaints / initial open states
     if (
@@ -64,18 +73,32 @@ const Assignee = () => {
       return false
     }
 
+    // Admins and Facility Managers on Assignee Portal can view all allocated tasks
+    if (isAdmin) {
+      return true
+    }
+
+    if (!uid && !techId) return false
+
     const assigneeIdStr =
       typeof c.assignedTechnicianId === 'object' && c.assignedTechnicianId !== null
         ? String(c.assignedTechnicianId._id || c.assignedTechnicianId.id || '')
         : String(c.assignedTechnicianId || '')
 
-    const isDirectMatch = Boolean(assigneeIdStr && assigneeIdStr === uid)
-    const isNameMatch = Boolean(
-      !assigneeIdStr &&
-        c.assignedTechnicianName &&
-        user?.name &&
-        c.assignedTechnicianName.trim().toLowerCase() === user.name.trim().toLowerCase(),
+    const isDirectMatch = Boolean(
+      assigneeIdStr && (assigneeIdStr === uid || (techId && assigneeIdStr === techId)),
     )
+
+    const currentUserName = (
+      user?.name ||
+      user?.username ||
+      `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
+    ).toLowerCase()
+    const assignedName = (c.assignedTechnicianName || '').toLowerCase()
+    const isNameMatch = Boolean(
+      assignedName && currentUserName && assignedName === currentUserName,
+    )
+
     const isBroadcastMatch = Boolean(
       c.isBroadcast &&
         c.status === 'Waiting For Acceptance' &&
@@ -84,7 +107,7 @@ const Assignee = () => {
             typeof bid === 'object' && bid !== null
               ? String(bid._id || bid.id || '')
               : String(bid || '')
-          return Boolean(bidStr && bidStr === uid)
+          return Boolean(bidStr && (bidStr === uid || (techId && bidStr === techId)))
         }),
     )
 
@@ -353,7 +376,7 @@ const Assignee = () => {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          {c.status === 'Waiting For Acceptance' && (
+                          {(c.status === 'Waiting For Acceptance' || c.status === 'Assigned') && (
                             <>
                               <button
                                 className="small btn btn-primary"
@@ -371,7 +394,7 @@ const Assignee = () => {
                               </button>
                             </>
                           )}
-                          {(c.status === 'Assigned' || c.status === 'Accepted') && (
+                          {(c.status === 'Accepted' || c.status === 'Assigned') && (
                             <button
                               className="small btn btn-primary"
                               style={{ padding: '4px 12px' }}

@@ -210,7 +210,11 @@ export const resolveNotificationRoute = (payload?: StructuredNotificationPayload
     }
 
     if (cleanUrl.includes('admin/complaints/assignee') || cleanUrl.includes('/assignee')) {
-      return '/(resident)/complaints/assignee';
+      const ticketIdMatch = cleanUrl.match(/[?&](?:ticketId|id|complaintNumber)=([^&#]+)/);
+      const targetId = ticketIdMatch ? ticketIdMatch[1] : entityId;
+      return targetId
+        ? `/(resident)/complaints/assignee?ticketId=${encodeURIComponent(targetId)}`
+        : '/(resident)/complaints/assignee';
     }
 
     if (cleanUrl.includes('complaints')) {
@@ -240,8 +244,12 @@ export const resolveNotificationRoute = (payload?: StructuredNotificationPayload
     case 'VISITOR_RESOLVED':
       return '/(resident)/visitor/gate-console';
 
-    case 'COMPLAINT':
     case 'COMPLAINT_ASSIGNED':
+      return entityId
+        ? `/(resident)/complaints/assignee?ticketId=${encodeURIComponent(entityId)}`
+        : '/(resident)/complaints/assignee';
+
+    case 'COMPLAINT':
     case 'COMPLAINT_UPDATED':
       return entityId
         ? `/(resident)/complaints/my-tickets?ticketId=${encodeURIComponent(entityId)}`

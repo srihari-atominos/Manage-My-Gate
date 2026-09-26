@@ -103,10 +103,6 @@ export default function DashboardScreen() {
       router.navigate('/(resident)/visitor/gate-console' as any);
       return;
     }
-    if (tileId === 'visitor_invite') {
-      router.navigate('/(resident)/visitor/invite' as any);
-      return;
-    }
     if (tileId === 'billing_dashboard') {
       router.navigate('/(resident)/billing' as any);
       return;

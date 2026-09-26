@@ -280,6 +280,57 @@ const ComplaintDashboard = () => {
               </p>
             </div>
           </div>
+
+          {/* Action 4: App Issue Reports */}
+          <div
+            onClick={() => navigate('/admin/complaints/issue-reports')}
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '32px 24px',
+              border: '1px solid var(--border)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              position: 'relative',
+              overflow: 'hidden',
+              borderBottom: '4px solid #f43f5e',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)'
+              e.currentTarget.style.boxShadow = 'var(--shadow-md)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          >
+            <div
+              style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                background: '#ffe4e6',
+                color: '#f43f5e',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              className="fs-3"
+            >
+              <i className="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+              <h3 style={{ color: 'var(--ink)', marginBottom: '8px' }} className="fw-bold fs-5">
+                App Issue Reports
+              </h3>
+              <p style={{ color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }} className="small">
+                Track and inspect bugs or feature requests reported by residents.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* MAINTENANCE BOARD */}

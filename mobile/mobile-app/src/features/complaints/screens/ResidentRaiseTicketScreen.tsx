@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, ScrollView, Alert, TouchableOpacity, Platform, Image as RNImage } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSelector } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -123,6 +123,7 @@ const SUGGESTED_ISSUES_MAP: Record<string, string[]> = {
 
 export function ResidentRaiseTicketScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ category?: string }>();
   const { t, translateText } = useTranslation();
   const { createComplaint, error, clearErrors } = useComplaints();
 
@@ -134,7 +135,16 @@ export function ResidentRaiseTicketScreen() {
 
   // 3-Step Guided Wizard Form State
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [category, setCategory] = useState('Plumbing');
+  const [category, setCategory] = useState<string>(
+    params.category && typeof params.category === 'string' ? params.category : 'Plumbing'
+  );
+
+  useEffect(() => {
+    if (params.category && typeof params.category === 'string') {
+      setCategory(params.category);
+    }
+  }, [params.category]);
+
   const [customCategory, setCustomCategory] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

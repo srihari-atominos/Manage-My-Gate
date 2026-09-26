@@ -41,6 +41,7 @@ import {
   Building2,
   Home,
   UserCheck,
+  AlertCircle,
 } from 'lucide-react-native';
 import { getImageUrl } from '@/src/utils/imageUrl';
 
@@ -62,6 +63,7 @@ export default function SettingsScreen() {
 
   const roleLower = ((user?.role || (Array.isArray(userAny?.roles) ? userAny?.roles[0] : '') || '') as string).toLowerCase();
   const isResidentRole = /resident|tenant|owner|family/i.test(roleLower);
+  const isAdminRole = /admin|facility|manager|superadmin|operator|staff/i.test(roleLower);
 
   // Active villa & community info
   const dynamicUnit = isResidentRole

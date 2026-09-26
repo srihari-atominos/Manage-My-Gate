@@ -87,6 +87,7 @@ export class UserRepository {
     if (!trimmedPhone) return null;
 
     const normalized = normalizePhone(trimmedPhone);
+    if (!normalized) return null;
     const digitsOnly = trimmedPhone.replace(/\D/g, '');
 
     const orConditions = [];

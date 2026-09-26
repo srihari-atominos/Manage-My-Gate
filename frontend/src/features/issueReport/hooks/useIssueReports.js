@@ -5,11 +5,14 @@ import {
   loadPlatformReportDetails,
   loadCommunityReports,
   loadCommunityReportDetails,
+  loadIssueReportConfig,
+  saveIssueReportConfig,
   setFilters,
   resetFilters,
   setSelectedReport,
   clearSelectedReport,
   clearError,
+  clearEmailConfigStatus,
 } from '../store/issueReportSlice.js'
 
 /**
@@ -22,10 +25,26 @@ export const useIssueReports = () => {
   const pagination = useSelector((state) => state.issueReport.pagination)
   const filters = useSelector((state) => state.issueReport.filters)
   const selectedReport = useSelector((state) => state.issueReport.selectedReport)
+  const emailConfig = useSelector((state) => state.issueReport.emailConfig)
   const loading = useSelector((state) => state.issueReport.loading)
   const detailsLoading = useSelector((state) => state.issueReport.detailsLoading)
   const error = useSelector((state) => state.issueReport.error)
   const detailsError = useSelector((state) => state.issueReport.detailsError)
+
+  const fetchEmailConfig = useCallback(() => {
+    dispatch(loadIssueReportConfig())
+  }, [dispatch])
+
+  const updateEmailConfig = useCallback(
+    (email) => {
+      return dispatch(saveIssueReportConfig(email))
+    },
+    [dispatch],
+  )
+
+  const clearEmailStatus = useCallback(() => {
+    dispatch(clearEmailConfigStatus())
+  }, [dispatch])
 
   const fetchReports = useCallback(
     (params = {}) => {
@@ -155,10 +174,14 @@ export const useIssueReports = () => {
     pagination,
     filters,
     selectedReport,
+    emailConfig,
     loading,
     detailsLoading,
     error,
     detailsError,
+    fetchEmailConfig,
+    updateEmailConfig,
+    clearEmailStatus,
     fetchReports,
     updateFilters,
     changePage,

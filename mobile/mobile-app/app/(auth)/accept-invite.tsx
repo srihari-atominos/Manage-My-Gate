@@ -34,7 +34,7 @@ const acceptInviteSchema = yup.object().shape({
 type AcceptInviteFormValues = yup.InferType<typeof acceptInviteSchema>;
 
 export default function AcceptInviteScreen() {
-  const { isAuthenticated, user, clearStatus, acceptInvite } = useAuth();
+  const { isAuthenticated, user, clearStatus, acceptInvite, logout } = useAuth();
   const searchParams = useLocalSearchParams<{ token?: string; invitationId?: string; code?: string; email?: string; action?: string; mode?: string }>();
   const [submitting, setSubmitting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -48,6 +48,28 @@ export default function AcceptInviteScreen() {
   const [isAlreadyRegisteredModalVisible, setIsAlreadyRegisteredModalVisible] = useState(false);
   const [isInvalidTokenModalVisible, setIsInvalidTokenModalVisible] = useState(false);
   const [alreadyRegisteredEmail, setAlreadyRegisteredEmail] = useState('');
+
+  const loggedInEmail = (user?.email || '').trim().toLowerCase();
+  const targetInviteEmail = (inviteMeta?.email || searchParams.email || alreadyRegisteredEmail || '').trim().toLowerCase();
+  const isAccountMismatch = Boolean(
+    isAuthenticated &&
+    loggedInEmail &&
+    targetInviteEmail &&
+    loggedInEmail !== targetInviteEmail
+  );
+
+  const handleSignOutAndSwitch = useCallback(async () => {
+    setSubmitting(true);
+    setApiError(null);
+    try {
+      await logout();
+      clearStatus();
+    } catch (e) {
+      console.warn('Logout error during invite account switch', e);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [logout, clearStatus]);
 
   // Extract token or invitationId from route searchParams, query params, or URL path
   const getTokenFromContext = useCallback(() => {
@@ -146,7 +168,7 @@ export default function AcceptInviteScreen() {
     setApiError(null);
     try {
       const inviteToken = (resolvedToken || getTokenFromContext() || '').trim();
-      const actionResult: any = await acceptInvite(inviteToken, undefined, user?.email);
+      const actionResult: any = await acceptInvite(inviteToken, undefined, loggedInEmail);
       if (acceptInviteThunk.fulfilled.match(actionResult)) {
         router.replace('/(resident)/dashboard');
         return;
@@ -435,84 +457,147 @@ export default function AcceptInviteScreen() {
               </View>
             ) : null}
 
-            {/* CASE 1: Account Already Registered / Active State */}
-            {!isRejectedState && isAlreadyRegistered ? (
-              isAuthenticated ? (
-                <View className="bg-card border border-border rounded-2xl p-6 gap-4 shadow-xs items-center">
-                  <View className="bg-primary/10 border border-primary/20 p-4 rounded-full items-center justify-center">
-                    <Building2 size={38} className="text-primary" />
-                  </View>
-                  <View className="gap-1.5 items-center">
-                    <Text className="text-xl font-extrabold text-foreground text-center">
-                      Join {inviteMeta?.orgName || 'Community Workspace'}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground text-center px-2">
-                      You have been invited to join <Text className="font-bold text-foreground">{inviteMeta?.orgName || 'this community'}</Text>.
-                    </Text>
-                    {inviteMeta?.role ? (
-                      <Text className="text-xs text-muted-foreground text-center mt-1">
-                        Role: <Text className="font-semibold text-foreground">{inviteMeta.role}</Text>
-                        {inviteMeta.unit || inviteMeta.villa ? (
-                          <> • Unit: <Text className="font-semibold text-foreground">{inviteMeta.unit || inviteMeta.villa}</Text></>
-                        ) : null}
-                      </Text>
-                    ) : null}
-                    <Text className="text-xs text-muted-foreground text-center mt-1 px-2">
-                      Accepting will add this community to your available workspaces and switch your active workspace immediately.
-                    </Text>
-                  </View>
-
-                  {apiError ? <ErrorBanner message={apiError} /> : null}
-
-                  <View className="flex-col gap-2.5 w-full mt-2">
-                    <Button
-                      onPress={handleAcceptAuthenticatedInvite}
-                      loading={submitting}
-                      disabled={isRejecting}
-                      className="h-12 bg-primary rounded-xl w-full items-center justify-center"
-                      textClassName="font-bold text-base"
-                    >
-                      Accept & Switch Workspace
-                    </Button>
-                    <Button
-                      onPress={handleRejectInvitation}
-                      loading={isRejecting}
-                      disabled={submitting}
-                      variant="outline"
-                      className="h-11 border-red-500/30 rounded-xl w-full items-center justify-center"
-                      textClassName="font-semibold text-sm text-red-600"
-                    >
-                      Reject Invitation
-                    </Button>
-                  </View>
+            {/* CASE 1A: Authenticated Session with Account Mismatch */}
+            {!isRejectedState && isAccountMismatch ? (
+              <View className="bg-card border border-border rounded-2xl p-6 gap-4 shadow-xs items-center">
+                <View className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-full items-center justify-center">
+                  <AlertCircle size={38} className="text-amber-600 dark:text-amber-400" />
                 </View>
-              ) : (
-                <View className="bg-card border border-border rounded-2xl p-6 gap-4 shadow-xs items-center">
-                  <View className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-full items-center justify-center">
-                    <CheckCircle2 size={38} className="text-emerald-600 dark:text-emerald-400" />
+                <View className="gap-2 items-center w-full">
+                  <Text className="text-xl font-extrabold text-foreground text-center">
+                    Different Account Signed In
+                  </Text>
+                  <Text className="text-xs text-muted-foreground text-center px-2">
+                    You are currently signed in to the app as:
+                  </Text>
+                  <View className="bg-muted/70 border border-border px-3.5 py-2 rounded-xl w-full items-center">
+                    <Text className="font-bold text-foreground text-sm">{user?.email}</Text>
                   </View>
-                  <View className="gap-1.5 items-center">
-                    <Text className="text-xl font-extrabold text-foreground text-center">
-                      Account Already Active
-                    </Text>
-                    <Text className="text-sm text-muted-foreground text-center px-2">
-                      {alreadyRegisteredEmail
-                        ? `Your account for ${alreadyRegisteredEmail} has already been registered and your password is configured.`
-                        : 'Your account has already been registered and your password is configured.'}
-                    </Text>
-                    <Text className="text-xs text-muted-foreground text-center mt-1">
-                      Please sign in with your email and password to enter your workspace.
-                    </Text>
+                  <Text className="text-xs text-muted-foreground text-center mt-1 px-2">
+                    This invitation to join <Text className="font-bold text-foreground">{inviteMeta?.orgName || 'this community'}</Text>{inviteMeta?.role ? ` as ${inviteMeta.role}` : ''} was sent to:
+                  </Text>
+                  <View className="bg-primary/10 border border-primary/20 px-3.5 py-2 rounded-xl w-full items-center">
+                    <Text className="font-bold text-primary text-sm">{targetInviteEmail}</Text>
                   </View>
+                  <Text className="text-xs text-muted-foreground text-center mt-1 px-2">
+                    To accept this invitation, sign out of your current account and accept as {targetInviteEmail}.
+                  </Text>
+                </View>
+
+                {apiError ? <ErrorBanner message={apiError} /> : null}
+
+                <View className="flex-col gap-2.5 w-full mt-2">
                   <Button
-                    onPress={() => handleNavigateToLogin(alreadyRegisteredEmail)}
-                    className="mt-3 h-12 bg-primary rounded-xl w-full items-center justify-center"
+                    onPress={handleSignOutAndSwitch}
+                    loading={submitting}
+                    className="h-12 bg-primary rounded-xl w-full items-center justify-center"
                     textClassName="font-bold text-base"
                   >
-                    Sign In to Workspace
+                    Sign Out & Accept as {targetInviteEmail || 'Invited User'}
+                  </Button>
+                  <Button
+                    onPress={() => router.replace('/(resident)/dashboard')}
+                    variant="outline"
+                    className="h-11 border-border rounded-xl w-full items-center justify-center"
+                    textClassName="font-semibold text-sm text-foreground"
+                  >
+                    Keep Signed In as {user?.email}
                   </Button>
                 </View>
-              )
+              </View>
+            ) : null}
+
+            {/* CASE 1B: Authenticated Session with Matching Account (Joining Workspace) */}
+            {!isRejectedState && !isAccountMismatch && isAuthenticated ? (
+              <View className="bg-card border border-border rounded-2xl p-6 gap-4 shadow-xs items-center">
+                <View className="bg-primary/10 border border-primary/20 p-4 rounded-full items-center justify-center">
+                  <Building2 size={38} className="text-primary" />
+                </View>
+                <View className="gap-1.5 items-center">
+                  <Text className="text-xl font-extrabold text-foreground text-center">
+                    Join {inviteMeta?.orgName || 'Community Workspace'}
+                  </Text>
+                  <Text className="text-sm text-muted-foreground text-center px-2">
+                    You have been invited to join <Text className="font-bold text-foreground">{inviteMeta?.orgName || 'this community'}</Text>.
+                  </Text>
+                  {inviteMeta?.role ? (
+                    <Text className="text-xs text-muted-foreground text-center mt-1">
+                      Role: <Text className="font-semibold text-foreground">{inviteMeta.role}</Text>
+                      {inviteMeta.unit || inviteMeta.villa ? (
+                        <> • Unit: <Text className="font-semibold text-foreground">{inviteMeta.unit || inviteMeta.villa}</Text></>
+                      ) : null}
+                    </Text>
+                  ) : null}
+                  <Text className="text-xs text-muted-foreground text-center mt-1 px-2">
+                    Accepting will add this community to your available workspaces and switch your active workspace immediately.
+                  </Text>
+                </View>
+
+                {apiError ? <ErrorBanner message={apiError} /> : null}
+
+                {apiError && (apiError.toLowerCase().includes('identity') || apiError.toLowerCase().includes('match')) ? (
+                  <Button
+                    onPress={handleSignOutAndSwitch}
+                    loading={submitting}
+                    variant="outline"
+                    className="h-11 border-primary/40 rounded-xl w-full items-center justify-center mt-1"
+                    textClassName="font-semibold text-sm text-primary"
+                  >
+                    Sign Out to Switch Accounts
+                  </Button>
+                ) : null}
+
+                <View className="flex-col gap-2.5 w-full mt-2">
+                  <Button
+                    onPress={handleAcceptAuthenticatedInvite}
+                    loading={submitting}
+                    disabled={isRejecting}
+                    className="h-12 bg-primary rounded-xl w-full items-center justify-center"
+                    textClassName="font-bold text-base"
+                  >
+                    Accept & Switch Workspace
+                  </Button>
+                  <Button
+                    onPress={handleRejectInvitation}
+                    loading={isRejecting}
+                    disabled={submitting}
+                    variant="outline"
+                    className="h-11 border-red-500/30 rounded-xl w-full items-center justify-center"
+                    textClassName="font-semibold text-sm text-red-600"
+                  >
+                    Reject Invitation
+                  </Button>
+                </View>
+              </View>
+            ) : null}
+
+            {/* CASE 1C: Unauthenticated User - Account Already Registered / Active State */}
+            {!isRejectedState && !isAuthenticated && isAlreadyRegistered ? (
+              <View className="bg-card border border-border rounded-2xl p-6 gap-4 shadow-xs items-center">
+                <View className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-full items-center justify-center">
+                  <CheckCircle2 size={38} className="text-emerald-600 dark:text-emerald-400" />
+                </View>
+                <View className="gap-1.5 items-center">
+                  <Text className="text-xl font-extrabold text-foreground text-center">
+                    Account Already Active
+                  </Text>
+                  <Text className="text-sm text-muted-foreground text-center px-2">
+                    {alreadyRegisteredEmail
+                      ? `Your account for ${alreadyRegisteredEmail} has already been registered and your password is configured.`
+                      : 'Your account has already been registered and your password is configured.'}
+                  </Text>
+                  <Text className="text-xs text-muted-foreground text-center mt-1">
+                    Please sign in with your email and password to enter your workspace.
+                  </Text>
+                </View>
+                <Button
+                  onPress={() => handleNavigateToLogin(alreadyRegisteredEmail)}
+                  className="mt-3 h-12 bg-primary rounded-xl w-full items-center justify-center"
+                  textClassName="font-bold text-base"
+                >
+                  Sign In to Workspace
+                </Button>
+              </View>
             ) : null}
 
             {/* CASE 2: Invalid or Expired Token State */}
@@ -542,8 +627,8 @@ export default function AcceptInviteScreen() {
               </View>
             ) : null}
 
-            {/* CASE 3: Normal Form Container (Token valid, not yet registered, not rejected) */}
-            {!isRejectedState && !isAlreadyRegistered && (!isInvalidTokenModalVisible || !apiError) ? (
+            {/* CASE 3: Normal Form Container (Unauthenticated, Token valid, not yet registered, not rejected) */}
+            {!isRejectedState && !isAuthenticated && !isAlreadyRegistered && (!isInvalidTokenModalVisible || !apiError) ? (
               <View className="bg-card border border-border rounded-2xl p-4 sm:p-6 gap-4 shadow-xs">
                 <View className="gap-3.5">
 

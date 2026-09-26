@@ -611,7 +611,7 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
     try {
       response = await authService.switchContext(cleanPayload);
     } catch (err: any) {
-      if (cleanPayload.targetOrgId) {
+      if (cleanPayload.targetOrgId || cleanPayload.targetVillaId || cleanPayload.targetRole || cleanPayload.targetAssignmentId) {
         console.warn(`Target org ${cleanPayload.targetOrgId} unavailable or deleted. Falling back to default workspace context.`);
         response = await authService.switchContext({});
       } else {

@@ -8,6 +8,7 @@ import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { CheckCircle2, AlertCircle, Play, Pause, CheckSquare, XCircle, FileText, Send, Radio } from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useComplaints } from '../hooks/useComplaints';
 import { ComplaintCard } from '../components/ComplaintCard';
 import { CompleteWorkSheet } from '../components/CompleteWorkSheet';
@@ -18,6 +19,9 @@ import { selectAuthUser } from '../../auth/store/authSelectors';
 import { Complaint } from '../types';
 
 export function StaffAssigneeQueueScreen() {
+  const routeParams = useLocalSearchParams<{ ticketId?: string }>();
+  const ticketIdParam = routeParams?.ticketId ? String(routeParams.ticketId) : '';
+
   const currentUser = useSelector(selectAuthUser) as any;
   const currentUserId = String(currentUser?._id || currentUser?.id || currentUser?.userId || '');
 
@@ -67,57 +71,122 @@ export function StaffAssigneeQueueScreen() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (ticketIdParam && complaints.length > 0 && !selectedComplaint) {
+      const target = complaints.find(
+        (c: Complaint) =>
+          c._id === ticketIdParam ||
+          c.complaintNumber?.toLowerCase() === ticketIdParam.toLowerCase(),
+      );
+      if (target) {
+        setSelectedComplaint(target);
+      }
+    }
+  }, [ticketIdParam, complaints, selectedComplaint]);
+
   // Compute Web-aligned status counts & assigned technician filtering
   const metrics = useMemo(() => {
-    // Filter assigned tasks specifically for the logged-in technician/user
-    const assignedTasks = complaints.filter((c: Complaint) => {
-      // If it's a broadcast waiting for acceptance, it belongs to the broadcast pool, not direct assigned tasks
-      if (c.isBroadcast && c.status === 'Waiting For Acceptance') return false;
-      if (!currentUserId) return false;
+    const userRole = currentUser?.role || '';
+    const userRoles = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
+    const isAdmin =
+      userRoles.some((r: string) =>
+        ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager'].includes(r),
+      ) ||
+      ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager'].includes(
+        userRole,
+      );
+    const techId = String(currentUser?.technicianId || currentUser?.techId || '');
+    const currentUserName = (
+      currentUser?.name ||
+      currentUser?.username ||
+      `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()
+    ).toLowerCase();
 
-      // Exclude unassigned complaints / initial open states
-      if (['Submitted', 'Open', 'Waiting For Assignment'].includes(c.status) && !c.assignedTechnicianId && !c.assignedTechnicianName) {
+    // Helper to check if a complaint matches the current technician/user
+    const isUserAssignedOrBroadcast = (c: Complaint) => {
+      // Exclude unassigned complaints / initial open states unless broadcast
+      if (
+        ['Submitted', 'Open', 'Waiting For Assignment'].includes(c.status) &&
+        !c.assignedTechnicianId &&
+        !c.assignedTechnicianName &&
+        !c.isBroadcast
+      ) {
         return false;
       }
 
-      const techIdStr = typeof c.assignedTechnicianId === 'object' && c.assignedTechnicianId !== null
-        ? String(c.assignedTechnicianId._id || (c.assignedTechnicianId as any).id || '')
-        : String(c.assignedTechnicianId || '');
+      if (isAdmin) return true;
+      if (!currentUserId && !techId) return false;
 
-      // Must have an assigned technician
-      if (!techIdStr && !c.assignedTechnicianName) return false;
+      const techIdStr =
+        typeof c.assignedTechnicianId === 'object' && c.assignedTechnicianId !== null
+          ? String(c.assignedTechnicianId._id || (c.assignedTechnicianId as any).id || '')
+          : String(c.assignedTechnicianId || '');
 
-      const isDirectMatch = Boolean(techIdStr && techIdStr === currentUserId);
-      const isNameMatch = Boolean(
-        c.assignedTechnicianName &&
-        currentUser?.name &&
-        c.assignedTechnicianName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
+      const isDirectMatch = Boolean(
+        techIdStr && (techIdStr === currentUserId || (techId && techIdStr === techId)),
       );
 
-      return isDirectMatch || isNameMatch;
+      const assignedName = (c.assignedTechnicianName || '').toLowerCase();
+      const isNameMatch = Boolean(
+        assignedName && currentUserName && assignedName === currentUserName,
+      );
+
+      const isBroadcastMatch = Boolean(
+        c.isBroadcast &&
+          (c.status === 'Waiting For Acceptance' || c.status === 'Assigned') &&
+          Array.isArray(c.broadcastTechnicianIds) &&
+          c.broadcastTechnicianIds.some((id: any) => {
+            const tid =
+              typeof id === 'object' && id !== null
+                ? String(id._id || id.id || '')
+                : String(id || '');
+            return Boolean(tid && (tid === currentUserId || (techId && tid === techId)));
+          }),
+      );
+
+      return isDirectMatch || isNameMatch || isBroadcastMatch;
+    };
+
+    // Filter ALL tasks belonging to/assigned to this user or admin
+    const allUserTasks = complaints.filter(isUserAssignedOrBroadcast);
+
+    // Direct assigned tasks (non-broadcast or accepted broadcast)
+    const assignedTasks = allUserTasks.filter((c: Complaint) => {
+      if (c.isBroadcast && c.status === 'Waiting For Acceptance') return false;
+      return true;
     });
 
+    // Broadcast pool
     const broadcastPool = complaints.filter((c: Complaint) => {
       if (!c.isBroadcast || c.status !== 'Waiting For Acceptance') return false;
-      if (!currentUserId) return false;
-      return Array.isArray(c.broadcastTechnicianIds) && c.broadcastTechnicianIds.some((id: any) => {
-        const tid = typeof id === 'object' && id !== null ? String(id._id || id.id || '') : String(id || '');
-        return Boolean(tid && tid === currentUserId);
-      });
+      if (isAdmin) return true;
+      if (!currentUserId && !techId) return false;
+      return (
+        Array.isArray(c.broadcastTechnicianIds) &&
+        c.broadcastTechnicianIds.some((id: any) => {
+          const tid =
+            typeof id === 'object' && id !== null
+              ? String(id._id || id.id || '')
+              : String(id || '');
+          return Boolean(tid && (tid === currentUserId || (techId && tid === techId)));
+        })
+      );
     });
-    
-    const pendingAllocations = assignedTasks.filter(
-      (c: Complaint) => c.status === 'Assigned' || c.status === 'Waiting For Acceptance' || c.status === 'Accepted'
+
+    const pendingAllocations = allUserTasks.filter(
+      (c: Complaint) =>
+        c.status === 'Assigned' || c.status === 'Waiting For Acceptance' || c.status === 'Accepted',
     );
-    const inProgress = assignedTasks.filter((c: Complaint) => c.status === 'In Progress');
-    const onHold = assignedTasks.filter((c: Complaint) => c.status === 'On Hold' || c.status === 'Paused');
+    const inProgress = allUserTasks.filter((c: Complaint) => c.status === 'In Progress');
+    const onHold = allUserTasks.filter((c: Complaint) => c.status === 'On Hold' || c.status === 'Paused');
 
     return {
-      all: assignedTasks.length,
+      all: allUserTasks.length,
       pending: pendingAllocations.length,
       inProgress: inProgress.length,
       onHold: onHold.length,
       broadcast: broadcastPool.length,
+      allUserTasks,
       assignedTasks,
       broadcastPool,
     };
@@ -125,7 +194,7 @@ export function StaffAssigneeQueueScreen() {
 
   // Filtered Task List Feed
   const filteredTasks = useMemo(() => {
-    let source = selectedStatusTab === 'BROADCAST' ? metrics.broadcastPool : metrics.assignedTasks;
+    let source = selectedStatusTab === 'BROADCAST' ? metrics.broadcastPool : metrics.allUserTasks;
 
     return source.filter((ticket: Complaint) => {
       // 1. Search filter
@@ -139,7 +208,12 @@ export function StaffAssigneeQueueScreen() {
 
       // 2. Status Tab Filter
       if (selectedStatusTab === 'PENDING') {
-        if (ticket.status !== 'Assigned' && ticket.status !== 'Waiting For Acceptance' && ticket.status !== 'Accepted') return false;
+        if (
+          ticket.status !== 'Assigned' &&
+          ticket.status !== 'Waiting For Acceptance' &&
+          ticket.status !== 'Accepted'
+        )
+          return false;
       } else if (selectedStatusTab === 'IN_PROGRESS') {
         if (ticket.status !== 'In Progress') return false;
       } else if (selectedStatusTab === 'ON_HOLD') {

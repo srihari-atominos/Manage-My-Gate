@@ -1,5 +1,6 @@
 import { body, param, query } from 'express-validator';
 import mongoose from 'mongoose';
+import { normalizePhone } from '../../utils/phone.utils.js';
 
 /**
  * Validation rules for inviting a new user.
@@ -82,8 +83,10 @@ export const requestPhoneOtpRules = [
     .notEmpty()
     .withMessage('New phone number is required')
     .isString()
-    .withMessage('Please provide a valid phone number')
-    .trim(),
+      .withMessage('Please provide a valid phone number')
+      .trim()
+      .custom((value) => Boolean(normalizePhone(value)))
+      .withMessage('Please provide a valid phone number with country code'),
 ];
 
 /**
@@ -94,9 +97,11 @@ export const updateProfileRules = [
     .optional()
     .trim()
     .escape(),
-  body('phone')
-    .optional()
-    .trim(),
+    body('phone')
+      .optional()
+      .trim()
+      .custom((value) => value === '' || Boolean(normalizePhone(value)))
+      .withMessage('Please provide a valid phone number with country code'),
   body('phoneOtp')
     .optional()
     .trim()

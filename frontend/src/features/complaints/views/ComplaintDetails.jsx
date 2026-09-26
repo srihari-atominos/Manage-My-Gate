@@ -529,7 +529,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                 </button>
               )}
               {userRole?.toLowerCase() === 'resident' &&
-                ['Resolved', 'Waiting For Resident Confirmation'].includes(complaint.status) && (
+                ['Completed', 'Work Completed', 'Resolved', 'Waiting For Resident Confirmation'].includes(complaint.status) && (
                   <>
                     <button
                       className="btn btn-ghost"

@@ -247,7 +247,6 @@ describe('issueReportSlice Reducer', () => {
       feature: 'amenity_booking',
     }
 
-    // Direct object as returned by apiClient response interceptor
     const nextState = reducer(initialState, {
       type: loadPlatformReportDetails.fulfilled.type,
       payload: reportDetail,
@@ -256,5 +255,28 @@ describe('issueReportSlice Reducer', () => {
     assert.equal(nextState.detailsLoading, false)
     assert.equal(nextState.selectedReport?.reportNumber, 'NAH-000099')
     assert.equal(nextState.selectedReport?.title, 'Direct unwrap report')
+  })
+
+  it('should handle loadIssueReportConfig.fulfilled', () => {
+    const initialState = getInitialState()
+    const nextState = reducer(initialState, {
+      type: 'issueReport/loadIssueReportConfig/fulfilled',
+      payload: { data: { email: 'admin@company.com' } },
+    })
+
+    assert.equal(nextState.emailConfig.email, 'admin@company.com')
+    assert.equal(nextState.emailConfig.loading, false)
+  })
+
+  it('should handle saveIssueReportConfig.fulfilled', () => {
+    const initialState = getInitialState()
+    const nextState = reducer(initialState, {
+      type: 'issueReport/saveIssueReportConfig/fulfilled',
+      payload: { data: { email: 'newadmin@company.com' } },
+    })
+
+    assert.equal(nextState.emailConfig.email, 'newadmin@company.com')
+    assert.equal(nextState.emailConfig.saving, false)
+    assert.equal(nextState.emailConfig.successMessage, 'Email configuration saved successfully')
   })
 })

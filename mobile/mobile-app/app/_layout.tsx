@@ -1,6 +1,6 @@
 import '../src/utils/cryptoPolyfill';
 import '@/global.css';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 
 // Suppress synchronous console logs in production release builds to prevent Hermes JNI logcat bottlenecks
 if (!__DEV__) {
@@ -10,7 +10,7 @@ if (!__DEV__) {
 }
 
 import { PortalHost } from '@rn-primitives/portal';
-import { Stack, useSegments, useRouter, useGlobalSearchParams, useRootNavigationState } from 'expo-router';
+import { Stack, useSegments, useRouter, useGlobalSearchParams, useRootNavigationState, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { Provider, useDispatch, useSelector } from 'react-redux';
@@ -58,9 +58,11 @@ function AuthRouteGuard() {
   const { setColorScheme } = useColorScheme();
   const segments = useSegments();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useGlobalSearchParams<{ intent?: string; token?: string; code?: string; [key: string]: any }>();
   const rootNavigationState = useRootNavigationState();
   const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
+  const lastNavigationRef = useRef<{ target: string; at: number } | null>(null);
 
   // Initialize global real-time Socket.io engine
   useGlobalAppSocket();
@@ -72,6 +74,23 @@ function AuthRouteGuard() {
   usePushNotifications();
 
   const isCreateOrgIntent = searchParams.intent === 'create-org' || searchParams.intent === 'create';
+  const stableSearchParams = useMemo(() => ({ ...searchParams }), [JSON.stringify(searchParams || {})]);
+  const stableSegmentsKey = JSON.stringify(segments || []);
+
+  const replaceOnce = (target: any) => {
+    const targetKey = typeof target === 'string'
+      ? target
+      : `${target?.pathname || ''}?${JSON.stringify(target?.params || {})}`;
+    const targetPath = typeof target === 'string' ? target.split('?')[0] : target?.pathname;
+    const now = Date.now();
+    const last = lastNavigationRef.current;
+
+    if (!targetPath || targetPath === pathname) return;
+    if (last?.target === targetKey && now - last.at < 1500) return;
+
+    lastNavigationRef.current = { target: targetKey, at: now };
+    router.replace(target as any);
+  };
 
   // Restore saved theme, language, and session restoration on startup (Mount once)
   useEffect(() => {
@@ -132,19 +151,17 @@ function AuthRouteGuard() {
         return;
       }
       if (firstSegment !== '(auth)' || currentRoute !== 'accept-invite') {
-        let tokenToPass = searchParams?.token || searchParams?.code;
+        let tokenToPass = stableSearchParams?.token || stableSearchParams?.code;
         if (!tokenToPass && typeof window !== 'undefined' && window.location?.href) {
           const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app\/|web\/)?([a-f0-9]{32,64}|[^/?&#]+)/i);
           if (match) {
             tokenToPass = match[1] || match[2];
           }
         }
-        setTimeout(() => {
-          router.replace({
-            pathname: '/(auth)/accept-invite',
-            params: { ...searchParams, ...(tokenToPass ? { token: tokenToPass } : {}) },
-          });
-        }, 0);
+        replaceOnce({
+          pathname: '/(auth)/accept-invite',
+          params: { ...stableSearchParams, ...(tokenToPass ? { token: tokenToPass } : {}) },
+        });
       }
       return;
     }
@@ -168,42 +185,34 @@ function AuthRouteGuard() {
       // Check for deferred handoff or invitation token from Google Play Install Referrer on first launch
       getDeferredHandoffContext()
         .then((context) => {
-          setTimeout(() => {
-            if (context) {
-              if (context.type === 'handoff') {
-                router.replace(`/invite/handoff/${context.value}` as any);
-              } else {
-                router.replace({
-                  pathname: '/(auth)/accept-invite',
-                  params: { token: context.value },
-                });
-              }
+          if (context) {
+            if (context.type === 'handoff') {
+              replaceOnce(`/invite/handoff/${context.value}` as any);
             } else {
-              router.replace('/(auth)/login');
+              replaceOnce({
+                pathname: '/(auth)/accept-invite',
+                params: { token: context.value },
+              });
             }
-          }, 0);
+          } else {
+            replaceOnce('/(auth)/login');
+          }
         })
         .catch(() => {
-          setTimeout(() => {
-            router.replace('/(auth)/login');
-          }, 0);
+          replaceOnce('/(auth)/login');
         });
     } else if (isAuthenticated) {
       if (!hasOrg) {
         if (!isOnboardingRoute) {
-          setTimeout(() => {
-            router.replace('/(auth)/setup-organization');
-          }, 0);
+          replaceOnce('/(auth)/setup-organization');
         }
       } else if (pendingRoute) {
         console.log('[AuthRouteGuard] Navigating to pending notification destination:', pendingRoute);
         dispatch(clearPendingRoute());
-        setTimeout(() => {
-          router.replace(pendingRoute as any);
-        }, 0);
+        replaceOnce(pendingRoute as any);
       }
     }
-  }, [isAuthenticated, isInitialized, rootNavigationState?.key, segments, user, isCreateOrgIntent, pendingRoute, dispatch]);
+  }, [isAuthenticated, isInitialized, rootNavigationState?.key, stableSegmentsKey, pathname, user, isCreateOrgIntent, pendingRoute, dispatch, stableSearchParams]);
 
   return null;
 }
@@ -217,11 +226,6 @@ export default function RootLayout() {
     HankenGrotesk_600SemiBold,
     HankenGrotesk_700Bold,
   });
-
-  useEffect(() => {
-    // Unconditionally dismiss native splash overlay on mount so app interface is always visible
-    SplashScreen.hideAsync().catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {

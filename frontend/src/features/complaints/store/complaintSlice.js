@@ -119,7 +119,11 @@ export const createComplaint = createAsyncThunk(
       const response = await complaintService.create(data)
       return response.data
     } catch (error) {
-      return rejectWithValue(error.response?.data || { message: 'Failed to create complaint' })
+      return rejectWithValue({
+        ...(error.response?.data || {}),
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message || 'Failed to create complaint',
+      })
     }
   },
 )

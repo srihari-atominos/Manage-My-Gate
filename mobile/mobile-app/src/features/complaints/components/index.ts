@@ -7,3 +7,6 @@ export * from './TicketDispatchCard';
 export * from './AssignTechnicianSheet';
 export * from './RaiseTicketForm';
 export * from './ComplaintFilterDrawer';
+export * from './ComplaintTypeSheet';
+export * from './ComplaintCard';
+export * from './ComplaintDetailSheet';

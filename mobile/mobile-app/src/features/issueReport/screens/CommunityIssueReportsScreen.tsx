@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, ScrollView, RefreshControl } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
@@ -14,6 +14,7 @@ import { CommunityIssueReportDetailSheet } from '../components/CommunityIssueRep
 import { IssueReportItem } from '../types/issueReport.types';
 
 export function CommunityIssueReportsScreen() {
+  const router = useRouter();
   const { reportId } = useLocalSearchParams<{ reportId?: string }>();
 
   const {
@@ -98,7 +99,9 @@ export function CommunityIssueReportsScreen() {
     <ScreenShell
       title="Issue Reports"
       subtitle="Resident reports submitted via Report an Issue"
-      iconName="Kanban"
+      iconName="AlertCircle"
+      showBackButton={true}
+      onBackPress={() => router.back()}
       loading={loading && reports.length === 0}
     >
       <View className="flex-1 bg-background">
@@ -111,7 +114,7 @@ export function CommunityIssueReportsScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={loadData} tintColor="#6366f1" />
           }

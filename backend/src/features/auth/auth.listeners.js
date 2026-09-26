@@ -213,7 +213,11 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
 
           if (jwt) {
             // Attempt to send via VerifyNow which might allow custom OTP by appending to URL or generic SMS API
-            const mobileNumber = identifier.replace(/^\+\d+\s*/, '');
+            const e164Digits = identifier.replace(/^\+/, '');
+            const normalizedCountryCode = String(countryCode || '').replace(/\D/g, '');
+            const mobileNumber = normalizedCountryCode && e164Digits.startsWith(normalizedCountryCode)
+              ? e164Digits.slice(normalizedCountryCode.length)
+              : e164Digits;
             const sendUrl = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=${countryCode}&customerId=${customerId}&flowType=SMS&mobileNumber=${mobileNumber}&otp=${code}`;
             const sendRes = await fetch(sendUrl, {
               method: 'POST',

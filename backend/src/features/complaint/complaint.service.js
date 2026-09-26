@@ -17,18 +17,29 @@ class ComplaintService {
     const seqLength = settings?.ticketFormat?.sequenceLength || 6;
     
     // Sort by complaintNumber descending to always get the highest ticket number, avoiding unique key collisions
-    const lastComplaint = await complaintRepository.findAll(orgId, {}, { skip: 0, limit: 1 }, { complaintNumber: -1 });
-    let nextNum = 1;
+    const lastComplaint = await complaintRepository.findAll(orgId, {}, { skip: 0, limit: 1 }, { createdAt: -1 });
+    let maxNum = lastComplaint.total || 0;
     if (lastComplaint.data.length > 0) {
       const lastComplaintNumber = lastComplaint.data[0].complaintNumber;
       const parts = lastComplaintNumber.split('-');
       const lastNumStr = parts[parts.length - 1];
-      nextNum = parseInt(lastNumStr, 10) + 1;
-      if (isNaN(nextNum)) nextNum = lastComplaint.total + 1;
+      const parsed = parseInt(lastNumStr, 10);
+      if (!isNaN(parsed)) maxNum = Math.max(maxNum, parsed);
+
     }
     
     const year = includeYear ? `-${new Date().getFullYear()}-` : '-';
-    return `${prefix}${year}${String(nextNum).padStart(seqLength, '0')}`;
+    let nextNum = maxNum + 1;
+    let candidate = `${prefix}${year}${String(nextNum).padStart(seqLength, '0')}`;
+    
+    let exists = await complaintRepository.findByComplaintNumber(orgId, candidate);
+    while (exists) {
+      nextNum++;
+      candidate = `${prefix}${year}${String(nextNum).padStart(seqLength, '0')}`;
+      exists = await complaintRepository.findByComplaintNumber(orgId, candidate);
+    }
+
+    return candidate;
   }
 
   async calculateSLADueDate(orgId, priority) {
@@ -50,7 +61,7 @@ class ComplaintService {
       residentId,
       category: data.category,
       title: data.title,
-      'location.flat': data.location?.flat,
+      ...(data.location?.flat ? { 'location.flat': data.location.flat } : {}),
       createdAt: { $gte: new Date(Date.now() - duplicateWindowMs) },
       status: { $in: ['Open', 'In Progress', 'Assigned', 'Escalated'] } // Only active tickets
     }, { skip: 0, limit: 1 }, {});
@@ -280,7 +291,7 @@ class ComplaintService {
     const session = await mongoose.startSession();
     session.startTransaction();
     let updated, vendorPass = null;
-    let isReassignment, previousAssigneeName;
+    let isReassignment, previousAssigneeName, previousAssigneeId;
     
     try {
       const complaint = await this.getComplaintById(id, orgId);
@@ -298,13 +309,26 @@ class ComplaintService {
         if (!technicianName && !vendor) throw new HttpError(400, 'Vendor name is required');
       } else {
         if (!technicianId) throw new HttpError(400, 'Technician is required for direct assignment');
-        const technician = await technicianRepository.findById(technicianId, orgId);
+        let technician = await technicianRepository.findById(technicianId, orgId);
+        if (!technician) {
+          technician = await technicianRepository.findActiveByUserId(technicianId, orgId);
+        }
         if (!technician) throw new HttpError(404, 'Technician not found');
-        if (technician.status !== 'Active') throw new HttpError(400, 'Technician is inactive');
+        if (technician.status !== 'Active') {
+          if (technician.status === 'Pending') {
+            await technicianRepository.update(technician._id, orgId, { status: 'Active' });
+            technician.status = 'Active';
+          } else {
+            throw new HttpError(400, 'Technician is inactive');
+          }
+        }
       }
 
       isReassignment = !!complaint.assignedTechnicianId || !!complaint.vendor;
       previousAssigneeName = complaint.assignedTechnicianName || complaint.vendor || 'Unassigned';
+      previousAssigneeId = complaint.assignedTechnicianId
+        ? String(complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id || complaint.assignedTechnicianId)
+        : null;
 
       let targetStatus = isBroadcast ? 'Waiting For Acceptance' : 'Assigned';
       if (assignmentType === 'vendor') targetStatus = 'Assigned';
@@ -334,19 +358,31 @@ class ComplaintService {
           targetBroadcastUserIds = technicians.map(t => t.userId).filter(id => id);
         }
       } else if (technicianId) {
-        const technician = await technicianRepository.findById(technicianId, orgId);
+        let technician = await technicianRepository.findById(technicianId, orgId);
+        if (!technician) {
+          technician = await technicianRepository.findActiveByUserId(technicianId, orgId);
+        }
         
         // Self-heal dangling pointers (if user was recreated)
         const userService = (await import('../user/user.services.js')).default;
-        const currentUser = technician.email ? await userService.getUserByEmail(technician.email) : null;
+        let currentUser = technician?.email ? await userService.getUserByEmail(technician.email.trim().toLowerCase()) : null;
+        if (!currentUser && technician?.phone) {
+          const phoneClean = technician.phone.replace(/\D/g, '');
+          const phoneEmail = `${phoneClean}@staff.local`;
+          currentUser = await userService.getUserByEmail(phoneEmail);
+          if (!currentUser) {
+            const User = (await import('../user/user.model.js')).default;
+            currentUser = await User.findOne({ phone: technician.phone });
+          }
+        }
         
         if (currentUser) {
           targetUserId = currentUser._id;
           if (String(technician.userId) !== String(targetUserId)) {
-            await technicianRepository.update(technicianId, orgId, { userId: targetUserId });
+            await technicianRepository.update(technician._id, orgId, { userId: targetUserId });
           }
         } else {
-          targetUserId = technician.userId || null;
+          targetUserId = technician?.userId || (technician ? technician._id : technicianId);
         }
         
         targetPhone = technician.phone || null;
@@ -438,7 +474,9 @@ class ComplaintService {
       }).catch(err => console.error('Audit Log failed:', err));
     }
 
-    complaintEvents.emit(isReassignment ? 'complaint.reassigned' : 'complaint.assigned', { orgId, complaint: updated, adminId, previousAssigneeName });
+    complaintEvents.emit(isReassignment ? 'complaint.reassigned' : 'complaint.assigned', {
+      orgId, complaint: updated, adminId, previousAssigneeName, previousAssigneeId
+    });
 
     if (vendorPass) {
       messageBroker.publishEvent('VISITOR_PASS_CREATED', { pass: vendorPass, orgId });
@@ -499,34 +537,46 @@ class ComplaintService {
     const complaint = await this.getComplaintById(id, orgId);
     if (!complaint) throw new HttpError(404, 'Complaint not found');
 
-    // Prevent duplicate timeline entries if assignment has already been accepted or is in progress
-    if (['Accepted', 'In Progress', 'On Hold', 'Paused', 'Resolved', 'Closed', 'Completed'].includes(complaint.status)) {
+    const assignedTechIdStr = typeof complaint.assignedTechnicianId === 'object' && complaint.assignedTechnicianId !== null
+      ? String(complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id || '')
+      : String(complaint.assignedTechnicianId || '');
+
+    // Idempotency: if already accepted by this user, return complaint cleanly without duplicate actions
+    if (['Accepted', 'In Progress'].includes(complaint.status) && assignedTechIdStr === String(userId)) {
       return complaint;
     }
-    
+
+    if (['Closed', 'Completed', 'Work Completed', 'Resolved', 'Cancelled'].includes(complaint.status)) {
+      throw new HttpError(400, `Cannot accept a ${complaint.status.toLowerCase()} complaint.`);
+    }
+
+    // RBAC validation: allow active technician, direct assignee, broadcast recipient, or admin
+    const technician = await technicianRepository.findActiveByUserId(userId, orgId);
+    const isDirectAssignee = assignedTechIdStr && assignedTechIdStr === String(userId);
+    const isBroadcastRecipient = complaint.isBroadcast && Array.isArray(complaint.broadcastTechnicianIds) &&
+      complaint.broadcastTechnicianIds.some(bid => String(bid?._id || bid?.id || bid) === String(userId));
+    const isAdmin = ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager', 'Super Admin'].includes(userRole);
+
+    if (!technician && !isDirectAssignee && !isBroadcastRecipient && !isAdmin) {
+      throw new HttpError(403, 'Only an active technician or assigned employee in this community can accept assignments.');
+    }
+
     if (complaint.isBroadcast) {
       if (complaint.assignedTechnicianId) {
         throw new HttpError(400, 'This complaint has already been accepted by another technician.');
       }
-      const uidStr = userId ? userId.toString() : '';
-      const isAdminOrStaff = ['Admin', 'Facility Manager', 'Staff', 'Technician'].includes(userRole);
-      if (!isAdminOrStaff && !complaint.broadcastTechnicianIds.some(id => id && id.toString() === uidStr)) {
+      const uidStr = userId ? String(userId) : '';
+      if (!complaint.broadcastTechnicianIds.some(bid => String(bid?._id || bid?.id || bid) === uidStr)) {
         throw new HttpError(403, 'You were not offered this assignment.');
       }
     } else {
-      const isUnassigned = !complaint.assignedTechnicianId;
-      const isAdminOrStaff = ['Admin', 'Facility Manager', 'Staff', 'Technician', 'Employee'].includes(userRole);
-      const assignedTechIdStr = typeof complaint.assignedTechnicianId === 'object' && complaint.assignedTechnicianId !== null
-        ? String(complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id || '')
-        : String(complaint.assignedTechnicianId || '');
-
-      if (!isUnassigned && assignedTechIdStr !== String(userId) && !isAdminOrStaff) {
+      if (!isDirectAssignee && !isAdmin) {
         throw new HttpError(403, 'You are not assigned to this complaint');
       }
     }
     
     const timelineEvent = {
-      status: 'Assigned',
+      status: 'Accepted',
       action: 'Assignment Accepted',
       userId, userRole, userName,
       remarks: 'Technician has accepted the assignment.',
@@ -562,7 +612,7 @@ class ComplaintService {
         targetId: id, targetName: complaint.complaintNumber,
         userId, userRole, ipAddress: metaData.ipAddress,
         browser: metaData.browser, device: metaData.device,
-        details: { previousStatus: complaint.status, newStatus: 'Assigned' }
+        details: { previousStatus: complaint.status, newStatus: 'Accepted' }
       }).catch(err => console.error('Audit Log failed:', err));
     }
 
@@ -640,6 +690,26 @@ class ComplaintService {
 
   async startWork(id, orgId, userId, userName, userRole, metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
+    if (!complaint) throw new HttpError(404, 'Complaint not found');
+
+    const assignedTechIdStr = typeof complaint.assignedTechnicianId === 'object' && complaint.assignedTechnicianId !== null
+      ? String(complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id || '')
+      : String(complaint.assignedTechnicianId || '');
+
+    const isAdmin = ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager', 'Super Admin'].includes(userRole);
+    if (!isAdmin && assignedTechIdStr !== String(userId)) {
+      throw new HttpError(403, 'You are not assigned to this complaint');
+    }
+
+    // Idempotent: already in progress
+    if (complaint.status === 'In Progress') {
+      return complaint;
+    }
+
+    if (['Closed', 'Completed', 'Work Completed', 'Resolved', 'Cancelled'].includes(complaint.status)) {
+      throw new HttpError(400, `Cannot start work on a ${complaint.status.toLowerCase()} complaint.`);
+    }
+
     const timelineEvent = {
       status: 'In Progress',
       action: 'Work Started',
@@ -649,6 +719,7 @@ class ComplaintService {
     };
     const updated = await complaintRepository.update(id, orgId, {
       status: 'In Progress',
+      workflowStatus: 'Work In Progress',
       $push: { timeline: timelineEvent }
     });
     
@@ -715,9 +786,28 @@ class ComplaintService {
 
   async markWorkCompleted(id, orgId, userId, userName, userRole, notes, attachments = [], metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
-    
+    if (!complaint) throw new HttpError(404, 'Complaint not found');
+
+    const assignedTechIdStr = typeof complaint.assignedTechnicianId === 'object' && complaint.assignedTechnicianId !== null
+      ? String(complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id || '')
+      : String(complaint.assignedTechnicianId || '');
+
+    const isAdmin = ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager', 'Super Admin'].includes(userRole);
+    if (!isAdmin && assignedTechIdStr !== String(userId)) {
+      throw new HttpError(403, 'You are not assigned to this complaint');
+    }
+
+    // Idempotency: already marked completed or waiting confirmation
+    if (['Completed', 'Work Completed', 'Waiting For Resident Confirmation'].includes(complaint.status)) {
+      return complaint;
+    }
+
+    if (complaint.status === 'Closed') {
+      return complaint;
+    }
+
     const timelineEvent = {
-      status: 'Closed',
+      status: 'Completed',
       action: 'Work Completed',
       userId, userRole, userName,
       remarks: notes || 'Work has been marked as completed by the assignee.',
@@ -726,7 +816,12 @@ class ComplaintService {
     };
 
     const updated = await complaintRepository.update(id, orgId, {
-      $set: { status: 'Closed', resolvedAt: new Date(), completionDate: new Date() },
+      $set: { 
+        status: 'Completed',
+        workflowStatus: 'Waiting For Resident Confirmation',
+        resolvedAt: new Date(), 
+        completionDate: new Date() 
+      },
       $push: { timeline: timelineEvent }
     });
 
@@ -734,7 +829,7 @@ class ComplaintService {
       await auditLogService.logAction({
         orgId, action: 'Complete Work', module: 'Complaints', targetId: id, targetName: complaint.complaintNumber,
         userId, userRole, ipAddress: metaData.ipAddress, browser: metaData.browser, device: metaData.device,
-        details: { notes, attachments, previousStatus: complaint.status, newStatus: 'Closed' }
+        details: { notes, attachments, previousStatus: complaint.status, newStatus: 'Completed' }
       }).catch(err => console.error('Audit Log failed:', err));
     }
 
@@ -795,9 +890,35 @@ class ComplaintService {
 
   async confirmCompletion(id, orgId, userId, userName, userRole, metaData = {}, feedback = null) {
     const complaint = await this.getComplaintById(id, orgId);
-    
-    // Support rework logic if requested by resident (e.g. if feedback explicitly rejects work)
-    // For now, Resident Confirmation moves to Closed, as per typical flow.
+    if (!complaint) throw new HttpError(404, 'Complaint not found');
+
+    const residentIdStr = typeof complaint.residentId === 'object' && complaint.residentId !== null
+      ? String(complaint.residentId._id || complaint.residentId.id || '')
+      : String(complaint.residentId || '');
+
+    const isAdmin = ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager', 'Super Admin'].includes(userRole);
+    const isOwner = residentIdStr && residentIdStr === String(userId);
+
+    if (!isOwner && !isAdmin) {
+      throw new HttpError(403, 'Only the resident who logged this ticket or an administrator can confirm completion.');
+    }
+
+    // Strict rule: Resident cannot mark Done while ticket is Open, Assigned, Accepted, or In Progress
+    if (['Open', 'Assigned', 'Waiting For Acceptance', 'Accepted', 'In Progress', 'On Hold', 'Paused', 'Waiting For Vendor'].includes(complaint.status)) {
+      throw new HttpError(400, 'The ticket can only be marked as Done after the assigned employee has completed the work.');
+    }
+
+    // Idempotent: already closed
+    if (complaint.status === 'Closed') {
+      if (feedback && !complaint.feedback?.overallRating) {
+        const updated = await complaintRepository.update(id, orgId, {
+          feedback: { ...feedback, feedbackDate: new Date() }
+        });
+        return updated;
+      }
+      return complaint;
+    }
+
     const timelineEvents = [
       {
         status: 'Closed',
@@ -817,6 +938,7 @@ class ComplaintService {
 
     const updateData = {
       status: 'Closed',
+      workflowStatus: 'Closed',
       closedAt: new Date(),
       $push: { timeline: { $each: timelineEvents } }
     };
@@ -845,6 +967,20 @@ class ComplaintService {
 
   async updateStatus(id, orgId, status, userId, userRole, userName, remarks, attachments = [], priority) {
     const complaint = await this.getComplaintById(id, orgId);
+    if (!complaint) throw new HttpError(404, 'Complaint not found');
+
+    const residentIdStr = typeof complaint.residentId === 'object' && complaint.residentId !== null
+      ? String(complaint.residentId._id || complaint.residentId.id || '')
+      : String(complaint.residentId || '');
+
+    const isAdmin = ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager', 'Super Admin'].includes(userRole);
+
+    if ((status === 'Closed' || status === 'Resolved') && !isAdmin) {
+      const isWorkFinished = ['Completed', 'Work Completed', 'Resolved', 'Waiting For Resident Confirmation'].includes(complaint.status);
+      if (!isWorkFinished) {
+        throw new HttpError(400, 'The ticket can only be marked as Done after the assigned employee has completed the work.');
+      }
+    }
     
     let extraData = {};
     const terminalStatuses = ['Resolved', 'Closed', 'Completed', 'Work Completed'];

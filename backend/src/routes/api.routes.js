@@ -124,7 +124,11 @@ import onboardingWizardRouter from '../features/onboardingWizard/onboardingWizar
 router.use('/onboarding-wizard', onboardingWizardRouter);
 router.use('/onboarding', onboardingWizardRouter);
 
+import issueReportConfigRouter from '../features/issueReportConfig/issueReportConfig.router.js';
+
 // Issue Report feature routes
+router.use('/platform/reports/config', issueReportConfigRouter);
+router.use('/support/reports/config', issueReportConfigRouter);
 router.use('/support/reports', issueReportRouter);
 router.use('/platform/reports', platformReportRouter);
 

@@ -8,7 +8,8 @@ import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { CheckCircle2, Star } from 'lucide-react-native';
+import { CheckCircle2, Star, AlertCircle } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { useComplaints } from '../hooks/useComplaints';
 import { ComplaintCard } from '../components/ComplaintCard';
 import { ComplaintFilterDrawer } from '../components/ComplaintFilterDrawer';
@@ -19,6 +20,7 @@ import { Complaint } from '../types';
 import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 
 export function AdminComplaintManagementScreen() {
+  const router = useRouter();
   const {
     complaints,
     isLoading,
@@ -151,8 +153,17 @@ export function AdminComplaintManagementScreen() {
             />
           </View>
 
-          {/* VIEW FEEDBACK BUTTON BAR */}
+          {/* VIEW FEEDBACK & APP ISSUES BUTTON BAR */}
           <View className="px-4 py-1 flex-row items-center justify-end gap-2">
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push('/(resident)/complaints/issue-reports' as any)}
+              className="bg-rose-500/10 border border-rose-500/30 px-3 py-2 rounded-xl flex-row items-center justify-center gap-1.5"
+            >
+              <Icon as={AlertCircle} size={15} className="text-rose-500" />
+              <Text className="text-xs font-bold text-rose-600 dark:text-rose-400 font-sans">App Issues</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setShowRatingsSheet(true)}

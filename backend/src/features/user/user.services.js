@@ -11,6 +11,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import config from '../../config/config.js';
 import { generateInviteLink } from './utils/invite.utils.js';
+import integrationHubService from '../integrationHub/integrationHub.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,7 +58,11 @@ export class UserService {
       // Normalization & Validation
       if (userData.email) userData.email = userData.email.trim().toLowerCase();
       if (userData.username) userData.username = userData.username.trim();
-      if (userData.phone) userData.phone = normalizePhone(userData.phone) || userData.phone.trim();
+      if (userData.phone) {
+        const normalizedPhone = normalizePhone(userData.phone);
+        if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
+        userData.phone = normalizedPhone;
+      }
 
       // Check uniqueness
       const existingEmail = await userRepository.findByEmail(userData.email, currentSession);
@@ -151,7 +156,8 @@ export class UserService {
         updateData.username = normalizedUsername;
       }
       if (updateData.phone && String(updateData.phone).trim()) {
-        const normalizedPhone = normalizePhone(updateData.phone) || String(updateData.phone).trim();
+        const normalizedPhone = normalizePhone(updateData.phone);
+        if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
         const existingPhoneUser = await userRepository.findByPhone(normalizedPhone, currentSession);
         if (existingPhoneUser && existingPhoneUser._id.toString() !== id.toString()) {
           throw new HttpError(409, `User with phone number '${updateData.phone}' already exists.`);
@@ -281,12 +287,14 @@ export class UserService {
         }
       }
 
-      let phoneToAssign = phone ? (normalizePhone(phone) || phone.trim()) : '';
+      let phoneToAssign = phone ? normalizePhone(phone) : '';
+      if (phone && !phoneToAssign) {
+        throw new HttpError(400, 'Invalid phone number format.');
+      }
       if (phoneToAssign) {
         const existingPhoneUser = await userRepository.findByPhone(phoneToAssign, session);
         if (existingPhoneUser && (!existing || existingPhoneUser._id.toString() !== existing._id.toString())) {
-          logger.warn(`Phone number '${phoneToAssign}' is already linked to user (${existingPhoneUser.email}). Proceeding with invitation for '${trimmedEmail}' without duplicate phone assignment.`);
-          phoneToAssign = '';
+          throw new HttpError(409, 'This phone number is already linked to another account. Remove it from the invitation or use the resident\'s own number.');
         }
       }
       
@@ -704,6 +712,16 @@ export class UserService {
       throw new HttpError(400, `An account with phone number '${newPhone}' already exists.`);
     }
 
+    if (process.env.NODE_ENV === 'production') {
+      const [twilio, messageCentral] = await Promise.all([
+        integrationHubService.getGlobalConnectionByProvider('twilio'),
+        integrationHubService.getGlobalConnectionByProvider('messagecentral')
+      ]);
+      if (!twilio && !messageCentral) {
+        throw new HttpError(503, 'SMS verification is temporarily unavailable. Please contact support.');
+      }
+    }
+
     // 3. Generate OTP via otpService (valid for 15 minutes)
     const plainCode = await otpService.createOTP(normalizedPhone, 'VERIFY', 15);
 
@@ -731,8 +749,10 @@ export class UserService {
       if (phone !== undefined) {
         if (phone === null || (typeof phone === 'string' && phone.trim() === '')) {
           payload.$unset.phone = 1;
+          payload.$set.phoneVerified = false;
         } else {
-          const normalizedPhone = normalizePhone(String(phone).trim()) || String(phone).trim();
+          const normalizedPhone = normalizePhone(String(phone).trim());
+          if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
           if (normalizedPhone !== (user.phone || '')) {
             const existingPhoneUser = await userRepository.findByPhone(normalizedPhone, session);
             if (existingPhoneUser && existingPhoneUser._id.toString() !== id.toString()) {

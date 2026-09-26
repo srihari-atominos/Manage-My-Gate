@@ -7,3 +7,7 @@ export * from './components/ReportTypeSelector';
 export * from './components/ScreenshotUploader';
 export * from './components/ReportSubmittedView';
 export * from './screens/ReportIssueScreen';
+export * from './hooks/useCommunityIssueReports';
+export * from './components/CommunityIssueReportCard';
+export * from './components/CommunityIssueReportDetailSheet';
+export * from './screens/CommunityIssueReportsScreen';

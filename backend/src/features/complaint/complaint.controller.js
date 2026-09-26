@@ -34,10 +34,31 @@ class ComplaintController {
       
       if (!isAdmin) {
         const userId = req.user.id || req.user._id;
+        const userEmail = req.user.email || '';
+        const userPhone = req.user.phone || '';
+        const userName = req.user.name || req.user.username || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
+
+        let techIds = [];
+        try {
+          const Technician = (await import('../technician/technician.model.js')).default;
+          const techDocs = await Technician.find({
+            orgId,
+            $or: [
+              { userId },
+              ...(userEmail ? [{ email: userEmail.toLowerCase() }] : []),
+              ...(userPhone ? [{ phone: userPhone }] : [])
+            ]
+          });
+          techIds = techDocs.map(t => t._id);
+        } catch (err) {}
+
+        const allTargetIds = Array.from(new Set([userId, ...techIds].map(id => String(id))));
+
         filters.$or = [
           { residentId: userId },
-          { assignedTechnicianId: userId },
-          { broadcastTechnicianIds: userId }
+          { assignedTechnicianId: { $in: allTargetIds } },
+          { broadcastTechnicianIds: { $in: allTargetIds } },
+          ...(userName ? [{ assignedTechnicianName: new RegExp(`^${userName.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') }] : [])
         ];
       }
 
@@ -48,8 +69,10 @@ class ComplaintController {
 
       console.log(`[DEBUG GET ALL] req.user:`, req.user, `| orgId:`, orgId, `| filters:`, JSON.stringify(filters));
 
-      const skip = (parseInt(page) - 1) * parseInt(limit);
-      const pagination = { skip, limit: parseInt(limit) };
+      const safeLimit = Math.max(1, parseInt(limit) || 10);
+      const safePage = Math.max(1, parseInt(page) || 1);
+      const skip = (safePage - 1) * safeLimit;
+      const pagination = { skip, limit: safeLimit };
       const sort = { [sortField]: sortOrder === 'desc' ? -1 : 1 };
 
       const result = await complaintService.getComplaints(orgId, filters, pagination, sort);
@@ -59,8 +82,8 @@ class ComplaintController {
         complaints: result.data,
         pagination: {
           totalRecords: result.total,
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(result.total / parseInt(limit))
+          currentPage: safePage,
+          totalPages: Math.max(1, Math.ceil((result.total || 0) / safeLimit))
         }
       }, 'Complaints retrieved successfully');
     } catch (error) {
@@ -99,9 +122,10 @@ class ComplaintController {
       const { id } = req.params;
       const { 
         technicianId, technicianIds, assignmentType, technicianName, 
-        vendor, team, instructions, preferredVisitDate, 
+        vendor, team, instructions, adminInstructions, preferredVisitDate, 
         preferredVisitTime, reassignmentReason 
       } = req.body;
+      const finalInstructions = adminInstructions || instructions;
       const adminId = req.user.id || req.user._id;
       const rawName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
       const adminName = req.user.name || (rawName.length > 0 ? rawName : (req.user.username || req.user.email?.split('@')[0] || 'Admin'));
@@ -113,7 +137,7 @@ class ComplaintController {
       
       const result = await complaintService.assignTechnician(
         id, orgId, technicianId, technicianIds, assignmentType, technicianName, 
-        adminId, adminName, vendor, team, instructions, preferredVisitDate, preferredVisitTime, metaData, reassignmentReason
+        adminId, adminName, vendor, team, finalInstructions, preferredVisitDate, preferredVisitTime, metaData, reassignmentReason
       );
       res.success({ complaint: result.complaint, vendorPass: result.vendorPass }, 'Technician assigned successfully');
     } catch (error) {
@@ -275,7 +299,10 @@ class ComplaintController {
   async startWork(req, res, next) {
     try {
       const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
-      const updated = await complaintService.startWork(req.params.id, req.tenant.orgId, req.user._id, req.user.firstName, req.user.role, metaData);
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const updated = await complaintService.startWork(req.params.id, req.tenant.orgId, userId, userName, userRole, metaData);
       res.success(updated, 'Work started successfully');
     } catch (error) { next(error); }
   }
@@ -283,7 +310,10 @@ class ComplaintController {
   async pauseWork(req, res, next) {
     try {
       const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
-      const updated = await complaintService.pauseWork(req.params.id, req.tenant.orgId, req.user._id, req.user.firstName, req.user.role, req.body.reason, metaData);
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const updated = await complaintService.pauseWork(req.params.id, req.tenant.orgId, userId, userName, userRole, req.body.reason, metaData);
       res.success(updated, 'Work paused successfully');
     } catch (error) { next(error); }
   }
@@ -291,7 +321,10 @@ class ComplaintController {
   async resumeWork(req, res, next) {
     try {
       const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
-      const updated = await complaintService.resumeWork(req.params.id, req.tenant.orgId, req.user._id, req.user.firstName, req.user.role, metaData);
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const updated = await complaintService.resumeWork(req.params.id, req.tenant.orgId, userId, userName, userRole, metaData);
       res.success(updated, 'Work resumed successfully');
     } catch (error) { next(error); }
   }
@@ -299,7 +332,10 @@ class ComplaintController {
   async markWorkCompleted(req, res, next) {
     try {
       const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
-      const updated = await complaintService.markWorkCompleted(req.params.id, req.tenant.orgId, req.user._id, req.user.firstName, req.user.role, req.body.notes, req.body.attachments, metaData);
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const updated = await complaintService.markWorkCompleted(req.params.id, req.tenant.orgId, userId, userName, userRole, req.body.notes, req.body.attachments, metaData);
       res.success(updated, 'Work completed successfully');
     } catch (error) { next(error); }
   }
@@ -307,7 +343,10 @@ class ComplaintController {
   async uploadWorkAttachments(req, res, next) {
     try {
       const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
-      const updated = await complaintService.uploadWorkAttachments(req.params.id, req.tenant.orgId, req.user._id, req.user.firstName, req.user.role, req.body.attachments, metaData);
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const updated = await complaintService.uploadWorkAttachments(req.params.id, req.tenant.orgId, userId, userName, userRole, req.body.attachments, metaData);
       res.success(updated, 'Work attachments uploaded successfully');
     } catch (error) { next(error); }
   }
@@ -315,7 +354,10 @@ class ComplaintController {
   async addWorkNotes(req, res, next) {
     try {
       const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
-      const updated = await complaintService.addWorkNotes(req.params.id, req.tenant.orgId, req.user._id, req.user.firstName, req.user.role, req.body.notes, metaData);
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const updated = await complaintService.addWorkNotes(req.params.id, req.tenant.orgId, userId, userName, userRole, req.body.notes, metaData);
       res.success(updated, 'Work notes added successfully');
     } catch (error) { next(error); }
   }
@@ -324,7 +366,10 @@ class ComplaintController {
     try {
       const { feedback } = req.body;
       const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
-      const updated = await complaintService.confirmCompletion(req.params.id, req.tenant.orgId, req.user._id, req.user.firstName, req.user.role, metaData, feedback);
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const updated = await complaintService.confirmCompletion(req.params.id, req.tenant.orgId, userId, userName, userRole, metaData, feedback);
       res.success(updated, 'Completion confirmed successfully');
     } catch (error) { next(error); }
   }

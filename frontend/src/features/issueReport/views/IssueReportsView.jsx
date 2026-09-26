@@ -18,6 +18,7 @@ import IssueReportFilters from '../components/IssueReportFilters.jsx'
 import IssueReportTable from '../components/IssueReportTable.jsx'
 import IssueReportPagination from '../components/IssueReportPagination.jsx'
 import IssueReportDetailModal from '../components/IssueReportDetailModal.jsx'
+import IssueReportEmailConfigCard from '../components/IssueReportEmailConfigCard.jsx'
 import '../styles/_issueReport.scss'
 
 /**
@@ -69,6 +70,13 @@ export const IssueReportsView = () => {
   return (
     <div className="issue-report-container">
       <CContainer fluid>
+        {/* Email Notification Configuration Card */}
+        <CRow>
+          <CCol xs={12}>
+            <IssueReportEmailConfigCard />
+          </CCol>
+        </CRow>
+
         <CRow>
           <CCol xs={12}>
             <CCard className="shadow-sm border-0 mb-4">

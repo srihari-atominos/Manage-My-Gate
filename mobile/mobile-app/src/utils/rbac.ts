@@ -94,8 +94,8 @@ export const checkIsSecurityRole = (user: UserLike | null | undefined): boolean 
 const PERMISSION_SYNONYMS: Record<string, string[]> = {
   // Visitor & Gate Security
   'visitor:guard': ['visitor:guard', 'visitor.guard', 'visitor:admin', 'visitor', 'gate:console', 'visitor_gate_console'],
-  'visitor:admin': ['visitor:admin', 'visitor.admin', 'visitor:guard', 'visitor', 'visitor_admin_dashboard', 'visitor_community_passes', 'visitor_admin_logs', 'visitor_gate_console', 'visitor_invite'],
-  'visitor:resident': ['visitor:resident', 'visitor.resident', 'visitor', 'visitor_resident_passes', 'visitor_passes', 'visitor:view', 'visitor:read', 'visitor_gate_console', 'visitor_invite'],
+  'visitor:admin': ['visitor:admin', 'visitor.admin', 'visitor:guard', 'visitor', 'visitor_admin_dashboard', 'visitor_community_passes', 'visitor_admin_logs', 'visitor_gate_console'],
+  'visitor:resident': ['visitor:resident', 'visitor.resident', 'visitor', 'visitor_resident_passes', 'visitor_passes', 'visitor:view', 'visitor:read', 'visitor_gate_console'],
 
   // Notice Board
   'notices:active_board': ['notices:active_board', 'notices.active_board', 'active_board', 'resident_feed', 'notices_active_board', 'notices:read', 'notices.read', 'notices:view', 'notices.view', 'notices', 'notice_board'],
@@ -190,7 +190,6 @@ export const GUARD_ONLY_FEATURE_IDS = new Set<string>([]);
 // Features allowed for Security Guard
 const FALLBACK_SECURITY_FEATURE_IDS = new Set([
   'visitor_gate_console',
-  'visitor_invite',
   'visitor_admin_logs',
   'amenities_scanner',
   'amenities_security_logs',
@@ -216,7 +215,6 @@ const FALLBACK_SECURITY_PERMISSIONS = new Set([
 const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'visitor_resident_passes',
   'visitor_gate_console',
-  'visitor_invite',
   'billing_dashboard',
   'billing_my_dues',
   'billing_wallet',

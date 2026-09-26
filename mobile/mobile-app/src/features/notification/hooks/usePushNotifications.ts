@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -22,7 +21,6 @@ import {
  * Supports Cold-Start resolution, background/foreground tap handling, and race-condition prevention.
  */
 export function usePushNotifications() {
-  const router = useRouter();
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useAuth();
   const currentTokenRef = useRef<string | null>(null);
@@ -141,19 +139,10 @@ export function usePushNotifications() {
       const targetRoute = resolveNotificationRoute(data);
 
       dispatch(setLastHandledNotificationId(notifId));
+      dispatch(setPendingRoute(targetRoute));
 
-      if (isAuthenticated) {
-        try {
-          router.push(targetRoute as any);
-        } catch (navErr) {
-          console.warn('[usePushNotifications] Navigation error for targetRoute:', targetRoute, navErr);
-          router.push('/(resident)/notifications' as any);
-        }
-      } else {
-        // User not logged in: queue route for post-authentication navigation
-        console.log('[usePushNotifications] User unauthenticated; queuing pending route:', targetRoute);
-        dispatch(setPendingRoute(targetRoute));
-        router.replace('/(auth)/login' as any);
+      if (!isAuthenticated) {
+        console.log('[usePushNotifications] User unauthenticated; queued pending route:', targetRoute);
       }
     });
 
@@ -165,7 +154,7 @@ export function usePushNotifications() {
         responseListenerRef.current.remove();
       }
     };
-  }, [isAuthenticated, router, dispatch]);
+  }, [isAuthenticated, dispatch]);
 }
 
 export default usePushNotifications;
