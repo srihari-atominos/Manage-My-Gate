@@ -105,39 +105,6 @@ const AMENITY_TIERS = [
   },
 ]
 
-const isPermissionSelected = (selectedIds, perm) => {
-  if (!selectedIds || !Array.isArray(selectedIds) || selectedIds.length === 0 || !perm) return false
-  const pId = String(perm._id || '')
-  const pName = String(perm.name || '').trim().toLowerCase()
-  const pCode = String(perm.code || '').trim().toLowerCase()
-  const pAction = String(perm.action || '').trim().toLowerCase()
-
-  return selectedIds.some((selected) => {
-    if (!selected) return false
-    const selStr = typeof selected === 'object' ? String(selected.name || selected._id || '') : String(selected)
-    const selTrimmed = selStr.trim().toLowerCase()
-    const selNormalized = selTrimmed.replace(':', '.')
-    const pNameNormalized = pName.replace(':', '.')
-
-    if (
-      selTrimmed === pId ||
-      selTrimmed === pName ||
-      selTrimmed === pCode ||
-      selNormalized === pNameNormalized
-    ) {
-      return true
-    }
-
-    const selAction = selTrimmed.includes(':') ? selTrimmed.split(':')[1] : selTrimmed
-    const pActionName = pName.includes(':') ? pName.split(':')[1] : pName
-    if (selAction && (selAction === pAction || selAction === pActionName)) {
-      return true
-    }
-
-    return false
-  })
-}
-
 const PermissionMatrix = ({
   groupedPermissions,
   selectedIds,
