@@ -7,6 +7,8 @@ export type InvoiceStatus =
   | 'OVERDUE'
   | 'CANCELLED'
   | 'FAILED'
+  | 'CHECKING'
+  | 'PAYMENT_CHECKING'
   | 'UNKNOWN';
 
 export interface InvoiceItem {
@@ -122,17 +124,7 @@ export interface RazorpayVerificationPayload {
   razorpay_signature?: string;
 }
 
-export interface WalletState {
-  balance: number;
-  activePasses?: any[];
-  transactionHistory?: any[];
-  transactions?: any[];
-  isPaymentGatewayConfigured?: boolean;
-  loading?: boolean;
-  pagination?: InvoicesGridPagination;
-  isLoading: boolean;
-  error: string | null;
-}
+export type { WalletState } from '../../wallet/types';
 
 export interface BillingState {
   kpis: BillingKPIs | null;

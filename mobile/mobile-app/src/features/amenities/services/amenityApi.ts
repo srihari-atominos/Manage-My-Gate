@@ -81,8 +81,11 @@ export const getWalletBalance = async () => {
   return await apiClient.get('/wallet');
 };
 
+/**
+ * @deprecated Direct balance injection is decommissioned. Use walletService.createWalletOrder and verifyWalletPayment.
+ */
 export const topUpWallet = async (amount: number) => {
-  return await apiClient.post('/wallet/add-money', { amount });
+  return await apiClient.post('/wallet/create-order', { amount });
 };
 
 export const createAmenity = async (payload: any) => {

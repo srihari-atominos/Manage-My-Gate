@@ -166,7 +166,7 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
             onPaymentMethodChange={wizard.setPaymentMethod}
             balance={wizard.balance}
             onOpenTopUp={() => wizard.setIsTopUpOpen(true)}
-            onLaunchRazorpay={() => wizard.setIsRazorpayOpen(true)}
+            onLaunchRazorpay={wizard.handleLaunchRazorpay}
             onConfirmReservation={wizard.handleConfirmReservation}
             onRestartBooking={wizard.handleRestartBooking}
             confirming={wizard.v2Confirming}
@@ -225,23 +225,18 @@ export function AmenityBookingWizard({ facility, onClose }: AmenityBookingWizard
       />
 
       {/* Razorpay Checkout Modal */}
-      <RazorpayCheckoutModal
-        visible={wizard.isRazorpayOpen}
-        options={{
-          razorpayKeyId: 'rzp_test_mockkey',
-          orderId: `order_amenity_${Date.now()}`,
-          paymentId: `pay_rec_${Date.now()}`,
-          amount: wizard.pricingSnapshot?.totalAmount || 0,
-          currency: wizard.pricingSnapshot?.currency || 'INR',
-          description: `Amenity Booking: ${facility.name}`,
-        }}
-        onSuccess={wizard.handleRazorpaySuccess}
-        onDismiss={() => wizard.setIsRazorpayOpen(false)}
-        onError={(err) => {
-          wizard.setIsRazorpayOpen(false);
-          wizard.setStepError(err?.description || 'Payment was cancelled or failed.');
-        }}
-      />
+      {wizard.razorpayOptions && (
+        <RazorpayCheckoutModal
+          visible={wizard.isRazorpayOpen}
+          options={wizard.razorpayOptions}
+          onSuccess={wizard.handleRazorpaySuccess}
+          onDismiss={() => wizard.setIsRazorpayOpen(false)}
+          onError={(err) => {
+            wizard.setIsRazorpayOpen(false);
+            wizard.setStepError(err?.description || 'Payment was cancelled or failed.');
+          }}
+        />
+      )}
     </View>
   );
 }

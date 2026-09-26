@@ -152,17 +152,16 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_COMPLETED, async (booking) => {
 // ---------------------------------------------------------
 
 paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment, options = {}) => {
-  if (options.alreadySettled) {
-    logger.info(`Skipping PAYMENT_SUCCESS listener for AmenityBooking ${payment.referenceId} as it was settled in transaction.`);
-    return;
-  }
   if (payment.referenceType !== 'AmenityBooking') return;
 
   try {
     const amenityBookingService = (await import('./amenityBooking.services.js')).default;
     
-    // Call the service to update status to confirmed, generate QR code, and update DB
-    const settledBooking = await amenityBookingService.settleBookingPayment(payment.referenceId, payment, null);
+    // Call the service to update status only if not already settled in transaction
+    let settledBooking = options.domainResult;
+    if (!settledBooking && !options.alreadySettled) {
+      settledBooking = await amenityBookingService.settleBookingPayment(payment.referenceId, payment, null);
+    }
 
     const AmenityBooking = (await import('./amenityBooking.model.js')).default;
     const booking = await AmenityBooking.findById(payment.referenceId).populate(['amenityId', 'userId']);

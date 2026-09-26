@@ -1,10 +1,10 @@
 import express from 'express';
-import { protect } from '../../middlewares/auth.middleware.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
 import * as sessionController from './session.controller.js';
 
 const router = express.Router();
 
-router.use(protect);
+router.use(isAuthenticated);
 
 router.get('/', sessionController.getUserSessions);
 router.delete('/all', sessionController.revokeAllSessions);
