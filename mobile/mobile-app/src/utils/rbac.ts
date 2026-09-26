@@ -125,7 +125,7 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'amenities:ledgers': ['amenities:ledgers', 'amenities.ledgers', 'amenities:admin', 'amenities.admin'],
 
   // Billing & Invoices
-  'billing:action_center': ['billing:action_center', 'billing:dashboard', 'billing:view', 'billing:read', 'billing'],
+  'billing:action_center': ['billing:action_center', 'billing:dashboard', 'billing:view', 'billing:read', 'billing', 'financial_history', 'billing_wallet'],
   'billing:assessment_manager': ['billing:assessment_manager', 'billing:dashboard', 'billing'],
 
   // Administration & Security
@@ -177,11 +177,13 @@ const matchesUserPermissions = (
 };
 
 // Features strictly reserved for resident self-service (hidden from Admin and Guard consoles)
+// NOTE: billing_wallet and financial_history are intentionally NOT included here — both Admin
+// and Resident personas can access the Digital Wallet and Financial History screens.
+// Access differentiation is handled entirely by the permission string 'billing:action_center'.
 export const RESIDENT_ONLY_FEATURE_IDS = new Set([
   'visitor_resident_passes',
   'visitor_passes',
   'billing_my_dues',
-  'billing_wallet',
 ]);
 
 // Features strictly reserved for gate security hardware (hidden from Admin and Resident consoles)
@@ -215,11 +217,14 @@ const FALLBACK_SECURITY_PERMISSIONS = new Set([
 
 const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'visitor_resident_passes',
+  'visitor_gate_pass',
   'visitor_gate_console',
   'visitor_invite',
   'billing_dashboard',
   'billing_my_dues',
+  'billing_my_invoices',
   'billing_wallet',
+  'financial_history',
   'amenities_discover',
   'amenities_my_booking',
   'amenities_wallet',
@@ -350,6 +355,7 @@ export const isFeatureAllowedForUser = (
       'amenities_maintenance',
       'amenities_scanner',
       'amenities_security_logs',
+      'amenities_action_center',
       'complaints_dashboard',
       'complaints_complaint_management',
       'complaints_staff',
@@ -361,6 +367,7 @@ export const isFeatureAllowedForUser = (
       'visitor_admin_logs',
       'billing_dashboard',
       'billing_action_center',
+      'billing_my_invoices',
     ];
     return managerAllowed.includes(item.id);
   }
