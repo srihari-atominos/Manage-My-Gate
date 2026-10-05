@@ -32,9 +32,9 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAuth } from '../../src/features/auth/hooks/useAuth';
-import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
-import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { useGoogleAuthSession } from '@/src/features/auth/hooks/useGoogleAuthSession';
+import { AppleSignInButton } from '@/src/features/auth/components/AppleSignInButton';
 import {
   NahomEmblem,
   NahomWordmark,

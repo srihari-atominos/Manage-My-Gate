@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { useAmenitySocket } from '../../../src/features/amenities/hooks/useAmenitySocket';
+import { useAmenitySocket } from '@/src/features/amenities/hooks/useAmenitySocket';
 import { premiumScreenTransition } from '@/src/utils/screenTransitions';
 
 export default function AmenitiesLayout() {

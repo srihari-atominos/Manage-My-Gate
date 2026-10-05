@@ -15,16 +15,16 @@ import { Input } from '@/components/ui/input';
 import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
-import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
-import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
+import { GoogleSignInButton } from '@/src/features/auth/components/GoogleSignInButton';
+import { AppleSignInButton } from '@/src/features/auth/components/AppleSignInButton';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAuth } from '../../src/features/auth/hooks/useAuth';
-import { acceptInviteThunk } from '../../src/features/auth/store/authSlice';
-import authService from '../../src/features/auth/services/authService';
-import apiClient from '../../src/services/apiClient';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { acceptInviteThunk } from '@/src/features/auth/store/authSlice';
+import authService from '@/src/features/auth/services/authService';
+import apiClient from '@/src/services/apiClient';
 import { AppLoader } from '@/components/ui/AppLoader';
 
 // Accept Invite Password Validation Schema - token is managed silently, not by user input

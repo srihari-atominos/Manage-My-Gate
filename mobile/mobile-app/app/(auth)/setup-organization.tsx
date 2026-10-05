@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { CreateOrganizationScreen } from '../../src/features/organization';
+import { CreateOrganizationScreen } from '@/src/features/organization';
 
 export default function SetupOrganizationRoute() {
   const params = useLocalSearchParams<{ intent?: string; canGoBack?: string }>();

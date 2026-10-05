@@ -11,10 +11,10 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { AmenityFacility } from '../../../../src/features/amenities/types/amenityDomain.types';
-import amenityManagementService from '../../../../src/features/amenities/services/amenityManagementService';
-import { normalizeFacilityFromApi } from '../../../../src/features/amenities/utils/amenityPayloadMappers';
-import { AmenityBookingWizard } from '../../../../src/features/amenities/components/wizard/AmenityBookingWizard';
+import { AmenityFacility } from '@/src/features/amenities/types/amenityDomain.types';
+import amenityManagementService from '@/src/features/amenities/services/amenityManagementService';
+import { normalizeFacilityFromApi } from '@/src/features/amenities/utils/amenityPayloadMappers';
+import { AmenityBookingWizard } from '@/src/features/amenities/components/wizard/AmenityBookingWizard';
 import { AlertTriangle, ArrowLeft } from 'lucide-react-native';
 import { AppLoader } from '@/components/ui/AppLoader';
 

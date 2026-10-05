@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { Redirect } from 'expo-router';
-import { useAuth } from '../src/features/auth/hooks/useAuth';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 export default function IndexScreen() {
   const { isAuthenticated, isInitialized, user } = useAuth();

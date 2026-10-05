@@ -145,11 +145,11 @@
           "defaultChannel": "general"
         }
       ],
-      "expo-font",
-      "expo-sharing",
-      "expo-status-bar",
-      "expo-web-browser",
-      "expo-localization",
+      
+      
+      
+      
+      
       "expo-apple-authentication",
       [
         "expo-contacts",

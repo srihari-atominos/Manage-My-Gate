@@ -1,5 +1,5 @@
-import '../src/utils/consoleFilter';
-import '../src/utils/cryptoPolyfill';
+import '@/src/utils/consoleFilter';
+import '@/src/utils/cryptoPolyfill';
 import '@/global.css';
 import React, { useEffect, useMemo, useRef } from 'react';
 
@@ -15,7 +15,7 @@ import { Stack, useSegments, useRouter, useGlobalSearchParams, useRootNavigation
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { Provider, useDispatch, useSelector } from 'react-redux';
-import { store } from '../src/store/store';
+import { store } from '@/src/store/store';
 import { View, I18nManager, TouchableOpacity, Linking, Platform, LogBox } from 'react-native';
 import { AlertTriangle, Mail } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
@@ -78,8 +78,8 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 }
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useAuth } from '../src/features/auth/hooks/useAuth';
-import { setDefaultPhoneCountry } from '../src/utils/phone';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { setDefaultPhoneCountry } from '@/src/utils/phone';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import {
@@ -90,14 +90,14 @@ import {
   HankenGrotesk_700Bold,
   HankenGrotesk_800ExtraBold,
 } from '@expo-google-fonts/hanken-grotesk';
-import storage from '../src/utils/storage';
-import i18n, { I18nProvider } from '../src/utils/i18n';
+import storage from '@/src/utils/storage';
+import i18n, { I18nProvider } from '@/src/utils/i18n';
 import * as SplashScreen from 'expo-splash-screen';
-import useAutoUpdate from '../src/hooks/useAutoUpdate';
-import usePushNotifications from '../src/features/notification/hooks/usePushNotifications';
-import { clearPendingRoute, setPendingRoute } from '../src/features/notification/store/notificationSlice';
-import { useGlobalAppSocket } from '../src/hooks/useGlobalAppSocket';
-import { getDeferredHandoffContext } from '../src/features/auth/services/deferredDeepLinkService';
+import useAutoUpdate from '@/src/hooks/useAutoUpdate';
+import usePushNotifications from '@/src/features/notification/hooks/usePushNotifications';
+import { clearPendingRoute, setPendingRoute } from '@/src/features/notification/store/notificationSlice';
+import { useGlobalAppSocket } from '@/src/hooks/useGlobalAppSocket';
+import { getDeferredHandoffContext } from '@/src/features/auth/services/deferredDeepLinkService';
 import { GlobalNotificationPresenter } from '@/components/feedback/GlobalNotificationPresenter';
 import { AnimatedSplash } from '@/components/feedback/AnimatedSplash';
 import { AppLoader } from '@/components/ui/AppLoader';
