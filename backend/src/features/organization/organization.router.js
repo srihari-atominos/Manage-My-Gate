@@ -11,6 +11,7 @@ import {
   updateFeaturesRules,
   updateStatusRules,
   updateLoginPolicyRules,
+  updateOnboardingModeRules,
   sendAdminEmailOtpRules,
   verifyAdminEmailOtpRules,
 } from './organization.validator.js';
@@ -97,6 +98,14 @@ router.patch(
   tenantContext({ requirePlatformContext: true }),
   validate(updateFeaturesRules),
   organizationController.updateFeatures
+);
+
+router.patch(
+  '/:id/onboarding-mode',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(updateOnboardingModeRules),
+  organizationController.updateOnboardingMode
 );
 
 router.patch(

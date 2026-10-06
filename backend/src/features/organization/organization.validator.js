@@ -201,6 +201,16 @@ export const verifyAdminEmailOtpRules = [
 ];
 
 
+export const updateOnboardingModeRules = [
+  body('onboardingMode')
+    .notEmpty()
+    .withMessage('Onboarding mode is required')
+    .isString()
+    .trim()
+    .isIn(['INVITATION', 'ADMIN_ANNOUNCEMENT'])
+    .withMessage('Onboarding mode must be one of: INVITATION, ADMIN_ANNOUNCEMENT'),
+];
+
 export const updateLoginPolicyRules = [
   body('authenticationMethod')
     .notEmpty()

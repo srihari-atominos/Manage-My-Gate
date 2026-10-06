@@ -87,13 +87,13 @@ const parseCSV = (text) => {
   return parsed
 }
 
-export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles = [] }) => {
+export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles = [], globalOnboardingMode }) => {
   const [parsedRows, setParsedRows] = useState([])
   const [fileName, setFileName] = useState('')
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
-  const [onboardingMode, setOnboardingMode] = useState('INVITATION')
+  
   const fileInputRef = useRef(null)
 
   const handleDownloadTemplate = () => {
@@ -197,9 +197,8 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
         phone: r.phone || undefined,
         name: r.name || undefined,
         roleName: r.roleName,
-        onboardingMode,
-      }))
-      const res = await onBulkInvite({ invitations, onboardingMode })
+        }))
+      const res = await onBulkInvite(invitations)
       setResults(res)
       setParsedRows([])
       setFileName('')
@@ -215,7 +214,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
     setFileName('')
     setResults(null)
     setErrorMsg('')
-    setOnboardingMode('INVITATION')
+    
     onClose()
   }
 
@@ -242,43 +241,19 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
               Onboarding Method
             </label>
             <div className="d-flex flex-column gap-2">
-              <label className="d-flex align-items-start gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="onboardingMode"
-                  value="INVITATION"
-                  checked={onboardingMode === 'INVITATION'}
-                  onChange={(e) => setOnboardingMode(e.target.value)}
-                  className="mt-1"
-                />
-                <div>
-                  <strong className="d-block small">Normal Invitation</strong>
-                  <span className="text-muted small">
-                    Membership is <em>Pending</em> until the user accepts the invitation link via
-                    email or SMS.
-                  </span>
+                <div className="d-flex align-items-start gap-2 p-3 border rounded bg-light">
+                  <div>
+                    <strong className="d-block small">
+                      Current Strategy: {globalglobalOnboardingMode === 'ADMIN_ANNOUNCEMENT' ? 'Admin Announcement (Immediate Activation)' : 'Normal Invitation'}
+                    </strong>
+                    <span className="text-muted small">
+                      {globalglobalOnboardingMode === 'ADMIN_ANNOUNCEMENT' 
+                        ? 'Membership is activated immediately. Existing user passwords are preserved. Configured globally in Organization Settings.'
+                        : 'Membership is Pending until the user accepts the invitation link via email or SMS. Configured globally in Organization Settings.'}
+                    </span>
+                  </div>
                 </div>
-              </label>
-              <label className="d-flex align-items-start gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="onboardingMode"
-                  value="ADMIN_ANNOUNCEMENT"
-                  checked={onboardingMode === 'ADMIN_ANNOUNCEMENT'}
-                  onChange={(e) => setOnboardingMode(e.target.value)}
-                  className="mt-1"
-                />
-                <div>
-                  <strong className="d-block small">
-                    Admin Announcement (Immediate Activation)
-                  </strong>
-                  <span className="text-muted small">
-                    Membership is activated immediately. Existing user passwords are preserved. New
-                    users receive a secure first-time password setup link.
-                  </span>
-                </div>
-              </label>
-            </div>
+              </div>
           </div>
         )}
 
@@ -446,7 +421,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
               </div>
               <p className="mb-0 small">
                 Successfully processed {results.successCount} of {results.total} users using{' '}
-                {onboardingMode === 'ADMIN_ANNOUNCEMENT'
+                {globalOnboardingMode === 'ADMIN_ANNOUNCEMENT'
                   ? 'Admin Announcement'
                   : 'Normal Invitation'}
                 .

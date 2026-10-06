@@ -127,6 +127,17 @@ export class OrganizationController {
     }
     }
 
+  async updateOnboardingMode(req, res, next) {
+    try {
+      const orgId = req.params.id;
+      const { onboardingMode } = req.body;
+      const updatedOrg = await organizationService.updateOnboardingMode(orgId, onboardingMode);
+      res.success(updatedOrg, 'Organization onboarding mode updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateLoginPolicy(req, res, next) {
     try {
       const orgId = req.params.id;

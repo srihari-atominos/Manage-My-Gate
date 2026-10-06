@@ -28,6 +28,14 @@ export class OrganizationRepository {
     );
   }
 
+  async updateOnboardingMode(orgId, onboardingMode, session = null) {
+    return await Organization.findByIdAndUpdate(
+      orgId,
+      { $set: { onboardingMode } },
+      { new: true, session }
+    );
+  }
+
   async updateLoginPolicy(orgId, authenticationMethod, session = null) {
     return await Organization.findByIdAndUpdate(
       orgId,

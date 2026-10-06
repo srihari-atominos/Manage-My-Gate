@@ -62,6 +62,11 @@ const organizationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    onboardingMode: {
+      type: String,
+      enum: ['INVITATION', 'ADMIN_ANNOUNCEMENT'],
+      default: 'INVITATION',
+    },
     authenticationMethod: {
       type: String,
       enum: ['EXISTING_SYSTEM', 'OTP_LOGIN'],

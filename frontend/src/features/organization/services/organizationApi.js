@@ -50,6 +50,14 @@ export const setupWorkspace = async (workspaceData) => {
   return await apiClient.post('/organizations/setup', workspaceData)
 }
 
+export const updateOrganizationOnboardingMode = async (orgId, onboardingMode) => {
+  return await apiClient.patch(
+    /organizations/${orgId}/onboarding-mode,
+    { onboardingMode },
+    { headers: { 'x-organization-id': orgId } }
+  )
+}
+
 export const bulkInviteOrganizationUsers = async (orgId, invitationsData) => {
   const payload = Array.isArray(invitationsData)
     ? { invitations: invitationsData, invitationSource: 'WEB' }
@@ -73,6 +81,7 @@ export default {
   checkOrganizationName,
   setupWorkspace,
   updateOrganizationFeatures,
+  updateOrganizationOnboardingMode,
   bulkInviteOrganizationUsers,
   fetchOrganizations,
   updateOrganizationStatus,

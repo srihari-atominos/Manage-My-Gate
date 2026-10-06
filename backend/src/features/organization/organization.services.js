@@ -135,6 +135,17 @@ export class OrganizationService {
     }
   }
 
+  async updateOnboardingMode(orgId, onboardingMode, session = null) {
+    const validModes = ['INVITATION', 'ADMIN_ANNOUNCEMENT'];
+    if (!validModes.includes(onboardingMode)) {
+      throw new HttpError(400, "Invalid onboarding mode. Must be one of: ");
+    }
+    
+    await this.getOrganizationById(orgId, session);
+    
+    return await organizationRepository.updateOnboardingMode(orgId, onboardingMode, session);
+  }
+
   async updateLoginPolicy(orgId, authenticationMethod, session = null) {
     const validMethods = ['EXISTING_SYSTEM', 'OTP_LOGIN'];
     if (!validMethods.includes(authenticationMethod)) {
