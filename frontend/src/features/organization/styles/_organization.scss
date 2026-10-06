@@ -42,6 +42,7 @@
     padding: 8px 24px;
     max-width: 1400px;
     margin: 0 auto;
+    width: 100%;
   }
 
   /* ---------------------------------------------------------------
@@ -745,6 +746,11 @@
 .org-user-drawer {
   width: 420px !important;
   max-width: 90vw;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 1050 !important;
 
   .offcanvas-header {
     background: #f5f7fb;

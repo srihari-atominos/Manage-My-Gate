@@ -93,13 +93,18 @@ export class OrganizationService {
         await localSession.commitTransaction();
       }
 
+      // Emit real-time update event
+      const orgEventEmitter = (await import('./organization.events.js')).default;
+      orgEventEmitter.emit('ORG_FEATURES_UPDATED', { targetId: orgId });
+
       // Generate a new token if userId is provided
       let token = null;
       let userPayload = null;
       if (userId) {
         const authService = (await import('../auth/auth.services.js')).default;
         const user = await authService.getUserById(userId);
-        const { tokenPayload, permissions, availableWorkspaces } = await authService.getScopedTokenPayload(user, orgId);
+        const targetScopeOrgId = (isPlatformUser || user.isPlatform) ? null : orgId;
+        const { tokenPayload, permissions, availableWorkspaces } = await authService.getScopedTokenPayload(user, targetScopeOrgId);
         const { signToken } = await import('../../utils/jwt.utils.js');
         token = signToken(tokenPayload);
         userPayload = {
@@ -196,11 +201,11 @@ export class OrganizationService {
     return !org;
   }
 
-  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, features }) {
-    if (!name || typeof name !== 'string' || !name.trim()) {
+  async setupWorkspace({ organization, communityAdmin, features, creatorUserId }) {
+    if (!organization || !organization.name || typeof organization.name !== 'string' || !organization.name.trim()) {
       throw new HttpError(400, 'Organization name is required.');
     }
-    const trimmedName = name.trim();
+    const trimmedName = organization.name.trim();
 
     // Enforce name uniqueness checks BEFORE starting the write transaction
     const existingOrg = await organizationRepository.findByName(trimmedName);
@@ -208,8 +213,8 @@ export class OrganizationService {
       throw new HttpError(409, 'Conflict. Organization name already exists.');
     }
 
-    const defaultFeatures = ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'complaints', 'visitor', 'billing'];
-    const finalFeatures = Array.isArray(features) && features.length > 0 ? features : defaultFeatures;
+    // Do not fall back to all features if an empty array is explicitly provided.
+    const finalFeatures = Array.isArray(features) ? features : [];
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -218,11 +223,13 @@ export class OrganizationService {
       const newOrg = await organizationRepository.create({
         name: trimmedName,
         status: 'Active',
-        organizationType: organizationType || 'Residential',
-        contactEmail,
-        contactPhone,
-        expectedMemberCount,
-        timezone: timezone || 'Asia/Kolkata',
+        organizationType: organization.organizationType || 'Residential',
+        contactEmail: organization.contactEmail,
+        contactPhone: organization.contactPhone,
+        country: organization.country,
+        state: organization.state,
+        city: organization.city,
+        timezone: organization.timezone || 'Asia/Kolkata',
         allowedFeatures: finalFeatures
       }, session);
 
@@ -247,7 +254,7 @@ export class OrganizationService {
       );
 
       let adminPermissionIds;
-      if (Array.isArray(features) && features.length > 0) {
+      if (Array.isArray(features)) {
         const targetPermissions = allPermissions.filter(perm =>
           features.includes(perm.feature)
         );
@@ -299,10 +306,43 @@ export class OrganizationService {
       const guardPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Security Guard']);
       await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
 
-      // 3. Create the Organization Membership linking user, org, and role
+      // 3. Handle Community Admin User
+      const userService = (await import('../user/user.services.js')).default;
+      const { hashPassword } = await import('../../utils/crypto.utils.js');
+
+      let communityAdminUser = await userService.resolveUserIdentity({
+        email: communityAdmin.email,
+        phone: communityAdmin.phone,
+      }, session);
+
+      if (!communityAdminUser) {
+        if (!communityAdmin.password) {
+          throw new HttpError(400, 'Password is required for new community admins.');
+        }
+        if (!communityAdmin.phone) {
+          throw new HttpError(400, 'Phone number is required for new community admins.');
+        }
+        const hashedPassword = await hashPassword(communityAdmin.password);
+        
+        const User = (await import('../user/user.model.js')).default;
+        const newCommunityAdmin = new User({
+          name: communityAdmin.fullName,
+          username: communityAdmin.username,
+          email: communityAdmin.email.toLowerCase(),
+          phone: communityAdmin.phone,
+          password: hashedPassword,
+          status: 'Active',
+          emailVerified: true,
+          phoneVerified: true
+        });
+
+        communityAdminUser = await newCommunityAdmin.save({ session });
+      }
+
+      // 4. Create the Organization Membership linking user, org, and role
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.createMembership(
-        { userId, orgId: newOrg._id, roleIds: [adminRole._id], status: 'Active' },
+        { userId: communityAdminUser._id, orgId: newOrg._id, roleIds: [adminRole._id], status: 'Active' },
         session
       );
 
@@ -312,37 +352,38 @@ export class OrganizationService {
       orgEventEmitter.emit('ORGANIZATION_CREATED', {
         organizationId: newOrg._id.toString(),
         organizationName: newOrg.name,
-        creatorUserId: userId.toString(),
+        creatorUserId: creatorUserId.toString(),
       });
 
-      // Outside the write transaction, generate the fresh token context
-      const authService = (await import('../auth/auth.services.js')).default;
-      const user = await authService.getUserById(userId);
-      
-      const { tokenPayload, availableWorkspaces } = await authService.getScopedTokenPayload(user, newOrg._id.toString());
-      const { signToken } = await import('../../utils/jwt.utils.js');
-      const token = signToken(tokenPayload);
-
+      // Return clean response payload without sensitive tokens or passwords
       return {
-        token,
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          role: tokenPayload.role,
-          permissions: tokenPayload.permissions,
-          orgId: tokenPayload.orgId,
-          orgName: newOrg.name,
-          organizationName: newOrg.name,
-          activeOrganizationName: newOrg.name,
-          isPlatform: tokenPayload.isPlatform,
-          availableWorkspaces,
+        organization: {
+          id: newOrg._id,
+          name: newOrg.name,
+          organizationType: newOrg.organizationType,
+          contactPhone: newOrg.contactPhone,
+          contactEmail: newOrg.contactEmail,
+          country: newOrg.country,
+          state: newOrg.state,
+          city: newOrg.city,
+          timezone: newOrg.timezone,
+          allowedFeatures: newOrg.allowedFeatures,
         },
-        availableWorkspaces,
+        communityAdmin: {
+          id: communityAdminUser._id,
+          fullName: communityAdminUser.name,
+          username: communityAdminUser.username,
+          email: communityAdminUser.email,
+          phone: communityAdminUser.phone
+        }
       };
     } catch (error) {
       await session.abortTransaction();
       if (error.code === 11000 || (error.name === 'MongoServerError' && error.code === 11000)) {
+        const errorString = (error.message || '').toLowerCase();
+        if (errorString.includes('email') || errorString.includes('phone') || errorString.includes('username')) {
+          throw new HttpError(409, 'Conflict. Community Admin email, username, or phone already exists.');
+        }
         throw new HttpError(409, 'Conflict. Organization name already exists.');
       }
       throw error;
@@ -380,6 +421,40 @@ export class OrganizationService {
       throw new HttpError(404, `User ${userId} not found in Organization ${orgId}.`);
     }
     return userDetail;
+  }
+
+  async sendCommunityAdminEmailOtp(email) {
+    if (!email) throw new HttpError(400, 'Email address is required.');
+    const normalizedEmail = email.trim().toLowerCase();
+    const otpService = (await import('../otp/otp.services.js')).default;
+    const plainCode = await otpService.createOTP(normalizedEmail, 'COMMUNITY_ADMIN_EMAIL_VERIFICATION', 15);
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log(`\n=========================================`);
+      console.log(`[COMMUNITY ADMIN EMAIL OTP] Code for ${normalizedEmail}: ${plainCode}`);
+      console.log(`=========================================\n`);
+    }
+
+    orgEventEmitter.emit('COMMUNITY_ADMIN_EMAIL_OTP_SENT', { email: normalizedEmail, code: plainCode });
+
+    return {
+      message: `Verification code sent to ${normalizedEmail}`,
+      email: normalizedEmail,
+      ...(isDev && { devCode: plainCode }),
+    };
+  }
+
+  async verifyCommunityAdminEmailOtp(email, code) {
+    if (!email || !code) throw new HttpError(400, 'Email and OTP code are required.');
+    const normalizedEmail = email.trim().toLowerCase();
+    const otpService = (await import('../otp/otp.services.js')).default;
+    await otpService.verifyOTP(normalizedEmail, code, 'COMMUNITY_ADMIN_EMAIL_VERIFICATION', null, true);
+    return {
+      verified: true,
+      email: normalizedEmail,
+      message: 'Community Admin email verified successfully.',
+    };
   }
 }
 

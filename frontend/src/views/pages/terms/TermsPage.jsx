@@ -20,10 +20,10 @@ import CIcon from '@coreui/icons-react'
 import { cilFile, cilArrowLeft, cilShieldAlt, cilList } from '@coreui/icons'
 
 /**
- * Terms & Conditions Page Component for Nahom / ManageMyGate
+ * Terms & Conditions Page Component for Nahom / Nahom
  *
  * Dedicated public legal terms of service for Atominos Consulting Private Limited.
- * Applicable to Android (Google Play Store), iOS (Apple App Store), and ManageMyGate Web App.
+ * Applicable to Android (Google Play Store), iOS (Apple App Store), and Nahom Web App.
  */
 const TermsPage = () => {
   useEffect(() => {
@@ -37,7 +37,7 @@ const TermsPage = () => {
       document.head.appendChild(metaDesc)
     }
     metaDesc.content =
-      'Terms & Conditions for the Nahom application and ManageMyGate platform provided by Atominos Consulting Private Limited.'
+      'Terms & Conditions for the Nahom application and Nahom platform provided by Atominos Consulting Private Limited.'
 
     // Set canonical link
     let canonical = document.querySelector('link[rel="canonical"]')
@@ -86,7 +86,7 @@ const TermsPage = () => {
                     <h1 className="fw-extrabold display-6 mb-2">Terms &amp; Conditions</h1>
                     <p className="text-body-secondary mb-3">
                       Application: <strong>Nahom</strong> &bull; Platform:{' '}
-                      <strong>ManageMyGate</strong>
+                      <strong>Nahom</strong>
                     </p>
                     <div className="d-flex flex-wrap gap-3 align-items-center text-body-secondary small">
                       <CBadge color="primary" className="px-2 py-1">
@@ -111,7 +111,7 @@ const TermsPage = () => {
                       These Terms &amp; Conditions (&quot;Terms&quot;) govern your access to and use
                       of the <strong>Nahom</strong> mobile application (available on Android via the
                       Google Play Store and iOS via the Apple App Store) and the{' '}
-                      <strong>ManageMyGate</strong> web application located at{' '}
+                      <strong>Nahom</strong> web application located at{' '}
                       <a
                         href="https://managemygate.e3esg.com"
                         target="_blank"
@@ -293,7 +293,7 @@ const TermsPage = () => {
                     <h2 className="h4 fw-bold text-body mb-3">1. Acceptance of Terms</h2>
                     <p>
                       By creating an account, installing or accessing the <strong>Nahom</strong>{' '}
-                      mobile application, accessing the <strong>ManageMyGate</strong> web
+                      mobile application, accessing the <strong>Nahom</strong> web
                       application (
                       <a href="https://managemygate.e3esg.com" target="_blank" rel="noreferrer">
                         https://managemygate.e3esg.com
@@ -316,7 +316,7 @@ const TermsPage = () => {
                     </p>
                     <p>
                       If you do not agree to these Terms or the Privacy Policy, you must immediately
-                      cease accessing or using the Nahom mobile application, ManageMyGate web
+                      cease accessing or using the Nahom mobile application, Nahom web
                       portal, and associated platform services.
                     </p>
                   </section>
@@ -341,7 +341,7 @@ const TermsPage = () => {
                             <CTableDataCell className="fw-bold">&quot;Company&quot;</CTableDataCell>
                             <CTableDataCell>
                               Refers to <strong>Atominos Consulting Private Limited</strong>, the
-                              legal owner, developer, and operator of Nahom and ManageMyGate.
+                              legal owner, developer, and operator of Nahom and Nahom.
                             </CTableDataCell>
                           </CTableRow>
                           <CTableRow>
@@ -358,7 +358,7 @@ const TermsPage = () => {
                               &quot;Platform&quot; / &quot;Services&quot;
                             </CTableDataCell>
                             <CTableDataCell>
-                              Refers collectively to the Nahom mobile application, ManageMyGate web
+                              Refers collectively to the Nahom mobile application, Nahom web
                               application, APIs, background worker services, security features, and
                               digital workflows provided by the Company.
                             </CTableDataCell>
@@ -367,7 +367,7 @@ const TermsPage = () => {
                             <CTableDataCell className="fw-bold">&quot;User&quot;</CTableDataCell>
                             <CTableDataCell>
                               Refers to any individual authenticated or interacting with Nahom or
-                              ManageMyGate services.
+                              Nahom services.
                             </CTableDataCell>
                           </CTableRow>
                           <CTableRow>
@@ -480,7 +480,7 @@ const TermsPage = () => {
                   <section id="section-3" className="mb-5">
                     <h2 className="h4 fw-bold text-body mb-3">3. Eligibility</h2>
                     <p>
-                      To use Nahom and the ManageMyGate platform, you must satisfy the following
+                      To use Nahom and the Nahom platform, you must satisfy the following
                       eligibility criteria:
                     </p>
                     <ul>
@@ -945,7 +945,7 @@ const TermsPage = () => {
                         </li>
                         <li className="mb-2">
                           Reverse engineer, decompile, disassemble, or extract source code from
-                          Nahom or ManageMyGate except where explicitly allowed by law.
+                          Nahom or Nahom except where explicitly allowed by law.
                         </li>
                         <li className="mb-2">
                           Upload viruses, trojans, ransomware, or malicious code to the platform.
@@ -974,7 +974,7 @@ const TermsPage = () => {
                     <h2 className="h4 fw-bold text-body mb-3">18. Intellectual Property Rights</h2>
                     <p>
                       The Nahom application name, logos, software code, user interface designs,
-                      database structures, documentation, and ManageMyGate web portal are the
+                      database structures, documentation, and Nahom web portal are the
                       exclusive intellectual property of{' '}
                       <strong>Atominos Consulting Private Limited</strong>.
                     </p>

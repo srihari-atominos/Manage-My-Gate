@@ -322,9 +322,49 @@ export class AuthController {
 
   async checkAccountStatus(req, res, next) {
     try {
-      const { email } = req.query;
-      const data = await authService.checkAccountStatus(email);
+      const identifier = req.query.identifier || req.query.email || req.query.phone;
+      const data = await authService.checkAccountStatus(identifier);
       res.success(data, 'Account status fetched successfully.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async sendFirstTimeSetupOtp(req, res, next) {
+    try {
+      const { identifier } = req.body;
+      const data = await authService.sendFirstTimeSetupOtp(identifier);
+      res.success(data, data?.message || 'First-time setup OTP sent');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async completeFirstTimeSetup(req, res, next) {
+    try {
+      const { identifier, code, password, confirmPassword } = req.body;
+      const deviceInfo = {
+        deviceName: req.headers['user-agent'],
+        browser: 'Browser',
+        os: 'OS',
+        ipAddress: req.ip,
+      };
+      const data = await authService.completeFirstTimeSetup({
+        identifier,
+        code,
+        password,
+        confirmPassword,
+        deviceInfo,
+      });
+
+      if (data && data.token) {
+        setAuthCookie(res, data.token);
+      }
+      if (data && data.refreshToken) {
+        setRefreshTokenCookie(res, data.refreshToken);
+      }
+
+      res.success(data, 'First-time account setup completed successfully. Password configured.');
     } catch (error) {
       next(error);
     }

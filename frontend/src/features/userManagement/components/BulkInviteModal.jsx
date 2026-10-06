@@ -22,12 +22,12 @@ import {
   cilXCircle,
 } from '@coreui/icons'
 
-const TEMPLATE_CONTENT = `Email,Type,VillaNumber,ResidentType,Role
-resident.owner@example.com,Resident,Villa 01,Owner,Resident Owner
-resident.tenant@example.com,Resident,Villa 02,Tenant,Resident Tenant
-resident.family@example.com,Resident,Villa 01,Family,Family Member
-security.guard@example.com,Worker,,,Security Guard
-community.admin@example.com,Worker,,,Community Admin`
+const TEMPLATE_CONTENT = `Email,Phone,Name,Type,VillaNumber,ResidentType,Role
+resident.owner@example.com,+919876543210,John Doe,Resident,Villa 01,Owner,Resident Owner
+resident.tenant@example.com,+919876543211,Jane Smith,Resident,Villa 02,Tenant,Resident Tenant
+resident.family@example.com,,Family Member,Resident,Villa 01,Family,Family Member
+security.guard@example.com,+919876543212,Guard Ramesh,Worker,,,Security Guard
+community.admin@example.com,+919876543213,Admin Priya,Worker,,,Community Admin`
 
 const splitCSVLine = (line) => {
   const result = []
@@ -66,6 +66,8 @@ const parseCSV = (text) => {
     headers.forEach((header, index) => {
       let key = header
       if (header === 'email') key = 'email'
+      else if (header === 'phone' || header === 'mobile' || header === 'contact') key = 'phone'
+      else if (header === 'name' || header === 'fullname' || header === 'full name') key = 'name'
       else if (header === 'type') key = 'type'
       else if (header === 'villanumber' || header === 'villa number') key = 'villaNumber'
       else if (header === 'residenttype' || header === 'resident type') key = 'residentType'
@@ -79,7 +81,9 @@ const parseCSV = (text) => {
       row.residentType = 'None'
     }
 
-    row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
+    row.hasEmailOrPhone = !!(row.email?.trim() || row.phone?.trim())
+    row.isValidEmail = !row.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())
+    row.isValidPhone = !row.phone || row.phone.trim().length >= 8
     row.isValidType = ['Resident', 'Worker'].includes(row.type)
     row.isValidRole = !!row.roleName
 
@@ -92,7 +96,9 @@ const parseCSV = (text) => {
     }
 
     row.isValid =
+      row.hasEmailOrPhone &&
       row.isValidEmail &&
+      row.isValidPhone &&
       row.isValidType &&
       row.isValidRole &&
       row.isValidVilla &&
@@ -109,6 +115,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
+  const [onboardingMode, setOnboardingMode] = useState('INVITATION')
   const fileInputRef = useRef(null)
 
   const handleDownloadTemplate = () => {
@@ -186,13 +193,16 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
     setLoading(true)
     setErrorMsg('')
     try {
-      const payload = validRows.map((r) => ({
-        email: r.email,
+      const invitations = validRows.map((r) => ({
+        email: r.email || undefined,
+        phone: r.phone || undefined,
+        name: r.name || undefined,
         residentType: r.type === 'Resident' ? r.residentType : 'None',
         roleName: r.roleName,
         villaNumber: r.type === 'Resident' ? r.villaNumber : undefined,
+        onboardingMode,
       }))
-      const res = await onBulkInvite(payload)
+      const res = await onBulkInvite({ invitations, onboardingMode })
       setResults(res)
       setParsedRows([])
       setFileName('')
@@ -208,6 +218,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
     setFileName('')
     setResults(null)
     setErrorMsg('')
+    setOnboardingMode('INVITATION')
     onClose()
   }
 
@@ -223,10 +234,53 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
       size="lg"
     >
       <CModalHeader className="border-bottom">
-        <CModalTitle className="bulk-modal-title">Bulk Invite Members & Staff</CModalTitle>
+        <CModalTitle className="bulk-modal-title">Bulk Onboard Members & Staff</CModalTitle>
       </CModalHeader>
 
       <CModalBody className="p-4">
+        {/* Onboarding Method Selection */}
+        {!results && (
+          <div className="mb-4 p-3 border rounded-3 bg-body-tertiary">
+            <label className="fw-semibold mb-2 d-block" style={{ fontSize: '0.9rem' }}>
+              Onboarding Method
+            </label>
+            <div className="d-flex flex-column gap-2">
+              <label className="d-flex align-items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="onboardingMode"
+                  value="INVITATION"
+                  checked={onboardingMode === 'INVITATION'}
+                  onChange={(e) => setOnboardingMode(e.target.value)}
+                  className="mt-1"
+                />
+                <div>
+                  <strong className="d-block small">Normal Invitation</strong>
+                  <span className="text-muted small">
+                    Membership is <em>Pending</em> until the user accepts the invitation link via email or SMS.
+                  </span>
+                </div>
+              </label>
+              <label className="d-flex align-items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="onboardingMode"
+                  value="ADMIN_ANNOUNCEMENT"
+                  checked={onboardingMode === 'ADMIN_ANNOUNCEMENT'}
+                  onChange={(e) => setOnboardingMode(e.target.value)}
+                  className="mt-1"
+                />
+                <div>
+                  <strong className="d-block small">Admin Announcement (Immediate Activation)</strong>
+                  <span className="text-muted small">
+                    Membership is activated immediately. Existing user passwords are preserved. New users receive a secure first-time password setup link.
+                  </span>
+                </div>
+              </label>
+            </div>
+          </div>
+        )}
+
         {/* Step 1: Template Download */}
         {!fileName && !parsedRows.length && !results && (
           <div className="mb-4 text-center p-4 border rounded-3 bg-body-secondary">
@@ -234,8 +288,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
               1. Download CSV Template
             </h5>
             <p className="text-muted small mb-3">
-              Use our standard format to prepare your invitation list. You can specify whether each
-              invitee is a resident or staff/worker.
+              Use our standard format to prepare your invitation list. Provide Email OR Phone for each row.
             </p>
             <CButton
               color="primary"
@@ -315,7 +368,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                 <thead className="table-light sticky-top">
                   <tr>
                     <th scope="col" className="ps-3">
-                      Email
+                      Contact (Email / Phone)
                     </th>
                     <th scope="col">Type</th>
                     <th scope="col">Villa Number</th>
@@ -334,7 +387,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                       style={{ opacity: row.isValid ? 1 : 0.8 }}
                     >
                       <td className="ps-3 fw-semibold text-truncate bulk-text-truncate-email">
-                        {row.email || <span className="text-danger">Missing</span>}
+                        {row.email || row.phone || <span className="text-danger">Missing Contact</span>}
                       </td>
                       <td>
                         <CBadge color={row.type === 'Resident' ? 'info' : 'secondary'}>
@@ -352,7 +405,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                         ) : (
                           <CBadge
                             color="danger"
-                            title="Validation failed: Verify email, type, role or villa link."
+                            title="Validation failed: Provide Email or Phone, Role, and Villa if Resident."
                           >
                             Fix Row
                           </CBadge>
@@ -380,18 +433,18 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
             >
               <div className="d-flex align-items-center gap-2 mb-2">
                 <CIcon icon={results.failureCount === 0 ? cilCheckCircle : cilWarning} size="xl" />
-                <h6 className="fw-semibold mb-0">Bulk Invitation Completed</h6>
+                <h6 className="fw-semibold mb-0">Bulk Processing Completed</h6>
               </div>
               <p className="mb-0 small">
-                Successfully processed {results.successCount} of {results.total} user invitations.
+                Successfully processed {results.successCount} of {results.total} users using {onboardingMode === 'ADMIN_ANNOUNCEMENT' ? 'Admin Announcement' : 'Normal Invitation'}.
               </p>
             </CAlert>
 
             {/* Success List */}
-            {results.successes.length > 0 && (
+            {results.successes && results.successes.length > 0 && (
               <div className="mb-4">
                 <h6 className="fw-semibold text-success mb-2" style={{ fontSize: '0.88rem' }}>
-                  Successfully Invited:
+                  Successfully Processed:
                 </h6>
                 <div className="list-group rounded-3 max-vh-25 bulk-list-container">
                   {results.successes.map((s, idx) => (
@@ -399,8 +452,8 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                       key={idx}
                       className="list-group-item d-flex justify-content-between align-items-center py-2 small"
                     >
-                      <span className="fw-semibold">{s.email}</span>
-                      <CBadge color="success">Invited</CBadge>
+                      <span className="fw-semibold">{s.email || s.phone}</span>
+                      <CBadge color="success">{s.status || 'Success'}</CBadge>
                     </div>
                   ))}
                 </div>
@@ -408,10 +461,10 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
             )}
 
             {/* Failure List */}
-            {results.failures.length > 0 && (
+            {results.failures && results.failures.length > 0 && (
               <div>
                 <h6 className="fw-semibold text-danger mb-2" style={{ fontSize: '0.88rem' }}>
-                  Failed to Invite:
+                  Failed:
                 </h6>
                 <div className="list-group rounded-3 max-vh-25 bulk-list-container">
                   {results.failures.map((f, idx) => (
@@ -420,7 +473,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                       className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-body-secondary-danger"
                     >
                       <div className="ms-2 me-auto">
-                        <div className="fw-semibold text-body">{f.email}</div>
+                        <div className="fw-semibold text-body">{f.email || f.phone || 'Unknown'}</div>
                         <span className="text-muted bulk-text-xxs">Reason: {f.error}</span>
                       </div>
                       <CBadge color="danger">Failed</CBadge>

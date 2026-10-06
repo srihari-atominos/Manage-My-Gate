@@ -270,17 +270,28 @@ export class AuthService {
         }
       }
       if (!selectedMembership) {
-        throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+        if (user.isPlatform === true) {
+          selectedMembership = activeMemberships.find((m) => m.orgId && m.orgId.isPlatform === true) || activeMemberships[0];
+        } else {
+          throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+        }
       }
     } else {
       // Primary context selection:
-      // 1. Prefer a non-platform community workspace that has a villa assigned
-      selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
-      // 1b. Fallback to any non-platform community workspace
+      // 1. Prefer the user's last active organization (remembered from their last session)
+      if (user.lastActiveOrgId) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === user.lastActiveOrgId.toString());
+      }
+      
+      // 2. Prefer a non-platform community workspace that has a villa assigned
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
+      }
+      // 2b. Fallback to any non-platform community workspace
       if (!selectedMembership) {
         selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform);
       }
-      // 2. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
+      // 3. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
       if (!selectedMembership && activeMemberships.length > 0) {
         selectedMembership = activeMemberships[0];
       }
@@ -651,6 +662,13 @@ export class AuthService {
 
     const activeOrgName = selectedMembership?.orgId?.name || null;
     const activeOrgCountryCode = selectedMembership?.orgId?.countryCode || 'IN';
+
+    // Fire-and-forget: Remember the newly resolved community as the user's last active organization
+    if (orgId && (!user.lastActiveOrgId || user.lastActiveOrgId.toString() !== orgId)) {
+      import('../user/user.model.js').then((m) => {
+        m.default.updateOne({ _id: user._id }, { $set: { lastActiveOrgId: orgId } }).catch(() => {});
+      });
+    }
 
     return {
       tokenPayload: {
@@ -2604,23 +2622,122 @@ export class AuthService {
     };
   }
 
-  async checkAccountStatus(email) {
-    if (!email) return { hasPassword: false, isAlreadyConfigured: false };
+  async checkAccountStatus(identifier) {
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      return { exists: false, hasPassword: false, isAlreadyConfigured: false };
+    }
 
-    const user = await userService.getUserByEmail(email);
+    const user = await userService.getUserByEmailOrPhone(identifier);
     if (!user) {
       return { exists: false, hasPassword: false, isAlreadyConfigured: false };
     }
 
     const hasPassword = !!(user.password && user.password.length > 0);
-    const isAlreadyConfigured = hasPassword && user.status === 'Active';
+    const credStatus = user.credentialStatus || (hasPassword ? 'INITIALIZED' : 'NOT_INITIALIZED');
+    const isAlreadyConfigured = hasPassword && credStatus === 'INITIALIZED';
 
     return {
       exists: true,
       hasPassword,
+      credentialStatus: credStatus,
+      appAccessStatus: user.appAccessStatus || 'NOT_YET_ACCESSED',
       status: user.status,
       isAlreadyConfigured,
       email: user.email,
+      phone: user.phone || '',
+      name: user.name || user.username || '',
+    };
+  }
+
+  async sendFirstTimeSetupOtp(identifier) {
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      throw new HttpError(400, 'Email or phone number is required.');
+    }
+    const user = await userService.getUserByEmailOrPhone(identifier);
+    if (!user) {
+      throw new HttpError(404, 'User account not found.');
+    }
+
+    if (user.credentialStatus === 'INITIALIZED' && user.password) {
+      throw new HttpError(400, 'Account credentials are already initialized. Please log in with your password.');
+    }
+
+    const targetIdentifier = identifier.trim().includes('@') ? user.email : (user.phone || user.email);
+    const plainCode = await otpService.createOTP(targetIdentifier, 'FIRST_TIME_ACCOUNT_SETUP', 15);
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log(`\n=========================================`);
+      console.log(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
+      console.log(`=========================================\n`);
+    }
+
+    authEvents.emit('OTP_SENT', { identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' });
+
+    return {
+      message: `Verification code sent to ${targetIdentifier}`,
+      identifier: targetIdentifier,
+      ...(isDev && { devCode: plainCode }),
+    };
+  }
+
+  async completeFirstTimeSetup({ identifier, code, password, confirmPassword, deviceInfo = {} }) {
+    if (!identifier || !code || !password) {
+      throw new HttpError(400, 'Identifier, OTP code, and new password are required.');
+    }
+
+    if (confirmPassword && password !== confirmPassword) {
+      throw new HttpError(400, 'Password and Confirm Password must match.');
+    }
+
+    if (password.length < 8) {
+      throw new HttpError(400, 'Password must be at least 8 characters long.');
+    }
+
+    const user = await userService.getUserByEmailOrPhone(identifier);
+    if (!user) {
+      throw new HttpError(404, 'User account not found.');
+    }
+
+    const targetIdentifier = identifier.trim().includes('@') ? user.email : (user.phone || user.email);
+    await otpService.verifyOTP(targetIdentifier, code, 'FIRST_TIME_ACCOUNT_SETUP', null, true);
+
+    const { hashPassword } = await import('../../utils/crypto.utils.js');
+    const passHash = await hashPassword(password);
+
+    const User = (await import('../user/user.model.js')).default;
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          password: passHash,
+          credentialStatus: 'INITIALIZED',
+          appAccessStatus: 'ACCESSED',
+          lastAccessedAt: new Date(),
+          status: 'Active',
+          emailVerified: true,
+          phoneVerified: true,
+        },
+      }
+    );
+
+    user.password = passHash;
+    user.credentialStatus = 'INITIALIZED';
+    user.appAccessStatus = 'ACCESSED';
+    user.status = 'Active';
+
+    // Direct auto-login session creation
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
+    const token = signToken(tokenPayload);
+    const refreshToken = await sessionService.createSession(user._id, deviceInfo);
+
+    authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'first_time_setup' });
+
+    return {
+      token,
+      refreshToken,
+      user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
+      availableWorkspaces,
     };
   }
 

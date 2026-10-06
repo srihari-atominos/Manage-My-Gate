@@ -17,6 +17,8 @@ import {
   setupAccountPasswordRules,
   acceptInviteSsoRules,
   exchangeHandoffRules,
+  sendFirstTimeSetupOtpRules,
+  completeFirstTimeSetupRules,
 } from './auth.validateRules.js';
 import { isAuthenticated, optionalAuth } from '../../middlewares/auth.middleware.js';
 import { authLimiter, otpLimiter } from '../../middlewares/rateLimiter.middleware.js';
@@ -309,6 +311,8 @@ router.post('/forgot-password/initiate', otpLimiter, validate(forgotPasswordRule
 router.post('/forgot-password/verify-otp', authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
 router.post('/reset-password', authLimiter, validate(resetPasswordRules), authController.resetPassword);
 router.post('/setup-account-password', validate(setupAccountPasswordRules), authController.setupAccountPassword);
+router.post('/first-time-setup/send-otp', otpLimiter, validate(sendFirstTimeSetupOtpRules), authController.sendFirstTimeSetupOtp);
+router.post('/first-time-setup/complete', authLimiter, validate(completeFirstTimeSetupRules), authController.completeFirstTimeSetup);
 router.get('/check-account-status', authController.checkAccountStatus);
 
 // Session Routes

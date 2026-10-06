@@ -432,7 +432,10 @@ export class WorkspaceService {
     const allowedModules = (workspace.modules || [])
       .filter(m => !LEGACY_KEYS.includes(m.moduleKey))
       .filter(m => {
-        if (isPlatform || !allowed || allowed.length === 0) return true;
+        if (isPlatform) return true;
+        // If allowed is null/undefined we allow true as fallback, but if it's an explicit empty array we MUST block it!
+        if (!allowed && allowed !== []) return true;
+        
         if (m.moduleKey === 'administration_security') return true;
         if (allowed.includes(m.moduleKey) || allowed.includes(m.moduleName)) return true;
         if (m.moduleKey === 'amenities') {

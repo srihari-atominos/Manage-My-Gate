@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { CPagination, CPaginationItem } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilFolderOpen, cilBan, cilCheckCircle } from '@coreui/icons'
@@ -12,6 +13,7 @@ import AppLoader from '../../../components/common/AppLoader'
  */
 export const OrganizationManager = () => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { organizations, totalPages, page, loading, error, fetchOrgs, toggleStatus, viewDetails } =
     useOrganizationManager()
 
@@ -57,6 +59,15 @@ export const OrganizationManager = () => {
                   'Manage all system organizations, view status, and block/unblock access.',
               })}
             </p>
+          </div>
+          <div className="header-actions">
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate('/super-admin/organizations/create')}
+            >
+              <CIcon icon={cilFolderOpen} className="me-2" />
+              {t('superAdmin.orgManager.createOrg', { defaultValue: 'Create Organization' })}
+            </button>
           </div>
         </div>
 

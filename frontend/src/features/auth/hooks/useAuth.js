@@ -286,6 +286,39 @@ export const useAuth = () => {
   const checkPermission = (permissionName) => {
     if (!currentUser) return false
 
+    const isPermEnabledInWorkspace = (perm) => {
+      if (!perm || isPlatform) return true
+      const featurePart = perm.split(':')[0]
+      if (featurePart === 'workspaces' || featurePart === 'dashboard') return true
+
+      const isModuleEnabled = (key) => {
+        // Handle both feature keys (e.g. 'notices') and granular permissions (e.g. 'notices:dashboard')
+        return allowedFeatures.some((f) => f === key || f.startsWith(`${key}:`))
+      }
+
+      if (featurePart === 'amenities' || featurePart === 'booking') {
+        return ['amenities', 'booking', 'amenity', 'amenitiesBooking'].some((f) =>
+          isModuleEnabled(f),
+        )
+      }
+
+      if (['villas', 'users', 'roles', 'integrations'].includes(featurePart)) {
+        return (
+          isModuleEnabled('administration_security') ||
+          isModuleEnabled(featurePart) ||
+          allowedFeatures.includes(perm)
+        )
+      }
+
+      return isModuleEnabled(featurePart) || allowedFeatures.includes(perm)
+    }
+
+    if (Array.isArray(permissionName)) {
+      if (!permissionName.some(isPermEnabledInWorkspace)) return false
+    } else {
+      if (!isPermEnabledInWorkspace(permissionName)) return false
+    }
+
     const roleUpper = (currentUser.role || '').toUpperCase()
     if (
       ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(
@@ -328,46 +361,9 @@ export const useAuth = () => {
       return true
     }
 
-    const isPermEnabledInWorkspace = (perm) => {
-      if (!perm || isPlatform) return true
-      const featurePart = perm.split(':')[0]
-      if (featurePart === 'workspaces' || featurePart === 'dashboard') return true
-
-      const isModuleEnabled = (key) => {
-        if (allowedFeatures.includes(key)) return true
-        if (activeWorkspace?.modules?.some((m) => m.moduleKey === key && m.enabled !== false))
-          return true
-        if (
-          activeWorkspace?.workspaceModules?.some((m) => m.moduleKey === key && m.enabled === true)
-        )
-          return true
-        return false
-      }
-
-      if (featurePart === 'amenities' || featurePart === 'booking') {
-        return ['amenities', 'booking', 'amenity', 'amenitiesBooking'].some((f) =>
-          isModuleEnabled(f),
-        )
-      }
-
-      if (['villas', 'users', 'roles', 'integrations'].includes(featurePart)) {
-        return (
-          isModuleEnabled('administration_security') ||
-          isModuleEnabled(featurePart) ||
-          allowedFeatures.includes(perm)
-        )
-      }
-
-      return isModuleEnabled(featurePart) || allowedFeatures.includes(perm)
-    }
-
     if (Array.isArray(permissionName)) {
-      return permissionName.some(
-        (perm) => isPermEnabledInWorkspace(perm) && currentUser.permissions?.includes(perm),
-      )
+      return permissionName.some((perm) => currentUser.permissions?.includes(perm))
     }
-
-    if (!isPermEnabledInWorkspace(permissionName)) return false
 
     if (
       (permissionName === 'amenities:wallet' || permissionName === 'billing:wallet') &&

@@ -22,8 +22,29 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: function() {
-        return this.status === 'Active';
+        return this.status === 'Active' && this.credentialStatus === 'INITIALIZED';
       },
+    },
+    credentialStatus: {
+      type: String,
+      enum: ['NOT_INITIALIZED', 'INITIALIZED'],
+      default: function() {
+        return this.password ? 'INITIALIZED' : 'NOT_INITIALIZED';
+      },
+    },
+    appAccessStatus: {
+      type: String,
+      enum: ['NOT_YET_ACCESSED', 'ACCESSED'],
+      default: 'NOT_YET_ACCESSED',
+    },
+    lastAccessedAt: {
+      type: Date,
+      default: null,
+    },
+    lastActiveOrgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      default: null,
     },
     status: {
       type: String,

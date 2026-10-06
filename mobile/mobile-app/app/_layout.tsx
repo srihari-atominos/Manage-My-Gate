@@ -114,7 +114,7 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
     const body = encodeURIComponent(
       `Hi Nahom Developer Team,\n\nI encountered a crash in the app:\n\nError: ${error?.message || 'Unknown'}\n\nStack Trace:\n${error?.stack || 'None'}\n\nPlatform: ${Platform.OS}\nDate: ${new Date().toISOString()}`
     );
-    Linking.openURL(`mailto:developer@managemygate.com?subject=${subject}&body=${body}`);
+    Linking.openURL(`mailto:developer@nahom.com?subject=${subject}&body=${body}`);
   };
 
   return (

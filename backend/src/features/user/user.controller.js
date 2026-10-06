@@ -48,7 +48,7 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email, phone, villaId, residentType, roleName, name } = req.body;
+      const { email, phone, villaId, residentType, roleName, name, onboardingMode = 'INVITATION' } = req.body;
       const orgId = req.tenant.orgId;
 
       const inviterId = req.user?.id || req.user?._id || null;
@@ -67,7 +67,8 @@ export class UserController {
         phone,
         name || '',
         invitationSource,
-        inviterId
+        inviterId,
+        onboardingMode
       );
 
       // Generate the canonical invite URL for the admin UI "Copy Link" feature
@@ -86,8 +87,9 @@ export class UserController {
         invitationToken,
         invitationSource,
         inviteLink,
+        onboardingMode,
       };
-      res.success(formatted, 'User invited successfully', 201);
+      res.success(formatted, 'User processed successfully', 201);
     } catch (error) {
       next(error);
     }
@@ -209,14 +211,14 @@ export class UserController {
    */
   async bulkInviteUsers(req, res, next) {
     try {
-      const { invitations } = req.body;
+      const { invitations, onboardingMode = 'INVITATION' } = req.body;
       const orgId = req.tenant.orgId;
       const inviterId = req.user?.id || req.user?._id || null;
 
       const defaultSource = resolveInvitationSource(req);
 
-      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId);
-      res.success(result, 'Bulk invitation process completed');
+      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId, onboardingMode);
+      res.success(result, 'Bulk user processing completed');
     } catch (error) {
       next(error);
     }

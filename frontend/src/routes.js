@@ -23,6 +23,9 @@ const VillaManagementView = React.lazy(() => import('./features/villa/views/Vill
 const OrganizationManager = React.lazy(
   () => import('./features/organization/views/OrganizationManager'),
 )
+const CreateOrganizationWizard = React.lazy(
+  () => import('./features/organization/views/CreateOrganizationWizard'),
+)
 const OrganizationDetails = React.lazy(
   () => import('./features/organization/views/OrganizationDetails'),
 )
@@ -211,6 +214,12 @@ export const routes = [
     path: '/super-admin/organizations',
     name: 'Organization Manager',
     element: OrganizationManager,
+    requirePlatform: true,
+  },
+  {
+    path: '/super-admin/organizations/create',
+    name: 'Create Organization',
+    element: CreateOrganizationWizard,
     requirePlatform: true,
   },
   {

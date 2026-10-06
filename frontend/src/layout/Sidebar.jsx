@@ -171,7 +171,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
               <p className="text-sm font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
                 Super Admin
               </p>
-              <p className="text-xs text-slate-500 truncate">admin@managemygate.com</p>
+              <p className="text-xs text-slate-500 truncate">admin@nahom.com</p>
             </div>
           </div>
         </div>

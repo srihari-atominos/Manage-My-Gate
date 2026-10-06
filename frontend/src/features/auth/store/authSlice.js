@@ -509,6 +509,7 @@ const authSlice = createSlice({
     logout: (state) => {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      localStorage.removeItem('auth_user')
       localStorage.removeItem('availableWorkspaces')
       localStorage.setItem('auth_logout', Date.now().toString())
       state.isAuthenticated = false

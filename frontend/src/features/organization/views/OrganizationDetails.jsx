@@ -1,16 +1,20 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CSpinner } from '@coreui/react'
+import { CSpinner, CButton } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilArrowLeft } from '@coreui/icons'
+import { cilArrowLeft, cilCloudUpload } from '@coreui/icons'
 import useOrganizationDetails from '../hooks/useOrganizationDetails.js'
 import useOrganizationUsers from '../hooks/useOrganizationUsers.js'
 import OrganizationOverviewCards from '../components/OrganizationOverviewCards.jsx'
 import OrganizationInfoCard from '../components/OrganizationInfoCard.jsx'
+import OrganizationFeaturesCard from '../components/OrganizationFeaturesCard.jsx'
 import UserFiltersBar from '../components/UserFiltersBar.jsx'
 import UserDirectoryTable from '../components/UserDirectoryTable.jsx'
 import UserDetailDrawer from '../components/UserDetailDrawer.jsx'
+import BulkInviteModal from '../../userManagement/components/BulkInviteModal.jsx'
+import BulkUploadVillasModal from '../../villa/components/BulkUploadVillasModal.jsx'
+import { bulkUploadVillas } from '../../villa/services/villaService.js'
 import '../styles/_organization.scss'
 import AppLoader from '../../../components/common/AppLoader'
 
@@ -22,6 +26,9 @@ export const OrganizationDetails = () => {
   const { organizationId } = useParams()
   const navigate = useNavigate()
   const { t } = useTranslation()
+
+  const [showBulkInviteModal, setShowBulkInviteModal] = useState(false)
+  const [showBulkUploadUnitsModal, setShowBulkUploadUnitsModal] = useState(false)
 
   const {
     organization,
@@ -51,6 +58,7 @@ export const OrganizationDetails = () => {
     handleStatusFilter,
     handleViewUser,
     handleCloseDrawer,
+    bulkInviteUsers,
   } = useOrganizationUsers(organizationId)
 
   useEffect(() => {
@@ -78,6 +86,13 @@ export const OrganizationDetails = () => {
       default:
         return 'status-inactive'
     }
+  }
+
+  const handleBulkUploadUnits = async (villas) => {
+    const res = await bulkUploadVillas(villas)
+    fetchDetails(organizationId)
+    fetchUsers(usersPage)
+    return res
   }
 
   return (
@@ -162,9 +177,19 @@ export const OrganizationDetails = () => {
             {/* Organization Information */}
             <OrganizationInfoCard organization={organization} />
 
+            {/* Feature Management */}
+            <OrganizationFeaturesCard organization={organization} />
+
             {/* User Directory Section */}
             <div className="section-card">
-              <div className="section-card-header">
+              <div
+                className="section-card-header"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                }}
+              >
                 <div>
                   <h4 className="section-title">
                     {t('superAdmin.orgDetails.userDirectoryTitle', {
@@ -177,6 +202,20 @@ export const OrganizationDetails = () => {
                         'Browse, search, filter, and inspect member details belonging to this community.',
                     })}
                   </p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <CButton color="outline-primary" onClick={() => setShowBulkUploadUnitsModal(true)}>
+                    <CIcon icon={cilCloudUpload} className="me-2" />
+                    {t('superAdmin.orgDetails.bulkUploadUnitsBtn', {
+                      defaultValue: 'Bulk Onboard Units',
+                    })}
+                  </CButton>
+                  <CButton color="primary" onClick={() => setShowBulkInviteModal(true)}>
+                    <CIcon icon={cilCloudUpload} className="me-2" />
+                    {t('superAdmin.orgDetails.bulkOnboardBtn', {
+                      defaultValue: 'Bulk Onboard Users',
+                    })}
+                  </CButton>
                 </div>
               </div>
               <div className="section-card-body">
@@ -208,13 +247,33 @@ export const OrganizationDetails = () => {
         )}
 
         {/* User Detail Offcanvas Drawer */}
-        <UserDetailDrawer
-          visible={userDrawerOpen}
-          onClose={handleCloseDrawer}
-          user={selectedUser}
-          loading={userDrawerLoading}
-          organizationName={organization?.name}
-        />
+        {userDrawerOpen && (
+          <UserDetailDrawer
+            visible={userDrawerOpen}
+            onClose={handleCloseDrawer}
+            user={selectedUser}
+            loading={userDrawerLoading}
+            organizationName={organization?.name}
+          />
+        )}
+
+        {/* Bulk Invite Modal */}
+        {showBulkInviteModal && (
+          <BulkInviteModal
+            visible={showBulkInviteModal}
+            onClose={() => setShowBulkInviteModal(false)}
+            onBulkInvite={bulkInviteUsers}
+          />
+        )}
+
+        {/* Bulk Upload Units Modal */}
+        {showBulkUploadUnitsModal && (
+          <BulkUploadVillasModal
+            visible={showBulkUploadUnitsModal}
+            onClose={() => setShowBulkUploadUnitsModal(false)}
+            onBulkUpload={handleBulkUploadUnits}
+          />
+        )}
       </div>
     </div>
   )

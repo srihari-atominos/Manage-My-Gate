@@ -70,7 +70,7 @@ apiClient.interceptors.request.use(
             ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
             : rawOrgId
 
-        if (activeOrgId && activeOrgId !== '[object Object]') {
+        if (activeOrgId && activeOrgId !== '[object Object]' && !config.headers['x-organization-id']) {
           config.headers['x-organization-id'] = activeOrgId
         }
       }

@@ -42,6 +42,18 @@ const organizationSchema = new mongoose.Schema(
       trim: true,
       default: 'IN',
     },
+    country: {
+      type: String,
+      trim: true,
+    },
+    state: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+    },
     allowedFeatures: {
       type: [String],
       default: [],

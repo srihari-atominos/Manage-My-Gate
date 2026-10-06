@@ -39,6 +39,26 @@ export const initOrganizationSocket = () => {
       logger.error('Failed to emit ORGANIZATION_STATUS_CHANGED socket event:', error);
     }
   });
+
+  orgEventEmitter.on('ORG_FEATURES_UPDATED', async (payload) => {
+    try {
+      const io = getIO();
+      const socketPayload = {
+        orgId: payload.targetId ? payload.targetId.toString() : null,
+        targetId: payload.targetId ? payload.targetId.toString() : null,
+      };
+
+      if (payload.targetId) {
+        const roomName = `org:${payload.targetId.toString()}`;
+        io.to(roomName).emit('ORGANIZATION_UPDATED', socketPayload);
+        io.to(roomName).emit('RECORD_UPDATED', { type: 'ORGANIZATION', action: 'UPDATE', data: socketPayload });
+      }
+
+      logger.info(`Socket emitted ORG_FEATURES_UPDATED for org: ${payload.targetId}`);
+    } catch (error) {
+      logger.error('Failed to emit ORG_FEATURES_UPDATED socket event:', error);
+    }
+  });
 };
 
 export default initOrganizationSocket;

@@ -150,11 +150,11 @@ export default function SettingsScreen() {
 
   const handleOpenSupport = () => {
     if (Platform.OS === 'web') {
-      window.alert(t('support_alert', 'Nahom Help Center & 24/7 Security Desk: support@managemygate.com'));
+      window.alert(t('support_alert', 'Nahom Help Center & 24/7 Security Desk: support@nahom.com'));
     } else {
       Alert.alert(
         t('support_help', 'Help & Support'),
-        t('support_alert', 'Nahom Help Center & 24/7 Security Desk: support@managemygate.com'),
+        t('support_alert', 'Nahom Help Center & 24/7 Security Desk: support@nahom.com'),
         [{ text: t('close', 'Close'), style: 'cancel' }]
       );
     }

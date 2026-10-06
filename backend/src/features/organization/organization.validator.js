@@ -1,15 +1,18 @@
 import { body, query } from 'express-validator';
 
 const ALLOWED_FEATURES = [
+  'visitor',
+  'amenities',
+  'complaints',
+  'notices',
+  'polls',
+  'digital_wallet',
+  'billing',
+  'villas',
   'users',
   'roles',
+  'workspaces',
   'integrations',
-  'villas',
-  'amenities',
-  'notices',
-  'complaints',
-  'visitor',
-  'billing',
   'administration_security',
 ];
 
@@ -30,61 +33,102 @@ export const checkNameRules = [
     .withMessage('Organization name query parameter is required')
     .isString()
     .withMessage('Organization name must be a string')
-    .trim()
-    .isLength({ min: 3, max: 100 })
-    .withMessage('Organization name must be between 3 and 100 characters')
-    .matches(ORG_NAME_REGEX)
-    .withMessage('Organization name contains invalid characters'),
+    .trim(),
 ];
 
 export const setupWorkspaceRules = [
-  body('name')
+  // Organization fields
+  body('organization.name')
     .notEmpty()
     .withMessage('Organization name is required')
     .isString()
     .withMessage('Organization name must be a string')
-    .trim()
-    .isLength({ min: 3, max: 100 })
-    .withMessage('Organization name must be between 3 and 100 characters')
-    .matches(ORG_NAME_REGEX)
-    .withMessage('Organization name contains invalid characters'),
+    .trim(),
 
-  body('organizationType')
-    .optional()
+  body('organization.organizationType')
+    .optional({ checkFalsy: true })
     .isString()
     .withMessage('Organization type must be a string')
     .trim()
     .isIn(ALLOWED_ORG_TYPES)
     .withMessage(`Organization type must be one of: ${ALLOWED_ORG_TYPES.join(', ')}`),
 
-  body('timezone')
-    .optional()
+  body('organization.contactPhone')
+    .optional({ checkFalsy: true })
+    .isString()
+    .withMessage('Contact phone must be a string')
+    .trim(),
+
+  body('organization.contactEmail')
+    .optional({ checkFalsy: true })
+    .isEmail()
+    .withMessage('Contact email must be a valid email address')
+    .normalizeEmail(),
+
+  body('organization.country')
+    .notEmpty()
+    .withMessage('Country is required')
+    .isString()
+    .trim(),
+
+  body('organization.state')
+    .notEmpty()
+    .withMessage('State is required')
+    .isString()
+    .trim(),
+
+  body('organization.city')
+    .optional({ checkFalsy: true })
+    .isString()
+    .trim(),
+
+  body('organization.timezone')
+    .notEmpty()
+    .withMessage('Timezone is required')
     .isString()
     .withMessage('Timezone must be a string')
     .trim()
     .isLength({ max: 50 })
     .withMessage('Timezone must not exceed 50 characters'),
 
-  body('contactEmail')
-    .optional({ checkFalsy: true })
+  // Community Admin fields
+  body('communityAdmin.fullName')
+    .notEmpty()
+    .withMessage('Community Admin full name is required')
+    .isString()
+    .trim()
+    .isLength({ min: 2, max: 100 }),
+
+  body('communityAdmin.username')
+    .notEmpty()
+    .withMessage('Community Admin username is required')
+    .isString()
+    .trim()
+    .isLength({ min: 3, max: 50 })
+    .matches(/^[a-zA-Z0-9_.-]+$/)
+    .withMessage('Username can only contain letters, numbers, underscores, dots, and hyphens'),
+
+  body('communityAdmin.email')
+    .notEmpty()
+    .withMessage('Community Admin email is required')
     .isEmail()
-    .withMessage('Contact email must be a valid email address')
+    .withMessage('Must be a valid email address')
     .normalizeEmail(),
 
-  body('contactPhone')
+  body('communityAdmin.phone')
     .optional({ checkFalsy: true })
     .isString()
-    .withMessage('Contact phone must be a string')
     .trim()
     .matches(/^[+0-9\s\-()]{7,25}$/)
-    .withMessage('Contact phone must be a valid phone number (7-25 digits/symbols)'),
+    .withMessage('Must be a valid phone number'),
 
-  body('expectedMemberCount')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Expected member count must be an integer of at least 1')
-    .toInt(),
+  body('communityAdmin.password')
+    .optional({ checkFalsy: true })
+    .isString()
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
 
+  // Features
   body('features')
     .optional()
     .isArray()
@@ -97,12 +141,6 @@ export const setupWorkspaceRules = [
       return true;
     }),
 
-  body('password')
-    .optional()
-    .isString()
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long'),
-
   // Sanitizer: Disallow client manipulation of protected tenant and identity fields
   body(['userId', 'creatorId', 'orgId', 'status', 'isPlatform', 'role', 'roleIds', 'permissions'])
     .customSanitizer(() => undefined),
@@ -113,9 +151,9 @@ export const updateFeaturesRules = [
     .isArray()
     .withMessage('features must be an array')
     .bail()
-    .custom((value) => {
-      if (!value.every((item) => typeof item === 'string')) {
-        throw new Error('All features must be strings');
+    .custom((features) => {
+      if (!features.every((item) => typeof item === 'string' && ALLOWED_FEATURES.includes(item))) {
+        throw new Error(`Invalid feature in list. Allowed features are: ${ALLOWED_FEATURES.join(', ')}`);
       }
       return true;
     }),
@@ -129,3 +167,29 @@ export const updateStatusRules = [
     .isIn(['Active', 'Pending', 'Rejected'])
     .withMessage('status must be one of Active, Pending, or Rejected'),
 ];
+
+export const sendAdminEmailOtpRules = [
+  body('email')
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Must be a valid email address')
+    .normalizeEmail(),
+];
+
+export const verifyAdminEmailOtpRules = [
+  body('email')
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Must be a valid email address')
+    .normalizeEmail(),
+  body('code')
+    .notEmpty()
+    .withMessage('OTP code is required')
+    .isString()
+    .trim()
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP code must be 6 digits'),
+];
+

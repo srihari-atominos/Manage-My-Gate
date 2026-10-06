@@ -439,3 +439,40 @@ export const exchangeHandoffRules = [
     .isObject()
     .withMessage('deviceInfo must be an object'),
 ];
+
+export const sendFirstTimeSetupOtpRules = [
+  body('identifier')
+    .notEmpty()
+    .withMessage('Identifier is required')
+    .trim(),
+];
+
+export const completeFirstTimeSetupRules = [
+  body('identifier')
+    .notEmpty()
+    .withMessage('Identifier is required')
+    .trim(),
+  body('code')
+    .notEmpty()
+    .withMessage('OTP code is required')
+    .isString()
+    .trim()
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP code must be 6 digits'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isString()
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
+  body('confirmPassword')
+    .optional()
+    .isString()
+    .custom((value, { req }) => {
+      if (value && value !== req.body.password) {
+        throw new Error('Password and Confirm Password must match');
+      }
+      return true;
+    }),
+];
+

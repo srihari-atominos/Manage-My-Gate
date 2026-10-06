@@ -111,6 +111,10 @@ export const exchangeInviteHandoff = async (handoffId, deviceInfo = {}) => {
   return await apiClient.post('/auth/invite/handoff/exchange', { handoffId, deviceInfo })
 }
 
+export const checkAccountStatus = async (identifier) => {
+  return await apiClient.get('/auth/check-account-status', { params: { identifier } })
+}
+
 export default {
   login,
   register,
@@ -138,4 +142,5 @@ export default {
   registerSsoWithOrg,
   createInviteHandoff,
   exchangeInviteHandoff,
+  checkAccountStatus,
 }
