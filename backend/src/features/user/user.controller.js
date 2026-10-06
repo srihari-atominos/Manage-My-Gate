@@ -207,6 +207,20 @@ export class UserController {
   }
 
   /**
+   * Bulk validates user contacts to check for existing registrations.
+   */
+  async bulkValidateUsers(req, res, next) {
+    try {
+      const { contacts } = req.body;
+      const orgId = req.tenant.orgId;
+      const result = await userService.bulkValidateUsers(contacts, orgId);
+      res.success(result, 'Bulk validation completed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Bulk invites multiple users.
    */
   async bulkInviteUsers(req, res, next) {

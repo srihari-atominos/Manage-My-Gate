@@ -62,6 +62,12 @@ const organizationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    authenticationMethod: {
+      type: String,
+      enum: ['EXISTING_SYSTEM', 'OTP_LOGIN'],
+      default: 'EXISTING_SYSTEM',
+      required: true,
+    },
     featureFlags: {
       enableEventStore: { type: Boolean, default: true },
       enableAdjustments: { type: Boolean, default: true },

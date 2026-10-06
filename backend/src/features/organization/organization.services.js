@@ -135,6 +135,18 @@ export class OrganizationService {
     }
   }
 
+  async updateLoginPolicy(orgId, authenticationMethod, session = null) {
+    const validMethods = ['EXISTING_SYSTEM', 'OTP_LOGIN'];
+    if (!validMethods.includes(authenticationMethod)) {
+      throw new HttpError(400, `Invalid authentication method. Must be one of: ${validMethods.join(', ')}`);
+    }
+    
+    // Ensure org exists
+    await this.getOrganizationById(orgId, session);
+    
+    return await organizationRepository.updateLoginPolicy(orgId, authenticationMethod, session);
+  }
+
   async getAllOrganizations(page = 1, limit = 10) {
     return await organizationRepository.findAllPaginated(Number(page), Number(limit));
   }
@@ -224,12 +236,13 @@ export class OrganizationService {
         name: trimmedName,
         status: 'Active',
         organizationType: organization.organizationType || 'Residential',
-        contactEmail: organization.contactEmail,
-        contactPhone: organization.contactPhone,
+        contactEmail: organization.contactEmail || communityAdmin.email,
+        contactPhone: organization.contactPhone || communityAdmin.phone,
         country: organization.country,
         state: organization.state,
         city: organization.city,
         timezone: organization.timezone || 'Asia/Kolkata',
+        authenticationMethod: organization.authenticationMethod || 'EXISTING_SYSTEM',
         allowedFeatures: finalFeatures
       }, session);
 

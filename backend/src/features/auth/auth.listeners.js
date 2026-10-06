@@ -5,7 +5,7 @@ import logger from '../../utils/logger.utils.js';
 import { maskPhone, maskEmail } from '../../utils/phone.utils.js';
 import nodemailer from 'nodemailer';
 
-authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
+export const sendOtpNotification = async ({ identifier, code, type }) => {
   if (type === 'EMAIL') {
     if (process.env.NODE_ENV !== 'production') {
       logger.info(`[AUTH OTP DELIVERED] Identifier: ${maskEmail(identifier)} | Verification OTP Code: ${code}`);
@@ -242,4 +242,6 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
       logger.error(`Failed to send OTP SMS to ${maskPhone(identifier)}: ${error.message}`);
     }
   }
-});
+};
+
+authEvents.on('OTP_SENT', sendOtpNotification);

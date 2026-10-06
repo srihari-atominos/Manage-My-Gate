@@ -47,7 +47,7 @@ jest.mock('react-native-reanimated', () => {
 // Mock expo-router
 jest.mock('expo-router', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    navigate: jest.fn(), push: jest.fn(),
     replace: jest.fn(),
     back: jest.fn(),
   }),

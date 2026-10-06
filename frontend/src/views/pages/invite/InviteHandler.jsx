@@ -12,6 +12,7 @@ import { InviteSignUpForm } from '../../../features/auth/components/InviteSignUp
 import { InviteSignInForm } from '../../../features/auth/components/InviteSignInForm.jsx'
 import { InviteSsoButtons } from '../../../features/auth/components/InviteSsoButtons.jsx'
 import { InviteMobileHandoffCard } from '../../../features/auth/components/InviteMobileHandoffCard.jsx'
+import { OtpInviteFlow } from '../../../features/auth/components/OtpInviteFlow.jsx'
 import '../../../features/auth/styles/_auth.scss'
 import AppLoader from '../../../components/common/AppLoader'
 
@@ -467,99 +468,119 @@ const InviteHandlerContent = () => {
                       )
                     })()}
 
-                  {/* Segmented Tab Controls: New User vs Existing User */}
-                  <div className="invite-tabs-container">
-                    <button
-                      type="button"
-                      className={`invite-tab-btn ${effectiveTab === 'signup' ? 'active' : ''}`}
-                      onClick={() => handleTabChange('signup')}
-                      disabled={submitting}
-                    >
-                      {t('auth.invite.tabSignUp', 'New User (Sign Up)')}
-                    </button>
-                    <button
-                      type="button"
-                      className={`invite-tab-btn ${effectiveTab === 'signin' ? 'active' : ''}`}
-                      onClick={() => handleTabChange('signin')}
-                      disabled={submitting}
-                    >
-                      {t('auth.invite.tabSignIn', 'Existing User (Sign In)')}
-                    </button>
-                  </div>
-
-                  {/* Tab 1: New User Sign Up */}
-                  {!isAccountMismatch &&
-                    flowState !== 'ALREADY_ACCEPTED' &&
-                    effectiveTab === 'signup' && (
-                      <div>
-                        <InviteSignUpForm
-                          email={inviteData?.email}
-                          token={token}
-                          onSubmit={handleSignUpSubmit}
-                          submitting={submitting}
-                          submissionError={submissionError}
-                        />
-
-                        {/* SSO Providers */}
-                        <InviteSsoButtons
-                          onSsoSuccess={handleSsoSuccess}
-                          onSsoError={(errMsg) => setSubmissionError(errMsg)}
+                  {inviteData?.authenticationMethod === 'OTP_LOGIN' &&
+                  flowState !== 'ALREADY_ACCEPTED' ? (
+                    <OtpInviteFlow
+                      token={token}
+                      email={inviteData?.email}
+                      isMobileDevice={isMobileDevice()}
+                      onAcceptDeviceRouting={() => {
+                        if (isMobileDevice()) {
+                          processSuccessfulAcceptance()
+                        }
+                      }}
+                      onSuccess={() => {
+                        // On success, we reload or re-validate so the invite logic redirects to dashboard
+                        window.location.reload()
+                      }}
+                    />
+                  ) : (
+                    <React.Fragment>
+                      {/* Segmented Tab Controls: New User vs Existing User */}
+                      <div className="invite-tabs-container">
+                        <button
+                          type="button"
+                          className={`invite-tab-btn ${effectiveTab === 'signup' ? 'active' : ''}`}
+                          onClick={() => handleTabChange('signup')}
                           disabled={submitting}
-                        />
+                        >
+                          {t('auth.invite.tabSignUp', 'New User (Sign Up)')}
+                        </button>
+                        <button
+                          type="button"
+                          className={`invite-tab-btn ${effectiveTab === 'signin' ? 'active' : ''}`}
+                          onClick={() => handleTabChange('signin')}
+                          disabled={submitting}
+                        >
+                          {t('auth.invite.tabSignIn', 'Existing User (Sign In)')}
+                        </button>
+                      </div>
 
-                        <div className="text-center mt-4 pt-2 border-top">
-                          <small className="text-muted">
-                            {t('auth.invite.alreadyHaveAccount', 'Already registered?')}{' '}
-                            <button
-                              type="button"
-                              className="btn btn-link p-0 text-primary fw-semibold text-decoration-none small"
-                              onClick={() => handleTabChange('signin')}
-                            >
-                              {t('auth.invite.signInTabCta', 'Sign In Instead')}
-                            </button>
-                          </small>
+                      {/* Tab 1: New User Sign Up */}
+                      {!isAccountMismatch &&
+                        flowState !== 'ALREADY_ACCEPTED' &&
+                        effectiveTab === 'signup' && (
+                          <div>
+                            <InviteSignUpForm
+                              email={inviteData?.email}
+                              token={token}
+                              onSubmit={handleSignUpSubmit}
+                              submitting={submitting}
+                              submissionError={submissionError}
+                            />
+
+                            {/* SSO Providers */}
+                            <InviteSsoButtons
+                              onSsoSuccess={handleSsoSuccess}
+                              onSsoError={(errMsg) => setSubmissionError(errMsg)}
+                              disabled={submitting}
+                            />
+
+                            <div className="text-center mt-4 pt-2 border-top">
+                              <small className="text-muted">
+                                {t('auth.invite.alreadyHaveAccount', 'Already registered?')}{' '}
+                                <button
+                                  type="button"
+                                  className="btn btn-link p-0 text-primary fw-semibold text-decoration-none small"
+                                  onClick={() => handleTabChange('signin')}
+                                >
+                                  {t('auth.invite.signInTabCta', 'Sign In Instead')}
+                                </button>
+                              </small>
+                            </div>
+                          </div>
+                        )}
+
+                      {/* Tab 2: Existing User Sign In */}
+                      {(isAccountMismatch ||
+                        flowState === 'ALREADY_ACCEPTED' ||
+                        effectiveTab === 'signin') && (
+                        <div>
+                          <InviteSignInForm
+                            email={inviteData?.email}
+                            token={token}
+                            orgName={inviteData?.orgName}
+                            isAuthenticated={isAuthenticated}
+                            currentUser={currentUser}
+                            onSubmit={handleSignInSubmit}
+                            onAcceptExistingAuthenticated={handleAcceptExistingAuthenticated}
+                            onSignOut={handleSignOut}
+                            submitting={submitting}
+                            submissionError={submissionError}
+                          />
+
+                          {/* SSO Providers for Existing Users */}
+                          <InviteSsoButtons
+                            onSsoSuccess={handleSsoSuccess}
+                            onSsoError={(errMsg) => setSubmissionError(errMsg)}
+                            disabled={submitting}
+                          />
+
+                          <div className="text-center mt-4 pt-2 border-top">
+                            <small className="text-muted">
+                              {t('auth.invite.needNewAccount', 'Need to create an account?')}{' '}
+                              <button
+                                type="button"
+                                className="btn btn-link p-0 text-primary fw-semibold text-decoration-none small"
+                                onClick={() => handleTabChange('signup')}
+                              >
+                                {t('auth.invite.signUpTabCta', 'Sign Up Instead')}
+                              </button>
+                            </small>
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                  {/* Tab 2: Existing User Sign In */}
-                  {(isAccountMismatch ||
-                    flowState === 'ALREADY_ACCEPTED' ||
-                    effectiveTab === 'signin') && (
-                    <div>
-                      <InviteSignInForm
-                        email={inviteData?.email}
-                        token={token}
-                        orgName={inviteData?.orgName}
-                        isAuthenticated={isAuthenticated}
-                        currentUser={currentUser}
-                        onSubmit={handleSignInSubmit}
-                        onAcceptExistingAuthenticated={handleAcceptExistingAuthenticated}
-                        onSignOut={handleSignOut}
-                        submitting={submitting}
-                        submissionError={submissionError}
-                      />
-
-                      {/* SSO Providers for Existing Users */}
-                      <InviteSsoButtons
-                        onSsoSuccess={handleSsoSuccess}
-                        onSsoError={(errMsg) => setSubmissionError(errMsg)}
-                        disabled={submitting}
-                      />
-
-                      <div className="text-center mt-4 pt-2 border-top">
-                        <small className="text-muted">
-                          {t('auth.invite.needNewAccount', 'Need to create an account?')}{' '}
-                          <button
-                            type="button"
-                            className="btn btn-link p-0 text-primary fw-semibold text-decoration-none small"
-                            onClick={() => handleTabChange('signup')}
-                          >
-                            {t('auth.invite.signUpTabCta', 'Sign Up Instead')}
-                          </button>
-                        </small>
-                      </div>
-                    </div>
+                      )}
+                    </React.Fragment>
                   )}
 
                   {/* Option to decline/reject workspace invitation */}

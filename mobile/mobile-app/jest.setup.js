@@ -78,3 +78,6 @@ jest.mock('expo-file-system/legacy', () => ({
   getInfoAsync: jest.fn().mockResolvedValue({ exists: false }),
   downloadAsync: jest.fn().mockResolvedValue({ uri: 'file:///cache/download' }),
 }));
+
+
+jest.mock('expo-router', () => ({ useRouter: jest.fn(() => ({ push: jest.fn(), back: jest.fn(), navigate: jest.fn(), replace: jest.fn() })), useLocalSearchParams: jest.fn(() => ({})), usePathname: jest.fn(() => ''), Link: 'Link' }));

@@ -21,13 +21,7 @@ import {
   cilWarning,
   cilXCircle,
 } from '@coreui/icons'
-
-const TEMPLATE_CONTENT = `Email,Phone,Name,Type,VillaNumber,ResidentType,Role
-resident.owner@example.com,+919876543210,John Doe,Resident,Villa 01,Owner,Resident Owner
-resident.tenant@example.com,+919876543211,Jane Smith,Resident,Villa 02,Tenant,Resident Tenant
-resident.family@example.com,,Family Member,Resident,Villa 01,Family,Family Member
-security.guard@example.com,+919876543212,Guard Ramesh,Worker,,,Security Guard
-community.admin@example.com,+919876543213,Admin Priya,Worker,,,Community Admin`
+import { bulkValidateUsers } from '../services/userApi'
 
 const splitCSVLine = (line) => {
   const result = []
@@ -68,48 +62,32 @@ const parseCSV = (text) => {
       if (header === 'email') key = 'email'
       else if (header === 'phone' || header === 'mobile' || header === 'contact') key = 'phone'
       else if (header === 'name' || header === 'fullname' || header === 'full name') key = 'name'
-      else if (header === 'type') key = 'type'
-      else if (header === 'villanumber' || header === 'villa number') key = 'villaNumber'
-      else if (header === 'residenttype' || header === 'resident type') key = 'residentType'
       else if (header === 'role') key = 'roleName'
+      // Ignore other potential columns like Type, VillaNumber
 
-      row[key] = values[index] || ''
+      if (key) {
+        row[key] = values[index] || ''
+      }
     })
 
-    // Auto-fill standard values or fix formatting
-    if (!row.residentType && ['Owner', 'Tenant', 'Family'].includes(row.residentType)) {
-      row.residentType = 'None'
+    // Skip reference rows that are completely empty in data fields
+    if (!row.email?.trim() && !row.phone?.trim() && !row.name?.trim() && !row.roleName?.trim()) {
+      continue
     }
 
     row.hasEmailOrPhone = !!(row.email?.trim() || row.phone?.trim())
     row.isValidEmail = !row.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())
     row.isValidPhone = !row.phone || row.phone.trim().length >= 8
-    row.isValidType = ['Resident', 'Worker'].includes(row.type)
     row.isValidRole = !!row.roleName
 
-    if (row.type === 'Resident') {
-      row.isValidVilla = !!row.villaNumber
-      row.isValidResidentType = ['Owner', 'Tenant', 'Family'].includes(row.residentType)
-    } else {
-      row.isValidVilla = true
-      row.isValidResidentType = true
-    }
-
-    row.isValid =
-      row.hasEmailOrPhone &&
-      row.isValidEmail &&
-      row.isValidPhone &&
-      row.isValidType &&
-      row.isValidRole &&
-      row.isValidVilla &&
-      row.isValidResidentType
+    row.isValid = row.hasEmailOrPhone && row.isValidEmail && row.isValidPhone && row.isValidRole
 
     parsed.push(row)
   }
   return parsed
 }
 
-export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
+export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles = [] }) => {
   const [parsedRows, setParsedRows] = useState([])
   const [fileName, setFileName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -119,7 +97,14 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
   const fileInputRef = useRef(null)
 
   const handleDownloadTemplate = () => {
-    const blob = new Blob([TEMPLATE_CONTENT], { type: 'text/csv;charset=utf-8;' })
+    const roleHints =
+      availableRoles && availableRoles.length > 0
+        ? availableRoles.join('\n,,,,')
+        : 'Community Admin\n,,,,Security Guard\n,,,,Resident Owner'
+
+    const dynamicTemplate = `Email,Phone,Name,Role,Available Roles (Reference Only)\njohn.doe@example.com,,John Doe,Community Admin,${roleHints}\njane.smith@example.com,+919876543211,Jane Smith,Security Guard,`
+
+    const blob = new Blob([dynamicTemplate], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.setAttribute('href', url)
@@ -128,6 +113,39 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  const processFileText = async (text) => {
+    try {
+      let rows = parseCSV(text)
+      if (rows.length === 0) {
+        setErrorMsg('The uploaded file is empty or missing headers.')
+        return
+      }
+
+      setLoading(true)
+      try {
+        const { existingEmails, existingPhones } = await bulkValidateUsers(rows)
+        rows = rows.map((r) => {
+          const isDuplicate =
+            (r.email && existingEmails.includes(r.email.toLowerCase())) ||
+            (r.phone && existingPhones.includes(r.phone))
+          if (isDuplicate) {
+            r.isValid = false
+            r.isDuplicate = true
+          }
+          return r
+        })
+      } catch (apiErr) {
+        // Continue normally if validation API fails
+        console.error('Validation API failed', apiErr)
+      }
+      setParsedRows(rows)
+    } catch (err) {
+      setErrorMsg('Failed to parse CSV file. Please ensure it is correctly formatted.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleFileChange = (e) => {
@@ -139,19 +157,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
     setResults(null)
 
     const reader = new FileReader()
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result
-        const rows = parseCSV(text)
-        if (rows.length === 0) {
-          setErrorMsg('The uploaded file is empty or missing headers.')
-        } else {
-          setParsedRows(rows)
-        }
-      } catch (err) {
-        setErrorMsg('Failed to parse CSV file. Please ensure it is correctly formatted.')
-      }
-    }
+    reader.onload = (event) => processFileText(event.target.result)
     reader.readAsText(file)
   }
 
@@ -168,15 +174,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
       setResults(null)
 
       const reader = new FileReader()
-      reader.onload = (event) => {
-        try {
-          const text = event.target.result
-          const rows = parseCSV(text)
-          setParsedRows(rows)
-        } catch (err) {
-          setErrorMsg('Failed to parse CSV file.')
-        }
-      }
+      reader.onload = (event) => processFileText(event.target.result)
       reader.readAsText(file)
     } else {
       setErrorMsg('Please upload a valid CSV file.')
@@ -197,9 +195,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
         email: r.email || undefined,
         phone: r.phone || undefined,
         name: r.name || undefined,
-        residentType: r.type === 'Resident' ? r.residentType : 'None',
         roleName: r.roleName,
-        villaNumber: r.type === 'Resident' ? r.villaNumber : undefined,
         onboardingMode,
       }))
       const res = await onBulkInvite({ invitations, onboardingMode })
@@ -257,7 +253,8 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                 <div>
                   <strong className="d-block small">Normal Invitation</strong>
                   <span className="text-muted small">
-                    Membership is <em>Pending</em> until the user accepts the invitation link via email or SMS.
+                    Membership is <em>Pending</em> until the user accepts the invitation link via
+                    email or SMS.
                   </span>
                 </div>
               </label>
@@ -271,9 +268,12 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                   className="mt-1"
                 />
                 <div>
-                  <strong className="d-block small">Admin Announcement (Immediate Activation)</strong>
+                  <strong className="d-block small">
+                    Admin Announcement (Immediate Activation)
+                  </strong>
                   <span className="text-muted small">
-                    Membership is activated immediately. Existing user passwords are preserved. New users receive a secure first-time password setup link.
+                    Membership is activated immediately. Existing user passwords are preserved. New
+                    users receive a secure first-time password setup link.
                   </span>
                 </div>
               </label>
@@ -288,7 +288,8 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
               1. Download CSV Template
             </h5>
             <p className="text-muted small mb-3">
-              Use our standard format to prepare your invitation list. Provide Email OR Phone for each row.
+              Use our standard format to prepare your invitation list. Provide Email OR Phone for
+              each row.
             </p>
             <CButton
               color="primary"
@@ -370,9 +371,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                     <th scope="col" className="ps-3">
                       Contact (Email / Phone)
                     </th>
-                    <th scope="col">Type</th>
-                    <th scope="col">Villa Number</th>
-                    <th scope="col">Resident Type</th>
+                    <th scope="col">Name</th>
                     <th scope="col">Role</th>
                     <th scope="col" className="pe-3 text-center">
                       Status
@@ -387,25 +386,30 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                       style={{ opacity: row.isValid ? 1 : 0.8 }}
                     >
                       <td className="ps-3 fw-semibold text-truncate bulk-text-truncate-email">
-                        {row.email || row.phone || <span className="text-danger">Missing Contact</span>}
+                        {row.email || row.phone || (
+                          <span className="text-danger">Missing Contact</span>
+                        )}
                       </td>
-                      <td>
-                        <CBadge color={row.type === 'Resident' ? 'info' : 'secondary'}>
-                          {row.type || 'None'}
-                        </CBadge>
+                      <td className="text-truncate bulk-text-truncate-role">
+                        {row.name || <span className="text-muted">—</span>}
                       </td>
-                      <td>{row.villaNumber || <span className="text-muted">—</span>}</td>
-                      <td>{row.residentType || <span className="text-muted">—</span>}</td>
                       <td className="text-truncate bulk-text-truncate-role">
                         {row.roleName || <span className="text-danger">Missing</span>}
                       </td>
                       <td className="pe-3 text-center">
                         {row.isValid ? (
                           <CBadge color="success">Valid</CBadge>
+                        ) : row.isDuplicate ? (
+                          <CBadge
+                            color="danger"
+                            title="User is already registered in this community"
+                          >
+                            Already Registered
+                          </CBadge>
                         ) : (
                           <CBadge
                             color="danger"
-                            title="Validation failed: Provide Email or Phone, Role, and Villa if Resident."
+                            title="Validation failed: Provide Email or Phone and Role."
                           >
                             Fix Row
                           </CBadge>
@@ -436,7 +440,11 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                 <h6 className="fw-semibold mb-0">Bulk Processing Completed</h6>
               </div>
               <p className="mb-0 small">
-                Successfully processed {results.successCount} of {results.total} users using {onboardingMode === 'ADMIN_ANNOUNCEMENT' ? 'Admin Announcement' : 'Normal Invitation'}.
+                Successfully processed {results.successCount} of {results.total} users using{' '}
+                {onboardingMode === 'ADMIN_ANNOUNCEMENT'
+                  ? 'Admin Announcement'
+                  : 'Normal Invitation'}
+                .
               </p>
             </CAlert>
 
@@ -473,7 +481,9 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                       className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-body-secondary-danger"
                     >
                       <div className="ms-2 me-auto">
-                        <div className="fw-semibold text-body">{f.email || f.phone || 'Unknown'}</div>
+                        <div className="fw-semibold text-body">
+                          {f.email || f.phone || 'Unknown'}
+                        </div>
                         <span className="text-muted bulk-text-xxs">Reason: {f.error}</span>
                       </div>
                       <CBadge color="danger">Failed</CBadge>

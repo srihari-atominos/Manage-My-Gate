@@ -14,7 +14,7 @@ const otpSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['REGISTER', 'LOGIN', 'RESET', 'VERIFY', 'COMMUNITY_ADMIN_EMAIL_VERIFICATION', 'FIRST_TIME_ACCOUNT_SETUP'],
+      enum: ['REGISTER', 'LOGIN', 'RESET', 'VERIFY', 'COMMUNITY_ADMIN_EMAIL_VERIFICATION', 'FIRST_TIME_ACCOUNT_SETUP', 'INVITATION_LOGIN'],
       required: [true, 'OTP Type is required'],
     },
     attempts: {

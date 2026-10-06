@@ -107,6 +107,13 @@ export class WorkspaceService {
       }
     }
 
+    if (workspace.organizationId) {
+      const org = await Organization.findById(workspace.organizationId).lean().session(session);
+      if (org) {
+        workspace._doc.authenticationMethod = org.authenticationMethod || 'EXISTING_SYSTEM';
+      }
+    }
+
     return workspace;
   }
 
@@ -133,6 +140,14 @@ export class WorkspaceService {
     if (updateData.organizationName && workspace.organizationId) {
       const organizationService = (await import('../organization/organization.services.js')).default;
       await organizationService.updateOrganizationName(workspace.organizationId.toString(), updateData.organizationName, session);
+    }
+    
+    // Sync Authentication Method
+    if (updateData.authenticationMethod && workspace.organizationId) {
+      const organizationService = (await import('../organization/organization.services.js')).default;
+      await organizationService.updateLoginPolicy(workspace.organizationId.toString(), updateData.authenticationMethod, session);
+      // Remove from payload since it doesn't belong to Workspace model
+      delete updateData.authenticationMethod;
     }
 
     const payload = {
@@ -441,8 +456,6 @@ export class WorkspaceService {
         if (m.moduleKey === 'amenities') {
           return allowed.some(a => ['amenities', 'booking', 'amenity', 'amenitiesBooking', 'amenityBooking'].includes(a));
         }
-        // Always allow standard default modules
-        if (DEFAULT_MODULES.some(d => d.moduleKey === m.moduleKey)) return true;
         return false;
       })
       .sort((a, b) => a.displayOrder - b.displayOrder);

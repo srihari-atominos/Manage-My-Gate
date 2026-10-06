@@ -91,6 +91,13 @@ export const setupWorkspaceRules = [
     .isLength({ max: 50 })
     .withMessage('Timezone must not exceed 50 characters'),
 
+  body('organization.authenticationMethod')
+    .optional({ checkFalsy: true })
+    .isString()
+    .trim()
+    .isIn(['EXISTING_SYSTEM', 'OTP_LOGIN'])
+    .withMessage('Authentication method must be one of: EXISTING_SYSTEM, OTP_LOGIN'),
+
   // Community Admin fields
   body('communityAdmin.fullName')
     .notEmpty()
@@ -191,5 +198,16 @@ export const verifyAdminEmailOtpRules = [
     .trim()
     .isLength({ min: 6, max: 6 })
     .withMessage('OTP code must be 6 digits'),
+];
+
+
+export const updateLoginPolicyRules = [
+  body('authenticationMethod')
+    .notEmpty()
+    .withMessage('Authentication method is required')
+    .isString()
+    .trim()
+    .isIn(['EXISTING_SYSTEM', 'OTP_LOGIN'])
+    .withMessage('Authentication method must be one of: EXISTING_SYSTEM, OTP_LOGIN'),
 ];
 

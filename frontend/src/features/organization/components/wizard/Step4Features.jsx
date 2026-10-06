@@ -3,17 +3,61 @@ import { useTranslation } from 'react-i18next'
 import { CFormCheck, CButton, CRow, CCol, CCard, CCardBody } from '@coreui/react'
 
 const AVAILABLE_FEATURES = [
-  { id: 'visitor', label: 'Visitor Management', desc: 'Gate console, visitor passes, and entry logs.' },
-  { id: 'amenities', label: 'Amenities & Facilities', desc: 'Facility booking, calendars, and amenity master.' },
-  { id: 'complaints', label: 'Complaints & HelpDesk', desc: 'Helpdesk tickets, maintenance requests, and issue tracking.' },
-  { id: 'notices', label: 'Notice Board & Polls', desc: 'Community announcements, broadcast notices, and polls.' },
-  { id: 'digital_wallet', label: 'Digital Wallet & Ledgers', desc: 'Resident digital wallet, top-ups, and transaction ledgers.' },
-  { id: 'billing', label: 'Financial & Billing', desc: 'Assessments, maintenance invoices, dues, and payment gateway.' },
-  { id: 'villas', label: 'Unit Management', desc: 'Manage villas, flats, blocks, and unit inventories.' },
-  { id: 'users', label: 'User Management', desc: 'Manage residents, workers, imports, and user directory.' },
-  { id: 'roles', label: 'Role Builder', desc: 'Custom RBAC, role definitions, and permission assignments.' },
-  { id: 'workspaces', label: 'Workspace Settings', desc: 'Community preferences, branding, and organization settings.' },
-  { id: 'integrations', label: 'IntegrationHub', desc: 'Third-party service connections, SMS, and WhatsApp integrations.' },
+  {
+    id: 'visitor',
+    label: 'Visitor Management',
+    desc: 'Gate console, visitor passes, and entry logs.',
+  },
+  {
+    id: 'amenities',
+    label: 'Amenities & Facilities',
+    desc: 'Facility booking, calendars, and amenity master.',
+  },
+  {
+    id: 'complaints',
+    label: 'Complaints & HelpDesk',
+    desc: 'Helpdesk tickets, maintenance requests, and issue tracking.',
+  },
+  {
+    id: 'notices',
+    label: 'Notice Board & Polls',
+    desc: 'Community announcements, broadcast notices, and polls.',
+  },
+  {
+    id: 'digital_wallet',
+    label: 'Digital Wallet & Ledgers',
+    desc: 'Resident digital wallet, top-ups, and transaction ledgers.',
+  },
+  {
+    id: 'billing',
+    label: 'Financial & Billing',
+    desc: 'Assessments, maintenance invoices, dues, and payment gateway.',
+  },
+  {
+    id: 'villas',
+    label: 'Unit Management',
+    desc: 'Manage villas, flats, blocks, and unit inventories.',
+  },
+  {
+    id: 'users',
+    label: 'User Management',
+    desc: 'Manage residents, workers, imports, and user directory.',
+  },
+  {
+    id: 'roles',
+    label: 'Role Builder',
+    desc: 'Custom RBAC, role definitions, and permission assignments.',
+  },
+  {
+    id: 'workspaces',
+    label: 'Workspace Settings',
+    desc: 'Community preferences, branding, and organization settings.',
+  },
+  {
+    id: 'integrations',
+    label: 'IntegrationHub',
+    desc: 'Third-party service connections, SMS, and WhatsApp integrations.',
+  },
 ]
 
 const Step4Features = ({ data, onNext, onBack }) => {
@@ -36,9 +80,9 @@ const Step4Features = ({ data, onNext, onBack }) => {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex flex-column flex-md-row justify-content-md-between align-items-start align-items-md-center gap-3 mb-4">
         <div>
-          <h5>
+          <h5 className="mb-1">
             {t('organization.wizard.featuresTitle', { defaultValue: 'Select Community Features' })}
           </h5>
           <p className="text-muted small mb-0">
@@ -48,15 +92,11 @@ const Step4Features = ({ data, onNext, onBack }) => {
             })}
           </p>
         </div>
-        <div>
-          <CButton color="link" className="text-decoration-none px-2" onClick={handleSelectAll}>
+        <div className="d-flex flex-wrap gap-2">
+          <CButton color="outline-primary" size="sm" onClick={handleSelectAll}>
             {t('common.selectAll', { defaultValue: 'Select All' })}
           </CButton>
-          <CButton
-            color="link"
-            className="text-decoration-none px-2 text-danger"
-            onClick={handleClearAll}
-          >
+          <CButton color="outline-danger" size="sm" onClick={handleClearAll}>
             {t('common.clearAll', { defaultValue: 'Clear All' })}
           </CButton>
         </div>

@@ -6,7 +6,8 @@
         "appID": "<APPLE_TEAM_ID>.com.atominosconsulting.nahom",
         "paths": [
           "/invite/handoff/*",
-          "/billing/*"
+          "/billing/*",
+          "/invite/*"
         ],
         "components": [
           {
@@ -19,8 +20,7 @@
           },
           {
             "/": "/invite/*",
-            "exclude": true,
-            "comment": "Web-first invitation wizard handled in Safari/Browser"
+            "comment": "Directly opens mobile app for invitation processing"
           }
         ]
       }

@@ -87,7 +87,7 @@ const mockRouterBack = jest.fn();
 let mockParamsId = 'res-lifecycle-101';
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockRouterPush, back: mockRouterBack }),
+  useRouter: () => ({ navigate: mockRouterPush, push: mockRouterPush, back: mockRouterBack }),
   useLocalSearchParams: () => ({ id: mockParamsId }),
   usePathname: () => `/amenities/reservations/${mockParamsId}`,
 }));

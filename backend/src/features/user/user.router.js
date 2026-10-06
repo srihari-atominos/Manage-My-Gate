@@ -108,6 +108,21 @@ router.post(
 
 /**
  * @swagger
+ * /users/bulk-validate:
+ *   post:
+ *     summary: Validate bulk invite contacts
+ *     responses:
+ *       200:
+ *         description: Validation successful.
+ */
+router.post(
+  '/bulk-validate',
+  tenantContext,
+  authorizePermission('users', 'create'),
+  userController.bulkValidateUsers
+)
+
+/**
  * /users/bulk-invite:
  *   post:
  *     summary: Bulk invite new users

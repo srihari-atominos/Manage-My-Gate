@@ -182,7 +182,6 @@ export default function LoginScreen() {
   // 8. Tactile Micro-Interaction Drivers
   const buttonPressScale = React.useRef(new Animated.Value(1)).current;
   const arrowShiftX = React.useRef(new Animated.Value(0)).current;
-  const createAccountPressScale = React.useRef(new Animated.Value(1)).current;
 
   // 9. Input Focus Micro-Interaction Drivers
   const [isLoginFocused, setIsLoginFocused] = React.useState(false);
@@ -447,23 +446,6 @@ export default function LoginScreen() {
     ]).start();
   };
 
-  // Tactile Micro-Interactions: Create Account Button
-  const handleCreateAccountPressIn = () => {
-    Animated.timing(createAccountPressScale, {
-      toValue: 0.98,
-      duration: 80,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handleCreateAccountPressOut = () => {
-    Animated.timing(createAccountPressScale, {
-      toValue: 1,
-      duration: 100,
-      useNativeDriver: true,
-    }).start();
-  };
-
   // Basic Auth Form Hook
   const basicForm = useForm<BasicAuthFormValues>({
     resolver: yupResolver(basicAuthSchema),
@@ -519,12 +501,8 @@ export default function LoginScreen() {
       );
 
       dispatch(clearPendingRoute());
-        if (isCreateOrgIntent || !hasOrg) {
-        sessionStore.removeItem('mobile_auth_intent');
-        router.replace({ pathname: '/(auth)/setup-organization', params: { intent: 'create-org' } });
-        } else {
-        router.replace('/(resident)');
-      }
+      sessionStore.removeItem('mobile_auth_intent');
+      router.replace('/(resident)');
     } else if (!isAuthenticated) {
       hasNavigatedRef.current = false;
     }
@@ -1116,29 +1094,6 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Create Community Prompt */}
-              <View className="items-center justify-center pt-2.5 pb-2">
-                <Animated.View style={{ transform: [{ scale: createAccountPressScale }] }}>
-                  <View className="bg-transparent flex-row items-center justify-center">
-                    <Text className="text-[12.5px] text-white font-bold" style={{ textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                      {t('dont_have_community', "Don't have a Community?")}{' '}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => router.push('/(auth)/signup')}
-                      onPressIn={handleCreateAccountPressIn}
-                      onPressOut={handleCreateAccountPressOut}
-                      activeOpacity={0.8}
-                      accessibilityRole="button"
-                      accessibilityLabel="Create Community"
-                    >
-                      <Text className="text-[12.5px] font-bold text-[#FF6A00]" style={{ textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                        {t('create_community', 'Create Community')}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
-              </View>
-
             </Animated.View>
           </View>
           </KeyboardAwareScrollView>
@@ -1151,3 +1106,4 @@ export default function LoginScreen() {
 function cnText(...classes: (string | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
+

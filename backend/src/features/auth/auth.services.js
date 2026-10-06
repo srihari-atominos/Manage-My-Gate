@@ -39,7 +39,7 @@ export class AuthService {
         if (existingUser.status === 'Pending Verification') {
           const plainCode = await otpService.createOTP(email, 'REGISTER', 15, session);
           await session.commitTransaction();
-          authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
+          sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
           return {
             message: 'Registration successful. OTP sent for verification.',
             email: existingUser.email,
@@ -105,7 +105,7 @@ export class AuthService {
       // --- TRANSACTION BOUNDARY END ---
 
       // Emit internal event to trigger email sending
-      authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
+      sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
       authEvents.emit('USER_CREATED', { userId: newUser._id, provider: 'local' });
 
       // Automatically populate CRM Inquiry for the registered user
@@ -124,13 +124,11 @@ export class AuthService {
       
       const isDev = process.env.NODE_ENV !== 'production';
       if (isDev) {
-        console.log('\n=========================================');
-        console.log(`[DEV MODE REGISTER] OTP for ${email} is: ${plainCode}`);
-        console.log('=========================================\n');
+        
       }
 
       return {
-        message: isDev ? `Registration successful. OTP sent for verification. (Dev Code: ${plainCode})` : 'Registration successful. OTP sent for verification.',
+        message: isDev 'Registration successful. OTP sent for verification.',
         email: newUser.email,
         status: 'Pending Verification'
       };
@@ -1054,7 +1052,7 @@ export class AuthService {
    * @param {string} rawToken - Unhashed token from client
    * @param {string} password - New password set by user
    */
-  async acceptInvitation(rawToken, password, email = null, authenticatedUserId = null, profileData = {}) {
+  async acceptInvitation(rawToken, password, email = null, authenticatedUserId = null, profileData = {}, skipPasswordCheck = false) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -1125,7 +1123,7 @@ export class AuthService {
         const hashedPassword = await hashPassword(password);
         await userService.activateUser(user._id, hashedPassword, session, profileData);
       } else {
-        if (!user.password) {
+        if (!user.password && !skipPasswordCheck) {
           throw new HttpError(400, 'Password is required to activate a new account.');
         }
         if (user.status !== 'Active' || profileData.name || profileData.phone) {
@@ -1728,16 +1726,14 @@ export class AuthService {
     const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
 
     // Emit event for SMS delivery
-    authEvents.emit('OTP_SENT', { identifier: normalizedPhone, code: plainCode, type: 'SMS' });
+    sendOtpNotification({ identifier: normalizedPhone, code: plainCode, type: 'SMS' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     const isDev = process.env.NODE_ENV !== 'production';
     if (isDev) {
-      console.log('\n=========================================');
-      console.log(`[DEV MODE SMS] OTP for ${normalizedPhone} is: ${plainCode}`);
-      console.log('=========================================\n');
+      
     }
 
-    return { message: isDev ? `OTP sent successfully (Dev Code: ${plainCode})` : 'OTP sent successfully' };
+    return { message: isDev 'OTP sent successfully' };
   }
 
   /**
@@ -1852,16 +1848,14 @@ export class AuthService {
     }
 
     const plainCode = await otpService.createOTP(email, 'LOGIN');
-    authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
+    sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     const isDev = process.env.NODE_ENV !== 'production';
     if (isDev) {
-      console.log('\n=========================================');
-      console.log(`[DEV MODE EMAIL] OTP for ${email} is: ${plainCode}`);
-      console.log('=========================================\n');
+      
     }
 
-    return { message: isDev ? `OTP sent to email (Dev Code: ${plainCode})` : 'OTP sent to email' };
+    return { message: isDev 'OTP sent to email' };
   }
 
   /**
@@ -1870,6 +1864,85 @@ export class AuthService {
    * @param {string} code - OTP verification code
    * @param {object} deviceInfo - Client device meta
    */
+  
+  
+  async initiateInvitationOtp(token) {
+    const inviteInfo = await this.validateInvite(token);
+    if (!inviteInfo || !inviteInfo.valid) {
+      throw new HttpError(400, 'Invalid or expired invitation token.');
+    }
+    if (inviteInfo.authenticationMethod !== 'OTP_LOGIN') {
+      throw new HttpError(403, 'This organization does not support OTP Login for invitations.');
+    }
+
+    const identifier = inviteInfo.email || inviteInfo.phone;
+    if (!identifier) {
+      throw new HttpError(400, 'No email or phone associated with this invitation.');
+    }
+    
+    // Normalize phone number if it's a phone
+    const { normalizePhone } = await import('../../utils/phone.utils.js');
+    const finalIdentifier = inviteInfo.phone ? normalizePhone(identifier) : identifier.toLowerCase();
+
+    const otpService = (await import('../otp/otp.services.js')).default;
+    const plainCode = await otpService.createOTP(finalIdentifier, 'INVITATION_LOGIN');
+    
+    // Send the OTP explicitly without emitting it in an event payload
+    const { sendOtpNotification } = await import('./auth.listeners.js');
+    const method = inviteInfo.phone ? 'SMS' : 'EMAIL';
+    
+    // Do not wait for email/sms to complete to avoid slow response time
+    sendOtpNotification({ identifier: finalIdentifier, code: plainCode, type: method }).catch((err) => {
+      logger.error(`Failed to send INVITATION_LOGIN OTP to ${finalIdentifier}: ${err.message}`);
+    });
+
+    return { message: 'OTP sent' };
+  }
+
+  
+  async verifyInvitationOtp(token, code, deviceInfo = {}) {
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const inviteInfo = await this.validateInvite(token);
+      if (!inviteInfo || !inviteInfo.valid) {
+        throw new HttpError(400, 'Invalid or expired invitation token.');
+      }
+      if (inviteInfo.authenticationMethod !== 'OTP_LOGIN') {
+        throw new HttpError(403, 'This organization does not support OTP Login for invitations.');
+      }
+
+      const identifier = inviteInfo.email || inviteInfo.phone;
+      if (!identifier) {
+        throw new HttpError(400, 'No email or phone associated with this invitation.');
+      }
+      
+      const { normalizePhone } = await import('../../utils/phone.utils.js');
+      const finalIdentifier = inviteInfo.phone ? normalizePhone(identifier) : identifier.toLowerCase();
+
+      const otpService = (await import('../otp/otp.services.js')).default;
+      await otpService.verifyOTP(finalIdentifier, code, 'INVITATION_LOGIN', session);
+
+      // Now accept the invitation, consuming the token inside the transaction
+      const data = await this.acceptInvitation(token, null, finalIdentifier, null, {}, true);
+
+      await session.commitTransaction();
+
+      // Log successful login
+      const { user, token: authToken, refreshToken, availableWorkspaces } = data;
+      authEvents.emit('LOGIN_SUCCESS', { userId: user.id || user._id, method: 'invitation_otp', deviceInfo });
+
+      return data;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
   async verifyEmailOtpLogin(email, code, deviceInfo) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
@@ -1950,13 +2023,11 @@ export class AuthService {
     const type = cleanId.includes('@') ? 'EMAIL' : 'SMS';
     const plainCode = await otpService.createOTP(cleanId, 'RESET');
     
-    authEvents.emit('OTP_SENT', { identifier: cleanId, code: plainCode, type });
+    sendOtpNotification({ identifier: cleanId, code: plainCode, type }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     const isDev = process.env.NODE_ENV !== 'production';
     if (isDev) {
-      console.log('\n=========================================');
-      console.log(`[DEV MODE RESET] OTP for ${cleanId} is: ${plainCode}`);
-      console.log('=========================================\n');
+      
     }
 
     return {
@@ -2249,13 +2320,14 @@ export class AuthService {
     if (!user) throw new HttpError(409, 'Invitation recipient account is missing.');
     const resolvedOrgId = tokenDoc?.orgId || user?.orgId || null;
     let orgName = '';
+    let orgAuthMethod = 'EXISTING_SYSTEM';
     let villaDetails = '';
     let roleDetails = '';
     let membershipDoc = null;
 
     if (resolvedOrgId) {
       const Organization = (await import('../organization/organization.model.js')).default;
-      const org = await Organization.findById(resolvedOrgId).select('name status');
+      const org = await Organization.findById(resolvedOrgId).select('name status authenticationMethod');
       if (!org) {
         throw new HttpError(404, 'The workspace or organization for this invitation no longer exists.');
       }
@@ -2263,6 +2335,7 @@ export class AuthService {
         throw new HttpError(400, 'This community workspace is currently inactive.');
       }
       orgName = org.name;
+      orgAuthMethod = org.authenticationMethod || 'EXISTING_SYSTEM';
 
       try {
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
@@ -2367,6 +2440,7 @@ export class AuthService {
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has expired. Please ask your administrator to resend the invitation.',
       };
     }
@@ -2384,6 +2458,7 @@ export class AuthService {
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has been revoked by the administrator.',
       };
     }
@@ -2401,6 +2476,7 @@ export class AuthService {
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has already been rejected.',
       };
     }
@@ -2421,6 +2497,7 @@ export class AuthService {
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has already been accepted.',
         ...identityFields,
       };
@@ -2445,6 +2522,7 @@ export class AuthService {
       villa: villaDetails || '',
       unit: villaDetails || '',
       role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
       invitationSource,
       ...identityFields,
     };
@@ -2672,12 +2750,11 @@ export class AuthService {
       console.log(`=========================================\n`);
     }
 
-    authEvents.emit('OTP_SENT', { identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' });
+    sendOtpNotification({ identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     return {
       message: `Verification code sent to ${targetIdentifier}`,
       identifier: targetIdentifier,
-      ...(isDev && { devCode: plainCode }),
     };
   }
 

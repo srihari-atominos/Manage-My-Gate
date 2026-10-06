@@ -10,6 +10,7 @@ import {
   setupWorkspaceRules,
   updateFeaturesRules,
   updateStatusRules,
+  updateLoginPolicyRules,
   sendAdminEmailOtpRules,
   verifyAdminEmailOtpRules,
 } from './organization.validator.js';
@@ -96,6 +97,14 @@ router.patch(
   tenantContext({ requirePlatformContext: true }),
   validate(updateFeaturesRules),
   organizationController.updateFeatures
+);
+
+router.patch(
+  '/:id/login-policy',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(updateLoginPolicyRules),
+  organizationController.updateLoginPolicy
 );
 
 export default router;

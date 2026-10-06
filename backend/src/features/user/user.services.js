@@ -951,6 +951,43 @@ export class UserService {
     }
   }
 
+  async bulkValidateUsers(contacts, orgId) {
+    const emails = contacts.map(c => c.email?.trim().toLowerCase()).filter(Boolean);
+    const phones = contacts.map(c => c.phone?.trim()).filter(Boolean);
+
+    if (emails.length === 0 && phones.length === 0) {
+      return { existingEmails: [], existingPhones: [] };
+    }
+
+    const User = (await import('./user.model.js')).default;
+    const existingUsers = await User.find({
+      $or: [
+        { email: { $in: emails } },
+        { phone: { $in: phones } }
+      ]
+    }).select('_id email phone').lean();
+
+    if (existingUsers.length === 0) {
+      return { existingEmails: [], existingPhones: [] };
+    }
+
+    const existingUserIds = existingUsers.map(u => u._id);
+
+    const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+    const existingMemberships = await OrgMembership.find({
+      userId: { $in: existingUserIds },
+      orgId: orgId
+    }).select('userId').lean();
+
+    const memberUserIds = existingMemberships.map(m => m.userId.toString());
+    const memberUsers = existingUsers.filter(u => memberUserIds.includes(u._id.toString()));
+
+    return {
+      existingEmails: memberUsers.map(u => u.email).filter(Boolean),
+      existingPhones: memberUsers.map(u => u.phone).filter(Boolean)
+    };
+  }
+
   async bulkInviteUsers(invitations, orgId, defaultSource = 'WEB', inviterId = null, onboardingMode = 'INVITATION') {
     const successes = [];
     const failures = [];

@@ -125,6 +125,17 @@ export class OrganizationController {
     } catch (error) {
       next(error);
     }
+    }
+
+  async updateLoginPolicy(req, res, next) {
+    try {
+      const orgId = req.params.id;
+      const { authenticationMethod } = req.body;
+      const updatedOrg = await organizationService.updateLoginPolicy(orgId, authenticationMethod);
+      res.success(updatedOrg, 'Organization login policy updated successfully');
+    } catch (error) {
+      next(error);
+    }
   }
 }
 
