@@ -113,10 +113,9 @@ export const initAmenityBookingSockets = () => {
       }
 
       // Broadcast to all connected clients & tenant rooms for instant revenue KPI updates
-      io.emit('AMENITY_BOOKING_CREATED', booking);
-      io.emit('PAYMENT_SUCCESS', booking);
       if (booking?.orgId) {
         io.to(`org:${booking.orgId}`).emit('AMENITY_BOOKING_CREATED', booking);
+        io.to(`org:${booking.orgId}`).emit('PAYMENT_SUCCESS', booking);
       }
     } catch (err) {
       console.error('Error handling booking created event in sockets:', err);
@@ -125,7 +124,6 @@ export const initAmenityBookingSockets = () => {
 
   amenityBookingEventEmitter.on(AMENITY_BOOKING_CHECKED_IN, (booking) => {
     try {
-      io.emit('AMENITY_CHECKIN', booking);
       if (booking?.orgId) {
         io.to(`org:${booking.orgId}`).emit('AMENITY_CHECKIN', booking);
       }
@@ -136,7 +134,6 @@ export const initAmenityBookingSockets = () => {
 
   amenityBookingEventEmitter.on(AMENITY_BOOKING_CANCELLED, (booking) => {
     try {
-      io.emit('AMENITY_BOOKING_CANCELLED', booking);
       if (booking?.orgId) {
         io.to(`org:${booking.orgId}`).emit('AMENITY_BOOKING_CANCELLED', booking);
       }

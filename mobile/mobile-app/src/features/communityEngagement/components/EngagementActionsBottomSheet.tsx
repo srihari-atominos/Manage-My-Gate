@@ -23,9 +23,11 @@ import {
   ChevronRight,
   ArrowUpRight,
   Megaphone,
+  Send,
 } from 'lucide-react-native';
 import { EngagementCardItem } from './EngagementCard';
 import * as noticeBoardService from '@/src/features/noticeBoard/services/noticeBoardService';
+import communityEngagementService from '../services/communityEngagementService';
 import { pollApi } from '@/src/features/poll/services/pollApi';
 import { PollVotersModal } from '@/src/features/poll/components/PollVotersModal';
 import { useTranslation } from '@/src/utils/i18n';
@@ -238,6 +240,31 @@ export const EngagementActionsBottomSheet: React.FC<EngagementActionsBottomSheet
     });
   };
 
+  // 7c. Direct Publish Draft Action
+  const handlePublishDraft = async () => {
+    try {
+      setActionLoading(true);
+      if (isNotice) {
+        const formData = new FormData();
+        formData.append('contentType', 'NOTICE');
+        formData.append('title', item.title);
+        formData.append('status', 'Published');
+        await communityEngagementService.updateEngagementContent(item.id, 'NOTICE', formData);
+      } else {
+        await pollApi.publishPoll(item.id);
+      }
+      setActionsSheetVisible(false);
+      onClose();
+      onActionSuccess?.();
+    } catch (e: any) {
+      const msg = typeof e === 'string' ? e : (e?.message || 'Failed to publish draft.');
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Publish Failed', msg);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // 8. Full Details Navigation
   const handleViewFullDetails = () => {
     onClose();
@@ -422,6 +449,25 @@ export const EngagementActionsBottomSheet: React.FC<EngagementActionsBottomSheet
         title={t('actions')}
       >
         <View className="gap-2.5 px-2 pb-6 pt-1">
+          {/* Direct Publish Draft Option */}
+          {item.status.toUpperCase() === 'DRAFT' && (
+            <TouchableOpacity
+              onPress={() => {
+                setActionsSheetVisible(false);
+                handlePublishDraft();
+              }}
+              activeOpacity={0.7}
+              className="flex-row items-center p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30"
+            >
+              <View className="w-9 h-9 rounded-lg bg-emerald-500/20 items-center justify-center me-3">
+                <Icon as={Send} size={18} className="text-emerald-600 dark:text-emerald-400" />
+              </View>
+              <Text className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                {isNotice ? t('publish_notice_now', 'Publish Notice Now') : t('publish_poll_now', 'Publish Poll Now')}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Edit */}
           <TouchableOpacity
             onPress={() => {

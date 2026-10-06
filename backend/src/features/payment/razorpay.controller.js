@@ -22,8 +22,8 @@ class RazorpayController {
     logger.warn('[DEPRECATED] Direct call to RazorpayController.initiatePayment. Use /api/v1/payments/create-order');
     try {
       const { amount, currency = 'INR', referenceId, referenceType, domain } = req.body;
-      const userId = req.user?._id || req.body.userId;
-      const orgId = req.user?.orgId || req.body.orgId || req.headers['x-organization-id'];
+      const userId = req.user?._id;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
 
       if (!amount || !userId || !orgId) {
         throw new HttpError(400, 'Amount, User ID, and Organization ID are required.');

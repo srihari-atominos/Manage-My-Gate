@@ -86,6 +86,7 @@ export const sendEmail = async (orgId, to, subject, htmlBody, options = {}) => {
       to,
       subject,
       html: htmlBody,
+      ...(options.attachments && { attachments: options.attachments }),
     };
 
     await transporter.sendMail(mailOptions);

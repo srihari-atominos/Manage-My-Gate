@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import visitorLogRepository from './visitorLog.repository.js';
 import visitorPassService from '../visitorPass/visitorPass.service.js';
 import visitorLogEvents from './visitorLog.events.js';
@@ -270,13 +271,33 @@ export class VisitorLogService {
 
   async getPendingApprovals(orgId, actor) {
     assertVisitorPermission(['resident', 'gate', 'manager'], actor);
+    const isMongoId = mongoose.isValidObjectId(orgId);
+    const orgQuery = isMongoId
+      ? { $or: [{ orgId: new mongoose.Types.ObjectId(orgId) }, { orgId: String(orgId) }] }
+      : { orgId: String(orgId) };
+
     const query = {
-      orgId,
+      ...orgQuery,
       logStatus: 'PENDING'
     };
+
     if (!isGateOperator(actor) && !isVisitorManager(actor)) {
-      query.residentId = getActorId(actor);
+      const residentId = getActorId(actor);
+      if (residentId) {
+        const isResMongoId = mongoose.isValidObjectId(residentId);
+        const resConditions = isResMongoId
+          ? [{ residentId: new mongoose.Types.ObjectId(residentId) }, { residentId: String(residentId) }]
+          : [{ residentId: String(residentId) }];
+
+        if (query.$or) {
+          query.$and = [{ $or: query.$or }, { $or: resConditions }];
+          delete query.$or;
+        } else {
+          query.$or = resConditions;
+        }
+      }
     }
+
     return await visitorLogRepository.findPendingApprovals(query);
   }
 

@@ -14,8 +14,6 @@ export const initAmenitySockets = () => {
     try {
       if (amenity?.orgId) {
         io.to(`org:${amenity.orgId}`).emit('AMENITY_CREATED', amenity);
-      } else {
-        io.emit('AMENITY_CREATED', amenity);
       }
     } catch (err) {
       console.error('Error broadcasting amenity creation event in sockets:', err);
@@ -27,8 +25,6 @@ export const initAmenitySockets = () => {
     try {
       if (amenity?.orgId) {
         io.to(`org:${amenity.orgId}`).emit('AMENITY_UPDATED', amenity);
-      } else {
-        io.emit('AMENITY_UPDATED', amenity);
       }
     } catch (err) {
       console.error('Error broadcasting amenity update event in sockets:', err);
@@ -40,8 +36,6 @@ export const initAmenitySockets = () => {
     try {
       if (amenity?.orgId) {
         io.to(`org:${amenity.orgId}`).emit('AMENITY_DELETED', amenity);
-      } else {
-        io.emit('AMENITY_DELETED', amenity);
       }
     } catch (err) {
       console.error('Error broadcasting amenity deletion event in sockets:', err);

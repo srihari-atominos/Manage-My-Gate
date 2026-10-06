@@ -35,9 +35,11 @@ export const initUserSocket = () => {
         io.to(`org:${targetOrgId.toString()}`).emit('USER_UPDATED', socketData);
       }
 
-      // Broadcast globally so connected target client's session updates in real-time
-      io.emit('RECORD_UPDATED', socketData);
-      io.emit('USER_UPDATED', socketData);
+      // Send to specific user room if the client joins `user:${userId}`
+      if (userId) {
+        io.to(`user:${userId.toString()}`).emit('RECORD_UPDATED', socketData);
+        io.to(`user:${userId.toString()}`).emit('USER_UPDATED', socketData);
+      }
       
       logger.info(`Socket emitted RECORD_UPDATED/USER_UPDATED for user: ${userId}`);
     } catch (error) {

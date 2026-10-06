@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { getPasses, createPass, fetchPassByCode } from '../store/visitorPassSlice.js';
-import { getActiveVisitors, processPreApproved, initiateWalkIn, checkoutVisitor } from '../store/visitorLogSlice.js';
+import { getActiveVisitors, processPreApproved, initiateWalkIn, checkoutVisitor, fetchPendingApprovals } from '../store/visitorLogSlice.js';
 import useAuth from '../../auth/hooks/useAuth.js';
 import apiClient from '../../../services/apiClient.js';
 import useGuardWalkInListener from './useGuardWalkInListener.js';
@@ -19,6 +19,7 @@ export const useGuardVisitorManagement = () => {
   // Redux Selectors
   const reduxPasses = useSelector(state => state.visitorPass.passes);
   const reduxActiveVisitors = useSelector(state => state.visitorLog.activeVisitors);
+  const reduxPendingApprovals = useSelector(state => state.visitorLog.pendingApprovals);
   const activeOrgId = useSelector(state => state.workspace?.activeOrganizationId);
 
   // Database lists fetched via apiClient
@@ -116,6 +117,11 @@ export const useGuardVisitorManagement = () => {
         dispatch(getActiveVisitors(activeOrgId))
           .catch(err => {
             console.error('Failed to load active visitors in guard hook:', err);
+            return null;
+          }),
+        dispatch(fetchPendingApprovals(activeOrgId))
+          .catch(err => {
+            console.error('Failed to load pending approvals in guard hook:', err);
             return null;
           })
       ])
@@ -231,6 +237,7 @@ export const useGuardVisitorManagement = () => {
       // Auto reload after request resolves
       setTimeout(() => {
         dispatch(getActiveVisitors(activeOrgId));
+        dispatch(fetchPendingApprovals(activeOrgId));
       }, 1000);
       
       return { success: true, log: result };

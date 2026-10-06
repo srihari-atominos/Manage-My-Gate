@@ -1,6 +1,7 @@
 import noticeService from './noticeBoard.service.js'
 import noticeReactionService from '../noticeReaction/noticeReaction.service.js'
 import mongoose from 'mongoose'
+import { checkIsAdmin } from '../../middlewares/rbac.middleware.js'
 
 export class NoticeBoardController {
   /**
@@ -76,10 +77,12 @@ export class NoticeBoardController {
         }
       }
       const userPermissions = permissions.map((p) => p.replace(':', '.'));
+      const isCommunityAdmin = await checkIsAdmin(req);
       const adminRoleNames = ['super admin', 'platform super admin', 'admin', 'community admin', 'superadmin'];
       const userRoleLower = (req.user.role || '').trim().toLowerCase();
       const userRoles = Array.isArray(req.user.roles) ? req.user.roles.map((r) => (r || '').trim().toLowerCase()) : [];
       const hasCreatePermission =
+        isCommunityAdmin ||
         adminRoleNames.includes(userRoleLower) ||
         userRoles.some((r) => adminRoleNames.includes(r)) ||
         userPermissions.includes('notices.manage_notices') ||

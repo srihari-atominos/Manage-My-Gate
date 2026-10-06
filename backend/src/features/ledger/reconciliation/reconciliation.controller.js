@@ -7,7 +7,7 @@ import financialMetricsService from '../financialMetrics.service.js';
 export class ReconciliationController {
   async getIntegrity(req, res, next) {
     try {
-      const orgId = req.query.orgId || null;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const report = await financialIntegrityService.runIntegrityCheck(orgId);
       res.status(200).json({ success: true, data: report });
     } catch (err) {
@@ -17,7 +17,7 @@ export class ReconciliationController {
 
   async getMetrics(req, res, next) {
     try {
-      const orgId = req.query.orgId || null;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const metrics = await financialMetricsService.getMetrics(orgId);
       res.status(200).json({ success: true, data: metrics });
     } catch (err) {
@@ -27,7 +27,7 @@ export class ReconciliationController {
 
   async getInventory(req, res, next) {
     try {
-      const orgId = req.query.orgId || null;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const inventory = await historicalInventoryService.getInventory(orgId);
       res.status(200).json({ success: true, data: inventory });
     } catch (err) {
@@ -52,7 +52,7 @@ export class ReconciliationController {
 
   async verifyInvariants(req, res, next) {
     try {
-      const orgId = req.query.orgId || null;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const report = await reconciliationReportService.verifyFinancialInvariants(orgId);
       res.status(200).json({ success: true, data: report });
     } catch (err) {
