@@ -128,7 +128,7 @@ export class AuthService {
       }
 
       return {
-        message: isDev 'Registration successful. OTP sent for verification.',
+        message: 'Registration successful. OTP sent for verification.',
         email: newUser.email,
         status: 'Pending Verification'
       };
@@ -712,6 +712,7 @@ export class AuthService {
     return {
       id: user._id,
       email: user.email,
+      status: user.status,
       username: user.username,
       name: user.name || user.username || user.email,
       phone: user.phone || '',
@@ -1119,6 +1120,9 @@ export class AuthService {
       }
 
       if (password) {
+        if (user.status === 'Active' && user.password) {
+          throw new HttpError(400, "Account is already active. Please click 'Back to Login' to accept this invitation using your existing credentials.");
+        }
         const { hashPassword } = await import('../../utils/crypto.utils.js');
         const hashedPassword = await hashPassword(password);
         await userService.activateUser(user._id, hashedPassword, session, profileData);
@@ -1733,7 +1737,7 @@ export class AuthService {
       
     }
 
-    return { message: isDev 'OTP sent successfully' };
+    return { message: 'OTP sent successfully' };
   }
 
   /**
@@ -1855,7 +1859,7 @@ export class AuthService {
       
     }
 
-    return { message: isDev 'OTP sent to email' };
+    return { message: 'OTP sent to email' };
   }
 
   /**
@@ -1900,7 +1904,12 @@ export class AuthService {
   }
 
   
-  async verifyInvitationOtp(token, code, deviceInfo = {}) {
+
+  async verifyInvitationOtp(token, code, preferredMethod = null, deviceInfo = {}) {
+    if (typeof preferredMethod === 'object' && preferredMethod !== null && !deviceInfo) {
+      deviceInfo = preferredMethod;
+      preferredMethod = null;
+    }
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -1914,19 +1923,34 @@ export class AuthService {
         throw new HttpError(403, 'This organization does not support OTP Login for invitations.');
       }
 
-      const identifier = inviteInfo.email || inviteInfo.phone;
-      if (!identifier) {
-        throw new HttpError(400, 'No email or phone associated with this invitation.');
+      let isPhone = false;
+      let identifier = null;
+      if (preferredMethod === 'SMS' && inviteInfo.phone && String(inviteInfo.phone).trim().length > 0) {
+        identifier = String(inviteInfo.phone).trim();
+        isPhone = true;
+      } else if (preferredMethod === 'EMAIL' && inviteInfo.email && inviteInfo.email.trim().length > 0 && !inviteInfo.email.includes('@noemail.local')) {
+        identifier = inviteInfo.email.trim();
+        isPhone = false;
+      } else {
+        if (inviteInfo.email && inviteInfo.email.trim().length > 0 && !inviteInfo.email.includes('@noemail.local')) {
+          identifier = inviteInfo.email.trim();
+          isPhone = false;
+        } else if (inviteInfo.phone && String(inviteInfo.phone).trim().length > 0) {
+          identifier = String(inviteInfo.phone).trim();
+          isPhone = true;
+        }
       }
+      if (!identifier) throw new HttpError(400, 'No email or phone associated with this invitation.');
       
       const { normalizePhone } = await import('../../utils/phone.utils.js');
-      const finalIdentifier = inviteInfo.phone ? normalizePhone(identifier) : identifier.toLowerCase();
+      const finalIdentifier = isPhone ? normalizePhone(identifier) : identifier.toLowerCase();
 
       const otpService = (await import('../otp/otp.services.js')).default;
       await otpService.verifyOTP(finalIdentifier, code, 'INVITATION_LOGIN', session);
 
+
       // Now accept the invitation, consuming the token inside the transaction
-      const data = await this.acceptInvitation(token, null, finalIdentifier, null, {}, true);
+      const data = await this.acceptInvitation(token, null, isPhone ? null : finalIdentifier, null, {}, true);
 
       await session.commitTransaction();
 
@@ -2435,6 +2459,7 @@ export class AuthService {
         invitationStatus: 'EXPIRED',
         membershipStatus: 'Expired',
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
@@ -2453,6 +2478,7 @@ export class AuthService {
         invitationStatus: 'REVOKED',
         membershipStatus: 'Revoked',
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
@@ -2471,6 +2497,7 @@ export class AuthService {
         invitationStatus: 'REJECTED',
         membershipStatus: 'Rejected',
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
@@ -2492,6 +2519,7 @@ export class AuthService {
         isAlreadyRegistered: true,
         isExisting: true,
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
@@ -2517,6 +2545,7 @@ export class AuthService {
       inviterId: tokenDoc?.inviterId || null,
       inviterName,
       email: user.email,
+        phone: user?.phone || '',
       orgId: resolvedOrgId,
       orgName: orgName || 'Community Workspace',
       villa: villaDetails || '',

@@ -131,7 +131,8 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
             (r.email && existingEmails.includes(r.email.toLowerCase())) ||
             (r.phone && existingPhones.includes(r.phone))
           if (isDuplicate) {
-            r.isValid = false
+            // We do not set r.isValid = false so existing members can be linked
+            // or updated (e.g. via Admin Announcement).
             r.isDuplicate = true
           }
           return r
@@ -397,9 +398,13 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
                         {row.roleName || <span className="text-danger">Missing</span>}
                       </td>
                       <td className="pe-3 text-center">
-                        {row.isValid ? (
+                        {row.isValid && !row.isDuplicate ? (
                           <CBadge color="success">Valid</CBadge>
-                        ) : row.isDuplicate ? (
+                          ) : row.isValid && row.isDuplicate ? (
+                            <CBadge color="info" title="User is already registered in this community. Role or status will be updated.">
+                              Existing Member
+                            </CBadge>
+                          ) : row.isDuplicate ? (
                           <CBadge
                             color="danger"
                             title="User is already registered in this community"
