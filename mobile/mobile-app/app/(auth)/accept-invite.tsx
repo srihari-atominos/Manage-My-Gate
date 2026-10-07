@@ -79,6 +79,7 @@ export default function AcceptInviteScreen() {
     membershipStatus?: string;
     invitationStatus?: string;
     message?: string;
+    authenticationMethod?: string;
   } | null>(null);
   const [validating, setValidating] = useState(false);
   const acceptedNavigationRef = useRef(false);
