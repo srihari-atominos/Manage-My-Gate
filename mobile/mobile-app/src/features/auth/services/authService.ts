@@ -241,5 +241,7 @@ export default {
   createWorkspace,
   updateOrganizationFeatures,
   exchangeHandoff,
+  initiateInvitationOtp,
+  verifyInvitationOtp,
   getCurrentContext,
 };

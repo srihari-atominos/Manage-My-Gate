@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useForm, Controller } from 'react-hook-form'
@@ -86,7 +86,7 @@ export const RegisterForm = () => {
 
   useEffect(() => {
     clearStatus()
-  }, [isLoginMode])
+  }, [isLoginMode, clearStatus])
 
   // Sync mode and form state with the active URL path
   useEffect(() => {
@@ -94,7 +94,7 @@ export const RegisterForm = () => {
     setValue('password', '')
     setValue('confirmPassword', '')
     clearErrors()
-  }, [location.pathname])
+  }, [location.pathname, setValue, clearErrors])
 
   // When changing mode, navigate to the correct onboarding route
   const toggleMode = () => {
@@ -124,9 +124,14 @@ export const RegisterForm = () => {
     }
   }
 
+  const handlePostAuthRedirectRef = useRef(handlePostAuthRedirect)
+  useEffect(() => {
+    handlePostAuthRedirectRef.current = handlePostAuthRedirect
+  }, [handlePostAuthRedirect])
+
   useEffect(() => {
     if (isAuthenticated) {
-      handlePostAuthRedirect()
+      handlePostAuthRedirectRef.current()
     }
   }, [isAuthenticated])
 

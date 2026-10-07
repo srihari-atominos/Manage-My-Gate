@@ -303,7 +303,10 @@ export const AcceptInviteForm = () => {
         </div>
 
         <div className="text-center mt-3">
-          <Link to={token ? "/login?invite_token=" + token : "/login"} className="accept-invite-link">
+          <Link
+            to={token ? '/login?invite_token=' + token : '/login'}
+            className="accept-invite-link"
+          >
             {t('auth.invite.backToLogin', 'Back to Login')}
           </Link>
         </div>

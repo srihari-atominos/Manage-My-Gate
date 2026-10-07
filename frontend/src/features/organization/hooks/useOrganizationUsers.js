@@ -55,7 +55,9 @@ export const useOrganizationUsers = (orgId) => {
   }
 
   const bulkInviteUsers = async (data) => {
-    const resultAction = await dispatch(bulkInviteOrganizationUsersAsync({ orgId, invitations: data }))
+    const resultAction = await dispatch(
+      bulkInviteOrganizationUsersAsync({ orgId, invitations: data }),
+    )
     if (bulkInviteOrganizationUsersAsync.fulfilled.match(resultAction)) {
       fetchUsers(1)
       return resultAction.payload

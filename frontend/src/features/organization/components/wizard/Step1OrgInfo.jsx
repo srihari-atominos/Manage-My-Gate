@@ -16,9 +16,7 @@ import {
 import { checkOrganizationName } from '../../services/organizationApi.js'
 
 const orgInfoSchema = yup.object().shape({
-  name: yup
-    .string()
-    .required('Organization Name is required'),
+  name: yup.string().required('Organization Name is required'),
   contactEmail: yup.string().email('Invalid email format').nullable().notRequired(),
   country: yup.string().required('Country is required'),
   state: yup.string().required('State is required'),
@@ -103,7 +101,7 @@ const TIMEZONE_LIST = [
   'Africa/Cairo',
   'Africa/Johannesburg',
   'Pacific/Auckland',
-  'UTC'
+  'UTC',
 ]
 
 const COUNTRY_CODES = [

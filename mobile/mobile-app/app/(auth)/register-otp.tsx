@@ -59,11 +59,7 @@ export default function RegisterOtpScreen() {
           (Array.isArray(resUser.availableWorkspaces) && resUser.availableWorkspaces.length > 0)
         )
       );
-      if (hasOrg) {
-        router.replace('/(resident)/dashboard');
-      } else {
-        router.replace('/(auth)/setup-organization');
-      }
+      router.replace('/(resident)/dashboard');
     }
   };
 

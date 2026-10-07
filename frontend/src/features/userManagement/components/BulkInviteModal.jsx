@@ -87,13 +87,19 @@ const parseCSV = (text) => {
   return parsed
 }
 
-export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles = [], globalOnboardingMode }) => {
+export const BulkInviteModal = ({
+  visible,
+  onClose,
+  onBulkInvite,
+  availableRoles = [],
+  globalOnboardingMode,
+}) => {
   const [parsedRows, setParsedRows] = useState([])
   const [fileName, setFileName] = useState('')
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
-  
+
   const fileInputRef = useRef(null)
 
   const handleDownloadTemplate = () => {
@@ -197,7 +203,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
         phone: r.phone || undefined,
         name: r.name || undefined,
         roleName: r.roleName,
-        }))
+      }))
       const res = await onBulkInvite(invitations)
       setResults(res)
       setParsedRows([])
@@ -214,7 +220,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
     setFileName('')
     setResults(null)
     setErrorMsg('')
-    
+
     onClose()
   }
 
@@ -241,19 +247,22 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
               Onboarding Method
             </label>
             <div className="d-flex flex-column gap-2">
-                <div className="d-flex align-items-start gap-2 p-3 border rounded bg-light">
-                  <div>
-                    <strong className="d-block small">
-                      Current Strategy: {globalglobalOnboardingMode === 'ADMIN_ANNOUNCEMENT' ? 'Admin Announcement (Immediate Activation)' : 'Normal Invitation'}
-                    </strong>
-                    <span className="text-muted small">
-                      {globalglobalOnboardingMode === 'ADMIN_ANNOUNCEMENT' 
-                        ? 'Membership is activated immediately. Existing user passwords are preserved. Configured globally in Organization Settings.'
-                        : 'Membership is Pending until the user accepts the invitation link via email or SMS. Configured globally in Organization Settings.'}
-                    </span>
-                  </div>
+              <div className="d-flex align-items-start gap-2 p-3 border rounded bg-light">
+                <div>
+                  <strong className="d-block small">
+                    Current Strategy:{' '}
+                    {globalOnboardingMode === 'ADMIN_ANNOUNCEMENT'
+                      ? 'Admin Announcement (Immediate Activation)'
+                      : 'Normal Invitation'}
+                  </strong>
+                  <span className="text-muted small">
+                    {globalOnboardingMode === 'ADMIN_ANNOUNCEMENT'
+                      ? 'Membership is activated immediately. Existing user passwords are preserved. Configured globally in Organization Settings.'
+                      : 'Membership is Pending until the user accepts the invitation link via email or SMS. Configured globally in Organization Settings.'}
+                  </span>
                 </div>
               </div>
+            </div>
           </div>
         )}
 
@@ -375,11 +384,14 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
                       <td className="pe-3 text-center">
                         {row.isValid && !row.isDuplicate ? (
                           <CBadge color="success">Valid</CBadge>
-                          ) : row.isValid && row.isDuplicate ? (
-                            <CBadge color="info" title="User is already registered in this community. Role or status will be updated.">
-                              Existing Member
-                            </CBadge>
-                          ) : row.isDuplicate ? (
+                        ) : row.isValid && row.isDuplicate ? (
+                          <CBadge
+                            color="info"
+                            title="User is already registered in this community. Role or status will be updated."
+                          >
+                            Existing Member
+                          </CBadge>
+                        ) : row.isDuplicate ? (
                           <CBadge
                             color="danger"
                             title="User is already registered in this community"

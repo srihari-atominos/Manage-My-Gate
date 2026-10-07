@@ -15,19 +15,6 @@ export default function IndexScreen() {
 
   // If already authenticated, redirect to workspace or dashboard
   if (isAuthenticated) {
-    const u = user as any;
-    const hasOrg = !!(
-      u && (
-        u.orgId ||
-        u.activeOrgId ||
-        u.organizationId ||
-        (Array.isArray(u.availableWorkspaces) && u.availableWorkspaces.length > 0)
-      )
-    );
-
-    if (!hasOrg) {
-      return <Redirect href="/(auth)/setup-organization" />;
-    }
     return <Redirect href="/(resident)" />;
   }
 

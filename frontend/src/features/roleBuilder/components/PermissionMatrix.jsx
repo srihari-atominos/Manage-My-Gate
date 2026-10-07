@@ -21,7 +21,7 @@ export const isPermissionSelected = (perm, selectedIds = []) => {
 
   if (permValue.endsWith(':full_access')) {
     const category = permValue.split(':')[0]
-    return selectedIds.some(p => String(p).startsWith(`${category}:`))
+    return selectedIds.some((p) => String(p).startsWith(`${category}:`))
   }
 
   if (selectedIds.includes(permValue)) return true
@@ -133,7 +133,7 @@ const PermissionMatrix = ({
               _id: `${category}:full_access`,
               name: `${category}:full_access`,
               description: 'Full Access',
-            }
+            },
           ]
         }
 

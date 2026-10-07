@@ -85,8 +85,7 @@ const TermsPage = () => {
                     </div>
                     <h1 className="fw-extrabold display-6 mb-2">Terms &amp; Conditions</h1>
                     <p className="text-body-secondary mb-3">
-                      Application: <strong>Nahom</strong> &bull; Platform:{' '}
-                      <strong>Nahom</strong>
+                      Application: <strong>Nahom</strong> &bull; Platform: <strong>Nahom</strong>
                     </p>
                     <div className="d-flex flex-wrap gap-3 align-items-center text-body-secondary small">
                       <CBadge color="primary" className="px-2 py-1">
@@ -293,8 +292,7 @@ const TermsPage = () => {
                     <h2 className="h4 fw-bold text-body mb-3">1. Acceptance of Terms</h2>
                     <p>
                       By creating an account, installing or accessing the <strong>Nahom</strong>{' '}
-                      mobile application, accessing the <strong>Nahom</strong> web
-                      application (
+                      mobile application, accessing the <strong>Nahom</strong> web application (
                       <a href="https://managemygate.e3esg.com" target="_blank" rel="noreferrer">
                         https://managemygate.e3esg.com
                       </a>
@@ -316,8 +314,8 @@ const TermsPage = () => {
                     </p>
                     <p>
                       If you do not agree to these Terms or the Privacy Policy, you must immediately
-                      cease accessing or using the Nahom mobile application, Nahom web
-                      portal, and associated platform services.
+                      cease accessing or using the Nahom mobile application, Nahom web portal, and
+                      associated platform services.
                     </p>
                   </section>
 
@@ -974,9 +972,8 @@ const TermsPage = () => {
                     <h2 className="h4 fw-bold text-body mb-3">18. Intellectual Property Rights</h2>
                     <p>
                       The Nahom application name, logos, software code, user interface designs,
-                      database structures, documentation, and Nahom web portal are the
-                      exclusive intellectual property of{' '}
-                      <strong>Atominos Consulting Private Limited</strong>.
+                      database structures, documentation, and Nahom web portal are the exclusive
+                      intellectual property of <strong>Atominos Consulting Private Limited</strong>.
                     </p>
                     <p>
                       We grant you a limited, non-exclusive, non-transferable, revocable license to

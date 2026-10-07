@@ -102,8 +102,8 @@ const PrivacyPolicyPage = () => {
                   <section className="mb-5">
                     <h2 className="h4 fw-bold text-body mb-3">1. Introduction</h2>
                     <p>
-                      Welcome to <strong>Nahom</strong> (accessible via the{' '}
-                      <strong>Nahom</strong> platform at{' '}
+                      Welcome to <strong>Nahom</strong> (accessible via the <strong>Nahom</strong>{' '}
+                      platform at{' '}
                       <a
                         href="https://managemygate.e3esg.com"
                         target="_blank"
@@ -214,8 +214,7 @@ const PrivacyPolicyPage = () => {
                     <ul>
                       <li>
                         <strong>Unit Binding:</strong> Villa or apartment unit number, associated
-                        community name, occupancy status (Owner / Resident / Tenant /
-                        Staff).
+                        community name, occupancy status (Owner / Resident / Tenant / Staff).
                       </li>
                       <li>
                         <strong>Emergency Contacts:</strong> Resident-designated emergency contact
@@ -282,8 +281,8 @@ const PrivacyPolicyPage = () => {
                       </p>
                       <p className="mb-0 text-body-secondary small">
                         All online payments are securely routed directly through authorized
-                        third-party payment gateway service providers. Nahom stores only
-                        payment status records, invoice numbers, payment reference IDs, transaction
+                        third-party payment gateway service providers. Nahom stores only payment
+                        status records, invoice numbers, payment reference IDs, transaction
                         timestamps, and user-uploaded receipt images for accounting and verification
                         purposes.
                       </p>
@@ -505,11 +504,11 @@ const PrivacyPolicyPage = () => {
                   <section className="mb-5">
                     <h2 className="h4 fw-bold text-body mb-3">11. Children&apos;s Privacy</h2>
                     <p>
-                      Nahom and Nahom are designed for property owners, residents, and
-                      authorized gate personnel. Our services are not directed to children under the
-                      age of 13. We do not knowingly collect personal information from children
-                      under 13. If we learn that personal information of a child under 13 has been
-                      collected, we will take steps to purge such information promptly.
+                      Nahom and Nahom are designed for property owners, residents, and authorized
+                      gate personnel. Our services are not directed to children under the age of 13.
+                      We do not knowingly collect personal information from children under 13. If we
+                      learn that personal information of a child under 13 has been collected, we
+                      will take steps to purge such information promptly.
                     </p>
                   </section>
 

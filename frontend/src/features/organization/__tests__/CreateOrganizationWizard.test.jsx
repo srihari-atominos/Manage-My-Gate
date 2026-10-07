@@ -59,11 +59,17 @@ describe('CreateOrganizationWizard Flow', () => {
   it('navigates to Step 2 when Step 1 is valid', async () => {
     renderComponent()
     fireEvent.change(screen.getByLabelText('Organization Name'), { target: { value: 'Test Org' } })
-    fireEvent.change(screen.getByLabelText('Contact Phone Number'), { target: { value: '9876543210' } })
-    fireEvent.change(screen.getByLabelText('Contact Email'), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByLabelText('Contact Phone Number'), {
+      target: { value: '9876543210' },
+    })
+    fireEvent.change(screen.getByLabelText('Contact Email'), {
+      target: { value: 'test@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'India' } })
     fireEvent.change(screen.getByLabelText('State'), { target: { value: 'KA' } })
-    fireEvent.change(screen.getByLabelText('Timezone (e.g. Asia/Kolkata)'), { target: { value: 'Asia/Kolkata' } })
+    fireEvent.change(screen.getByLabelText('Timezone (e.g. Asia/Kolkata)'), {
+      target: { value: 'Asia/Kolkata' },
+    })
 
     fireEvent.click(screen.getByText('Next'))
 

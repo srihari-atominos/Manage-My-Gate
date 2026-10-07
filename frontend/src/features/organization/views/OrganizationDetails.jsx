@@ -208,7 +208,10 @@ export const OrganizationDetails = () => {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <CButton color="outline-primary" onClick={() => setShowBulkUploadUnitsModal(true)}>
+                  <CButton
+                    color="outline-primary"
+                    onClick={() => setShowBulkUploadUnitsModal(true)}
+                  >
                     <CIcon icon={cilCloudUpload} className="me-2" />
                     {t('superAdmin.orgDetails.bulkUploadUnitsBtn', {
                       defaultValue: 'Bulk Onboard Units',

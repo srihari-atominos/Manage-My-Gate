@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -80,9 +80,9 @@ export const useAuth = () => {
     return dispatch(updateProfileAction(formData))
   }
 
-  const clearStatus = () => {
+  const clearStatus = useCallback(() => {
     dispatch(clearStatusAction())
-  }
+  }, [dispatch])
 
   const handleValidateInvitation = async (invitationToken) => {
     try {

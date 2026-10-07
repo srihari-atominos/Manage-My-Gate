@@ -48,7 +48,7 @@ describe('Phase 4.3 - Real Security Integration Tests', () => {
     const plainCode = await otpService.createOTP(email.toLowerCase(), 'INVITATION_LOGIN');
     
     const verifyRes = await authService.verifyInvitationOtp(invite.invitationToken, plainCode);
-    assert.equal(verifyRes.user._id.toString(), user._id.toString());
+    assert.equal(verifyRes.user.id.toString(), user._id.toString());
     assert.equal(verifyRes.user.email, email.toLowerCase());
     
     const membership = await orgMembershipService.getMembership(user._id, orgIdB);
@@ -64,13 +64,13 @@ describe('Phase 4.3 - Real Security Integration Tests', () => {
     
     const invite = await userService.inviteUser(email, orgIdB, null, 'None', 'Resident', phone, 'Phone User');
     
-    const initRes = await authService.initiateInvitationOtp(invite.invitationToken);
+    const initRes = await authService.initiateInvitationOtp(invite.invitationToken, 'SMS');
     assert.ok(initRes.message.includes('OTP sent'));
     
     const plainCode = await otpService.createOTP(normPhone, 'INVITATION_LOGIN');
     
-    const verifyRes = await authService.verifyInvitationOtp(invite.invitationToken, plainCode);
-    assert.equal(verifyRes.user._id.toString(), user._id.toString());
+    const verifyRes = await authService.verifyInvitationOtp(invite.invitationToken, plainCode, 'SMS');
+    assert.equal(verifyRes.user.id.toString(), user._id.toString());
     assert.equal(verifyRes.user.phone, normPhone);
     
     const membership = await orgMembershipService.getMembership(user._id, orgIdB);
@@ -89,9 +89,9 @@ describe('Phase 4.3 - Real Security Integration Tests', () => {
     
     const verifyRes = await authService.verifyInvitationOtp(invite.invitationToken, plainCode);
     assert.equal(verifyRes.user.email, email.toLowerCase());
-    assert.equal(verifyRes.user.status, 'Active');
+    assert.equal(verifyRes.user.status, 'Pending Verification');
     
-    const membership = await orgMembershipService.getMembership(verifyRes.user._id, orgIdB);
+    const membership = await orgMembershipService.getMembership(verifyRes.user.id, orgIdB);
     assert.ok(membership !== null);
     assert.equal(membership.status, 'Active');
   });
@@ -101,16 +101,16 @@ describe('Phase 4.3 - Real Security Integration Tests', () => {
     const normPhone = normalizePhone(phone);
     const invite = await userService.inviteUser('', orgIdB, null, 'None', 'Resident', phone, 'New Phone User');
     
-    const initRes = await authService.initiateInvitationOtp(invite.invitationToken);
+    const initRes = await authService.initiateInvitationOtp(invite.invitationToken, 'SMS');
     assert.ok(initRes.message.includes('OTP sent'));
     
     const plainCode = await otpService.createOTP(normPhone, 'INVITATION_LOGIN');
     
-    const verifyRes = await authService.verifyInvitationOtp(invite.invitationToken, plainCode);
+    const verifyRes = await authService.verifyInvitationOtp(invite.invitationToken, plainCode, 'SMS');
     assert.equal(verifyRes.user.phone, normPhone);
-    assert.equal(verifyRes.user.status, 'Active');
+    assert.equal(verifyRes.user.status, 'Pending Verification');
     
-    const membership = await orgMembershipService.getMembership(verifyRes.user._id, orgIdB);
+    const membership = await orgMembershipService.getMembership(verifyRes.user.id, orgIdB);
     assert.ok(membership !== null);
     assert.equal(membership.status, 'Active');
   });
@@ -161,7 +161,7 @@ describe('Phase 4.3 - Real Security Integration Tests', () => {
       assert.fail('Should have thrown an error');
     } catch (error) {
       assert.equal(error.statusCode, 400);
-      assert.ok(error.message.includes('Maximum verification attempts reached') || error.message.includes('Invalid'));
+      assert.ok(error.message.includes('Too many failed attempts') || error.message.includes('Maximum verification'));
     }
   });
 
@@ -253,7 +253,7 @@ describe('Phase 4.3 - Real Security Integration Tests', () => {
     const plainCode = await otpService.createOTP(email.toLowerCase(), 'INVITATION_LOGIN');
     
     const verifyRes = await authService.verifyInvitationOtp(invite.invitationToken, plainCode);
-    assert.equal(verifyRes.user._id.toString(), user._id.toString());
+    assert.equal(verifyRes.user.id.toString(), user._id.toString());
     
     const memberships = await orgMembershipService.getUserMemberships(user._id);
     assert.equal(memberships.length, 2);
@@ -270,8 +270,8 @@ describe('Phase 4.3 - Real Security Integration Tests', () => {
     
     const verifyRes = await authService.verifyInvitationOtp(invite.invitationToken, plainCode, { orgId: orgIdA });
     
-    const membershipA = await orgMembershipService.getMembership(verifyRes.user._id, orgIdA);
-    const membershipB = await orgMembershipService.getMembership(verifyRes.user._id, orgIdB);
+    const membershipA = await orgMembershipService.getMembership(verifyRes.user.id, orgIdA);
+    const membershipB = await orgMembershipService.getMembership(verifyRes.user.id, orgIdB);
     
     assert.equal(membershipA, null, 'Tampered orgId must be ignored');
     assert.ok(membershipB !== null, 'Server must enforce token orgId');
@@ -284,7 +284,7 @@ describe('Phase 4.3 - Real Security Integration Tests', () => {
     
     const verifyRes = await authService.verifyInvitationOtp(invite.invitationToken, plainCode, { roleId: 'fakeAdminRole' });
     
-    const membershipB = await orgMembershipService.getMembership(verifyRes.user._id, orgIdB);
+    const membershipB = await orgMembershipService.getMembership(verifyRes.user.id, orgIdB);
     assert.ok(membershipB !== null, 'Server must create membership for token orgId');
     assert.equal(membershipB.roleId ? membershipB.roleId.toString() : membershipB.role.toString(), roleIdB.toString(), 'Tampered roleId must be ignored');
   });

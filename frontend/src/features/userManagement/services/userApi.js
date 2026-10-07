@@ -77,9 +77,9 @@ export const updateUserRoles = async (userId, roles, villaId = null) => {
  * @returns {Promise<Object>}
  */
 export const bulkValidateUsers = async (contacts) => {
-  const payload = contacts.map(c => ({ email: c.email, phone: c.phone }));
-  const response = await apiClient.post('/users/bulk-validate', { contacts: payload });
-  return response.data;
+  const payload = contacts.map((c) => ({ email: c.email, phone: c.phone }))
+  const response = await apiClient.post('/users/bulk-validate', { contacts: payload })
+  return response.data
 }
 
 /**

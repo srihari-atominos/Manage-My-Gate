@@ -103,7 +103,7 @@ export const UserDirectoryTable = ({
                     ? `${u.villa.blockOrBuilding ? `${u.villa.blockOrBuilding} - ` : ''}${u.villa.unitNumber}`
                     : 'N/A'
 
-                const targetUserId = u.userId?._id || u.userId || u._id;
+                const targetUserId = u.userId?._id || u.userId || u._id
 
                 return (
                   <tr

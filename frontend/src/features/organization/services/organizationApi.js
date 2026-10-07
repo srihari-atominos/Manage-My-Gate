@@ -7,7 +7,7 @@ export const updateOrganizationFeatures = async (orgId, featuresArray) => {
   return await apiClient.patch(
     `/organizations/${orgId}/features`,
     { features: featuresArray },
-    { headers: { 'x-organization-id': orgId } }
+    { headers: { 'x-organization-id': orgId } },
   )
 }
 
@@ -54,7 +54,7 @@ export const updateOrganizationOnboardingMode = async (orgId, onboardingMode) =>
   return await apiClient.patch(
     `/organizations/${orgId}/onboarding-mode`,
     { onboardingMode },
-    { headers: { 'x-organization-id': orgId } }
+    { headers: { 'x-organization-id': orgId } },
   )
 }
 
@@ -62,11 +62,9 @@ export const bulkInviteOrganizationUsers = async (orgId, invitationsData) => {
   const payload = Array.isArray(invitationsData)
     ? { invitations: invitationsData, invitationSource: 'WEB' }
     : { ...invitationsData, invitationSource: 'WEB' }
-  return await apiClient.post(
-    '/users/bulk-invite',
-    payload,
-    { headers: { 'x-organization-id': orgId } }
-  )
+  return await apiClient.post('/users/bulk-invite', payload, {
+    headers: { 'x-organization-id': orgId },
+  })
 }
 
 export const sendAdminEmailOtp = async (email) => {

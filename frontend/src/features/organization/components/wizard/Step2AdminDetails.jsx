@@ -100,7 +100,10 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
 
   // Invalidate verification if email input changes
   useEffect(() => {
-    if (verifiedEmail && currentEmail?.trim().toLowerCase() !== verifiedEmail.trim().toLowerCase()) {
+    if (
+      verifiedEmail &&
+      currentEmail?.trim().toLowerCase() !== verifiedEmail.trim().toLowerCase()
+    ) {
       setIsEmailVerified(false)
       setOtpSent(false)
       setOtpCode('')
@@ -186,7 +189,6 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
         console.warn('Failed to check account status:', accErr)
         setIsExistingUser(false)
       }
-
     } catch (err) {
       setOtpError(err?.response?.data?.message || err?.message || 'Invalid OTP code')
     } finally {
@@ -253,8 +255,7 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
       </h5>
       <p className="text-muted small mb-4">
         {t('organization.wizard.adminDetailsDesc', {
-          defaultValue:
-            'This user will be assigned as Community Admin for this organization.',
+          defaultValue: 'This user will be assigned as Community Admin for this organization.',
         })}
       </p>
 
@@ -377,7 +378,9 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
               </CFormSelect>
               <CFormInput
                 type="text"
-                placeholder={selectedCountryCode === '+91' ? '10-digit mobile number' : 'Phone number'}
+                placeholder={
+                  selectedCountryCode === '+91' ? '10-digit mobile number' : 'Phone number'
+                }
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 aria-label="Admin Phone Number"
@@ -392,7 +395,9 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
       {isExistingUser && isEmailVerified && (
         <CAlert color="success" className="mb-4">
           <CIcon icon={cilCheckCircle} className="me-2" />
-          An existing account was found for this email address. They will be added to the organization with their current credentials. Phone number and password setup are not required.
+          An existing account was found for this email address. They will be added to the
+          organization with their current credentials. Phone number and password setup are not
+          required.
         </CAlert>
       )}
 

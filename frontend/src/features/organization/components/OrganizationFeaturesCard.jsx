@@ -15,17 +15,61 @@ import { updateOrgFeatures, loadOrganizationDetails } from '../store/organizatio
 import toast from 'react-hot-toast'
 
 const AVAILABLE_FEATURES = [
-  { id: 'visitor', label: 'Visitor Management', desc: 'Gate console, visitor passes, and entry logs.' },
-  { id: 'amenities', label: 'Amenities & Facilities', desc: 'Facility booking, calendars, and amenity master.' },
-  { id: 'complaints', label: 'Complaints & HelpDesk', desc: 'Helpdesk tickets, maintenance requests, and issue tracking.' },
-  { id: 'notices', label: 'Notice Board & Polls', desc: 'Community announcements, broadcast notices, and polls.' },
-  { id: 'digital_wallet', label: 'Digital Wallet & Ledgers', desc: 'Resident digital wallet, top-ups, and transaction ledgers.' },
-  { id: 'billing', label: 'Financial & Billing', desc: 'Assessments, maintenance invoices, dues, and payment gateway.' },
-  { id: 'villas', label: 'Unit Management', desc: 'Manage villas, flats, blocks, and unit inventories.' },
-  { id: 'users', label: 'User Management', desc: 'Manage residents, workers, imports, and user directory.' },
-  { id: 'roles', label: 'Role Builder', desc: 'Custom RBAC, role definitions, and permission assignments.' },
-  { id: 'workspaces', label: 'Workspace Settings', desc: 'Community preferences, branding, and organization settings.' },
-  { id: 'integrations', label: 'IntegrationHub', desc: 'Third-party service connections, SMS, and WhatsApp integrations.' },
+  {
+    id: 'visitor',
+    label: 'Visitor Management',
+    desc: 'Gate console, visitor passes, and entry logs.',
+  },
+  {
+    id: 'amenities',
+    label: 'Amenities & Facilities',
+    desc: 'Facility booking, calendars, and amenity master.',
+  },
+  {
+    id: 'complaints',
+    label: 'Complaints & HelpDesk',
+    desc: 'Helpdesk tickets, maintenance requests, and issue tracking.',
+  },
+  {
+    id: 'notices',
+    label: 'Notice Board & Polls',
+    desc: 'Community announcements, broadcast notices, and polls.',
+  },
+  {
+    id: 'digital_wallet',
+    label: 'Digital Wallet & Ledgers',
+    desc: 'Resident digital wallet, top-ups, and transaction ledgers.',
+  },
+  {
+    id: 'billing',
+    label: 'Financial & Billing',
+    desc: 'Assessments, maintenance invoices, dues, and payment gateway.',
+  },
+  {
+    id: 'villas',
+    label: 'Unit Management',
+    desc: 'Manage villas, flats, blocks, and unit inventories.',
+  },
+  {
+    id: 'users',
+    label: 'User Management',
+    desc: 'Manage residents, workers, imports, and user directory.',
+  },
+  {
+    id: 'roles',
+    label: 'Role Builder',
+    desc: 'Custom RBAC, role definitions, and permission assignments.',
+  },
+  {
+    id: 'workspaces',
+    label: 'Workspace Settings',
+    desc: 'Community preferences, branding, and organization settings.',
+  },
+  {
+    id: 'integrations',
+    label: 'IntegrationHub',
+    desc: 'Third-party service connections, SMS, and WhatsApp integrations.',
+  },
 ]
 
 const OrganizationFeaturesCard = ({ organization }) => {

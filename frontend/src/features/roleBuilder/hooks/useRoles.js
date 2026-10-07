@@ -63,9 +63,7 @@ export const useRoles = () => {
       if (selectedRoleForEdit) {
         // Edit mode
         const roleId = selectedRoleForEdit.id || selectedRoleForEdit._id
-        result = await dispatch(
-          updateRoleAsync({ roleId, roleData: data }),
-        ).unwrap()
+        result = await dispatch(updateRoleAsync({ roleId, roleData: data })).unwrap()
       } else {
         // Create mode
         result = await dispatch(createRoleAsync(data)).unwrap()

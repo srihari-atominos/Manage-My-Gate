@@ -67,7 +67,10 @@ export const useAuthSocket = () => {
       if (data?.type === 'USER' && data?.userId === user.id) {
         dispatch(switchWorkspaceContext({ targetOrgId: user.orgId }))
       }
-      if (data?.type === 'ORGANIZATION' && (data?.orgId === user.orgId || data?.data?.orgId === user.orgId)) {
+      if (
+        data?.type === 'ORGANIZATION' &&
+        (data?.orgId === user.orgId || data?.data?.orgId === user.orgId)
+      ) {
         // Refresh token context to capture any new role/platform permissions
         dispatch(switchWorkspaceContext({ targetOrgId: user.orgId }))
         // Refresh the frontend UI features

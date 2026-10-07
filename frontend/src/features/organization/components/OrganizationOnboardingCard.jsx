@@ -20,9 +20,10 @@ const OrganizationOnboardingCard = ({ organization }) => {
       await updateOrganizationOnboardingMode(organization._id, newMode)
       toast.success('Organization onboarding mode updated successfully.')
       // Refresh the organization details to update the Redux store
-      dispatch(loadOrganizationDetails(organization._id))
+      dispatch(loadOrganizationDetails({ orgId: organization._id }))
     } catch (error) {
-      const errorMessage = error?.response?.data?.message || error.message || 'Failed to update onboarding mode.'
+      const errorMessage =
+        error?.response?.data?.message || error.message || 'Failed to update onboarding mode.'
       toast.error(errorMessage)
     } finally {
       setLoading(false)
@@ -34,9 +35,7 @@ const OrganizationOnboardingCard = ({ organization }) => {
   return (
     <div className="section-card">
       <div className="section-card-header">
-        <h4 className="section-title">
-          Global Onboarding Strategy
-        </h4>
+        <h4 className="section-title">Global Onboarding Strategy</h4>
       </div>
       <div className="section-card-body position-relative">
         {loading && (
@@ -60,7 +59,8 @@ const OrganizationOnboardingCard = ({ organization }) => {
             <div>
               <strong className="d-block small">Normal Invitation</strong>
               <span className="text-muted small">
-                Membership is <em>Pending</em> until the user accepts the invitation link via email or SMS. Recommended for public or tenant invitations.
+                Membership is <em>Pending</em> until the user accepts the invitation link via email
+                or SMS. Recommended for public or tenant invitations.
               </span>
             </div>
           </label>
@@ -74,11 +74,11 @@ const OrganizationOnboardingCard = ({ organization }) => {
               className="mt-1"
             />
             <div>
-              <strong className="d-block small">
-                Admin Announcement (Immediate Activation)
-              </strong>
+              <strong className="d-block small">Admin Announcement (Immediate Activation)</strong>
               <span className="text-muted small">
-                Membership is activated immediately. Existing user passwords are preserved. New users receive a secure first-time password setup link. Recommended for bulk-loading trusted staff or pre-verified residents.
+                Membership is activated immediately. Existing user passwords are preserved. New
+                users receive a secure first-time password setup link. Recommended for bulk-loading
+                trusted staff or pre-verified residents.
               </span>
             </div>
           </label>

@@ -15,7 +15,6 @@ export const verifyRegistration = async (email, code) => {
   return await apiClient.post('/auth/register/verify', { email, code })
 }
 
-
 export const initiateInvitationOtp = async (token) => {
   return await apiClient.post('/auth/invite/otp', { token })
 }

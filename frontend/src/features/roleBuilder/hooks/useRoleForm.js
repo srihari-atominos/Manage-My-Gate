@@ -63,12 +63,19 @@ export const useRoleForm = ({ role, visible, onSave }) => {
 
   const handleSelectAllGroup = (groupCodes, checked) => {
     const currentPermissions = getValues('permissions') || []
-    
+
     // Expand any virtual full_access codes into their real backend permissions
-    const expandedGroupCodes = groupCodes.flatMap(code => {
+    const expandedGroupCodes = groupCodes.flatMap((code) => {
       if (String(code).endsWith(':full_access')) {
         const category = code.split(':')[0]
-        return [`${category}:create`, `${category}:read`, `${category}:update`, `${category}:delete`, `${category}:manage`, `${category}:super_admin`]
+        return [
+          `${category}:create`,
+          `${category}:read`,
+          `${category}:update`,
+          `${category}:delete`,
+          `${category}:manage`,
+          `${category}:super_admin`,
+        ]
       }
       return code
     })
@@ -90,13 +97,15 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     if (String(permValue).endsWith(':full_access')) {
       const category = permValue.split(':')[0]
       const adminActions = ['create', 'read', 'update', 'delete', 'manage', 'super_admin']
-      const permsToToggle = adminActions.map(a => `${category}:${a}`)
-      
+      const permsToToggle = adminActions.map((a) => `${category}:${a}`)
+
       if (checked) {
         newValue = Array.from(new Set([...currentPermissions, ...permsToToggle]))
       } else {
         const toRemove = new Set(permsToToggle)
-        newValue = currentPermissions.filter(p => !toRemove.has(p) && !String(p).startsWith(`${category}:`))
+        newValue = currentPermissions.filter(
+          (p) => !toRemove.has(p) && !String(p).startsWith(`${category}:`),
+        )
       }
     } else if (checked) {
       newValue = Array.from(new Set([...currentPermissions, permValue]))
