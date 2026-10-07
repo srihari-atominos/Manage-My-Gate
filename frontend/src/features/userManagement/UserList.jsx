@@ -20,9 +20,9 @@ import ActionIconButton from '../../components/common/ActionIconButton'
 
 // Import feature sub-components and controller hook
 import UserToolbar from './components/UserToolbar'
-import InviteUserModal from './components/InviteUserModal'
+
 import BulkInviteModal from './components/BulkInviteModal'
-import InviteUserButton from './components/InviteUserButton'
+
 import ManageRolesModal from './components/ManageRolesModal'
 import TemplateEditorCanvasModal from '../messageTemplate/components/TemplateEditorCanvasModal'
 import { useUserList } from './hooks/useUserList'
@@ -66,7 +66,7 @@ const UserList = () => {
   } = useUserList()
 
   // ── Local UI State ──
-  const [showInviteModal, setShowInviteModal] = useState(false)
+  
   const [showBulkInviteModal, setShowBulkInviteModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(null)
@@ -468,9 +468,9 @@ const UserList = () => {
               className="fw-semibold d-flex align-items-center gap-1"
               onClick={() => setShowBulkInviteModal(true)}
             >
-              👥 {t('userManagement.bulkInvite', 'Bulk Invite')}
+              👥 {t('userManagement.bulkCreate', 'Bulk Create')}
             </CButton>
-            <InviteUserButton onClick={() => setShowInviteModal(true)} />
+            
           </div>
         }
       />
@@ -495,12 +495,7 @@ const UserList = () => {
         loading={isLoading}
       />
 
-      {/* Invite User Modal */}
-      <InviteUserModal
-        visible={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        onSendInvite={handleSendInvite}
-      />
+      
 
       {/* Bulk Invite Modal */}
       <BulkInviteModal

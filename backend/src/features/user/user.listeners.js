@@ -213,27 +213,19 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
                 </table>
               </div>
 
-              <!-- CTA Buttons -->
+              <!-- Login Instructions -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 28px 0 12px 0;">
                 <tr>
-                  <td align="center" style="padding-bottom: 16px;">
-                    <a href="{{invite_link}}" target="_blank" style="display: inline-block; box-sizing: border-box; background-color: #f45a0a; color: #ffffff; padding: 16px 36px; text-decoration: none; border-radius: 9999px; font-weight: 800; font-size: 16px; text-align: center; box-shadow: 0 4px 12px rgba(244, 90, 10, 0.25); letter-spacing: 0.01em;">
-                      ${ctaButtonText} &rarr;
-                    </a>
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center">
-                    <a href="{{reject_link}}" target="_blank" style="display: inline-block; box-sizing: border-box; background-color: transparent; color: #64748b; padding: 8px 24px; text-decoration: underline; font-weight: 600; font-size: 14px; text-align: center;">
-                      Decline Invitation
-                    </a>
+                  <td align="left" style="padding-bottom: 16px; color: #334155; font-size: 15px;">
+                    <strong>To access your account:</strong><br/><br/>
+                    1. Download the app or visit our portal.<br/>
+                    2. Choose to log in via <strong>Email OTP</strong> or <strong>Mobile Number OTP</strong>.<br/>
+                    3. Enter your registered email/phone and verify the OTP.<br/>
                   </td>
                 </tr>
               </table>
-            </td>
-          </tr>
 
-          <!-- App Download Section -->
+              <!-- App Download Section -->
           <tr>
             <td style="padding: 0 32px 32px 32px;">
               <div style="background-color: #f8fafc; border-radius: 14px; padding: 24px; text-align: center; border: 1px solid #e2e8f0;">

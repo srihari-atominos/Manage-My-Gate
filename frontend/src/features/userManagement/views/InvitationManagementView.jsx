@@ -9,9 +9,9 @@ import PageHeader from '../../../components/common/PageHeader'
 import DataTable from '../../../components/common/DataTable'
 import InvitationToolbar from '../components/InvitationToolbar'
 import RevokeInvitationModal from '../components/RevokeInvitationModal'
-import InviteUserModal from '../components/InviteUserModal'
+
 import { useInvitationList } from '../hooks/useInvitationList'
-import { inviteUser } from '../services/userApi'
+
 import '../styles/_userManagement.scss'
 
 /**
@@ -45,7 +45,7 @@ const InvitationManagementView = () => {
   } = useInvitationList()
 
   const [selectedForRevoke, setSelectedForRevoke] = useState(null)
-  const [showInviteModal, setShowInviteModal] = useState(false)
+  
 
   // Resend action handler
   const onResendClick = async (invitation) => {
@@ -78,12 +78,7 @@ const InvitationManagementView = () => {
     toast.success(t('invitations.revokeSuccess', 'Invitation successfully revoked'))
   }
 
-  // Handle new invite from this view
-  const handleSendInvite = async (inviteData) => {
-    await inviteUser(inviteData)
-    toast.success(t('invitations.inviteSuccess', 'Invitation sent successfully!'))
-    refreshInvitations()
-  }
+  
 
   // Table Columns
   const columns = useMemo(
@@ -182,61 +177,7 @@ const InvitationManagementView = () => {
       <div className="d-flex align-items-center gap-1 justify-content-end">
         {/* Resend Action: Eligible for PENDING or EXPIRED */}
         {(status === 'PENDING' || status === 'EXPIRED') && (
-          <CButton
-            color="primary"
-            variant="outline"
-            size="sm"
-            onClick={() => onResendClick(row)}
-            disabled={isActionLoading}
-            title={t('invitations.resendTooltip', 'Resend invitation with new expiration')}
-            className="d-inline-flex align-items-center gap-1 px-2 py-1"
-          >
-            {isActionLoading ? <CSpinner size="sm" /> : <CIcon icon={cilSend} size="sm" />}
-            <span className="small">{t('invitations.resend', 'Resend')}</span>
-          </CButton>
-        )}
-
-        {/* Revoke Action: Eligible for PENDING only */}
-        {status === 'PENDING' && (
-          <CButton
-            color="danger"
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedForRevoke(row)}
-            disabled={isActionLoading}
-            title={t('invitations.revokeTooltip', 'Revoke invitation')}
-            className="d-inline-flex align-items-center gap-1 px-2 py-1 text-danger"
-          >
-            <CIcon icon={cilBan} size="sm" />
-            <span className="small">{t('invitations.revoke', 'Revoke')}</span>
-          </CButton>
-        )}
-
-        {status !== 'PENDING' && status !== 'EXPIRED' && (
-          <span className="text-muted small px-2">—</span>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="invitation-management-view">
-      <PageHeader
-        title={t('invitations.pageTitle', 'Invitation Management')}
-        breadcrumbs={[
-          { label: t('nav.users', 'Users'), to: '/users' },
-          { label: t('nav.invitations', 'Invitations') },
-        ]}
-        actions={
-          <CButton
-            color="primary"
-            size="sm"
-            onClick={() => setShowInviteModal(true)}
-            className="d-flex align-items-center gap-2"
-          >
-            <CIcon icon={cilUserPlus} size="sm" />
-            <span>{t('invitations.inviteUser', 'Invite User')}</span>
-          </CButton>
+          
         }
       />
 
@@ -278,12 +219,7 @@ const InvitationManagementView = () => {
         invitation={selectedForRevoke}
       />
 
-      {/* Invite User Modal */}
-      <InviteUserModal
-        visible={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        onSendInvite={handleSendInvite}
-      />
+      
     </div>
   )
 }
