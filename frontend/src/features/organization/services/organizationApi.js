@@ -52,7 +52,7 @@ export const setupWorkspace = async (workspaceData) => {
 
 export const updateOrganizationOnboardingMode = async (orgId, onboardingMode) => {
   return await apiClient.patch(
-    /organizations/${orgId}/onboarding-mode,
+    `/organizations/${orgId}/onboarding-mode`,
     { onboardingMode },
     { headers: { 'x-organization-id': orgId } }
   )

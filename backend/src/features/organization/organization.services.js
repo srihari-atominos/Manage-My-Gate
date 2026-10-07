@@ -138,7 +138,7 @@ export class OrganizationService {
   async updateOnboardingMode(orgId, onboardingMode, session = null) {
     const validModes = ['INVITATION', 'ADMIN_ANNOUNCEMENT'];
     if (!validModes.includes(onboardingMode)) {
-      throw new HttpError(400, "Invalid onboarding mode. Must be one of: ");
+      throw new HttpError(400, `Invalid onboarding mode. Must be one of: ${validModes.join(', ')}`);
     }
     
     await this.getOrganizationById(orgId, session);
