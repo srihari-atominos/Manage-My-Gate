@@ -206,6 +206,14 @@ export const exchangeHandoff = async (handoffId: string, deviceInfo?: any) => {
   return await apiClient.post('/auth/invite/handoff/exchange', { handoffId, deviceInfo });
 };
 
+export const initiateInvitationOtp = async (token: string) => {
+  return await apiClient.post('/auth/invite/otp', { token });
+};
+
+export const verifyInvitationOtp = async (token: string, code: string) => {
+  return await apiClient.post('/auth/invite/otp/verify', { token, code });
+};
+
 export const getCurrentContext = async (orgId?: string) => {
   const query = orgId ? `?orgId=${encodeURIComponent(orgId)}` : '';
   return await apiClient.get(`/auth/current-context${query}`);
