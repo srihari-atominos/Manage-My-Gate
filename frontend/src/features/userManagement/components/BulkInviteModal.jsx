@@ -70,6 +70,7 @@ const parseCSV = (text) => {
       else if (header === 'villanumber' || header === 'villa number') key = 'villaNumber'
       else if (header === 'residenttype' || header === 'resident type') key = 'residentType'
       else if (header === 'role') key = 'roleName'
+      else if (header === 'password') key = 'password'
 
       row[key] = values[index] || ''
     })
@@ -191,6 +192,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
         residentType: r.type === 'Resident' ? r.residentType : 'None',
         roleName: r.roleName,
         villaNumber: r.type === 'Resident' ? r.villaNumber : undefined,
+        password: r.password || undefined,
       }))
       const res = await onBulkInvite(payload)
       setResults(res)

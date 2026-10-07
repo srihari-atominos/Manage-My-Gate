@@ -468,7 +468,7 @@ const UserList = () => {
               className="fw-semibold d-flex align-items-center gap-1"
               onClick={() => setShowBulkInviteModal(true)}
             >
-              👥 {t('userManagement.bulkCreate', 'Bulk Create')}
+              👥 {t('userManagement.bulkInvite', 'Bulk Invite')}
             </CButton>
             
           </div>

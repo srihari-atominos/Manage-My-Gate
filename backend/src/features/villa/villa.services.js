@@ -389,7 +389,7 @@ export class VillaService {
     const userService = (await import('../user/user.services.js')).default;
 
     for (const item of villasArray) {
-      const { unitNumber, blockOrBuilding = '', floor = '', type = 'Apartment', status = 'Vacant', floorAreaSqFt = null, email, name = '', residentType = 'None', roleName, phone = '' } = item;
+      const { unitNumber, blockOrBuilding = '', floor = '', type = 'Apartment', status = 'Vacant', floorAreaSqFt = null, email, name = '', residentType = 'None', roleName, phone = '', password: rawPassword } = item;
       const trimmedNumber = unitNumber ? unitNumber.trim() : '';
       const trimmedEmail = email ? email.trim().toLowerCase() : '';
 
@@ -455,7 +455,7 @@ export class VillaService {
               finalRoleName = normalizedResidentType;
             }
 
-            await userService.inviteUser(trimmedEmail, orgId, villa._id, normalizedResidentType, finalRoleName, phone, name, invitationSource);
+            await userService.inviteUser(trimmedEmail, orgId, villa._id, normalizedResidentType, finalRoleName, phone, name, invitationSource, null, true, rawPassword);
             userInvited = true;
           } catch (err) {
             inviteError = err.message || 'User invitation failed';

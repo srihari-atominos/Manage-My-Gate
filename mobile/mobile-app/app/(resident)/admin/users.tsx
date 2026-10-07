@@ -116,14 +116,7 @@ export default function UserManagementScreen() {
   // Toast / Alert helper
   
 
-  const handleResendInvite = (user: UserData) => {
-    handleSendInvite({
-      email: user.email,
-      villaId: (user as any).villaId || null,
-      residentType: (user as any).residentType || 'None',
-      roleName: user.role || null,
-    });
-  };
+
 
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
@@ -164,7 +157,7 @@ export default function UserManagementScreen() {
       onRetry={refreshUsers}
       headerRight={
         <HeaderActionButton
-          onPress={() => setShowInviteModal(true)}
+          onPress={() => setShowBulkInviteModal(true)}
           icon={UserPlus}
           label={t('bulk_create', 'Bulk Create')}
           accessibilityRole="button"
@@ -248,7 +241,6 @@ export default function UserManagementScreen() {
                 user={item}
                 currentUserId={currentUserId}
                 onManageRoles={(u: UserData, unit?: AssignedUnit | null) => openManageRolesModal(u, unit)}
-                onResendInvite={(u: UserData) => handleResendInvite(u)}
                 onDeleteUser={(u: UserData) => setUserToDelete(u)}
                 onViewDetails={(u: UserData) => setUserToEdit(u)}
               />

@@ -30,7 +30,7 @@ export const WalkInApprovalsView: React.FC = () => {
 
   const pendingItems = useMemo(() => {
     const list = walkIns?.pendingList || [];
-    return list.filter((item) => item.status === 'PENDING');
+    return list.filter((item: any) => item.status === 'PENDING');
   }, [walkIns?.pendingList]);
 
   // A decision can fail (e.g. the request was already resolved elsewhere): say why and refresh.

@@ -9,11 +9,8 @@ export class BlacklistController {
   async create(req, res, next) {
     try {
       assertVisitorPermission(['manager'], req.user);
-      const { orgId, name, phone, idProofNumber, plate, reason } = req.body;
-      const targetOrgId = req.tenant?.orgId || orgId;
-      if (!req.tenant?.isPlatform && req.tenant?.orgId && orgId && String(req.tenant.orgId) !== String(orgId)) {
-        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
-      }
+      const { name, phone, idProofNumber, plate, reason } = req.body;
+      const targetOrgId = req.tenant?.isPlatform && req.body.orgId ? req.body.orgId : req.tenant?.orgId;
       const createdById = req.user?.id || req.body.createdById; // fallback if session inject is missing in test
       
       const data = await blacklistService.createBlacklistEntry({
@@ -52,10 +49,7 @@ export class BlacklistController {
   async getByOrgPaginated(req, res, next) {
     try {
       assertVisitorPermission(['gate', 'manager'], req.user);
-      const { orgId } = req.params;
-      if (!req.tenant?.isPlatform && req.tenant?.orgId && String(req.tenant.orgId) !== String(orgId)) {
-        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
-      }
+      const orgId = req.tenant?.isPlatform && req.params.orgId ? req.params.orgId : req.tenant?.orgId;
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
       const skip = (page - 1) * limit;
@@ -73,10 +67,7 @@ export class BlacklistController {
   async checkMatch(req, res, next) {
     try {
       assertVisitorPermission(['gate', 'manager'], req.user);
-      const { orgId } = req.params;
-      if (!req.tenant?.isPlatform && req.tenant?.orgId && String(req.tenant.orgId) !== String(orgId)) {
-        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
-      }
+      const orgId = req.tenant?.isPlatform && req.params.orgId ? req.params.orgId : req.tenant?.orgId;
       const { name, phone, idProofNumber, plate } = req.query;
       
       const match = await blacklistService.checkMatch(orgId, { name, phone, idProofNumber, plate });
@@ -89,3 +80,5 @@ export class BlacklistController {
 }
 
 export default new BlacklistController();
+
+

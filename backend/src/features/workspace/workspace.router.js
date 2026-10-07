@@ -2,6 +2,7 @@ import { Router } from 'express';
 import workspaceController from './workspace.controller.js';
 import validate from '../../middlewares/validator.middleware.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
+import { tenantContext } from '../../middlewares/tenant.middleware.js';
 import { authorizeRoles } from '../../middlewares/rbac.middleware.js';
 import {
   createWorkspaceRules,
@@ -18,6 +19,7 @@ import {
 const router = Router();
 
 router.use(isAuthenticated);
+router.use(tenantContext());
 
 // Dynamic Modules list (highest priority, loaded during sidebar mount)
 router.get('/current/modules', workspaceController.getCurrentModules);
@@ -46,3 +48,4 @@ router.put('/:workspaceId/settings', allowedManagers, workspaceController.update
 router.get('/:workspaceId/activity', allowedManagers, workspaceController.getActivityLogs);
 
 export default router;
+

@@ -1770,16 +1770,13 @@ export class AuthService {
         throw new HttpError(404, 'User not found.');
       }
 
-      if (user.status !== 'Active' && user.status !== 'Pending Verification') {
+      if (user.status !== 'Active') {
         throw new HttpError(403, `Account is ${user.status}`);
       }
 
-      let updateData = {};
-      if (!user.phoneVerified) updateData.phoneVerified = true;
-      if (user.status === 'Pending Verification') updateData.status = 'Active';
-
-      if (Object.keys(updateData).length > 0) {
-        await userService.updateUser(user._id, updateData, session);
+      // Mark phone as verified if not already
+      if (!user.phoneVerified) {
+        await userService.updateUser(user._id, { phoneVerified: true }, session);
       }
 
       await otpService.clearOTP(normalizedPhone, 'LOGIN', session);
@@ -1871,16 +1868,12 @@ export class AuthService {
         throw new HttpError(404, 'User not found.');
       }
 
-      if (user.status !== 'Active' && user.status !== 'Pending Verification') {
+      if (user.status !== 'Active') {
         throw new HttpError(403, `Account is ${user.status}`);
       }
 
-      let updateData = {};
-      if (!user.emailVerified) updateData.emailVerified = true;
-      if (user.status === 'Pending Verification') updateData.status = 'Active';
-
-      if (Object.keys(updateData).length > 0) {
-        await userService.updateUser(user._id, updateData, session);
+      if (!user.emailVerified) {
+        await userService.updateUser(user._id, { emailVerified: true }, session);
       }
 
       const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);

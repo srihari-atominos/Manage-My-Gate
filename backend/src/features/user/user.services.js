@@ -267,7 +267,7 @@ export class UserService {
     }
   }
 
-  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '', invitationSource = 'WEB', inviterId = null) {
+  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '', invitationSource = 'WEB', inviterId = null, isBulk = false, rawPassword = null) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -314,14 +314,27 @@ export class UserService {
           email: trimmedEmail,
           username: username,
           name: name || username,
-          status: 'Pending Verification',
+          status: rawPassword ? 'Active' : 'Pending Verification',
           ...(phoneToAssign ? { phone: phoneToAssign } : {}),
         };
+        
+        if (rawPassword) {
+          const { hashPassword } = await import('../../utils/crypto.utils.js');
+          userData.password = await hashPassword(rawPassword);
+          userData.emailVerified = true;
+        }
+        
         user = await userRepository.create(userData, session);
       } else {
         const updates = {};
         if (phoneToAssign && !user.phone) updates.phone = phoneToAssign;
         if (name && !user.name) updates.name = name;
+        if (rawPassword) {
+          const { hashPassword } = await import('../../utils/crypto.utils.js');
+          updates.password = await hashPassword(rawPassword);
+          updates.status = 'Active';
+          updates.emailVerified = true;
+        }
         if (Object.keys(updates).length > 0) {
           user = await userRepository.update(user._id, updates, session);
         }
@@ -394,7 +407,7 @@ export class UserService {
           existingMembership.villaId = rootVillaId;
           existingMembership.residentType = rootResidentType;
           existingMembership.units = membershipUnits;
-          existingMembership.status = 'Pending';
+          existingMembership.status = rawPassword ? 'Active' : 'Pending';
         }
         membership = await existingMembership.save({ session });
       } else {
@@ -408,7 +421,7 @@ export class UserService {
           villaId: rootVillaId,
           residentType: rootResidentType,
           units: initialUnits,
-          status: 'Pending'
+          status: rawPassword ? 'Active' : 'Pending'
         }, session);
       }
 
@@ -487,6 +500,8 @@ export class UserService {
         userId: user._id,
         inviterId,
         isExisting,
+        isBulk,
+        rawPassword,
       });
       userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited', invitationSource });
 
@@ -892,7 +907,7 @@ export class UserService {
     const villaService = (await import('../villa/villa.services.js')).default;
 
     for (const invite of invitations) {
-      const { email, residentType = 'None', roleName, villaNumber, villaId: payloadVillaId, invitationSource: itemSource } = invite;
+      const { email, residentType = 'None', roleName, villaNumber, villaId: payloadVillaId, invitationSource: itemSource, password: rawPassword } = invite;
       const trimmedEmail = email ? email.trim().toLowerCase() : '';
       const source = (itemSource || defaultSource || 'WEB').toUpperCase();
 
@@ -913,7 +928,7 @@ export class UserService {
         }
 
         // Call the single inviteUser logic
-        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName, '', '', source, inviterId);
+        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName, '', '', source, inviterId, true, rawPassword);
 
         successes.push({
           email: trimmedEmail,

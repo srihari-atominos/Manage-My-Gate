@@ -177,8 +177,51 @@ const InvitationManagementView = () => {
       <div className="d-flex align-items-center gap-1 justify-content-end">
         {/* Resend Action: Eligible for PENDING or EXPIRED */}
         {(status === 'PENDING' || status === 'EXPIRED') && (
-          
-        }
+          <CButton
+            color="primary"
+            variant="outline"
+            size="sm"
+            onClick={() => onResendClick(row)}
+            disabled={isActionLoading}
+            title={t('invitations.resendTooltip', 'Resend invitation with new expiration')}
+            className="d-inline-flex align-items-center gap-1 px-2 py-1"
+          >
+            {isActionLoading ? <CSpinner size="sm" /> : <CIcon icon={cilSend} size="sm" />}
+            <span className="small">{t('invitations.resend', 'Resend')}</span>
+          </CButton>
+        )}
+
+        {/* Revoke Action: Eligible for PENDING only */}
+        {status === 'PENDING' && (
+          <CButton
+            color="danger"
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedForRevoke(row)}
+            disabled={isActionLoading}
+            title={t('invitations.revokeTooltip', 'Revoke invitation')}
+            className="d-inline-flex align-items-center gap-1 px-2 py-1 text-danger"
+          >
+            <CIcon icon={cilBan} size="sm" />
+            <span className="small">{t('invitations.revoke', 'Revoke')}</span>
+          </CButton>
+        )}
+
+        {status !== 'PENDING' && status !== 'EXPIRED' && (
+          <span className="text-muted small px-2">—</span>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="invitation-management-view">
+      <PageHeader
+        title={t('invitations.pageTitle', 'Invitation Management')}
+        breadcrumbs={[
+          { label: t('nav.users', 'Users'), to: '/users' },
+          { label: t('nav.invitations', 'Invitations') },
+        ]}
       />
 
       {error && (

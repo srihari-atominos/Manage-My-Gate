@@ -9,14 +9,7 @@ export class InvoiceController {
   async getMyDues(req, res, next) {
     try {
       // Resolve optional communityId from query, x-organization-id header, or tenant context
-      const communityId =
-        req.query.communityId ||
-        req.headers['x-organization-id'] ||
-        req.tenant?.orgId ||
-        req.user?.activeOrganizationId ||
-        req.user?.orgId ||
-        req.user?.communityId ||
-        null;
+      const communityId = req.tenant?.orgId;
 
       const data = await invoiceService.getUserDuesOverview(req.user, communityId);
       res.success(data, 'Outstanding dues retrieved successfully');
@@ -168,7 +161,7 @@ export class InvoiceController {
    */
   async getDashboardKPIs(req, res, next) {
     try {
-      const orgId = req.query.communityId || req.tenant.orgId;
+      const orgId = (req.tenant?.isPlatform && req.query.communityId) ? req.query.communityId : req.tenant?.orgId;
       const data = await invoiceService.getDashboardKPIs(orgId);
       res.success(data, 'Dashboard billing KPIs retrieved successfully');
     } catch (error) {
@@ -181,7 +174,7 @@ export class InvoiceController {
    */
   async getAllInvoices(req, res, next) {
     try {
-      const orgId = req.query.communityId || req.tenant.orgId;
+      const orgId = (req.tenant?.isPlatform && req.query.communityId) ? req.query.communityId : req.tenant?.orgId;
       const data = await invoiceService.getInvoices(orgId, req.query);
       res.success(data, 'Community invoices retrieved successfully');
     } catch (error) {
@@ -312,3 +305,6 @@ export class InvoiceController {
 }
 
 export default new InvoiceController();
+
+
+

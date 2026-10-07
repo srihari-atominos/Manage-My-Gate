@@ -24,7 +24,7 @@ const DEFAULT_INVITE_BODY = `
 `;
 
 // Register user domain events
-userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting }) => {
+userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting, isBulk, rawPassword }) => {
   try {
     const baseInviteLink = generateInviteLink(invitationToken, invitationSource);
 
@@ -192,6 +192,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
               <div style="background-color: #f1f5f9; border-radius: 14px; padding: 20px; margin: 24px 0; text-align: left;">
                 <div style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px;">
                   ASSIGNED MEMBERSHIP DETAILS
+                </div>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   ${communityName ? `
                   <tr>
@@ -210,22 +211,46 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
                       <span style="display: inline-block; background-color: #fff0e5; color: #c24100; padding: 4px 12px; border-radius: 6px; font-size: 13px;">${roleName}</span>
                     </td>
                   </tr>` : ''}
+                  ${rawPassword ? `
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #64748b; width: 130px; font-weight: 600;">Password:</td>
+                    <td style="padding: 6px 0; font-size: 14px; color: #0f172a; font-weight: 700; font-family: monospace; font-size: 16px;">${rawPassword}</td>
+                  </tr>` : ''}
                 </table>
               </div>
 
-              <!-- Login Instructions -->
+              <!-- CTA Buttons -->
+              ${!isBulk ? `
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 28px 0 12px 0;">
                 <tr>
-                  <td align="left" style="padding-bottom: 16px; color: #334155; font-size: 15px;">
-                    <strong>To access your account:</strong><br/><br/>
-                    1. Download the app or visit our portal.<br/>
-                    2. Choose to log in via <strong>Email OTP</strong> or <strong>Mobile Number OTP</strong>.<br/>
-                    3. Enter your registered email/phone and verify the OTP.<br/>
+                  <td align="center" style="padding-bottom: 16px;">
+                    <a href="{{invite_link}}" target="_blank" style="display: inline-block; box-sizing: border-box; background-color: #f45a0a; color: #ffffff; padding: 16px 36px; text-decoration: none; border-radius: 9999px; font-weight: 800; font-size: 16px; text-align: center; box-shadow: 0 4px 12px rgba(244, 90, 10, 0.25); letter-spacing: 0.01em;">
+                      ${ctaButtonText} &rarr;
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <a href="{{reject_link}}" target="_blank" style="display: inline-block; box-sizing: border-box; background-color: transparent; color: #64748b; padding: 8px 24px; text-decoration: underline; font-weight: 600; font-size: 14px; text-align: center;">
+                      Decline Invitation
+                    </a>
                   </td>
                 </tr>
               </table>
+              ` : `
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 28px 0 12px 0;">
+                <tr>
+                  <td align="center" style="padding-bottom: 16px; font-size: 16px; color: #334155;">
+                    Please log in to your account via the mobile app or web portal to access your community.
+                  </td>
+                </tr>
+              </table>
+              `}
+            </td>
+          </tr>
 
-              <!-- App Download Section -->
+          <!-- App Download Section -->
+          ${!isBulk ? `
           <tr>
             <td style="padding: 0 32px 32px 32px;">
               <div style="background-color: #f8fafc; border-radius: 14px; padding: 24px; text-align: center; border: 1px solid #e2e8f0;">
@@ -252,6 +277,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
               </div>
             </td>
           </tr>
+          ` : ''}
 
           <!-- Security Footer -->
           <tr>
@@ -259,10 +285,12 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
               <div style="font-size: 12px; color: #64748b; line-height: 1.6; margin-bottom: 16px;">
                 <strong>Security Notice:</strong> This invitation is single-use, secure, and valid for 24 hours. If you did not request this email, you may decline or ignore it.
               </div>
+              ${!isBulk ? `
               <div style="font-size: 12px; color: #64748b; margin-bottom: 24px;">
                 <strong>Direct Link:</strong> <br/>
                 <a href="{{invite_link}}" style="color: #4f46e5; text-decoration: none; word-break: break-all;">{{invite_link}}</a>
               </div>
+              ` : ''}
               <div style="font-size: 12px; color: #94a3b8;">
                 &copy; 2026 Nahom. Powered by Atominos.
               </div>

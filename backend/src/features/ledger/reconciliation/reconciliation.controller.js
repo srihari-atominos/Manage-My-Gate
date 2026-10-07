@@ -37,7 +37,8 @@ export class ReconciliationController {
 
   async runReconciliation(req, res, next) {
     try {
-      const { orgId, mode, allowGenesis, domains } = req.body;
+      const { mode, allowGenesis, domains } = req.body;
+      const orgId = req.tenant?.isPlatform && req.body.orgId ? req.body.orgId : req.tenant?.orgId;
       const result = await historicalReconciliationService.reconcile({
         orgId,
         mode,
@@ -75,7 +76,8 @@ export class ReconciliationController {
 
   async getExceptions(req, res, next) {
     try {
-      const { orgId, status, domain, limit, skip } = req.query;
+      const { status, domain, limit, skip } = req.query;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const data = await historicalReconciliationService.getExceptions({
         orgId,
         status,
@@ -109,3 +111,4 @@ export class ReconciliationController {
 
 export const reconciliationController = new ReconciliationController();
 export default reconciliationController;
+
