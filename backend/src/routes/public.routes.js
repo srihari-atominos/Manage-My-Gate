@@ -20,7 +20,7 @@ const publicLeadLimiter = rateLimit({
 router.get('/health', (req, res) => {
   res.success({
     status: 'UP',
-    service: 'ManageMyGate Backend API',
+    service: 'Nahom Backend API',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   }, 'API is healthy');
@@ -88,7 +88,7 @@ const buildInvoiceHtml = (checkoutInfo) => {
   <div class="invoice-card">
     <div class="inv-header">
       <div>
-        <div class="brand">🏢 ManageMyGate Platform</div>
+        <div class="brand">🏢 Nahom Platform</div>
         <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Gated Community & Property Management SaaS</div>
       </div>
       <div style="text-align: right;">

@@ -118,7 +118,24 @@ export const SetupWorkspace = () => {
                     {errors.name && (
                       <div className="text-danger small mt-1 ms-1">{errors.name.message}</div>
                     )}
+                  </div>
 
+                  <div className="mb-3">
+                    <CFormSelect
+                      style={styles.input}
+                      disabled={loading}
+                      {...register('authenticationMethod')}
+                    >
+                      <option value="EXISTING_SYSTEM">
+                        {t('workspace.setup.authExisting', { defaultValue: 'Existing System' })}
+                      </option>
+                      <option value="OTP_LOGIN">
+                        {t('workspace.setup.authOtp', { defaultValue: 'OTP Login' })}
+                      </option>
+                    </CFormSelect>
+                  </div>
+
+                  <div className="mb-3">
                     {/* Live Validation Feedback */}
                     {(checking || isAvailable !== null || checkError) && (
                       <div className="mt-2 ms-1" style={styles.feedbackContainer}>

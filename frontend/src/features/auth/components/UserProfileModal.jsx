@@ -184,7 +184,7 @@ const UserProfileModal = ({ visible, onClose }) => {
       setShowOrgPicker(false)
       setContextError(null)
     }
-  }, [visible, currentUser, reset])
+  }, [visible, currentUser, reset, clearStatus])
 
   const onSubmit = async (data) => {
     const formData = new FormData()

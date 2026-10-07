@@ -6,9 +6,9 @@ import { AlertCircle, CheckCircle2, Smartphone } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { Text } from '@/components/ui/text';
-import authService from '../../../src/features/auth/services/authService';
-import { updateTokenAndUser } from '../../../src/features/auth/store/authSlice';
-import storage from '../../../src/utils/storage';
+import authService from '@/src/features/auth/services/authService';
+import { updateTokenAndUser } from '@/src/features/auth/store/authSlice';
+import storage from '@/src/utils/storage';
 import { AppLoader } from '@/components/ui/AppLoader';
 
 export default function MobileHandoffScreen() {

@@ -218,7 +218,7 @@ const ProfileView = () => {
       clearStatus()
       setPreviewUrl(null)
     }
-  }, [currentUser, reset])
+  }, [currentUser, reset, clearStatus])
 
   const onSubmit = async (data) => {
     const formData = new FormData()

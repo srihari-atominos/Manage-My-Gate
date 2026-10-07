@@ -18,7 +18,7 @@ import * as React from 'react';
 import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
-import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { sessionStore } from '@/src/utils/storage';
 import { useTranslation } from '@/src/utils/i18n';
 

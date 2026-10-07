@@ -205,7 +205,7 @@ export class PlatformPaymentService {
         const User = (await import('../user/user.model.js')).default;
         const { hashPassword } = await import('../../utils/crypto.utils.js');
         let userDoc = await User.findOne({ email }).exec();
-        const passHash = await hashPassword('ManageMyGate@2026');
+        const passHash = await hashPassword('Nahom@2026');
         if (userDoc) {
           userDoc.password = passHash;
           userDoc.status = 'Active';
@@ -271,7 +271,7 @@ export class PlatformPaymentService {
                 </div>
 
                 <p style="color: #64748b; font-size: 13px; line-height: 1.4; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                  If you have any questions or need assistance accessing your organization, please contact our support team at <a href="mailto:support@managemygate.com">support@managemygate.com</a>.
+                  If you have any questions or need assistance accessing your organization, please contact our support team at <a href="mailto:support@nahom.com">support@nahom.com</a>.
                 </p>
               </div>
             `,
@@ -535,7 +535,7 @@ export class PlatformPaymentService {
 
     const organizationName = inquiry?.organizationName || inquiry?.communityName || inquiry?.companyName || quote?.communitySnapshot?.organizationName || quote?.communitySnapshot?.communityName || quote?.organizationName || order?.communitySnapshot?.organizationName || order?.communitySnapshot?.communityName || order?.organizationName || 'Your Community';
     const contactName = inquiry?.customerName || inquiry?.contactName || inquiry?.username || inquiry?.name || quote?.customerSnapshot?.customerName || order?.customerSnapshot?.customerName || 'Valued Customer';
-    const email = inquiry?.contactEmail || inquiry?.email || quote?.customerSnapshot?.contactEmail || order?.customerSnapshot?.contactEmail || 'user@managemygate.com';
+    const email = inquiry?.contactEmail || inquiry?.email || quote?.customerSnapshot?.contactEmail || order?.customerSnapshot?.contactEmail || 'user@nahom.com';
     
     const amount = (quote && (quote.totalAmount || quote.pricingSnapshot?.totalAmount)) || (order && order.totalAmount) || inquiry?.postTrialTotal || inquiry?.amount || 0;
     const currency = quote?.currency || order?.currency || 'INR';
@@ -698,9 +698,9 @@ export class PlatformPaymentService {
       featuresIncluded: detailedFeatures.length > 0 ? detailedFeatures : defaultFeatureCatalog,
       supportInfo: {
         phone: '+91 97866 08686',
-        email: 'support@managemygate.com',
+        email: 'support@nahom.com',
         hours: 'Monday – Friday, 9:00 AM – 6:00 PM IST',
-        helpdeskUrl: 'https://support.managemygate.com'
+        helpdeskUrl: 'https://support.nahom.com'
       },
       status: order?.orderStatus || quote?.status || inquiry?.status || 'NEW_INQUIRY'
     };
@@ -736,7 +736,7 @@ export class PlatformPaymentService {
 
     let order = quote ? await platformOrderRepository.findByQuoteId(quote._id).catch(() => null) : null;
 
-    const recipientEmail = email || inquiry?.contactEmail || inquiry?.email || quote?.customerSnapshot?.contactEmail || 'user@managemygate.com';
+    const recipientEmail = email || inquiry?.contactEmail || inquiry?.email || quote?.customerSnapshot?.contactEmail || 'user@nahom.com';
     const orgName = inquiry?.organizationName || inquiry?.communityName || inquiry?.companyName || quote?.communitySnapshot?.organizationName || quote?.communitySnapshot?.communityName || 'Your Community';
     const clientName = inquiry?.contactName || quote?.customerSnapshot?.customerName || 'Valued Customer';
     const totalPaidAmount = amount || quote?.totalAmount || order?.totalAmount || inquiry?.postTrialTotal || 0;

@@ -342,6 +342,20 @@ export const WorkspaceDetailsView = () => {
                         {...registerEdit('contactPhone')}
                       />
                     </CCol>
+                    <CCol md={6}>
+                      <CFormSelect
+                        label={t('workspace.details.authMethodLabel', 'Authentication Method')}
+                        disabled={!isManager}
+                        {...registerEdit('authenticationMethod')}
+                      >
+                        <option value="EXISTING_SYSTEM">
+                          {t('workspace.details.authExisting', 'Existing System')}
+                        </option>
+                        <option value="OTP_LOGIN">
+                          {t('workspace.details.authOtp', 'OTP Login')}
+                        </option>
+                      </CFormSelect>
+                    </CCol>
                   </CRow>
                   {isManager && (
                     <div className="mt-4 text-end">

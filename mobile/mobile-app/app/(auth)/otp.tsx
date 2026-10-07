@@ -7,7 +7,7 @@ import { View, ScrollView, ActivityIndicator, TextInput, ImageBackground, Platfo
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 

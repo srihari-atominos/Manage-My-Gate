@@ -28,6 +28,22 @@ export class OrganizationRepository {
     );
   }
 
+  async updateOnboardingMode(orgId, onboardingMode, session = null) {
+    return await Organization.findByIdAndUpdate(
+      orgId,
+      { $set: { onboardingMode } },
+      { new: true, session }
+    );
+  }
+
+  async updateLoginPolicy(orgId, authenticationMethod, session = null) {
+    return await Organization.findByIdAndUpdate(
+      orgId,
+      { $set: { authenticationMethod } },
+      { new: true, session }
+    );
+  }
+
   async findAllPaginated(page = 1, limit = 10) {
     const skip = (page - 1) * limit;
     const matchQuery = { isPlatform: { $ne: true } };
@@ -62,6 +78,7 @@ export class OrganizationRepository {
           status: 1,
           allowedFeatures: 1,
           isPlatform: 1,
+          authenticationMethod: { $ifNull: ['$authenticationMethod', 'EXISTING_SYSTEM'] },
           createdAt: 1,
           updatedAt: 1,
           villaCount: 1,
@@ -106,6 +123,8 @@ export class OrganizationRepository {
     const objectId = new mongoose.Types.ObjectId(orgId);
     const org = await Organization.findById(objectId).lean();
     if (!org) return null;
+
+    org.authenticationMethod = org.authenticationMethod || 'EXISTING_SYSTEM';
 
     const Villa = (await import('../villa/villa.model.js')).default;
     const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;

@@ -9,6 +9,8 @@ import {
   ssoVerifyRules,
   phoneLoginRules,
   phoneVerifyRules,
+  inviteOtpInitiateRules,
+  inviteOtpVerifyRules,
   emailOtpLoginRules,
   emailOtpVerifyRules,
   forgotPasswordRules,
@@ -17,6 +19,8 @@ import {
   setupAccountPasswordRules,
   acceptInviteSsoRules,
   exchangeHandoffRules,
+  sendFirstTimeSetupOtpRules,
+  completeFirstTimeSetupRules,
 } from './auth.validateRules.js';
 import { isAuthenticated, optionalAuth } from '../../middlewares/auth.middleware.js';
 import { authLimiter, otpLimiter } from '../../middlewares/rateLimiter.middleware.js';
@@ -302,13 +306,21 @@ router.post('/apple', authLimiter, validate(ssoVerifyRules), authController.appl
 // OTP & Verification Routes with validation schemas
 router.post('/login/phone', otpLimiter, validate(phoneLoginRules), authController.initiatePhoneLogin);
 router.post('/login/phone/verify', authLimiter, validate(phoneVerifyRules), authController.verifyPhoneLogin);
+
+// Invitation OTP Routes
+router.post('/invite/otp', otpLimiter, validate(inviteOtpInitiateRules), authController.initiateInvitationOtp);
+router.post('/invite/otp/verify', authLimiter, validate(inviteOtpVerifyRules), authController.verifyInvitationOtp);
+
 router.post('/login/email-otp', otpLimiter, validate(emailOtpLoginRules), authController.initiateEmailOtpLogin);
+
 router.post('/login/email-otp/verify', authLimiter, validate(emailOtpVerifyRules), authController.verifyEmailOtpLogin);
 router.post('/forgot-password', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
 router.post('/forgot-password/initiate', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
 router.post('/forgot-password/verify-otp', authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
 router.post('/reset-password', authLimiter, validate(resetPasswordRules), authController.resetPassword);
 router.post('/setup-account-password', validate(setupAccountPasswordRules), authController.setupAccountPassword);
+router.post('/first-time-setup/send-otp', otpLimiter, validate(sendFirstTimeSetupOtpRules), authController.sendFirstTimeSetupOtp);
+router.post('/first-time-setup/complete', authLimiter, validate(completeFirstTimeSetupRules), authController.completeFirstTimeSetup);
 router.get('/check-account-status', authController.checkAccountStatus);
 
 // Session Routes

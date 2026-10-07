@@ -46,6 +46,7 @@ export const useWorkspaceDetails = () => {
       language: '',
       contactEmail: '',
       contactPhone: '',
+      authenticationMethod: 'EXISTING_SYSTEM',
     },
   })
 
@@ -88,6 +89,7 @@ export const useWorkspaceDetails = () => {
         language: activeWorkspaceDetails.language || '',
         contactEmail: activeWorkspaceDetails.contactEmail || '',
         contactPhone: activeWorkspaceDetails.contactPhone || '',
+        authenticationMethod: activeWorkspaceDetails.authenticationMethod || 'EXISTING_SYSTEM',
       })
     }
   }, [activeWorkspaceDetails, resetEdit])

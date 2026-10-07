@@ -72,6 +72,17 @@ export const updateUserRoles = async (userId, roles, villaId = null) => {
 }
 
 /**
+ * Validate a batch of users against the organization's current active members.
+ * @param {Array<Object>} contacts
+ * @returns {Promise<Object>}
+ */
+export const bulkValidateUsers = async (contacts) => {
+  const payload = contacts.map((c) => ({ email: c.email, phone: c.phone }))
+  const response = await apiClient.post('/users/bulk-validate', { contacts: payload })
+  return response.data
+}
+
+/**
  * Bulk invites multiple users.
  * @param {Array<Object>} invitations
  * @returns {Promise<Object>}

@@ -8,12 +8,12 @@ import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Plus, RotateCcw } from 'lucide-react-native';
 
-import { useAdminMaintenance } from '../../../src/features/amenities/hooks/useAdminMaintenance';
-import { AmenityMaintenanceCard } from '../../../src/features/amenities/components/AmenityMaintenanceCard';
-import { MaintenanceWizard } from '../../../src/features/amenities/components/maintenance-wizard';
-import { FacilityMaintenanceDetailSheet } from '../../../src/features/amenities/components/FacilityMaintenanceDetailSheet';
-import amenityManagementService from '../../../src/features/amenities/services/amenityManagementService';
-import { Amenity, MaintenanceTask } from '../../../src/features/amenities/store/amenitySlice';
+import { useAdminMaintenance } from '@/src/features/amenities/hooks/useAdminMaintenance';
+import { AmenityMaintenanceCard } from '@/src/features/amenities/components/AmenityMaintenanceCard';
+import { MaintenanceWizard } from '@/src/features/amenities/components/maintenance-wizard';
+import { FacilityMaintenanceDetailSheet } from '@/src/features/amenities/components/FacilityMaintenanceDetailSheet';
+import amenityManagementService from '@/src/features/amenities/services/amenityManagementService';
+import { Amenity, MaintenanceTask } from '@/src/features/amenities/store/amenitySlice';
 
 type StatusFilterType = 'ALL' | 'MAINTENANCE' | 'OPERATIONAL';
 

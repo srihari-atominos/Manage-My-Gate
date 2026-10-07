@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { io } from 'socket.io-client'
 import config from '../../../config/config.js'
 import { logout, switchWorkspaceContext } from '../store/authSlice'
+import { loadCurrentModules } from '../../workspace/store/workspaceSlice'
 import { toast } from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 
@@ -65,6 +66,15 @@ export const useAuthSocket = () => {
     const handleRecordUpdated = (data) => {
       if (data?.type === 'USER' && data?.userId === user.id) {
         dispatch(switchWorkspaceContext({ targetOrgId: user.orgId }))
+      }
+      if (
+        data?.type === 'ORGANIZATION' &&
+        (data?.orgId === user.orgId || data?.data?.orgId === user.orgId)
+      ) {
+        // Refresh token context to capture any new role/platform permissions
+        dispatch(switchWorkspaceContext({ targetOrgId: user.orgId }))
+        // Refresh the frontend UI features
+        dispatch(loadCurrentModules())
       }
     }
 

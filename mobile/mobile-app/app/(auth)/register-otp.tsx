@@ -7,7 +7,7 @@ import { View, ScrollView, Alert, ImageBackground, Platform } from 'react-native
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { OtpInputField } from '@/components/auth/OtpInputField';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { useTranslation } from '@/src/utils/i18n';
@@ -59,11 +59,7 @@ export default function RegisterOtpScreen() {
           (Array.isArray(resUser.availableWorkspaces) && resUser.availableWorkspaces.length > 0)
         )
       );
-      if (hasOrg) {
-        router.replace('/(resident)/dashboard');
-      } else {
-        router.replace('/(auth)/setup-organization');
-      }
+      router.replace('/(resident)/dashboard');
     }
   };
 

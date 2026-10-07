@@ -6,6 +6,7 @@ import {
   setUserRoleFilter,
   setUserStatusFilter,
   closeUserDrawer,
+  bulkInviteOrganizationUsersAsync,
 } from '../store/organizationSlice.js'
 
 /**
@@ -53,6 +54,18 @@ export const useOrganizationUsers = (orgId) => {
     dispatch(closeUserDrawer())
   }
 
+  const bulkInviteUsers = async (data) => {
+    const resultAction = await dispatch(
+      bulkInviteOrganizationUsersAsync({ orgId, invitations: data }),
+    )
+    if (bulkInviteOrganizationUsersAsync.fulfilled.match(resultAction)) {
+      fetchUsers(1)
+      return resultAction.payload
+    } else {
+      throw resultAction.payload || resultAction.error?.message || 'Failed to bulk invite users'
+    }
+  }
+
   return {
     users: usersState.list,
     total: usersState.total,
@@ -73,6 +86,7 @@ export const useOrganizationUsers = (orgId) => {
     handleStatusFilter,
     handleViewUser,
     handleCloseDrawer,
+    bulkInviteUsers,
   }
 }
 

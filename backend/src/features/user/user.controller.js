@@ -48,7 +48,7 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email, phone, villaId, residentType, roleName, name } = req.body;
+      const { email, phone, villaId, residentType, roleName, name, onboardingMode = 'INVITATION' } = req.body;
       const orgId = req.tenant.orgId;
 
       const inviterId = req.user?.id || req.user?._id || null;
@@ -67,7 +67,8 @@ export class UserController {
         phone,
         name || '',
         invitationSource,
-        inviterId
+        inviterId,
+        onboardingMode
       );
 
       // Generate the canonical invite URL for the admin UI "Copy Link" feature
@@ -86,8 +87,9 @@ export class UserController {
         invitationToken,
         invitationSource,
         inviteLink,
+        onboardingMode,
       };
-      res.success(formatted, 'User invited successfully', 201);
+      res.success(formatted, 'User processed successfully', 201);
     } catch (error) {
       next(error);
     }
@@ -205,18 +207,35 @@ export class UserController {
   }
 
   /**
+   * Bulk validates user contacts to check for existing registrations.
+   */
+  async bulkValidateUsers(req, res, next) {
+    try {
+      const { contacts } = req.body;
+      const orgId = req.tenant.orgId;
+      const result = await userService.bulkValidateUsers(contacts, orgId);
+      res.success(result, 'Bulk validation completed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Bulk invites multiple users.
    */
   async bulkInviteUsers(req, res, next) {
     try {
-      const { invitations } = req.body;
+      const { invitations, onboardingMode } = req.body;
+      const organizationService = (await import('../organization/organization.services.js')).default;
+      const org = await organizationService.getOrganizationById(req.tenant.orgId).catch(() => null);
+      const effectiveOnboardingMode = onboardingMode || org?.onboardingMode || 'INVITATION';
       const orgId = req.tenant.orgId;
       const inviterId = req.user?.id || req.user?._id || null;
 
       const defaultSource = resolveInvitationSource(req);
 
-      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId);
-      res.success(result, 'Bulk invitation process completed');
+      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId, effectiveOnboardingMode);
+      res.success(result, 'Bulk user processing completed');
     } catch (error) {
       next(error);
     }

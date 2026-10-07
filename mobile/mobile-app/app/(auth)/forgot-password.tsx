@@ -28,7 +28,7 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { NahomEmblem, NahomWordmark } from '@/components/auth/NahomBrandLogo';
 import { PhoneInput } from '@/components/forms/PhoneInput';

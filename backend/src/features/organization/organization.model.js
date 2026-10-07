@@ -42,6 +42,18 @@ const organizationSchema = new mongoose.Schema(
       trim: true,
       default: 'IN',
     },
+    country: {
+      type: String,
+      trim: true,
+    },
+    state: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+    },
     allowedFeatures: {
       type: [String],
       default: [],
@@ -49,6 +61,17 @@ const organizationSchema = new mongoose.Schema(
     isPlatform: {
       type: Boolean,
       default: false,
+    },
+    onboardingMode: {
+      type: String,
+      enum: ['INVITATION', 'ADMIN_ANNOUNCEMENT'],
+      default: 'INVITATION',
+    },
+    authenticationMethod: {
+      type: String,
+      enum: ['EXISTING_SYSTEM', 'OTP_LOGIN'],
+      default: 'EXISTING_SYSTEM',
+      required: true,
     },
     featureFlags: {
       enableEventStore: { type: Boolean, default: true },

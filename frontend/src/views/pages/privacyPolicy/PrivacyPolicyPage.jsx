@@ -19,7 +19,7 @@ import CIcon from '@coreui/icons-react'
 import { cilShieldAlt, cilArrowLeft, cilEnvelopeClosed, cilLockLocked } from '@coreui/icons'
 
 /**
- * Privacy Policy Page Component for Nahom / ManageMyGate
+ * Privacy Policy Page Component for Nahom / Nahom
  *
  * Publicly accessible page providing Google Play Store compliant privacy policy
  * details for Atominos Consulting Private Limited.
@@ -82,7 +82,7 @@ const PrivacyPolicyPage = () => {
                     </div>
                     <h1 className="fw-extrabold display-6 mb-2">Privacy Policy</h1>
                     <p className="text-body-secondary mb-3">
-                      Nahom Application &bull; Platform: ManageMyGate
+                      Nahom Application &bull; Platform: Nahom
                     </p>
                     <div className="d-flex flex-wrap gap-3 align-items-center text-body-secondary small">
                       <CBadge color="primary" className="px-2 py-1">
@@ -102,8 +102,8 @@ const PrivacyPolicyPage = () => {
                   <section className="mb-5">
                     <h2 className="h4 fw-bold text-body mb-3">1. Introduction</h2>
                     <p>
-                      Welcome to <strong>Nahom</strong> (accessible via the{' '}
-                      <strong>ManageMyGate</strong> platform at{' '}
+                      Welcome to <strong>Nahom</strong> (accessible via the <strong>Nahom</strong>{' '}
+                      platform at{' '}
                       <a
                         href="https://managemygate.e3esg.com"
                         target="_blank"
@@ -120,7 +120,7 @@ const PrivacyPolicyPage = () => {
                     </p>
                     <p>
                       We are committed to maintaining data privacy, security, and transparency. By
-                      accessing or using the Nahom application or ManageMyGate web services, you
+                      accessing or using the Nahom application or Nahom web services, you
                       acknowledge that you have read and understood the data practices described in
                       this policy.
                     </p>
@@ -145,7 +145,7 @@ const PrivacyPolicyPage = () => {
                           <span className="text-body-secondary small d-block">
                             Platform / System
                           </span>
-                          <strong>ManageMyGate</strong>
+                          <strong>Nahom</strong>
                         </CCol>
                         <CCol md={6}>
                           <span className="text-body-secondary small d-block">
@@ -214,8 +214,7 @@ const PrivacyPolicyPage = () => {
                     <ul>
                       <li>
                         <strong>Unit Binding:</strong> Villa or apartment unit number, associated
-                        community name, occupancy status (Owner / Resident / Tenant /
-                        Staff).
+                        community name, occupancy status (Owner / Resident / Tenant / Staff).
                       </li>
                       <li>
                         <strong>Emergency Contacts:</strong> Resident-designated emergency contact
@@ -276,14 +275,14 @@ const PrivacyPolicyPage = () => {
                         4. Payment & Financial Information Disclaimer
                       </h2>
                       <p className="mb-2">
-                        Atominos Consulting Private Limited and the ManageMyGate platform{' '}
+                        Atominos Consulting Private Limited and the Nahom platform{' '}
                         <strong>DO NOT</strong> store complete payment card numbers, CVV codes, card
                         expiration dates, bank account passwords, or UPI PINs.
                       </p>
                       <p className="mb-0 text-body-secondary small">
                         All online payments are securely routed directly through authorized
-                        third-party payment gateway service providers. ManageMyGate stores only
-                        payment status records, invoice numbers, payment reference IDs, transaction
+                        third-party payment gateway service providers. Nahom stores only payment
+                        status records, invoice numbers, payment reference IDs, transaction
                         timestamps, and user-uploaded receipt images for accounting and verification
                         purposes.
                       </p>
@@ -505,11 +504,11 @@ const PrivacyPolicyPage = () => {
                   <section className="mb-5">
                     <h2 className="h4 fw-bold text-body mb-3">11. Children&apos;s Privacy</h2>
                     <p>
-                      Nahom and ManageMyGate are designed for property owners, residents, and
-                      authorized gate personnel. Our services are not directed to children under the
-                      age of 13. We do not knowingly collect personal information from children
-                      under 13. If we learn that personal information of a child under 13 has been
-                      collected, we will take steps to purge such information promptly.
+                      Nahom and Nahom are designed for property owners, residents, and authorized
+                      gate personnel. Our services are not directed to children under the age of 13.
+                      We do not knowingly collect personal information from children under 13. If we
+                      learn that personal information of a child under 13 has been collected, we
+                      will take steps to purge such information promptly.
                     </p>
                   </section>
 

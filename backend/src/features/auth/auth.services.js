@@ -39,7 +39,7 @@ export class AuthService {
         if (existingUser.status === 'Pending Verification') {
           const plainCode = await otpService.createOTP(email, 'REGISTER', 15, session);
           await session.commitTransaction();
-          authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
+          sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
           return {
             message: 'Registration successful. OTP sent for verification.',
             email: existingUser.email,
@@ -105,7 +105,7 @@ export class AuthService {
       // --- TRANSACTION BOUNDARY END ---
 
       // Emit internal event to trigger email sending
-      authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
+      sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
       authEvents.emit('USER_CREATED', { userId: newUser._id, provider: 'local' });
 
       // Automatically populate CRM Inquiry for the registered user
@@ -124,13 +124,11 @@ export class AuthService {
       
       const isDev = process.env.NODE_ENV !== 'production';
       if (isDev) {
-        console.log('\n=========================================');
-        console.log(`[DEV MODE REGISTER] OTP for ${email} is: ${plainCode}`);
-        console.log('=========================================\n');
+        
       }
 
       return {
-        message: isDev ? `Registration successful. OTP sent for verification. (Dev Code: ${plainCode})` : 'Registration successful. OTP sent for verification.',
+        message: 'Registration successful. OTP sent for verification.',
         email: newUser.email,
         status: 'Pending Verification'
       };
@@ -270,17 +268,28 @@ export class AuthService {
         }
       }
       if (!selectedMembership) {
-        throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+        if (user.isPlatform === true) {
+          selectedMembership = activeMemberships.find((m) => m.orgId && m.orgId.isPlatform === true) || activeMemberships[0];
+        } else {
+          throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+        }
       }
     } else {
       // Primary context selection:
-      // 1. Prefer a non-platform community workspace that has a villa assigned
-      selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
-      // 1b. Fallback to any non-platform community workspace
+      // 1. Prefer the user's last active organization (remembered from their last session)
+      if (user.lastActiveOrgId) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === user.lastActiveOrgId.toString());
+      }
+      
+      // 2. Prefer a non-platform community workspace that has a villa assigned
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
+      }
+      // 2b. Fallback to any non-platform community workspace
       if (!selectedMembership) {
         selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform);
       }
-      // 2. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
+      // 3. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
       if (!selectedMembership && activeMemberships.length > 0) {
         selectedMembership = activeMemberships[0];
       }
@@ -652,6 +661,13 @@ export class AuthService {
     const activeOrgName = selectedMembership?.orgId?.name || null;
     const activeOrgCountryCode = selectedMembership?.orgId?.countryCode || 'IN';
 
+    // Fire-and-forget: Remember the newly resolved community as the user's last active organization
+    if (orgId && (!user.lastActiveOrgId || user.lastActiveOrgId.toString() !== orgId)) {
+      import('../user/user.model.js').then((m) => {
+        m.default.updateOne({ _id: user._id }, { $set: { lastActiveOrgId: orgId } }).catch(() => {});
+      });
+    }
+
     return {
       tokenPayload: {
         id: user._id,
@@ -696,6 +712,7 @@ export class AuthService {
     return {
       id: user._id,
       email: user.email,
+      status: user.status,
       username: user.username,
       name: user.name || user.username || user.email,
       phone: user.phone || '',
@@ -1036,7 +1053,7 @@ export class AuthService {
    * @param {string} rawToken - Unhashed token from client
    * @param {string} password - New password set by user
    */
-  async acceptInvitation(rawToken, password, email = null, authenticatedUserId = null, profileData = {}) {
+  async acceptInvitation(rawToken, password, email = null, authenticatedUserId = null, profileData = {}, skipPasswordCheck = false) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -1103,11 +1120,14 @@ export class AuthService {
       }
 
       if (password) {
+        if (user.status === 'Active' && user.password) {
+          throw new HttpError(400, "Account is already active. Please click 'Back to Login' to accept this invitation using your existing credentials.");
+        }
         const { hashPassword } = await import('../../utils/crypto.utils.js');
         const hashedPassword = await hashPassword(password);
         await userService.activateUser(user._id, hashedPassword, session, profileData);
       } else {
-        if (!user.password) {
+        if (!user.password && !skipPasswordCheck) {
           throw new HttpError(400, 'Password is required to activate a new account.');
         }
         if (user.status !== 'Active' || profileData.name || profileData.phone) {
@@ -1710,16 +1730,14 @@ export class AuthService {
     const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
 
     // Emit event for SMS delivery
-    authEvents.emit('OTP_SENT', { identifier: normalizedPhone, code: plainCode, type: 'SMS' });
+    sendOtpNotification({ identifier: normalizedPhone, code: plainCode, type: 'SMS' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     const isDev = process.env.NODE_ENV !== 'production';
     if (isDev) {
-      console.log('\n=========================================');
-      console.log(`[DEV MODE SMS] OTP for ${normalizedPhone} is: ${plainCode}`);
-      console.log('=========================================\n');
+      
     }
 
-    return { message: isDev ? `OTP sent successfully (Dev Code: ${plainCode})` : 'OTP sent successfully' };
+    return { message: 'OTP sent successfully' };
   }
 
   /**
@@ -1834,16 +1852,14 @@ export class AuthService {
     }
 
     const plainCode = await otpService.createOTP(email, 'LOGIN');
-    authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
+    sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     const isDev = process.env.NODE_ENV !== 'production';
     if (isDev) {
-      console.log('\n=========================================');
-      console.log(`[DEV MODE EMAIL] OTP for ${email} is: ${plainCode}`);
-      console.log('=========================================\n');
+      
     }
 
-    return { message: isDev ? `OTP sent to email (Dev Code: ${plainCode})` : 'OTP sent to email' };
+    return { message: 'OTP sent to email' };
   }
 
   /**
@@ -1852,6 +1868,105 @@ export class AuthService {
    * @param {string} code - OTP verification code
    * @param {object} deviceInfo - Client device meta
    */
+  
+  
+  async initiateInvitationOtp(token) {
+    const inviteInfo = await this.validateInvite(token);
+    if (!inviteInfo || !inviteInfo.valid) {
+      throw new HttpError(400, 'Invalid or expired invitation token.');
+    }
+    if (inviteInfo.authenticationMethod !== 'OTP_LOGIN') {
+      throw new HttpError(403, 'This organization does not support OTP Login for invitations.');
+    }
+
+    const identifier = inviteInfo.email || inviteInfo.phone;
+    if (!identifier) {
+      throw new HttpError(400, 'No email or phone associated with this invitation.');
+    }
+    
+    // Normalize phone number if it's a phone
+    const { normalizePhone } = await import('../../utils/phone.utils.js');
+    const finalIdentifier = inviteInfo.phone ? normalizePhone(identifier) : identifier.toLowerCase();
+
+    const otpService = (await import('../otp/otp.services.js')).default;
+    const plainCode = await otpService.createOTP(finalIdentifier, 'INVITATION_LOGIN');
+    
+    // Send the OTP explicitly without emitting it in an event payload
+    const { sendOtpNotification } = await import('./auth.listeners.js');
+    const method = inviteInfo.phone ? 'SMS' : 'EMAIL';
+    
+    // Do not wait for email/sms to complete to avoid slow response time
+    sendOtpNotification({ identifier: finalIdentifier, code: plainCode, type: method }).catch((err) => {
+      logger.error(`Failed to send INVITATION_LOGIN OTP to ${finalIdentifier}: ${err.message}`);
+    });
+
+    return { message: 'OTP sent' };
+  }
+
+  
+
+  async verifyInvitationOtp(token, code, preferredMethod = null, deviceInfo = {}) {
+    if (typeof preferredMethod === 'object' && preferredMethod !== null && !deviceInfo) {
+      deviceInfo = preferredMethod;
+      preferredMethod = null;
+    }
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const inviteInfo = await this.validateInvite(token);
+      if (!inviteInfo || !inviteInfo.valid) {
+        throw new HttpError(400, 'Invalid or expired invitation token.');
+      }
+      if (inviteInfo.authenticationMethod !== 'OTP_LOGIN') {
+        throw new HttpError(403, 'This organization does not support OTP Login for invitations.');
+      }
+
+      let isPhone = false;
+      let identifier = null;
+      if (preferredMethod === 'SMS' && inviteInfo.phone && String(inviteInfo.phone).trim().length > 0) {
+        identifier = String(inviteInfo.phone).trim();
+        isPhone = true;
+      } else if (preferredMethod === 'EMAIL' && inviteInfo.email && inviteInfo.email.trim().length > 0 && !inviteInfo.email.includes('@noemail.local')) {
+        identifier = inviteInfo.email.trim();
+        isPhone = false;
+      } else {
+        if (inviteInfo.email && inviteInfo.email.trim().length > 0 && !inviteInfo.email.includes('@noemail.local')) {
+          identifier = inviteInfo.email.trim();
+          isPhone = false;
+        } else if (inviteInfo.phone && String(inviteInfo.phone).trim().length > 0) {
+          identifier = String(inviteInfo.phone).trim();
+          isPhone = true;
+        }
+      }
+      if (!identifier) throw new HttpError(400, 'No email or phone associated with this invitation.');
+      
+      const { normalizePhone } = await import('../../utils/phone.utils.js');
+      const finalIdentifier = isPhone ? normalizePhone(identifier) : identifier.toLowerCase();
+
+      const otpService = (await import('../otp/otp.services.js')).default;
+      await otpService.verifyOTP(finalIdentifier, code, 'INVITATION_LOGIN', session);
+
+
+      // Now accept the invitation, consuming the token inside the transaction
+      const data = await this.acceptInvitation(token, null, isPhone ? null : finalIdentifier, null, {}, true);
+
+      await session.commitTransaction();
+
+      // Log successful login
+      const { user, token: authToken, refreshToken, availableWorkspaces } = data;
+      authEvents.emit('LOGIN_SUCCESS', { userId: user.id || user._id, method: 'invitation_otp', deviceInfo });
+
+      return data;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
   async verifyEmailOtpLogin(email, code, deviceInfo) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
@@ -1932,13 +2047,11 @@ export class AuthService {
     const type = cleanId.includes('@') ? 'EMAIL' : 'SMS';
     const plainCode = await otpService.createOTP(cleanId, 'RESET');
     
-    authEvents.emit('OTP_SENT', { identifier: cleanId, code: plainCode, type });
+    sendOtpNotification({ identifier: cleanId, code: plainCode, type }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     const isDev = process.env.NODE_ENV !== 'production';
     if (isDev) {
-      console.log('\n=========================================');
-      console.log(`[DEV MODE RESET] OTP for ${cleanId} is: ${plainCode}`);
-      console.log('=========================================\n');
+      
     }
 
     return {
@@ -2231,13 +2344,14 @@ export class AuthService {
     if (!user) throw new HttpError(409, 'Invitation recipient account is missing.');
     const resolvedOrgId = tokenDoc?.orgId || user?.orgId || null;
     let orgName = '';
+    let orgAuthMethod = 'EXISTING_SYSTEM';
     let villaDetails = '';
     let roleDetails = '';
     let membershipDoc = null;
 
     if (resolvedOrgId) {
       const Organization = (await import('../organization/organization.model.js')).default;
-      const org = await Organization.findById(resolvedOrgId).select('name status');
+      const org = await Organization.findById(resolvedOrgId).select('name status authenticationMethod');
       if (!org) {
         throw new HttpError(404, 'The workspace or organization for this invitation no longer exists.');
       }
@@ -2245,6 +2359,7 @@ export class AuthService {
         throw new HttpError(400, 'This community workspace is currently inactive.');
       }
       orgName = org.name;
+      orgAuthMethod = org.authenticationMethod || 'EXISTING_SYSTEM';
 
       try {
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
@@ -2344,11 +2459,13 @@ export class AuthService {
         invitationStatus: 'EXPIRED',
         membershipStatus: 'Expired',
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has expired. Please ask your administrator to resend the invitation.',
       };
     }
@@ -2361,11 +2478,13 @@ export class AuthService {
         invitationStatus: 'REVOKED',
         membershipStatus: 'Revoked',
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has been revoked by the administrator.',
       };
     }
@@ -2378,11 +2497,13 @@ export class AuthService {
         invitationStatus: 'REJECTED',
         membershipStatus: 'Rejected',
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has already been rejected.',
       };
     }
@@ -2398,11 +2519,13 @@ export class AuthService {
         isAlreadyRegistered: true,
         isExisting: true,
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has already been accepted.',
         ...identityFields,
       };
@@ -2422,11 +2545,13 @@ export class AuthService {
       inviterId: tokenDoc?.inviterId || null,
       inviterName,
       email: user.email,
+        phone: user?.phone || '',
       orgId: resolvedOrgId,
       orgName: orgName || 'Community Workspace',
       villa: villaDetails || '',
       unit: villaDetails || '',
       role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
       invitationSource,
       ...identityFields,
     };
@@ -2604,23 +2729,121 @@ export class AuthService {
     };
   }
 
-  async checkAccountStatus(email) {
-    if (!email) return { hasPassword: false, isAlreadyConfigured: false };
+  async checkAccountStatus(identifier) {
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      return { exists: false, hasPassword: false, isAlreadyConfigured: false };
+    }
 
-    const user = await userService.getUserByEmail(email);
+    const user = await userService.getUserByEmailOrPhone(identifier);
     if (!user) {
       return { exists: false, hasPassword: false, isAlreadyConfigured: false };
     }
 
     const hasPassword = !!(user.password && user.password.length > 0);
-    const isAlreadyConfigured = hasPassword && user.status === 'Active';
+    const credStatus = user.credentialStatus || (hasPassword ? 'INITIALIZED' : 'NOT_INITIALIZED');
+    const isAlreadyConfigured = hasPassword && credStatus === 'INITIALIZED';
 
     return {
       exists: true,
       hasPassword,
+      credentialStatus: credStatus,
+      appAccessStatus: user.appAccessStatus || 'NOT_YET_ACCESSED',
       status: user.status,
       isAlreadyConfigured,
       email: user.email,
+      phone: user.phone || '',
+      name: user.name || user.username || '',
+    };
+  }
+
+  async sendFirstTimeSetupOtp(identifier) {
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      throw new HttpError(400, 'Email or phone number is required.');
+    }
+    const user = await userService.getUserByEmailOrPhone(identifier);
+    if (!user) {
+      throw new HttpError(404, 'User account not found.');
+    }
+
+    if (user.credentialStatus === 'INITIALIZED' && user.password) {
+      throw new HttpError(400, 'Account credentials are already initialized. Please log in with your password.');
+    }
+
+    const targetIdentifier = identifier.trim().includes('@') ? user.email : (user.phone || user.email);
+    const plainCode = await otpService.createOTP(targetIdentifier, 'FIRST_TIME_ACCOUNT_SETUP', 15);
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log(`\n=========================================`);
+      console.log(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
+      console.log(`=========================================\n`);
+    }
+
+    sendOtpNotification({ identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' }).catch(err => logger.error('Failed to send OTP:' + err.message));
+
+    return {
+      message: `Verification code sent to ${targetIdentifier}`,
+      identifier: targetIdentifier,
+    };
+  }
+
+  async completeFirstTimeSetup({ identifier, code, password, confirmPassword, deviceInfo = {} }) {
+    if (!identifier || !code || !password) {
+      throw new HttpError(400, 'Identifier, OTP code, and new password are required.');
+    }
+
+    if (confirmPassword && password !== confirmPassword) {
+      throw new HttpError(400, 'Password and Confirm Password must match.');
+    }
+
+    if (password.length < 8) {
+      throw new HttpError(400, 'Password must be at least 8 characters long.');
+    }
+
+    const user = await userService.getUserByEmailOrPhone(identifier);
+    if (!user) {
+      throw new HttpError(404, 'User account not found.');
+    }
+
+    const targetIdentifier = identifier.trim().includes('@') ? user.email : (user.phone || user.email);
+    await otpService.verifyOTP(targetIdentifier, code, 'FIRST_TIME_ACCOUNT_SETUP', null, true);
+
+    const { hashPassword } = await import('../../utils/crypto.utils.js');
+    const passHash = await hashPassword(password);
+
+    const User = (await import('../user/user.model.js')).default;
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          password: passHash,
+          credentialStatus: 'INITIALIZED',
+          appAccessStatus: 'ACCESSED',
+          lastAccessedAt: new Date(),
+          status: 'Active',
+          emailVerified: true,
+          phoneVerified: true,
+        },
+      }
+    );
+
+    user.password = passHash;
+    user.credentialStatus = 'INITIALIZED';
+    user.appAccessStatus = 'ACCESSED';
+    user.status = 'Active';
+
+    // Direct auto-login session creation
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
+    const token = signToken(tokenPayload);
+    const refreshToken = await sessionService.createSession(user._id, deviceInfo);
+
+    authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'first_time_setup' });
+
+    return {
+      token,
+      refreshToken,
+      user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
+      availableWorkspaces,
     };
   }
 

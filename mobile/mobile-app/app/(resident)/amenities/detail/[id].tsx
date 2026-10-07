@@ -7,9 +7,9 @@
 import React, { useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { useResidentAmenities } from '../../../../src/features/amenities/hooks/useResidentAmenities';
-import { ResidentAmenityDetailView } from '../../../../src/features/amenities/components/ResidentAmenityDetailView';
-import { getArchetypeMeta } from '../../../../src/features/amenities/utils/amenityPresentation';
+import { useResidentAmenities } from '@/src/features/amenities/hooks/useResidentAmenities';
+import { ResidentAmenityDetailView } from '@/src/features/amenities/components/ResidentAmenityDetailView';
+import { getArchetypeMeta } from '@/src/features/amenities/utils/amenityPresentation';
 
 export default function AmenityDetailScreen() {
   const router = useRouter();

@@ -71,7 +71,7 @@ jest.mock('react-redux', () => ({
 // Mock expo-router
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ navigate: mockPush }), push: mockPush }),
   useLocalSearchParams: () => ({ id: 'facility-test-1' }),
   usePathname: () => '/amenities/discover',
 }));

@@ -26,7 +26,7 @@ import {
 import apiClient from '../../../services/apiClient.js'
 
 /**
- * Public Contact & Support Page Component for Nahom / ManageMyGate
+ * Public Contact & Support Page Component for Nahom / Nahom
  *
  * Provides publicly accessible contact information for Atominos Consulting Private Limited
  * and a support / inquiry submission form without requiring login.
@@ -52,7 +52,7 @@ const ContactSupportPage = () => {
       document.head.appendChild(metaDesc)
     }
     metaDesc.content =
-      'Contact and support page for the Nahom application and ManageMyGate platform provided by Atominos Consulting Private Limited.'
+      'Contact and support page for the Nahom application and Nahom platform provided by Atominos Consulting Private Limited.'
 
     // Set canonical link
     let canonical = document.querySelector('link[rel="canonical"]')
@@ -164,10 +164,10 @@ const ContactSupportPage = () => {
                           <strong>Platform Support Alias:</strong>
                           <br />
                           <a
-                            href="mailto:support@managemygate.com"
+                            href="mailto:support@nahom.com"
                             className="text-decoration-none fw-semibold"
                           >
-                            support@managemygate.com
+                            support@nahom.com
                           </a>
                         </p>
                       </div>

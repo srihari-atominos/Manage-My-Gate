@@ -38,6 +38,7 @@ export const useSetupWorkspace = () => {
     defaultValues: {
       name: '',
       timezone: 'Asia/Kolkata',
+      authenticationMethod: 'EXISTING_SYSTEM',
       contactEmail: isSsoRegister ? ssoEmail : authUser?.email || '',
       contactPhone: authUser?.phone || '',
     },
@@ -82,6 +83,7 @@ export const useSetupWorkspace = () => {
       name: data.name.trim(),
       organizationType: 'Residential',
       timezone: data.timezone,
+      authenticationMethod: data.authenticationMethod,
       contactEmail: data.contactEmail?.trim(),
       contactPhone: data.contactPhone?.trim(),
     }

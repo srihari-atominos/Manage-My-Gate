@@ -15,6 +15,14 @@ export const verifyRegistration = async (email, code) => {
   return await apiClient.post('/auth/register/verify', { email, code })
 }
 
+export const initiateInvitationOtp = async (token) => {
+  return await apiClient.post('/auth/invite/otp', { token })
+}
+
+export const verifyInvitationOtp = async (token, code) => {
+  return await apiClient.post('/auth/invite/otp/verify', { token, code })
+}
+
 export const validateInvite = async (token) => {
   return await apiClient.get('/auth/validate-invite', { params: { token } })
 }
@@ -111,10 +119,16 @@ export const exchangeInviteHandoff = async (handoffId, deviceInfo = {}) => {
   return await apiClient.post('/auth/invite/handoff/exchange', { handoffId, deviceInfo })
 }
 
+export const checkAccountStatus = async (identifier) => {
+  return await apiClient.get('/auth/check-account-status', { params: { identifier } })
+}
+
 export default {
   login,
   register,
   verifyRegistration,
+  initiateInvitationOtp,
+  verifyInvitationOtp,
   validateInvite,
   acceptInvite,
   rejectInvite,
@@ -138,4 +152,5 @@ export default {
   registerSsoWithOrg,
   createInviteHandoff,
   exchangeInviteHandoff,
+  checkAccountStatus,
 }

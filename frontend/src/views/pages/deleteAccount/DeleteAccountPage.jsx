@@ -21,7 +21,7 @@ import apiClient from '../../../services/apiClient.js'
 import { logout } from '../../../features/auth/store/authSlice.js'
 
 /**
- * Account Deletion Page Component for Nahom / ManageMyGate
+ * Account Deletion Page Component for Nahom / Nahom
  *
  * Provides self-service instant deletion for authenticated users
  * and a secure account deletion request submission process for unauthenticated users.
@@ -372,7 +372,7 @@ const DeleteAccountPage = () => {
                 <Link to="/">
                   <CButton color="secondary" variant="ghost">
                     <CIcon icon={cilArrowLeft} className="me-2" />
-                    Back to ManageMyGate Portal
+                    Back to Nahom Portal
                   </CButton>
                 </Link>
               </div>

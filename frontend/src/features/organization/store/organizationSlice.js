@@ -76,6 +76,34 @@ export const loadOrganizationDetails = createAsyncThunk(
   },
 )
 
+export const updateOrgFeatures = createAsyncThunk(
+  'organization/updateOrgFeatures',
+  async ({ orgId, featuresArray }, { rejectWithValue }) => {
+    try {
+      const response = await organizationApi.updateOrganizationFeatures(orgId, featuresArray)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to update features',
+      )
+    }
+  },
+)
+
+export const bulkInviteOrganizationUsersAsync = createAsyncThunk(
+  'organization/bulkInviteOrganizationUsers',
+  async ({ orgId, invitations }, { rejectWithValue }) => {
+    try {
+      const response = await organizationApi.bulkInviteOrganizationUsers(orgId, invitations)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to bulk invite users',
+      )
+    }
+  },
+)
+
 export const loadOrganizationUsers = createAsyncThunk(
   'organization/loadOrganizationUsers',
   async (
@@ -238,6 +266,15 @@ export const organizationSlice = createSlice({
         state.detailsLoading = false
         state.detailsError = action.payload || 'Failed to load organization details'
       })
+      // updateOrgFeatures
+      .addCase(updateOrgFeatures.fulfilled, (state, action) => {
+        if (state.selectedOrganization && state.selectedOrganization.organization) {
+          state.selectedOrganization.organization.allowedFeatures =
+            action.payload.data?.allowedFeatures ||
+            action.payload.organization?.allowedFeatures ||
+            state.selectedOrganization.organization.allowedFeatures
+        }
+      })
       // loadOrganizationUsers
       .addCase(loadOrganizationUsers.pending, (state) => {
         state.users.loading = true
@@ -276,11 +313,11 @@ export const organizationSlice = createSlice({
       .addCase(createOrganization.fulfilled, (state, action) => {
         state.createLoading = false
         state.createError = null
-        const createdUser = action.payload?.user
-        if (createdUser?.orgId) {
+        const createdOrg = action.payload?.organization
+        if (createdOrg?._id || createdOrg?.id) {
           state.currentCreatedOrganization = {
-            id: createdUser.orgId,
-            name: createdUser.organizationName || createdUser.orgName,
+            id: createdOrg._id || createdOrg.id,
+            name: createdOrg.name,
           }
         }
       })

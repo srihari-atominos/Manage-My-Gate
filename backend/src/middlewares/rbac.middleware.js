@@ -206,12 +206,33 @@ export const authorizePermission = (feature, action) => {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
-      // Check if this feature is a dynamic module in the workspace and if it is disabled
+      // Check if this feature is disabled via Organization allowedFeatures or Workspace modules
       const targetOrgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user?.orgId;
       if (targetOrgId && mongoose.isValidObjectId(targetOrgId) && mongoose.connection?.readyState === 1) {
-        const workspace = await Workspace.findOne({ organizationId: targetOrgId });
+        // First check modern Organization allowedFeatures
+        const Organization = (await import('../features/organization/organization.model.js')).default;
+        const org = await Organization.findById(targetOrgId).lean();
+        
+        const features = Array.isArray(feature) ? feature : [feature];
+        
+        if (org && Array.isArray(org.allowedFeatures)) {
+          // If the feature being accessed is NOT in the organization's allowedFeatures, block it!
+          // Note: Some core modules like 'users', 'roles', 'workspaces' might be implicitly allowed
+          // but if it's a domain feature like 'visitor', 'amenities', it must be explicitly allowed.
+          const isCoreFeature = features.some(f => ['users', 'roles', 'workspaces', 'dashboard'].includes(f));
+          
+          if (!isCoreFeature) {
+            const hasAllowedFeature = features.some(f => org.allowedFeatures.includes(f) || org.allowedFeatures.includes(f.split(':')[0]));
+            if (!hasAllowedFeature) {
+              throw new HttpError(403, `Forbidden. The feature "${features.join(', ')}" is disabled for this community.`);
+            }
+          }
+        }
+
+        // Legacy fallback: check workspace.modules
+        const workspace = await Workspace.findOne({ organizationId: targetOrgId }).lean();
         if (workspace && workspace.modules) {
-          const targetModule = workspace.modules.find(m => m.moduleKey === feature);
+          const targetModule = workspace.modules.find(m => features.includes(m.moduleKey));
           if (targetModule && targetModule.enabled === false) {
             throw new HttpError(403, `Forbidden. The feature "${targetModule.moduleName}" is disabled in this workspace.`);
           }
@@ -262,6 +283,35 @@ export const authorizeAnyPermission = (permissionsArray) => {
     try {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
+      }
+
+      // Check if this feature is disabled via Organization allowedFeatures or Workspace modules
+      const targetOrgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user?.orgId;
+      if (targetOrgId && mongoose.isValidObjectId(targetOrgId) && mongoose.connection?.readyState === 1) {
+        const Organization = (await import('../features/organization/organization.model.js')).default;
+        const org = await Organization.findById(targetOrgId).lean();
+        
+        // Extract feature names from permissions array (e.g., 'visitor:read' -> 'visitor')
+        const features = permissionsArray.map(p => typeof p === 'string' ? p.split(':')[0] : p);
+        
+        if (org && Array.isArray(org.allowedFeatures)) {
+          const isCoreFeature = features.some(f => ['users', 'roles', 'workspaces', 'dashboard', 'billing'].includes(f));
+          
+          if (!isCoreFeature) {
+            const hasAllowedFeature = features.some(f => org.allowedFeatures.includes(f));
+            if (!hasAllowedFeature) {
+              throw new HttpError(403, `Forbidden. Required features are disabled for this community.`);
+            }
+          }
+        }
+
+        const workspace = await Workspace.findOne({ organizationId: targetOrgId }).lean();
+        if (workspace && workspace.modules) {
+          const targetModule = workspace.modules.find(m => features.includes(m.moduleKey));
+          if (targetModule && targetModule.enabled === false) {
+            throw new HttpError(403, `Forbidden. The feature "${targetModule.moduleName}" is disabled in this workspace.`);
+          }
+        }
       }
 
       const isFullAdmin = await checkIsAdmin(req);

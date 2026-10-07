@@ -22,7 +22,7 @@ export const ErrorBanner = ({
   const handleContactDev = () => {
     const subject = encodeURIComponent(`Nahom App Error: ${title}`);
     const body = encodeURIComponent(`Error message: ${message}\nPlatform: ${Platform.OS}\nTimestamp: ${new Date().toISOString()}`);
-    Linking.openURL(`mailto:developer@managemygate.com?subject=${subject}&body=${body}`);
+    Linking.openURL(`mailto:developer@nahom.com?subject=${subject}&body=${body}`);
   };
 
   return (

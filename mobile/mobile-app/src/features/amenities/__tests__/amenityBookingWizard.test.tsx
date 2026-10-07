@@ -93,7 +93,7 @@ jest.mock('../services/amenityManagementService', () => ({
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush, back: mockBack }),
+  useRouter: () => ({ navigate: mockPush, push: mockPush, back: mockBack }),
   useLocalSearchParams: () => ({ id: 'fac-pool-1' }),
 }));
 

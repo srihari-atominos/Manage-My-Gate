@@ -22,9 +22,9 @@ import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SkeletonLoader } from '@/components/feedback/SkeletonLoader';
-import { ScheduleDateNavigator } from '../../../src/features/amenities/components/ScheduleDateNavigator';
-import { useResidentCalendar } from '../../../src/features/amenities/hooks/useResidentCalendar';
-import { AmenitySlot } from '../../../src/features/amenities/store/amenitySlice';
+import { ScheduleDateNavigator } from '@/src/features/amenities/components/ScheduleDateNavigator';
+import { useResidentCalendar } from '@/src/features/amenities/hooks/useResidentCalendar';
+import { AmenitySlot } from '@/src/features/amenities/store/amenitySlice';
 import { Clock, CalendarDays, ChevronRight } from 'lucide-react-native';
 
 export default function ResidentAmenityCalendarScreen() {

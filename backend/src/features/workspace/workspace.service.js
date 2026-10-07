@@ -107,6 +107,13 @@ export class WorkspaceService {
       }
     }
 
+    if (workspace.organizationId) {
+      const org = await Organization.findById(workspace.organizationId).lean().session(session);
+      if (org) {
+        workspace._doc.authenticationMethod = org.authenticationMethod || 'EXISTING_SYSTEM';
+      }
+    }
+
     return workspace;
   }
 
@@ -133,6 +140,14 @@ export class WorkspaceService {
     if (updateData.organizationName && workspace.organizationId) {
       const organizationService = (await import('../organization/organization.services.js')).default;
       await organizationService.updateOrganizationName(workspace.organizationId.toString(), updateData.organizationName, session);
+    }
+    
+    // Sync Authentication Method
+    if (updateData.authenticationMethod && workspace.organizationId) {
+      const organizationService = (await import('../organization/organization.services.js')).default;
+      await organizationService.updateLoginPolicy(workspace.organizationId.toString(), updateData.authenticationMethod, session);
+      // Remove from payload since it doesn't belong to Workspace model
+      delete updateData.authenticationMethod;
     }
 
     const payload = {
@@ -432,14 +447,15 @@ export class WorkspaceService {
     const allowedModules = (workspace.modules || [])
       .filter(m => !LEGACY_KEYS.includes(m.moduleKey))
       .filter(m => {
-        if (isPlatform || !allowed || allowed.length === 0) return true;
+        if (isPlatform) return true;
+        // If allowed is null/undefined we allow true as fallback, but if it's an explicit empty array we MUST block it!
+        if (!allowed && allowed !== []) return true;
+        
         if (m.moduleKey === 'administration_security') return true;
         if (allowed.includes(m.moduleKey) || allowed.includes(m.moduleName)) return true;
         if (m.moduleKey === 'amenities') {
           return allowed.some(a => ['amenities', 'booking', 'amenity', 'amenitiesBooking', 'amenityBooking'].includes(a));
         }
-        // Always allow standard default modules
-        if (DEFAULT_MODULES.some(d => d.moduleKey === m.moduleKey)) return true;
         return false;
       })
       .sort((a, b) => a.displayOrder - b.displayOrder);

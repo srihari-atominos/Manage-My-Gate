@@ -163,6 +163,11 @@ export const LoginForm = () => {
 
   // Automatically handle routing updates post-authentication
   const inviteAcceptedRef = useRef(false)
+  const handlePostAuthRedirectRef = useRef(handlePostAuthRedirect)
+  useEffect(() => {
+    handlePostAuthRedirectRef.current = handlePostAuthRedirect
+  }, [handlePostAuthRedirect])
+
   useEffect(() => {
     if (isAuthenticated) {
       if (inviteTokenParam && !inviteAcceptedRef.current) {
@@ -175,13 +180,13 @@ export const LoginForm = () => {
           })
           .catch((err) => {
             console.warn('Invite token processing:', err)
-            handlePostAuthRedirect({ skipInviteToken: true })
+            handlePostAuthRedirectRef.current({ skipInviteToken: true })
           })
       } else {
-        handlePostAuthRedirect({ skipInviteToken: inviteAcceptedRef.current })
+        handlePostAuthRedirectRef.current({ skipInviteToken: inviteAcceptedRef.current })
       }
     }
-  }, [isAuthenticated, inviteTokenParam])
+  }, [isAuthenticated, inviteTokenParam, dispatch, navigate])
 
   // Handle OTP countdown timer
   useEffect(() => {
@@ -224,12 +229,12 @@ export const LoginForm = () => {
         } else if (err?.message) {
           errorMessage = err.message
         }
-        
+
         try {
           const parsed = JSON.parse(errorMessage)
           if (parsed && parsed.message) errorMessage = parsed.message
         } catch (e) {}
-        
+
         toast.error(errorMessage)
       }
     },
@@ -286,15 +291,13 @@ export const LoginForm = () => {
             } else if (err?.message) {
               msErrMsg = err.message
             }
-            
+
             try {
               const parsed = JSON.parse(msErrMsg)
               if (parsed && parsed.message) msErrMsg = parsed.message
             } catch (e) {}
-            
-            toast.error(
-              'Microsoft Error: ' + msErrMsg,
-            )
+
+            toast.error('Microsoft Error: ' + msErrMsg)
           }
         })
     }
@@ -718,17 +721,6 @@ export const LoginForm = () => {
             </CCol>
           </CRow>
         </CForm>
-
-        <div className="text-center mt-3">
-          <CButton
-            color="link"
-            onClick={() => navigate('/register')}
-            style={styles.toggleLink}
-            className="p-0"
-          >
-            {t('auth.login.noAccount', "Don't have an account? Create an Account")}
-          </CButton>
-        </div>
       </CCardBody>
 
       <ForgotPasswordModal visible={forgotModalVisible} setVisible={setForgotModalVisible} />
@@ -874,3 +866,4 @@ export default function LoginFormWithBoundary(props) {
     </LoginFormErrorBoundary>
   )
 }
+

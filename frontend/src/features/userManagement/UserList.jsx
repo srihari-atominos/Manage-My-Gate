@@ -502,6 +502,7 @@ const UserList = () => {
         visible={showBulkInviteModal}
         onClose={() => setShowBulkInviteModal(false)}
         onBulkInvite={bulkInviteUsers}
+        availableRoles={ROLES}
       />
 
       {/* Template Editor Canvas Modal */}

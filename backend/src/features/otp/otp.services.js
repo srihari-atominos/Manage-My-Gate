@@ -66,6 +66,10 @@ export class OtpService {
     if (!otpDoc) {
       throw new HttpError(400, 'Invalid or expired OTP');
     }
+    if (otpDoc.expiresAt && otpDoc.expiresAt < new Date()) {
+      await Otp.deleteOne({ _id: otpDoc._id }).session(session);
+      throw new HttpError(400, 'Invalid or expired OTP');
+    }
 
     if (otpDoc.attempts >= 3) {
       await Otp.deleteOne({ _id: otpDoc._id }).session(session);

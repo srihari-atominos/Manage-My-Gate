@@ -41,7 +41,7 @@ export const ForgotPasswordModal = ({ visible, setVisible }) => {
   // Watch for otpSent to progress to step 1
   useEffect(() => {
     if (otpSent && step === 0) {
-      setStep(1)
+      Promise.resolve().then(() => setStep(1))
     }
   }, [otpSent, step])
 
