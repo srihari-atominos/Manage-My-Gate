@@ -283,7 +283,7 @@ export class UserService {
         // Block re-inviting an already active member of this community.
         // A user is only truly an active member if BOTH their global user account is Active AND their organization membership is Active.
         if (existingMembership && existingMembership.status === 'Active' && existing.status === 'Active') {
-          throw new HttpError(409, `User with email '${trimmedEmail}' is already an active member of this community.`);
+          throw new HttpError(409, `User with email '${trimmedEmail}' is already an active member of this community.`, { code: 'ALREADY_MEMBER' });
         }
       }
 
@@ -294,7 +294,8 @@ export class UserService {
       if (phoneToAssign) {
         const existingPhoneUser = await userRepository.findByPhone(phoneToAssign, session);
         if (existingPhoneUser && (!existing || existingPhoneUser._id.toString() !== existing._id.toString())) {
-          throw new HttpError(409, 'This phone number is already linked to another account. Remove it from the invitation or use the resident\'s own number.');
+          // Email and phone point at different people: never merge or guess
+          throw new HttpError(409, 'This phone number is already linked to another account. Check the email and phone belong to the same person.', { code: 'IDENTITY_CONFLICT' });
         }
       }
       
@@ -480,6 +481,7 @@ export class UserService {
       // Dispatch events for email delivery and real-time frontend syncing
       userEvents.emit('USER_INVITED', {
         email: trimmedEmail,
+        phone: phoneToAssign || user.phone || '',
         orgId,
         invitationToken,
         invitationSource,
@@ -886,20 +888,43 @@ export class UserService {
     }
   }
 
-  async bulkInviteUsers(invitations, orgId, defaultSource = 'WEB', inviterId = null) {
+  async bulkInviteUsers(invitations, orgId, defaultSource = 'WEB', inviterId = null, { assertRoleAssignable = null } = {}) {
     const successes = [];
     const failures = [];
 
     const villaService = (await import('../villa/villa.services.js')).default;
 
-    for (const invite of invitations) {
-      const { email, residentType = 'None', roleName, villaNumber, villaId: payloadVillaId, invitationSource: itemSource } = invite;
-      const trimmedEmail = email ? email.trim().toLowerCase() : '';
+    // Rows are validated individually: bad rows are reported, valid rows still go through
+    const seenEmails = new Set();
+    const seenPhones = new Set();
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    for (const [index, invite] of invitations.entries()) {
+      const { email, phone, name, residentType = 'None', roleName, villaNumber, villaId: payloadVillaId, invitationSource: itemSource } = invite || {};
+      const trimmedEmail = email ? String(email).trim().toLowerCase() : '';
+      const normalizedPhone = phone ? normalizePhone(String(phone)) : '';
       const source = (itemSource || defaultSource || 'WEB').toUpperCase();
 
       try {
-        if (!trimmedEmail) {
-          throw new HttpError(400, 'Email address is required.');
+        if (!trimmedEmail || !EMAIL_RE.test(trimmedEmail)) {
+          throw new HttpError(400, 'A valid email address is required.', { code: 'MISSING_EMAIL' });
+        }
+        if (!phone) {
+          throw new HttpError(400, 'Phone number is required.', { code: 'MISSING_PHONE' });
+        }
+        if (!normalizedPhone) {
+          throw new HttpError(400, 'Invalid phone number format.', { code: 'INVALID_PHONE' });
+        }
+        if (!roleName || !String(roleName).trim()) {
+          throw new HttpError(400, 'Role is required.', { code: 'MISSING_ROLE' });
+        }
+        if (seenEmails.has(trimmedEmail) || seenPhones.has(normalizedPhone)) {
+          throw new HttpError(400, 'This email or phone appears more than once in the file.', { code: 'DUPLICATE_IN_FILE' });
+        }
+        seenEmails.add(trimmedEmail);
+        seenPhones.add(normalizedPhone);
+        if (assertRoleAssignable) {
+          await assertRoleAssignable(roleName);
         }
 
         let villaId = payloadVillaId || null;
@@ -914,10 +939,12 @@ export class UserService {
         }
 
         // Call the single inviteUser logic
-        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName, '', '', source, inviterId);
+        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName, normalizedPhone, name || '', source, inviterId);
 
         successes.push({
+          row: index + 1,
           email: trimmedEmail,
+          phone: normalizedPhone,
           status: 'Invited',
           role: roleName,
           villaNumber: villaNumber || '',
@@ -925,8 +952,11 @@ export class UserService {
         });
       } catch (error) {
         failures.push({
+          row: index + 1,
           email: trimmedEmail || 'Unknown',
+          phone: normalizedPhone || phone || '',
           error: error.message || 'Invitation failed',
+          code: error.details?.code || null,
           role: roleName || '',
           villaNumber: villaNumber || '',
           invitationSource: source,

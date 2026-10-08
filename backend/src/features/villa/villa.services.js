@@ -455,6 +455,9 @@ export class VillaService {
               finalRoleName = normalizedResidentType;
             }
 
+            if (!phone) {
+              throw new HttpError(400, 'Phone number is required to invite this resident.');
+            }
             if (assertRoleAssignable) {
               await assertRoleAssignable(finalRoleName);
             }

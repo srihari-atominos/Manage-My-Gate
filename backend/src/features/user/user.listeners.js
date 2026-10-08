@@ -6,6 +6,12 @@ import { maskEmail, maskPhone } from '../../utils/phone.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from './utils/invite.utils.js';
 
+// Admin-entered values (community, unit, role names) are inserted into email HTML
+const escapeHtml = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const INVITATION_VALID_DAYS = 7;
+
 const DEFAULT_INVITE_BODY = `
 <div style="font-family: sans-serif; padding: 20px; color: #333;">
   <h2>Workspace Invitation</h2>
@@ -24,7 +30,7 @@ const DEFAULT_INVITE_BODY = `
 `;
 
 // Register user domain events
-userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting }) => {
+userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting }) => {
   try {
     const baseInviteLink = generateInviteLink(invitationToken, invitationSource);
 
@@ -100,31 +106,32 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
     const inviteMode = hasPassword ? 'signin' : 'signup';
     const inviteLink = `${baseInviteLink}${baseInviteLink.includes('?') ? '&' : '?'}mode=${inviteMode}`;
     const rejectInviteLink = `${baseInviteLink}${baseInviteLink.includes('?') ? '&' : '?'}action=reject`;
-    const ctaButtonText = hasPassword ? 'Sign In & Accept Invitation' : 'Create Account & Accept Invitation';
+    const ctaButtonText = 'Step Into Your Community';
 
-    const unitRoleDetails = (villaLabel || roleName) ? `
+    const registeredPhone = phone || targetUser?.phone || '';
+    const detailRow = (label, value, last = false) =>
+      value
+        ? `
+            <div style="font-size: 14px; color: #334155;${last ? '' : ' margin-bottom: 6px;'}">
+              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 130px;">${label}</span>
+              <strong style="color: #0f172a;">${escapeHtml(value)}</strong>
+            </div>`
+        : '';
+    // Community, registered email/phone and role (story 5). Never credentials or codes.
+    const unitRoleDetails = `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin: 18px 0 22px 0;">
         <tr>
           <td style="padding: 16px 18px;">
-            ${communityName ? `
-            <div style="font-size: 14px; color: #334155; margin-bottom: 6px;">
-              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 100px;">Organization:</span>
-              <strong style="color: #0f172a;">${communityName}</strong>
-            </div>` : ''}
-            ${villaLabel ? `
-            <div style="font-size: 14px; color: #334155; margin-bottom: 6px;">
-              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 100px;">Villa / Unit:</span>
-              <strong style="color: #0f172a;">${villaLabel}</strong>
-            </div>` : ''}
-            ${roleName ? `
-            <div style="font-size: 14px; color: #334155;">
-              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 100px;">Role:</span>
-              <strong style="color: #0f172a;">${roleName}</strong>
-            </div>` : ''}
+            ${detailRow('Community:', communityName)}
+            ${detailRow('Registered email:', email)}
+            ${detailRow('Registered phone:', registeredPhone)}
+            ${detailRow('Villa / Unit:', villaLabel)}
+            ${detailRow('Role:', roleName, true)}
           </td>
         </tr>
       </table>
-    ` : '';
+    `;
+    const safeCommunityName = escapeHtml(communityName);
 
     const customInviteBody = `
 <!DOCTYPE html>
@@ -132,7 +139,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invitation to join ${communityName}</title>
+  <title>Invitation to join ${safeCommunityName}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f1f5f9; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; margin: 0; padding: 24px 12px; width: 100%;">
@@ -145,15 +152,15 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
             <td style="padding: 28px 24px 12px 24px;">
               <div style="margin-bottom: 14px;">
                 <span style="display: inline-block; background-color: #e0e7ff; color: #4338ca; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.06em;">
-                  Workspace Invitation
+                  Community Invitation
                 </span>
               </div>
               <h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 10px 0; line-height: 1.35; letter-spacing: -0.01em;">
-                You're invited to join ${communityName}
+                You're invited to join ${safeCommunityName}
               </h1>
               <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0;">
                 Hello,<br/><br/>
-                You have been invited to join <strong>${communityName}</strong>. Please select your response below to proceed.
+                You have been invited to join <strong>${safeCommunityName}</strong>. Please select your response below to proceed.
               </p>
             </td>
           </tr>
@@ -228,7 +235,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
           <tr>
             <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px;">
               <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0 0 6px 0;">
-                &bull; This invitation link is single-use and will expire in 24 hours.
+                &bull; This invitation link is single-use and will expire in ${INVITATION_VALID_DAYS} days.
               </p>
               <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0 0 14px 0;">
                 &bull; If you were not expecting this invitation, you can click Reject or safely ignore this email.
@@ -269,7 +276,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
       .replace(/https?:\/\/[^\s"']+\/(?:#\/)?invite(?:\/(?:web|app))?(?:\?token=|\/)[^\s"']*/gi, inviteLink)
       .replace(/{{invite_link}}/g, inviteLink)
       .replace(/{{reject_link}}/g, rejectInviteLink)
-      .replace(/{{community_name}}/g, communityName);
+      .replace(/{{community_name}}/g, safeCommunityName);
 
     // Mask raw token in logs to comply with security directive
     const maskedToken = invitationToken ? `${invitationToken.slice(0, 6)}...` : '[MASKED]';

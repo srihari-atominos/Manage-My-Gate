@@ -134,6 +134,7 @@ export default function UserManagementScreen() {
   const handleResendInvite = (user: UserData) => {
     handleSendInvite({
       email: user.email,
+      phone: (user as any).phone || '',
       villaId: (user as any).villaId || null,
       residentType: (user as any).residentType || 'None',
       roleName: user.role || null,

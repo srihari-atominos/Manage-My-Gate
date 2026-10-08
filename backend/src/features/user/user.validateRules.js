@@ -25,7 +25,8 @@ export const inviteUserRules = [
     .withMessage('Resident type must be a string')
     .trim(),
   body('roleName')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('Role is required')
     .isString()
     .withMessage('Role name must be a string')
     .trim(),
@@ -35,7 +36,8 @@ export const inviteUserRules = [
     .withMessage('Name must be a string')
     .trim(),
   body('phone')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('Phone number is required')
     .isString()
     .withMessage('Phone must be a string')
     .trim(),
@@ -167,21 +169,12 @@ export const bulkInviteUserRules = [
   body('invitations')
     .isArray({ min: 1 })
     .withMessage('invitations must be a non-empty array'),
-  body('invitations.*.email')
-    .notEmpty()
-    .withMessage('Email address is required')
-    .isEmail()
-    .withMessage('Please provide a valid email address')
-    .trim(),
+  // Email, phone and role are checked per row in bulkInviteUsers so invalid rows
+  // are reported while valid rows still go through
   body('invitations.*.residentType')
     .optional()
     .isString()
     .withMessage('Resident type must be a string')
-    .trim(),
-  body('invitations.*.roleName')
-    .notEmpty()
-    .withMessage('Role name is required')
-    .isString()
     .trim(),
   body('invitations.*.villaNumber')
     .optional()

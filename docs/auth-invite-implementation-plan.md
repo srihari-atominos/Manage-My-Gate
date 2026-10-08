@@ -171,3 +171,30 @@ _Each phase appends: date, commit, completed, deferred, blockers, tests._
 **Tests**
 - New `backend/tests/auth.phase1.otp.test.mjs`: 13/13. Phase 0 suite 19/19.
 - Existing: phone.lifecycle 11/11, phone.international 6/6, google 7/7, apple 6/6, payment.security 4/4; multiOrgAuth 13/15 (same pre-existing failures).
+
+### Phase 2 — 2026-10-08
+
+**Decision (user, 2026-10-08):** keep creating a User record at invite time as a **locked placeholder** instead of deferring User creation to acceptance. Deferring would have removed pending invitees from the mobile/web user lists, broken technicians (placeholder `@staff.local` emails) and required web changes. The placeholder reuses the existing `Pending Verification` status (≈15 code paths already treat it as "invited, not set up"); what matters is that it cannot authenticate or be activated except through its exact invitation. The existing Token `INVITATION` documents serve as the invitation record (status lifecycle, inviter, community, hashed token, expiry, resend/revoke, list endpoint), so no separate `Invitation` collection was added.
+
+**Completed**
+- Single invite: email, phone and role mandatory (validator). Community from the admin's context only (a body `orgId` is ignored — covered by test).
+- Conflicts carry codes: `ALREADY_MEMBER`, `IDENTITY_CONFLICT` (email and phone belong to different people). Existing users are reused, never duplicated; their other memberships are untouched.
+- Bulk invite: per-row validation in the service (`MISSING_EMAIL`, `MISSING_PHONE`, `INVALID_PHONE`, `MISSING_ROLE`, `DUPLICATE_IN_FILE`, plus the role ceiling per row) → `{ successes[], failures[{row, code, error}] }`; valid rows still go through. Rows now pass their phone and name (they were dropped before).
+- Villa bulk upload: resident invites need a phone (the unit is still created; the row reports why no invite went out).
+- Invitation lifetime 7 days (was 24 h). Errors carry `INVITATION_EXPIRED / _REVOKED / _REJECTED / _USED / _INVALID`.
+- Invite email: "Step Into Your Community" button; shows community, registered email, registered phone, unit and role; no credentials or codes; admin-entered values HTML-escaped; expiry text matches 7 days.
+- Placeholder lock: SSO refuses a pending placeholder without its own invitation (`INVITATION_REQUIRED`), never consumes an invitation that belongs to another account (`INVITATION_MISMATCH`), and refuses suspended/blocked accounts on every path (the email-fallback path skipped this). Self-registration with an invited email is refused (`INVITATION_REQUIRED`).
+- Mobile: invite form gains a mandatory phone field (with contact picker); resend passes the phone.
+- Web (to keep it working with the stricter API): invite form gains a phone field; bulk CSV template and parser gain a Phone column; resend passes the phone.
+
+**Deviations from the plan**
+- Re-inviting a pending person still acts as "resend" (new link, old one invalid) instead of returning `ALREADY_INVITED`, because the mobile and web resend buttons call the invite endpoint.
+- Technician invites (placeholder `@staff.local` emails, no role choice) are unchanged.
+
+**Deferred**
+- Older placeholder users without a phone can't be re-sent from the users list until a phone is added (the API now explains why).
+- `listInvitations` search/recipient fields unchanged (placeholders still exist, so nothing broke).
+
+**Tests**
+- New `backend/tests/auth.phase2.invite.test.mjs`: 16/16. Phase 0 (updated for mandatory phone and per-row bulk) 19/19, Phase 1 13/13.
+- Existing suites unchanged (multiOrgAuth's 2 pre-existing failures). Mobile auth Jest 8/8; `tsc` clean for edited files; edited web files parse.

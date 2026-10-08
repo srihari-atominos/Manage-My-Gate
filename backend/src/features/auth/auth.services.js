@@ -48,6 +48,14 @@ export class AuthService {
       const existingUser = await userService.getUserByEmail(email, session);
       if (existingUser) {
         if (existingUser.status === 'Pending Verification') {
+          // An invited placeholder is activated only by accepting its invitation,
+          // never by self-registration with the same email
+          const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+          if (await OrgMembership.exists({ userId: existingUser._id, status: 'Pending' }).session(session)) {
+            throw new HttpError(409, 'You have been invited to a community. Please open your invitation link to join.', {
+              code: 'INVITATION_REQUIRED',
+            });
+          }
           const plainCode = await otpService.createOTP(email, 'REGISTER', 15, session);
           await session.commitTransaction();
           authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
@@ -1383,6 +1391,7 @@ export class AuthService {
       }
 
       // Existing User Flow
+      await this._assertSsoAccountAndInvite(user, inviteToken, session);
       user = await this._updateExistingSsoUser(user, identityData, session);
 
       let targetOrgIdFromInvite = null;
@@ -1475,6 +1484,27 @@ export class AuthService {
    * Handles activating pending invitation users and linking SSO provider.
    * @private
    */
+  async _assertSsoAccountAndInvite(user, inviteToken, session) {
+    if (['Suspended', 'Blocked', 'Deleted'].includes(user.status)) {
+      throw new HttpError(403, 'Account is inactive or suspended.');
+    }
+    // An invited-but-unaccepted placeholder only becomes usable by accepting its own invitation
+    const isPlaceholder = user.status === 'Pending Verification' || user.status === 'Pending';
+    if (!inviteToken) {
+      if (isPlaceholder) {
+        throw new HttpError(403, 'Please open your invitation link to join your community.', {
+          code: 'INVITATION_REQUIRED',
+        });
+      }
+      return;
+    }
+    // Never consume (and so burn) an invitation that belongs to someone else
+    const tokenDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION', session);
+    if (!tokenDoc || !tokenDoc.userId || String(tokenDoc.userId) !== String(user._id)) {
+      throw new HttpError(403, 'This invitation was sent to a different account.', { code: 'INVITATION_MISMATCH' });
+    }
+  }
+
   async _updateExistingSsoUser(user, identityData, session) {
     const { provider, providerId, providerEmail } = identityData;
     const updateData = {};
@@ -1549,6 +1579,7 @@ export class AuthService {
       if (!user) {
         throw new HttpError(401, 'User account not found. You must be invited to a community to log in.');
       } else {
+        await this._assertSsoAccountAndInvite(user, inviteToken, session);
         user = await this._updateExistingSsoUser(user, identityData, session);
       }
 

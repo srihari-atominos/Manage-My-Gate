@@ -218,9 +218,9 @@ export class UserController {
 
       const defaultSource = resolveInvitationSource(req);
 
-      await assertRolesAssignable(req, orgId, (invitations || []).map((i) => i?.roleName));
-
-      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId);
+      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId, {
+        assertRoleAssignable: (roleName) => assertRolesAssignable(req, orgId, roleName),
+      });
       res.success(result, 'Bulk invitation process completed');
     } catch (error) {
       next(error);

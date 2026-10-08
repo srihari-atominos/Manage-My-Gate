@@ -23,6 +23,8 @@ import { validateEmail, parseBackendError } from '../../../utils/validation'
  */
 const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
   const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePhone, setInvitePhone] = useState('')
+  const [phoneTouched, setPhoneTouched] = useState(false)
   const [emailTouched, setEmailTouched] = useState(false)
   const [villas, setVillas] = useState([])
   const [selectedVillaId, setSelectedVillaId] = useState('')
@@ -66,11 +68,14 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
   }, [visible])
 
   const emailValidation = validateEmail(inviteEmail)
+  // Phone is mandatory for every invitation; the server normalises the format
+  const phoneIsValid = /^\+?[0-9\s-]{8,16}$/.test(invitePhone.trim())
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setEmailTouched(true)
     setRoleTouched(true)
+    setPhoneTouched(true)
     setSubmitError(null)
 
     if (
@@ -81,6 +86,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
       return
     }
 
+    if (!phoneIsValid) return
     if (!selectedRoleName) return
 
     const selectedRole = roles.find((r) => r.name === selectedRoleName)
@@ -101,6 +107,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
     try {
       await onSendInvite({
         email: inviteEmail.trim(),
+        phone: invitePhone.trim(),
         villaId: isTenant ? selectedVillaId || null : null,
         residentType,
         roleName: selectedRoleName || null,
@@ -118,6 +125,8 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
   const handleClose = () => {
     setInviteEmail('')
     setEmailTouched(false)
+    setInvitePhone('')
+    setPhoneTouched(false)
     setSelectedVillaId('')
     setSelectedRoleName('')
     setRoleTouched(false)
@@ -184,6 +193,27 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
               }
               required
               autoFocus
+              disabled={submitting}
+            />
+          </div>
+
+          <div className="mb-3">
+            <CFormLabel htmlFor="invite-phone-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+              Phone Number <span className="text-danger">*</span>
+            </CFormLabel>
+            <CFormInput
+              id="invite-phone-input"
+              type="tel"
+              placeholder="+91 98765 43210"
+              value={invitePhone}
+              onChange={(e) => {
+                setInvitePhone(e.target.value)
+                if (submitError) setSubmitError(null)
+              }}
+              onBlur={() => setPhoneTouched(true)}
+              invalid={phoneTouched && !phoneIsValid}
+              feedbackInvalid="Enter a valid phone number, including the country code"
+              required
               disabled={submitting}
             />
           </div>

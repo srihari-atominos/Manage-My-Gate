@@ -122,6 +122,7 @@ const UserList = () => {
   const handleResendInvite = (user) => {
     handleSendInvite({
       email: user.email,
+      phone: user.phone || '',
       villaId: user.villaId || null,
       residentType: user.residentType || 'None',
       roleName: user.role || null,

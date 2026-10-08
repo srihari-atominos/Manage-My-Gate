@@ -22,12 +22,12 @@ import {
   cilXCircle,
 } from '@coreui/icons'
 
-const TEMPLATE_CONTENT = `Email,Type,VillaNumber,ResidentType,Role
-resident.owner@example.com,Resident,Villa 01,Owner,Resident Owner
-resident.tenant@example.com,Resident,Villa 02,Tenant,Resident Tenant
-resident.family@example.com,Resident,Villa 01,Family,Family Member
-security.guard@example.com,Worker,,,Security Guard
-community.admin@example.com,Worker,,,Community Admin`
+const TEMPLATE_CONTENT = `Email,Phone,Type,VillaNumber,ResidentType,Role
+resident.owner@example.com,+919876543201,Resident,Villa 01,Owner,Resident Owner
+resident.tenant@example.com,+919876543202,Resident,Villa 02,Tenant,Resident Tenant
+resident.family@example.com,+919876543203,Resident,Villa 01,Family,Family Member
+security.guard@example.com,+919876543204,Worker,,,Security Guard
+community.admin@example.com,+919876543205,Worker,,,Community Admin`
 
 const splitCSVLine = (line) => {
   const result = []
@@ -66,6 +66,7 @@ const parseCSV = (text) => {
     headers.forEach((header, index) => {
       let key = header
       if (header === 'email') key = 'email'
+      else if (header === 'phone' || header === 'phone number' || header === 'mobile') key = 'phone'
       else if (header === 'type') key = 'type'
       else if (header === 'villanumber' || header === 'villa number') key = 'villaNumber'
       else if (header === 'residenttype' || header === 'resident type') key = 'residentType'
@@ -82,6 +83,8 @@ const parseCSV = (text) => {
     row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
     row.isValidType = ['Resident', 'Worker'].includes(row.type)
     row.isValidRole = !!row.roleName
+    // Phone is mandatory for every invitation; the server normalises the format
+    row.isValidPhone = /^\+?[0-9\s-]{8,16}$/.test((row.phone || '').trim())
 
     if (row.type === 'Resident') {
       row.isValidVilla = !!row.villaNumber
@@ -93,6 +96,7 @@ const parseCSV = (text) => {
 
     row.isValid =
       row.isValidEmail &&
+      row.isValidPhone &&
       row.isValidType &&
       row.isValidRole &&
       row.isValidVilla &&
@@ -188,6 +192,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
     try {
       const payload = validRows.map((r) => ({
         email: r.email,
+        phone: r.phone,
         residentType: r.type === 'Resident' ? r.residentType : 'None',
         roleName: r.roleName,
         villaNumber: r.type === 'Resident' ? r.villaNumber : undefined,

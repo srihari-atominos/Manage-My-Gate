@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { X, Mail, CheckCircle2, Copy, Check, Send, AlertTriangle } from 'lucide-react-native';
 import { TextInput } from '@/components/forms/TextInput';
+import { PhoneInput } from '@/components/forms/PhoneInput';
+import { ContactPickerButton } from '@/components/forms/ContactPickerButton';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/common/Button';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
@@ -20,6 +22,7 @@ import { useTranslation } from '@/src/utils/i18n';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import {
   validateEmail,
+  validatePhone,
   validateRequired,
   parseBackendError,
   ValidationStatus,
@@ -41,6 +44,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   const { t } = useTranslation();
   // Form values
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState<string | undefined>(undefined);
   const [selectedRoleName, setSelectedRoleName] = useState('');
   const [selectedVillaId, setSelectedVillaId] = useState('');
 
@@ -102,6 +107,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
   const resetForm = () => {
     setEmail('');
+    setPhone('');
+    setPhoneError(undefined);
     setSelectedRoleName('');
     setSelectedVillaId('');
     setEmailStatus('idle');
@@ -251,6 +258,12 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       return;
     }
 
+    // Validate phone (mandatory for every invitation)
+    if (!phone.trim() || !validatePhone(phone).isValid) {
+      setPhoneError('Please enter a valid phone number.');
+      return;
+    }
+
     // Validate role
     if (!selectedRoleName) {
       setRoleError('Please select a user role.');
@@ -277,6 +290,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
       const res = await onSendInvite({
         email: email.trim(),
+        phone: phone.trim(),
         villaId: isTenantRole ? selectedVillaId || null : null,
         residentType,
         roleName: selectedRoleName || null,
@@ -290,7 +304,9 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       });
     } catch (err: any) {
       const parsed = parseBackendError(err, 'Failed to send invitation. Please try again.');
-      if (parsed.isDuplicate || parsed.field === 'email') {
+      if (parsed.field === 'phone' || /phone/i.test(parsed.userMessage || '')) {
+        setPhoneError(parsed.userMessage);
+      } else if (parsed.isDuplicate || parsed.field === 'email') {
         setEmailStatus('invalid');
         setEmailMessage(parsed.userMessage);
       } else {
@@ -437,6 +453,31 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                           : undefined
                       }
                       successMessage={emailStatus === 'valid' ? emailMessage : undefined}
+                    />
+                  </View>
+
+                  {/* Phone (mandatory) */}
+                  <View>
+                    <PhoneInput
+                      label={t('phone_number', 'Phone Number') + ' *'}
+                      value={phone}
+                      onChangeText={(val: string) => {
+                        setPhone(val);
+                        setPhoneError(undefined);
+                      }}
+                      error={phoneError}
+                      testID="invite-user-phone"
+                      rightElement={
+                        <ContactPickerButton
+                          onPick={(c) => {
+                            if (c.phone) {
+                              setPhone(c.phone);
+                              setPhoneError(undefined);
+                            }
+                            if (c.email && !email.trim()) handleEmailChange(c.email);
+                          }}
+                        />
+                      }
                     />
                   </View>
 

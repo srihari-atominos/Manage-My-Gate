@@ -279,7 +279,7 @@ describe('Phase 0 — invitation & account-setup security', () => {
   describe('invite permissions and role ceiling', () => {
     it('a resident (villas:read only) cannot invite anyone', async () => {
       const res = await api('POST', '/users/invite', {
-        body: { email: `res_invitee_${t}@p0.test`, roleName: 'Community Admin' },
+        body: { email: `res_invitee_${t}@p0.test`, phone: '+919811000001', roleName: 'Community Admin' },
         token: residentToken,
       });
       assert.equal(res.status, 403);
@@ -287,7 +287,7 @@ describe('Phase 0 — invitation & account-setup security', () => {
 
     it('a non-admin inviter cannot assign a role with permissions they lack', async () => {
       const res = await api('POST', '/users/invite', {
-        body: { email: `esc_${t}@p0.test`, roleName: 'Resident Owner' },
+        body: { email: `esc_${t}@p0.test`, phone: '+919811000002', roleName: 'Resident Owner' },
         token: managerToken,
       });
       assert.equal(res.status, 403, JSON.stringify(res.body));
@@ -296,23 +296,26 @@ describe('Phase 0 — invitation & account-setup security', () => {
 
     it('a non-admin inviter can assign a role within their own permissions', async () => {
       const res = await api('POST', '/users/invite', {
-        body: { email: `ok_${t}@p0.test`, roleName: 'Viewer' },
+        body: { email: `ok_${t}@p0.test`, phone: '+919811000003', roleName: 'Viewer' },
         token: managerToken,
       });
       assert.equal(res.status, 201, JSON.stringify(res.body));
     });
 
-    it('bulk invite applies the same ceiling', async () => {
+    it('bulk invite applies the same ceiling to each row', async () => {
       const res = await api('POST', '/users/bulk-invite', {
-        body: { invitations: [{ email: `bulk_${t}@p0.test`, roleName: 'Community Admin' }] },
+        body: { invitations: [{ email: `bulk_${t}@p0.test`, phone: '+919811000005', roleName: 'Community Admin' }] },
         token: managerToken,
       });
-      assert.equal(res.status, 403, JSON.stringify(res.body));
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+      assert.equal(res.body.data.successCount, 0);
+      assert.equal(res.body.data.failures[0].code, 'ROLE_NOT_ASSIGNABLE');
+      assert.equal(await User.exists({ email: `bulk_${t}@p0.test` }), null);
     });
 
     it('nobody can assign a global/system role through an invite', async () => {
       const res = await api('POST', '/users/invite', {
-        body: { email: `global_${t}@p0.test`, roleName: 'Global Overseer' },
+        body: { email: `global_${t}@p0.test`, phone: '+919811000004', roleName: 'Global Overseer' },
         token: adminToken,
       });
       assert.equal(res.status, 400, JSON.stringify(res.body));
