@@ -1,0 +1,434 @@
+From 125652217dc36f63a15f3b8eb13cdf6d411f3ae6 Mon Sep 17 00:00:00 2001
+From: Naveen1758 <naveen@atominosconsulting.com>
+Date: Tue, 6 Oct 2026 18:53:55 +0530
+Subject: [PATCH 7/8] feat: move bulk onboarding strategy to organization
+ global settings
+
+---
+ .../organization/organization.controller.js   | 11 +++
+ .../organization/organization.model.js        |  5 +
+ .../organization/organization.repository.js   |  8 ++
+ .../organization/organization.router.js       |  9 ++
+ .../organization/organization.services.js     | 11 +++
+ .../organization/organization.validator.js    | 10 ++
+ backend/src/features/user/user.controller.js  |  7 +-
+ .../components/OrganizationOnboardingCard.jsx | 91 +++++++++++++++++++
+ .../organization/services/organizationApi.js  |  9 ++
+ .../views/OrganizationDetails.jsx             |  5 +
+ .../components/BulkInviteModal.jsx            | 61 ++++---------
+ 11 files changed, 182 insertions(+), 45 deletions(-)
+ create mode 100644 frontend/src/features/organization/components/OrganizationOnboardingCard.jsx
+
+diff --git a/backend/src/features/organization/organization.controller.js b/backend/src/features/organization/organization.controller.js
+index f18e93c6..fa36ff0c 100644
+--- a/backend/src/features/organization/organization.controller.js
++++ b/backend/src/features/organization/organization.controller.js
+@@ -127,6 +127,17 @@ export class OrganizationController {
+     }
+     }
+ 
++  async updateOnboardingMode(req, res, next) {
++    try {
++      const orgId = req.params.id;
++      const { onboardingMode } = req.body;
++      const updatedOrg = await organizationService.updateOnboardingMode(orgId, onboardingMode);
++      res.success(updatedOrg, 'Organization onboarding mode updated successfully');
++    } catch (error) {
++      next(error);
++    }
++  }
++
+   async updateLoginPolicy(req, res, next) {
+     try {
+       const orgId = req.params.id;
+diff --git a/backend/src/features/organization/organization.model.js b/backend/src/features/organization/organization.model.js
+index da090d77..d5776757 100644
+--- a/backend/src/features/organization/organization.model.js
++++ b/backend/src/features/organization/organization.model.js
+@@ -62,6 +62,11 @@ const organizationSchema = new mongoose.Schema(
+       type: Boolean,
+       default: false,
+     },
++    onboardingMode: {
++      type: String,
++      enum: ['INVITATION', 'ADMIN_ANNOUNCEMENT'],
++      default: 'INVITATION',
++    },
+     authenticationMethod: {
+       type: String,
+       enum: ['EXISTING_SYSTEM', 'OTP_LOGIN'],
+diff --git a/backend/src/features/organization/organization.repository.js b/backend/src/features/organization/organization.repository.js
+index ca04eb3f..911128b0 100644
+--- a/backend/src/features/organization/organization.repository.js
++++ b/backend/src/features/organization/organization.repository.js
+@@ -28,6 +28,14 @@ export class OrganizationRepository {
+     );
+   }
+ 
++  async updateOnboardingMode(orgId, onboardingMode, session = null) {
++    return await Organization.findByIdAndUpdate(
++      orgId,
++      { $set: { onboardingMode } },
++      { new: true, session }
++    );
++  }
++
+   async updateLoginPolicy(orgId, authenticationMethod, session = null) {
+     return await Organization.findByIdAndUpdate(
+       orgId,
+diff --git a/backend/src/features/organization/organization.router.js b/backend/src/features/organization/organization.router.js
+index f856586f..2c087ec5 100644
+--- a/backend/src/features/organization/organization.router.js
++++ b/backend/src/features/organization/organization.router.js
+@@ -11,6 +11,7 @@ import {
+   updateFeaturesRules,
+   updateStatusRules,
+   updateLoginPolicyRules,
++  updateOnboardingModeRules,
+   sendAdminEmailOtpRules,
+   verifyAdminEmailOtpRules,
+ } from './organization.validator.js';
+@@ -99,6 +100,14 @@ router.patch(
+   organizationController.updateFeatures
+ );
+ 
++router.patch(
++  '/:id/onboarding-mode',
++  isAuthenticated,
++  tenantContext({ requirePlatformContext: true }),
++  validate(updateOnboardingModeRules),
++  organizationController.updateOnboardingMode
++);
++
+ router.patch(
+   '/:id/login-policy',
+   isAuthenticated,
+diff --git a/backend/src/features/organization/organization.services.js b/backend/src/features/organization/organization.services.js
+index 033b382c..40737613 100644
+--- a/backend/src/features/organization/organization.services.js
++++ b/backend/src/features/organization/organization.services.js
+@@ -135,6 +135,17 @@ export class OrganizationService {
+     }
+   }
+ 
++  async updateOnboardingMode(orgId, onboardingMode, session = null) {
++    const validModes = ['INVITATION', 'ADMIN_ANNOUNCEMENT'];
++    if (!validModes.includes(onboardingMode)) {
++      throw new HttpError(400, "Invalid onboarding mode. Must be one of: ");
++    }
++    
++    await this.getOrganizationById(orgId, session);
++    
++    return await organizationRepository.updateOnboardingMode(orgId, onboardingMode, session);
++  }
++
+   async updateLoginPolicy(orgId, authenticationMethod, session = null) {
+     const validMethods = ['EXISTING_SYSTEM', 'OTP_LOGIN'];
+     if (!validMethods.includes(authenticationMethod)) {
+diff --git a/backend/src/features/organization/organization.validator.js b/backend/src/features/organization/organization.validator.js
+index 614a751d..41590179 100644
+--- a/backend/src/features/organization/organization.validator.js
++++ b/backend/src/features/organization/organization.validator.js
+@@ -201,6 +201,16 @@ export const verifyAdminEmailOtpRules = [
+ ];
+ 
+ 
++export const updateOnboardingModeRules = [
++  body('onboardingMode')
++    .notEmpty()
++    .withMessage('Onboarding mode is required')
++    .isString()
++    .trim()
++    .isIn(['INVITATION', 'ADMIN_ANNOUNCEMENT'])
++    .withMessage('Onboarding mode must be one of: INVITATION, ADMIN_ANNOUNCEMENT'),
++];
++
+ export const updateLoginPolicyRules = [
+   body('authenticationMethod')
+     .notEmpty()
+diff --git a/backend/src/features/user/user.controller.js b/backend/src/features/user/user.controller.js
+index 32df95d3..c3bb7ce3 100644
+--- a/backend/src/features/user/user.controller.js
++++ b/backend/src/features/user/user.controller.js
+@@ -225,13 +225,16 @@ export class UserController {
+    */
+   async bulkInviteUsers(req, res, next) {
+     try {
+-      const { invitations, onboardingMode = 'INVITATION' } = req.body;
++      const { invitations, onboardingMode } = req.body;
++      const organizationService = (await import('../organization/organization.services.js')).default;
++      const org = await organizationService.getOrganizationById(req.tenant.orgId).catch(() => null);
++      const effectiveOnboardingMode = onboardingMode || org?.onboardingMode || 'INVITATION';
+       const orgId = req.tenant.orgId;
+       const inviterId = req.user?.id || req.user?._id || null;
+ 
+       const defaultSource = resolveInvitationSource(req);
+ 
+-      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId, onboardingMode);
++      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId, effectiveOnboardingMode);
+       res.success(result, 'Bulk user processing completed');
+     } catch (error) {
+       next(error);
+diff --git a/frontend/src/features/organization/components/OrganizationOnboardingCard.jsx b/frontend/src/features/organization/components/OrganizationOnboardingCard.jsx
+new file mode 100644
+index 00000000..952173eb
+--- /dev/null
++++ b/frontend/src/features/organization/components/OrganizationOnboardingCard.jsx
+@@ -0,0 +1,91 @@
++import React, { useState } from 'react'
++import { useTranslation } from 'react-i18next'
++import { useDispatch } from 'react-redux'
++import { CSpinner } from '@coreui/react'
++import { updateOrganizationOnboardingMode } from '../services/organizationApi'
++import { loadOrganizationDetails } from '../store/organizationSlice'
++import toast from 'react-hot-toast'
++
++const OrganizationOnboardingCard = ({ organization }) => {
++  const { t } = useTranslation()
++  const dispatch = useDispatch()
++  const [loading, setLoading] = useState(false)
++
++  const currentMode = organization?.onboardingMode || 'INVITATION'
++
++  const handleModeChange = async (newMode) => {
++    if (newMode === currentMode) return
++    setLoading(true)
++    try {
++      await updateOrganizationOnboardingMode(organization._id, newMode)
++      toast.success('Organization onboarding mode updated successfully.')
++      // Refresh the organization details to update the Redux store
++      dispatch(loadOrganizationDetails(organization._id))
++    } catch (error) {
++      const errorMessage = error?.response?.data?.message || error.message || 'Failed to update onboarding mode.'
++      toast.error(errorMessage)
++    } finally {
++      setLoading(false)
++    }
++  }
++
++  if (!organization) return null
++
++  return (
++    <div className="section-card">
++      <div className="section-card-header">
++        <h4 className="section-title">
++          Global Onboarding Strategy
++        </h4>
++      </div>
++      <div className="section-card-body position-relative">
++        {loading && (
++          <div
++            className="position-absolute w-100 h-100 d-flex justify-content-center align-items-center"
++            style={{ top: 0, left: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10 }}
++          >
++            <CSpinner color="primary" />
++          </div>
++        )}
++        <div className="d-flex flex-column gap-3">
++          <label className="d-flex align-items-start gap-2 cursor-pointer">
++            <input
++              type="radio"
++              name="globalOnboardingMode"
++              value="INVITATION"
++              checked={currentMode === 'INVITATION'}
++              onChange={(e) => handleModeChange(e.target.value)}
++              className="mt-1"
++            />
++            <div>
++              <strong className="d-block small">Normal Invitation</strong>
++              <span className="text-muted small">
++                Membership is <em>Pending</em> until the user accepts the invitation link via email or SMS. Recommended for public or tenant invitations.
++              </span>
++            </div>
++          </label>
++          <label className="d-flex align-items-start gap-2 cursor-pointer">
++            <input
++              type="radio"
++              name="globalOnboardingMode"
++              value="ADMIN_ANNOUNCEMENT"
++              checked={currentMode === 'ADMIN_ANNOUNCEMENT'}
++              onChange={(e) => handleModeChange(e.target.value)}
++              className="mt-1"
++            />
++            <div>
++              <strong className="d-block small">
++                Admin Announcement (Immediate Activation)
++              </strong>
++              <span className="text-muted small">
++                Membership is activated immediately. Existing user passwords are preserved. New users receive a secure first-time password setup link. Recommended for bulk-loading trusted staff or pre-verified residents.
++              </span>
++            </div>
++          </label>
++        </div>
++      </div>
++    </div>
++  )
++}
++
++export default OrganizationOnboardingCard
+diff --git a/frontend/src/features/organization/services/organizationApi.js b/frontend/src/features/organization/services/organizationApi.js
+index 77561fc2..199d03fc 100644
+--- a/frontend/src/features/organization/services/organizationApi.js
++++ b/frontend/src/features/organization/services/organizationApi.js
+@@ -50,6 +50,14 @@ export const setupWorkspace = async (workspaceData) => {
+   return await apiClient.post('/organizations/setup', workspaceData)
+ }
+ 
++export const updateOrganizationOnboardingMode = async (orgId, onboardingMode) => {
++  return await apiClient.patch(
++    /organizations/${orgId}/onboarding-mode,
++    { onboardingMode },
++    { headers: { 'x-organization-id': orgId } }
++  )
++}
++
+ export const bulkInviteOrganizationUsers = async (orgId, invitationsData) => {
+   const payload = Array.isArray(invitationsData)
+     ? { invitations: invitationsData, invitationSource: 'WEB' }
+@@ -73,6 +81,7 @@ export default {
+   checkOrganizationName,
+   setupWorkspace,
+   updateOrganizationFeatures,
++  updateOrganizationOnboardingMode,
+   bulkInviteOrganizationUsers,
+   fetchOrganizations,
+   updateOrganizationStatus,
+diff --git a/frontend/src/features/organization/views/OrganizationDetails.jsx b/frontend/src/features/organization/views/OrganizationDetails.jsx
+index 0c30eb1e..2c710d7f 100644
+--- a/frontend/src/features/organization/views/OrganizationDetails.jsx
++++ b/frontend/src/features/organization/views/OrganizationDetails.jsx
+@@ -9,6 +9,7 @@ import useOrganizationUsers from '../hooks/useOrganizationUsers.js'
+ import OrganizationOverviewCards from '../components/OrganizationOverviewCards.jsx'
+ import OrganizationInfoCard from '../components/OrganizationInfoCard.jsx'
+ import OrganizationFeaturesCard from '../components/OrganizationFeaturesCard.jsx'
++import OrganizationOnboardingCard from '../components/OrganizationOnboardingCard.jsx'
+ import UserFiltersBar from '../components/UserFiltersBar.jsx'
+ import UserDirectoryTable from '../components/UserDirectoryTable.jsx'
+ import UserDetailDrawer from '../components/UserDetailDrawer.jsx'
+@@ -180,6 +181,9 @@ export const OrganizationDetails = () => {
+             {/* Feature Management */}
+             <OrganizationFeaturesCard organization={organization} />
+ 
++            {/* Global Onboarding Strategy */}
++            <OrganizationOnboardingCard organization={organization} />
++
+             {/* User Directory Section */}
+             <div className="section-card">
+               <div
+@@ -263,6 +267,7 @@ export const OrganizationDetails = () => {
+             visible={showBulkInviteModal}
+             onClose={() => setShowBulkInviteModal(false)}
+             onBulkInvite={bulkInviteUsers}
++            globalOnboardingMode={organization?.onboardingMode || 'INVITATION'}
+           />
+         )}
+ 
+diff --git a/frontend/src/features/userManagement/components/BulkInviteModal.jsx b/frontend/src/features/userManagement/components/BulkInviteModal.jsx
+index b51c647f..4ed885e9 100644
+--- a/frontend/src/features/userManagement/components/BulkInviteModal.jsx
++++ b/frontend/src/features/userManagement/components/BulkInviteModal.jsx
+@@ -87,13 +87,13 @@ const parseCSV = (text) => {
+   return parsed
+ }
+ 
+-export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles = [] }) => {
++export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles = [], globalOnboardingMode }) => {
+   const [parsedRows, setParsedRows] = useState([])
+   const [fileName, setFileName] = useState('')
+   const [loading, setLoading] = useState(false)
+   const [results, setResults] = useState(null)
+   const [errorMsg, setErrorMsg] = useState('')
+-  const [onboardingMode, setOnboardingMode] = useState('INVITATION')
++  
+   const fileInputRef = useRef(null)
+ 
+   const handleDownloadTemplate = () => {
+@@ -197,9 +197,8 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
+         phone: r.phone || undefined,
+         name: r.name || undefined,
+         roleName: r.roleName,
+-        onboardingMode,
+-      }))
+-      const res = await onBulkInvite({ invitations, onboardingMode })
++        }))
++      const res = await onBulkInvite(invitations)
+       setResults(res)
+       setParsedRows([])
+       setFileName('')
+@@ -215,7 +214,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
+     setFileName('')
+     setResults(null)
+     setErrorMsg('')
+-    setOnboardingMode('INVITATION')
++    
+     onClose()
+   }
+ 
+@@ -242,43 +241,19 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
+               Onboarding Method
+             </label>
+             <div className="d-flex flex-column gap-2">
+-              <label className="d-flex align-items-start gap-2 cursor-pointer">
+-                <input
+-                  type="radio"
+-                  name="onboardingMode"
+-                  value="INVITATION"
+-                  checked={onboardingMode === 'INVITATION'}
+-                  onChange={(e) => setOnboardingMode(e.target.value)}
+-                  className="mt-1"
+-                />
+-                <div>
+-                  <strong className="d-block small">Normal Invitation</strong>
+-                  <span className="text-muted small">
+-                    Membership is <em>Pending</em> until the user accepts the invitation link via
+-                    email or SMS.
+-                  </span>
+-                </div>
+-              </label>
+-              <label className="d-flex align-items-start gap-2 cursor-pointer">
+-                <input
+-                  type="radio"
+-                  name="onboardingMode"
+-                  value="ADMIN_ANNOUNCEMENT"
+-                  checked={onboardingMode === 'ADMIN_ANNOUNCEMENT'}
+-                  onChange={(e) => setOnboardingMode(e.target.value)}
+-                  className="mt-1"
+-                />
+-                <div>
+-                  <strong className="d-block small">
+-                    Admin Announcement (Immediate Activation)
+-                  </strong>
+-                  <span className="text-muted small">
+-                    Membership is activated immediately. Existing user passwords are preserved. New
+-                    users receive a secure first-time password setup link.
+-                  </span>
++                <div className="d-flex align-items-start gap-2 p-3 border rounded bg-light">
++                  <div>
++                    <strong className="d-block small">
++                      Current Strategy: {globalglobalOnboardingMode === 'ADMIN_ANNOUNCEMENT' ? 'Admin Announcement (Immediate Activation)' : 'Normal Invitation'}
++                    </strong>
++                    <span className="text-muted small">
++                      {globalglobalOnboardingMode === 'ADMIN_ANNOUNCEMENT' 
++                        ? 'Membership is activated immediately. Existing user passwords are preserved. Configured globally in Organization Settings.'
++                        : 'Membership is Pending until the user accepts the invitation link via email or SMS. Configured globally in Organization Settings.'}
++                    </span>
++                  </div>
+                 </div>
+-              </label>
+-            </div>
++              </div>
+           </div>
+         )}
+ 
+@@ -446,7 +421,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
+               </div>
+               <p className="mb-0 small">
+                 Successfully processed {results.successCount} of {results.total} users using{' '}
+-                {onboardingMode === 'ADMIN_ANNOUNCEMENT'
++                {globalOnboardingMode === 'ADMIN_ANNOUNCEMENT'
+                   ? 'Admin Announcement'
+                   : 'Normal Invitation'}
+                 .
+-- 
+2.51.0.windows.1
+

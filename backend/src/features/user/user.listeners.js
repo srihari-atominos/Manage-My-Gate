@@ -98,7 +98,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
     }
 
     const inviteMode = hasPassword ? 'signin' : 'signup';
-    const inviteLink = `${baseInviteLink}${baseInviteLink.includes('?') ? '&' : '?'}mode=${inviteMode}`;
+    const inviteLink = baseInviteLink;
     const rejectInviteLink = `${baseInviteLink}${baseInviteLink.includes('?') ? '&' : '?'}action=reject`;
     const ctaButtonText = hasPassword ? 'Sign In & Accept Invitation' : 'Create Account & Accept Invitation';
 

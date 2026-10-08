@@ -1,0 +1,210 @@
+From 4eabaf3575692cbb84ff6335e4521fb3816635da Mon Sep 17 00:00:00 2001
+From: Naveen1758 <naveen@atominosconsulting.com>
+Date: Tue, 6 Oct 2026 18:41:00 +0530
+Subject: [PATCH 6/8] fix: resolve bulk invite validation and protect existing
+ user passwords
+
+---
+ backend/src/features/auth/auth.services.js    | 47 +++++++++++++++----
+ .../auth/components/AcceptInviteForm.jsx      |  4 +-
+ .../components/BulkInviteModal.jsx            | 11 +++--
+ 3 files changed, 48 insertions(+), 14 deletions(-)
+
+diff --git a/backend/src/features/auth/auth.services.js b/backend/src/features/auth/auth.services.js
+index 9baa60a7..71bf07ca 100644
+--- a/backend/src/features/auth/auth.services.js
++++ b/backend/src/features/auth/auth.services.js
+@@ -128,7 +128,7 @@ export class AuthService {
+       }
+ 
+       return {
+-        message: isDev 'Registration successful. OTP sent for verification.',
++        message: 'Registration successful. OTP sent for verification.',
+         email: newUser.email,
+         status: 'Pending Verification'
+       };
+@@ -712,6 +712,7 @@ export class AuthService {
+     return {
+       id: user._id,
+       email: user.email,
++      status: user.status,
+       username: user.username,
+       name: user.name || user.username || user.email,
+       phone: user.phone || '',
+@@ -1119,6 +1120,9 @@ export class AuthService {
+       }
+ 
+       if (password) {
++        if (user.status === 'Active' && user.password) {
++          throw new HttpError(400, "Account is already active. Please click 'Back to Login' to accept this invitation using your existing credentials.");
++        }
+         const { hashPassword } = await import('../../utils/crypto.utils.js');
+         const hashedPassword = await hashPassword(password);
+         await userService.activateUser(user._id, hashedPassword, session, profileData);
+@@ -1733,7 +1737,7 @@ export class AuthService {
+       
+     }
+ 
+-    return { message: isDev 'OTP sent successfully' };
++    return { message: 'OTP sent successfully' };
+   }
+ 
+   /**
+@@ -1855,7 +1859,7 @@ export class AuthService {
+       
+     }
+ 
+-    return { message: isDev 'OTP sent to email' };
++    return { message: 'OTP sent to email' };
+   }
+ 
+   /**
+@@ -1900,7 +1904,12 @@ export class AuthService {
+   }
+ 
+   
+-  async verifyInvitationOtp(token, code, deviceInfo = {}) {
++
++  async verifyInvitationOtp(token, code, preferredMethod = null, deviceInfo = {}) {
++    if (typeof preferredMethod === 'object' && preferredMethod !== null && !deviceInfo) {
++      deviceInfo = preferredMethod;
++      preferredMethod = null;
++    }
+     const mongoose = (await import('mongoose')).default;
+     const session = await mongoose.startSession();
+     session.startTransaction();
+@@ -1914,19 +1923,34 @@ export class AuthService {
+         throw new HttpError(403, 'This organization does not support OTP Login for invitations.');
+       }
+ 
+-      const identifier = inviteInfo.email || inviteInfo.phone;
+-      if (!identifier) {
+-        throw new HttpError(400, 'No email or phone associated with this invitation.');
++      let isPhone = false;
++      let identifier = null;
++      if (preferredMethod === 'SMS' && inviteInfo.phone && String(inviteInfo.phone).trim().length > 0) {
++        identifier = String(inviteInfo.phone).trim();
++        isPhone = true;
++      } else if (preferredMethod === 'EMAIL' && inviteInfo.email && inviteInfo.email.trim().length > 0 && !inviteInfo.email.includes('@noemail.local')) {
++        identifier = inviteInfo.email.trim();
++        isPhone = false;
++      } else {
++        if (inviteInfo.email && inviteInfo.email.trim().length > 0 && !inviteInfo.email.includes('@noemail.local')) {
++          identifier = inviteInfo.email.trim();
++          isPhone = false;
++        } else if (inviteInfo.phone && String(inviteInfo.phone).trim().length > 0) {
++          identifier = String(inviteInfo.phone).trim();
++          isPhone = true;
++        }
+       }
++      if (!identifier) throw new HttpError(400, 'No email or phone associated with this invitation.');
+       
+       const { normalizePhone } = await import('../../utils/phone.utils.js');
+-      const finalIdentifier = inviteInfo.phone ? normalizePhone(identifier) : identifier.toLowerCase();
++      const finalIdentifier = isPhone ? normalizePhone(identifier) : identifier.toLowerCase();
+ 
+       const otpService = (await import('../otp/otp.services.js')).default;
+       await otpService.verifyOTP(finalIdentifier, code, 'INVITATION_LOGIN', session);
+ 
++
+       // Now accept the invitation, consuming the token inside the transaction
+-      const data = await this.acceptInvitation(token, null, finalIdentifier, null, {}, true);
++      const data = await this.acceptInvitation(token, null, isPhone ? null : finalIdentifier, null, {}, true);
+ 
+       await session.commitTransaction();
+ 
+@@ -2435,6 +2459,7 @@ export class AuthService {
+         invitationStatus: 'EXPIRED',
+         membershipStatus: 'Expired',
+         email: user?.email || expectedEmail,
++        phone: user?.phone || '',
+         orgId: resolvedOrgId,
+         orgName: orgName || 'Community Workspace',
+         villa: villaDetails || '',
+@@ -2453,6 +2478,7 @@ export class AuthService {
+         invitationStatus: 'REVOKED',
+         membershipStatus: 'Revoked',
+         email: user?.email || expectedEmail,
++        phone: user?.phone || '',
+         orgId: resolvedOrgId,
+         orgName: orgName || 'Community Workspace',
+         villa: villaDetails || '',
+@@ -2471,6 +2497,7 @@ export class AuthService {
+         invitationStatus: 'REJECTED',
+         membershipStatus: 'Rejected',
+         email: user?.email || expectedEmail,
++        phone: user?.phone || '',
+         orgId: resolvedOrgId,
+         orgName: orgName || 'Community Workspace',
+         villa: villaDetails || '',
+@@ -2492,6 +2519,7 @@ export class AuthService {
+         isAlreadyRegistered: true,
+         isExisting: true,
+         email: user?.email || expectedEmail,
++        phone: user?.phone || '',
+         orgId: resolvedOrgId,
+         orgName: orgName || 'Community Workspace',
+         villa: villaDetails || '',
+@@ -2517,6 +2545,7 @@ export class AuthService {
+       inviterId: tokenDoc?.inviterId || null,
+       inviterName,
+       email: user.email,
++        phone: user?.phone || '',
+       orgId: resolvedOrgId,
+       orgName: orgName || 'Community Workspace',
+       villa: villaDetails || '',
+diff --git a/frontend/src/features/auth/components/AcceptInviteForm.jsx b/frontend/src/features/auth/components/AcceptInviteForm.jsx
+index 8906704b..5a7de5a8 100644
+--- a/frontend/src/features/auth/components/AcceptInviteForm.jsx
++++ b/frontend/src/features/auth/components/AcceptInviteForm.jsx
+@@ -166,7 +166,7 @@ export const AcceptInviteForm = () => {
+       console.warn('Accept invite error:', err)
+     } finally {
+       if (typeof window !== 'undefined') {
+-        window.location.href = '/login'
++        window.location.href = token ? '/login?invite_token=' + token : '/login'
+       }
+     }
+   }
+@@ -303,7 +303,7 @@ export const AcceptInviteForm = () => {
+         </div>
+ 
+         <div className="text-center mt-3">
+-          <Link to="/login" className="accept-invite-link">
++          <Link to={token ? "/login?invite_token=" + token : "/login"} className="accept-invite-link">
+             {t('auth.invite.backToLogin', 'Back to Login')}
+           </Link>
+         </div>
+diff --git a/frontend/src/features/userManagement/components/BulkInviteModal.jsx b/frontend/src/features/userManagement/components/BulkInviteModal.jsx
+index caade32d..b51c647f 100644
+--- a/frontend/src/features/userManagement/components/BulkInviteModal.jsx
++++ b/frontend/src/features/userManagement/components/BulkInviteModal.jsx
+@@ -131,7 +131,8 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
+             (r.email && existingEmails.includes(r.email.toLowerCase())) ||
+             (r.phone && existingPhones.includes(r.phone))
+           if (isDuplicate) {
+-            r.isValid = false
++            // We do not set r.isValid = false so existing members can be linked
++            // or updated (e.g. via Admin Announcement).
+             r.isDuplicate = true
+           }
+           return r
+@@ -397,9 +398,13 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite, availableRoles
+                         {row.roleName || <span className="text-danger">Missing</span>}
+                       </td>
+                       <td className="pe-3 text-center">
+-                        {row.isValid ? (
++                        {row.isValid && !row.isDuplicate ? (
+                           <CBadge color="success">Valid</CBadge>
+-                        ) : row.isDuplicate ? (
++                          ) : row.isValid && row.isDuplicate ? (
++                            <CBadge color="info" title="User is already registered in this community. Role or status will be updated.">
++                              Existing Member
++                            </CBadge>
++                          ) : row.isDuplicate ? (
+                           <CBadge
+                             color="danger"
+                             title="User is already registered in this community"
+-- 
+2.51.0.windows.1
+

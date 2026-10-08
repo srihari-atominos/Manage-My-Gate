@@ -1,3 +1,4 @@
+import { sendOtpNotification } from './auth.listeners.js';
 import userService from '../user/user.services.js';
 import roleService from '../role/role.services.js';
 import rolePermissionService from '../rolePermission/rolePermission.services.js';
@@ -16,6 +17,538 @@ import userEvents from '../user/user.events.js';
 import { normalizePhone } from '../../utils/phone.utils.js';
 
 export class AuthService {
+async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetVillaId = null, targetAssignment = null) {
+    // If targetVillaId was passed as an assignment object, normalize arguments
+    if (typeof targetVillaId === 'object' && targetVillaId !== null && !targetVillaId._bsontype && (targetVillaId.id || targetVillaId.targetAssignmentId || targetVillaId.name)) {
+      targetAssignment = targetVillaId;
+      targetVillaId = targetVillaId.villaId || null;
+    }
+    const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+    const memberships = await orgMembershipService.getUserMemberships(user._id);
+
+    // Active memberships strictly (organization status is Active and membership status is Active, or missing for legacy documents)
+    const activeMemberships = memberships.filter((m) => 
+      m.orgId && 
+      (!m.orgId.status || m.orgId.status.toLowerCase() === 'active') && 
+      (!m.status || m.status.toLowerCase() === 'active')
+    );
+
+    let selectedMembership = null;
+    const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
+
+    if (targetOrgIdStr) {
+      if (targetVillaId) {
+        const targetVillaIdStr = targetVillaId.toString();
+        selectedMembership = activeMemberships.find((m) => 
+          m.orgId._id.toString() === targetOrgIdStr && 
+          ((m.units && m.units.some(u => u.villaId && (u.villaId._id ? u.villaId._id.toString() === targetVillaIdStr : u.villaId.toString() === targetVillaIdStr))) ||
+           (m.villaId && (m.villaId._id ? m.villaId._id.toString() === targetVillaIdStr : m.villaId.toString() === targetVillaIdStr)))
+        );
+      }
+      // Fallback to first membership in org if no specific villa requested or found
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
+      }
+      // Auto-heal fallback: If user was invited and has a membership in this org that is still in 'Pending' status,
+      // and the organization is active, auto-promote it to 'Active' so valid authenticated users are never denied entry.
+      if (!selectedMembership) {
+        const pendingMatch = memberships.find((m) => m.orgId && m.orgId._id && m.orgId._id.toString() === targetOrgIdStr);
+        if (pendingMatch && (!pendingMatch.orgId.status || pendingMatch.orgId.status.toLowerCase() === 'active')) {
+          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, targetOrgIdStr, 'Active');
+          pendingMatch.status = 'Active';
+          selectedMembership = pendingMatch;
+          activeMemberships.push(pendingMatch);
+        }
+      }
+      if (!selectedMembership) {
+        if (user.isPlatform === true) {
+          selectedMembership = activeMemberships.find((m) => m.orgId && m.orgId.isPlatform === true) || activeMemberships[0];
+        } else {
+          throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+        }
+      }
+    } else {
+      // Primary context selection:
+      // 1. Prefer the user's last active organization (remembered from their last session)
+      if (user.lastActiveOrgId) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === user.lastActiveOrgId.toString());
+      }
+      
+      // 2. Prefer a non-platform community workspace that has a villa assigned
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
+      }
+      // 2b. Fallback to any non-platform community workspace
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform);
+      }
+      // 3. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
+      if (!selectedMembership && activeMemberships.length > 0) {
+        selectedMembership = activeMemberships[0];
+      }
+    }
+
+    let roleName = null;
+    let permissions = [];
+    let orgId = null;
+    let isPlatform = false;
+    let activeRoleObj = null;
+    let roleNames = [];
+
+    if (selectedMembership) {
+      orgId = selectedMembership.orgId._id.toString();
+      isPlatform = selectedMembership.orgId.isPlatform || false;
+
+      // Consolidate all roles assigned to this user within the selected organization
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === orgId);
+      const roles = [];
+      for (const m of sameOrgMemberships) {
+        if (m.roleIds && m.roleIds.length > 0) {
+          roles.push(...m.roleIds.filter(Boolean));
+        } else if (m.roleId) {
+          roles.push(m.roleId);
+        }
+      }
+
+      // Deduplicate roles by name
+      const uniqueRoles = [];
+      const seenRoleNames = new Set();
+      for (const r of roles) {
+        if (r && r.name && !seenRoleNames.has(r.name)) {
+          seenRoleNames.add(r.name);
+          uniqueRoles.push(r);
+        }
+      }
+
+      roleNames = uniqueRoles.map(r => r?.name).filter(Boolean);
+
+      if (targetRole) {
+        if (!roleNames.includes(targetRole)) {
+          throw new HttpError(400, `User does not have role '${targetRole}' in this organization.`);
+        }
+        roleName = targetRole;
+        activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
+        if (activeRoleObj) {
+          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+          permissions = permissionsList.map((permission) => permission.name);
+        }
+      } else {
+        roleName = roleNames.length > 0 ? roleNames[0] : null;
+        if (roleName) {
+          activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
+          if (activeRoleObj) {
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+            permissions = permissionsList.map((permission) => permission.name);
+          }
+        }
+      }
+    }
+
+    // Consolidate active memberships by organization for availableWorkspaces
+    const orgWorkspaceMap = new Map();
+    for (const m of activeMemberships) {
+      if (!m.orgId || !m.orgId._id) continue;
+      const oId = m.orgId._id.toString();
+      const mRoles = [];
+      if (m.roleIds && m.roleIds.length > 0) {
+        mRoles.push(...m.roleIds.filter(Boolean));
+      } else if (m.roleId) {
+        mRoles.push(m.roleId);
+      }
+      const validRoles = mRoles.filter(Boolean);
+      const hasResidentInWs = validRoles.some(r => /resident|tenant|owner|family/i.test(r.name || ''));
+      const firstUnit = m.units && m.units.length > 0 ? m.units[0] : null;
+      const primaryVillaDoc = hasResidentInWs ? (m.villaId || firstUnit?.villaId || null) : null;
+      const primaryVillaId = primaryVillaDoc
+        ? (primaryVillaDoc._id ? primaryVillaDoc._id.toString() : primaryVillaDoc.toString())
+        : null;
+      const primaryVillaNumber = primaryVillaDoc?.unitNumber || null;
+      const residentType = hasResidentInWs ? (m.residentType || firstUnit?.residentType || 'None') : 'None';
+
+      if (!orgWorkspaceMap.has(oId)) {
+        orgWorkspaceMap.set(oId, {
+          orgId: oId,
+          name: m.orgId.name,
+          isPlatform: m.orgId.isPlatform || false,
+          roleNames: validRoles.map(r => r.name),
+          villaId: primaryVillaId,
+          villaNumber: primaryVillaNumber,
+          residentType,
+        });
+      } else {
+        const existing = orgWorkspaceMap.get(oId);
+        for (const r of validRoles) {
+          if (!existing.roleNames.includes(r.name)) {
+            existing.roleNames.push(r.name);
+          }
+        }
+        if (hasResidentInWs && !existing.villaId && primaryVillaId) {
+          existing.villaId = primaryVillaId;
+          existing.villaNumber = primaryVillaNumber;
+          existing.residentType = residentType;
+        }
+      }
+    }
+
+    const availableWorkspaces = Array.from(orgWorkspaceMap.values()).map((ws) => ({
+      orgId: ws.orgId,
+      name: ws.name,
+      isPlatform: ws.isPlatform,
+      roleName: ws.roleNames.join(', ') || null,
+      roles: ws.roleNames,
+      villaId: ws.villaId,
+      villaNumber: ws.villaNumber,
+      residentType: ws.residentType,
+    }));
+
+    // Role type flags
+    const isResidentRole = /resident|tenant|owner|family/i.test(roleName || '');
+    if (!isResidentRole) {
+      targetVillaId = null;
+    }
+
+    // Discover accessible units for this user in the active organization ONLY if active role is a Resident role
+    const accessibleUnits = [];
+    if (selectedMembership && isResidentRole) {
+      const selectedOrgIdStr = selectedMembership.orgId._id.toString();
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === selectedOrgIdStr);
+      for (const m of sameOrgMemberships) {
+        if (m.units && m.units.length > 0) {
+          for (const unit of m.units) {
+            if (unit.villaId) {
+              const vId = unit.villaId._id ? unit.villaId._id.toString() : unit.villaId.toString();
+              if (!accessibleUnits.some(u => u.villaId === vId)) {
+                accessibleUnits.push({
+                  villaId: vId,
+                  villaNumber: unit.villaId.unitNumber || '',
+                  block: unit.villaId.blockOrBuilding || '',
+                  residentType: unit.residentType || m.residentType || 'None'
+                });
+              }
+            }
+          }
+        }
+        if (m.villaId) {
+          const vId = m.villaId._id ? m.villaId._id.toString() : m.villaId.toString();
+          if (!accessibleUnits.some(u => u.villaId === vId)) {
+            accessibleUnits.push({
+              villaId: vId,
+              villaNumber: m.villaId.unitNumber || '',
+              block: m.villaId.blockOrBuilding || '',
+              residentType: m.residentType || 'None'
+            });
+          }
+        }
+      }
+
+      // Also discover any units in this organization where the user is an assigned resident or owner in the Villa collection
+      try {
+        const Villa = (await import('../villa/villa.model.js')).default;
+        const assignedVillas = await Villa.find({
+          orgId: selectedMembership.orgId._id,
+          $or: [
+            { 'residents.userId': user._id },
+            { primaryResidentId: user._id },
+            { ownerId: user._id }
+          ]
+        }).lean();
+
+        for (const v of assignedVillas) {
+          const vId = v._id.toString();
+          if (!accessibleUnits.some(u => u.villaId === vId)) {
+            const residentEntry = v.residents?.find(r => r.userId?.toString() === user._id.toString());
+            const resType = residentEntry?.residencyType || (v.ownerId?.toString() === user._id.toString() ? 'Resident Owner' : 'Resident');
+            accessibleUnits.push({
+              villaId: vId,
+              villaNumber: v.unitNumber || '',
+              block: v.blockOrBuilding || '',
+              residentType: resType
+            });
+          }
+        }
+      } catch (villaErr) {
+        // Non-blocking fallback
+      }
+    }
+
+    // --- ASSIGNMENT & SCOPE RESOLUTION ---
+    const allAssignmentsByRole = {};
+    for (const rName of roleNames) {
+      allAssignmentsByRole[rName] = [];
+    }
+
+    if (selectedMembership) {
+      const selectedOrgIdStr = selectedMembership.orgId._id.toString();
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === selectedOrgIdStr);
+
+      // 1. Explicit assignments configured directly in OrgMembership.assignments
+      for (const m of sameOrgMemberships) {
+        if (m.assignments && Array.isArray(m.assignments) && m.assignments.length > 0) {
+          for (const asg of m.assignments) {
+            const asgRole = asg.roleName || (asg.roleId?.name) || roleName;
+            const item = {
+              id: asg._id ? asg._id.toString() : (asg.entityId ? asg.entityId.toString() : asg.name),
+              name: asg.name,
+              type: asg.assignmentType || 'general',
+              role: asgRole,
+              metadata: asg.metadata || {}
+            };
+            if (!allAssignmentsByRole[asgRole]) {
+              allAssignmentsByRole[asgRole] = [];
+            }
+            if (!allAssignmentsByRole[asgRole].some(x => x.name.toLowerCase() === item.name.toLowerCase())) {
+              allAssignmentsByRole[asgRole].push(item);
+            }
+          }
+        }
+      }
+
+      // 2. Resident / Unit Assignments (ONLY for resident roles)
+      const residentRoles = roleNames.filter(r => /resident|tenant|owner|family/i.test(r));
+      for (const rRole of residentRoles) {
+        if (allAssignmentsByRole[rRole].length === 0) {
+          for (const u of accessibleUnits) {
+            const uName = u.villaNumber ? `Villa ${u.villaNumber}` : (u.block ? `${u.block} Unit` : 'Villa Unit');
+            if (!allAssignmentsByRole[rRole].some(x => x.id === u.villaId)) {
+              allAssignmentsByRole[rRole].push({
+                id: u.villaId,
+                name: uName,
+                type: 'villa',
+                role: rRole,
+                metadata: {
+                  villaId: u.villaId,
+                  villaNumber: u.villaNumber,
+                  block: u.block,
+                  residentType: u.residentType
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Available assignments for the active role persona
+    const availableAssignments = (roleName && allAssignmentsByRole[roleName]) ? allAssignmentsByRole[roleName] : [];
+
+    // Resolve Active Assignment
+    let activeAssignment = null;
+    let targetAssignmentId = null;
+    let targetAssignmentName = null;
+
+    if (targetAssignment) {
+      if (typeof targetAssignment === 'string') {
+        targetAssignmentId = targetAssignment;
+      } else if (typeof targetAssignment === 'object') {
+        targetAssignmentId = targetAssignment.id || targetAssignment.targetAssignmentId || null;
+        targetAssignmentName = targetAssignment.name || targetAssignment.targetAssignmentName || null;
+      }
+    }
+
+    if (targetAssignmentId || targetAssignmentName) {
+      // STRICT AUTHORIZATION: Validate target assignment belongs to this user, role, and organization
+      const matched = availableAssignments.find(a => 
+        (targetAssignmentId && a.id.toString() === targetAssignmentId.toString()) ||
+        (targetAssignmentName && a.name.toLowerCase() === targetAssignmentName.toLowerCase())
+      );
+      if (!matched) {
+        throw new HttpError(400, `Access denied: Invalid assignment for role '${roleName}' in this organisation.`);
+      }
+      activeAssignment = matched;
+    } else if (targetVillaId) {
+      const targetVillaIdStr = targetVillaId.toString();
+      const matchedVilla = availableAssignments.find(a => a.id.toString() === targetVillaIdStr || a.metadata?.villaId?.toString() === targetVillaIdStr);
+      if (matchedVilla) {
+        activeAssignment = matchedVilla;
+      }
+    }
+
+    if (!activeAssignment && availableAssignments.length > 0) {
+      activeAssignment = availableAssignments[0];
+    }
+
+    // If active assignment is a villa, ensure targetVillaId matches it
+    if (activeAssignment && activeAssignment.type === 'villa') {
+      targetVillaId = activeAssignment.id;
+    }
+
+    // Resolve primary unit (validating permission if a specific targetVillaId is requested)
+    let primaryUnit = null;
+    if (selectedMembership && isResidentRole) {
+      if (targetVillaId) {
+        const targetVillaIdStr = targetVillaId.toString();
+        const isTargetVillaAccessible = accessibleUnits.some(u => u.villaId === targetVillaIdStr);
+        if (!isTargetVillaAccessible) {
+          targetVillaId = null;
+        }
+
+        if (selectedMembership.units && selectedMembership.units.length > 0) {
+          primaryUnit = selectedMembership.units.find(u => u.villaId && (u.villaId._id ? u.villaId._id.toString() === targetVillaIdStr : u.villaId.toString() === targetVillaIdStr));
+        }
+        if (!primaryUnit && selectedMembership.villaId) {
+          const rootVId = selectedMembership.villaId._id ? selectedMembership.villaId._id.toString() : selectedMembership.villaId.toString();
+          if (rootVId === targetVillaIdStr) {
+            primaryUnit = {
+              villaId: selectedMembership.villaId,
+              residentType: selectedMembership.residentType || 'None'
+            };
+          }
+        }
+        if (!primaryUnit) {
+          const matchedAccessible = accessibleUnits.find(u => u.villaId === targetVillaIdStr);
+          if (matchedAccessible) {
+            const Villa = (await import('../villa/villa.model.js')).default;
+            const villaDoc = await Villa.findById(targetVillaIdStr).lean();
+            if (villaDoc) {
+              primaryUnit = {
+                villaId: villaDoc,
+                residentType: matchedAccessible.residentType || 'Resident'
+              };
+            }
+          }
+        }
+      }
+
+      if (!primaryUnit && selectedMembership.units && selectedMembership.units.length > 0) {
+        primaryUnit = selectedMembership.units[0];
+      }
+      if (!primaryUnit && selectedMembership.villaId) {
+        primaryUnit = {
+          villaId: selectedMembership.villaId,
+          residentType: selectedMembership.residentType || 'None'
+        };
+      }
+      if (!primaryUnit && accessibleUnits.length > 0) {
+        const firstAccessible = accessibleUnits[0];
+        const Villa = (await import('../villa/villa.model.js')).default;
+        const villaDoc = await Villa.findById(firstAccessible.villaId).lean();
+        if (villaDoc) {
+          primaryUnit = {
+            villaId: villaDoc,
+            residentType: firstAccessible.residentType || 'Resident'
+          };
+        }
+      }
+    }
+
+    const villaInfo = (isResidentRole && primaryUnit?.villaId) ? {
+      id: primaryUnit.villaId._id ? primaryUnit.villaId._id.toString() : primaryUnit.villaId.toString(),
+      villaNumber: primaryUnit.villaId.unitNumber || '',
+      block: primaryUnit.villaId.blockOrBuilding || '',
+      intercom: primaryUnit.villaId.intercom || '',
+      occupancyStatus: primaryUnit.villaId.status || '',
+      residentType: primaryUnit.residentType || 'None',
+    } : null;
+
+    let visitorContext = 'None';
+    if (permissions && permissions.length > 0) {
+      if (permissions.includes('visitor:admin')) {
+        visitorContext = 'Admin';
+      } else if (permissions.includes('visitor:guard')) {
+        visitorContext = 'Guard';
+      } else if (permissions.includes('visitor:resident')) {
+        visitorContext = 'Resident';
+      }
+    }
+
+    const activeOrgName = selectedMembership?.orgId?.name || null;
+    const activeOrgCountryCode = selectedMembership?.orgId?.countryCode || 'IN';
+
+    // Fire-and-forget: Remember the newly resolved community as the user's last active organization
+    if (orgId && (!user.lastActiveOrgId || user.lastActiveOrgId.toString() !== orgId)) {
+      import('../user/user.model.js').then((m) => {
+        m.default.updateOne({ _id: user._id }, { $set: { lastActiveOrgId: orgId } }).catch(() => {});
+      });
+    }
+
+    return {
+      tokenPayload: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: roleName,
+        roleId: activeRoleObj ? activeRoleObj._id.toString() : null,
+        roles: roleNames || [],
+        orgId,
+        orgName: activeOrgName,
+        organizationName: activeOrgName,
+        activeOrganizationName: activeOrgName,
+        orgCountryCode: activeOrgCountryCode,
+        isPlatform,
+        visitorContext,
+        activeAssignment: activeAssignment ? {
+          id: activeAssignment.id,
+          name: activeAssignment.name,
+          type: activeAssignment.type,
+          role: activeAssignment.role,
+          metadata: activeAssignment.metadata || {},
+        } : null,
+        availableAssignments,
+        accessibleAssignments: allAssignmentsByRole,
+        assignedGate: activeAssignment?.type === 'gate' ? activeAssignment.name : (user.gate || ''),
+        assignedFacility: activeAssignment?.type === 'facility' ? activeAssignment.name : '',
+        villaId: isResidentRole && villaInfo ? villaInfo.id : null,
+        villaNumber: isResidentRole && villaInfo ? villaInfo.villaNumber : '',
+        villaBlock: isResidentRole && villaInfo ? villaInfo.block : '',
+        residentType: isResidentRole && villaInfo ? villaInfo.residentType : 'None',
+        accessibleUnits: isResidentRole ? accessibleUnits : [],
+      },
+      permissions,
+      availableWorkspaces,
+    };
+  }
+
+  /**
+   * Helper to format consistent auth user payload containing unit and organization context.
+   */
+  _formatAuthUser(user, tokenPayload, permissions = [], availableWorkspaces = []) {
+    return {
+      id: user._id,
+      email: user.email,
+      status: user.status,
+      username: user.username,
+      name: user.name || user.username || user.email,
+      phone: user.phone || '',
+      avatar: user.avatar || '',
+      bio: user.bio || '',
+      work: user.work || '',
+      hometown: user.hometown || '',
+      allowIntercomCalls: Boolean(user.allowIntercomCalls),
+      interests: Array.isArray(user.interests) ? user.interests : [],
+      role: tokenPayload.role,
+      roleId: tokenPayload.roleId,
+      roles: tokenPayload.roles,
+      permissions: permissions,
+      orgId: tokenPayload.orgId,
+      activeOrgId: tokenPayload.orgId,
+      orgName: tokenPayload.orgName,
+      organizationName: tokenPayload.organizationName,
+      activeOrganizationName: tokenPayload.activeOrganizationName,
+      orgCountryCode: tokenPayload.orgCountryCode || 'IN',
+      isPlatform: tokenPayload.isPlatform,
+      visitorContext: tokenPayload.visitorContext,
+      activeAssignment: tokenPayload.activeAssignment || null,
+      availableAssignments: tokenPayload.availableAssignments || [],
+      accessibleAssignments: tokenPayload.accessibleAssignments || {},
+      assignedGate: tokenPayload.assignedGate || '',
+      assignedFacility: tokenPayload.assignedFacility || '',
+      villaId: tokenPayload.villaId,
+      villaNumber: tokenPayload.villaNumber,
+      activeVillaNumber: tokenPayload.villaNumber,
+      unitNumber: tokenPayload.villaNumber,
+      villaBlock: tokenPayload.villaBlock,
+      residentType: tokenPayload.residentType,
+      accessibleUnits: tokenPayload.accessibleUnits || [],
+      availableWorkspaces,
+    };
+  }
+
+  /**
+   * Authenticates user and generates a token with flattened permission scopes.
+   * @param {object} loginData - Payload containing login (email/username) and password
+   */
+  
   /**
 
    * Registers a new user with standard credentials.
@@ -172,6 +705,16 @@ export class AuthService {
       await userService.updateUser(user._id, { status: 'Active', emailVerified: true }, session);
 
       const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+      if (inviteToken) {
+        const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
+        if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
+        await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
+        const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
+        if (membership && membership.units) { const villaService = (await import('../villa/villa.services.js')).default; for (const unit of membership.units) { if (unit.villaId) { await villaService.assignResidentToVilla(unit.villaId._id || unit.villaId, user._id, unit.residentType || 'Resident', session, tokenRes.orgId); } } }
+        await tokenService.consumeInvitationToken(inviteToken, session);
+      }
+
 
       await session.commitTransaction();
 
@@ -261,7 +804,8 @@ export class AuthService {
       if (!selectedMembership) {
         const pendingMatch = memberships.find((m) => m.orgId && m.orgId._id && m.orgId._id.toString() === targetOrgIdStr);
         if (pendingMatch && (!pendingMatch.orgId.status || pendingMatch.orgId.status.toLowerCase() === 'active')) {
-          await orgMembershipService.updateStatus(user._id, targetOrgIdStr, 'Active');
+          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, targetOrgIdStr, 'Active');
           pendingMatch.status = 'Active';
           selectedMembership = pendingMatch;
           activeMemberships.push(pendingMatch);
@@ -805,8 +1349,8 @@ export class AuthService {
         }
 
         if (targetOrgIdFromInvite) {
-          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-          await orgMembershipService.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
+          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
 
           // If user was in Pending Verification, activate their global user profile
           if (user.status === 'Pending Verification' || user.status === 'Pending') {
@@ -1136,7 +1680,8 @@ export class AuthService {
       }
 
       // Update OrgMembership status to Active for this organization or user
-      await orgMembershipService.updateStatus(user._id, orgId || null, 'Active', session);
+      if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId || null, 'Active', session);
 
       // Assign resident to villa upon accepting invitation
       if (orgId) {
@@ -1266,7 +1811,8 @@ export class AuthService {
       }
 
       // Update OrgMembership status to Rejected for this organization
-      await orgMembershipService.updateStatus(user._id, orgId || null, 'Rejected', session).catch(() => null);
+      if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId || null, 'Rejected', session).catch(() => null);
 
       // Ensure user is removed from any villa in this organization
       if (orgId) {
@@ -1449,8 +1995,8 @@ export class AuthService {
         try {
           const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
           targetOrgIdFromInvite = orgId;
-          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-          await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
+          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId, 'Active', session);
           userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
           userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
         } catch (tokenError) {
@@ -1617,8 +2163,8 @@ export class AuthService {
         try {
           const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
           targetOrgIdFromInvite = orgId;
-          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-          await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
+          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId, 'Active', session);
         } catch (tokenError) {
           if (user.status === 'Pending Verification') {
             throw tokenError;
@@ -1746,7 +2292,7 @@ export class AuthService {
    * @param {string} code - OTP verification code
    * @param {object} deviceInfo - Client device meta
    */
-  async verifyPhoneLogin(phone, code, deviceInfo) {
+  async verifyPhoneLogin(phone, code, deviceInfo, inviteToken) {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
     const mongoose = (await import('mongoose')).default;
@@ -1788,7 +2334,7 @@ export class AuthService {
         throw new HttpError(404, 'User not found.');
       }
 
-      if (user.status !== 'Active') {
+      if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
         throw new HttpError(403, `Account is ${user.status}`);
       }
 
@@ -1801,6 +2347,16 @@ export class AuthService {
 
       // 3. Generate session refresh token
       const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+      if (inviteToken) {
+        const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
+        if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
+        await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
+        const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
+        if (membership && membership.units) { const villaService = (await import('../villa/villa.services.js')).default; for (const unit of membership.units) { if (unit.villaId) { await villaService.assignResidentToVilla(unit.villaId._id || unit.villaId, user._id, unit.residentType || 'Resident', session, tokenRes.orgId); } } }
+        await tokenService.consumeInvitationToken(inviteToken, session);
+      }
+
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
@@ -1967,7 +2523,7 @@ export class AuthService {
     }
   }
 
-  async verifyEmailOtpLogin(email, code, deviceInfo) {
+  async verifyEmailOtpLogin(email, code, deviceInfo, inviteToken) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -1983,7 +2539,7 @@ export class AuthService {
         throw new HttpError(404, 'User not found.');
       }
 
-      if (user.status !== 'Active') {
+      if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
         throw new HttpError(403, `Account is ${user.status}`);
       }
 
@@ -1992,6 +2548,16 @@ export class AuthService {
       }
 
       const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+      if (inviteToken) {
+        const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
+        if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
+        await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
+        const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
+        if (membership && membership.units) { const villaService = (await import('../villa/villa.services.js')).default; for (const unit of membership.units) { if (unit.villaId) { await villaService.assignResidentToVilla(unit.villaId._id || unit.villaId, user._id, unit.residentType || 'Resident', session, tokenRes.orgId); } } }
+        await tokenService.consumeInvitationToken(inviteToken, session);
+      }
+
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
@@ -2236,8 +2802,8 @@ export class AuthService {
 
       // Update OrgMembership status to Active for this organization
       if (orgId) {
-        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-        await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(userId, orgId, 'Active', session);
 
         const membership = await orgMembershipService.getMembershipWithVilla(userId, orgId, session);
         if (membership) {
@@ -2864,7 +3430,7 @@ export class AuthService {
       throw new HttpError(404, 'User account not found.');
     }
 
-    if (user.status !== 'Active') {
+    if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
       throw new HttpError(403, 'Account is not active. Complete invitation acceptance before mobile handoff.');
     }
 
@@ -2907,7 +3473,7 @@ export class AuthService {
       throw new HttpError(404, 'User account not found.');
     }
 
-    if (user.status !== 'Active') {
+    if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
       throw new HttpError(403, 'User account is not active or has been suspended.');
     }
 
@@ -2937,3 +3503,7 @@ export class AuthService {
 }
 
 export default new AuthService();
+
+
+
+

@@ -16,7 +16,7 @@ export class AuthController {
 
   async verifyRegistrationOtp(req, res, next) {
     try {
-      const { email, code } = req.body;
+      const { email, code, inviteToken } = req.body;
       const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
       const data = await authService.verifyRegistrationOtp(email, code, deviceInfo);
       setAuthCookie(res, data.token);
@@ -212,14 +212,14 @@ export class AuthController {
 
   async verifyPhoneLogin(req, res, next) {
     try {
-      const { phone, code } = req.body;
+      const { phone, code, inviteToken } = req.body;
       const deviceInfo = {
         deviceName: req.headers['user-agent'],
         browser: 'Browser',
         os: 'OS',
         ipAddress: req.ip,
       };
-      const data = await authService.verifyPhoneLogin(phone, code, deviceInfo);
+      const data = await authService.verifyPhoneLogin(phone, code, deviceInfo, inviteToken);
       setAuthCookie(res, data.token);
       setRefreshTokenCookie(res, data.refreshToken);
       res.success(data, 'Login successful');
@@ -278,7 +278,7 @@ export class AuthController {
         os: 'OS',
         ipAddress: req.ip,
       };
-      const data = await authService.verifyEmailOtpLogin(email, code, deviceInfo);
+      const data = await authService.verifyEmailOtpLogin(email, code, deviceInfo, inviteToken);
       setAuthCookie(res, data.token);
       setRefreshTokenCookie(res, data.refreshToken);
       res.success(data, 'Login successful');

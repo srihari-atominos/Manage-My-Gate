@@ -228,6 +228,7 @@ export const phoneVerifyRules = [
     .withMessage('Verification code must be exactly 6 digits')
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
+  body('inviteToken').optional({ nullable: true }).isString().trim(),
 ];
 
 /**
@@ -262,6 +263,7 @@ export const emailOtpVerifyRules = [
     .withMessage('Verification code must be exactly 6 digits')
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
+  body('inviteToken').optional({ nullable: true }).isString().trim(),
 ];
 
 /**

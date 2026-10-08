@@ -48,7 +48,9 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email, phone, villaId, residentType, roleName, name, onboardingMode = 'INVITATION' } = req.body;
+      const { email, phone, roleName, name, onboardingMode = 'INVITATION' } = req.body;
+      const villaId = null;
+      const residentType = 'None';
       const orgId = req.tenant.orgId;
 
       const inviterId = req.user?.id || req.user?._id || null;

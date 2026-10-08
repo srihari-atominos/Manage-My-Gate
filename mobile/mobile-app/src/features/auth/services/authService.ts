@@ -1,16 +1,8 @@
 import { Platform } from 'react-native';
 import apiClient from '../../../services/apiClient';
 
-export const login = async (credentials: any) => {
-  return await apiClient.post('/auth/login', credentials);
-};
-
 export const register = async (userData: any) => {
   return await apiClient.post('/auth/register', userData);
-};
-
-export const acceptInvite = async ({ token, email, password }: any) => {
-  return await apiClient.post('/auth/accept-invite', { token, email, password });
 };
 
 export const acceptSsoInvite = async (payload: {
@@ -64,16 +56,16 @@ export const initiatePhoneLogin = async (phone: string) => {
   return await apiClient.post('/auth/login/phone', { phone });
 };
 
-export const verifyPhoneLogin = async (phone: string, code: string) => {
-  return await apiClient.post('/auth/login/phone/verify', { phone, code });
+export const verifyPhoneLogin = async (phone: string, code: string, inviteToken?: string) => {
+  return await apiClient.post('/auth/login/phone/verify', { phone, code, inviteToken });
 };
 
 export const initiateEmailOtpLogin = async (email: string) => {
   return await apiClient.post('/auth/login/email-otp', { email });
 };
 
-export const verifyEmailOtpLogin = async (email: string, code: string) => {
-  return await apiClient.post('/auth/login/email-otp/verify', { email, code });
+export const verifyEmailOtpLogin = async (email: string, code: string, inviteToken?: string) => {
+  return await apiClient.post('/auth/login/email-otp/verify', { email, code, inviteToken });
 };
 
 export const forgotPassword = async (identifier: string) => {
@@ -211,11 +203,18 @@ export const getCurrentContext = async (orgId?: string) => {
   return await apiClient.get(`/auth/current-context${query}`);
 };
 
+export const initiateInvitationOtp = async (inviteToken: string) => {
+  return await apiClient.post('/auth/invitation/otp/initiate', { inviteToken });
+};
+
+export const verifyInvitationOtp = async (inviteToken: string, otpCode: string) => {
+  return await apiClient.post('/auth/invitation/otp/verify', { inviteToken, otpCode });
+};
+
+
 export default {
-  login,
   register,
   verifyRegistration,
-  acceptInvite,
   acceptSsoInvite,
   rejectInvite,
   validateInvite,

@@ -1139,11 +1139,11 @@ export default function AcceptInviteScreen() {
                     textClassName="font-semibold text-sm text-red-600">
                     Reject
                   </Button>
+
                 </View>
                   </>
                 )}
               </View>
-
 {/* SSO Separator */}
               <View className="my-2 flex-row items-center">
                 <View className="h-px flex-1 bg-border" />
@@ -1218,3 +1218,5 @@ export default function AcceptInviteScreen() {
     </>
   );
 }
+
+

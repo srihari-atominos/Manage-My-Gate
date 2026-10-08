@@ -56,15 +56,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 
 // 1. Basic Auth Validation Schema
-const basicAuthSchema = yup.object().shape({
-  login: yup
-    .string()
-    .required('Email or Username is required')
-    .min(3, 'Must be at least 3 characters'),
-  password: yup
-    .string()
-    .required('Password is required')
-    .min(4, 'Password must be at least 4 characters'),
+const emailAuthSchema = yup.object().shape({
+  login: yup.string().required('Email is required').email('Must be a valid email'),
 });
 
 // 2. Phone OTP Validation Schema
@@ -78,9 +71,8 @@ const phoneSchema = yup.object().shape({
     }),
 });
 
-interface BasicAuthFormValues {
+interface EmailFormValues {
   login: string;
-  password: string;
 }
 
 interface PhoneFormValues {
@@ -122,8 +114,7 @@ export default function LoginScreen() {
   const [authMode, setAuthMode] = React.useState<'basic' | 'phone'>('basic');
   const [submittedPhone, setSubmittedPhone] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
-  const [keepSignedIn, setKeepSignedIn] = React.useState(true);
-  const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
+    const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
   const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
   const hasNavigatedRef = React.useRef(false);
   const [switchDismissed, setSwitchDismissed] = React.useState(false);
@@ -447,12 +438,11 @@ export default function LoginScreen() {
   };
 
   // Basic Auth Form Hook
-  const basicForm = useForm<BasicAuthFormValues>({
-    resolver: yupResolver(basicAuthSchema),
+  const basicForm = useForm<EmailFormValues>({
+    resolver: yupResolver(emailAuthSchema),
     mode: 'onTouched',
     defaultValues: {
       login: params.email ? decodeURIComponent(params.email) : '',
-      password: '',
     },
   });
 
@@ -510,61 +500,20 @@ export default function LoginScreen() {
 
   // Reactively route to OTP screen if Phone OTP sent
   React.useEffect(() => {
-    if (otpSent && submittedPhone) {
+    if (otpSent) {
       router.push({
         pathname: '/(auth)/otp',
-        params: { phone: submittedPhone },
+        params: { phone: submittedPhone, email: basicForm.getValues("login") },
       });
     }
   }, [otpSent, submittedPhone]);
 
-  const handleKeepSignedInChange = (checked: boolean) => {
-    setKeepSignedIn(checked);
-    // Persist immediately so social sign-in uses the same preference.
-    void storage.setItem('keep_signed_in', checked ? 'true' : 'false');
-  };
-
-  const savePreferences = async () => {
-    try {
-      await storage.setItem('keep_signed_in', keepSignedIn ? 'true' : 'false');
-    } catch (e) {
-      console.warn('Failed to save login preferences', e);
-    }
-  };
-
+  
   // Handle Basic Auth Submit
-  const onBasicSubmit = async (data: BasicAuthFormValues) => {
-    const activeInviteToken = params.inviteToken || params.token || (
-      typeof window !== 'undefined' && window.location?.href
-        ? (window.location.href.match(/[\/?&](?:inviteToken|token|code)=([^&#]+)/i)?.[1] || undefined)
-        : undefined
-    );
-
+  const onBasicSubmit = async (data: EmailFormValues) => {
     setIsSubmittingBasic(true);
     try {
-      await savePreferences();
-      const resultAction: any = await performLogin({
-        login: data.login.trim(),
-        password: data.password,
-        ...(activeInviteToken ? { inviteToken: activeInviteToken } : {}),
-      });
-
-      // Invoke Google / Browser Credential Management API only upon successful login on Web
-      if (resultAction && (resultAction.meta?.requestStatus === 'fulfilled' || (!resultAction.error && !resultAction.payload?.error))) {
-        if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials?.store) {
-          try {
-            // @ts-ignore
-            const cred = new window.PasswordCredential({
-              id: data.login.trim(),
-              password: data.password,
-              name: data.login.trim(),
-            });
-            await (navigator as any).credentials.store(cred);
-          } catch (e) {
-            // Safe fallback if dismissed or unsupported
-          }
-        }
-      }
+      await requestOtp(data.login.trim(), true);
     } finally {
       setIsSubmittingBasic(false);
     }
@@ -793,7 +742,7 @@ export default function LoginScreen() {
                             feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
                             errorClassName="text-[11.5px] font-bold text-red-400"
                             returnKeyType="next"
-                            onSubmitEditing={() => passwordInputRef.current?.focus()}
+                            
                             blurOnSubmit={false}
                           />
                         )}

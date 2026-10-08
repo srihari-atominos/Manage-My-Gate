@@ -33,9 +33,8 @@ interface BulkInviteModalProps {
 interface InviteRowItem {
   id: string;
   email: string;
+  phone: string;
   roleName: string;
-  villaId: string;
-  residentType: string;
   isValid: boolean;
   error?: string;
 }
@@ -89,9 +88,8 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
             {
               id: String(Date.now()),
               email: '',
+              phone: '',
               roleName: defaultRole,
-              villaId: '',
-              residentType: 'None',
               isValid: false,
             },
           ]);
@@ -135,22 +133,14 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
 
       const parts = line.split(',').map((p) => p.trim());
       const email = parts[0] || '';
-      const roleName = parts[1] || (roles[0]?.name || '');
-      const villaName = parts[2] || '';
-      const residentType = parts[3] || 'None';
-
-      const matchingVilla = villas.find(
-        (v) =>
-          String(v.unitNumber || v.villaNumber).toLowerCase() === villaName.toLowerCase() ||
-          String(v.unitNumber || v.villaNumber) === villaName.replace(/villa/i, '').trim()
-      );
+      const phone = parts[1] || '';
+      const roleName = parts[2] || (roles[0]?.name || '');
 
       const row: InviteRowItem = {
         id: String(Date.now() + index),
         email,
+        phone,
         roleName,
-        villaId: matchingVilla?._id || matchingVilla?.id || '',
-        residentType,
         isValid: false,
       };
 
@@ -212,9 +202,8 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     const newRow: InviteRowItem = {
       id: String(Date.now() + Math.random()),
       email: '',
+      phone: '',
       roleName: defaultRole,
-      villaId: '',
-      residentType: 'None',
       isValid: false,
     };
     setRows((prev) => [...prev, newRow]);
@@ -269,9 +258,8 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     try {
       const payload: InviteUserData[] = validRows.map((r) => ({
         email: r.email.trim(),
+        phone: r.phone.trim(),
         roleName: r.roleName || null,
-        villaId: r.villaId || null,
-        residentType: r.residentType || 'None',
       }));
 
       const res = await onBulkInvite(payload);
@@ -472,6 +460,17 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                             />
                           </View>
 
+                          {/* Phone Field */}
+                          <View className="mb-2.5">
+                            <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Phone Number *</Text>
+                            <TextInput
+                              placeholder="+1234567890"
+                              value={row.phone}
+                              onChangeText={(val) => handleRowChange(row.id, 'phone', val)}
+                              keyboardType="phone-pad"
+                            />
+                          </View>
+
                           {/* Role Selection */}
                           <View className="mb-2.5">
                             <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Assigned Role *</Text>
@@ -483,19 +482,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                             />
                           </View>
 
-                          {/* Unit Selection if Tenant/Unit role */}
-                          {isTenantRole && (
-                            <View className="mb-1">
-                              <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Villa Unit (Optional)</Text>
-                              <DropdownSelect
-                                options={villaOptions}
-                                value={row.villaId}
-                                onValueChange={(val) => handleRowChange(row.id, 'villaId', val)}
-                                placeholder="-- Choose Villa Unit (Optional) --"
-                              />
-                            </View>
-                          )}
-                        </View>
+                          </View>
                       );
                     })}
 

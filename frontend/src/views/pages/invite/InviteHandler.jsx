@@ -476,7 +476,29 @@ const InviteHandlerContent = () => {
                       isMobileDevice={isMobileDevice()}
                       onAcceptDeviceRouting={() => {
                         if (isMobileDevice()) {
-                          processSuccessfulAcceptance()
+                          // For OTP_LOGIN, the user is NOT authenticated yet.
+                          // We cannot generate a secure handoff ticket (/auth/invite/handoff).
+                          // Instead, explicitly hand off the raw invitation token to the native 
+                          // mobile app route designed to handle it natively.
+                          const isIos =
+                            /iphone|ipad|ipod/i.test(navigator.userAgent || '') ||
+                            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+                          const storeUrl = isIos ? APP_STORE_URL : PLAY_STORE_URL
+                          const deepLink = `managemygate://accept-invite?token=${token}`
+
+                          window.location.href = deepLink
+
+                          const storeTimer = setTimeout(() => {
+                            window.location.href = storeUrl
+                          }, 1800)
+
+                          const cancelOnHide = () => {
+                            if (document.hidden) {
+                              clearTimeout(storeTimer)
+                              document.removeEventListener('visibilitychange', cancelOnHide)
+                            }
+                          }
+                          document.addEventListener('visibilitychange', cancelOnHide)
                         }
                       }}
                       onSuccess={() => {

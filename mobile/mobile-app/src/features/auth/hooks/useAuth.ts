@@ -1,14 +1,12 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import {
-  loginUser,
-  loginWithGoogleThunk,
+    loginWithGoogleThunk,
   loginWithMicrosoftThunk,
   loginWithAppleThunk,
   registerUserThunk,
   verifyRegistrationThunk,
-  acceptInviteThunk,
-  acceptSsoInviteThunk,
+    acceptSsoInviteThunk,
   createWorkspaceThunk,
   updateOrganizationFeaturesThunk,
   requestOtp,
@@ -38,13 +36,7 @@ export const useAuth = () => {
     otpSent: false,
   };
 
-  const handleLogin = useCallback(
-    (credentials: any) => {
-      return dispatch ? dispatch(loginUser(credentials)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
+  
   const handleLoginWithGoogle = useCallback(
     (tokenOrPayload: string | any) => {
       const payload = typeof tokenOrPayload === 'string' ? { token: tokenOrPayload } : tokenOrPayload;
@@ -81,13 +73,7 @@ export const useAuth = () => {
     [dispatch]
   );
 
-  const handleAcceptInvite = useCallback(
-    (token: string, password?: string, email?: string) => {
-      return dispatch ? dispatch(acceptInviteThunk({ token, password, email })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
+  
   const handleAcceptSsoInvite = useCallback(
     (payload: {
       inviteToken: string;
@@ -131,8 +117,8 @@ export const useAuth = () => {
   );
 
   const handleVerifyOtp = useCallback(
-    (identifier: string, code: string, isEmail: boolean = false) => {
-      return dispatch ? dispatch(verifyOtpLogin({ identifier, code, isEmail })) : Promise.resolve();
+    (identifier: string, code: string, isEmail: boolean = false, inviteToken?: string) => {
+      return dispatch ? dispatch(verifyOtpLogin({ identifier, code, isEmail, inviteToken })) : Promise.resolve();
     },
     [dispatch]
   );
@@ -190,10 +176,8 @@ export const useAuth = () => {
 
   return {
     ...authState,
-    login: handleLogin,
     register: handleRegister,
     verifyRegistration: handleVerifyRegistration,
-    acceptInvite: handleAcceptInvite,
     acceptSsoInvite: handleAcceptSsoInvite,
     createWorkspace: handleCreateWorkspace,
     updateOrganizationFeatures: handleUpdateOrganizationFeatures,

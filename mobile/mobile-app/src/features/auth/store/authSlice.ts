@@ -272,38 +272,6 @@ export const bootstrapAuth = createAsyncThunk(
   }
 );
 
-export const loginUser = createAsyncThunk(
-  'auth/loginUser',
-  async (credentials: any, { rejectWithValue }) => {
-    try {
-      const response = await authService.login(credentials);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      
-      if (body && body.success === false) {
-        return rejectWithValue(body.message || 'Login failed');
-      }
-
-      const innerData = body?.data || body;
-      const token = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const rawUser = innerData?.user;
-      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
-      const user = rawUser ? { ...rawUser, availableWorkspaces } : null;
-
-      if (!token || !user) {
-        return rejectWithValue(body?.message || 'Invalid credentials or login response');
-      }
-
-      if (token) await storage.setItem('token', token);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-
-      return { ...innerData, user } as any;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed');
-    }
-  }
-);
 
 export const registerUserThunk = createAsyncThunk(
   'auth/registerUser',
@@ -424,39 +392,6 @@ export const loginWithAppleThunk = createAsyncThunk(
   }
 );
 
-export const acceptInviteThunk = createAsyncThunk(
-  'auth/acceptInvite',
-  async (
-    { token, email, password }: { token: string; email?: string; password?: string },
-    { rejectWithValue }
-  ) => {
-    try {
-      const response = await authService.acceptInvite({ token, email, password });
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      if (body && body.success === false) {
-        return rejectWithValue(body.message || 'Failed to accept invitation');
-      }
-
-      const innerData = body?.data || body;
-      const authToken = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const rawUser = innerData?.user;
-      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
-      const user = normalizeUser(rawUser ? { ...rawUser, availableWorkspaces } : rawUser);
-
-      if (authToken) await storage.setItem('token', authToken);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-      if (availableWorkspaces && availableWorkspaces.length > 0) {
-        await storage.setItem('availableWorkspaces', JSON.stringify(availableWorkspaces));
-      }
-
-      return { ...innerData, user, availableWorkspaces } as any;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation');
-    }
-  }
-);
 
 export const acceptSsoInviteThunk = createAsyncThunk(
   'auth/acceptSsoInvite',
@@ -541,11 +476,11 @@ export const requestOtp = createAsyncThunk(
 
 export const verifyOtpLogin = createAsyncThunk(
   'auth/verifyOtpLogin',
-  async ({ identifier, code, isEmail }: { identifier: string; code: string; isEmail: boolean }, { rejectWithValue }) => {
+  async ({ identifier, code, isEmail, inviteToken }: { identifier: string; code: string; isEmail: boolean; inviteToken?: string }, { rejectWithValue }) => {
     try {
       const response = isEmail
-        ? await authService.verifyEmailOtpLogin(identifier, code)
-        : await authService.verifyPhoneLogin(identifier, code);
+        ? await authService.verifyEmailOtpLogin(identifier, code, inviteToken)
+        : await authService.verifyPhoneLogin(identifier, code, inviteToken);
 
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       if (body && body.success === false) {

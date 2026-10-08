@@ -2,9 +2,7 @@ import { Router } from 'express';
 import authController from './auth.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import { 
-  loginRules, 
   registerRules, 
-  acceptInviteRules, 
   switchContextRules, 
   ssoVerifyRules,
   phoneLoginRules,
@@ -13,11 +11,6 @@ import {
   inviteOtpVerifyRules,
   emailOtpLoginRules,
   emailOtpVerifyRules,
-  forgotPasswordRules,
-  verifyResetPasswordOtpRules,
-  resetPasswordRules,
-  setupAccountPasswordRules,
-  acceptInviteSsoRules,
   exchangeHandoffRules,
   sendFirstTimeSetupOtpRules,
   completeFirstTimeSetupRules,

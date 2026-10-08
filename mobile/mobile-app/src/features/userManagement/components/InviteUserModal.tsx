@@ -41,6 +41,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   const { t } = useTranslation();
   // Form values
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [selectedRoleName, setSelectedRoleName] = useState('');
   const [selectedVillaId, setSelectedVillaId] = useState('');
 
@@ -102,8 +103,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
   const resetForm = () => {
     setEmail('');
+    setPhone('');
     setSelectedRoleName('');
-    setSelectedVillaId('');
     setEmailStatus('idle');
     setEmailMessage(undefined);
     setIsEmailChecking(false);
@@ -257,9 +258,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       return;
     }
 
-    // Validate villa if tenant role
-    if (isTenantRole && !selectedVillaId) {
-      setVillaError('Please select a villa or unit for this tenant role.');
+    if (!phone.trim()) {
+      setSubmitError('Phone number is required.');
       return;
     }
 
@@ -277,8 +277,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
       const res = await onSendInvite({
         email: email.trim(),
-        villaId: isTenantRole ? selectedVillaId || null : null,
-        residentType,
+        phone: phone.trim(),
         roleName: selectedRoleName || null,
       });
 
@@ -440,6 +439,17 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                     />
                   </View>
 
+                  <View>
+                    <TextInput
+                      label={t('phone_number', 'Phone Number')}
+                      required
+                      placeholder="+1234567890"
+                      value={phone}
+                      onChangeText={setPhone}
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+
                   {/* Role Select */}
                   <View>
                     {loadingRoles ? (
@@ -459,35 +469,6 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                       />
                     )}
                   </View>
-
-                  {/* Villa Select for Unit Roles */}
-                  {isTenantRole && (
-                    <View>
-                      {loadingVillas ? (
-                        <View className="py-3 items-center justify-center">
-                          <AppLoader variant="inline" />
-                          <Text className="text-xs text-muted-foreground mt-1">
-                            {t('loading', 'Loading villas...')}
-                          </Text>
-                        </View>
-                      ) : (
-                        <DropdownSelect
-                          label={t('unit_number', 'Select Villa / Unit')}
-                          required
-                          options={villaOptions}
-                          value={selectedVillaId}
-                          onValueChange={handleVillaChange}
-                          placeholder={t('choose_villa_placeholder', '-- Choose Villa Unit --')}
-                          error={villaError}
-                          helperText={t('assign_villa_help', 'Assign resident to their designated villa unit')}
-                        />
-                      )}
-                    </View>
-                  )}
-
-                  <Text className="text-xs text-muted-foreground text-start mt-1">
-                    {t('invitation_hint', 'An invitation code and setup link will be generated for password setup.')}
-                  </Text>
 
                   {/* Modal Footer */}
                   <View className="flex-row items-center justify-end gap-3 pt-3 border-t border-border mt-2">
