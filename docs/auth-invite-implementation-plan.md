@@ -307,3 +307,23 @@ _Each phase appends: date, commit, completed, deferred, blockers, tests._
 **Tests**
 - New `backend/tests/auth.phase7.session.test.mjs` 5/5 (context kept, rotation, grace window, fallback when membership is gone, logout without access token). Phases 0–4 all passing (19, 13, 18, 19, 13). `session.lifecycle.phaseA` 13/14 as before.
 - New mobile `logoutCleanup.test.ts` 2/2. Mobile unit suite 701 passed; the same 7 pre-existing suites fail (29 tests). Type-check clean for changed files.
+
+### Phase 8 — 2026-10-08 (preparation done; switch-off pending)
+
+**Completed**
+- `AUTH_PASSWORD_ENABLED` (default on) guards every password-era endpoint: `/auth/login`, `/auth/register`, `/auth/register/verify`, `/auth/forgot-password*`, `/auth/reset-password`, `/auth/setup-account-password`, `/auth/accept-invite`, `/auth/accept-invite/sso`. With `false` they return 410 `PASSWORD_AUTH_DISABLED`; OTP/SSO and `/auth/invitations/*` are unaffected.
+- The User model no longer requires a password for Active accounts (OTP-only accounts can now be saved).
+- Mobile: password-era code removed — `loginUser`, register/verify, password reset, SSO-invite, create-workspace and feature-update thunks with their reducers, `useAuth` handlers and API functions. In-app notification Accept/Decline now use `/auth/invitations/accept|decline` (by invitation id or link token). The mobile app no longer calls any password endpoint. The E2E session helper dispatches the OTP sign-in success action instead of `loginUser`.
+- `backend/scripts/auth-migration-report.mjs` (read-only): accounts with no email/phone to sign in with (blocking), users with no community membership, invited placeholders with no live invitation. Local dev DB: 0 blocking, 240 users without membership (seed/import data), 18 orphan placeholders.
+
+**Switch-off checklist (not done — needs the web track and production access)**
+1. Web app moved to email/phone OTP + SSO (its login, set-password and invite pages still use passwords).
+2. Payment provisioning (`processCompleteProvisioningFlow`) switched from the set-password email to `organizationService.provisionCommunity` + Community Admin invitation.
+3. A mobile release with Phases 5–7 is live; set `MOBILE_MIN_SUPPORTED_VERSION` to it so older builds must update.
+4. Run `node scripts/auth-migration-report.mjs --details` on production; fix every section-1 account; decide on sections 2–3.
+5. Move the mobile E2E global setup (visitor/amenity suites) from `/auth/login` to email OTP (`OTP_DEBUG=true` in the E2E backend).
+6. Set `AUTH_PASSWORD_ENABLED=false`; after one stable release delete the guarded endpoints, their services and validators, and drop stored password hashes.
+
+**Tests**
+- New `backend/tests/auth.phase8.passwordFlag.test.mjs` 4/4 (password-less Active account saves; login works with flag on; all 6 sampled password endpoints return 410 with flag off; OTP still works). All backend suites as before (Phases 0–4, 7: 19/13/18/19/13/5; phone 17; google 8; apple 6; payment.security 4; multiOrgAuth 13/15 pre-existing).
+- Mobile unit suite 697 passed (4 password-variant persistence tests removed); same 7 pre-existing failing suites. Type-check clean for changed files.

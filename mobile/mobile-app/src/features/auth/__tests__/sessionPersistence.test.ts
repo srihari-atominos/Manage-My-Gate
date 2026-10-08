@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import authReducer, { bootstrapAuth, loginUser, verifyOtpLogin } from '../store/authSlice';
+import authReducer, { bootstrapAuth, verifyOtpLogin } from '../store/authSlice';
 import authService from '../services/authService';
 import storage from '../../../utils/storage';
 
@@ -27,11 +27,10 @@ describe.each(['ios', 'android'] as const)('%s session preference', (platform) =
     (authService.switchContext as jest.Mock).mockResolvedValue(undefined);
   });
 
-  it.each(['password', 'otp'])('restores a saved %s session when enabled', async (method) => {
+  it.each(['otp'])('restores a saved %s session when enabled', async (method) => {
     await storage.setItem('keep_signed_in', 'true');
     const store = createStore();
-    if (method === 'password') await store.dispatch(loginUser({ login: 'test@example.com', password: 'password' }));
-    else await store.dispatch(verifyOtpLogin({ identifier: '+15555550123', code: '123456', isEmail: false }));
+    await store.dispatch(verifyOtpLogin({ identifier: '+15555550123', code: '123456', isEmail: false }));
     expect(store.getState().auth.isAuthenticated).toBe(true);
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith('token', 'test-token');
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith('refreshToken', 'test-refresh');
@@ -41,11 +40,10 @@ describe.each(['ios', 'android'] as const)('%s session preference', (platform) =
     expect(reopenedStore.getState().auth.user?.id).toBe('user-1');
   });
 
-  it.each(['password', 'otp'])('clears a %s session at startup when disabled', async (method) => {
+  it.each(['otp'])('clears a %s session at startup when disabled', async (method) => {
     await storage.setItem('keep_signed_in', 'false');
     const store = createStore();
-    if (method === 'password') await store.dispatch(loginUser({ login: 'test@example.com', password: 'password' }));
-    else await store.dispatch(verifyOtpLogin({ identifier: '+15555550123', code: '123456', isEmail: false }));
+    await store.dispatch(verifyOtpLogin({ identifier: '+15555550123', code: '123456', isEmail: false }));
     expect(store.getState().auth.isAuthenticated).toBe(true);
     const reopenedStore = createStore();
     await reopenedStore.dispatch(bootstrapAuth());

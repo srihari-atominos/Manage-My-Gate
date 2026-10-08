@@ -279,74 +279,8 @@ export const bootstrapAuth = createAsyncThunk(
   }
 );
 
-export const loginUser = createAsyncThunk(
-  'auth/loginUser',
-  async (credentials: any, { rejectWithValue }) => {
-    try {
-      const response = await authService.login(credentials);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      
-      if (body && body.success === false) {
-        return rejectWithValue(body.message || 'Login failed');
-      }
 
-      const innerData = body?.data || body;
-      const token = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const rawUser = innerData?.user;
-      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
-      const user = rawUser ? { ...rawUser, availableWorkspaces } : null;
 
-      if (!token || !user) {
-        return rejectWithValue(body?.message || 'Invalid credentials or login response');
-      }
-
-      if (token) await storage.setItem('token', token);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-
-      return { ...innerData, user } as any;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed');
-    }
-  }
-);
-
-export const registerUserThunk = createAsyncThunk(
-  'auth/registerUser',
-  async (userData: any, { rejectWithValue }) => {
-    try {
-      const response = await authService.register(userData);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return body?.data || body;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Registration failed');
-    }
-  }
-);
-
-export const verifyRegistrationThunk = createAsyncThunk(
-  'auth/verifyRegistration',
-  async ({ email, code }: { email: string; code: string }, { rejectWithValue }) => {
-    try {
-      const response = await authService.verifyRegistration(email, code);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      const innerData = body?.data || body;
-
-      const token = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const user = innerData?.user;
-
-      if (token) await storage.setItem('token', token);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-
-      return innerData as any;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Registration verification failed');
-    }
-  }
-);
 
 export const loginWithGoogleThunk = createAsyncThunk(
   'auth/loginWithGoogle',
@@ -406,94 +340,33 @@ export const loginWithAppleThunk = createAsyncThunk(
   }
 );
 
+const invitationRef = (token: string) =>
+  /^[a-f0-9]{24}$/i.test(String(token || '')) ? { invitationId: token } : { inviteToken: token };
+
+/** Accept one invitation (signed in) from a notification: by invitation id or link token. */
 export const acceptInviteThunk = createAsyncThunk(
   'auth/acceptInvite',
-  async (
-    { token, email, password }: { token: string; email?: string; password?: string },
-    { rejectWithValue }
-  ) => {
+  async ({ token }: { token: string; email?: string }, { rejectWithValue }) => {
     try {
-      const response = await authService.acceptInvite({ token, email, password });
+      const response = await authService.respondToInvitation('accept', invitationRef(token));
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      if (body && body.success === false) {
-        return rejectWithValue(body.message || 'Failed to accept invitation');
-      }
-
-      const innerData = body?.data || body;
-      const authToken = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const rawUser = innerData?.user;
-      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
-      const user = normalizeUser(rawUser ? { ...rawUser, availableWorkspaces } : rawUser);
-
-      if (authToken) await storage.setItem('token', authToken);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-      if (availableWorkspaces && availableWorkspaces.length > 0) {
-        await storage.setItem('availableWorkspaces', JSON.stringify(availableWorkspaces));
-      }
-
-      return { ...innerData, user, availableWorkspaces } as any;
+      const persisted = await persistLoginResult(body?.data || body);
+      if (!persisted) return rejectWithValue('Failed to accept invitation');
+      return persisted as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation');
     }
   }
 );
 
-export const acceptSsoInviteThunk = createAsyncThunk(
-  'auth/acceptSsoInvite',
-  async (
-    payload: {
-      inviteToken: string;
-      ssoCredential?: string;
-      code?: string;
-      codeVerifier?: string;
-      redirectUri?: string;
-      clientId?: string;
-      nonce?: string;
-      fullName?: string;
-      provider: 'google' | 'microsoft' | 'apple';
-    },
-    { rejectWithValue }
-  ) => {
-    try {
-      const response = await authService.acceptSsoInvite(payload);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      if (body && body.success === false) {
-        return rejectWithValue(body.message || 'Failed to accept invitation via SSO');
-      }
 
-      const innerData = body?.data || body;
-      const authToken = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const rawUser = innerData?.user;
-      const user = normalizeUser(rawUser);
-
-      if (authToken) await storage.setItem('token', authToken);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-      if (innerData?.availableWorkspaces) {
-        await storage.setItem('availableWorkspaces', JSON.stringify(innerData.availableWorkspaces));
-      }
-
-      return { ...innerData, user } as any;
-    } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to accept invitation via SSO'
-      );
-    }
-  }
-);
-
+/** Decline one invitation (signed in) from a notification: by invitation id or link token. */
 export const rejectInviteThunk = createAsyncThunk(
   'auth/rejectInvite',
-  async ({ token, email }: { token: string; email?: string }, { rejectWithValue }) => {
+  async ({ token }: { token: string; email?: string }, { rejectWithValue }) => {
     try {
-      const response = await authService.rejectInvite({ token, email });
+      const response = await authService.respondToInvitation('decline', invitationRef(token));
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      if (body && body.success === false) {
-        return rejectWithValue(body.message || 'Failed to reject invitation');
-      }
       return body?.data || body;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to reject invitation');
@@ -707,59 +580,7 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
   }
 });
 
-export const createWorkspaceThunk = createAsyncThunk(
-  'auth/createWorkspace',
-  async (workspaceData: any, { rejectWithValue }) => {
-    try {
-      const response = await authService.createWorkspace(workspaceData);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      if (body && body.success === false) {
-        return rejectWithValue(body.message || 'Failed to create workspace');
-      }
 
-      const innerData = body?.data || body;
-      const token = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const rawUser = innerData?.user;
-      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
-      const user = rawUser ? { ...rawUser, availableWorkspaces } : null;
-
-      if (token) await storage.setItem('token', token);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-
-      return { ...innerData, user } as any;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create workspace');
-    }
-  }
-);
-
-export const updateOrganizationFeaturesThunk = createAsyncThunk(
-  'auth/updateOrganizationFeatures',
-  async ({ orgId, features }: { orgId: string; features: string[] }, { rejectWithValue }) => {
-    try {
-      const response = await authService.updateOrganizationFeatures(orgId, features);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      if (body && body.success === false) {
-        return rejectWithValue(body.message || 'Failed to update organization features');
-      }
-
-      const innerData = body?.data || body;
-      const token = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const user = innerData?.user;
-
-      if (token) await storage.setItem('token', token);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-
-      return innerData as any;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to update features');
-    }
-  }
-);
 
 export const performLogout = createAsyncThunk(
   'auth/performLogout',
@@ -823,53 +644,8 @@ export const updateProfileThunk = createAsyncThunk(
   }
 );
 
-export const requestPasswordReset = createAsyncThunk(
-  'auth/requestPasswordReset',
-  async (identifier: string, { rejectWithValue }) => {
-    try {
-      const response = await authService.forgotPassword(identifier);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return body?.data || body;
-    } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to request password reset'
-      );
-    }
-  }
-);
 
-export const verifyResetOtpAction = createAsyncThunk(
-  'auth/verifyResetOtp',
-  async ({ identifier, code }: { identifier: string; code: string }, { rejectWithValue }) => {
-    try {
-      const response = await authService.verifyResetPasswordOtp(identifier, code);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return body?.data || body;
-    } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'OTP verification failed'
-      );
-    }
-  }
-);
 
-export const resetPasswordAction = createAsyncThunk(
-  'auth/resetPassword',
-  async (
-    { identifier, code, newPassword }: { identifier: string; code: string; newPassword: string },
-    { rejectWithValue }
-  ) => {
-    try {
-      const response = await authService.resetPassword({ identifier, code, newPassword });
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return body?.data || body;
-    } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to reset password'
-      );
-    }
-  }
-);
 
 const authSlice = createSlice({
   name: 'auth',
@@ -1053,58 +829,6 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.isInitialized = true;
       })
-      // Login User
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.successMsg = null;
-      })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.loading = false;
-        state.token = action.payload?.token || action.payload?.data?.token || null;
-        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
-        const rawUser = action.payload?.user || action.payload?.data?.user || null;
-        state.user = normalizeUser(rawUser);
-        state.isAuthenticated = !!(state.token && state.user?.id);
-        state.successMsg = action.payload?.message || 'Login successful!';
-      })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Login failed';
-      })
-      // Register User
-      .addCase(registerUserThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.successMsg = null;
-      })
-      .addCase(registerUserThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.successMsg = action.payload?.message || 'Registration successful! Check your email for OTP.';
-      })
-      .addCase(registerUserThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Registration failed';
-      })
-      // Verify Registration
-      .addCase(verifyRegistrationThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.successMsg = null;
-      })
-      .addCase(verifyRegistrationThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.token = action.payload?.token || action.payload?.data?.token || null;
-        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
-        const rawUser = action.payload?.user || action.payload?.data?.user || null;
-        state.user = normalizeUser(rawUser);
-        state.isAuthenticated = !!(state.token && state.user?.id);
-        state.successMsg = action.payload?.message || 'Verification successful!';
-      })
-      .addCase(verifyRegistrationThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Verification failed';
-      })
       // Google SSO
       .addCase(loginWithGoogleThunk.pending, (state) => {
         state.loading = true;
@@ -1193,25 +917,6 @@ const authSlice = createSlice({
       .addCase(acceptInviteThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to accept invitation';
-      })
-      // Accept SSO Invitation
-      .addCase(acceptSsoInviteThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.successMsg = null;
-      })
-      .addCase(acceptSsoInviteThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.token = action.payload?.token || action.payload?.data?.token || null;
-        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
-        const rawUser = action.payload?.user || action.payload?.data?.user || null;
-        state.user = normalizeUser(rawUser);
-        state.isAuthenticated = !!(state.token && state.user?.id);
-        state.successMsg = action.payload?.message || 'Invitation accepted via SSO successfully!';
-      })
-      .addCase(acceptSsoInviteThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Failed to accept invitation via SSO';
       })
       // Request OTP
       .addCase(requestOtp.pending, (state) => {
@@ -1314,86 +1019,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to switch workspace context';
       })
-      // Create Workspace
-      .addCase(createWorkspaceThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.successMsg = null;
-      })
-      .addCase(createWorkspaceThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        if (action.payload?.token) {
-          state.token = action.payload.token;
-        }
-        if (action.payload?.refreshToken) {
-          state.refreshToken = action.payload.refreshToken;
-        }
-        const rawUser = action.payload?.user || action.payload?.data?.user || state.user || null;
-        const rawOrg = action.payload?.organization || action.payload?.data?.organization;
-        const availableWorkspaces = action.payload?.availableWorkspaces || rawUser?.availableWorkspaces || state.user?.availableWorkspaces || [];
-        
-        if (rawUser) {
-          const createdOrgId =
-            rawUser.orgId ||
-            rawUser.activeOrgId ||
-            rawUser.organizationId ||
-            rawOrg?._id ||
-            rawOrg?.id ||
-            (Array.isArray(availableWorkspaces) && (availableWorkspaces[0]?.orgId || availableWorkspaces[0]?._id));
-
-          const userWithWorkspaces = {
-            ...rawUser,
-            orgId: createdOrgId || rawUser.orgId || state.user?.orgId,
-            activeOrgId: createdOrgId || rawUser.activeOrgId || state.user?.activeOrgId,
-            availableWorkspaces,
-          };
-          state.user = normalizeUser(userWithWorkspaces);
-          if (state.user) {
-            storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
-          }
-        }
-        state.isAuthenticated = !!(state.token && state.user?.id);
-        state.successMsg = 'Organization workspace created successfully!';
-      })
-      .addCase(createWorkspaceThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Failed to create workspace';
-      })
-      // Update Organization Features
-      .addCase(updateOrganizationFeaturesThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.successMsg = null;
-      })
-      .addCase(updateOrganizationFeaturesThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        if (action.payload?.token) {
-          state.token = action.payload.token;
-        }
-        if (action.payload?.refreshToken) {
-          state.refreshToken = action.payload.refreshToken;
-        }
-        const rawUser = action.payload?.user || state.user || null;
-        const organization = action.payload?.organization;
-        const updatedFeatures = organization?.allowedFeatures || action.meta?.arg?.features;
-
-        if (rawUser) {
-          const userWithWorkspaces = {
-            ...rawUser,
-            allowedFeatures: updatedFeatures || rawUser?.allowedFeatures || [],
-            availableWorkspaces: action.payload?.availableWorkspaces || rawUser?.availableWorkspaces || state.user?.availableWorkspaces,
-          };
-          state.user = normalizeUser(userWithWorkspaces);
-          if (state.user) {
-            storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
-          }
-        }
-        state.successMsg = 'Organization features configured successfully!';
-      })
-      .addCase(updateOrganizationFeaturesThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Failed to update organization features';
-      })
       .addCase(deleteAccountThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -1409,44 +1034,6 @@ const authSlice = createSlice({
       .addCase(deleteAccountThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to delete account';
-      })
-      .addCase(requestPasswordReset.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.otpSent = false;
-      })
-      .addCase(requestPasswordReset.fulfilled, (state, action: any) => {
-        state.loading = false;
-        state.otpSent = true;
-        state.successMsg = action.payload?.message || 'Password reset OTP sent';
-      })
-      .addCase(requestPasswordReset.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Failed to request password reset';
-      })
-      .addCase(verifyResetOtpAction.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(verifyResetOtpAction.fulfilled, (state) => {
-        state.loading = false;
-        state.successMsg = 'OTP verified successfully';
-      })
-      .addCase(verifyResetOtpAction.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Failed to verify OTP';
-      })
-      .addCase(resetPasswordAction.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(resetPasswordAction.fulfilled, (state) => {
-        state.loading = false;
-        state.successMsg = 'Password reset successfully';
-      })
-      .addCase(resetPasswordAction.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Failed to reset password';
       })
       // Update Profile
       .addCase(updateProfileThunk.pending, (state) => {

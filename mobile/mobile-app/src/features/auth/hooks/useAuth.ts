@@ -1,32 +1,25 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import {
-  loginUser,
   loginWithGoogleThunk,
   loginWithMicrosoftThunk,
   loginWithAppleThunk,
-  registerUserThunk,
-  verifyRegistrationThunk,
-  acceptInviteThunk,
-  acceptSsoInviteThunk,
-  createWorkspaceThunk,
-  updateOrganizationFeaturesThunk,
   requestOtp,
   verifyOtpLogin,
   respondToInvitationThunk,
   performLogout,
   deleteAccountThunk,
-  requestPasswordReset,
-  verifyResetOtpAction,
-  resetPasswordAction,
   clearStatus,
   bootstrapAuth,
   updateProfileThunk,
   switchWorkspaceContextThunk,
 } from '../store/authSlice';
-import authService from '../services/authService';
 import { useCallback } from 'react';
 
+/**
+ * Sign-in is email code, phone code or SSO; joining a community is by invitation.
+ * (Password, self-registration and self-serve community creation were removed.)
+ */
 export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
   const storeState = useSelector((state: RootState) => state.auth);
@@ -38,13 +31,6 @@ export const useAuth = () => {
     error: null,
     otpSent: false,
   };
-
-  const handleLogin = useCallback(
-    (credentials: any) => {
-      return dispatch ? dispatch(loginUser(credentials)) : Promise.resolve();
-    },
-    [dispatch]
-  );
 
   const handleLoginWithGoogle = useCallback(
     (tokenOrPayload: string | any) => {
@@ -67,62 +53,6 @@ export const useAuth = () => {
     },
     [dispatch]
   );
-
-  const handleRegister = useCallback(
-    (userData: any) => {
-      return dispatch ? dispatch(registerUserThunk(userData)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleVerifyRegistration = useCallback(
-    (email: string, code: string) => {
-      return dispatch ? dispatch(verifyRegistrationThunk({ email, code })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleAcceptInvite = useCallback(
-    (token: string, password?: string, email?: string) => {
-      return dispatch ? dispatch(acceptInviteThunk({ token, password, email })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleAcceptSsoInvite = useCallback(
-    (payload: {
-      inviteToken: string;
-      ssoCredential?: string;
-      code?: string;
-      codeVerifier?: string;
-      redirectUri?: string;
-      clientId?: string;
-      nonce?: string;
-      fullName?: string;
-      provider: 'google' | 'microsoft' | 'apple';
-    }) => {
-      return dispatch ? dispatch(acceptSsoInviteThunk(payload)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleCreateWorkspace = useCallback(
-    (workspaceData: any) => {
-      return dispatch ? dispatch(createWorkspaceThunk(workspaceData)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleUpdateOrganizationFeatures = useCallback(
-    (orgId: string, features: string[]) => {
-      return dispatch ? dispatch(updateOrganizationFeaturesThunk({ orgId, features })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleCheckOrganizationName = useCallback((name: string) => {
-    return authService.checkOrganizationName(name);
-  }, []);
 
   const handleRequestOtp = useCallback(
     (identifier: string, isEmail: boolean = false) => {
@@ -153,27 +83,6 @@ export const useAuth = () => {
     return dispatch ? dispatch(deleteAccountThunk()) : Promise.resolve();
   }, [dispatch]);
 
-  const handleForgotPassword = useCallback(
-    (identifier: string) => {
-      return dispatch ? dispatch(requestPasswordReset(identifier)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleVerifyResetOtp = useCallback(
-    (identifier: string, code: string) => {
-      return dispatch ? dispatch(verifyResetOtpAction({ identifier, code })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleResetPassword = useCallback(
-    (payload: { identifier: string; code: string; newPassword: string }) => {
-      return dispatch ? dispatch(resetPasswordAction(payload)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
   const handleClearStatus = useCallback(() => {
     if (dispatch) dispatch(clearStatus());
   }, [dispatch]);
@@ -198,23 +107,12 @@ export const useAuth = () => {
 
   return {
     ...authState,
-    login: handleLogin,
-    register: handleRegister,
-    verifyRegistration: handleVerifyRegistration,
-    acceptInvite: handleAcceptInvite,
-    acceptSsoInvite: handleAcceptSsoInvite,
-    createWorkspace: handleCreateWorkspace,
-    updateOrganizationFeatures: handleUpdateOrganizationFeatures,
-    checkOrganizationName: handleCheckOrganizationName,
     loginWithGoogle: handleLoginWithGoogle,
     loginWithMicrosoft: handleLoginWithMicrosoft,
     loginWithApple: handleLoginWithApple,
     requestOtp: handleRequestOtp,
     verifyOtp: handleVerifyOtp,
     respondToInvitation: handleRespondToInvitation,
-    forgotPassword: handleForgotPassword,
-    verifyResetOtp: handleVerifyResetOtp,
-    resetPassword: handleResetPassword,
     logout: handleLogout,
     deleteAccount: handleDeleteAccount,
     clearStatus: handleClearStatus,

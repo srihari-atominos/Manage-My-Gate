@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { store } from '@/src/store/store';
-import { loginUser } from '@/src/features/auth/store/authSlice';
+import { verifyOtpLogin } from '@/src/features/auth/store/authSlice';
 import storage from '@/src/utils/storage';
 
 const E2E = require('../setup/constants');
@@ -50,7 +50,7 @@ export const actor = (name: Actor) => fixture().actors[name];
 /**
  * Puts the app into the signed-in state for `name`, using the payload the real
  * /auth/login returned for that actor during global setup. Equivalent to what the
- * loginUser thunk does after its HTTP call succeeds.
+ * sign-in thunks do after their HTTP call succeeds.
  */
 export const signInAs = async (name: Actor) => {
   const session = fixture().sessions[name];
@@ -58,7 +58,8 @@ export const signInAs = async (name: Actor) => {
   await storage.setItem('token', session.token);
   await storage.setItem('refreshToken', session.refreshToken);
   await storage.setItem('user', JSON.stringify(user));
-  store.dispatch(loginUser.fulfilled({ ...session, user } as any, 'e2e-sign-in', {}));
+  // Same reducer effect as a completed sign-in (password login was removed from the app)
+  store.dispatch(verifyOtpLogin.fulfilled({ ...session, user } as any, 'e2e-sign-in', {} as any));
   return actor(name);
 };
 

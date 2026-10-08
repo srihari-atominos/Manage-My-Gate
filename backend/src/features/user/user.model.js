@@ -19,11 +19,10 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    // Sign-in is email/phone OTP or SSO; a password is optional and only used by the
+    // legacy password endpoints while AUTH_PASSWORD_ENABLED is on.
     password: {
       type: String,
-      required: function() {
-        return this.status === 'Active';
-      },
     },
     status: {
       type: String,

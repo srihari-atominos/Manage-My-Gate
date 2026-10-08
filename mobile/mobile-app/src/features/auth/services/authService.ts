@@ -2,32 +2,6 @@ import { Platform } from 'react-native';
 import apiClient from '../../../services/apiClient';
 import { getPendingInviteToken } from '../utils/inviteContext';
 
-export const login = async (credentials: any) => {
-  return await apiClient.post('/auth/login', credentials);
-};
-
-export const register = async (userData: any) => {
-  return await apiClient.post('/auth/register', userData);
-};
-
-export const acceptInvite = async ({ token, email, password }: any) => {
-  return await apiClient.post('/auth/accept-invite', { token, email, password });
-};
-
-export const acceptSsoInvite = async (payload: {
-  inviteToken: string;
-  ssoCredential?: string;
-  code?: string;
-  codeVerifier?: string;
-  redirectUri?: string;
-  clientId?: string;
-  nonce?: string;
-  fullName?: string;
-  provider: 'google' | 'microsoft' | 'apple';
-}) => {
-  return await apiClient.post('/auth/accept-invite/sso', payload);
-};
-
 export const rejectInvite = async ({ token, email }: { token: string; email?: string }) => {
   return await apiClient.post('/auth/reject-invite', { token, email });
 };
@@ -37,10 +11,6 @@ export const validateInvite = async (token: string, email?: string) => {
   if (token) query.append('token', token);
   if (email) query.append('email', email);
   return await apiClient.get(`/auth/validate-invite?${query.toString()}`);
-};
-
-export const verifyRegistration = async (email: string, code: string) => {
-  return await apiClient.post('/auth/register/verify', { email, code });
 };
 
 /** SSO sign-in carries the invitation being answered, if the person came from an invite link. */
@@ -105,18 +75,6 @@ export const getAppConfig = async () => {
   return await apiClient.get('/public/app/config');
 };
 
-export const forgotPassword = async (identifier: string) => {
-  return await apiClient.post('/auth/forgot-password', { identifier });
-};
-
-export const verifyResetPasswordOtp = async (identifier: string, code: string) => {
-  return await apiClient.post('/auth/forgot-password/verify-otp', { identifier, code });
-};
-
-export const resetPassword = async ({ identifier, code, newPassword }: any) => {
-  return await apiClient.post('/auth/reset-password', { identifier, code, newPassword });
-};
-
 export const logoutApi = async (refreshToken?: string | null) => {
   return await apiClient.post('/auth/logout', refreshToken ? { refreshToken } : {});
 };
@@ -135,18 +93,6 @@ export const revokeAllSessions = async () => {
 
 export const switchContext = async (payload: { targetOrgId?: string; targetRole?: string; targetVillaId?: string }) => {
   return await apiClient.post('/auth/switch-context', payload);
-};
-
-export const checkOrganizationName = async (name: string) => {
-  return await apiClient.get(`/organizations/check-name?name=${encodeURIComponent(name.trim())}`);
-};
-
-export const createWorkspace = async (workspaceData: any) => {
-  return await apiClient.post('/organizations/setup', workspaceData);
-};
-
-export const updateOrganizationFeatures = async (orgId: string, features: string[]) => {
-  return await apiClient.patch(`/organizations/${orgId}/features`, { features });
 };
 
 export const deleteAccount = async () => {
@@ -240,12 +186,7 @@ export const getCurrentContext = async (orgId?: string) => {
   return await apiClient.get(`/auth/current-context${query}`);
 };
 
-export default {
-  login,
-  register,
-  verifyRegistration,
-  acceptInvite,
-  acceptSsoInvite,
+export default {
   rejectInvite,
   validateInvite,
   loginWithGoogle,
@@ -257,10 +198,7 @@ export default {
   verifyEmailOtpLogin,
   getPendingInvitations,
   respondToInvitation,
-  getAppConfig,
-  forgotPassword,
-  verifyResetPasswordOtp,
-  resetPassword,
+  getAppConfig,
   logoutApi,
   deleteAccount,
   updateProfile,
@@ -268,10 +206,7 @@ export default {
   fetchSessions,
   revokeSession,
   revokeAllSessions,
-  switchContext,
-  checkOrganizationName,
-  createWorkspace,
-  updateOrganizationFeatures,
+  switchContext,
   exchangeHandoff,
   getCurrentContext,
 };

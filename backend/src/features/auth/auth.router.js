@@ -22,6 +22,7 @@ import {
 } from './auth.validateRules.js';
 import { isAuthenticated, optionalAuth } from '../../middlewares/auth.middleware.js';
 import { authLimiter, otpLimiter } from '../../middlewares/rateLimiter.middleware.js';
+import { requirePasswordAuth } from '../../middlewares/passwordAuth.middleware.js';
 
 const router = Router();
 
@@ -64,7 +65,7 @@ const router = Router();
  *       400:
  *         description: Validation error.
  */
-router.post('/register', authLimiter, validate(registerRules), authController.register);
+router.post('/register', requirePasswordAuth, authLimiter, validate(registerRules), authController.register);
 
 /**
  * @swagger
@@ -91,7 +92,7 @@ router.post('/register', authLimiter, validate(registerRules), authController.re
  *       200:
  *         description: Verified successfully.
  */
-router.post('/register/verify', otpLimiter, validate(emailOtpVerifyRules), authController.verifyRegistrationOtp);
+router.post('/register/verify', requirePasswordAuth, otpLimiter, validate(emailOtpVerifyRules), authController.verifyRegistrationOtp);
 
 /**
  * @swagger
@@ -123,7 +124,7 @@ router.post('/register/verify', otpLimiter, validate(emailOtpVerifyRules), authC
  *       400:
  *         description: Invalid credentials or validation error.
  */
-router.post('/login', authLimiter, validate(loginRules), authController.login);
+router.post('/login', requirePasswordAuth, authLimiter, validate(loginRules), authController.login);
 
 /**
  * @swagger
@@ -155,7 +156,7 @@ router.post('/login', authLimiter, validate(loginRules), authController.login);
  *       400:
  *         description: Invalid token or validation error.
  */
-router.post('/accept-invite', authLimiter, optionalAuth, validate(acceptInviteRules), authController.acceptInvite);
+router.post('/accept-invite', requirePasswordAuth, authLimiter, optionalAuth, validate(acceptInviteRules), authController.acceptInvite);
 router.post('/reject-invite', authLimiter, validate(rejectInviteRules), authController.rejectInvite);
 
 // Pending invitations for an identity already verified by OTP/SSO (session or ticket)
@@ -195,7 +196,7 @@ router.post('/invitations/decline', authLimiter, optionalAuth, validate(respondI
  *       400:
  *         description: Validation error.
  */
-router.post('/accept-invite/sso', validate(acceptInviteSsoRules), authController.acceptInviteWithSSO);
+router.post('/accept-invite/sso', requirePasswordAuth, validate(acceptInviteSsoRules), authController.acceptInviteWithSSO);
 
 /**
  * @swagger
@@ -311,11 +312,11 @@ router.post('/login/phone', otpLimiter, validate(phoneLoginRules), authControlle
 router.post('/login/phone/verify', authLimiter, validate(phoneVerifyRules), authController.verifyPhoneLogin);
 router.post('/login/email-otp', otpLimiter, validate(emailOtpLoginRules), authController.initiateEmailOtpLogin);
 router.post('/login/email-otp/verify', authLimiter, validate(emailOtpVerifyRules), authController.verifyEmailOtpLogin);
-router.post('/forgot-password', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
-router.post('/forgot-password/initiate', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
-router.post('/forgot-password/verify-otp', authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
-router.post('/reset-password', authLimiter, validate(resetPasswordRules), authController.resetPassword);
-router.post('/setup-account-password', authLimiter, validate(setupAccountPasswordRules), authController.setupAccountPassword);
+router.post('/forgot-password', requirePasswordAuth, otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
+router.post('/forgot-password/initiate', requirePasswordAuth, otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
+router.post('/forgot-password/verify-otp', requirePasswordAuth, authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
+router.post('/reset-password', requirePasswordAuth, authLimiter, validate(resetPasswordRules), authController.resetPassword);
+router.post('/setup-account-password', requirePasswordAuth, authLimiter, validate(setupAccountPasswordRules), authController.setupAccountPassword);
 router.get('/check-account-status', optionalAuth, authController.checkAccountStatus);
 
 // Session Routes
