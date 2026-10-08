@@ -55,14 +55,17 @@ export class OrganizationController {
 
   async setupWorkspace(req, res, next) {
     try {
-      const { name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, password, features } = req.body;
-      const userId = req.user.id;
-      const result = await organizationService.setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, password, features });
+      const { organization, communityAdmin, features } = req.body;
+      const creatorUserId = req.user.id;
       
-      // Set the newly scoped token cookie if needed, just like switchContext / login
-      setAuthCookie(res, result.token);
+      const result = await organizationService.setupWorkspace({ 
+        organization, 
+        communityAdmin, 
+        features, 
+        creatorUserId 
+      });
 
-      res.success(result, 'Workspace created and initialized successfully', 201);
+      res.success(result, 'Organization and Community Admin created successfully', 201);
     } catch (error) {
       next(error);
     }
@@ -119,6 +122,48 @@ export class OrganizationController {
       const { id: orgId, userId } = req.params;
       const data = await organizationService.getOrganizationUserDetails(orgId, userId);
       res.success(data, 'Organization user details retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async sendAdminEmailOtp(req, res, next) {
+    try {
+      const { email } = req.body;
+      const data = await organizationService.sendCommunityAdminEmailOtp(email);
+      res.success(data, data?.message || 'Verification code sent');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyAdminEmailOtp(req, res, next) {
+    try {
+      const { email, code } = req.body;
+      const data = await organizationService.verifyCommunityAdminEmailOtp(email, code);
+      res.success(data, 'Community Admin email verified successfully');
+    } catch (error) {
+      next(error);
+    }
+    }
+
+  async updateOnboardingMode(req, res, next) {
+    try {
+      const orgId = req.params.id;
+      const { onboardingMode } = req.body;
+      const updatedOrg = await organizationService.updateOnboardingMode(orgId, onboardingMode);
+      res.success(updatedOrg, 'Organization onboarding mode updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateLoginPolicy(req, res, next) {
+    try {
+      const orgId = req.params.id;
+      const { authenticationMethod } = req.body;
+      const updatedOrg = await organizationService.updateLoginPolicy(orgId, authenticationMethod);
+      res.success(updatedOrg, 'Organization login policy updated successfully');
     } catch (error) {
       next(error);
     }

@@ -5,8 +5,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import useAuthRouting from '../hooks/useAuthRouting.js'
 import useAuth from '../hooks/useAuth.js'
-import { loginWithGoogle, acceptInvitation } from '../store/authSlice.js'
-import ForgotPasswordModal from './ForgotPasswordModal.jsx'
+import { loginWithGoogle } from '../store/authSlice.js'
 import { GoogleLogin } from '@react-oauth/google'
 import { useMsal } from '@azure/msal-react'
 import nahomLogo from '../../../assets/images/nahom_full_logo.png'
@@ -18,7 +17,7 @@ const MemoizedGoogleLogin = React.memo(({ onSuccess, onError }) => (
     type="standard"
     theme="outline"
     size="large"
-    width="220px"
+    width="220"
   />
 ))
 MemoizedGoogleLogin.displayName = 'MemoizedGoogleLogin'
@@ -94,6 +93,7 @@ export const LoginForm = () => {
   const inviteTokenParam = searchParams.get('invite_token')
   const emailParam = searchParams.get('email') || location.state?.email || ''
   const passwordParam = searchParams.get('password') || location.state?.password || ''
+
   const intentParam =
     searchParams.get('intent') ||
     location.state?.intent ||
@@ -111,7 +111,7 @@ export const LoginForm = () => {
 
   const [expectedPhoneLength, setExpectedPhoneLength] = useState(12) // Default for India (91 + 10 digits)
 
-  const [loginMethod, setLoginMethod] = useState('password') // 'password', 'phone', 'email'
+  const [loginMethod, setLoginMethod] = useState('email') // 'password', 'phone', 'email'
   const [forgotModalVisible, setForgotModalVisible] = useState(false)
   const [otpCode, setOtpCode] = useState('')
 
@@ -146,7 +146,7 @@ export const LoginForm = () => {
 
     if (loginVal || passVal) {
       reset({ login: loginVal, password: passVal })
-      if (emailParam) setLoginMethod('password')
+      if (emailParam) setLoginMethod('email')
 
       // Brute-force fallback for UI visual sync
       setTimeout(() => {
@@ -163,25 +163,14 @@ export const LoginForm = () => {
 
   // Automatically handle routing updates post-authentication
   const inviteAcceptedRef = useRef(false)
+  const handlePostAuthRedirectRef = useRef(handlePostAuthRedirect)
   useEffect(() => {
-    if (isAuthenticated) {
-      if (inviteTokenParam && !inviteAcceptedRef.current) {
-        inviteAcceptedRef.current = true
-        dispatch(acceptInvitation({ token: inviteTokenParam }))
-          .unwrap()
-          .then(() => {
-            toast.success('Workspace invitation accepted!')
-            navigate('/dashboard', { replace: true })
-          })
-          .catch((err) => {
-            console.warn('Invite token processing:', err)
-            handlePostAuthRedirect({ skipInviteToken: true })
-          })
-      } else {
-        handlePostAuthRedirect({ skipInviteToken: inviteAcceptedRef.current })
-      }
-    }
-  }, [isAuthenticated, inviteTokenParam])
+    handlePostAuthRedirectRef.current = handlePostAuthRedirect
+  }, [handlePostAuthRedirect])
+
+  useEffect(() => {
+    if (isAuthenticated) handlePostAuthRedirectRef.current();
+  }, [isAuthenticated])
 
   // Handle OTP countdown timer
   useEffect(() => {
@@ -224,12 +213,12 @@ export const LoginForm = () => {
         } else if (err?.message) {
           errorMessage = err.message
         }
-        
+
         try {
           const parsed = JSON.parse(errorMessage)
           if (parsed && parsed.message) errorMessage = parsed.message
         } catch (e) {}
-        
+
         toast.error(errorMessage)
       }
     },
@@ -286,15 +275,13 @@ export const LoginForm = () => {
             } else if (err?.message) {
               msErrMsg = err.message
             }
-            
+
             try {
               const parsed = JSON.parse(msErrMsg)
               if (parsed && parsed.message) msErrMsg = parsed.message
             } catch (e) {}
-            
-            toast.error(
-              'Microsoft Error: ' + msErrMsg,
-            )
+
+            toast.error('Microsoft Error: ' + msErrMsg)
           }
         })
     }
@@ -313,7 +300,7 @@ export const LoginForm = () => {
   }
 
   const onSubmit = async (data) => {
-    if (loginMethod === 'password') {
+    if (loginMethod === 'NONE') {
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', data.login.trim())
       } else {
@@ -375,7 +362,7 @@ export const LoginForm = () => {
       if (!otpSent) {
         await handleSendOtp(identifier, isEmail)
       } else {
-        const res = await verifyOtp(identifier, otpCode, isEmail)
+        const res = await verifyOtp(identifier, otpCode, isEmail, inviteTokenParam || undefined)
         if (res?.success) {
           handlePostAuthRedirect()
         }
@@ -412,9 +399,9 @@ export const LoginForm = () => {
           <div className="login-method-toggle mb-4">
             <button
               type="button"
-              className={`login-method-tab ${loginMethod === 'password' ? 'active' : ''}`}
+              className={`login-method-tab ${loginMethod === 'NONE' ? 'active' : ''}`}
               onClick={() => {
-                setLoginMethod('password')
+                setLoginMethod('email')
                 clearStatus()
                 setOtpTimer(0)
                 setOtpCode('')
@@ -438,7 +425,7 @@ export const LoginForm = () => {
                 clearErrors()
               }}
             >
-              {t('auth.login.mobileTab', 'Mobile Login')}
+              {t('auth.login.phoneTab', 'Phone No')}
             </button>
             <button
               type="button"
@@ -523,13 +510,13 @@ export const LoginForm = () => {
                     id="username"
                     style={styles.input}
                     placeholder={
-                      loginMethod === 'password'
+                      loginMethod === 'NONE'
                         ? t('auth.login.usernamePlaceholder', 'Email Address')
                         : t('auth.login.emailPlaceholder', 'Email Address')
                     }
                     autoComplete="username"
                     aria-label={
-                      loginMethod === 'password'
+                      loginMethod === 'NONE'
                         ? t('auth.login.usernamePlaceholder', 'Email Address')
                         : t('auth.login.emailPlaceholder', 'Email Address')
                     }
@@ -562,7 +549,7 @@ export const LoginForm = () => {
             )}
           </div>
 
-          {loginMethod === 'password' && (
+          {loginMethod === 'NONE' && (
             <div className="mb-4">
               <CInputGroup>
                 <CInputGroupText style={styles.inputIconText}>
@@ -578,11 +565,11 @@ export const LoginForm = () => {
                   disabled={loading}
                   {...register('password', {
                     required:
-                      loginMethod === 'password'
+                      loginMethod === 'NONE'
                         ? t('auth.login.passwordRequired', 'Password is required.')
                         : false,
                     minLength:
-                      loginMethod === 'password'
+                      loginMethod === 'NONE'
                         ? {
                             value: 6,
                             message: t(
@@ -612,7 +599,7 @@ export const LoginForm = () => {
             </div>
           )}
 
-          {loginMethod !== 'password' && otpSent && (
+          {true && otpSent && (
             <div className="mb-4">
               <CInputGroup>
                 <CInputGroupText style={styles.inputIconText}>OTP</CInputGroupText>
@@ -647,7 +634,7 @@ export const LoginForm = () => {
             </div>
           )}
 
-          {loginMethod === 'password' && (
+          {loginMethod === 'NONE' && (
             <CRow className="mb-3">
               <CCol xs={6}>
                 <CFormCheck
@@ -675,7 +662,7 @@ export const LoginForm = () => {
               <CButton type="submit" color="primary" style={styles.submitButton} disabled={loading}>
                 {loading ? (
                   <CSpinner size="sm" variant="grow" />
-                ) : loginMethod !== 'password' && !otpSent ? (
+                ) : true && !otpSent ? (
                   t('auth.login.sendOtp', 'Send OTP')
                 ) : (
                   t('auth.login.submit', 'Sign In')
@@ -712,26 +699,14 @@ export const LoginForm = () => {
                 disabled={loading}
                 className="w-100"
               >
-                <span style={styles.msIcon}>❖</span>
+                <span style={styles.msIcon}>â–</span>
                 {t('auth.login.continueWithMicrosoft', 'Continue with Microsoft')}
               </CButton>
             </CCol>
           </CRow>
         </CForm>
-
-        <div className="text-center mt-3">
-          <CButton
-            color="link"
-            onClick={() => navigate('/register')}
-            style={styles.toggleLink}
-            className="p-0"
-          >
-            {t('auth.login.noAccount', "Don't have an account? Create an Account")}
-          </CButton>
-        </div>
       </CCardBody>
 
-      <ForgotPasswordModal visible={forgotModalVisible} setVisible={setForgotModalVisible} />
     </CCard>
   )
 }
@@ -874,3 +849,5 @@ export default function LoginFormWithBoundary(props) {
     </LoginFormErrorBoundary>
   )
 }
+
+

@@ -1,8 +1,7 @@
 import React from 'react';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { Redirect } from 'expo-router';
-import { useAuth } from '../src/features/auth/hooks/useAuth';
-import { resolveHomeRoute } from '../src/features/auth/utils/landing';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 export default function IndexScreen() {
   const { isAuthenticated, isInitialized, user } = useAuth();
@@ -13,8 +12,7 @@ export default function IndexScreen() {
   }
 
   if (isAuthenticated) {
-    // First screen comes from the server's permission-based `landing` hint
-    return <Redirect href={resolveHomeRoute(user) as any} />;
+    return <Redirect href="/(resident)" />;
   }
 
   // Unauthenticated users land directly on the Nahom Login screen

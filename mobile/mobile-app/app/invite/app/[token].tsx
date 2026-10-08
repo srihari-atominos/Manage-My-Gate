@@ -11,12 +11,12 @@ export default function AppInviteTokenRedirectScreen() {
     const inviteToken = params.token;
     if (inviteToken) {
       router.replace({
-        pathname: '/(auth)/accept-invite',
-        params: { ...params, token: inviteToken },
+        pathname: '/(auth)/login',
+        params: { ...params, inviteToken },
       });
     } else {
       router.replace({
-        pathname: '/(auth)/accept-invite',
+        pathname: '/(auth)/login',
         params: params,
       });
     }

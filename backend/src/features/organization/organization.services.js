@@ -1,8 +1,9 @@
-import organizationRepository from './organization.repository.js';
+﻿import organizationRepository from './organization.repository.js';
 import HttpError from '../../utils/httpError.utils.js';
 import mongoose from 'mongoose';
 import orgEventEmitter from './organization.events.js';
 import { DEFAULT_ROLE_PERMISSIONS } from './defaultRolePermissions.js';
+import { normalizePhone } from '../../utils/phone.utils.js';
 
 /** Feature keys shown as one group in the apps, mapped to permission features. */
 const FEATURE_GROUPS = Object.freeze({
@@ -105,13 +106,18 @@ export class OrganizationService {
         await localSession.commitTransaction();
       }
 
+      // Emit real-time update event
+      const orgEventEmitter = (await import('./organization.events.js')).default;
+      orgEventEmitter.emit('ORG_FEATURES_UPDATED', { targetId: orgId });
+
       // Generate a new token if userId is provided
       let token = null;
       let userPayload = null;
       if (userId) {
         const authService = (await import('../auth/auth.services.js')).default;
         const user = await authService.getUserById(userId);
-        const { tokenPayload, permissions, availableWorkspaces } = await authService.getScopedTokenPayload(user, orgId);
+        const targetScopeOrgId = (isPlatformUser || user.isPlatform) ? null : orgId;
+        const { tokenPayload, permissions, availableWorkspaces } = await authService.getScopedTokenPayload(user, targetScopeOrgId);
         const { signToken } = await import('../../utils/jwt.utils.js');
         token = signToken(tokenPayload);
         userPayload = {
@@ -140,6 +146,29 @@ export class OrganizationService {
         await localSession.endSession();
       }
     }
+  }
+
+  async updateOnboardingMode(orgId, onboardingMode, session = null) {
+    const validModes = ['INVITATION', 'ADMIN_ANNOUNCEMENT'];
+    if (!validModes.includes(onboardingMode)) {
+      throw new HttpError(400, `Invalid onboarding mode. Must be one of: ${validModes.join(', ')}`);
+    }
+    
+    await this.getOrganizationById(orgId, session);
+    
+    return await organizationRepository.updateOnboardingMode(orgId, onboardingMode, session);
+  }
+
+  async updateLoginPolicy(orgId, authenticationMethod, session = null) {
+    const validMethods = ['EXISTING_SYSTEM', 'OTP_LOGIN'];
+    if (!validMethods.includes(authenticationMethod)) {
+      throw new HttpError(400, `Invalid authentication method. Must be one of: ${validMethods.join(', ')}`);
+    }
+    
+    // Ensure org exists
+    await this.getOrganizationById(orgId, session);
+    
+    return await organizationRepository.updateLoginPolicy(orgId, authenticationMethod, session);
   }
 
   async getAllOrganizations(page = 1, limit = 10) {
@@ -208,165 +237,11 @@ export class OrganizationService {
     return !org;
   }
 
-  /**
-   * Creates a community with its five default roles and their permissions,
-   * inside the caller's transaction. Used by self-serve setup and platform provisioning.
-   * @returns {Promise<{ org, adminRole }>}
-   */
-  async _createCommunityWithDefaults({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, features }, session) {
-    const defaultFeatures = ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'polls', 'complaints', 'visitor', 'billing'];
-    const finalFeatures = Array.isArray(features) && features.length > 0 ? features : defaultFeatures;
-
-    const newOrg = await organizationRepository.create({
-      name,
-      status: 'Active',
-      organizationType: organizationType || 'Residential',
-      contactEmail,
-      contactPhone,
-      expectedMemberCount,
-      timezone: timezone || 'Asia/Kolkata',
-      allowedFeatures: finalFeatures
-    }, session);
-
-    // 2. Create the default Roles and assign Permissions
-    const roleService = (await import('../role/role.services.js')).default;
-    const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
-    const permissionService = (await import('../permission/permission.services.js')).default;
-
-    const allPermissions = await permissionService.getAllPermissions();
-
-    // Helper function to get IDs by name list
-    const getPermissionIds = (names) => {
-      return allPermissions
-        .filter(p => names.includes(p.name))
-        .map(p => p._id.toString());
-    };
-
-    // Create Community Admin Role
-    const adminRole = await roleService.createRole(
-      { name: 'Community Admin', description: 'Gated community administrator with full access privileges.', orgId: newOrg._id, isTenantRole: false },
-      session
-    );
-
-    // Selected features (plus the always-on admin core), or everything when none were chosen
-    const adminPermissionIds = Array.isArray(features) && features.length > 0
-      ? (() => {
-          const granted = expandFeatureKeys(features);
-          return allPermissions.filter((p) => granted.has(p.feature)).map((p) => p._id.toString());
-        })()
-      : allPermissions.map((p) => p._id.toString());
-    await rolePermissionService.updateRolePermissions(adminRole._id.toString(), adminPermissionIds, session);
-
-    // Create Resident Owner Role
-    const ownerRole = await roleService.createRole(
-      { name: 'Resident Owner', description: 'Villa Owner residing in the community.', orgId: newOrg._id, isTenantRole: true },
-      session
-    );
-    const ownerPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Resident Owner']);
-    await rolePermissionService.updateRolePermissions(ownerRole._id.toString(), ownerPerms, session);
-
-    // Create Resident Tenant Role
-    const tenantRole = await roleService.createRole(
-      { name: 'Resident Tenant', description: 'Villa Tenant residing in the community.', orgId: newOrg._id, isTenantRole: true },
-      session
-    );
-    const tenantPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Resident Tenant']);
-    await rolePermissionService.updateRolePermissions(tenantRole._id.toString(), tenantPerms, session);
-
-    // Create Family Member Role
-    const familyRole = await roleService.createRole(
-      { name: 'Family Member', description: 'Family member of a resident.', orgId: newOrg._id, isTenantRole: true },
-      session
-    );
-    const familyPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Family Member']);
-    await rolePermissionService.updateRolePermissions(familyRole._id.toString(), familyPerms, session);
-
-    // Create Security Guard Role
-    const guardRole = await roleService.createRole(
-      { name: 'Security Guard', description: 'Security gate staff.', orgId: newOrg._id, isTenantRole: false },
-      session
-    );
-    const guardPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Security Guard']);
-    await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
-
-    return { org: newOrg, adminRole };
-  }
-
-  /**
-   * Platform Admin creates a community (story 1). The platform user does not
-   * become a member; the Community Admin joins through an invitation.
-   * @param {object} data - community fields, plus optional `admin: { email, phone, name }`
-   * @param {string} platformUserId - the authenticated platform user (inviter)
-   */
-  async provisionCommunity({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, features, admin }, platformUserId) {
-    const trimmedName = String(name || '').trim();
-    if (!trimmedName) throw new HttpError(400, 'Community name is required.');
-    if (await organizationRepository.findByName(trimmedName)) {
-      throw new HttpError(409, 'A community with this name already exists.', { code: 'COMMUNITY_NAME_TAKEN' });
-    }
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    let org;
-    try {
-      ({ org } = await this._createCommunityWithDefaults(
-        { name: trimmedName, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, features },
-        session
-      ));
-      await session.commitTransaction();
-    } catch (error) {
-      try { await session.abortTransaction(); } catch (_) {}
-      throw error;
-    } finally {
-      await session.endSession();
-    }
-
-    orgEventEmitter.emit('ORGANIZATION_CREATED', {
-      organizationId: org._id.toString(),
-      organizationName: org.name,
-      creatorUserId: platformUserId ? platformUserId.toString() : null,
-    });
-
-    let invitation = null;
-    if (admin?.email) {
-      try {
-        invitation = await this.assignCommunityAdmin(org._id, admin, platformUserId);
-      } catch (error) {
-        // The community exists; report the failed invite so it can be retried via /:id/admins
-        invitation = { error: error.message, code: error.details?.code || null };
-      }
-    }
-    return { organization: org, invitation };
-  }
-
-  /**
-   * Platform Admin assigns a Community Admin by invitation (stories 1 and 3).
-   * Uses the normal invite flow, so the admin signs in with OTP/SSO like everyone else.
-   */
-  async assignCommunityAdmin(orgId, { email, phone, name = '' }, platformUserId) {
-    if (!email || !phone) {
-      throw new HttpError(400, 'The Community Admin\'s email and phone number are required.');
-    }
-    const org = await this.getOrganizationById(orgId);
-    if (org.isPlatform) throw new HttpError(400, 'The platform workspace cannot be assigned a Community Admin.');
-    const userService = (await import('../user/user.services.js')).default;
-    const { user, invitationToken, inviteLink, membership } = await userService.inviteUser(
-      email, org._id, null, 'None', 'Community Admin', phone, name, 'WEB', platformUserId
-    );
-    return {
-      userId: user._id,
-      email: user.email,
-      membershipStatus: membership?.status || 'Pending',
-      inviteLink,
-      invitationToken,
-    };
-  }
-
-  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, features }) {
-    if (!name || typeof name !== 'string' || !name.trim()) {
+  async setupWorkspace({ organization, communityAdmin, features, creatorUserId }) {
+    if (!organization || !organization.name || typeof organization.name !== 'string' || !organization.name.trim()) {
       throw new HttpError(400, 'Organization name is required.');
     }
-    const trimmedName = name.trim();
+    const trimmedName = organization.name.trim();
 
     // Enforce name uniqueness checks BEFORE starting the write transaction
     const existingOrg = await organizationRepository.findByName(trimmedName);
@@ -374,19 +249,134 @@ export class OrganizationService {
       throw new HttpError(409, 'Conflict. Organization name already exists.');
     }
 
+    // Do not fall back to all features if an empty array is explicitly provided.
+    const finalFeatures = Array.isArray(features) ? features : [];
+
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      const { org: newOrg, adminRole } = await this._createCommunityWithDefaults(
-        { name: trimmedName, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, features },
+      const newOrg = await organizationRepository.create({
+        name: trimmedName,
+        status: 'Active',
+        organizationType: organization.organizationType || 'Residential',
+        contactEmail: organization.contactEmail || communityAdmin.email,
+        contactPhone: organization.contactPhone || communityAdmin.phone,
+        country: organization.country,
+        state: organization.state,
+        city: organization.city,
+        timezone: organization.timezone || 'Asia/Kolkata',
+        authenticationMethod: organization.authenticationMethod || 'EXISTING_SYSTEM',
+        allowedFeatures: finalFeatures
+      }, session);
+
+      // 2. Create the default Roles and assign Permissions
+      const roleService = (await import('../role/role.services.js')).default;
+      const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+      const permissionService = (await import('../permission/permission.services.js')).default;
+
+      const allPermissions = await permissionService.getAllPermissions();
+
+      // Helper function to get IDs by name list
+      const getPermissionIds = (names) => {
+        return allPermissions
+          .filter(p => names.includes(p.name))
+          .map(p => p._id.toString());
+      };
+
+      // Create Community Admin Role
+      const adminRole = await roleService.createRole(
+        { name: 'Community Admin', description: 'Gated community administrator with full access privileges.', orgId: newOrg._id, isTenantRole: false },
         session
       );
 
-      // 3. Create the Organization Membership linking user, org, and role
+      let adminPermissionIds;
+      if (Array.isArray(features)) {
+        const targetPermissions = allPermissions.filter(perm =>
+          features.includes(perm.feature)
+        );
+        const granularIds = targetPermissions.map(p => p._id.toString());
+        const basePermissions = allPermissions.filter(perm =>
+          ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'].includes(perm.name)
+        );
+        for (const basePerm of basePermissions) {
+          const bId = basePerm._id.toString();
+          if (!granularIds.includes(bId)) {
+            granularIds.push(bId);
+          }
+        }
+        adminPermissionIds = granularIds;
+      } else {
+        adminPermissionIds = allPermissions.map(p => p._id.toString());
+      }
+      await rolePermissionService.updateRolePermissions(adminRole._id.toString(), adminPermissionIds, session);
+
+      // Create Resident Owner Role
+      const ownerRole = await roleService.createRole(
+        { name: 'Resident Owner', description: 'Villa Owner residing in the community.', orgId: newOrg._id, isTenantRole: true },
+        session
+      );
+      const ownerPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Resident Owner']);
+      await rolePermissionService.updateRolePermissions(ownerRole._id.toString(), ownerPerms, session);
+
+      // Create Resident Tenant Role
+      const tenantRole = await roleService.createRole(
+        { name: 'Resident Tenant', description: 'Villa Tenant residing in the community.', orgId: newOrg._id, isTenantRole: true },
+        session
+      );
+      const tenantPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Resident Tenant']);
+      await rolePermissionService.updateRolePermissions(tenantRole._id.toString(), tenantPerms, session);
+
+      // Create Family Member Role
+      const familyRole = await roleService.createRole(
+        { name: 'Family Member', description: 'Family member of a resident.', orgId: newOrg._id, isTenantRole: true },
+        session
+      );
+      const familyPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Family Member']);
+      await rolePermissionService.updateRolePermissions(familyRole._id.toString(), familyPerms, session);
+
+      // Create Security Guard Role
+      const guardRole = await roleService.createRole(
+        { name: 'Security Guard', description: 'Security gate staff.', orgId: newOrg._id, isTenantRole: false },
+        session
+      );
+      const guardPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Security Guard']);
+      await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
+
+      // 3. Handle Community Admin User
+      const userService = (await import('../user/user.services.js')).default;
+      const normalizedAdminPhone = communityAdmin.phone ? normalizePhone(communityAdmin.phone) : null;
+      if (communityAdmin.phone && !normalizedAdminPhone) {
+        throw new HttpError(400, 'Phone number must be a valid international number.');
+      }
+      let communityAdminUser = await userService.resolveUserIdentity({
+        email: communityAdmin.email,
+        phone: normalizedAdminPhone,
+      }, session);
+
+      if (!communityAdminUser) {
+        if (!normalizedAdminPhone) {
+          throw new HttpError(400, 'Phone number is required for new community admins.');
+        }
+        const User = (await import('../user/user.model.js')).default;
+        const newCommunityAdmin = new User({
+          name: communityAdmin.fullName,
+          username: communityAdmin.username,
+          email: communityAdmin.email.toLowerCase(),
+          phone: normalizedAdminPhone,
+          status: 'Active',
+          credentialStatus: 'NOT_INITIALIZED',
+          emailVerified: true,
+          phoneVerified: true
+        });
+
+        communityAdminUser = await newCommunityAdmin.save({ session });
+      }
+
+      // 4. Create the Organization Membership linking user, org, and role
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.createMembership(
-        { userId, orgId: newOrg._id, roleIds: [adminRole._id], status: 'Active' },
+        { userId: communityAdminUser._id, orgId: newOrg._id, roleIds: [adminRole._id], status: 'Active' },
         session
       );
 
@@ -396,37 +386,38 @@ export class OrganizationService {
       orgEventEmitter.emit('ORGANIZATION_CREATED', {
         organizationId: newOrg._id.toString(),
         organizationName: newOrg.name,
-        creatorUserId: userId.toString(),
+        creatorUserId: creatorUserId.toString(),
       });
 
-      // Outside the write transaction, generate the fresh token context
-      const authService = (await import('../auth/auth.services.js')).default;
-      const user = await authService.getUserById(userId);
-      
-      const { tokenPayload, availableWorkspaces } = await authService.getScopedTokenPayload(user, newOrg._id.toString());
-      const { signToken } = await import('../../utils/jwt.utils.js');
-      const token = signToken(tokenPayload);
-
+      // Return clean response payload without sensitive tokens or passwords
       return {
-        token,
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          role: tokenPayload.role,
-          permissions: tokenPayload.permissions,
-          orgId: tokenPayload.orgId,
-          orgName: newOrg.name,
-          organizationName: newOrg.name,
-          activeOrganizationName: newOrg.name,
-          isPlatform: tokenPayload.isPlatform,
-          availableWorkspaces,
+        organization: {
+          id: newOrg._id,
+          name: newOrg.name,
+          organizationType: newOrg.organizationType,
+          contactPhone: newOrg.contactPhone,
+          contactEmail: newOrg.contactEmail,
+          country: newOrg.country,
+          state: newOrg.state,
+          city: newOrg.city,
+          timezone: newOrg.timezone,
+          allowedFeatures: newOrg.allowedFeatures,
         },
-        availableWorkspaces,
+        communityAdmin: {
+          id: communityAdminUser._id,
+          fullName: communityAdminUser.name,
+          username: communityAdminUser.username,
+          email: communityAdminUser.email,
+          phone: communityAdminUser.phone
+        }
       };
     } catch (error) {
       await session.abortTransaction();
       if (error.code === 11000 || (error.name === 'MongoServerError' && error.code === 11000)) {
+        const errorString = (error.message || '').toLowerCase();
+        if (errorString.includes('email') || errorString.includes('phone') || errorString.includes('username')) {
+          throw new HttpError(409, 'Conflict. Community Admin email, username, or phone already exists.');
+        }
         throw new HttpError(409, 'Conflict. Organization name already exists.');
       }
       throw error;
@@ -464,6 +455,40 @@ export class OrganizationService {
       throw new HttpError(404, `User ${userId} not found in Organization ${orgId}.`);
     }
     return userDetail;
+  }
+
+  async sendCommunityAdminEmailOtp(email) {
+    if (!email) throw new HttpError(400, 'Email address is required.');
+    const normalizedEmail = email.trim().toLowerCase();
+    const otpService = (await import('../otp/otp.services.js')).default;
+    const plainCode = await otpService.createOTP(normalizedEmail, 'COMMUNITY_ADMIN_EMAIL_VERIFICATION', 15);
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log(`\n=========================================`);
+      console.log(`[COMMUNITY ADMIN EMAIL OTP] Code for ${normalizedEmail}: ${plainCode}`);
+      console.log(`=========================================\n`);
+    }
+
+    orgEventEmitter.emit('COMMUNITY_ADMIN_EMAIL_OTP_SENT', { email: normalizedEmail, code: plainCode });
+
+    return {
+      message: `Verification code sent to ${normalizedEmail}`,
+      email: normalizedEmail,
+      ...(isDev && { devCode: plainCode }),
+    };
+  }
+
+  async verifyCommunityAdminEmailOtp(email, code) {
+    if (!email || !code) throw new HttpError(400, 'Email and OTP code are required.');
+    const normalizedEmail = email.trim().toLowerCase();
+    const otpService = (await import('../otp/otp.services.js')).default;
+    await otpService.verifyOTP(normalizedEmail, code, 'COMMUNITY_ADMIN_EMAIL_VERIFICATION', null, true);
+    return {
+      verified: true,
+      email: normalizedEmail,
+      message: 'Community Admin email verified successfully.',
+    };
   }
 }
 

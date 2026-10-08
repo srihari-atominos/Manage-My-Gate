@@ -9,14 +9,14 @@ import { Icon } from '@/components/ui/icon';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { Calendar as CalendarIcon, Wrench } from 'lucide-react-native';
 
-import { useAdminCalendar, formatDateString } from '../../../src/features/amenities/hooks/useAdminCalendar';
-import { AdminCalendarView } from '../../../src/features/amenities/components/AdminCalendarView';
-import { AdminReservationCard } from '../../../src/features/amenities/components/AdminReservationCard';
-import { AdminCalendarFilterDrawer } from '../../../src/features/amenities/components/AdminCalendarFilterDrawer';
-import { AdminActiveFilterChips } from '../../../src/features/amenities/components/AdminActiveFilterChips';
-import { AdminAvailabilitySummary } from '../../../src/features/amenities/components/AdminAvailabilitySummary';
-import { BookingDetailModal } from '../../../src/features/amenities/components/BookingDetailModal';
-import { AmenityBooking } from '../../../src/features/amenities/store/amenityBookingSlice';
+import { useAdminCalendar, formatDateString } from '@/src/features/amenities/hooks/useAdminCalendar';
+import { AdminCalendarView } from '@/src/features/amenities/components/AdminCalendarView';
+import { AdminReservationCard } from '@/src/features/amenities/components/AdminReservationCard';
+import { AdminCalendarFilterDrawer } from '@/src/features/amenities/components/AdminCalendarFilterDrawer';
+import { AdminActiveFilterChips } from '@/src/features/amenities/components/AdminActiveFilterChips';
+import { AdminAvailabilitySummary } from '@/src/features/amenities/components/AdminAvailabilitySummary';
+import { BookingDetailModal } from '@/src/features/amenities/components/BookingDetailModal';
+import { AmenityBooking } from '@/src/features/amenities/store/amenityBookingSlice';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 

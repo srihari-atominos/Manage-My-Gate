@@ -70,8 +70,6 @@ export const SYSTEM_FEATURE_CATALOG = [
     categoryName: 'Billing & Invoices',
     actionButton: { label: 'View all', type: 'link', route: '/(resident)/billing' },
     items: [
-      { id: 'billing_dashboard', name: 'Billing Dashboard', permission: 'billing:billing_hub', iconName: 'CreditCard', colorBg: 'bg-emerald-500/15', colorIcon: '#10b981', route: '/(resident)/billing' },
-      { id: 'billing_my_dues', name: 'My Personal Dues', permission: 'billing:my_dues', iconName: 'Receipt', colorBg: 'bg-rose-500/15', colorIcon: '#f43f5e', route: '/(resident)/billing/my-dues' },
       { id: 'billing_my_invoices', name: 'My Invoices', permission: 'billing:my_invoices', iconName: 'FileText', colorBg: 'bg-indigo-500/15', colorIcon: '#6366f1', route: '/(resident)/billing/my-dues' },
       { id: 'billing_assessment_manager', name: 'Assessment Manager', permission: 'billing:assessments', iconName: 'Calculator', colorBg: 'bg-indigo-500/15', colorIcon: '#6366f1', route: '/(resident)/admin/billing/assessments' },
       { id: 'billing_action_center', name: 'Billing Ledger', permission: 'billing:ledger', iconName: 'FileSpreadsheet', colorBg: 'bg-cyan-600/15', colorIcon: '#0891b2', route: '/(resident)/admin/billing/ledger' }

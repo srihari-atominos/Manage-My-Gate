@@ -96,16 +96,6 @@ export const WorkspaceSwitcher = () => {
             </CDropdownItem>
           )
         })}
-        <CDropdownItem
-          as="button"
-          type="button"
-          className="d-flex align-items-center py-2 px-3 text-primary border-top w-100 fw-semibold"
-          onClick={() => navigate('/workspace-setup?intent=create')}
-          id="workspace-switcher-create-org-btn"
-        >
-          <CIcon icon={cilPlus} className="me-2" />
-          {t('workspace.createNewOrg', { defaultValue: 'Create New Organization' })}
-        </CDropdownItem>
       </CDropdownMenu>
     </CDropdown>
   )

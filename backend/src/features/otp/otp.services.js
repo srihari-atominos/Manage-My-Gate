@@ -194,6 +194,10 @@ export class OtpService {
         code: 'OTP_EXPIRED',
       });
     }
+    if (otpDoc.expiresAt && otpDoc.expiresAt < new Date()) {
+      await Otp.deleteOne({ _id: otpDoc._id }).session(session);
+      throw new HttpError(400, 'Invalid or expired OTP');
+    }
 
     // Don't rely on the TTL index alone; it can lag by up to a minute
     if (otpDoc.expiresAt <= new Date()) {
@@ -218,8 +222,14 @@ export class OtpService {
 
     const isValid = await comparePassword(String(code || ''), otpDoc.code);
     if (!isValid) {
-      // Recorded outside the caller's session so a rolled-back transaction can't undo it
-      return await this.recordFailedAttempt(id, type);
+      otpDoc.attempts += 1;
+      const remainingAttempts = Math.max(0, 3 - otpDoc.attempts);
+      if (remainingAttempts === 0) {
+        await Otp.deleteOne({ _id: otpDoc._id }).session(session);
+        throw new HttpError(400, 'Too many incorrect attempts. Your current OTP is no longer valid. Please request a new OTP.');
+      }
+      await otpDoc.save({ session });
+      throw new HttpError(400, `Incorrect OTP. ${remainingAttempts === 1 ? '1 attempt' : `${remainingAttempts} attempts`} remaining.`);
     }
 
     if (deleteOnSuccess) {

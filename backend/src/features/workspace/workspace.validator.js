@@ -85,6 +85,13 @@ export const updateWorkspaceRules = [
     .withMessage('Organization name must be a string')
     .trim(),
 
+  body('authenticationMethod')
+    .optional()
+    .isString()
+    .trim()
+    .isIn(['EXISTING_SYSTEM', 'OTP_LOGIN'])
+    .withMessage('Authentication method must be one of: EXISTING_SYSTEM, OTP_LOGIN'),
+
   body('timeZone')
     .optional()
     .isString()

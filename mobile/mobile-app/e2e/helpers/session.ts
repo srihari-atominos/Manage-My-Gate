@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { store } from '@/src/store/store';
-import { verifyOtpLogin } from '@/src/features/auth/store/authSlice';
+import { updateTokenAndUser } from '@/src/features/auth/store/authSlice';
 import storage from '@/src/utils/storage';
 
 const E2E = require('../setup/constants');
@@ -58,8 +58,7 @@ export const signInAs = async (name: Actor) => {
   await storage.setItem('token', session.token);
   await storage.setItem('refreshToken', session.refreshToken);
   await storage.setItem('user', JSON.stringify(user));
-  // Same reducer effect as a completed sign-in (password login was removed from the app)
-  store.dispatch(verifyOtpLogin.fulfilled({ ...session, user } as any, 'e2e-sign-in', {} as any));
+  store.dispatch(updateTokenAndUser({ token: session.token, refreshToken: session.refreshToken, user }));
   return actor(name);
 };
 

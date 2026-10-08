@@ -109,10 +109,24 @@ describe('Multi-Organization Foundation & Architecture Hardening Tests', () => {
     orgEventEmitter.once('ORGANIZATION_CREATED', eventHandler);
 
     const setup1 = await organizationService.setupWorkspace({
-      name: firstOrgName,
-      organizationType: 'Residential',
-      contactEmail: testEmail,
-      userId: userId,
+      organization: {
+        name: firstOrgName,
+        organizationType: 'Residential',
+        contactPhone: '1111111111',
+        contactEmail: testEmail,
+        country: 'India',
+        state: 'State',
+        city: 'City',
+        timezone: 'Asia/Kolkata'
+      },
+      communityAdmin: {
+        fullName: 'Admin User',
+        username: `admin_${Date.now()}${Math.floor(Math.random()*1000)}`,
+        email: `admin_${Date.now()}${Math.floor(Math.random()*1000)}@example.com`,
+        phone: `111${Math.floor(Math.random()*10000000)}`,
+        password: 'Password123!'
+      },
+      creatorUserId: userId
     });
 
     assert.ok(setup1);
@@ -163,10 +177,24 @@ describe('Multi-Organization Foundation & Architecture Hardening Tests', () => {
     assert.equal(usersBefore, 1);
 
     const setup2 = await organizationService.setupWorkspace({
-      name: secondOrgName,
-      organizationType: 'Residential',
-      contactEmail: testEmail,
-      userId: userId,
+      organization: {
+        name: secondOrgName,
+        organizationType: 'Residential',
+        contactPhone: '1111111111',
+        contactEmail: testEmail,
+        country: 'India',
+        state: 'State',
+        city: 'City',
+        timezone: 'Asia/Kolkata'
+      },
+      communityAdmin: {
+        fullName: 'Admin User',
+        username: `admin_${Date.now()}${Math.floor(Math.random()*1000)}`,
+        email: `admin_${Date.now()}${Math.floor(Math.random()*1000)}@example.com`,
+        phone: `111${Math.floor(Math.random()*10000000)}`,
+        password: 'Password123!'
+      },
+      creatorUserId: userId
     });
 
     // Count total users with this email after creating second org
@@ -245,9 +273,25 @@ describe('Multi-Organization Foundation & Architecture Hardening Tests', () => {
     await assert.rejects(
       async () => {
         await organizationService.setupWorkspace({
-          name: firstOrgName,
-          userId: userId,
-        });
+      organization: {
+        name: firstOrgName,
+        organizationType: 'Residential',
+        contactPhone: '1111111111',
+        contactEmail: testEmail,
+        country: 'India',
+        state: 'State',
+        city: 'City',
+        timezone: 'Asia/Kolkata'
+      },
+      communityAdmin: {
+        fullName: 'Admin User',
+        username: `admin_${Date.now()}${Math.floor(Math.random()*1000)}`,
+        email: `admin_${Date.now()}${Math.floor(Math.random()*1000)}@example.com`,
+        phone: `111${Math.floor(Math.random()*10000000)}`,
+        password: 'Password123!'
+      },
+      creatorUserId: userId
+    });
       },
       (err) => {
         assert.equal(err.statusCode, 409);
@@ -260,9 +304,25 @@ describe('Multi-Organization Foundation & Architecture Hardening Tests', () => {
     await assert.rejects(
       async () => {
         await organizationService.setupWorkspace({
-          name: firstOrgName.toLowerCase(),
-          userId: userId,
-        });
+      organization: {
+        name: firstOrgName.toLowerCase(),
+        organizationType: 'Residential',
+        contactPhone: '1111111111',
+        contactEmail: testEmail,
+        country: 'India',
+        state: 'State',
+        city: 'City',
+        timezone: 'Asia/Kolkata'
+      },
+      communityAdmin: {
+        fullName: 'Admin User',
+        username: `admin_${Date.now()}${Math.floor(Math.random()*1000)}`,
+        email: `admin_${Date.now()}${Math.floor(Math.random()*1000)}@example.com`,
+        phone: `111${Math.floor(Math.random()*10000000)}`,
+        password: 'Password123!'
+      },
+      creatorUserId: userId
+    });
       },
       (err) => {
         assert.equal(err.statusCode, 409);
@@ -275,9 +335,25 @@ describe('Multi-Organization Foundation & Architecture Hardening Tests', () => {
     await assert.rejects(
       async () => {
         await organizationService.setupWorkspace({
-          name: `  ${firstOrgName}  `,
-          userId: userId,
-        });
+      organization: {
+        name: `  ${firstOrgName}  `,
+        organizationType: 'Residential',
+        contactPhone: '1111111111',
+        contactEmail: testEmail,
+        country: 'India',
+        state: 'State',
+        city: 'City',
+        timezone: 'Asia/Kolkata'
+      },
+      communityAdmin: {
+        fullName: 'Admin User',
+        username: `admin_${Date.now()}${Math.floor(Math.random()*1000)}`,
+        email: `admin_${Date.now()}${Math.floor(Math.random()*1000)}@example.com`,
+        phone: `111${Math.floor(Math.random()*10000000)}`,
+        password: 'Password123!'
+      },
+      creatorUserId: userId
+    });
       },
       (err) => {
         assert.equal(err.statusCode, 409);
@@ -301,9 +377,25 @@ describe('Multi-Organization Foundation & Architecture Hardening Tests', () => {
       await assert.rejects(
         async () => {
           await organizationService.setupWorkspace({
-            name: `Simulated Race Condition ${Date.now()}`,
-            userId: userId,
-          });
+      organization: {
+        name: `Simulated Race Condition ${Date.now()}`,
+        organizationType: 'Residential',
+        contactPhone: '1111111111',
+        contactEmail: testEmail,
+        country: 'India',
+        state: 'State',
+        city: 'City',
+        timezone: 'Asia/Kolkata'
+      },
+      communityAdmin: {
+        fullName: 'Admin User',
+        username: `admin_${Date.now()}${Math.floor(Math.random()*1000)}`,
+        email: `admin_${Date.now()}${Math.floor(Math.random()*1000)}@example.com`,
+        phone: `111${Math.floor(Math.random()*10000000)}`,
+        password: 'Password123!'
+      },
+      creatorUserId: userId
+    });
         },
         (err) => {
           assert.equal(err.statusCode, 409);
@@ -340,9 +432,25 @@ describe('Multi-Organization Foundation & Architecture Hardening Tests', () => {
       await assert.rejects(
         async () => {
           await organizationService.setupWorkspace({
-            name: doomedOrgName,
-            userId: userId,
-          });
+      organization: {
+        name: doomedOrgName,
+        organizationType: 'Residential',
+        contactPhone: '1111111111',
+        contactEmail: testEmail,
+        country: 'India',
+        state: 'State',
+        city: 'City',
+        timezone: 'Asia/Kolkata'
+      },
+      communityAdmin: {
+        fullName: 'Admin User',
+        username: `admin_${Date.now()}${Math.floor(Math.random()*1000)}`,
+        email: `admin_${Date.now()}${Math.floor(Math.random()*1000)}@example.com`,
+        phone: `111${Math.floor(Math.random()*10000000)}`,
+        password: 'Password123!'
+      },
+      creatorUserId: userId
+    });
         },
         (err) => {
           assert.equal(err.message, 'Simulated role creation database failure inside transaction');
@@ -391,8 +499,12 @@ describe('Multi-Organization Foundation & Architecture Hardening Tests', () => {
     // Simulate an incoming Express request where an attacker attempts to inject protected fields
     const fakeReq = {
       body: {
+        organization: {
         name: spoofedOrgName,
         organizationType: 'Residential',
+        contactPhone: '1231231234',
+        contactEmail: 'test@example.com', country: 'IN', state: 'ST', city: 'CY', timezone: 'Asia/Kolkata' },
+        communityAdmin: { fullName: 'Spoofed Admin', username: `spoof_${Date.now()}`, email: `spoof_${Date.now()}@test.com`, phone: `123${Math.floor(Math.random()*10000000)}`, password: 'Password123!' },
         userId: maliciousAttackerId,
         creatorId: maliciousAttackerId,
         isPlatform: true,
@@ -518,17 +630,45 @@ describe('Multi-Organization Foundation & Architecture Hardening Tests', () => {
 
     const [resA, resB] = await Promise.allSettled([
       organizationService.setupWorkspace({
+      organization: {
         name: concurrentOrgName,
         organizationType: 'Residential',
+        contactPhone: '1111111111',
         contactEmail: testEmail,
-        userId: userId,
-      }),
+        country: 'India',
+        state: 'State',
+        city: 'City',
+        timezone: 'Asia/Kolkata'
+      },
+      communityAdmin: {
+        fullName: 'Admin User',
+        username: `admin_${Date.now()}${Math.floor(Math.random()*1000)}`,
+        email: `admin_${Date.now()}${Math.floor(Math.random()*1000)}@example.com`,
+        phone: `111${Math.floor(Math.random()*10000000)}`,
+        password: 'Password123!'
+      },
+      creatorUserId: userId
+    }),
       organizationService.setupWorkspace({
+      organization: {
         name: concurrentOrgName,
         organizationType: 'Residential',
+        contactPhone: '1111111111',
         contactEmail: testEmail,
-        userId: userId,
-      }),
+        country: 'India',
+        state: 'State',
+        city: 'City',
+        timezone: 'Asia/Kolkata'
+      },
+      communityAdmin: {
+        fullName: 'Admin User',
+        username: `admin_${Date.now()}${Math.floor(Math.random()*1000)}`,
+        email: `admin_${Date.now()}${Math.floor(Math.random()*1000)}@example.com`,
+        phone: `111${Math.floor(Math.random()*10000000)}`,
+        password: 'Password123!'
+      },
+      creatorUserId: userId
+    }),
     ]);
 
     const fulfilled = [resA, resB].filter(r => r.status === 'fulfilled');

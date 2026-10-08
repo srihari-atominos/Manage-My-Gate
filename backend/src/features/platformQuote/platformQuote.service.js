@@ -145,7 +145,7 @@ export class PlatformQuoteService {
     // Deep-copy immutable snapshots
     const customerSnapshot = {
       customerName: inquiry.customerName || inquiry.contactName || inquiry.username || inquiry.name || 'Valued Customer',
-      contactEmail: inquiry.contactEmail || inquiry.email || 'user@managemygate.com',
+      contactEmail: inquiry.contactEmail || inquiry.email || 'user@nahom.com',
       contactPhone: inquiry.contactPhone || inquiry.phone || 'N/A',
     };
 

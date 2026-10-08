@@ -50,27 +50,7 @@ export const useAuthRouting = () => {
 
     // Clear stored temporary auth intent once evaluated
     sessionStorage.removeItem('auth_intent')
-
-    // 1. Invite Sign-up/Login Flow:
-    // If we have an invite token and we aren't explicitly skipping it, route to accept-invite
-    if (inviteToken && !options.skipInviteToken) {
-      navigate(`/accept-invite/${inviteToken}`)
-      return
-    }
-
-    // 2. Organization Creation Intent Flow:
-    // If the user arrived with explicit create intent (e.g. intent=create or intent=create-org),
-    // navigate to workspace setup so the user can create a new organization under their account.
-    if (
-      intent === 'create' ||
-      intent === 'create-org' ||
-      location.pathname === '/login-createOrg'
-    ) {
-      navigate('/workspace-setup?intent=create')
-      return
-    }
-
-    // Check if the user already has an active organization
+    // Invitation activation is completed server-side during OTP/SSO verification.    // Check if the user already has an active organization
     const hasOrg = !!(
       user &&
       (user.orgId ||
@@ -80,14 +60,8 @@ export const useAuthRouting = () => {
         availableWorkspaces.length > 0)
     )
 
-    // 3. Existing Organization Users (Without Create Intent):
-    if (hasOrg) {
-      navigate('/dashboard')
-      return
-    }
-
-    // 4. Fallback for users without active organization:
-    navigate('/workspace-setup')
+    // 2. Existing Organization Users / Fallback:
+    navigate('/dashboard')
   }
 
   return {

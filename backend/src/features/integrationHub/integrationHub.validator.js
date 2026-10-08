@@ -10,7 +10,7 @@ export const connectRules = [
     .notEmpty()
     .withMessage('Provider is required')
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'banking', 'razorpay'])
+    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'msg91', 'banking', 'razorpay'])
     .withMessage('Invalid provider. Allowed values: openai, twilio, resend, smtp, firebase, messagecentral, banking, razorpay'),
 
 
@@ -173,6 +173,17 @@ export const connectRules = [
     .isString()
     .withMessage('Environment must be a valid string'),
 
+  // MSG91 Send OTP validation rules
+  body('credentials.authKey')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'msg91')
+    .trim().notEmpty().withMessage('Auth Key (authKey) is required for MSG91 integration').isString(),
+  body('credentials.templateId')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'msg91' && value !== undefined && value !== '')
+    .trim().isString().withMessage('Template ID must be a valid string'),
+  body('credentials.senderId')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'msg91' && value !== undefined && value !== '')
+    .trim().isString().withMessage('Sender ID must be a valid string'),
+
   // Banking Vault validation rules
   body('credentials.accountName')
     .if((value, { req }) => req.body.provider?.toLowerCase() === 'banking')
@@ -260,7 +271,7 @@ export const listRules = [
     .optional()
     .trim()
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'banking', 'razorpay'])
+    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'msg91', 'banking', 'razorpay'])
     .withMessage('Invalid provider filter'),
 
 ];

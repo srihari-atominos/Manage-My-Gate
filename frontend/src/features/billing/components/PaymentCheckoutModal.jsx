@@ -181,7 +181,7 @@ export const PaymentCheckoutModal = ({
           key: keyId,
           amount: orderData.amount,
           currency: orderData.currency || 'INR',
-          name: 'ManageMyGate Billing',
+          name: 'Nahom Billing',
           description: `Settlement for Invoice #${invoice.invoiceNumber || 'INV-001'}`,
           order_id: orderData.orderId || orderData.id,
           handler: async (response) => {

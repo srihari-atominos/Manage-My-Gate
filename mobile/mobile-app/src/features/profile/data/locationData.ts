@@ -402,7 +402,7 @@ export async function reverseGeocodeCoords(latitude: number, longitude: number):
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
       {
-        headers: { 'User-Agent': 'ManageMyGate-App/1.0' },
+        headers: { 'User-Agent': 'Nahom-App/1.0' },
         signal: controller.signal,
       }
     );

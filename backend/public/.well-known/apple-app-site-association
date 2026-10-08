@@ -5,8 +5,9 @@
       {
         "appID": "<APPLE_TEAM_ID>.com.atominosconsulting.nahom",
         "paths": [
-          "/invite/*",
-          "/billing/*"
+          "/invite/handoff/*",
+          "/billing/*",
+          "/invite/*"
         ],
         "components": [
           {
@@ -15,7 +16,7 @@
           },
           {
             "/": "/invite/*",
-            "comment": "Invitation links (and /invite/handoff/*) open the app when installed; otherwise the web page offers the store or the web app"
+            "comment": "Directly opens mobile app for invitation processing"
           }
         ]
       }

@@ -1,5 +1,5 @@
-import '../src/utils/consoleFilter';
-import '../src/utils/cryptoPolyfill';
+import '@/src/utils/consoleFilter';
+import '@/src/utils/cryptoPolyfill';
 import '@/global.css';
 import React, { useEffect, useMemo, useRef } from 'react';
 
@@ -15,7 +15,7 @@ import { Stack, useSegments, useRouter, useGlobalSearchParams, useRootNavigation
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { Provider, useDispatch, useSelector } from 'react-redux';
-import { store } from '../src/store/store';
+import { store } from '@/src/store/store';
 import { View, I18nManager, TouchableOpacity, Linking, Platform, LogBox } from 'react-native';
 import { AlertTriangle, Mail } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
@@ -78,8 +78,8 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 }
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useAuth } from '../src/features/auth/hooks/useAuth';
-import { setDefaultPhoneCountry } from '../src/utils/phone';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { setDefaultPhoneCountry } from '@/src/utils/phone';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import {
@@ -90,15 +90,14 @@ import {
   HankenGrotesk_700Bold,
   HankenGrotesk_800ExtraBold,
 } from '@expo-google-fonts/hanken-grotesk';
-import storage from '../src/utils/storage';
-import i18n, { I18nProvider } from '../src/utils/i18n';
+import storage from '@/src/utils/storage';
+import i18n, { I18nProvider } from '@/src/utils/i18n';
 import * as SplashScreen from 'expo-splash-screen';
-import useAutoUpdate from '../src/hooks/useAutoUpdate';
-import usePushNotifications from '../src/features/notification/hooks/usePushNotifications';
-import { clearPendingRoute, setPendingRoute } from '../src/features/notification/store/notificationSlice';
-import { useGlobalAppSocket } from '../src/hooks/useGlobalAppSocket';
-import { getDeferredHandoffContext } from '../src/features/auth/services/deferredDeepLinkService';
-import { hasActiveCommunity, resolveHomeRoute, SIGNED_IN_AUTH_ROUTES } from '../src/features/auth/utils/landing';
+import useAutoUpdate from '@/src/hooks/useAutoUpdate';
+import usePushNotifications from '@/src/features/notification/hooks/usePushNotifications';
+import { clearPendingRoute, setPendingRoute } from '@/src/features/notification/store/notificationSlice';
+import { useGlobalAppSocket } from '@/src/hooks/useGlobalAppSocket';
+import { getDeferredHandoffContext } from '@/src/features/auth/services/deferredDeepLinkService';
 import { GlobalNotificationPresenter } from '@/components/feedback/GlobalNotificationPresenter';
 import { AnimatedSplash } from '@/components/feedback/AnimatedSplash';
 import { ForceUpdateGate } from '@/components/feedback/ForceUpdateGate';
@@ -116,7 +115,7 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
     const body = encodeURIComponent(
       `Hi Nahom Developer Team,\n\nI encountered a crash in the app:\n\nError: ${error?.message || 'Unknown'}\n\nStack Trace:\n${error?.stack || 'None'}\n\nPlatform: ${Platform.OS}\nDate: ${new Date().toISOString()}`
     );
-    Linking.openURL(`mailto:developer@managemygate.com?subject=${subject}&body=${body}`);
+    Linking.openURL(`mailto:developer@nahom.com?subject=${subject}&body=${body}`);
   };
 
   return (
@@ -223,7 +222,7 @@ function AuthRouteGuard() {
     const isRoot = !firstSegment || firstSegment === 'index';
     const u = user as any;
 
-    const isExplicitNonInviteAuthRoute = inAuthGroup && currentRoute && currentRoute !== 'accept-invite';
+    const isExplicitNonInviteAuthRoute = inAuthGroup && currentRoute && currentRoute !== 'login';
 
     const hasTokenParam = !!(searchParams?.token || searchParams?.code);
     const isWebInviteUrl =
@@ -231,21 +230,21 @@ function AuthRouteGuard() {
       typeof window.location !== 'undefined' &&
       window.location?.pathname &&
       (window.location.pathname.startsWith('/invite/') ||
-       window.location.pathname === '/accept-invite' ||
-       window.location.pathname.startsWith('/(auth)/accept-invite'));
+       window.location.pathname === '/login' ||
+       window.location.pathname.startsWith('/(auth)/login'));
 
     const isInviteRoute =
       !isExplicitNonInviteAuthRoute &&
       (firstSegment === 'invite' ||
-        firstSegment === 'accept-invite' ||
-        (inAuthGroup && currentRoute === 'accept-invite') ||
+        firstSegment === 'login' ||
+        (inAuthGroup && currentRoute === 'login') ||
         (isRoot && (hasTokenParam || isWebInviteUrl)));
 
     if (isInviteRoute) {
       if (firstSegment === 'invite') {
         return;
       }
-      if (firstSegment !== '(auth)' || currentRoute !== 'accept-invite') {
+      if (firstSegment !== '(auth)' || currentRoute !== 'login') {
         let tokenToPass = stableSearchParams?.token || stableSearchParams?.code;
         if (!tokenToPass && typeof window !== 'undefined' && window.location?.href) {
           const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app\/|web\/)?([a-f0-9]{32,64}|[^/?&#]+)/i);
@@ -254,7 +253,7 @@ function AuthRouteGuard() {
           }
         }
         replaceOnce({
-          pathname: '/(auth)/accept-invite',
+          pathname: '/(auth)/login',
           params: { ...stableSearchParams, ...(tokenToPass ? { token: tokenToPass } : {}) },
         });
       }
@@ -283,7 +282,7 @@ function AuthRouteGuard() {
               replaceOnce(`/invite/handoff/${context.value}` as any);
             } else {
               replaceOnce({
-                pathname: '/(auth)/accept-invite',
+                pathname: '/(auth)/login',
                 params: { token: context.value },
               });
             }

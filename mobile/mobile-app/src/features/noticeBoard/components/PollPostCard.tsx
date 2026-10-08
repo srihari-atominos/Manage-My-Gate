@@ -82,7 +82,7 @@ export const PollPostCard: React.FC<PollPostCardProps> = ({ poll, onPress }) => 
     try {
       await Share.share({
         title: question,
-        message: `Community Poll: ${question}\n\nCast your vote in the ManageMyGate app.`,
+        message: `Community Poll: ${question}\n\nCast your vote in the Nahom app.`,
       });
     } catch {}
   };

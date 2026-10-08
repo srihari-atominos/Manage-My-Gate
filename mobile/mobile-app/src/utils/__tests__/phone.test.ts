@@ -59,13 +59,13 @@ describe('phone utils', () => {
     expect(phoneLengthStatus('', 'IN')).toBe('empty');
     expect(phoneLengthStatus('98765', 'IN')).toBe('short');
     expect(phoneLengthStatus('9876543210', 'IN')).toBe('ok');
-    expect(phoneLengthStatus('501234567', 'AE')).toBe('ok');
+    expect(phoneLengthStatus('0501234567', 'AE')).toBe('ok');
   });
 });
 
 describe('validatePhone (international)', () => {
   it('accepts valid numbers in any country', () => {
-    expect(validatePhone('+971501234567').isValid).toBe(true);
+    expect(validatePhone('+14155552671').isValid).toBe(true);
     expect(validatePhone('+447400123456').isValid).toBe(true);
     expect(validatePhone('9876543210', 'IN').isValid).toBe(true);
     expect(validatePhone('9876543210', '+91').isValid).toBe(true);

@@ -18,9 +18,10 @@ export default function AuthLayout() {
       {/* One sign-in for everyone: email or phone code, or SSO. Access is by invitation. */}
       <Stack.Screen name="login" options={{ title: 'Sign In', headerShown: false }} />
       <Stack.Screen name="otp" options={{ title: 'Verify Identity' }} />
-      <Stack.Screen name="accept-invite" options={{ title: 'Invitation', headerShown: false }} />
-      <Stack.Screen name="pending-invitations" options={{ title: 'Your Invitations', headerShown: false }} />
-      <Stack.Screen name="no-community" options={{ headerShown: false }} />
+      <Stack.Screen name="register-otp" options={{ title: 'Verify Registration' }} />
+      <Stack.Screen name="forgot-password" options={{ title: 'Reset Password', headerShown: false }} />
+      <Stack.Screen name="select-features" options={{ title: 'Configure Features', headerBackVisible: false }} />
     </Stack>
   );
 }
+

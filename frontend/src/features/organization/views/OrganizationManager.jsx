@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CPagination, CPaginationItem } from '@coreui/react'
+import { useNavigate } from 'react-router-dom'
+import { CPagination, CPaginationItem, CBadge } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilFolderOpen, cilBan, cilCheckCircle } from '@coreui/icons'
+import { cilFolderOpen, cilBan, cilCheckCircle, cilEnvelopeClosed, cilPhone } from '@coreui/icons'
 import useOrganizationManager from '../hooks/useOrganizationManager.js'
 import '../styles/_organization.scss'
 import AppLoader from '../../../components/common/AppLoader'
@@ -12,8 +13,18 @@ import AppLoader from '../../../components/common/AppLoader'
  */
 export const OrganizationManager = () => {
   const { t } = useTranslation()
-  const { organizations, totalPages, page, loading, error, fetchOrgs, toggleStatus, viewDetails } =
-    useOrganizationManager()
+  const navigate = useNavigate()
+  const {
+    organizations,
+    total,
+    totalPages,
+    page,
+    loading,
+    error,
+    fetchOrgs,
+    toggleStatus,
+    viewDetails,
+  } = useOrganizationManager()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -48,15 +59,33 @@ export const OrganizationManager = () => {
         {/* Page Header */}
         <div className="page-header">
           <div>
-            <h2 className="page-title">
-              {t('superAdmin.orgManager.title', { defaultValue: 'Community Manager' })}
-            </h2>
+            <div className="d-flex align-items-center gap-3">
+              <h2 className="page-title mb-0">
+                {t('superAdmin.orgManager.title', { defaultValue: 'Community Manager' })}
+              </h2>
+              <CBadge
+                color="primary"
+                shape="rounded-pill"
+                style={{ fontSize: '13px', padding: '6px 12px' }}
+              >
+                Total: {total || 0}
+              </CBadge>
+            </div>
             <p className="page-subtitle">
               {t('superAdmin.orgManager.subtitle', {
                 defaultValue:
                   'Manage all system organizations, view status, and block/unblock access.',
               })}
             </p>
+          </div>
+          <div className="header-actions">
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate('/super-admin/organizations/create')}
+            >
+              <CIcon icon={cilFolderOpen} className="me-2" />
+              {t('superAdmin.orgManager.createOrg', { defaultValue: 'Create Community' })}
+            </button>
           </div>
         </div>
 
@@ -93,10 +122,16 @@ export const OrganizationManager = () => {
                     <th>
                       {t('superAdmin.orgManager.tableName', { defaultValue: 'Organization' })}
                     </th>
-                    <th>{t('superAdmin.orgManager.tableVillas', { defaultValue: 'Villas' })}</th>
-                    <th>{t('superAdmin.orgManager.tableUsers', { defaultValue: 'Users' })}</th>
-                    <th>{t('superAdmin.orgManager.tableStatus', { defaultValue: 'Status' })}</th>
-                    <th style={{ textAlign: 'right' }}>
+                    <th className="text-center">
+                      {t('superAdmin.orgManager.tableVillas', { defaultValue: 'Villas' })}
+                    </th>
+                    <th className="text-center">
+                      {t('superAdmin.orgManager.tableUsers', { defaultValue: 'Users' })}
+                    </th>
+                    <th className="text-center">
+                      {t('superAdmin.orgManager.tableStatus', { defaultValue: 'Status' })}
+                    </th>
+                    <th className="text-end">
                       {t('superAdmin.orgManager.tableActions', { defaultValue: 'Actions' })}
                     </th>
                   </tr>
@@ -105,23 +140,37 @@ export const OrganizationManager = () => {
                   {organizations.map((org) => (
                     <tr key={org._id}>
                       <td>
-                        <span
-                          className="org-name-link"
-                          onClick={() => viewDetails(org._id)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => e.key === 'Enter' && viewDetails(org._id)}
-                        >
-                          {org.name}
-                        </span>
+                        <div className="org-cell d-flex align-items-center gap-3">
+                          <div className="org-avatar">
+                            {org.name ? org.name.charAt(0).toUpperCase() : 'O'}
+                          </div>
+                          <div className="org-info">
+                            <div
+                              className="org-name-link mb-1"
+                              onClick={() => viewDetails(org._id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => e.key === 'Enter' && viewDetails(org._id)}
+                            >
+                              {org.name}
+                            </div>
+                            <div className="org-contact-subtext text-muted small">
+                              <CIcon icon={cilEnvelopeClosed} size="sm" className="me-1" />
+                              {org.contactEmail || 'N/A'}
+                              <span className="mx-2">•</span>
+                              <CIcon icon={cilPhone} size="sm" className="me-1" />
+                              {org.contactPhone || 'N/A'}
+                            </div>
+                          </div>
+                        </div>
                       </td>
-                      <td>
+                      <td className="text-center">
                         <span className="count-badge">{org.villaCount ?? 0} Villas</span>
                       </td>
-                      <td>
+                      <td className="text-center">
                         <span className="count-badge">{org.userCount ?? 0} Users</span>
                       </td>
-                      <td>
+                      <td className="text-center">
                         <span className={`status-pill ${getStatusClass(org.status)}`}>
                           {org.status
                             ? t(`superAdmin.orgManager.status.${org.status.toLowerCase()}`, {
@@ -130,7 +179,7 @@ export const OrganizationManager = () => {
                             : 'Unknown'}
                         </span>
                       </td>
-                      <td>
+                      <td className="text-end">
                         <div className="action-btn-group">
                           <button
                             className="action-icon-btn btn-view"

@@ -285,7 +285,7 @@ export class PlatformInvoiceService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🏢 ManageMyGate Platform</div>
+            <div class="logo">🏢 Nahom Platform</div>
             <div class="inv-title">
               <h1>TAX INVOICE</h1>
               <p># ${invoice.invoiceNumber || invoice._id}</p>
@@ -356,7 +356,7 @@ export class PlatformInvoiceService {
           </div>
 
           <div class="footer">
-            ManageMyGate Authorized Financial Invoice &bull; GST Registered &bull; System Generated
+            Nahom Authorized Financial Invoice &bull; GST Registered &bull; System Generated
           </div>
         </div>
       </body>

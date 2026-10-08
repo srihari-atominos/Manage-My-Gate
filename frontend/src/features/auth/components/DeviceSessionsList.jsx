@@ -35,7 +35,7 @@ export const DeviceSessionsList = () => {
   }
 
   useEffect(() => {
-    fetchDeviceSessions()
+    Promise.resolve().then(fetchDeviceSessions)
   }, [])
 
   const handleRevoke = async (sessionId) => {

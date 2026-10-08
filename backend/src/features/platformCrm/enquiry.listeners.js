@@ -14,7 +14,7 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
   const username = enquiry.username || 'User';
   const orgName = enquiry.organizationName || 'your organization';
 
-  const subject = 'Your ManageMyGate Enquiry has been received';
+  const subject = 'Your Nahom Enquiry has been received';
   const html = `
     <h3>Hello ${username},</h3>
     <p>Thank you for registering your organization "<strong>${orgName}</strong>".</p>
@@ -22,7 +22,7 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
     <p>We will notify you once your account is fully activated.</p>
     <br/>
     <p>Best regards,</p>
-    <p>The ManageMyGate Team</p>
+    <p>The Nahom Team</p>
   `;
 
   try {
@@ -85,7 +85,7 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
         });
 
         await transporter.sendMail({
-          from: `"${smtpIntegration.accountLabel || 'ManageMyGate'}" <${authUsername}>`,
+          from: `"${smtpIntegration.accountLabel || 'Nahom'}" <${authUsername}>`,
           to: identifier,
           subject: subject,
           html: html,
@@ -111,7 +111,7 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
             'Authorization': `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
-            from: 'ManageMyGate <onboarding@resend.dev>',
+            from: 'Nahom <onboarding@resend.dev>',
             to: [identifier],
             subject: subject,
             html: html,

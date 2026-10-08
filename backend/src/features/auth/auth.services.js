@@ -1,3 +1,4 @@
+import { sendOtpNotification } from './auth.listeners.js';
 import userService from '../user/user.services.js';
 import roleService from '../role/role.services.js';
 import rolePermissionService from '../rolePermission/rolePermission.services.js';
@@ -27,219 +28,7 @@ const devCodeField = (identifier, plainCode) => {
 };
 
 export class AuthService {
-  /**
-
-   * Registers a new user with standard credentials.
-   * Decoupled from organization setup.
-   * @param {object} registerData - Payload containing email, username, and password
-   */
-  async register(registerData) {
-    const mongoose = (await import('mongoose')).default;
-    const session = await mongoose.startSession();
-    
-    // --- TRANSACTION BOUNDARY START ---
-    // Wrap the user creation process in a transaction to ensure database consistency.
-    session.startTransaction();
-
-    try {
-      const { email, password, phone } = registerData;
-
-      // If user already exists and is pending, just resend OTP instead of throwing an error
-      const existingUser = await userService.getUserByEmail(email, session);
-      if (existingUser) {
-        if (existingUser.status === 'Pending Verification') {
-          // An invited placeholder is activated only by accepting its invitation,
-          // never by self-registration with the same email
-          const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
-          if (await OrgMembership.exists({ userId: existingUser._id, status: 'Pending' }).session(session)) {
-            throw new HttpError(409, 'You have been invited to a community. Please open your invitation link to join.', {
-              code: 'INVITATION_REQUIRED',
-            });
-          }
-          const plainCode = await otpService.createOTP(email, 'REGISTER', 15, session);
-          await session.commitTransaction();
-          authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
-          return {
-            message: 'Registration successful. OTP sent for verification.',
-            email: existingUser.email,
-            status: 'Pending Verification'
-          };
-        } else {
-          throw new HttpError(400, `User with email '${email}' already exists.`);
-        }
-      }
-
-      // Extract name from registerData
-      let nameToUse = registerData.name || (registerData.firstName || registerData.lastName ? `${registerData.firstName || ''} ${registerData.lastName || ''}`.trim() : '');
-      nameToUse = nameToUse.trim();
-
-      // Derive username: prioritize name, fallback to email prefix
-      let derivedUsername;
-      if (nameToUse) {
-        derivedUsername = nameToUse.replace(/[^a-zA-Z0-9]/g, '');
-      } else if (registerData.username) {
-        derivedUsername = registerData.username.replace(/[^a-zA-Z0-9]/g, '');
-      } else {
-        derivedUsername = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
-      }
-
-      // Ensure length bounds
-      if (derivedUsername.length < 3) {
-        derivedUsername = 'user' + Math.floor(100 + Math.random() * 900);
-      } else if (derivedUsername.length > 30) {
-        derivedUsername = derivedUsername.substring(0, 30);
-      }
-
-      // Check if username exists, and generate a unique one if so
-      let usernameExists = await userService.getUserByEmailOrUsername(derivedUsername, session).catch(() => null);
-      let uniqueUsername = derivedUsername;
-      while (usernameExists) {
-        const suffix = Math.floor(1000 + Math.random() * 9000).toString();
-        uniqueUsername = derivedUsername;
-        if (uniqueUsername.length + suffix.length > 30) {
-          uniqueUsername = uniqueUsername.substring(0, 30 - suffix.length);
-        }
-        uniqueUsername = `${uniqueUsername}${suffix}`;
-        usernameExists = await userService.getUserByEmailOrUsername(uniqueUsername, session).catch(() => null);
-      }
-
-      // Create the User (passing session for transactional execution)
-      const newUser = await userService.createUser(
-        { 
-          email, 
-          username: uniqueUsername, 
-          password, 
-          phone, 
-          name: nameToUse || undefined, 
-          status: 'Pending Verification',
-          privacyPolicyAcceptedAt: new Date()
-        },
-        session
-      );
-      
-      // Generate OTP
-      const plainCode = await otpService.createOTP(email, 'REGISTER', 15, session);
-
-      await session.commitTransaction();
-      // --- TRANSACTION BOUNDARY END ---
-
-      // Emit internal event to trigger email sending
-      authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
-      authEvents.emit('USER_CREATED', { userId: newUser._id, provider: 'local' });
-
-      // Automatically populate CRM Inquiry for the registered user
-      try {
-        const enquiryService = (await import('../platformCrm/enquiry.service.js')).default;
-        await enquiryService.ensureInquiry({
-          userId: newUser._id,
-          contactEmail: newUser.email,
-          customerName: nameToUse || newUser.username || newUser.email.split('@')[0],
-          contactPhone: newUser.phone || '',
-          organizationName: `${nameToUse || newUser.username || 'User'}'s Community`
-        }).catch(() => null);
-      } catch (inqErr) {
-        console.warn('[Register] Non-blocking CRM inquiry auto-creation error:', inqErr.message);
-      }
-      
-      return {
-        message: 'Registration successful. OTP sent for verification.',
-        email: newUser.email,
-        status: 'Pending Verification',
-        ...devCodeField(email, plainCode),
-      };
-    } catch (error) {
-      if (session) {
-        try { await session.abortTransaction(); } catch (e) {}
-      }
-      throw error;
-    } finally {
-      if (session) {
-        await session.endSession();
-      }
-    }
-  }
-
-  /**
-   * Verifies the registration OTP and activates the user.
-   * @param {string} email - User email address
-   * @param {string} code - OTP verification code
-   * @param {object} deviceInfo - Client device meta
-   */
-  async verifyRegistrationOtp(email, code, deviceInfo) {
-    const mongoose = (await import('mongoose')).default;
-    const session = await mongoose.startSession();
-    
-    session.startTransaction();
-
-    try {
-      await otpService.verifyOTP(email, code, 'REGISTER', session);
-
-      const user = await userService.getUserByEmail(email, session);
-      if (!user) {
-        throw new HttpError(404, 'User not found.');
-      }
-
-      if (user.status !== 'Pending Verification') {
-        throw new HttpError(400, `Account is already ${user.status}`);
-      }
-
-      // Activate user
-      await userService.updateUser(user._id, { status: 'Active', emailVerified: true }, session);
-
-      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
-
-      await session.commitTransaction();
-
-      const tokenPayload = {
-        id: user._id,
-        email: user.email,
-        username: user.username,
-        role: null,
-        permissions: [],
-        orgId: null,
-        isPlatform: false,
-      };
-
-      const token = signToken(tokenPayload);
-
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'register_otp' });
-
-      return {
-        token,
-        refreshToken,
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          phone: user.phone,
-          name: user.name,
-          role: null,
-          permissions: [],
-          orgId: null,
-          isPlatform: false,
-          organizations: [],
-        },
-        availableWorkspaces: [],
-      };
-    } catch (error) {
-      if (session) {
-        try { await session.abortTransaction(); } catch (e) {}
-      }
-      throw error;
-    } finally {
-      if (session) {
-        await session.endSession();
-      }
-    }
-  }
-
-  /**
-   * Helper to fetch active user memberships and construct the token payload and available workspaces.
-   * @param {object} user - User document
-   * @param {string} [targetOrgId=null] - Optional target organization ID to scope the context to
-   * @returns {Promise<{tokenPayload: object, availableWorkspaces: Array}>}
-   */
-  async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetVillaId = null, targetAssignment = null) {
+async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetVillaId = null, targetAssignment = null) {
     // If targetVillaId was passed as an assignment object, normalize arguments
     if (typeof targetVillaId === 'object' && targetVillaId !== null && !targetVillaId._bsontype && (targetVillaId.id || targetVillaId.targetAssignmentId || targetVillaId.name)) {
       targetAssignment = targetVillaId;
@@ -271,20 +60,29 @@ export class AuthService {
       if (!selectedMembership) {
         selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
       }
-      // Pending or Rejected memberships are never promoted here: a membership only
-      // becomes Active by accepting its exact invitation.
       if (!selectedMembership) {
-        throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+        if (user.isPlatform === true) {
+          selectedMembership = activeMemberships.find((m) => m.orgId && m.orgId.isPlatform === true) || activeMemberships[0];
+        } else {
+          throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+        }
       }
     } else {
       // Primary context selection:
-      // 1. Prefer a non-platform community workspace that has a villa assigned
-      selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
-      // 1b. Fallback to any non-platform community workspace
+      // 1. Prefer the user's last active organization (remembered from their last session)
+      if (user.lastActiveOrgId) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === user.lastActiveOrgId.toString());
+      }
+      
+      // 2. Prefer a non-platform community workspace that has a villa assigned
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
+      }
+      // 2b. Fallback to any non-platform community workspace
       if (!selectedMembership) {
         selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform);
       }
-      // 2. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
+      // 3. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
       if (!selectedMembership && activeMemberships.length > 0) {
         selectedMembership = activeMemberships[0];
       }
@@ -656,6 +454,13 @@ export class AuthService {
     const activeOrgName = selectedMembership?.orgId?.name || null;
     const activeOrgCountryCode = selectedMembership?.orgId?.countryCode || 'IN';
 
+    // Fire-and-forget: Remember the newly resolved community as the user's last active organization
+    if (orgId && (!user.lastActiveOrgId || user.lastActiveOrgId.toString() !== orgId)) {
+      import('../user/user.model.js').then((m) => {
+        m.default.updateOne({ _id: user._id }, { $set: { lastActiveOrgId: orgId } }).catch(() => {});
+      });
+    }
+
     return {
       tokenPayload: {
         id: user._id,
@@ -844,6 +649,746 @@ export class AuthService {
     return {
       id: user._id,
       email: user.email,
+      status: user.status,
+      username: user.username,
+      name: user.name || user.username || user.email,
+      phone: user.phone || '',
+      avatar: user.avatar || '',
+      bio: user.bio || '',
+      work: user.work || '',
+      hometown: user.hometown || '',
+      allowIntercomCalls: Boolean(user.allowIntercomCalls),
+      interests: Array.isArray(user.interests) ? user.interests : [],
+      role: tokenPayload.role,
+      roleId: tokenPayload.roleId,
+      roles: tokenPayload.roles,
+      permissions: permissions,
+      orgId: tokenPayload.orgId,
+      activeOrgId: tokenPayload.orgId,
+      orgName: tokenPayload.orgName,
+      organizationName: tokenPayload.organizationName,
+      activeOrganizationName: tokenPayload.activeOrganizationName,
+      orgCountryCode: tokenPayload.orgCountryCode || 'IN',
+      isPlatform: tokenPayload.isPlatform,
+      visitorContext: tokenPayload.visitorContext,
+      activeAssignment: tokenPayload.activeAssignment || null,
+      availableAssignments: tokenPayload.availableAssignments || [],
+      accessibleAssignments: tokenPayload.accessibleAssignments || {},
+      assignedGate: tokenPayload.assignedGate || '',
+      assignedFacility: tokenPayload.assignedFacility || '',
+      villaId: tokenPayload.villaId,
+      villaNumber: tokenPayload.villaNumber,
+      activeVillaNumber: tokenPayload.villaNumber,
+      unitNumber: tokenPayload.villaNumber,
+      villaBlock: tokenPayload.villaBlock,
+      residentType: tokenPayload.residentType,
+      accessibleUnits: tokenPayload.accessibleUnits || [],
+      availableWorkspaces,
+    };
+  }
+
+  /**
+   * Authenticates user and generates a token with flattened permission scopes.
+   * @param {object} loginData - Payload containing login (email/username) and password
+   */
+  
+  /**
+
+   * Registers a new user with standard credentials.
+   * Decoupled from organization setup.
+   * @param {object} registerData - Payload containing email, username, and password
+   */
+  async register(registerData) {
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    
+    // --- TRANSACTION BOUNDARY START ---
+    // Wrap the user creation process in a transaction to ensure database consistency.
+    session.startTransaction();
+
+    try {
+      const { email, password, phone } = registerData;
+
+      // If user already exists and is pending, just resend OTP instead of throwing an error
+      const existingUser = await userService.getUserByEmail(email, session);
+      if (existingUser) {
+        if (existingUser.status === 'Pending Verification') {
+          const plainCode = await otpService.createOTP(email, 'REGISTER', 15, session);
+          await session.commitTransaction();
+          sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
+          return {
+            message: 'Registration successful. OTP sent for verification.',
+            email: existingUser.email,
+            status: 'Pending Verification'
+          };
+        } else {
+          throw new HttpError(400, `User with email '${email}' already exists.`);
+        }
+      }
+
+      // Extract name from registerData
+      let nameToUse = registerData.name || (registerData.firstName || registerData.lastName ? `${registerData.firstName || ''} ${registerData.lastName || ''}`.trim() : '');
+      nameToUse = nameToUse.trim();
+
+      // Derive username: prioritize name, fallback to email prefix
+      let derivedUsername;
+      if (nameToUse) {
+        derivedUsername = nameToUse.replace(/[^a-zA-Z0-9]/g, '');
+      } else if (registerData.username) {
+        derivedUsername = registerData.username.replace(/[^a-zA-Z0-9]/g, '');
+      } else {
+        derivedUsername = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+      }
+
+      // Ensure length bounds
+      if (derivedUsername.length < 3) {
+        derivedUsername = 'user' + Math.floor(100 + Math.random() * 900);
+      } else if (derivedUsername.length > 30) {
+        derivedUsername = derivedUsername.substring(0, 30);
+      }
+
+      // Check if username exists, and generate a unique one if so
+      let usernameExists = await userService.getUserByEmailOrUsername(derivedUsername, session).catch(() => null);
+      let uniqueUsername = derivedUsername;
+      while (usernameExists) {
+        const suffix = Math.floor(1000 + Math.random() * 9000).toString();
+        uniqueUsername = derivedUsername;
+        if (uniqueUsername.length + suffix.length > 30) {
+          uniqueUsername = uniqueUsername.substring(0, 30 - suffix.length);
+        }
+        uniqueUsername = `${uniqueUsername}${suffix}`;
+        usernameExists = await userService.getUserByEmailOrUsername(uniqueUsername, session).catch(() => null);
+      }
+
+      // Create the User (passing session for transactional execution)
+      const newUser = await userService.createUser(
+        { 
+          email, 
+          username: uniqueUsername, 
+          password, 
+          phone, 
+          name: nameToUse || undefined, 
+          status: 'Pending Verification',
+          privacyPolicyAcceptedAt: new Date()
+        },
+        session
+      );
+      
+      // Generate OTP
+      const plainCode = await otpService.createOTP(email, 'REGISTER', 15, session);
+
+      await session.commitTransaction();
+      // --- TRANSACTION BOUNDARY END ---
+
+      // Emit internal event to trigger email sending
+      sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
+      authEvents.emit('USER_CREATED', { userId: newUser._id, provider: 'local' });
+
+      // Automatically populate CRM Inquiry for the registered user
+      try {
+        const enquiryService = (await import('../platformCrm/enquiry.service.js')).default;
+        await enquiryService.ensureInquiry({
+          userId: newUser._id,
+          contactEmail: newUser.email,
+          customerName: nameToUse || newUser.username || newUser.email.split('@')[0],
+          contactPhone: newUser.phone || '',
+          organizationName: `${nameToUse || newUser.username || 'User'}'s Community`
+        }).catch(() => null);
+      } catch (inqErr) {
+        console.warn('[Register] Non-blocking CRM inquiry auto-creation error:', inqErr.message);
+      }
+      
+      const isDev = process.env.NODE_ENV !== 'production';
+      if (isDev) {
+        
+      }
+
+      return {
+        message: 'Registration successful. OTP sent for verification.',
+        email: newUser.email,
+        status: 'Pending Verification'
+      };
+    } catch (error) {
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
+      }
+      throw error;
+    } finally {
+      if (session) {
+        await session.endSession();
+      }
+    }
+  }
+
+  /**
+   * Verifies the registration OTP and activates the user.
+   * @param {string} email - User email address
+   * @param {string} code - OTP verification code
+   * @param {object} deviceInfo - Client device meta
+   */
+  async verifyRegistrationOtp(email, code, deviceInfo) {
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    
+    session.startTransaction();
+
+    try {
+      await otpService.verifyOTP(email, code, 'REGISTER', session);
+
+      const user = await userService.getUserByEmail(email, session);
+      if (!user) {
+        throw new HttpError(404, 'User not found.');
+      }
+
+      if (user.status !== 'Pending Verification') {
+        throw new HttpError(400, `Account is already ${user.status}`);
+      }
+
+      // Activate user
+      await userService.updateUser(user._id, { status: 'Active', emailVerified: true }, session);
+
+      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+      if (inviteToken) {
+        const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
+        if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (!tokenRes.orgId) throw new HttpError(400, 'Invitation is missing community context.');
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
+        await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
+        const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
+        if (membership && membership.units) { const villaService = (await import('../villa/villa.services.js')).default; for (const unit of membership.units) { if (unit.villaId) { await villaService.assignResidentToVilla(unit.villaId._id || unit.villaId, user._id, unit.residentType || 'Resident', session, tokenRes.orgId); } } }
+        await tokenService.consumeInvitationToken(inviteToken, session);
+      }
+
+
+      await session.commitTransaction();
+
+      const tokenPayload = {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: null,
+        permissions: [],
+        orgId: null,
+        isPlatform: false,
+      };
+
+      const token = signToken(tokenPayload);
+
+      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'register_otp' });
+
+      return {
+        token,
+        refreshToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          phone: user.phone,
+          name: user.name,
+          role: null,
+          permissions: [],
+          orgId: null,
+          isPlatform: false,
+          organizations: [],
+        },
+        availableWorkspaces: [],
+      };
+    } catch (error) {
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
+      }
+      throw error;
+    } finally {
+      if (session) {
+        await session.endSession();
+      }
+    }
+  }
+
+  /**
+   * Helper to fetch active user memberships and construct the token payload and available workspaces.
+   * @param {object} user - User document
+   * @param {string} [targetOrgId=null] - Optional target organization ID to scope the context to
+   * @returns {Promise<{tokenPayload: object, availableWorkspaces: Array}>}
+   */
+  async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetVillaId = null, targetAssignment = null) {
+    // If targetVillaId was passed as an assignment object, normalize arguments
+    if (typeof targetVillaId === 'object' && targetVillaId !== null && !targetVillaId._bsontype && (targetVillaId.id || targetVillaId.targetAssignmentId || targetVillaId.name)) {
+      targetAssignment = targetVillaId;
+      targetVillaId = targetVillaId.villaId || null;
+    }
+    const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+    const memberships = await orgMembershipService.getUserMemberships(user._id);
+
+    // Active memberships strictly (organization status is Active and membership status is Active, or missing for legacy documents)
+    const activeMemberships = memberships.filter((m) => 
+      m.orgId && 
+      (!m.orgId.status || m.orgId.status.toLowerCase() === 'active') && 
+      (!m.status || m.status.toLowerCase() === 'active')
+    );
+
+    let selectedMembership = null;
+    const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
+
+    if (targetOrgIdStr) {
+      if (targetVillaId) {
+        const targetVillaIdStr = targetVillaId.toString();
+        selectedMembership = activeMemberships.find((m) => 
+          m.orgId._id.toString() === targetOrgIdStr && 
+          ((m.units && m.units.some(u => u.villaId && (u.villaId._id ? u.villaId._id.toString() === targetVillaIdStr : u.villaId.toString() === targetVillaIdStr))) ||
+           (m.villaId && (m.villaId._id ? m.villaId._id.toString() === targetVillaIdStr : m.villaId.toString() === targetVillaIdStr)))
+        );
+      }
+      // Fallback to first membership in org if no specific villa requested or found
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
+      }
+      if (!selectedMembership) {
+        if (user.isPlatform === true) {
+          selectedMembership = activeMemberships.find((m) => m.orgId && m.orgId.isPlatform === true) || activeMemberships[0];
+        } else {
+          throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+        }
+      }
+    } else {
+      // Primary context selection:
+      // 1. Prefer the user's last active organization (remembered from their last session)
+      if (user.lastActiveOrgId) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === user.lastActiveOrgId.toString());
+      }
+      
+      // 2. Prefer a non-platform community workspace that has a villa assigned
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
+      }
+      // 2b. Fallback to any non-platform community workspace
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform);
+      }
+      // 3. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
+      if (!selectedMembership && activeMemberships.length > 0) {
+        selectedMembership = activeMemberships[0];
+      }
+    }
+
+    let roleName = null;
+    let permissions = [];
+    let orgId = null;
+    let isPlatform = false;
+    let activeRoleObj = null;
+    let roleNames = [];
+
+    if (selectedMembership) {
+      orgId = selectedMembership.orgId._id.toString();
+      isPlatform = selectedMembership.orgId.isPlatform || false;
+
+      // Consolidate all roles assigned to this user within the selected organization
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === orgId);
+      const roles = [];
+      for (const m of sameOrgMemberships) {
+        if (m.roleIds && m.roleIds.length > 0) {
+          roles.push(...m.roleIds.filter(Boolean));
+        } else if (m.roleId) {
+          roles.push(m.roleId);
+        }
+      }
+
+      // Deduplicate roles by name
+      const uniqueRoles = [];
+      const seenRoleNames = new Set();
+      for (const r of roles) {
+        if (r && r.name && !seenRoleNames.has(r.name)) {
+          seenRoleNames.add(r.name);
+          uniqueRoles.push(r);
+        }
+      }
+
+      roleNames = uniqueRoles.map(r => r?.name).filter(Boolean);
+
+      if (targetRole) {
+        if (!roleNames.includes(targetRole)) {
+          throw new HttpError(400, `User does not have role '${targetRole}' in this organization.`);
+        }
+        roleName = targetRole;
+        activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
+        if (activeRoleObj) {
+          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+          permissions = permissionsList.map((permission) => permission.name);
+        }
+      } else {
+        roleName = roleNames.length > 0 ? roleNames[0] : null;
+        if (roleName) {
+          activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
+          if (activeRoleObj) {
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+            permissions = permissionsList.map((permission) => permission.name);
+          }
+        }
+      }
+    }
+
+    // Consolidate active memberships by organization for availableWorkspaces
+    const orgWorkspaceMap = new Map();
+    for (const m of activeMemberships) {
+      if (!m.orgId || !m.orgId._id) continue;
+      const oId = m.orgId._id.toString();
+      const mRoles = [];
+      if (m.roleIds && m.roleIds.length > 0) {
+        mRoles.push(...m.roleIds.filter(Boolean));
+      } else if (m.roleId) {
+        mRoles.push(m.roleId);
+      }
+      const validRoles = mRoles.filter(Boolean);
+      const hasResidentInWs = validRoles.some(r => /resident|tenant|owner|family/i.test(r.name || ''));
+      const firstUnit = m.units && m.units.length > 0 ? m.units[0] : null;
+      const primaryVillaDoc = hasResidentInWs ? (m.villaId || firstUnit?.villaId || null) : null;
+      const primaryVillaId = primaryVillaDoc
+        ? (primaryVillaDoc._id ? primaryVillaDoc._id.toString() : primaryVillaDoc.toString())
+        : null;
+      const primaryVillaNumber = primaryVillaDoc?.unitNumber || null;
+      const residentType = hasResidentInWs ? (m.residentType || firstUnit?.residentType || 'None') : 'None';
+
+      if (!orgWorkspaceMap.has(oId)) {
+        orgWorkspaceMap.set(oId, {
+          orgId: oId,
+          name: m.orgId.name,
+          isPlatform: m.orgId.isPlatform || false,
+          roleNames: validRoles.map(r => r.name),
+          villaId: primaryVillaId,
+          villaNumber: primaryVillaNumber,
+          residentType,
+        });
+      } else {
+        const existing = orgWorkspaceMap.get(oId);
+        for (const r of validRoles) {
+          if (!existing.roleNames.includes(r.name)) {
+            existing.roleNames.push(r.name);
+          }
+        }
+        if (hasResidentInWs && !existing.villaId && primaryVillaId) {
+          existing.villaId = primaryVillaId;
+          existing.villaNumber = primaryVillaNumber;
+          existing.residentType = residentType;
+        }
+      }
+    }
+
+    const availableWorkspaces = Array.from(orgWorkspaceMap.values()).map((ws) => ({
+      orgId: ws.orgId,
+      name: ws.name,
+      isPlatform: ws.isPlatform,
+      roleName: ws.roleNames.join(', ') || null,
+      roles: ws.roleNames,
+      villaId: ws.villaId,
+      villaNumber: ws.villaNumber,
+      residentType: ws.residentType,
+    }));
+
+    // Role type flags
+    const isResidentRole = /resident|tenant|owner|family/i.test(roleName || '');
+    if (!isResidentRole) {
+      targetVillaId = null;
+    }
+
+    // Discover accessible units for this user in the active organization ONLY if active role is a Resident role
+    const accessibleUnits = [];
+    if (selectedMembership && isResidentRole) {
+      const selectedOrgIdStr = selectedMembership.orgId._id.toString();
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === selectedOrgIdStr);
+      for (const m of sameOrgMemberships) {
+        if (m.units && m.units.length > 0) {
+          for (const unit of m.units) {
+            if (unit.villaId) {
+              const vId = unit.villaId._id ? unit.villaId._id.toString() : unit.villaId.toString();
+              if (!accessibleUnits.some(u => u.villaId === vId)) {
+                accessibleUnits.push({
+                  villaId: vId,
+                  villaNumber: unit.villaId.unitNumber || '',
+                  block: unit.villaId.blockOrBuilding || '',
+                  residentType: unit.residentType || m.residentType || 'None'
+                });
+              }
+            }
+          }
+        }
+        if (m.villaId) {
+          const vId = m.villaId._id ? m.villaId._id.toString() : m.villaId.toString();
+          if (!accessibleUnits.some(u => u.villaId === vId)) {
+            accessibleUnits.push({
+              villaId: vId,
+              villaNumber: m.villaId.unitNumber || '',
+              block: m.villaId.blockOrBuilding || '',
+              residentType: m.residentType || 'None'
+            });
+          }
+        }
+      }
+
+      // Also discover any units in this organization where the user is an assigned resident or owner in the Villa collection
+      try {
+        const Villa = (await import('../villa/villa.model.js')).default;
+        const assignedVillas = await Villa.find({
+          orgId: selectedMembership.orgId._id,
+          $or: [
+            { 'residents.userId': user._id },
+            { primaryResidentId: user._id },
+            { ownerId: user._id }
+          ]
+        }).lean();
+
+        for (const v of assignedVillas) {
+          const vId = v._id.toString();
+          if (!accessibleUnits.some(u => u.villaId === vId)) {
+            const residentEntry = v.residents?.find(r => r.userId?.toString() === user._id.toString());
+            const resType = residentEntry?.residencyType || (v.ownerId?.toString() === user._id.toString() ? 'Resident Owner' : 'Resident');
+            accessibleUnits.push({
+              villaId: vId,
+              villaNumber: v.unitNumber || '',
+              block: v.blockOrBuilding || '',
+              residentType: resType
+            });
+          }
+        }
+      } catch (villaErr) {
+        // Non-blocking fallback
+      }
+    }
+
+    // --- ASSIGNMENT & SCOPE RESOLUTION ---
+    const allAssignmentsByRole = {};
+    for (const rName of roleNames) {
+      allAssignmentsByRole[rName] = [];
+    }
+
+    if (selectedMembership) {
+      const selectedOrgIdStr = selectedMembership.orgId._id.toString();
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === selectedOrgIdStr);
+
+      // 1. Explicit assignments configured directly in OrgMembership.assignments
+      for (const m of sameOrgMemberships) {
+        if (m.assignments && Array.isArray(m.assignments) && m.assignments.length > 0) {
+          for (const asg of m.assignments) {
+            const asgRole = asg.roleName || (asg.roleId?.name) || roleName;
+            const item = {
+              id: asg._id ? asg._id.toString() : (asg.entityId ? asg.entityId.toString() : asg.name),
+              name: asg.name,
+              type: asg.assignmentType || 'general',
+              role: asgRole,
+              metadata: asg.metadata || {}
+            };
+            if (!allAssignmentsByRole[asgRole]) {
+              allAssignmentsByRole[asgRole] = [];
+            }
+            if (!allAssignmentsByRole[asgRole].some(x => x.name.toLowerCase() === item.name.toLowerCase())) {
+              allAssignmentsByRole[asgRole].push(item);
+            }
+          }
+        }
+      }
+
+      // 2. Resident / Unit Assignments (ONLY for resident roles)
+      const residentRoles = roleNames.filter(r => /resident|tenant|owner|family/i.test(r));
+      for (const rRole of residentRoles) {
+        if (allAssignmentsByRole[rRole].length === 0) {
+          for (const u of accessibleUnits) {
+            const uName = u.villaNumber ? `Villa ${u.villaNumber}` : (u.block ? `${u.block} Unit` : 'Villa Unit');
+            if (!allAssignmentsByRole[rRole].some(x => x.id === u.villaId)) {
+              allAssignmentsByRole[rRole].push({
+                id: u.villaId,
+                name: uName,
+                type: 'villa',
+                role: rRole,
+                metadata: {
+                  villaId: u.villaId,
+                  villaNumber: u.villaNumber,
+                  block: u.block,
+                  residentType: u.residentType
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Available assignments for the active role persona
+    const availableAssignments = (roleName && allAssignmentsByRole[roleName]) ? allAssignmentsByRole[roleName] : [];
+
+    // Resolve Active Assignment
+    let activeAssignment = null;
+    let targetAssignmentId = null;
+    let targetAssignmentName = null;
+
+    if (targetAssignment) {
+      if (typeof targetAssignment === 'string') {
+        targetAssignmentId = targetAssignment;
+      } else if (typeof targetAssignment === 'object') {
+        targetAssignmentId = targetAssignment.id || targetAssignment.targetAssignmentId || null;
+        targetAssignmentName = targetAssignment.name || targetAssignment.targetAssignmentName || null;
+      }
+    }
+
+    if (targetAssignmentId || targetAssignmentName) {
+      // STRICT AUTHORIZATION: Validate target assignment belongs to this user, role, and organization
+      const matched = availableAssignments.find(a => 
+        (targetAssignmentId && a.id.toString() === targetAssignmentId.toString()) ||
+        (targetAssignmentName && a.name.toLowerCase() === targetAssignmentName.toLowerCase())
+      );
+      if (!matched) {
+        throw new HttpError(400, `Access denied: Invalid assignment for role '${roleName}' in this organisation.`);
+      }
+      activeAssignment = matched;
+    } else if (targetVillaId) {
+      const targetVillaIdStr = targetVillaId.toString();
+      const matchedVilla = availableAssignments.find(a => a.id.toString() === targetVillaIdStr || a.metadata?.villaId?.toString() === targetVillaIdStr);
+      if (matchedVilla) {
+        activeAssignment = matchedVilla;
+      }
+    }
+
+    if (!activeAssignment && availableAssignments.length > 0) {
+      activeAssignment = availableAssignments[0];
+    }
+
+    // If active assignment is a villa, ensure targetVillaId matches it
+    if (activeAssignment && activeAssignment.type === 'villa') {
+      targetVillaId = activeAssignment.id;
+    }
+
+    // Resolve primary unit (validating permission if a specific targetVillaId is requested)
+    let primaryUnit = null;
+    if (selectedMembership && isResidentRole) {
+      if (targetVillaId) {
+        const targetVillaIdStr = targetVillaId.toString();
+        const isTargetVillaAccessible = accessibleUnits.some(u => u.villaId === targetVillaIdStr);
+        if (!isTargetVillaAccessible) {
+          targetVillaId = null;
+        }
+
+        if (selectedMembership.units && selectedMembership.units.length > 0) {
+          primaryUnit = selectedMembership.units.find(u => u.villaId && (u.villaId._id ? u.villaId._id.toString() === targetVillaIdStr : u.villaId.toString() === targetVillaIdStr));
+        }
+        if (!primaryUnit && selectedMembership.villaId) {
+          const rootVId = selectedMembership.villaId._id ? selectedMembership.villaId._id.toString() : selectedMembership.villaId.toString();
+          if (rootVId === targetVillaIdStr) {
+            primaryUnit = {
+              villaId: selectedMembership.villaId,
+              residentType: selectedMembership.residentType || 'None'
+            };
+          }
+        }
+        if (!primaryUnit) {
+          const matchedAccessible = accessibleUnits.find(u => u.villaId === targetVillaIdStr);
+          if (matchedAccessible) {
+            const Villa = (await import('../villa/villa.model.js')).default;
+            const villaDoc = await Villa.findById(targetVillaIdStr).lean();
+            if (villaDoc) {
+              primaryUnit = {
+                villaId: villaDoc,
+                residentType: matchedAccessible.residentType || 'Resident'
+              };
+            }
+          }
+        }
+      }
+
+      if (!primaryUnit && selectedMembership.units && selectedMembership.units.length > 0) {
+        primaryUnit = selectedMembership.units[0];
+      }
+      if (!primaryUnit && selectedMembership.villaId) {
+        primaryUnit = {
+          villaId: selectedMembership.villaId,
+          residentType: selectedMembership.residentType || 'None'
+        };
+      }
+      if (!primaryUnit && accessibleUnits.length > 0) {
+        const firstAccessible = accessibleUnits[0];
+        const Villa = (await import('../villa/villa.model.js')).default;
+        const villaDoc = await Villa.findById(firstAccessible.villaId).lean();
+        if (villaDoc) {
+          primaryUnit = {
+            villaId: villaDoc,
+            residentType: firstAccessible.residentType || 'Resident'
+          };
+        }
+      }
+    }
+
+    const villaInfo = (isResidentRole && primaryUnit?.villaId) ? {
+      id: primaryUnit.villaId._id ? primaryUnit.villaId._id.toString() : primaryUnit.villaId.toString(),
+      villaNumber: primaryUnit.villaId.unitNumber || '',
+      block: primaryUnit.villaId.blockOrBuilding || '',
+      intercom: primaryUnit.villaId.intercom || '',
+      occupancyStatus: primaryUnit.villaId.status || '',
+      residentType: primaryUnit.residentType || 'None',
+    } : null;
+
+    let visitorContext = 'None';
+    if (permissions && permissions.length > 0) {
+      if (permissions.includes('visitor:admin')) {
+        visitorContext = 'Admin';
+      } else if (permissions.includes('visitor:guard')) {
+        visitorContext = 'Guard';
+      } else if (permissions.includes('visitor:resident')) {
+        visitorContext = 'Resident';
+      }
+    }
+
+    const activeOrgName = selectedMembership?.orgId?.name || null;
+    const activeOrgCountryCode = selectedMembership?.orgId?.countryCode || 'IN';
+
+    // Fire-and-forget: Remember the newly resolved community as the user's last active organization
+    if (orgId && (!user.lastActiveOrgId || user.lastActiveOrgId.toString() !== orgId)) {
+      import('../user/user.model.js').then((m) => {
+        m.default.updateOne({ _id: user._id }, { $set: { lastActiveOrgId: orgId } }).catch(() => {});
+      });
+    }
+
+    return {
+      tokenPayload: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: roleName,
+        roleId: activeRoleObj ? activeRoleObj._id.toString() : null,
+        roles: roleNames || [],
+        orgId,
+        orgName: activeOrgName,
+        organizationName: activeOrgName,
+        activeOrganizationName: activeOrgName,
+        orgCountryCode: activeOrgCountryCode,
+        isPlatform,
+        visitorContext,
+        activeAssignment: activeAssignment ? {
+          id: activeAssignment.id,
+          name: activeAssignment.name,
+          type: activeAssignment.type,
+          role: activeAssignment.role,
+          metadata: activeAssignment.metadata || {},
+        } : null,
+        availableAssignments,
+        accessibleAssignments: allAssignmentsByRole,
+        assignedGate: activeAssignment?.type === 'gate' ? activeAssignment.name : (user.gate || ''),
+        assignedFacility: activeAssignment?.type === 'facility' ? activeAssignment.name : '',
+        villaId: isResidentRole && villaInfo ? villaInfo.id : null,
+        villaNumber: isResidentRole && villaInfo ? villaInfo.villaNumber : '',
+        villaBlock: isResidentRole && villaInfo ? villaInfo.block : '',
+        residentType: isResidentRole && villaInfo ? villaInfo.residentType : 'None',
+        accessibleUnits: isResidentRole ? accessibleUnits : [],
+      },
+      permissions,
+      availableWorkspaces,
+    };
+  }
+
+  /**
+   * Helper to format consistent auth user payload containing unit and organization context.
+   */
+  _formatAuthUser(user, tokenPayload, permissions = [], availableWorkspaces = []) {
+    return {
+      id: user._id,
+      email: user.email,
+      status: user.status,
       username: user.username,
       name: user.name || user.username || user.email,
       phone: user.phone || '',
@@ -921,13 +1466,64 @@ export class AuthService {
       const session = await mongoose.startSession();
       session.startTransaction();
       try {
-        ({ orgId: targetOrgIdFromInvite } = await acceptInvitationForUser(user, { rawToken: inviteToken }, 'password', session));
-        await session.commitTransaction();
-      } catch (error) {
-        try { await session.abortTransaction(); } catch (_) {}
-        throw error;
-      } finally {
-        await session.endSession();
+        const inviteDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION');
+        if (!inviteDoc?.userId || inviteDoc.userId.toString() !== user._id.toString()) {
+          throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
+        }
+        try {
+          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION');
+          targetOrgIdFromInvite = orgId;
+        } catch (tokenErr) {
+          // If token was already accepted or consumed on a previous/concurrent request,
+          // recover orgId from the existing token document so the user can still sign in and access the workspace!
+          const existingTokenDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION');
+          if (existingTokenDoc && (existingTokenDoc.status === 'ACCEPTED' || existingTokenDoc.used === true)) {
+            targetOrgIdFromInvite = existingTokenDoc.orgId;
+          } else {
+            throw tokenErr;
+          }
+        }
+
+        if (targetOrgIdFromInvite) {
+          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
+
+          // If user was in Pending Verification, activate their global user profile
+          if (user.status === 'Pending Verification' || user.status === 'Pending') {
+            const User = (await import('../user/user.model.js')).default;
+            await User.updateOne(
+              { _id: user._id },
+              { $set: { status: 'Active', emailVerified: true } }
+            );
+            user.status = 'Active';
+            user.emailVerified = true;
+          }
+
+          // Assign resident to villa upon accepting invitation during login
+          const updatedMembership = await orgMembershipService.getMembershipWithVilla(user._id, targetOrgIdFromInvite);
+          if (updatedMembership) {
+            const villaService = (await import('../villa/villa.services.js')).default;
+            if (updatedMembership.units && updatedMembership.units.length > 0) {
+              for (const unit of updatedMembership.units) {
+                if (unit.villaId) {
+                  const vId = unit.villaId._id || unit.villaId;
+                  await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', null, targetOrgIdFromInvite);
+                }
+              }
+            } else if (updatedMembership.villaId) {
+              const vId = updatedMembership.villaId._id || updatedMembership.villaId;
+              await villaService.assignResidentToVilla(vId, user._id, updatedMembership.residentType || 'Resident', null, targetOrgIdFromInvite);
+            }
+          }
+
+          const Technician = (await import('../technician/technician.model.js')).default;
+          await Technician.findOneAndUpdate({ userId: user._id, orgId: targetOrgIdFromInvite }, { status: 'Active' }).catch(() => null);
+
+          userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId: targetOrgIdFromInvite });
+          userEvents.emit('USER_UPDATED', { userId: user._id, orgId: targetOrgIdFromInvite, action: 'activated' });
+        }
+      } catch (tokenError) {
+        throw tokenError;
       }
       emitInvitationAccepted(user._id, targetOrgIdFromInvite);
     }
@@ -1119,7 +1715,7 @@ export class AuthService {
    * @param {string} rawToken - Unhashed token from client
    * @param {string} password - New password set by user
    */
-  async acceptInvitation(rawToken, password, email = null, authenticatedUserId = null, profileData = {}) {
+  async acceptInvitation(rawToken, password, email = null, authenticatedUserId = null, profileData = {}, skipPasswordCheck = false) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -1173,13 +1769,54 @@ export class AuthService {
         if (profileData.name || profileData.phone) {
           await userService.activateUser(user._id, user.password, session, profileData);
         }
-      } else if (password) {
+      }
+
+      if (password) {
+        if (user.status === 'Active' && user.password) {
+          throw new HttpError(400, "Account is already active. Please click 'Back to Login' to accept this invitation using your existing credentials.");
+        }
         const { hashPassword } = await import('../../utils/crypto.utils.js');
         const hashedPassword = await hashPassword(password);
         await userService.activateUser(user._id, hashedPassword, session, profileData);
-      } else if (user.password && authenticatedUserId) {
-        await userService.activateUser(user._id, user.password, session, profileData);
+      } else {
+        if (!user.password && !skipPasswordCheck) {
+          throw new HttpError(400, 'Password is required to activate a new account.');
+        }
+        if (user.status !== 'Active' || profileData.name || profileData.phone) {
+          await userService.activateUser(user._id, user.password, session, profileData);
+        }
       }
+
+      // Update OrgMembership status to Active for this organization or user
+      if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId || null, 'Active', session);
+
+      // Assign resident to villa upon accepting invitation
+      if (orgId) {
+        const membership = await orgMembershipService.getMembershipWithVilla(user._id, orgId, session);
+        if (membership) {
+          const villaService = (await import('../villa/villa.services.js')).default;
+          if (membership.units && membership.units.length > 0) {
+            for (const unit of membership.units) {
+              if (unit.villaId) {
+                const vId = unit.villaId._id || unit.villaId;
+                await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', session, orgId);
+              }
+            }
+          } else if (membership.villaId) {
+            const vId = membership.villaId._id || membership.villaId;
+            await villaService.assignResidentToVilla(vId, user._id, membership.residentType || 'Resident', session, orgId);
+          }
+        }
+      }
+
+      if (orgId) {
+        const Technician = (await import('../technician/technician.model.js')).default;
+        await Technician.findOneAndUpdate({ userId: user._id, orgId }, { status: 'Active' }).session(session).catch(() => null);
+      }
+
+      // Auto-login session creation (inside transaction for atomic flow validation)
+      const refreshToken = await sessionService.createSession(user._id, {}, session);
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
@@ -1247,7 +1884,11 @@ export class AuthService {
         throw new HttpError(403, 'The provided email does not match the invitation identity.');
       }
 
-      // Decline only this invitation's membership, and only while it is still Pending
+      // Update OrgMembership status to Rejected for this organization
+      if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId || null, 'Rejected', session).catch(() => null);
+
+      // Ensure user is removed from any villa in this organization
       if (orgId) {
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
         const membership = await orgMembershipService.getMembership(user._id, orgId, session);
@@ -1433,7 +2074,19 @@ export class AuthService {
       const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
       let targetOrgIdFromInvite = null;
       if (inviteToken) {
-        ({ orgId: targetOrgIdFromInvite } = await acceptInvitationForUser(user, { rawToken: inviteToken }, 'sso', session));
+        try {
+          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
+          targetOrgIdFromInvite = orgId;
+          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId, 'Active', session);
+          userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
+          userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
+        } catch (tokenError) {
+          if (user.status === 'Pending Verification') {
+            throw tokenError;
+          }
+          console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
+        }
       }
       await session.commitTransaction();
 
@@ -1601,7 +2254,17 @@ export class AuthService {
       const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
       let targetOrgIdFromInvite = null;
       if (inviteToken) {
-        ({ orgId: targetOrgIdFromInvite } = await acceptInvitationForUser(user, { rawToken: inviteToken }, 'sso', session));
+        try {
+          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
+          targetOrgIdFromInvite = orgId;
+          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId, 'Active', session);
+        } catch (tokenError) {
+          if (user.status === 'Pending Verification') {
+            throw tokenError;
+          }
+          console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
+        }
       }
       await session.commitTransaction();
 
@@ -1671,12 +2334,45 @@ export class AuthService {
       }
     }
 
+    // MSG91 is a global provider-managed OTP path. Firebase remains preferred
+    // when configured; MSG91 is used before the legacy SMS fallback.
+    const msg91Integration = await integrationHubService.getGlobalConnectionByProvider('msg91');
+    const msg91EnvConfigured = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+    if (msg91Integration || msg91EnvConfigured) {
+      const { decryptCredential } = await import('../integrationHub/utils/crypto.util.js');
+      const authKeyCred = msg91Integration?.credentials.find(c => c.key === 'authKey');
+      const templateIdCred = msg91Integration?.credentials.find(c => c.key === 'templateId');
+      const authKey = process.env.MSG91_AUTH_KEY || (authKeyCred && decryptCredential(authKeyCred));
+      const templateId = process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID || (templateIdCred && decryptCredential(templateIdCred));
+      const senderIdCred = msg91Integration?.credentials.find(c => c.key === 'senderId');
+      const senderId = process.env.MSG91_SENDER_ID || (senderIdCred && decryptCredential(senderIdCred));
+      if (!authKey || !templateId) throw new HttpError(503, 'MSG91 OTP is not configured correctly.');
+      const sendUrl = new URL('https://control.msg91.com/api/v5/otp');
+      sendUrl.searchParams.set('template_id', templateId);
+      sendUrl.searchParams.set('mobile', normalizedPhone.replace(/^\+/, ''));
+      if (senderId) {
+        sendUrl.searchParams.set('sender', senderId);
+      }
+      logger.info('MSG91 OTP send request', { mobile: normalizedPhone.replace(/^\+/, ''), templateId, senderId });
+      const response = await fetch(sendUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', accept: 'application/json', authkey: authKey } });
+      let responseData = null;
+      try { responseData = await response.json(); } catch (_) { /* provider may return an empty body */ }
+      logger.info('MSG91 OTP send response', { status: response.status, type: responseData?.type, message: responseData?.message, request_id: responseData?.request_id });
+      if (!response.ok || String(responseData?.type || '').toLowerCase() !== 'success') {
+        logger.error('MSG91 OTP send FAILED', { status: response.status, responseData, mobile: normalizedPhone.replace(/^\+/, ''), templateId });
+        throw new HttpError(502, `MSG91 could not send the OTP: ${responseData?.message || 'Unknown error'}. Verify the MSG91 OTP template and account configuration.`);
+      }
+      await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, 'MSG91');
+      return { message: 'OTP sent via MSG91 successfully' };
+    }
     if (process.env.NODE_ENV === 'production') {
-      const [twilio, messageCentral] = await Promise.all([
+      const [twilio, messageCentral, msg91] = await Promise.all([
         integrationHubService.getGlobalConnectionByProvider('twilio'),
-        integrationHubService.getGlobalConnectionByProvider('messagecentral')
+        integrationHubService.getGlobalConnectionByProvider('messagecentral'),
+        integrationHubService.getGlobalConnectionByProvider('msg91')
       ]);
-      if (!twilio && !messageCentral) {
+      const msg91Env = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+      if (!twilio && !messageCentral && !msg91 && !msg91Env) {
         throw new HttpError(503, 'SMS login is temporarily unavailable. Please use email login or contact support.');
       }
     }
@@ -1685,9 +2381,14 @@ export class AuthService {
     const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
 
     // Emit event for SMS delivery
-    authEvents.emit('OTP_SENT', { identifier: normalizedPhone, code: plainCode, type: 'SMS' });
+    sendOtpNotification({ identifier: normalizedPhone, code: plainCode, type: 'SMS' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
-    return { message: OTP_SENT_PHONE_MESSAGE, ...devCodeField(normalizedPhone, plainCode) };
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      
+    }
+
+    return { message: 'OTP sent successfully' };
   }
 
   /**
@@ -1696,7 +2397,7 @@ export class AuthService {
    * @param {string} code - OTP verification code
    * @param {object} deviceInfo - Client device meta
    */
-  async verifyPhoneLogin(phone, code, deviceInfo, inviteToken = null) {
+  async verifyPhoneLogin(phone, code, deviceInfo, inviteToken) {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
     const mongoose = (await import('mongoose')).default;
@@ -1710,7 +2411,26 @@ export class AuthService {
       // 1. Verify OTP
       const otpResult = await otpService.verifyOTP(normalizedPhone, code, 'LOGIN', session, false);
 
-      if (otpResult && otpResult.sessionInfo) {
+      if (otpResult && otpResult.sessionInfo === 'MSG91') {
+        const msg91Integration = await integrationHubService.getGlobalConnectionByProvider('msg91', session);
+        const { decryptCredential } = await import('../integrationHub/utils/crypto.util.js');
+        const authKeyCred = msg91Integration?.credentials.find(c => c.key === 'authKey');
+        const authKey = process.env.MSG91_AUTH_KEY || (authKeyCred && decryptCredential(authKeyCred));
+        if (!authKey) throw new HttpError(400, 'MSG91 configuration missing.');
+        const verifyUrl = new URL('https://control.msg91.com/api/v5/otp/verify');
+        verifyUrl.searchParams.set('otp', String(code).trim());
+        verifyUrl.searchParams.set('mobile', normalizedPhone.replace(/^\+/, ''));
+        const response = await fetch(verifyUrl, { method: 'GET', headers: { authkey: authKey, accept: 'application/json' } });
+        let responseData = null;
+        try { responseData = await response.json(); } catch (_) { /* provider may return an empty body */ }
+        const providerMessage = String(responseData?.message || '').toLowerCase();
+        if (responseData?.code === '418' || providerMessage.includes('ip is not whitelisted')) {
+          logger.error('[CRITICAL MSG91] Request rejected by MSG91: IP is not whitelisted in MSG91 dashboard. Whitelist the server public IP or disable IP restrictions on the AuthKey.', { responseData });
+          throw new HttpError(502, 'MSG91 service error: Server IP is not whitelisted in your MSG91 dashboard.');
+        }
+        const verified = response.ok && (String(responseData?.type || '').toLowerCase() === 'success' || providerMessage.includes('otp verified') || providerMessage.includes('number_verified'));
+        if (!verified) throw new HttpError(400, 'Invalid or expired OTP.');
+      } else if (otpResult && otpResult.sessionInfo) {
         // This was a Firebase managed OTP
         const firebaseIntegration = await integrationHubService.getGlobalConnectionByProvider('firebase', session);
         if (!firebaseIntegration) throw new HttpError(400, 'Firebase configuration missing.');
@@ -1738,13 +2458,31 @@ export class AuthService {
         throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
       }
 
-      // 3. Accept the exact invitation (if any), or sign in normally
-      const finish = await this._completeVerifiedLogin(user, { inviteToken, verifiedVia: 'phone', session });
-      if (user.status === 'Active' && !user.phoneVerified) {
+      if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
+        throw new HttpError(403, `Account is ${user.status}`);
+      }
+
+      // Mark phone as verified if not already
+      if (!user.phoneVerified) {
         await userService.updateUser(user._id, { phoneVerified: true }, session);
       }
 
       await otpService.clearOTP(normalizedPhone, 'LOGIN', session);
+
+      // 3. Generate session refresh token
+      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+      if (inviteToken) {
+        const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
+        if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (!tokenRes.orgId) throw new HttpError(400, 'Invitation is missing community context.');
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
+        await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
+        const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
+        if (membership && membership.units) { const villaService = (await import('../villa/villa.services.js')).default; for (const unit of membership.units) { if (unit.villaId) { await villaService.assignResidentToVilla(unit.villaId._id || unit.villaId, user._id, unit.residentType || 'Resident', session, tokenRes.orgId); } } }
+        await tokenService.consumeInvitationToken(inviteToken, session);
+      }
+
+
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
@@ -1776,9 +2514,14 @@ export class AuthService {
     }
 
     const plainCode = await otpService.createOTP(email, 'LOGIN');
-    authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
+    sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
-    return { message: OTP_SENT_EMAIL_MESSAGE, ...devCodeField(email, plainCode) };
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      
+    }
+
+    return { message: 'OTP sent to email' };
   }
 
   /**
@@ -1787,7 +2530,106 @@ export class AuthService {
    * @param {string} code - OTP verification code
    * @param {object} deviceInfo - Client device meta
    */
-  async verifyEmailOtpLogin(email, code, deviceInfo, inviteToken = null) {
+  
+  
+  async initiateInvitationOtp(token) {
+    const inviteInfo = await this.validateInvite(token);
+    if (!inviteInfo || !inviteInfo.valid) {
+      throw new HttpError(400, 'Invalid or expired invitation token.');
+    }
+    if (inviteInfo.authenticationMethod !== 'OTP_LOGIN') {
+      throw new HttpError(403, 'This organization does not support OTP Login for invitations.');
+    }
+
+    const identifier = inviteInfo.email || inviteInfo.phone;
+    if (!identifier) {
+      throw new HttpError(400, 'No email or phone associated with this invitation.');
+    }
+    
+    // Normalize phone number if it's a phone
+    const { normalizePhone } = await import('../../utils/phone.utils.js');
+    const finalIdentifier = inviteInfo.phone ? normalizePhone(identifier) : identifier.toLowerCase();
+
+    const otpService = (await import('../otp/otp.services.js')).default;
+    const plainCode = await otpService.createOTP(finalIdentifier, 'INVITATION_LOGIN');
+    
+    // Send the OTP explicitly without emitting it in an event payload
+    const { sendOtpNotification } = await import('./auth.listeners.js');
+    const method = inviteInfo.phone ? 'SMS' : 'EMAIL';
+    
+    // Do not wait for email/sms to complete to avoid slow response time
+    sendOtpNotification({ identifier: finalIdentifier, code: plainCode, type: method }).catch((err) => {
+      logger.error(`Failed to send INVITATION_LOGIN OTP to ${finalIdentifier}: ${err.message}`);
+    });
+
+    return { message: 'OTP sent' };
+  }
+
+  
+
+  async verifyInvitationOtp(token, code, preferredMethod = null, deviceInfo = {}) {
+    if (typeof preferredMethod === 'object' && preferredMethod !== null && !deviceInfo) {
+      deviceInfo = preferredMethod;
+      preferredMethod = null;
+    }
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const inviteInfo = await this.validateInvite(token);
+      if (!inviteInfo || !inviteInfo.valid) {
+        throw new HttpError(400, 'Invalid or expired invitation token.');
+      }
+      if (inviteInfo.authenticationMethod !== 'OTP_LOGIN') {
+        throw new HttpError(403, 'This organization does not support OTP Login for invitations.');
+      }
+
+      let isPhone = false;
+      let identifier = null;
+      if (preferredMethod === 'SMS' && inviteInfo.phone && String(inviteInfo.phone).trim().length > 0) {
+        identifier = String(inviteInfo.phone).trim();
+        isPhone = true;
+      } else if (preferredMethod === 'EMAIL' && inviteInfo.email && inviteInfo.email.trim().length > 0 && !inviteInfo.email.includes('@noemail.local')) {
+        identifier = inviteInfo.email.trim();
+        isPhone = false;
+      } else {
+        if (inviteInfo.email && inviteInfo.email.trim().length > 0 && !inviteInfo.email.includes('@noemail.local')) {
+          identifier = inviteInfo.email.trim();
+          isPhone = false;
+        } else if (inviteInfo.phone && String(inviteInfo.phone).trim().length > 0) {
+          identifier = String(inviteInfo.phone).trim();
+          isPhone = true;
+        }
+      }
+      if (!identifier) throw new HttpError(400, 'No email or phone associated with this invitation.');
+      
+      const { normalizePhone } = await import('../../utils/phone.utils.js');
+      const finalIdentifier = isPhone ? normalizePhone(identifier) : identifier.toLowerCase();
+
+      const otpService = (await import('../otp/otp.services.js')).default;
+      await otpService.verifyOTP(finalIdentifier, code, 'INVITATION_LOGIN', session);
+
+
+      // Now accept the invitation, consuming the token inside the transaction
+      const data = await this.acceptInvitation(token, null, isPhone ? null : finalIdentifier, null, {}, true);
+
+      await session.commitTransaction();
+
+      // Log successful login
+      const { user, token: authToken, refreshToken, availableWorkspaces } = data;
+      authEvents.emit('LOGIN_SUCCESS', { userId: user.id || user._id, method: 'invitation_otp', deviceInfo });
+
+      return data;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async verifyEmailOtpLogin(email, code, deviceInfo, inviteToken) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -1803,11 +2645,26 @@ export class AuthService {
         throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
       }
 
-      // Accept the exact invitation (if any), or sign in normally
-      const finish = await this._completeVerifiedLogin(user, { inviteToken, verifiedVia: 'email', session });
-      if (user.status === 'Active' && !user.emailVerified) {
+      if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
+        throw new HttpError(403, `Account is ${user.status}`);
+      }
+
+      if (!user.emailVerified) {
         await userService.updateUser(user._id, { emailVerified: true }, session);
       }
+
+      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+      if (inviteToken) {
+        const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
+        if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (!tokenRes.orgId) throw new HttpError(400, 'Invitation is missing community context.');
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
+        await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
+        const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
+        if (membership && membership.units) { const villaService = (await import('../villa/villa.services.js')).default; for (const unit of membership.units) { if (unit.villaId) { await villaService.assignResidentToVilla(unit.villaId._id || unit.villaId, user._id, unit.residentType || 'Resident', session, tokenRes.orgId); } } }
+        await tokenService.consumeInvitationToken(inviteToken, session);
+      }
+
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
@@ -1844,8 +2701,13 @@ export class AuthService {
 
     const type = cleanId.includes('@') ? 'EMAIL' : 'SMS';
     const plainCode = await otpService.createOTP(cleanId, 'RESET');
+    
+    sendOtpNotification({ identifier: cleanId, code: plainCode, type }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
-    authEvents.emit('OTP_SENT', { identifier: cleanId, code: plainCode, type });
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      
+    }
 
     return {
       message: 'Password reset instructions sent',
@@ -2026,8 +2888,8 @@ export class AuthService {
 
       // Update OrgMembership status to Active for this organization
       if (orgId) {
-        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-        await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(userId, orgId, 'Active', session);
 
         const membership = await orgMembershipService.getMembershipWithVilla(userId, orgId, session);
         if (membership) {
@@ -2134,13 +2996,14 @@ export class AuthService {
     if (!user) throw new HttpError(409, 'Invitation recipient account is missing.');
     const resolvedOrgId = tokenDoc?.orgId || user?.orgId || null;
     let orgName = '';
+    let orgAuthMethod = 'EXISTING_SYSTEM';
     let villaDetails = '';
     let roleDetails = '';
     let membershipDoc = null;
 
     if (resolvedOrgId) {
       const Organization = (await import('../organization/organization.model.js')).default;
-      const org = await Organization.findById(resolvedOrgId).select('name status');
+      const org = await Organization.findById(resolvedOrgId).select('name status authenticationMethod');
       if (!org) {
         throw new HttpError(404, 'The workspace or organization for this invitation no longer exists.');
       }
@@ -2148,6 +3011,7 @@ export class AuthService {
         throw new HttpError(400, 'This community workspace is currently inactive.');
       }
       orgName = org.name;
+      orgAuthMethod = org.authenticationMethod || 'EXISTING_SYSTEM';
 
       try {
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
@@ -2247,11 +3111,13 @@ export class AuthService {
         invitationStatus: 'EXPIRED',
         membershipStatus: 'Expired',
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has expired. Please ask your administrator to resend the invitation.',
       };
     }
@@ -2264,11 +3130,13 @@ export class AuthService {
         invitationStatus: 'REVOKED',
         membershipStatus: 'Revoked',
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has been revoked by the administrator.',
       };
     }
@@ -2281,11 +3149,13 @@ export class AuthService {
         invitationStatus: 'REJECTED',
         membershipStatus: 'Rejected',
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has already been rejected.',
       };
     }
@@ -2301,11 +3171,13 @@ export class AuthService {
         isAlreadyRegistered: true,
         isExisting: true,
         email: user?.email || expectedEmail,
+        phone: user?.phone || '',
         orgId: resolvedOrgId,
         orgName: orgName || 'Community Workspace',
         villa: villaDetails || '',
         unit: villaDetails || '',
         role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
         message: 'Invitation has already been accepted.',
         ...identityFields,
       };
@@ -2325,11 +3197,13 @@ export class AuthService {
       inviterId: tokenDoc?.inviterId || null,
       inviterName,
       email: user.email,
+        phone: user?.phone || '',
       orgId: resolvedOrgId,
       orgName: orgName || 'Community Workspace',
       villa: villaDetails || '',
       unit: villaDetails || '',
       role: roleDetails || '',
+        authenticationMethod: orgAuthMethod,
       invitationSource,
       ...identityFields,
     };
@@ -2509,23 +3383,121 @@ export class AuthService {
     };
   }
 
-  async checkAccountStatus(email) {
-    if (!email) return { hasPassword: false, isAlreadyConfigured: false };
+  async checkAccountStatus(identifier) {
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      return { exists: false, hasPassword: false, isAlreadyConfigured: false };
+    }
 
-    const user = await userService.getUserByEmail(email);
+    const user = await userService.getUserByEmailOrPhone(identifier);
     if (!user) {
       return { exists: false, hasPassword: false, isAlreadyConfigured: false };
     }
 
     const hasPassword = !!(user.password && user.password.length > 0);
-    const isAlreadyConfigured = hasPassword && user.status === 'Active';
+    const credStatus = user.credentialStatus || (hasPassword ? 'INITIALIZED' : 'NOT_INITIALIZED');
+    const isAlreadyConfigured = hasPassword && credStatus === 'INITIALIZED';
 
     return {
       exists: true,
       hasPassword,
+      credentialStatus: credStatus,
+      appAccessStatus: user.appAccessStatus || 'NOT_YET_ACCESSED',
       status: user.status,
       isAlreadyConfigured,
       email: user.email,
+      phone: user.phone || '',
+      name: user.name || user.username || '',
+    };
+  }
+
+  async sendFirstTimeSetupOtp(identifier) {
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      throw new HttpError(400, 'Email or phone number is required.');
+    }
+    const user = await userService.getUserByEmailOrPhone(identifier);
+    if (!user) {
+      throw new HttpError(404, 'User account not found.');
+    }
+
+    if (user.credentialStatus === 'INITIALIZED' && user.password) {
+      throw new HttpError(400, 'Account credentials are already initialized. Please log in with your password.');
+    }
+
+    const targetIdentifier = identifier.trim().includes('@') ? user.email : (user.phone || user.email);
+    const plainCode = await otpService.createOTP(targetIdentifier, 'FIRST_TIME_ACCOUNT_SETUP', 15);
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log(`\n=========================================`);
+      console.log(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
+      console.log(`=========================================\n`);
+    }
+
+    sendOtpNotification({ identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' }).catch(err => logger.error('Failed to send OTP:' + err.message));
+
+    return {
+      message: `Verification code sent to ${targetIdentifier}`,
+      identifier: targetIdentifier,
+    };
+  }
+
+  async completeFirstTimeSetup({ identifier, code, password, confirmPassword, deviceInfo = {} }) {
+    if (!identifier || !code || !password) {
+      throw new HttpError(400, 'Identifier, OTP code, and new password are required.');
+    }
+
+    if (confirmPassword && password !== confirmPassword) {
+      throw new HttpError(400, 'Password and Confirm Password must match.');
+    }
+
+    if (password.length < 8) {
+      throw new HttpError(400, 'Password must be at least 8 characters long.');
+    }
+
+    const user = await userService.getUserByEmailOrPhone(identifier);
+    if (!user) {
+      throw new HttpError(404, 'User account not found.');
+    }
+
+    const targetIdentifier = identifier.trim().includes('@') ? user.email : (user.phone || user.email);
+    await otpService.verifyOTP(targetIdentifier, code, 'FIRST_TIME_ACCOUNT_SETUP', null, true);
+
+    const { hashPassword } = await import('../../utils/crypto.utils.js');
+    const passHash = await hashPassword(password);
+
+    const User = (await import('../user/user.model.js')).default;
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          password: passHash,
+          credentialStatus: 'INITIALIZED',
+          appAccessStatus: 'ACCESSED',
+          lastAccessedAt: new Date(),
+          status: 'Active',
+          emailVerified: true,
+          phoneVerified: true,
+        },
+      }
+    );
+
+    user.password = passHash;
+    user.credentialStatus = 'INITIALIZED';
+    user.appAccessStatus = 'ACCESSED';
+    user.status = 'Active';
+
+    // Direct auto-login session creation
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
+    const token = signToken(tokenPayload);
+    const refreshToken = await sessionService.createSession(user._id, deviceInfo);
+
+    authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'first_time_setup' });
+
+    return {
+      token,
+      refreshToken,
+      user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
+      availableWorkspaces,
     };
   }
 
@@ -2546,7 +3518,7 @@ export class AuthService {
       throw new HttpError(404, 'User account not found.');
     }
 
-    if (user.status !== 'Active') {
+    if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
       throw new HttpError(403, 'Account is not active. Complete invitation acceptance before mobile handoff.');
     }
 
@@ -2589,7 +3561,7 @@ export class AuthService {
       throw new HttpError(404, 'User account not found.');
     }
 
-    if (user.status !== 'Active') {
+    if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
       throw new HttpError(403, 'User account is not active or has been suspended.');
     }
 
@@ -2619,3 +3591,7 @@ export class AuthService {
 }
 
 export default new AuthService();
+
+
+
+

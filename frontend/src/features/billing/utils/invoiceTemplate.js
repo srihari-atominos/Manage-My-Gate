@@ -11,7 +11,7 @@ export function openInvoicePrintWindow(item, options = {}) {
   const printWindow = window.open('', '_blank')
   if (!printWindow) return
 
-  const communityName = options.communityName || 'ManageMyGate Community'
+  const communityName = options.communityName || 'Nahom Community'
   const communityAddress = options.communityAddress || ''
 
   // ── Core fields ──────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ export function openInvoicePrintWindow(item, options = {}) {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;margin-bottom:24px;border-bottom:1px solid #e2e8f0;">
       <div>
         <h1 style="font-size:28px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;margin:0;">Invoice / Receipt</h1>
-        <p style="font-size:13px;color:#94a3b8;margin-top:4px;">Generated from ManageMyGate</p>
+        <p style="font-size:13px;color:#94a3b8;margin-top:4px;">Generated from Nahom</p>
       </div>
       <div style="text-align:right;">
         <h2 style="font-size:16px;font-weight:700;color:#1e293b;margin:0;">${communityName}</h2>

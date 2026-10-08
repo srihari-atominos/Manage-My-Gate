@@ -15,6 +15,8 @@ import AppLoader from '../../../components/common/AppLoader'
 export const UserDetailDrawer = ({ visible, onClose, user, loading, organizationName }) => {
   const { t } = useTranslation()
 
+  if (!visible) return null
+
   const getStatusClass = (status) => {
     switch (status) {
       case 'Active':

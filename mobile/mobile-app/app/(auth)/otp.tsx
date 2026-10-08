@@ -7,7 +7,7 @@ import { View, ActivityIndicator, TextInput, ImageBackground, Platform } from 'r
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { getPendingInviteToken, clearPendingInviteToken } from '@/src/features/auth/utils/inviteContext';
@@ -31,10 +31,9 @@ interface OtpFormValues {
 
 export default function OtpScreen() {
   const { t } = useTranslation();
-  const { phone, email } = useLocalSearchParams<{ phone?: string; email?: string }>();
-  const { verifyOtp, requestOtp, loading, error, errorDetail, clearStatus } = useAuth() as any;
-  const [resendIn, setResendIn] = React.useState(RESEND_COOLDOWN_SECONDS);
-  const [codeIsDead, setCodeIsDead] = React.useState(false);
+  const { phone, email, inviteToken } = useLocalSearchParams<{ phone?: string; email?: string; inviteToken?: string }>();
+  const { verifyOtp, requestOtp, loading, error, successMsg, isAuthenticated, clearStatus } = useAuth();
+  const [resendCooldown, setResendCooldown] = React.useState(30);
 
   // Fix URL decoding issue where '+' might have been converted to a space
   const fixedPhone = phone ? phone.replace(/\s/g, '+') : undefined;
@@ -63,16 +62,8 @@ export default function OtpScreen() {
   }, [resendIn > 0]);
 
   const onSubmit = async (data: OtpFormValues) => {
-    if (!identifier || codeIsDead) return;
-    const result: any = await verifyOtp(identifier, data.code, isEmail, getPendingInviteToken());
-    if (result?.meta?.requestStatus !== 'fulfilled') return;
-    if (result.payload?.selection) {
-      // Verified, but which invitation to accept is the person's choice
-      router.replace('/(auth)/pending-invitations' as any);
-      return;
-    }
-    clearPendingInviteToken();
-    router.replace('/');
+    if (!identifier) return;
+    await verifyOtp(identifier, data.code, isEmail, inviteToken);
   };
 
   const handleResend = async () => {

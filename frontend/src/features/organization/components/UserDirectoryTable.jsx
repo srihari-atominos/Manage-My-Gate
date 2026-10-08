@@ -60,15 +60,12 @@ export const UserDirectoryTable = ({
               <th>{t('superAdmin.orgDetails.tableVilla', { defaultValue: 'Villa / Unit' })}</th>
               <th>{t('superAdmin.orgDetails.tableStatus', { defaultValue: 'Status' })}</th>
               <th>{t('superAdmin.orgDetails.tableJoined', { defaultValue: 'Joined' })}</th>
-              <th style={{ textAlign: 'right' }}>
-                {t('superAdmin.orgDetails.tableActions', { defaultValue: 'Actions' })}
-              </th>
             </tr>
           </thead>
           <tbody>
             {loading && users.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={7}>
                   <div className="loading-center" style={{ padding: '40px' }}>
                     <AppLoader variant="block" />
                     <span>
@@ -81,7 +78,7 @@ export const UserDirectoryTable = ({
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={7}>
                   <div className="empty-state" style={{ padding: '40px 24px' }}>
                     <div className="empty-icon">👥</div>
                     <div className="empty-title">
@@ -106,8 +103,14 @@ export const UserDirectoryTable = ({
                     ? `${u.villa.blockOrBuilding ? `${u.villa.blockOrBuilding} - ` : ''}${u.villa.unitNumber}`
                     : 'N/A'
 
+                const targetUserId = u.userId?._id || u.userId || u._id
+
                 return (
-                  <tr key={u.membershipId || u._id}>
+                  <tr
+                    key={u.membershipId || u._id}
+                    onClick={() => onViewUser && onViewUser(targetUserId)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {/* User cell with avatar */}
                     <td>
                       <div className="user-cell">
@@ -173,21 +176,6 @@ export const UserDirectoryTable = ({
                     {/* Joined Date */}
                     <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
                       {formatDate(u.createdAt)}
-                    </td>
-
-                    {/* Action */}
-                    <td>
-                      <div className="action-btn-group">
-                        <button
-                          className="action-icon-btn btn-view"
-                          title={t('superAdmin.orgDetails.viewUserBtn', {
-                            defaultValue: 'View Details',
-                          })}
-                          onClick={() => onViewUser(u.userId || u.userId?._id)}
-                        >
-                          <CIcon icon={cilFolderOpen} size="sm" />
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 )

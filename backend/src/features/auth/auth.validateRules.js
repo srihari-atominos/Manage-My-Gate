@@ -271,6 +271,7 @@ export const phoneVerifyRules = [
     .withMessage('Verification code must be exactly 6 digits')
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
+  body('inviteToken').optional({ nullable: true }).isString().trim(),
 ];
 
 /**
@@ -305,6 +306,7 @@ export const emailOtpVerifyRules = [
     .withMessage('Verification code must be exactly 6 digits')
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
+  body('inviteToken').optional({ nullable: true }).isString().trim(),
 ];
 
 /**
@@ -482,3 +484,69 @@ export const exchangeHandoffRules = [
     .isObject()
     .withMessage('deviceInfo must be an object'),
 ];
+
+export const sendFirstTimeSetupOtpRules = [
+  body('identifier')
+    .notEmpty()
+    .withMessage('Identifier is required')
+    .trim(),
+];
+
+export const completeFirstTimeSetupRules = [
+  body('identifier')
+    .notEmpty()
+    .withMessage('Identifier is required')
+    .trim(),
+  body('code')
+    .notEmpty()
+    .withMessage('OTP code is required')
+    .isString()
+    .trim()
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP code must be 6 digits'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isString()
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
+  body('confirmPassword')
+    .optional()
+    .isString()
+    .custom((value, { req }) => {
+      if (value && value !== req.body.password) {
+        throw new Error('Password and Confirm Password must match');
+      }
+      return true;
+    }),
+];
+
+
+export const inviteOtpInitiateRules = [
+  body('token')
+    .notEmpty()
+    .withMessage('Invitation token is required')
+    .isString()
+    .withMessage('Invitation token must be a string')
+    .trim(),
+];
+
+export const inviteOtpVerifyRules = [
+  body('token')
+    .notEmpty()
+    .withMessage('Invitation token is required')
+    .isString()
+    .withMessage('Invitation token must be a string')
+    .trim(),
+  body('code')
+    .notEmpty()
+    .withMessage('Verification code is required')
+    .isString()
+    .withMessage('Verification code must be a string')
+    .trim()
+    .isLength({ min: 6, max: 6 })
+    .withMessage('Verification code must be exactly 6 digits')
+    .isNumeric()
+    .withMessage('Verification code must contain only numbers'),
+];
+

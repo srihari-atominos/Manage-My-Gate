@@ -15,7 +15,7 @@
  */
 
 import React, { Suspense, useEffect } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { Toaster } from 'react-hot-toast'
 import AuthGuard from './features/auth/components/AuthGuard'
@@ -33,13 +33,9 @@ const DefaultLayout = React.lazy(() => import('./layout/DefaultLayout'))
 // Pages
 const Login = React.lazy(() => import('./views/pages/login/Login'))
 const Register = React.lazy(() => import('./views/pages/register/Register'))
-const AcceptInvitePage = React.lazy(() => import('./views/pages/acceptInvite/AcceptInvitePage'))
 const InviteHandler = React.lazy(() => import('./views/pages/invite/InviteHandler'))
-const WebInviteHandler = React.lazy(() => import('./views/pages/invite/WebInviteHandler'))
-const AppInviteHandler = React.lazy(() => import('./views/pages/invite/AppInviteHandler'))
 const Page404 = React.lazy(() => import('./views/pages/page404/Page404'))
 const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
-const GetStarted = React.lazy(() => import('./views/pages/getStarted/GetStarted'))
 const FeatureConfigWizard = React.lazy(
   () => import('./features/workspace/views/FeatureConfigWizard'),
 )
@@ -47,7 +43,6 @@ const PublicCheckoutPage = React.lazy(() => import('./views/pages/pay/PublicChec
 const BillingInvoiceLinkPage = React.lazy(
   () => import('./views/pages/billing/BillingInvoiceLinkPage'),
 )
-const SetPasswordPage = React.lazy(() => import('./views/pages/auth/SetPasswordPage'))
 const EnquiryPendingView = React.lazy(() => import('./features/workspace/views/EnquiryPendingView'))
 const PrivacyPolicyPage = React.lazy(() => import('./views/pages/privacyPolicy/PrivacyPolicyPage'))
 const TermsPage = React.lazy(() => import('./views/pages/terms/TermsPage'))
@@ -77,7 +72,7 @@ const App = () => {
   const storedTheme = useSelector((state) => state.ui.theme)
 
   useEffect(() => {
-    // If URL contains a hash route (legacy #/invite... or #/set-password...), translate to clean pathname
+    // Preserve supported hash paths during the BrowserRouter transition.
     if (window.location.hash && window.location.hash.startsWith('#/')) {
       const targetPath = window.location.hash.slice(1)
       window.history.replaceState(null, '', targetPath)
@@ -141,43 +136,7 @@ const App = () => {
               name="Login Create Org Page"
               element={<Register />}
             />
-            <Route exact path="/start" name="Get Started Page" element={<GetStarted />} />
-            <Route
-              exact
-              path="/accept-invite/:token"
-              name="Accept Invitation Page"
-              element={<AcceptInvitePage />}
-            />
-            <Route
-              exact
-              path="/accept-invite"
-              name="Accept Invitation Page"
-              element={<AcceptInvitePage />}
-            />
-            <Route
-              exact
-              path="/invite/web/:token"
-              name="Web Invite Handler"
-              element={<WebInviteHandler />}
-            />
-            <Route
-              exact
-              path="/invite/web"
-              name="Web Invite Handler"
-              element={<WebInviteHandler />}
-            />
-            <Route
-              exact
-              path="/invite/app/:token"
-              name="App Invite Handler"
-              element={<AppInviteHandler />}
-            />
-            <Route
-              exact
-              path="/invite/app"
-              name="App Invite Handler"
-              element={<AppInviteHandler />}
-            />
+            <Route exact path="/start" name="Get Started Page" element={<Navigate to="/login" replace />} />
             <Route exact path="/invite/:token" name="Invite Handler" element={<InviteHandler />} />
             <Route exact path="/invite" name="Invite Handler" element={<InviteHandler />} />
             <Route
@@ -188,12 +147,6 @@ const App = () => {
             />
             <Route exact path="/pay/:id" name="Payment Checkout" element={<PublicCheckoutPage />} />
             <Route exact path="/pay" name="Payment Checkout" element={<PublicCheckoutPage />} />
-            <Route
-              exact
-              path="/set-password"
-              name="Set Password Page"
-              element={<SetPasswordPage />}
-            />
             <Route exact path="/404" name="Page 404" element={<Page404 />} />
             <Route exact path="/500" name="Page 500" element={<Page500 />} />
             <Route

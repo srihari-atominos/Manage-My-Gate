@@ -1,4 +1,4 @@
-import { Text } from '@/components/ui/text';
+﻿import { Text } from '@/components/ui/text';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import {
   Mail,
@@ -32,9 +32,9 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAuth } from '../../src/features/auth/hooks/useAuth';
-import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
-import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { useGoogleAuthSession } from '@/src/features/auth/hooks/useGoogleAuthSession';
+import { AppleSignInButton } from '@/src/features/auth/components/AppleSignInButton';
 import {
   NahomEmblem,
   NahomWordmark,
@@ -43,6 +43,7 @@ import { AuthMethodSelector } from '@/components/auth/AuthMethodSelector';
 import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
 import { TextInput } from '@/components/forms/TextInput';
 import { PasswordInput } from '@/components/forms/PasswordInput';
+import { OtpInputField } from '@/components/auth/OtpInputField';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Checkbox } from '@/components/forms/Checkbox';
 import { parseBackendError } from '@/src/utils/validation';
@@ -56,13 +57,9 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 
-// 1. Email + OTP Validation Schema (there is no password sign-in)
-const basicAuthSchema = yup.object().shape({
-  login: yup
-    .string()
-    .trim()
-    .required('Email address is required')
-    .email('Please enter a valid email address'),
+// 1. Basic Auth Validation Schema
+const emailAuthSchema = yup.object().shape({
+  login: yup.string().required('Email is required').email('Must be a valid email'),
 });
 
 // 2. Phone OTP Validation Schema
@@ -76,7 +73,7 @@ const phoneSchema = yup.object().shape({
     }),
 });
 
-interface BasicAuthFormValues {
+interface EmailFormValues {
   login: string;
 }
 
@@ -89,7 +86,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   
-  const { requestOtp, error, isAuthenticated, otpSent, clearStatus } = useAuth();
+  const { user, requestOtp, verifyOtp, error, isAuthenticated, otpSent, clearStatus } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{
     intent?: string;
@@ -109,9 +106,15 @@ export default function LoginScreen() {
   const hasPendingInvite = !!(params.inviteToken || params.token || getPendingInviteToken());
 
   const [authMode, setAuthMode] = React.useState<'basic' | 'phone'>('basic');
-  const [submitted, setSubmitted] = React.useState<{ value: string; isEmail: boolean } | null>(null);
   const [keepSignedIn, setKeepSignedIn] = React.useState(true);
-  const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
+  const handleKeepSignedInChange = React.useCallback((checked: boolean) => {
+    setKeepSignedIn(checked);
+    storage.setItem('keep_signed_in', checked ? 'true' : 'false').catch(() => {});
+  }, []);
+  const [submittedPhone, setSubmittedPhone] = React.useState('');
+  const [phoneOtpCode, setPhoneOtpCode] = React.useState('');
+  const [showPassword, setShowPassword] = React.useState(false);
+    const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
   const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
   const hasNavigatedRef = React.useRef(false);
   const [switchDismissed, setSwitchDismissed] = React.useState(false);
@@ -170,7 +173,6 @@ export default function LoginScreen() {
   // 8. Tactile Micro-Interaction Drivers
   const buttonPressScale = React.useRef(new Animated.Value(1)).current;
   const arrowShiftX = React.useRef(new Animated.Value(0)).current;
-  const createAccountPressScale = React.useRef(new Animated.Value(1)).current;
 
   // 9. Input Focus Micro-Interaction Drivers
   const [isLoginFocused, setIsLoginFocused] = React.useState(false);
@@ -435,26 +437,9 @@ export default function LoginScreen() {
     ]).start();
   };
 
-  // Tactile Micro-Interactions: Create Account Button
-  const handleCreateAccountPressIn = () => {
-    Animated.timing(createAccountPressScale, {
-      toValue: 0.98,
-      duration: 80,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handleCreateAccountPressOut = () => {
-    Animated.timing(createAccountPressScale, {
-      toValue: 1,
-      duration: 100,
-      useNativeDriver: true,
-    }).start();
-  };
-
   // Basic Auth Form Hook
-  const basicForm = useForm<BasicAuthFormValues>({
-    resolver: yupResolver(basicAuthSchema),
+  const basicForm = useForm<EmailFormValues>({
+    resolver: yupResolver(emailAuthSchema),
     mode: 'onTouched',
     defaultValues: {
       login: params.email ? decodeURIComponent(params.email) : '',
@@ -496,47 +481,31 @@ export default function LoginScreen() {
       Keyboard.dismiss();
 
       dispatch(clearPendingRoute());
-      // The start route picks the first screen from the server's `landing` hint
-      router.replace('/');
+      sessionStore.removeItem('mobile_auth_intent');
+      router.replace('/(resident)');
     } else if (!isAuthenticated) {
       hasNavigatedRef.current = false;
     }
   }, [isAuthenticated, dispatch]);
 
-  // Once a code is sent, continue on the code screen
+  // Route both email and phone OTP requests to the shared verification screen.
   React.useEffect(() => {
-    if (otpSent && submitted) {
+    if (otpSent && authMode === 'basic') {
       router.push({
         pathname: '/(auth)/otp',
-        params: submitted.isEmail ? { email: submitted.value } : { phone: submitted.value },
+        params: { phone: submittedPhone, email: basicForm.getValues("login"), inviteToken: String(params.inviteToken || params.token || '') },
       });
       // A resend from the code screen must not open a second code screen
       setSubmitted(null);
     }
   }, [otpSent, submitted]);
 
-  const handleKeepSignedInChange = (checked: boolean) => {
-    setKeepSignedIn(checked);
-    // Persist immediately so social sign-in uses the same preference.
-    void storage.setItem('keep_signed_in', checked ? 'true' : 'false');
-  };
-
-  const savePreferences = async () => {
-    try {
-      await storage.setItem('keep_signed_in', keepSignedIn ? 'true' : 'false');
-    } catch (e) {
-      console.warn('Failed to save login preferences', e);
-    }
-  };
-
-  // Email + OTP: send a code to the email address
-  const onBasicSubmit = async (data: BasicAuthFormValues) => {
-    const email = data.login.trim().toLowerCase();
-    setSubmitted({ value: email, isEmail: true });
+  
+  // Handle Basic Auth Submit
+  const onBasicSubmit = async (data: EmailFormValues) => {
     setIsSubmittingBasic(true);
     try {
-      await savePreferences();
-      await requestOtp(email, true);
+      await requestOtp(data.login.trim(), true);
     } finally {
       setIsSubmittingBasic(false);
     }
@@ -547,7 +516,10 @@ export default function LoginScreen() {
     setSubmitted({ value: data.phone, isEmail: false });
     setIsSubmittingPhone(true);
     try {
-      await savePreferences();
+      if (otpSent) {
+        await verifyOtp(data.phone, phoneOtpCode, false, String(params.inviteToken || params.token || ''));
+        return;
+      }
       await requestOtp(data.phone, false);
     } finally {
       setIsSubmittingPhone(false);
@@ -634,8 +606,8 @@ export default function LoginScreen() {
             <AuthMethodSelector
               value={authMode}
               onChange={(mode) => { Keyboard.dismiss(); setAuthMode(mode); }}
-              emailLabel={t('email_otp', 'Email')}
-              otpLabel={t('phone_otp', 'Phone')}
+              emailLabel={t('email_id', 'Email ID')}
+              otpLabel={t('phone_no', 'Phone No')}
               reduceMotion={reduceMotion}
               disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
             />
@@ -740,7 +712,7 @@ export default function LoginScreen() {
                   <View className="gap-3.5">
                     <View>
                       <Text className="text-xs font-semibold text-white mb-1.5 font-sans">
-                        {t('email_address', 'Email Address')} <Text className="text-[#EA580C] font-bold">*</Text>
+                        {t('email_id', 'Email ID')} <Text className="text-[#EA580C] font-bold">*</Text>
                       </Text>
                       <Controller
                         control={basicForm.control}
@@ -755,7 +727,7 @@ export default function LoginScreen() {
                               setIsLoginFocused(false);
                               onBlur();
                             }}
-                            placeholder={t('enter_email', 'Enter your email address')}
+                            placeholder={t('enter_email', 'Enter your email')}
                             placeholderTextColor="#9CA3AF"
                             autoCapitalize="none"
                             autoCorrect={false}
@@ -773,12 +745,14 @@ export default function LoginScreen() {
                             error={basicForm.formState.errors.login?.message}
                             feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
                             errorClassName="text-[11.5px] font-bold text-red-400"
-                            returnKeyType="go"
-                            onSubmitEditing={handleBasicSignIn}
+                            returnKeyType="next"
+                            
+                            blurOnSubmit={false}
                           />
                         )}
                       />
                     </View>
+
 
                     {/* Stay signed in Checkbox */}
                     <View className="flex-row items-center pt-0.5">
@@ -852,7 +826,7 @@ export default function LoginScreen() {
                         ) : (
                           <View className="flex-row items-center justify-center gap-2 z-10">
                             <Text className="font-bold text-white text-base font-sans">
-                              {t('send_code', 'Send Code')}
+                              {t('send_otp', 'Send OTP')}
                             </Text>
                             <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
                               <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
@@ -871,6 +845,7 @@ export default function LoginScreen() {
                       render={({ field: { onChange, value } }) => (
                         <PhoneInput
                           variant="glass"
+                          defaultCountry="IN"
                           label={t('phone_number', 'Mobile Number')}
                           placeholder="98765 43210"
                           placeholderTextColor="#9CA3AF"
@@ -892,6 +867,20 @@ export default function LoginScreen() {
                         />
                       )}
                     />
+
+                    {otpSent && (
+                      <View className="gap-2">
+                        <Text className="text-xs font-semibold text-white mb-1.5">
+                          {t('enter_verification_code', 'Enter verification code')}
+                        </Text>
+                        <OtpInputField
+                          length={4}
+                          value={phoneOtpCode}
+                          onValueChange={setPhoneOtpCode}
+                          error={Boolean(error)}
+                        />
+                      </View>
+                    )}
 
                     {/* Stay signed in Checkbox */}
                     <View className="flex-row items-center pt-0.5">
@@ -965,7 +954,7 @@ export default function LoginScreen() {
                         ) : (
                           <View className="flex-row items-center justify-center gap-2 z-10">
                             <Text className="font-bold text-white text-base font-sans">
-                              {t('sign_in_with_otp', 'Sign in with OTP')}
+                              {otpSent ? t('verify_and_sign_in', 'Verify & Sign In') : t('send_otp', 'Send OTP')}
                             </Text>
                             <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
                               <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
@@ -1002,13 +991,6 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Access is by invitation only: there is no self sign-up */}
-              <View className="items-center justify-center pt-2.5 pb-2 px-4">
-                <Text className="text-[12px] text-white/90 font-semibold text-center" style={{ textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                  {t('invite_only_hint', 'New here? Ask your community admin to invite you.')}
-                </Text>
-              </View>
-
             </Animated.View>
           </View>
           </KeyboardAwareScrollView>
@@ -1021,3 +1003,4 @@ export default function LoginScreen() {
 function cnText(...classes: (string | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
+

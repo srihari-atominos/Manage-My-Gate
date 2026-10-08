@@ -1,3 +1,4 @@
+import './organization.listeners.js';
 import { Router } from 'express';
 import organizationController from './organization.controller.js';
 import validate from '../../middlewares/validator.middleware.js';
@@ -9,8 +10,10 @@ import {
   setupWorkspaceRules,
   updateFeaturesRules,
   updateStatusRules,
-  provisionCommunityRules,
-  assignAdminRules,
+  updateLoginPolicyRules,
+  updateOnboardingModeRules,
+  sendAdminEmailOtpRules,
+  verifyAdminEmailOtpRules,
 } from './organization.validator.js';
 
 const router = Router();
@@ -23,7 +26,24 @@ router.get(
   organizationController.checkName
 );
 
-// Communities are created by the platform team only (story 1); self-serve creation is closed
+// Community Admin Email OTP Verification routes (authenticated Platform Admin context)
+router.post(
+  '/verify-email/send-otp',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(sendAdminEmailOtpRules),
+  organizationController.sendAdminEmailOtp
+);
+
+router.post(
+  '/verify-email/verify-otp',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(verifyAdminEmailOtpRules),
+  organizationController.verifyAdminEmailOtp
+);
+
+// Setup Workspace route (authenticated context, validated)
 router.post(
   '/setup',
   isAuthenticated,
@@ -89,14 +109,29 @@ router.patch(
   organizationController.updateStatus
 );
 
-// Feature onboarding route (tenant context)
+// Feature onboarding route (Platform Admin context)
 router.patch(
   '/:id/features',
   isAuthenticated,
-  tenantContext,
+  tenantContext({ requirePlatformContext: true }),
   validate(updateFeaturesRules),
   organizationController.updateFeatures
 );
 
-export default router;
+router.patch(
+  '/:id/onboarding-mode',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(updateOnboardingModeRules),
+  organizationController.updateOnboardingMode
+);
 
+router.patch(
+  '/:id/login-policy',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(updateLoginPolicyRules),
+  organizationController.updateLoginPolicy
+);
+
+export default router;

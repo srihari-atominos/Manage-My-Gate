@@ -1,5 +1,5 @@
 /**
- * Manage-My-Gate Application Barcode Protocol.
+ * Nahom Application Barcode Protocol.
  * Encodes passes with a unique application signature and strictly validates
  * scanned barcodes across all invitation types:
  * - Guest pass (GUEST)
@@ -79,10 +79,10 @@ export function encodeAppBarcode(
 }
 
 /**
- * Validates whether a scanned barcode string originated from Manage-My-Gate.
+ * Validates whether a scanned barcode string originated from Nahom.
  * Accepts:
  *   1. All MMG invitation & invoice types: GUEST, GROUP, CAB, DELIVERY, SERVICE, AMENITY, RESIDENT, INVOICE.
- *   2. JSON payload: {"app":"ManageMyGate", "type":"...", "code":"...", ...}
+ *   2. JSON payload: {"app":"Nahom", "type":"...", "code":"...", ...}
  *   3. Direct pass code, invoice number, or booking reference fallback.
  * Rejects:
  *   Any external/foreign barcode (supermarket EAN/UPC, URLs, random QR codes).
@@ -126,13 +126,13 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
     }
   }
 
-  // 2. JSON payload: {"app":"ManageMyGate", ...} or {"invoiceNumber": "...", ...}
+  // 2. JSON payload: {"app":"Nahom", ...} or {"invoiceNumber": "...", ...}
   if (raw.startsWith('{') && raw.endsWith('}')) {
     try {
       const parsed = JSON.parse(raw);
       if (
         parsed.app === 'Nahom' ||
-        parsed.app === 'ManageMyGate' ||
+        parsed.app === 'Nahom' ||
         parsed.app === 'MMG' ||
         parsed.signature === 'MMG' ||
         parsed.appId === 'nahom' ||

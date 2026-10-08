@@ -80,6 +80,16 @@
               "scheme": "https",
               "host": "app.managemygate.com",
               "pathPrefix": "/billing"
+            },
+            {
+              "scheme": "https",
+              "host": "nahom.e3esg.com",
+              "pathPrefix": "/invite/"
+            },
+            {
+              "scheme": "https",
+              "host": "app.managemygate.com",
+              "pathPrefix": "/invite/"
             }
           ],
           "category": [
@@ -145,11 +155,6 @@
           "defaultChannel": "general"
         }
       ],
-      "expo-font",
-      "expo-sharing",
-      "expo-status-bar",
-      "expo-web-browser",
-      "expo-localization",
       "expo-apple-authentication",
       [
         "expo-contacts",

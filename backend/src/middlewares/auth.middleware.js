@@ -38,7 +38,8 @@ const assertOrgHeaderAllowed = async (req, decoded) => {
   const membership = await OrgMembership.findOne({ userId: decoded.id, orgId: requested, status: 'Active' })
     .select('_id')
     .lean();
-  if (!membership) {
+  console.error(`AUTH DEBUG: decoded.orgId=${decoded.orgId}, requested=${requested}, decoded=`, decoded);
+    if (!membership) {
     throw new HttpError(403, 'Forbidden. You are not a member of the requested community.');
   }
 };

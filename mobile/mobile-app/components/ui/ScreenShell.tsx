@@ -314,7 +314,7 @@ export function ScreenShell({
               onPress={() => {
                 const subject = encodeURIComponent(`Nahom App Error Report: ${title}`);
                 const body = encodeURIComponent(`Screen: ${title}\nError: ${error}\nPlatform: ${Platform.OS}\nTime: ${new Date().toISOString()}`);
-                Linking.openURL(`mailto:developer@managemygate.com?subject=${subject}&body=${body}`);
+                Linking.openURL(`mailto:developer@nahom.com?subject=${subject}&body=${body}`);
               }}
               className="p-1.5 rounded-lg bg-destructive/15 border border-destructive/30 flex-row items-center gap-1 active:opacity-75"
               accessibilityRole="button"

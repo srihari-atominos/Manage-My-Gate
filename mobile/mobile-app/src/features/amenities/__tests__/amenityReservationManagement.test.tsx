@@ -78,7 +78,7 @@ import MyBookingsScreen from '../../../../app/(resident)/amenities/my-bookings';
 // Mock expo-router
 const mockRouterPush = jest.fn();
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockRouterPush, back: jest.fn() }),
+  useRouter: () => ({ navigate: mockRouterPush, push: mockRouterPush, back: jest.fn() }),
   useLocalSearchParams: () => ({}),
   usePathname: () => '/(resident)/amenities/my-bookings',
 }));

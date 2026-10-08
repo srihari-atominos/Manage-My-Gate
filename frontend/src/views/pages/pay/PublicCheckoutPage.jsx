@@ -1309,10 +1309,10 @@ const PublicCheckoutPage = () => {
                       <p style={{ margin: '6px 0' }}>
                         <strong>Support Email:</strong>{' '}
                         <a
-                          href={`mailto:${support?.email || 'support@managemygate.com'}`}
+                          href={`mailto:${support?.email || 'support@nahom.com'}`}
                           style={{ color: '#2563eb' }}
                         >
-                          {support?.email || 'support@managemygate.com'}
+                          {support?.email || 'support@nahom.com'}
                         </a>
                       </p>
                       <p style={{ margin: '6px 0' }}>

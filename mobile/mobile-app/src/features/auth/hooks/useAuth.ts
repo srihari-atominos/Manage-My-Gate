@@ -1,9 +1,14 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import {
-  loginWithGoogleThunk,
+    loginWithGoogleThunk,
   loginWithMicrosoftThunk,
   loginWithAppleThunk,
+  registerUserThunk,
+  verifyRegistrationThunk,
+    acceptSsoInviteThunk,
+  createWorkspaceThunk,
+  updateOrganizationFeaturesThunk,
   requestOtp,
   verifyOtpLogin,
   respondToInvitationThunk,
@@ -32,6 +37,7 @@ export const useAuth = () => {
     otpSent: false,
   };
 
+  
   const handleLoginWithGoogle = useCallback(
     (tokenOrPayload: string | any) => {
       const payload = typeof tokenOrPayload === 'string' ? { token: tokenOrPayload } : tokenOrPayload;
@@ -54,6 +60,56 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const handleRegister = useCallback(
+    (userData: any) => {
+      return dispatch ? dispatch(registerUserThunk(userData)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleVerifyRegistration = useCallback(
+    (email: string, code: string) => {
+      return dispatch ? dispatch(verifyRegistrationThunk({ email, code })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  
+  const handleAcceptSsoInvite = useCallback(
+    (payload: {
+      inviteToken: string;
+      ssoCredential?: string;
+      code?: string;
+      codeVerifier?: string;
+      redirectUri?: string;
+      clientId?: string;
+      nonce?: string;
+      fullName?: string;
+      provider: 'google' | 'microsoft' | 'apple';
+    }) => {
+      return dispatch ? dispatch(acceptSsoInviteThunk(payload)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleCreateWorkspace = useCallback(
+    (workspaceData: any) => {
+      return dispatch ? dispatch(createWorkspaceThunk(workspaceData)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleUpdateOrganizationFeatures = useCallback(
+    (orgId: string, features: string[]) => {
+      return dispatch ? dispatch(updateOrganizationFeaturesThunk({ orgId, features })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleCheckOrganizationName = useCallback((name: string) => {
+    return authService.checkOrganizationName(name);
+  }, []);
+
   const handleRequestOtp = useCallback(
     (identifier: string, isEmail: boolean = false) => {
       return dispatch ? dispatch(requestOtp({ identifier, isEmail })) : Promise.resolve();
@@ -62,15 +118,8 @@ export const useAuth = () => {
   );
 
   const handleVerifyOtp = useCallback(
-    (identifier: string, code: string, isEmail: boolean = false, inviteToken: string | null = null) => {
+    (identifier: string, code: string, isEmail: boolean = false, inviteToken?: string) => {
       return dispatch ? dispatch(verifyOtpLogin({ identifier, code, isEmail, inviteToken })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleRespondToInvitation = useCallback(
-    (args: { action: 'accept' | 'decline'; invitationId?: string; inviteToken?: string; ticket?: string | null }) => {
-      return dispatch ? dispatch(respondToInvitationThunk(args)) : Promise.resolve();
     },
     [dispatch]
   );
@@ -107,6 +156,12 @@ export const useAuth = () => {
 
   return {
     ...authState,
+    register: handleRegister,
+    verifyRegistration: handleVerifyRegistration,
+    acceptSsoInvite: handleAcceptSsoInvite,
+    createWorkspace: handleCreateWorkspace,
+    updateOrganizationFeatures: handleUpdateOrganizationFeatures,
+    checkOrganizationName: handleCheckOrganizationName,
     loginWithGoogle: handleLoginWithGoogle,
     loginWithMicrosoft: handleLoginWithMicrosoft,
     loginWithApple: handleLoginWithApple,

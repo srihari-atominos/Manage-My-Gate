@@ -33,7 +33,7 @@ export class AuthController {
 
   async verifyRegistrationOtp(req, res, next) {
     try {
-      const { email, code } = req.body;
+      const { email, code, inviteToken } = req.body;
       const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
       const data = await authService.verifyRegistrationOtp(email, code, deviceInfo);
       setAuthCookie(res, data.token);
@@ -236,8 +236,10 @@ export class AuthController {
         os: 'OS',
         ipAddress: req.ip,
       };
-      const data = await authService.verifyPhoneLogin(phone, code, deviceInfo, inviteToken || null);
-      sendLoginResult(res, data);
+      const data = await authService.verifyPhoneLogin(phone, code, deviceInfo, inviteToken);
+      setAuthCookie(res, data.token);
+      setRefreshTokenCookie(res, data.refreshToken);
+      res.success(data, 'Login successful');
     } catch (error) {
       next(error);
     }
@@ -253,6 +255,37 @@ export class AuthController {
     }
   }
 
+  
+  async initiateInvitationOtp(req, res, next) {
+    try {
+      const { token } = req.body;
+      const data = await authService.initiateInvitationOtp(token);
+      res.success(data, data?.message || 'OTP sent for invitation');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyInvitationOtp(req, res, next) {
+    try {
+      const { token, code } = req.body;
+      const deviceInfo = {
+        deviceName: req.headers['user-agent'],
+        browser: 'Browser',
+        os: 'OS',
+        ipAddress: req.ip,
+      };
+      const data = await authService.verifyInvitationOtp(token, code, deviceInfo);
+      setAuthCookie(res, data.token);
+      if (data.refreshToken) {
+        setRefreshTokenCookie(res, data.refreshToken);
+      }
+      res.success(data, 'Invitation accepted and login successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async verifyEmailOtpLogin(req, res, next) {
     try {
       const { email, code, inviteToken } = req.body;
@@ -262,8 +295,10 @@ export class AuthController {
         os: 'OS',
         ipAddress: req.ip,
       };
-      const data = await authService.verifyEmailOtpLogin(email, code, deviceInfo, inviteToken || null);
-      sendLoginResult(res, data);
+      const data = await authService.verifyEmailOtpLogin(email, code, deviceInfo, inviteToken);
+      setAuthCookie(res, data.token);
+      setRefreshTokenCookie(res, data.refreshToken);
+      res.success(data, 'Login successful');
     } catch (error) {
       next(error);
     }
@@ -386,23 +421,49 @@ export class AuthController {
 
   async checkAccountStatus(req, res, next) {
     try {
-      const { email, setupToken } = req.query;
-      // Account existence is only revealed to someone entitled to know it:
-      // a signed-in inviter, or the holder of a setup link for that same email.
-      let allowed = false;
-      if (req.user) {
-        const { checkIsAdmin } = await import('../../middlewares/rbac.middleware.js');
-        const perms = Array.isArray(req.user.permissions) ? req.user.permissions : [];
-        allowed = (await checkIsAdmin(req)) || perms.includes('users:create') || perms.includes('villas:update');
-      } else if (setupToken && email) {
-        const { verifyAccountSetupToken } = await import('./accountSetupToken.js');
-        const claims = await verifyAccountSetupToken(setupToken).catch(() => null);
-        allowed = !!claims && claims.email === String(email).trim().toLowerCase();
-      }
-      const data = allowed
-        ? await authService.checkAccountStatus(email)
-        : { exists: false, hasPassword: false, isAlreadyConfigured: false };
+      const identifier = req.query.identifier || req.query.email || req.query.phone;
+      const data = await authService.checkAccountStatus(identifier);
       res.success(data, 'Account status fetched successfully.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async sendFirstTimeSetupOtp(req, res, next) {
+    try {
+      const { identifier } = req.body;
+      const data = await authService.sendFirstTimeSetupOtp(identifier);
+      res.success(data, data?.message || 'First-time setup OTP sent');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async completeFirstTimeSetup(req, res, next) {
+    try {
+      const { identifier, code, password, confirmPassword } = req.body;
+      const deviceInfo = {
+        deviceName: req.headers['user-agent'],
+        browser: 'Browser',
+        os: 'OS',
+        ipAddress: req.ip,
+      };
+      const data = await authService.completeFirstTimeSetup({
+        identifier,
+        code,
+        password,
+        confirmPassword,
+        deviceInfo,
+      });
+
+      if (data && data.token) {
+        setAuthCookie(res, data.token);
+      }
+      if (data && data.refreshToken) {
+        setRefreshTokenCookie(res, data.refreshToken);
+      }
+
+      res.success(data, 'First-time account setup completed successfully. Password configured.');
     } catch (error) {
       next(error);
     }

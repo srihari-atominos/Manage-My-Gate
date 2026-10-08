@@ -40,7 +40,9 @@ export const inviteUserRules = [
     .withMessage('Phone number is required')
     .isString()
     .withMessage('Phone must be a string')
-    .trim(),
+    .trim()
+    .custom((value) => Boolean(normalizePhone(value)))
+    .withMessage('Please provide a valid phone number with country code'),
 ];
 
 /**
@@ -169,8 +171,26 @@ export const bulkInviteUserRules = [
   body('invitations')
     .isArray({ min: 1 })
     .withMessage('invitations must be a non-empty array'),
-  // Email, phone and role are checked per row in bulkInviteUsers so invalid rows
-  // are reported while valid rows still go through
+  body('invitations.*')
+    .custom((item) => {
+      const hasEmail = item && item.email && typeof item.email === 'string' && item.email.trim().length > 0;
+      const hasPhone = item && item.phone && typeof item.phone === 'string' && item.phone.trim().length > 0;
+      if (!hasEmail || !hasPhone) {
+        throw new Error('Email address and phone number are required for each user.');
+      }
+      return true;
+    }),
+  body('invitations.*.email')
+    .notEmpty()
+    .withMessage('Email address is required')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .trim(),
+  body('invitations.*.phone')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .custom((val) => Boolean(normalizePhone(val)))
+    .withMessage('Please provide a valid phone number format'),
   body('invitations.*.residentType')
     .optional()
     .isString()
@@ -184,6 +204,10 @@ export const bulkInviteUserRules = [
     })
     .withMessage('Villa Number must be a string')
     .trim(),
+  body('onboardingMode')
+    .optional()
+    .isIn(['INVITATION', 'ADMIN_ANNOUNCEMENT'])
+    .withMessage('onboardingMode must be INVITATION or ADMIN_ANNOUNCEMENT'),
 ];
 
 /**

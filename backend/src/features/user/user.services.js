@@ -36,10 +36,54 @@ export class UserService {
   }
 
   async getUserByEmailOrUsername(emailOrUsername, session) {
-    const userByEmail = await userRepository.findByEmail(emailOrUsername, session);
+    if (!emailOrUsername || typeof emailOrUsername !== 'string') return null;
+    const trimmed = emailOrUsername.trim();
+    if (!trimmed) return null;
+
+    const userByEmail = await userRepository.findByEmail(trimmed.toLowerCase(), session);
     if (userByEmail) return userByEmail;
 
-    return await userRepository.findByUsername(emailOrUsername, session);
+    const userByUsername = await userRepository.findByUsername(trimmed, session);
+    if (userByUsername) return userByUsername;
+
+    const normalizedPhone = normalizePhone(trimmed);
+    if (normalizedPhone) {
+      return await userRepository.findByPhone(normalizedPhone, session);
+    }
+    return null;
+  }
+
+  async resolveUserIdentity({ email, phone }, session = null) {
+    const matches = new Map();
+
+    if (email && typeof email === 'string' && email.trim()) {
+      const uEmail = await userRepository.findByEmail(email.trim().toLowerCase(), session);
+      if (uEmail) matches.set(uEmail._id.toString(), { user: uEmail, matchedBy: 'email' });
+    }
+
+    if (phone && typeof phone === 'string' && phone.trim()) {
+      const normalizedPhone = normalizePhone(phone.trim());
+      if (normalizedPhone) {
+        const uPhone = await userRepository.findByPhone(normalizedPhone, session);
+        if (uPhone) matches.set(uPhone._id.toString(), { user: uPhone, matchedBy: 'phone' });
+      }
+    }
+
+    if (matches.size > 1) {
+      const details = Array.from(matches.values())
+        .map((m) => `${m.matchedBy}: '${m.user.email || m.user.username || m.user.phone}' (ID: ${m.user._id})`)
+        .join(', ');
+      throw new HttpError(
+        400,
+        `Ambiguous identity detected: Provided email, phone, or username match different existing user accounts (${details}).`
+      );
+    }
+
+    if (matches.size === 1) {
+      return Array.from(matches.values())[0].user;
+    }
+
+    return null;
   }
 
   async getUserByVillaNumber(villaNumber, orgId, session) {
@@ -267,12 +311,38 @@ export class UserService {
     }
   }
 
-  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '', invitationSource = 'WEB', inviterId = null) {
+  async inviteUser(
+    email,
+    orgId,
+    villaId = null,
+    residentType = 'None',
+    roleName = null,
+    phone = '',
+    name = '',
+    invitationSource = 'WEB',
+    inviterId = null,
+    onboardingMode = 'INVITATION'
+  ) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const trimmedEmail = email.trim().toLowerCase();
-      const existing = await userRepository.findByEmail(trimmedEmail, session);
+      const mode = (onboardingMode || 'INVITATION').toUpperCase();
+      const trimmedEmail = email ? email.trim().toLowerCase() : '';
+      const trimmedPhone = phone ? String(phone).trim() : '';
+      const phoneToAssign = trimmedPhone ? normalizePhone(trimmedPhone) : '';
+      if (trimmedPhone && !phoneToAssign) {
+        throw new HttpError(400, 'Invalid phone number format.');
+      }
+
+      if (!trimmedEmail && !phoneToAssign) {
+        throw new HttpError(400, 'Email address or valid phone number is required.');
+      }
+
+      // Step 1: Resolve existing user identity safely across Email and Phone
+      const existing = await this.resolveUserIdentity(
+        { email: trimmedEmail, phone: phoneToAssign },
+        session
+      );
       const isExisting = !!existing;
 
       // Check if membership already exists in this organization
@@ -280,42 +350,47 @@ export class UserService {
       const existingMembership = existing ? await orgMembershipService.getMembership(existing._id, orgId, session) : null;
 
       if (existing) {
-        // Block re-inviting an already active member of this community.
-        // A user is only truly an active member if BOTH their global user account is Active AND their organization membership is Active.
-        if (existingMembership && existingMembership.status === 'Active' && existing.status === 'Active') {
-          throw new HttpError(409, `User with email '${trimmedEmail}' is already an active member of this community.`, { code: 'ALREADY_MEMBER' });
+        if (existingMembership && existingMembership.status === 'Active' && existing.status === 'Active' && mode === 'INVITATION') {
+          throw new HttpError(409, `User '${trimmedEmail || phoneToAssign}' is already an active member of this community.`);
+        }
+
+        if (phoneToAssign) {
+          const existingPhoneUser = await userRepository.findByPhone(phoneToAssign, session);
+          if (existingPhoneUser && existingPhoneUser._id.toString() !== existing._id.toString()) {
+            throw new HttpError(409, 'This phone number is already linked to another account.');
+          }
+        }
+      } else {
+        if (phoneToAssign) {
+          const existingPhoneUser = await userRepository.findByPhone(phoneToAssign, session);
+          if (existingPhoneUser) {
+            throw new HttpError(409, 'This phone number is already linked to another account.');
+          }
         }
       }
 
-      let phoneToAssign = phone ? normalizePhone(phone) : '';
-      if (phone && !phoneToAssign) {
-        throw new HttpError(400, 'Invalid phone number format.');
-      }
-      if (phoneToAssign) {
-        const existingPhoneUser = await userRepository.findByPhone(phoneToAssign, session);
-        if (existingPhoneUser && (!existing || existingPhoneUser._id.toString() !== existing._id.toString())) {
-          // Email and phone point at different people: never merge or guess
-          throw new HttpError(409, 'This phone number is already linked to another account. Check the email and phone belong to the same person.', { code: 'IDENTITY_CONFLICT' });
-        }
-      }
-      
       let user = existing;
       if (!existing) {
-        let baseUsername = trimmedEmail.split('@')[0];
+        let emailToUse = trimmedEmail;
+        let baseUsername = trimmedEmail ? trimmedEmail.split('@')[0] : `user_${phoneToAssign.replace(/\D/g, '')}`;
+        if (!emailToUse && phoneToAssign) {
+          emailToUse = `user_${phoneToAssign.replace(/\D/g, '')}@noemail.local`;
+        }
+
         let username = baseUsername;
         let usernameExists = await userRepository.findByUsername(username, session);
-        
-        // Auto-generate a unique username if the base one is taken
         while (usernameExists) {
           username = `${baseUsername}${Math.floor(1000 + Math.random() * 9000)}`;
           usernameExists = await userRepository.findByUsername(username, session);
         }
 
         const userData = {
-          email: trimmedEmail,
+          email: emailToUse,
           username: username,
           name: name || username,
-          status: 'Pending Verification',
+          status: mode === 'ADMIN_ANNOUNCEMENT' ? 'Active' : 'Pending Verification',
+          credentialStatus: 'NOT_INITIALIZED',
+          appAccessStatus: 'NOT_YET_ACCESSED',
           ...(phoneToAssign ? { phone: phoneToAssign } : {}),
         };
         user = await userRepository.create(userData, session);
@@ -328,7 +403,7 @@ export class UserService {
         }
       }
 
-      // Resolve roles if roleName is provided
+      // Step 2: Roles resolution & tenant isolation validation
       let roleIds = [];
       let calculatedResidentType = residentType;
       let role = null;
@@ -337,14 +412,18 @@ export class UserService {
         const roleNames = roleName.split(',').map((r) => r.trim()).filter(Boolean);
         for (const rName of roleNames) {
           const foundRole = await roleService.getRoleByName(rName, orgId, session);
-          // Only this community's own roles can be assigned; never a global/system role
-          if (foundRole && foundRole.orgId && String(foundRole.orgId) === String(orgId)) {
+          if (foundRole) {
+            if (!foundRole.orgId || foundRole.orgId.toString() !== orgId.toString()) {
+              throw new HttpError(
+                403,
+                `Role '${foundRole.name}' is a platform or external role and cannot be assigned to members of this community.`
+              );
+            }
             roleIds.push(foundRole._id);
             if (!role) role = foundRole;
           }
         }
         if (roleIds.length > 0) {
-          // If residentType is missing or 'None' and user is assigned to a unit, default it to the role name
           if (villaId && (!calculatedResidentType || calculatedResidentType === 'None')) {
             calculatedResidentType = role.name;
           }
@@ -353,7 +432,7 @@ export class UserService {
         }
       }
 
-      // Setup units array update
+      // Step 3: Villa validation & unit association
       let membershipUnits = [];
       if (existingMembership && existingMembership.units) {
         membershipUnits = [...existingMembership.units];
@@ -374,7 +453,6 @@ export class UserService {
         }
       }
 
-      // Sync root fields to units[0]
       let rootVillaId = null;
       let rootResidentType = 'None';
       if (membershipUnits.length > 0) {
@@ -385,22 +463,21 @@ export class UserService {
         rootResidentType = calculatedResidentType;
       }
 
+      // Step 4: Membership status based on onboardingMode
+      const targetMembershipStatus = mode === 'ADMIN_ANNOUNCEMENT' ? 'Active' : 'Pending';
+
       let membership = null;
       if (existingMembership) {
         if (roleIds.length > 0) {
           existingMembership.roleIds = roleIds;
           existingMembership.roleId = roleIds[0] || null;
         }
-        // Preserve Active status only if user account is truly Active AND membership was Active
-        if (!existing || existing.status !== 'Active' || existingMembership.status !== 'Active') {
-          existingMembership.villaId = rootVillaId;
-          existingMembership.residentType = rootResidentType;
-          existingMembership.units = membershipUnits;
-          existingMembership.status = 'Pending';
-        }
+        existingMembership.villaId = rootVillaId;
+        existingMembership.residentType = rootResidentType;
+        existingMembership.units = membershipUnits;
+        existingMembership.status = targetMembershipStatus;
         membership = await existingMembership.save({ session });
       } else {
-        // Create membership with villa association and roles (explicitly Pending status)
         const initialUnits = villaId ? [{ villaId, residentType: calculatedResidentType }] : [];
         membership = await orgMembershipService.createMembership({
           userId: user._id,
@@ -410,78 +487,48 @@ export class UserService {
           villaId: rootVillaId,
           residentType: rootResidentType,
           units: initialUnits,
-          status: 'Pending'
+          status: targetMembershipStatus,
         }, session);
       }
 
-      // Sync user profile with villa and residencyType (keep None if no villa assigned)
       const userResidencyType = rootVillaId ? (calculatedResidentType || roleName || 'None') : 'None';
-
-      // Dynamically calculate a baseSystemType for mitigation/recommendation
-      let baseSystemType = 'Tenant';
-      if (role) {
-        if (role.isTenantRole === true) {
-          baseSystemType = 'Tenant';
-        } else {
-          const lowerRoleName = role.name.toLowerCase();
-          if (lowerRoleName.includes('owner') && lowerRoleName.includes('non')) {
-            baseSystemType = 'Non-Resident Owner';
-          } else if (lowerRoleName.includes('owner')) {
-            baseSystemType = 'Resident Owner';
-          } else if (lowerRoleName.includes('tenant')) {
-            baseSystemType = 'Tenant';
-          } else if (lowerRoleName.includes('family')) {
-            baseSystemType = 'Family Member';
-          } else if (lowerRoleName.includes('staff')) {
-            baseSystemType = 'Staff';
-          } else {
-            if (calculatedResidentType === 'Owner') {
-              baseSystemType = 'Resident Owner';
-            } else if (calculatedResidentType === 'Family') {
-              baseSystemType = 'Family Member';
-            } else if (calculatedResidentType === 'Guest') {
-              baseSystemType = 'Staff';
-            }
-          }
-        }
-      }
-
-      // Only initialize user residencyType on global profile if new user
       if (!existing && rootVillaId) {
         await userRepository.update(user._id, { residencyType: userResidencyType }, session);
       }
 
-      // NOTE: Villa assignment (assignResidentToVilla) and villa occupancy status update
-      // are strictly deferred until the user accepts the invitation (via accept-invite or login).
-      // This guarantees that pending invitations do not reserve or occupy villas prematurely.
+      // Step 5: Immediate Unit Assignment for ADMIN_ANNOUNCEMENT
+      if (mode === 'ADMIN_ANNOUNCEMENT' && rootVillaId) {
+        const villaService = (await import('../villa/villa.services.js')).default;
+        await villaService.assignExistingUser(rootVillaId, user._id, rootResidentType, orgId, false, session).catch((err) => {
+          logger.warn(`Immediate villa assignment during announcement warning: ${err.message}`);
+        });
+      }
 
-      // Always generate an invitationToken with orgId (for both new and existing users)
+      // Step 6: Token Generation & Event Emissions
       const tokenService = (await import('../token/token.services.js')).default;
-      // Clean up previous unconsumed invitation tokens for this user in this organization
       await tokenService.deleteTokens({ userId: user._id, orgId, type: 'INVITATION' }, session);
       const result = await tokenService.generateInvitationToken(user._id, orgId, session, invitationSource, inviterId);
       const invitationToken = result.invitationToken;
 
-      // Insert transactional outbox event for auditing & token resolution fallback
       const OutboxEvent = (await import('../outbox/outboxEvent.model.js')).default;
+      const eventType = mode === 'ADMIN_ANNOUNCEMENT' ? 'USER_ANNOUNCED' : 'USER_INVITED';
       const outboxEvent = new OutboxEvent({
-        eventType: 'USER_INVITED',
-        payload: { email: trimmedEmail, orgId, invitationToken, invitationSource, inviterId },
+        eventType,
+        payload: { email: user.email, phone: user.phone, orgId, invitationToken, invitationSource, inviterId, onboardingMode: mode },
         status: 'COMPLETED',
       });
       await outboxEvent.save({ session });
 
-      // Auto-sync technician record if assigned a staff/vendor role
       if (roleName) {
         await this.syncTechnicianForStaffUser(user._id, orgId, [roleName], session);
       }
 
       await session.commitTransaction();
-      
-      // Dispatch events for email delivery and real-time frontend syncing
-      userEvents.emit('USER_INVITED', {
-        email: trimmedEmail,
-        phone: phoneToAssign || user.phone || '',
+
+      const domainEventName = mode === 'ADMIN_ANNOUNCEMENT' ? 'USER_ANNOUNCED' : 'USER_INVITED';
+      userEvents.emit(domainEventName, {
+        email: user.email,
+        phone: user.phone,
         orgId,
         invitationToken,
         invitationSource,
@@ -490,8 +537,10 @@ export class UserService {
         userId: user._id,
         inviterId,
         isExisting,
+        onboardingMode: mode,
       });
-      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited', invitationSource });
+
+      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: mode === 'ADMIN_ANNOUNCEMENT' ? 'announced' : 'invited', invitationSource });
 
       return {
         user,
@@ -499,6 +548,7 @@ export class UserService {
         invitationSource,
         membership,
         inviteLink: generateInviteLink(invitationToken),
+        onboardingMode: mode,
       };
     } catch (error) {
       await session.abortTransaction();
@@ -581,6 +631,19 @@ export class UserService {
       for (const name of roleNames) {
         const role = await roleService.getRoleByName(name, orgId, currentSession);
         if (role) {
+          // ----------------------------------------------------
+          // Phase 5.2 Bulk Onboarding Role Security Hardening
+          // Explicitly block Platform/Global roles (e.g. Super Admin, orgId: null)
+          // and strictly enforce cross-organization isolation.
+          // ----------------------------------------------------
+          if (!role.orgId || role.orgId.toString() !== orgId.toString()) {
+            throw new HttpError(
+              403,
+              `Role '${role.name}' is a platform or external role and cannot be assigned to members of this community.`
+            );
+          }
+          // ----------------------------------------------------
+          
           roleIds.push(role._id);
           foundRoleNames.push(role.name);
         } else {
@@ -716,11 +779,13 @@ export class UserService {
     }
 
     if (process.env.NODE_ENV === 'production') {
-      const [twilio, messageCentral] = await Promise.all([
+      const [twilio, messageCentral, msg91] = await Promise.all([
         integrationHubService.getGlobalConnectionByProvider('twilio'),
-        integrationHubService.getGlobalConnectionByProvider('messagecentral')
+        integrationHubService.getGlobalConnectionByProvider('messagecentral'),
+        integrationHubService.getGlobalConnectionByProvider('msg91')
       ]);
-      if (!twilio && !messageCentral) {
+      const msg91Env = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+      if (!twilio && !messageCentral && !msg91 && !msg91Env) {
         throw new HttpError(503, 'SMS verification is temporarily unavailable. Please contact support.');
       }
     }
@@ -888,78 +953,118 @@ export class UserService {
     }
   }
 
-  async bulkInviteUsers(invitations, orgId, defaultSource = 'WEB', inviterId = null, { assertRoleAssignable = null } = {}) {
+  async bulkValidateUsers(contacts, orgId) {
+    const emails = contacts.map(c => c.email?.trim().toLowerCase()).filter(Boolean);
+    const phones = contacts.map(c => c.phone?.trim()).filter(Boolean);
+
+    if (emails.length === 0 && phones.length === 0) {
+      return { existingEmails: [], existingPhones: [] };
+    }
+
+    const User = (await import('./user.model.js')).default;
+    const existingUsers = await User.find({
+      $or: [
+        { email: { $in: emails } },
+        { phone: { $in: phones } }
+      ]
+    }).select('_id email phone').lean();
+
+    if (existingUsers.length === 0) {
+      return { existingEmails: [], existingPhones: [] };
+    }
+
+    const existingUserIds = existingUsers.map(u => u._id);
+
+    const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+    const existingMemberships = await OrgMembership.find({
+      userId: { $in: existingUserIds },
+      orgId: orgId
+    }).select('userId').lean();
+
+    const memberUserIds = existingMemberships.map(m => m.userId.toString());
+    const memberUsers = existingUsers.filter(u => memberUserIds.includes(u._id.toString()));
+
+    return {
+      existingEmails: memberUsers.map(u => u.email).filter(Boolean),
+      existingPhones: memberUsers.map(u => u.phone).filter(Boolean)
+    };
+  }
+
+  async bulkInviteUsers(invitations, orgId, defaultSource = 'WEB', inviterId = null, onboardingMode = 'INVITATION') {
     const successes = [];
     const failures = [];
 
     const villaService = (await import('../villa/villa.services.js')).default;
 
-    // Rows are validated individually: bad rows are reported, valid rows still go through
-    const seenEmails = new Set();
-    const seenPhones = new Set();
-    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    for (const invite of invitations) {
+      const {
+        email,
+        phone = '',
+        name = '',
+        residentType = 'None',
+        roleName,
+        villaNumber,
+        villaId: payloadVillaId,
+        invitationSource: itemSource,
+        onboardingMode: itemMode,
+      } = invite;
 
-    for (const [index, invite] of invitations.entries()) {
-      const { email, phone, name, residentType = 'None', roleName, villaNumber, villaId: payloadVillaId, invitationSource: itemSource } = invite || {};
-      const trimmedEmail = email ? String(email).trim().toLowerCase() : '';
-      const normalizedPhone = phone ? normalizePhone(String(phone)) : '';
+      const trimmedEmail = email ? email.trim().toLowerCase() : '';
+      const trimmedPhone = phone ? String(phone).trim() : '';
       const source = (itemSource || defaultSource || 'WEB').toUpperCase();
+      const mode = (itemMode || onboardingMode || 'INVITATION').toUpperCase();
 
       try {
-        if (!trimmedEmail || !EMAIL_RE.test(trimmedEmail)) {
-          throw new HttpError(400, 'A valid email address is required.', { code: 'MISSING_EMAIL' });
-        }
-        if (!phone) {
-          throw new HttpError(400, 'Phone number is required.', { code: 'MISSING_PHONE' });
-        }
-        if (!normalizedPhone) {
-          throw new HttpError(400, 'Invalid phone number format.', { code: 'INVALID_PHONE' });
-        }
-        if (!roleName || !String(roleName).trim()) {
-          throw new HttpError(400, 'Role is required.', { code: 'MISSING_ROLE' });
-        }
-        if (seenEmails.has(trimmedEmail) || seenPhones.has(normalizedPhone)) {
-          throw new HttpError(400, 'This email or phone appears more than once in the file.', { code: 'DUPLICATE_IN_FILE' });
-        }
-        seenEmails.add(trimmedEmail);
-        seenPhones.add(normalizedPhone);
-        if (assertRoleAssignable) {
-          await assertRoleAssignable(roleName);
+        if (!trimmedEmail && !trimmedPhone) {
+          throw new HttpError(400, 'Email address or phone number is required.');
         }
 
         let villaId = payloadVillaId || null;
 
         // If villa number is provided and villaId not explicit, resolve it
-        if (!villaId && villaNumber && villaNumber.trim()) {
-          const trimmedVillaNo = villaNumber.trim();
+        if (!villaId && villaNumber && String(villaNumber).trim()) {
+          const trimmedVillaNo = String(villaNumber).trim();
           const villa = await villaService.getVillaByNumber(trimmedVillaNo, orgId);
           if (villa) {
             villaId = villa._id;
           }
         }
 
-        // Call the single inviteUser logic
-        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName, normalizedPhone, name || '', source, inviterId);
+        // Call the single inviteUser logic with full identity & onboarding parameters
+        await this.inviteUser(
+          trimmedEmail,
+          orgId,
+          villaId,
+          residentType,
+          roleName,
+          trimmedPhone,
+          name,
+          source,
+          inviterId,
+          mode
+        );
 
         successes.push({
-          row: index + 1,
-          email: trimmedEmail,
-          phone: normalizedPhone,
-          status: 'Invited',
+          email: trimmedEmail || undefined,
+          phone: trimmedPhone || undefined,
+          name: name || undefined,
+          status: mode === 'ADMIN_ANNOUNCEMENT' ? 'Announced' : 'Invited',
           role: roleName,
           villaNumber: villaNumber || '',
           invitationSource: source,
+          onboardingMode: mode,
         });
       } catch (error) {
         failures.push({
-          row: index + 1,
-          email: trimmedEmail || 'Unknown',
-          phone: normalizedPhone || phone || '',
+          email: trimmedEmail || undefined,
+          phone: trimmedPhone || undefined,
+          name: name || undefined,
           error: error.message || 'Invitation failed',
           code: error.details?.code || null,
           role: roleName || '',
           villaNumber: villaNumber || '',
           invitationSource: source,
+          onboardingMode: mode,
         });
       }
     }

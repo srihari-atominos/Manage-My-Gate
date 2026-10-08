@@ -12,7 +12,6 @@ import {
 import { X, Mail, CheckCircle2, Copy, Check, Send, AlertTriangle } from 'lucide-react-native';
 import { TextInput } from '@/components/forms/TextInput';
 import { PhoneInput } from '@/components/forms/PhoneInput';
-import { ContactPickerButton } from '@/components/forms/ContactPickerButton';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/common/Button';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
@@ -45,7 +44,6 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   // Form values
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [phoneError, setPhoneError] = useState<string | undefined>(undefined);
   const [selectedRoleName, setSelectedRoleName] = useState('');
   const [selectedVillaId, setSelectedVillaId] = useState('');
 
@@ -60,6 +58,9 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   const [emailMessage, setEmailMessage] = useState<string | undefined>(undefined);
   const [isEmailChecking, setIsEmailChecking] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [phoneStatus, setPhoneStatus] = useState<ValidationStatus>('idle');
+  const [phoneMessage, setPhoneMessage] = useState<string | undefined>(undefined);
+  const [isPhoneChecking, setIsPhoneChecking] = useState(false);
 
   // Field errors
   const [roleError, setRoleError] = useState<string | undefined>(undefined);
@@ -78,6 +79,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   // Debounce ref for async email availability check
   const emailCheckTimerRef = useRef<any>(null);
   const emailSeqRef = useRef<number>(0);
+  const phoneCheckTimerRef = useRef<any>(null);
+  const phoneSeqRef = useRef<number>(0);
 
   // Load roles & villas on open
   useEffect(() => {
@@ -108,19 +111,21 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   const resetForm = () => {
     setEmail('');
     setPhone('');
-    setPhoneError(undefined);
     setSelectedRoleName('');
-    setSelectedVillaId('');
     setEmailStatus('idle');
     setEmailMessage(undefined);
     setIsEmailChecking(false);
     setEmailTouched(false);
+    setPhoneStatus('idle');
+    setPhoneMessage(undefined);
+    setIsPhoneChecking(false);
     setRoleError(undefined);
     setVillaError(undefined);
     setSubmitError(null);
     setSuccessResults(null);
     setCopiedLink(false);
     if (emailCheckTimerRef.current) clearTimeout(emailCheckTimerRef.current);
+    if (phoneCheckTimerRef.current) clearTimeout(phoneCheckTimerRef.current);
   };
 
   const selectedRoleObj = roles.find((r) => r.name === selectedRoleName);
@@ -222,6 +227,42 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     }, 450);
   };
 
+  const handlePhoneChange = (fullPhone: string) => {
+    setPhone(fullPhone);
+    setSubmitError(null);
+    if (phoneCheckTimerRef.current) clearTimeout(phoneCheckTimerRef.current);
+    const currentSeq = ++phoneSeqRef.current;
+    const validation = validatePhone(fullPhone);
+    if (!fullPhone || !validation.isValid) {
+      setPhoneStatus(validation.status);
+      setPhoneMessage(fullPhone ? validation.message : undefined);
+      setIsPhoneChecking(false);
+      return;
+    }
+    setPhoneStatus('validating');
+    setPhoneMessage('Checking phone number availability...');
+    setIsPhoneChecking(true);
+    phoneCheckTimerRef.current = setTimeout(async () => {
+      try {
+        const response: any = await apiClient.get(`/auth/check-account-status?identifier=${encodeURIComponent(fullPhone)}`);
+        if (currentSeq !== phoneSeqRef.current) return;
+        const account = response.data?.data || response.data;
+        if (account?.exists) {
+          setPhoneStatus('invalid');
+          setPhoneMessage('This phone number is already registered. Please use another phone number.');
+        } else {
+          setPhoneStatus('valid');
+          setPhoneMessage('Phone number is available.');
+        }
+      } catch {
+        if (currentSeq !== phoneSeqRef.current) return;
+        setPhoneStatus('valid');
+        setPhoneMessage('Phone number format is valid.');
+      } finally {
+        if (currentSeq === phoneSeqRef.current) setIsPhoneChecking(false);
+      }
+    }, 450);
+  };
   const handleEmailBlur = () => {
     setEmailTouched(true);
     if (!email.trim()) {
@@ -270,9 +311,10 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       return;
     }
 
-    // Validate villa if tenant role
-    if (isTenantRole && !selectedVillaId) {
-      setVillaError('Please select a villa or unit for this tenant role.');
+    const phoneRes = validatePhone(phone);
+    if (!phoneRes.isValid || phoneStatus === 'invalid' || isPhoneChecking) {
+      setPhoneStatus('invalid');
+      setPhoneMessage(phoneStatus === 'invalid' ? phoneMessage : phoneRes.message);
       return;
     }
 
@@ -291,8 +333,6 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       const res = await onSendInvite({
         email: email.trim(),
         phone: phone.trim(),
-        villaId: isTenantRole ? selectedVillaId || null : null,
-        residentType,
         roleName: selectedRoleName || null,
       });
 
@@ -456,28 +496,16 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                     />
                   </View>
 
-                  {/* Phone (mandatory) */}
                   <View>
                     <PhoneInput
-                      label={t('phone_number', 'Phone Number') + ' *'}
+                      label={t('phone_number', 'Phone Number')}
+                      required
                       value={phone}
-                      onChangeText={(val: string) => {
-                        setPhone(val);
-                        setPhoneError(undefined);
-                      }}
-                      error={phoneError}
-                      testID="invite-user-phone"
-                      rightElement={
-                        <ContactPickerButton
-                          onPick={(c) => {
-                            if (c.phone) {
-                              setPhone(c.phone);
-                              setPhoneError(undefined);
-                            }
-                            if (c.email && !email.trim()) handleEmailChange(c.email);
-                          }}
-                        />
-                      }
+                      onChangeText={handlePhoneChange}
+                      placeholder={t('phone_number_placeholder', 'Enter your phone number')}
+                      showCount={false}
+                      error={phoneStatus === 'invalid' ? phoneMessage : undefined}
+                      helperText={phoneStatus === 'valid' || phoneStatus === 'validating' ? phoneMessage : undefined}
                     />
                   </View>
 
@@ -501,35 +529,6 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                     )}
                   </View>
 
-                  {/* Villa Select for Unit Roles */}
-                  {isTenantRole && (
-                    <View>
-                      {loadingVillas ? (
-                        <View className="py-3 items-center justify-center">
-                          <AppLoader variant="inline" />
-                          <Text className="text-xs text-muted-foreground mt-1">
-                            {t('loading', 'Loading villas...')}
-                          </Text>
-                        </View>
-                      ) : (
-                        <DropdownSelect
-                          label={t('unit_number', 'Select Villa / Unit')}
-                          required
-                          options={villaOptions}
-                          value={selectedVillaId}
-                          onValueChange={handleVillaChange}
-                          placeholder={t('choose_villa_placeholder', '-- Choose Villa Unit --')}
-                          error={villaError}
-                          helperText={t('assign_villa_help', 'Assign resident to their designated villa unit')}
-                        />
-                      )}
-                    </View>
-                  )}
-
-                  <Text className="text-xs text-muted-foreground text-start mt-1">
-                    {t('invitation_hint', 'An invitation code and setup link will be generated for password setup.')}
-                  </Text>
-
                   {/* Modal Footer */}
                   <View className="flex-row items-center justify-end gap-3 pt-3 border-t border-border mt-2">
                     <Button variant="outline" onPress={onClose} disabled={submitting}>
@@ -539,7 +538,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                       variant="default"
                       onPress={handleSubmit}
                       loading={submitting}
-                      disabled={submitting || isEmailChecking}
+                      disabled={submitting || isEmailChecking || isPhoneChecking || phoneStatus === 'invalid'}
                       className="bg-white border-neutral-300"
                       textClassName="text-black font-bold"
                     >

@@ -4,35 +4,6 @@ import authService from '../services/authService.js'
 import { setActiveWorkspace } from '../../workspace/store/workspaceSlice.js'
 
 // Async Thunks
-export const loginUser = createAsyncThunk(
-  'auth/loginUser',
-  async (credentials, { dispatch, rejectWithValue }) => {
-    try {
-      const response = await authService.login(credentials)
-
-      const user = response.data?.user
-      const availableWorkspaces = response.data?.availableWorkspaces || []
-
-      if (user) {
-        dispatch(
-          setActiveWorkspace({
-            activeOrganizationId: user.orgId,
-            activeVillaId: user.villaId || null,
-            activeRole: user.role,
-            allowedFeatures: user.permissions || [],
-            isPlatform: user.isPlatform || false,
-            availableWorkspaces: availableWorkspaces,
-          }),
-        )
-      }
-
-      return response
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed')
-    }
-  },
-)
-
 export const loginWithGoogle = createAsyncThunk(
   'auth/loginWithGoogle',
   async (payload, { dispatch, rejectWithValue }) => {
@@ -180,71 +151,6 @@ export const validateInvitation = createAsyncThunk(
   },
 )
 
-export const acceptInvitation = createAsyncThunk(
-  'auth/acceptInvitation',
-  async (payload, { dispatch, rejectWithValue }) => {
-    try {
-      const response = await authService.acceptInvite(payload)
-
-      const user = response.data?.user
-      const token = response.data?.token
-      const availableWorkspaces = response.data?.availableWorkspaces || []
-
-      if (token || user) {
-        dispatch(updateTokenAndUser({ token, user }))
-      }
-
-      if (user) {
-        dispatch(
-          setActiveWorkspace({
-            activeOrganizationId: user.orgId,
-            activeVillaId: user.villaId || null,
-            activeRole: user.role,
-            allowedFeatures: user.permissions || [],
-            isPlatform: user.isPlatform || false,
-            availableWorkspaces: availableWorkspaces,
-          }),
-        )
-      }
-      return response
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to accept invitation',
-      )
-    }
-  },
-)
-
-export const acceptSsoInvitation = createAsyncThunk(
-  'auth/acceptSsoInvitation',
-  async ({ inviteToken, ssoCredential, provider }, { dispatch, rejectWithValue }) => {
-    try {
-      const response = await authService.acceptSsoInvite({ inviteToken, ssoCredential, provider })
-
-      const user = response.data?.user
-      const availableWorkspaces = response.data?.availableWorkspaces || []
-
-      if (user) {
-        dispatch(
-          setActiveWorkspace({
-            activeOrganizationId: user.orgId,
-            activeVillaId: user.villaId || null,
-            activeRole: user.role,
-            allowedFeatures: user.permissions || [],
-            isPlatform: user.isPlatform || false,
-            availableWorkspaces: availableWorkspaces,
-          }),
-        )
-      }
-      return response
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to accept SSO invitation',
-      )
-    }
-  },
-)
-
 export const rejectInvitation = createAsyncThunk(
   'auth/rejectInvitation',
   async (payload, { rejectWithValue }) => {
@@ -371,7 +277,7 @@ export const registerSsoWithOrg = createAsyncThunk(
       return rejectWithValue(
         error.response?.data?.message ||
           error.message ||
-          'Failed to register and create organization',
+          'Failed to register and Create Community',
       )
     }
   },
@@ -395,11 +301,11 @@ export const requestOtp = createAsyncThunk(
 
 export const verifyOtpLogin = createAsyncThunk(
   'auth/verifyOtpLogin',
-  async ({ identifier, code, isEmail }, { dispatch, rejectWithValue }) => {
+  async ({ identifier, code, isEmail, inviteToken }, { dispatch, rejectWithValue }) => {
     try {
       const response = isEmail
-        ? await authService.verifyEmailOtpLogin(identifier, code)
-        : await authService.verifyPhoneLogin(identifier, code)
+        ? await authService.verifyEmailOtpLogin(identifier, code, inviteToken)
+        : await authService.verifyPhoneLogin(identifier, code, inviteToken)
 
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
@@ -420,48 +326,6 @@ export const verifyOtpLogin = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || error.message || 'OTP verification failed',
-      )
-    }
-  },
-)
-
-export const requestPasswordReset = createAsyncThunk(
-  'auth/requestPasswordReset',
-  async (identifier, { rejectWithValue }) => {
-    try {
-      const response = await authService.forgotPassword(identifier)
-      return response
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to request password reset',
-      )
-    }
-  },
-)
-
-export const verifyResetOtp = createAsyncThunk(
-  'auth/verifyResetOtp',
-  async ({ identifier, code }, { rejectWithValue }) => {
-    try {
-      const response = await authService.verifyResetPasswordOtp(identifier, code)
-      return response
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'OTP verification failed',
-      )
-    }
-  },
-)
-
-export const resetPassword = createAsyncThunk(
-  'auth/resetPassword',
-  async ({ identifier, code, newPassword }, { rejectWithValue }) => {
-    try {
-      const response = await authService.resetPassword(identifier, code, newPassword)
-      return response
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to reset password',
       )
     }
   },
@@ -509,6 +373,7 @@ const authSlice = createSlice({
     logout: (state) => {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      localStorage.removeItem('auth_user')
       localStorage.removeItem('availableWorkspaces')
       localStorage.setItem('auth_logout', Date.now().toString())
       state.isAuthenticated = false
@@ -548,35 +413,6 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Login
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true
-        state.error = null
-        state.successMsg = null
-      })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.loading = false
-        state.isAuthenticated = true
-        state.token = action.payload.data?.token
-        state.user = action.payload.data?.user
-        state.successMsg = action.payload.message || 'Login successful!'
-
-        if (action.payload.data?.token) {
-          localStorage.setItem('token', action.payload.data.token)
-        }
-        if (action.payload.data?.user) {
-          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
-        }
-        if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem(
-            'availableWorkspaces',
-            JSON.stringify(action.payload.data.availableWorkspaces),
-          )
-        }
-      })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload || 'Login failed'
-      })
       // Google Login
       .addCase(loginWithGoogle.pending, (state) => {
         state.loading = true
@@ -757,65 +593,7 @@ const authSlice = createSlice({
         state.error = action.payload || 'Profile update failed'
       })
       // Accept Invitation
-      .addCase(acceptInvitation.pending, (state) => {
-        state.loading = true
-        state.error = null
-        state.successMsg = null
-      })
-      .addCase(acceptInvitation.fulfilled, (state, action) => {
-        state.loading = false
-        state.isAuthenticated = true
-        state.token = action.payload.data?.token
-        state.user = action.payload.data?.user
-        state.successMsg = action.payload.message || 'Password set successfully.'
-
-        if (action.payload.data?.token) {
-          localStorage.setItem('token', action.payload.data.token)
-        }
-        if (action.payload.data?.user) {
-          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
-        }
-        if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem(
-            'availableWorkspaces',
-            JSON.stringify(action.payload.data.availableWorkspaces),
-          )
-        }
-      })
-      .addCase(acceptInvitation.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload || 'Failed to accept invitation'
-      })
       // Accept SSO Invitation
-      .addCase(acceptSsoInvitation.pending, (state) => {
-        state.loading = true
-        state.error = null
-        state.successMsg = null
-      })
-      .addCase(acceptSsoInvitation.fulfilled, (state, action) => {
-        state.loading = false
-        state.isAuthenticated = true
-        state.token = action.payload.data?.token
-        state.user = action.payload.data?.user
-        state.successMsg = action.payload.message || 'SSO Invitation accepted successfully.'
-
-        if (action.payload.data?.token) {
-          localStorage.setItem('token', action.payload.data.token)
-        }
-        if (action.payload.data?.user) {
-          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
-        }
-        if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem(
-            'availableWorkspaces',
-            JSON.stringify(action.payload.data.availableWorkspaces),
-          )
-        }
-      })
-      .addCase(acceptSsoInvitation.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload || 'Failed to accept SSO invitation'
-      })
       // Switch Workspace Context
       .addCase(switchWorkspaceContext.pending, (state) => {
         state.loading = true
@@ -920,47 +698,6 @@ const authSlice = createSlice({
         state.error = action.payload || 'Login failed'
       })
       // Password Reset
-      .addCase(requestPasswordReset.pending, (state) => {
-        state.loading = true
-        state.error = null
-        state.successMsg = null
-      })
-      .addCase(requestPasswordReset.fulfilled, (state, action) => {
-        state.loading = false
-        state.otpSent = true
-        state.successMsg = action.payload.message || 'Reset OTP sent!'
-      })
-      .addCase(requestPasswordReset.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload || 'Failed to send reset OTP'
-      })
-      .addCase(verifyResetOtp.pending, (state) => {
-        state.loading = true
-        state.error = null
-        state.successMsg = null
-      })
-      .addCase(verifyResetOtp.fulfilled, (state, action) => {
-        state.loading = false
-        state.successMsg = action.payload.message || 'OTP verified successfully!'
-      })
-      .addCase(verifyResetOtp.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload || 'Invalid OTP'
-      })
-      .addCase(resetPassword.pending, (state) => {
-        state.loading = true
-        state.error = null
-        state.successMsg = null
-      })
-      .addCase(resetPassword.fulfilled, (state, action) => {
-        state.loading = false
-        state.otpSent = false
-        state.successMsg = action.payload.message || 'Password reset successfully!'
-      })
-      .addCase(resetPassword.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload || 'Password reset failed'
-      })
       // Validate Invitation
       .addCase(validateInvitation.pending, (state) => {
         state.invitation.loading = true

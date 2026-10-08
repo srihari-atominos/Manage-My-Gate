@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CalendarCheck } from 'lucide-react-native';
 
-import { useResidentAmenities } from '../../../src/features/amenities/hooks/useResidentAmenities';
-import { ResidentAmenityDetailSheet } from '../../../src/features/amenities/components/ResidentAmenityDetailSheet';
-import { AmenityCatalogCard } from '../../../src/features/amenities/components/AmenityCatalogCard';
-import { AmenityFacility, AmenityArchetype } from '../../../src/features/amenities/types/amenityDomain.types';
-import { useAuth } from '../../../src/features/auth/hooks/useAuth';
-import { isFeatureAllowedForUser } from '../../../src/utils/rbac';
+import { useResidentAmenities } from '@/src/features/amenities/hooks/useResidentAmenities';
+import { ResidentAmenityDetailSheet } from '@/src/features/amenities/components/ResidentAmenityDetailSheet';
+import { AmenityCatalogCard } from '@/src/features/amenities/components/AmenityCatalogCard';
+import { AmenityFacility, AmenityArchetype } from '@/src/features/amenities/types/amenityDomain.types';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
 const ARCHETYPE_FILTER_OPTIONS: SortOption[] = [
   { label: 'All Facilities', value: 'All' },

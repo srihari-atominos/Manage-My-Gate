@@ -23,6 +23,7 @@
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
+    "@expo/config-plugins": "^57.0.9",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@hookform/resolvers": "^5.4.0",
     "@react-navigation/bottom-tabs": "^7.4.0",
@@ -121,7 +122,7 @@
       "./jest.setup.js"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|lucide-react-native|@testing-library/.*|@rn-primitives/.*|immer|react-redux|@reduxjs/toolkit)"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|lucide-react-native|@testing-library/.*|@rn-primitives/.*|immer|react-redux|@reduxjs/toolkit|expo-router|standard-navigation)"
     ],
     "testPathIgnorePatterns": [
       "/node_modules/",

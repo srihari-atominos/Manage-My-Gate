@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform, Alert, KeyboardAvoidingView, Pressable, useWindowDimensions } from 'react-native';
 import { X, Users, Upload, Plus, Trash2, CheckCircle2, AlertTriangle, FileSpreadsheet, Download, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -36,17 +36,15 @@ interface InviteRowItem {
   email: string;
   phone: string;
   roleName: string;
-  villaId: string;
-  residentType: string;
+
   isValid: boolean;
   error?: string;
 }
 
-// Email, phone and role are mandatory for every invitation
-const SAMPLE_CSV_CONTENT = `Email,Phone,Role,Villa,ResidentType
-resident.owner@example.com,+919876543201,Resident Owner,Villa 01,Owner
-resident.tenant@example.com,+919876543202,Resident Tenant,Villa 02,Tenant
-security.guard@example.com,+919876543203,Security Guard,,None`;
+const SAMPLE_CSV_CONTENT = `Email,Phone Number,Role
+resident.owner@example.com,+919876543211,Resident Owner
+resident.tenant@example.com,+919876543212,Resident Tenant
+security.guard@example.com,+919876543213,Security Guard`;
 
 export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   visible,
@@ -60,13 +58,12 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   const [rows, setRows] = useState<InviteRowItem[]>([]);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [roles, setRoles] = useState<any[]>([]);
-  const [villas, setVillas] = useState<any[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successResults, setSuccessResults] = useState<any | null>(null);
 
-  // Fetch roles and villas when modal becomes visible
+  // Fetch roles when the modal becomes visible
   useEffect(() => {
     if (visible) {
       setErrorMsg('');
@@ -75,30 +72,20 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       setActiveTab('upload');
 
       setLoadingOptions(true);
-      Promise.all([
-        apiClient.get('/users/assignable-roles').catch(() => ({ data: [] })),
-        apiClient.get('/villas?limit=1000').catch(() => ({ data: [] })),
-      ])
-        .then(([rolesRes, villasRes]: any[]) => {
+      apiClient.get('/roles?limit=100').catch(() => ({ data: [] }))
+        .then((rolesRes: any) => {
           const fetchedRoles = rolesRes.data?.data || rolesRes.data || [];
-          const fetchedVillas = villasRes.data?.data || villasRes.data || [];
           const loadedRoles = Array.isArray(fetchedRoles) ? fetchedRoles : [];
-          const loadedVillas = Array.isArray(fetchedVillas) ? fetchedVillas : [];
           setRoles(loadedRoles);
-          setVillas(loadedVillas);
 
           const defaultRole = loadedRoles[0]?.name || '';
-          setRows([
-            {
-              id: String(Date.now()),
-              email: '',
-              phone: '',
-              roleName: defaultRole,
-              villaId: '',
-              residentType: 'None',
-              isValid: false,
-            },
-          ]);
+          setRows([{
+            id: String(Date.now()),
+            email: '',
+            phone: '',
+            roleName: defaultRole,
+            isValid: false,
+          }]);
         })
         .finally(() => setLoadingOptions(false));
     }
@@ -122,11 +109,8 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     if (!row.phone.trim()) {
       return { ...row, isValid: false, error: 'Phone number is required' };
     }
-    if (!validatePhone(row.phone.trim()).isValid) {
-      return { ...row, isValid: false, error: 'Invalid phone number' };
-    }
-    if (allRows.some((r) => r.id !== row.id && r.phone.trim() && r.phone.trim() === row.phone.trim())) {
-      return { ...row, isValid: false, error: 'Duplicate phone in this list' };
+    if (row.phone.trim().replace(/\D/g, '').length < 8) {
+      return { ...row, isValid: false, error: 'Enter a valid phone number' };
     }
     if (!row.roleName) {
       return { ...row, isValid: false, error: 'Role is required' };
@@ -157,25 +141,15 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       if (index === 0 && hasHeader) return;
 
       const parts = line.split(',').map((p) => p.trim());
-      const email = col(parts, 'email');
-      const phone = col(parts, 'phone', 'phonenumber', 'mobile');
-      const roleName = col(parts, 'role', 'rolename') || (roles[0]?.name || '');
-      const villaName = col(parts, 'villa', 'villanumber', 'unit');
-      const residentType = col(parts, 'residenttype') || 'None';
-
-      const matchingVilla = villas.find(
-        (v) =>
-          String(v.unitNumber || v.villaNumber).toLowerCase() === villaName.toLowerCase() ||
-          String(v.unitNumber || v.villaNumber) === villaName.replace(/villa/i, '').trim()
-      );
+      const email = parts[0] || '';
+      const phone = parts[1] || '';
+      const roleName = parts[2] || (roles[0]?.name || '');
 
       const row: InviteRowItem = {
         id: String(Date.now() + index),
         email,
         phone,
         roleName,
-        villaId: matchingVilla?._id || matchingVilla?.id || '',
-        residentType,
         isValid: false,
       };
 
@@ -239,8 +213,6 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       email: '',
       phone: '',
       roleName: defaultRole,
-      villaId: '',
-      residentType: 'None',
       isValid: false,
     };
     setRows((prev) => [...prev, newRow]);
@@ -258,19 +230,6 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       prev.map((item) => {
         if (item.id === id) {
           const updated = { ...item, [field]: value };
-          if (field === 'roleName') {
-            const roleObj = roles.find((r) => r.name === value);
-            if (roleObj?.isTenantRole) {
-              const lower = value.toLowerCase();
-              if (lower.includes('owner')) updated.residentType = 'Owner';
-              else if (lower.includes('tenant')) updated.residentType = 'Tenant';
-              else if (lower.includes('family')) updated.residentType = 'Family';
-              else updated.residentType = 'Owner';
-            } else {
-              updated.residentType = 'None';
-              updated.villaId = '';
-            }
-          }
           return validateRow(updated);
         }
         return item;
@@ -297,8 +256,6 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
         email: r.email.trim(),
         phone: r.phone.trim(),
         roleName: r.roleName || null,
-        villaId: r.villaId || null,
-        residentType: r.residentType || 'None',
       }));
 
       const res = await onBulkInvite(payload);
@@ -316,10 +273,6 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     value: r.name,
   }));
 
-  const villaOptions = villas.map((v) => ({
-    label: `Unit ${v.unitNumber || v.villaNumber} ${v.blockOrBuilding ? `(${v.blockOrBuilding})` : ''}`,
-    value: v._id || v.id,
-  }));
 
   const validCount = rows.filter((r) => r.isValid).length;
 
@@ -423,7 +376,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                 {loadingOptions ? (
                   <View className="py-8 items-center justify-center">
                     <ActivityIndicator size="small" color="#6366f1" />
-                    <Text className="text-xs text-muted-foreground mt-2">Loading roles & villa units...</Text>
+                    <Text className="text-xs text-muted-foreground mt-2">Loading roles...</Text>
                   </View>
                 ) : activeTab === 'upload' ? (
                   /* Upload CSV File Tab */
@@ -517,13 +470,14 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                             />
                           </View>
 
-                          {/* Phone Field (mandatory) */}
+                          {/* Phone Field */}
                           <View className="mb-2.5">
-                            <PhoneInput
-                              label="Phone Number *"
+                            <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Phone Number *</Text>
+                            <TextInput
+                              placeholder="+1234567890"
                               value={row.phone}
-                              onChangeText={(val: string) => handleRowChange(row.id, 'phone', val)}
-                              testID={`bulk-invite-phone-${index}`}
+                              onChangeText={(val) => handleRowChange(row.id, 'phone', val)}
+                              keyboardType="phone-pad"
                             />
                           </View>
 
@@ -538,19 +492,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                             />
                           </View>
 
-                          {/* Unit Selection if Tenant/Unit role */}
-                          {isTenantRole && (
-                            <View className="mb-1">
-                              <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Villa Unit (Optional)</Text>
-                              <DropdownSelect
-                                options={villaOptions}
-                                value={row.villaId}
-                                onValueChange={(val) => handleRowChange(row.id, 'villaId', val)}
-                                placeholder="-- Choose Villa Unit (Optional) --"
-                              />
-                            </View>
-                          )}
-                        </View>
+                          </View>
                       );
                     })}
 

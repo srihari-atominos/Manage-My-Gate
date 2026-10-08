@@ -84,12 +84,7 @@ export const useDashboard = () => {
     if (featurePart === 'workspaces' || featurePart === 'dashboard') return true
 
     const isModuleEnabled = (key) => {
-      if (allowedFeatures.includes(key)) return true
-      if (activeWorkspace?.modules?.some((m) => m.moduleKey === key && m.enabled !== false))
-        return true
-      if (activeWorkspace?.workspaceModules?.some((m) => m.moduleKey === key && m.enabled === true))
-        return true
-      return false
+      return allowedFeatures.some((f) => f === key || f.startsWith(`${key}:`))
     }
 
     if (featurePart === 'amenities' || featurePart === 'booking') {
