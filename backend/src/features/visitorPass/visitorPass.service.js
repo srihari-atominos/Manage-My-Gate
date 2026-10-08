@@ -199,3 +199,4 @@ export class VisitorPassService {
 }
 
 export default new VisitorPassService();
+

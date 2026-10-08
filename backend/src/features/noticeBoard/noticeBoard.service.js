@@ -22,7 +22,7 @@ export class NoticeBoardService {
    * Retrieves a notice by ID.
    */
   async getNoticeById(id, session = null, userId = null, orgId = null, currentUser = null) {
-    const notice = await noticeRepository.findById(id, session);
+    const notice = await noticeRepository.findById(id, orgId, session);
     if (!notice) {
       throw new HttpError(404, `Notice with ID ${id} not found.`);
     }
@@ -908,3 +908,4 @@ export class NoticeBoardService {
 }
 
 export default new NoticeBoardService();
+

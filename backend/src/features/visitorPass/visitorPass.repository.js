@@ -19,8 +19,8 @@ export class VisitorPassRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The pass document, or null if not found.
    */
-  async findById(id, session) {
-    return await VisitorPass.findById(id).session(session || null);
+  async findById(id, orgId = null, session) {
+    const query = { _id: id }; if (orgId) query.orgId = orgId; return await VisitorPass.findOne(query).session(session || null);
   }
 
   /**
@@ -29,8 +29,8 @@ export class VisitorPassRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The pass document, or null if not found.
    */
-  async findByIdWithParties(id, session = null) {
-    return await VisitorPass.findById(id)
+  async findByIdWithParties(id, orgId = null, session = null) {
+    const query = { _id: id }; if (orgId) query.orgId = orgId; return await VisitorPass.findOne(query)
       .populate('villaId', 'unitNumber blockOrBuilding')
       .populate('createdById', 'name')
       .session(session || null);
@@ -43,9 +43,8 @@ export class VisitorPassRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The updated pass document.
    */
-  async updateStatus(id, status, session) {
-    return await VisitorPass.findByIdAndUpdate(
-      id,
+  async updateStatus(id, orgId = null, status, session) {
+    const query = { _id: id }; if (orgId) query.orgId = orgId; return await VisitorPass.findOneAndUpdate( query,
       { status },
       { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
     );
@@ -58,9 +57,8 @@ export class VisitorPassRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The updated pass document.
    */
-  async update(id, updateData, session = null) {
-    return await VisitorPass.findByIdAndUpdate(
-      id,
+  async update(id, orgId = null, updateData, session = null) {
+    const query = { _id: id }; if (orgId) query.orgId = orgId; return await VisitorPass.findOneAndUpdate( query,
       updateData,
       { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
     );
@@ -99,11 +97,9 @@ export class VisitorPassRepository {
   }
 
   /** Atomically consumes one pass use, preventing replayed QR scans from admitting twice. */
-  async consumeForEntry(id, session = null) {
+  async consumeForEntry(id, orgId = null, session = null) {
     return VisitorPass.findOneAndUpdate(
-      {
-        _id: id,
-        status: { $in: ['PENDING', 'ACTIVE'] },
+      { _id: id, ...(orgId ? { orgId } : {}), status: { $in: ['PENDING', 'ACTIVE'] },
         $expr: {
           $lt: [
             { $ifNull: ['$usageLimit.currentUses', 0] },
@@ -251,3 +247,4 @@ export class VisitorPassRepository {
 }
 
 export default new VisitorPassRepository();
+
