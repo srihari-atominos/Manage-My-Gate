@@ -63,15 +63,11 @@ export function useGoogleAuthSession() {
           return;
         }
         if (res?.payload?.isNewUser) {
-          const googleData = res.payload.googleData || {};
-          router.push({
-            pathname: '/(auth)/register',
-            params: {
-              email: googleData.email || '',
-              name: googleData.name || '',
-              isGoogleSso: 'true',
-            },
-          });
+          // There is no self sign-up: accounts come from a community invitation
+          Alert.alert(
+            'No account found',
+            'This Google account isn\'t linked to a community yet. Ask your community admin to invite you, then open the invitation link.'
+          );
         }
       } catch (err: any) {
         console.error('[GoogleSignIn] Backend login error:', err);

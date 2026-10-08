@@ -47,7 +47,8 @@ import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Checkbox } from '@/components/forms/Checkbox';
 import { parseBackendError } from '@/src/utils/validation';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import { storage, sessionStore } from '@/src/utils/storage';
+import { storage } from '@/src/utils/storage';
+import { setPendingInviteToken, getPendingInviteToken } from '@/src/features/auth/utils/inviteContext';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearPendingRoute } from '@/src/features/notification/store/notificationSlice';
 import { useTranslation } from '@/src/utils/i18n';
@@ -55,16 +56,13 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 
-// 1. Basic Auth Validation Schema
+// 1. Email + OTP Validation Schema (there is no password sign-in)
 const basicAuthSchema = yup.object().shape({
   login: yup
     .string()
-    .required('Email or Username is required')
-    .min(3, 'Must be at least 3 characters'),
-  password: yup
-    .string()
-    .required('Password is required')
-    .min(4, 'Password must be at least 4 characters'),
+    .trim()
+    .required('Email address is required')
+    .email('Please enter a valid email address'),
 });
 
 // 2. Phone OTP Validation Schema
@@ -80,7 +78,6 @@ const phoneSchema = yup.object().shape({
 
 interface BasicAuthFormValues {
   login: string;
-  password: string;
 }
 
 interface PhoneFormValues {
@@ -92,7 +89,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   
-  const { user, login: performLogin, requestOtp, error, isAuthenticated, otpSent, clearStatus } = useAuth();
+  const { requestOtp, error, isAuthenticated, otpSent, clearStatus } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{
     intent?: string;
@@ -104,24 +101,15 @@ export default function LoginScreen() {
     targetCommunity?: string;
     targetRole?: string;
   }>();
-  const isCreateOrgIntent =
-    params.intent === 'create-org' ||
-    params.intent === 'create' ||
-    (typeof window !== 'undefined' && typeof window.location !== 'undefined' && window.location?.href && (
-      window.location.href.includes('intent=create-org') ||
-      window.location.href.includes('intent=create')
-    )) ||
-    sessionStore.getItem('mobile_auth_intent') === 'create-org';
-
+  // An invitation link brought the person here: remember exactly which invitation
+  // they are answering, so it can be accepted after OTP/SSO verification
   React.useEffect(() => {
-    if (params.intent === 'create-org' || params.intent === 'create') {
-      sessionStore.setItem('mobile_auth_intent', params.intent);
-    }
-  }, [params.intent]);
+    setPendingInviteToken(params.inviteToken || params.token);
+  }, [params.inviteToken, params.token]);
+  const hasPendingInvite = !!(params.inviteToken || params.token || getPendingInviteToken());
 
   const [authMode, setAuthMode] = React.useState<'basic' | 'phone'>('basic');
-  const [submittedPhone, setSubmittedPhone] = React.useState('');
-  const [showPassword, setShowPassword] = React.useState(false);
+  const [submitted, setSubmitted] = React.useState<{ value: string; isEmail: boolean } | null>(null);
   const [keepSignedIn, setKeepSignedIn] = React.useState(true);
   const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
   const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
@@ -470,7 +458,6 @@ export default function LoginScreen() {
     mode: 'onTouched',
     defaultValues: {
       login: params.email ? decodeURIComponent(params.email) : '',
-      password: '',
     },
   });
 
@@ -508,37 +495,25 @@ export default function LoginScreen() {
       }
       Keyboard.dismiss();
 
-      const uAny = user as any;
-      const hasOrg = !!(
-        user && (
-          uAny.orgId ||
-          uAny.activeOrgId ||
-          uAny.organizationId ||
-          (Array.isArray(uAny.availableWorkspaces) && uAny.availableWorkspaces.length > 0)
-        )
-      );
-
       dispatch(clearPendingRoute());
-        if (isCreateOrgIntent || !hasOrg) {
-        sessionStore.removeItem('mobile_auth_intent');
-        router.replace({ pathname: '/(auth)/setup-organization', params: { intent: 'create-org' } });
-        } else {
-        router.replace('/(resident)');
-      }
+      // The start route picks the first screen from the server's `landing` hint
+      router.replace('/');
     } else if (!isAuthenticated) {
       hasNavigatedRef.current = false;
     }
-  }, [isAuthenticated, user, isCreateOrgIntent, dispatch]);
+  }, [isAuthenticated, dispatch]);
 
-  // Reactively route to OTP screen if Phone OTP sent
+  // Once a code is sent, continue on the code screen
   React.useEffect(() => {
-    if (otpSent && submittedPhone) {
+    if (otpSent && submitted) {
       router.push({
         pathname: '/(auth)/otp',
-        params: { phone: submittedPhone },
+        params: submitted.isEmail ? { email: submitted.value } : { phone: submitted.value },
       });
+      // A resend from the code screen must not open a second code screen
+      setSubmitted(null);
     }
-  }, [otpSent, submittedPhone]);
+  }, [otpSent, submitted]);
 
   const handleKeepSignedInChange = (checked: boolean) => {
     setKeepSignedIn(checked);
@@ -554,47 +529,22 @@ export default function LoginScreen() {
     }
   };
 
-  // Handle Basic Auth Submit
+  // Email + OTP: send a code to the email address
   const onBasicSubmit = async (data: BasicAuthFormValues) => {
-    const activeInviteToken = params.inviteToken || params.token || (
-      typeof window !== 'undefined' && window.location?.href
-        ? (window.location.href.match(/[\/?&](?:inviteToken|token|code)=([^&#]+)/i)?.[1] || undefined)
-        : undefined
-    );
-
+    const email = data.login.trim().toLowerCase();
+    setSubmitted({ value: email, isEmail: true });
     setIsSubmittingBasic(true);
     try {
       await savePreferences();
-      const resultAction: any = await performLogin({
-        login: data.login.trim(),
-        password: data.password,
-        ...(activeInviteToken ? { inviteToken: activeInviteToken } : {}),
-      });
-
-      // Invoke Google / Browser Credential Management API only upon successful login on Web
-      if (resultAction && (resultAction.meta?.requestStatus === 'fulfilled' || (!resultAction.error && !resultAction.payload?.error))) {
-        if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials?.store) {
-          try {
-            // @ts-ignore
-            const cred = new window.PasswordCredential({
-              id: data.login.trim(),
-              password: data.password,
-              name: data.login.trim(),
-            });
-            await (navigator as any).credentials.store(cred);
-          } catch (e) {
-            // Safe fallback if dismissed or unsupported
-          }
-        }
-      }
+      await requestOtp(email, true);
     } finally {
       setIsSubmittingBasic(false);
     }
   };
 
-  // Handle Phone OTP Submit
+  // Phone + OTP: send a code by SMS
   const onPhoneSubmit = async (data: PhoneFormValues) => {
-    setSubmittedPhone(data.phone);
+    setSubmitted({ value: data.phone, isEmail: false });
     setIsSubmittingPhone(true);
     try {
       await savePreferences();
@@ -684,8 +634,8 @@ export default function LoginScreen() {
             <AuthMethodSelector
               value={authMode}
               onChange={(mode) => { Keyboard.dismiss(); setAuthMode(mode); }}
-              emailLabel={t('email_password', 'Email / Password')}
-              otpLabel={t('sign_in_with_otp', 'Sign in with OTP')}
+              emailLabel={t('email_otp', 'Email')}
+              otpLabel={t('phone_otp', 'Phone')}
               reduceMotion={reduceMotion}
               disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
             />
@@ -775,13 +725,22 @@ export default function LoginScreen() {
                   </View>
                 )}
 
+                {/* Invitation context: the link only identifies the invitation; signing in is still required */}
+                {hasPendingInvite && (
+                  <View className="bg-white/20 dark:bg-black/35 border border-white/35 rounded-2xl p-3 flex-row items-center gap-2.5">
+                    <Sparkles size={16} color="#FF7A00" />
+                    <Text className="text-[12.5px] font-semibold text-white flex-1">
+                      {t('invite_sign_in_hint', 'Sign in with the email or phone your invitation was sent to, to join your community.')}
+                    </Text>
+                  </View>
+                )}
+
                 {authMode === 'basic' ? (
-                  /* Email / Password Form */
+                  /* Email + OTP Form */
                   <View className="gap-3.5">
-                    {/* Step 5: Email or Username Input */}
                     <View>
                       <Text className="text-xs font-semibold text-white mb-1.5 font-sans">
-                        {t('email_or_username', 'Email or Username')} <Text className="text-[#EA580C] font-bold">*</Text>
+                        {t('email_address', 'Email Address')} <Text className="text-[#EA580C] font-bold">*</Text>
                       </Text>
                       <Controller
                         control={basicForm.control}
@@ -796,7 +755,7 @@ export default function LoginScreen() {
                               setIsLoginFocused(false);
                               onBlur();
                             }}
-                            placeholder={t('enter_email_or_username', 'Enter your email or username')}
+                            placeholder={t('enter_email', 'Enter your email address')}
                             placeholderTextColor="#9CA3AF"
                             autoCapitalize="none"
                             autoCorrect={false}
@@ -812,59 +771,6 @@ export default function LoginScreen() {
                               </Animated.View>
                             }
                             error={basicForm.formState.errors.login?.message}
-                            feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
-                            errorClassName="text-[11.5px] font-bold text-red-400"
-                            returnKeyType="next"
-                            onSubmitEditing={() => passwordInputRef.current?.focus()}
-                            blurOnSubmit={false}
-                          />
-                        )}
-                      />
-                    </View>
-
-                    {/* Step 6: Password Input */}
-                    <View>
-                      <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-xs font-semibold text-white font-sans">
-                          {t('password', 'Password')} <Text className="text-[#EA580C] font-bold">*</Text>
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => router.push('/(auth)/forgot-password')}
-                          activeOpacity={0.8}
-                          hitSlop={8}
-                        >
-                          <Text className="text-[13px] font-bold text-white" style={{ textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                            {t('forgot_password', 'Forgot?')}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Controller
-                        control={basicForm.control}
-                        name="password"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                          <PasswordInput
-                            ref={passwordInputRef}
-                            value={value}
-                            onChangeText={onChange}
-                            onFocus={handlePasswordFieldFocus}
-                            onBlur={() => {
-                              setIsPasswordFocused(false);
-                              onBlur();
-                            }}
-                            placeholder={t('enter_password', 'Enter your password')}
-                            placeholderTextColor="#9CA3AF"
-                            className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
-                            inputClassName="text-slate-900 text-[15px] font-medium"
-                            style={{ fontSize: 15, fontWeight: '500', color: '#0F172A' }}
-                            selectionColor="#EA580C"
-                            cursorColor="#EA580C"
-                            leftIcon={
-                              <Animated.View style={{ transform: [{ scale: passwordIconScale }] }}>
-                                <Lock size={18} color="#64748B" />
-                              </Animated.View>
-                            }
-                            rightIconColor="#64748B"
-                            error={basicForm.formState.errors.password?.message}
                             feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
                             errorClassName="text-[11.5px] font-bold text-red-400"
                             returnKeyType="go"
@@ -887,30 +793,10 @@ export default function LoginScreen() {
 
                     {/* Global Error Banner */}
                     {error ? (
-                      <View className="bg-rose-500/20 border border-rose-500/40 rounded-xl p-2.5 gap-2 backdrop-blur-md">
+                      <View className="bg-rose-500/20 border border-rose-500/40 rounded-xl p-2.5 backdrop-blur-md">
                         <Text className="text-rose-200 text-xs text-center font-medium">
                           {error}
                         </Text>
-                        {(error.toLowerCase().includes('pending verification') ||
-                          error.toLowerCase().includes('invitation') ||
-                          error.toLowerCase().includes('password is not set') ||
-                          error.toLowerCase().includes('active membership')) && (
-                          <TouchableOpacity
-                            onPress={() => {
-                              const currentLogin = basicForm.getValues('login');
-                              router.push({
-                                pathname: '/(auth)/accept-invite',
-                                params: currentLogin ? { email: currentLogin } : {},
-                              });
-                            }}
-                            className="bg-primary/25 border border-primary/40 rounded-lg py-1.5 px-3 self-center flex-row items-center gap-1.5"
-                          >
-                            <Sparkles size={13} color="#FF7A00" />
-                            <Text className="text-xs font-bold text-white">
-                              {t('accept_invitation_cta', 'Accept Workspace Invitation')}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
                       </View>
                     ) : null}
 
@@ -960,13 +846,13 @@ export default function LoginScreen() {
                           <View className="flex-row items-center gap-2 z-10">
                             <ActivityIndicator color="#FFFFFF" size="small" />
                             <Text className="font-bold text-white text-sm font-sans">
-                              {t('signing_in', 'Signing In...')}
+                              {t('sending_otp', 'Sending OTP Code...')}
                             </Text>
                           </View>
                         ) : (
                           <View className="flex-row items-center justify-center gap-2 z-10">
                             <Text className="font-bold text-white text-base font-sans">
-                              {t('sign_in', 'Sign In')}
+                              {t('send_code', 'Send Code')}
                             </Text>
                             <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
                               <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
@@ -1116,27 +1002,11 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Create Community Prompt */}
-              <View className="items-center justify-center pt-2.5 pb-2">
-                <Animated.View style={{ transform: [{ scale: createAccountPressScale }] }}>
-                  <View className="bg-transparent flex-row items-center justify-center">
-                    <Text className="text-[12.5px] text-white font-bold" style={{ textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                      {t('dont_have_community', "Don't have a Community?")}{' '}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => router.push('/(auth)/signup')}
-                      onPressIn={handleCreateAccountPressIn}
-                      onPressOut={handleCreateAccountPressOut}
-                      activeOpacity={0.8}
-                      accessibilityRole="button"
-                      accessibilityLabel="Create Community"
-                    >
-                      <Text className="text-[12.5px] font-bold text-[#FF6A00]" style={{ textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                        {t('create_community', 'Create Community')}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
+              {/* Access is by invitation only: there is no self sign-up */}
+              <View className="items-center justify-center pt-2.5 pb-2 px-4">
+                <Text className="text-[12px] text-white/90 font-semibold text-center" style={{ textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
+                  {t('invite_only_hint', 'New here? Ask your community admin to invite you.')}
+                </Text>
               </View>
 
             </Animated.View>

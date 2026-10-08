@@ -296,6 +296,41 @@ describe('Phase 3 — invitation acceptance and login result', () => {
     });
   });
 
+  describe('accepting from an invitation link while signed in', () => {
+    it('accepts exactly the linked invitation with the session', async () => {
+      const email = nextEmail('linked');
+      const user = await User.create({ email, username: `linked_${t}`, phone: nextPhone(), password: await hashPassword('L1nk!Pass'), status: 'Active' });
+      const resident = await Role.findOne({ name: 'Resident', orgId: orgA._id });
+      await OrgMembership.create({ userId: user._id, orgId: orgA._id, roleIds: [resident._id], status: 'Active' });
+      const b = await invite(email, user.phone, orgB._id);
+      await invite(email, user.phone, orgC._id);
+      const code = await emailCode(email);
+      const login = await api('POST', '/auth/login/email-otp/verify', { body: { email, code } });
+
+      const res = await api('POST', '/auth/invitations/accept', { body: { inviteToken: b.invitationToken }, token: login.body.data.token });
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+      assert.equal(res.body.data.user.orgId, String(orgB._id));
+      assert.equal(await membershipStatus(user._id, orgB._id), 'Active');
+      assert.equal(await membershipStatus(user._id, orgC._id), 'Pending');
+    });
+
+    it('requires an invitation id or token', async () => {
+      const res = await api('POST', '/auth/invitations/accept', { body: {} });
+      assert.equal(res.status, 400);
+    });
+  });
+
+  describe('app config', () => {
+    it('serves the minimum supported mobile version', async () => {
+      process.env.MOBILE_MIN_SUPPORTED_VERSION = '1.1.0';
+      const res = await api('GET', '/public/app/config');
+      delete process.env.MOBILE_MIN_SUPPORTED_VERSION;
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data.minSupportedVersion, '1.1.0');
+      assert.ok(res.body.data.storeUrls.android && res.body.data.storeUrls.ios);
+    });
+  });
+
   describe('landing', () => {
     it('comes from permissions, not role names', async () => {
       const code = await emailCode(admin.email);

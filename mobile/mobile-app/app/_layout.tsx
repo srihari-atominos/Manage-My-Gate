@@ -98,8 +98,10 @@ import usePushNotifications from '../src/features/notification/hooks/usePushNoti
 import { clearPendingRoute, setPendingRoute } from '../src/features/notification/store/notificationSlice';
 import { useGlobalAppSocket } from '../src/hooks/useGlobalAppSocket';
 import { getDeferredHandoffContext } from '../src/features/auth/services/deferredDeepLinkService';
+import { hasActiveCommunity, resolveHomeRoute, SIGNED_IN_AUTH_ROUTES } from '../src/features/auth/utils/landing';
 import { GlobalNotificationPresenter } from '@/components/feedback/GlobalNotificationPresenter';
 import { AnimatedSplash } from '@/components/feedback/AnimatedSplash';
+import { ForceUpdateGate } from '@/components/feedback/ForceUpdateGate';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { installLocalizedAlertTranslation } from '@/src/utils/alertUtils';
 
@@ -177,7 +179,6 @@ function AuthRouteGuard() {
     setDefaultPhoneCountry(user?.orgCountryCode);
   }, [user?.orgCountryCode]);
 
-  const isCreateOrgIntent = searchParams.intent === 'create-org' || searchParams.intent === 'create';
   const stableSearchParams = useMemo(() => ({ ...searchParams }), [JSON.stringify(searchParams || {})]);
   const stableSegmentsKey = JSON.stringify(segments || []);
 
@@ -260,15 +261,9 @@ function AuthRouteGuard() {
       return;
     }
 
-    const hasOrg = !!(
-      u && (
-        u.orgId ||
-        u.activeOrgId ||
-        u.organizationId ||
-        (Array.isArray(u.availableWorkspaces) && u.availableWorkspaces.length > 0)
-      )
-    );
-    const isOnboardingRoute = currentRoute === 'setup-organization' || currentRoute === 'select-features';
+    const hasOrg = hasActiveCommunity(u);
+    // Auth screens a signed-in user may legitimately be on (no community yet, choosing an invitation)
+    const isSignedInAuthRoute = inAuthGroup && !!currentRoute && SIGNED_IN_AUTH_ROUTES.has(currentRoute);
 
     // On root route (/ or index), app/index.tsx handles initial redirect cleanly. Avoid racing.
     if (isRoot) {
@@ -301,10 +296,10 @@ function AuthRouteGuard() {
         });
     } else if (isAuthenticated) {
       if (!hasOrg) {
-        if (!isOnboardingRoute) {
-          replaceOnce('/(auth)/setup-organization');
+        if (!isSignedInAuthRoute) {
+          replaceOnce(resolveHomeRoute(u) as any);
         }
-      } else if (inAuthGroup) {
+      } else if (inAuthGroup && !isSignedInAuthRoute) {
           if (pendingRoute) dispatch(clearPendingRoute());
           replaceOnce('/(resident)');
         } else if (pendingRoute) {
@@ -313,7 +308,7 @@ function AuthRouteGuard() {
           replaceOnce(pendingRoute as any);
         }
     }
-  }, [isAuthenticated, isInitialized, rootNavigationState?.key, stableSegmentsKey, pathname, user, isCreateOrgIntent, pendingRoute, dispatch, stableSearchParams]);
+  }, [isAuthenticated, isInitialized, rootNavigationState?.key, stableSegmentsKey, pathname, user, pendingRoute, dispatch, stableSearchParams]);
 
   return null;
 }
@@ -441,6 +436,7 @@ export default function RootLayout() {
                 />
                 <Stack screenOptions={{ headerShown: false, freezeOnBlur: true }} />
                 <AuthRouteGuard />
+                <ForceUpdateGate />
                 <GlobalNotificationPresenter />
                 <PortalHost />
                 <AnimatedSplash />

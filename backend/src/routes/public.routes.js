@@ -26,6 +26,19 @@ router.get('/health', (req, res) => {
   }, 'API is healthy');
 });
 
+// Mobile app bootstrap config. MOBILE_MIN_SUPPORTED_VERSION forces older app builds
+// to update before they can sign in (needed before password login is switched off).
+router.get('/app/config', (req, res) => {
+  res.success({
+    minSupportedVersion: process.env.MOBILE_MIN_SUPPORTED_VERSION || '0.0.0',
+    latestVersion: process.env.MOBILE_LATEST_VERSION || null,
+    storeUrls: {
+      android: 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom',
+      ios: 'https://apps.apple.com/app/manage-my-gate/id6746501635',
+    },
+  }, 'App configuration');
+});
+
 router.post('/register-lead', publicLeadLimiter, validate(validatePublicLead), crmInquiryController.registerPublicLead);
 
 router.get('/checkout/:id', async (req, res, next) => {

@@ -134,6 +134,10 @@ interface AuthState {
   successMsg: string | null;
   otpSent: boolean;
   isInitialized: boolean;
+  /** Structured details of the last OTP/invitation error (attempts left, retry time). */
+  errorDetail: { code?: string; attemptsRemaining?: number; retryAfterSeconds?: number } | null;
+  /** Set when an invitee verified their identity but must pick an invitation to accept. */
+  invitationSelection: { ticket: string | null; pendingInvitations: any[] } | null;
 }
 
 const initialState: AuthState = {
@@ -146,6 +150,8 @@ const initialState: AuthState = {
   successMsg: null,
   otpSent: false,
   isInitialized: false,
+  errorDetail: null,
+  invitationSelection: null,
 };
 
 export const bootstrapAuth = createAsyncThunk(
@@ -353,15 +359,7 @@ export const loginWithGoogleThunk = createAsyncThunk(
         return { isNewUser: true, googleData: innerData.googleData || innerData };
       }
 
-      const token = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const user = innerData?.user;
-
-      if (token) await storage.setItem('token', token);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-
-      return innerData as any;
+      return ((await persistLoginResult(innerData)) || innerData) as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Google Login failed');
     }
@@ -380,15 +378,7 @@ export const loginWithMicrosoftThunk = createAsyncThunk(
         return { isNewUser: true, googleData: innerData.microsoftData || innerData.googleData || innerData };
       }
 
-      const token = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const user = innerData?.user;
-
-      if (token) await storage.setItem('token', token);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-
-      return innerData as any;
+      return ((await persistLoginResult(innerData)) || innerData) as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Microsoft Login failed');
     }
@@ -407,17 +397,8 @@ export const loginWithAppleThunk = createAsyncThunk(
         return { isNewUser: true, appleData: innerData.appleData || innerData };
       }
 
-      const token = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const rawUser = innerData?.user;
-      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
-      const user = rawUser ? { ...rawUser, availableWorkspaces } : null;
-
-      if (token) await storage.setItem('token', token);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-
-      return { ...innerData, user, availableWorkspaces } as any;
+      const persisted = await persistLoginResult(innerData);
+      return (persisted ? { ...persisted, availableWorkspaces: persisted.user.availableWorkspaces } : innerData) as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Apple Login failed');
     }
@@ -521,6 +502,43 @@ export const rejectInviteThunk = createAsyncThunk(
 
 
 
+/** OTP / invitation error details from the API (code, attempts left, retry time). */
+export interface AuthErrorDetail {
+  message: string;
+  code?: string;
+  attemptsRemaining?: number;
+  retryAfterSeconds?: number;
+}
+
+export const toAuthErrorDetail = (error: any, fallback: string): AuthErrorDetail => {
+  const data = error?.response?.data || {};
+  const details = data.details && !Array.isArray(data.details) ? data.details : {};
+  return {
+    message: data.message || error?.message || fallback,
+    code: data.code || details.code,
+    attemptsRemaining: details.attemptsRemaining,
+    retryAfterSeconds: details.retryAfterSeconds,
+  };
+};
+
+/** Unwraps a login result and persists the session. Shared by every sign-in path. */
+const persistLoginResult = async (innerData: any) => {
+  const token = innerData?.token;
+  const refreshToken = innerData?.refreshToken;
+  const rawUser = innerData?.user;
+  if (!token || !rawUser) return null;
+  const user = {
+    ...rawUser,
+    availableWorkspaces: innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [],
+    // Which first screen to open; decided by the server from permissions
+    landing: innerData?.landing || rawUser?.landing || null,
+  };
+  await storage.setItem('token', token);
+  if (refreshToken) await storage.setItem('refreshToken', refreshToken);
+  await storage.setItem('user', JSON.stringify(user));
+  return { ...innerData, user };
+};
+
 export const requestOtp = createAsyncThunk(
   'auth/requestOtp',
   async ({ identifier, isEmail }: { identifier: string; isEmail: boolean }, { rejectWithValue }) => {
@@ -530,44 +548,74 @@ export const requestOtp = createAsyncThunk(
         : await authService.initiatePhoneLogin(identifier);
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       if (body && body.success === false) {
-        return rejectWithValue(body.message || 'Failed to request OTP');
+        return rejectWithValue({ message: body.message || 'Failed to request OTP' } as AuthErrorDetail);
       }
       return response as any;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to request OTP');
+      return rejectWithValue(toAuthErrorDetail(error, 'Failed to request OTP'));
     }
   }
 );
 
 export const verifyOtpLogin = createAsyncThunk(
   'auth/verifyOtpLogin',
-  async ({ identifier, code, isEmail }: { identifier: string; code: string; isEmail: boolean }, { rejectWithValue }) => {
+  async (
+    { identifier, code, isEmail, inviteToken }: { identifier: string; code: string; isEmail: boolean; inviteToken?: string | null },
+    { rejectWithValue }
+  ) => {
     try {
       const response = isEmail
-        ? await authService.verifyEmailOtpLogin(identifier, code)
-        : await authService.verifyPhoneLogin(identifier, code);
+        ? await authService.verifyEmailOtpLogin(identifier, code, inviteToken)
+        : await authService.verifyPhoneLogin(identifier, code, inviteToken);
 
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       if (body && body.success === false) {
-        return rejectWithValue(body.message || 'OTP verification failed');
+        return rejectWithValue({ message: body.message || 'OTP verification failed' } as AuthErrorDetail);
       }
 
       const innerData = body?.data || body;
-      const token = innerData?.token;
-      const refreshToken = innerData?.refreshToken;
-      const user = innerData?.user;
-
-      if (!token || !user) {
-        return rejectWithValue(body?.message || 'Invalid OTP response from server');
+      // Invited but not yet activated, and no invitation link: choose which invitation to accept
+      if (innerData?.requiresInvitationSelection) {
+        return { selection: { ticket: innerData.ticket, pendingInvitations: innerData.pendingInvitations || [] } } as any;
       }
 
-      if (token) await storage.setItem('token', token);
-      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
-      if (user) await storage.setItem('user', JSON.stringify(user));
-
-      return innerData as any;
+      const persisted = await persistLoginResult(innerData);
+      if (!persisted) {
+        return rejectWithValue({ message: body?.message || 'Invalid OTP response from server' } as AuthErrorDetail);
+      }
+      return persisted as any;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'OTP verification failed');
+      return rejectWithValue(toAuthErrorDetail(error, 'OTP verification failed'));
+    }
+  }
+);
+
+/**
+ * Accept or decline exactly one invitation (by id from the pending list, or by the
+ * invitation link's token). Accepting returns a full login result.
+ */
+export const respondToInvitationThunk = createAsyncThunk(
+  'auth/respondToInvitation',
+  async (
+    { action, invitationId, inviteToken, ticket }: { action: 'accept' | 'decline'; invitationId?: string; inviteToken?: string; ticket?: string | null },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await authService.respondToInvitation(action, {
+        ...(invitationId ? { invitationId } : {}),
+        ...(inviteToken ? { inviteToken } : {}),
+        ...(ticket ? { ticket } : {}),
+      });
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+      if (action === 'decline') {
+        return { declined: true, pendingInvitations: innerData?.pendingInvitations || [] } as any;
+      }
+      const persisted = await persistLoginResult(innerData);
+      if (!persisted) return rejectWithValue({ message: 'Invalid response from server' } as AuthErrorDetail);
+      return persisted as any;
+    } catch (error: any) {
+      return rejectWithValue(toAuthErrorDetail(error, `Could not ${action} the invitation`));
     }
   }
 );
@@ -821,9 +869,13 @@ const authSlice = createSlice({
     },
     clearStatus: (state) => {
       state.error = null;
+      state.errorDetail = null;
       state.successMsg = null;
       state.loading = false;
       state.otpSent = false;
+    },
+    clearInvitationSelection: (state) => {
+      state.invitationSelection = null;
     },
     updateTokenAndUser: (state, action: PayloadAction<{ token?: string; refreshToken?: string; user?: User }>) => {
       const { token, refreshToken, user } = action.payload;
@@ -1148,6 +1200,7 @@ const authSlice = createSlice({
       .addCase(requestOtp.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.errorDetail = null;
         state.successMsg = null;
       })
       .addCase(requestOtp.fulfilled, (state, action) => {
@@ -1156,28 +1209,66 @@ const authSlice = createSlice({
         state.successMsg = action.payload?.message || 'OTP sent successfully!';
       })
       .addCase(requestOtp.rejected, (state, action) => {
+        const detail = action.payload as AuthErrorDetail | undefined;
         state.loading = false;
-        state.error = (action.payload as string) || 'Failed to send OTP';
+        state.error = detail?.message || 'Failed to send OTP';
+        state.errorDetail = detail ? { code: detail.code, retryAfterSeconds: detail.retryAfterSeconds } : null;
       })
       // Verify OTP Login
       .addCase(verifyOtpLogin.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.errorDetail = null;
         state.successMsg = null;
       })
       .addCase(verifyOtpLogin.fulfilled, (state, action) => {
         state.loading = false;
         state.otpSent = false;
-        state.token = action.payload?.token || action.payload?.data?.token || null;
-        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
-        const rawUser = action.payload?.user || action.payload?.data?.user || null;
-        state.user = normalizeUser(rawUser);
+        if (action.payload?.selection) {
+          // Identity verified, but an invitation must be chosen before any session exists
+          state.invitationSelection = action.payload.selection;
+          return;
+        }
+        state.invitationSelection = null;
+        state.token = action.payload?.token || null;
+        state.refreshToken = action.payload?.refreshToken || null;
+        state.user = normalizeUser(action.payload?.user || null);
         state.isAuthenticated = !!(state.token && state.user?.id);
-        state.successMsg = action.payload?.message || 'Login successful!';
+        state.successMsg = 'Login successful!';
       })
       .addCase(verifyOtpLogin.rejected, (state, action) => {
+        const detail = action.payload as AuthErrorDetail | undefined;
         state.loading = false;
-        state.error = (action.payload as string) || 'Login failed';
+        state.error = detail?.message || 'Login failed';
+        state.errorDetail = detail
+          ? { code: detail.code, attemptsRemaining: detail.attemptsRemaining, retryAfterSeconds: detail.retryAfterSeconds }
+          : null;
+      })
+      // Accept / decline one invitation
+      .addCase(respondToInvitationThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.errorDetail = null;
+      })
+      .addCase(respondToInvitationThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload?.declined) {
+          if (state.invitationSelection) {
+            state.invitationSelection.pendingInvitations = action.payload.pendingInvitations || [];
+          }
+          return;
+        }
+        state.invitationSelection = null;
+        state.token = action.payload?.token || null;
+        state.refreshToken = action.payload?.refreshToken || null;
+        state.user = normalizeUser(action.payload?.user || null);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+      })
+      .addCase(respondToInvitationThunk.rejected, (state, action) => {
+        const detail = action.payload as AuthErrorDetail | undefined;
+        state.loading = false;
+        state.error = detail?.message || 'Could not update the invitation';
+        state.errorDetail = detail ? { code: detail.code } : null;
       })
       // Switch Workspace Context
       .addCase(switchWorkspaceContextThunk.pending, (state) => {
@@ -1369,6 +1460,7 @@ const authSlice = createSlice({
 export const {
   logout,
   clearStatus,
+  clearInvitationSelection,
   updateTokenAndUser,
   updateUserProfile,
   setActiveUnitContext,

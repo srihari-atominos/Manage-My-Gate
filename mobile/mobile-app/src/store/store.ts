@@ -21,7 +21,6 @@ import communityPulseReducer from '../features/communityPulse/store/communityPul
 import directoryReducer from '../features/directory/store/directorySlice';
 import communityNoteReducer from '../features/directory/store/communityNoteSlice';
 import directoryMessagingReducer from '../features/directory/store/directoryMessagingSlice';
-import organizationReducer from '../features/organization/store/organizationSlice';
 import communityEngagementReducer from '../features/communityEngagement/store/communityEngagementSlice';
 import issueReportReducer from '../features/issueReport/store/issueReportSlice';
 
@@ -55,7 +54,6 @@ export const store = configureStore({
     directory: directoryReducer,
     communityNote: communityNoteReducer,
     directoryMessaging: directoryMessagingReducer,
-    organization: organizationReducer,
     communityEngagement: communityEngagementReducer,
     issueReport: issueReportReducer,
     visitor: visitorReducer,

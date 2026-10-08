@@ -30,7 +30,7 @@ const formatFullName = (fullName: AppleAuthentication.AppleAuthenticationFullNam
 /** Native Sign in with Apple flow for iOS, with an unsupported-platform notice. */
 export function useAppleAuthSession(options: UseAppleAuthSessionOptions = {}) {
   const { inviteToken, onSuccess, onError } = options;
-  const { loginWithApple, acceptSsoInvite } = useAuth();
+  const { loginWithApple } = useAuth();
   const [isAvailable, setIsAvailable] = React.useState(false);
   const [authInProgress, setAuthInProgress] = React.useState(false);
 
@@ -104,15 +104,9 @@ export function useAppleAuthSession(options: UseAppleAuthSessionOptions = {}) {
         ...(fullName ? { fullName } : {}),
       };
 
-      const result: any = inviteToken
-        ? await acceptSsoInvite({
-            inviteToken,
-            ssoCredential: credential.identityToken,
-            nonce,
-            ...(fullName ? { fullName } : {}),
-            provider: 'apple',
-          })
-        : await loginWithApple(payload);
+      // One sign-in call; an invitation being answered (explicit or from the invite
+      // link) is sent along and accepted server-side after Apple verifies identity
+      const result: any = await loginWithApple({ ...payload, ...(inviteToken ? { inviteToken } : {}) } as any);
 
       if (result?.meta?.requestStatus === 'rejected' || result?.error) {
         reportError((result?.payload as string) || result?.error?.message || 'Apple sign-in could not be completed.');
@@ -121,20 +115,12 @@ export function useAppleAuthSession(options: UseAppleAuthSessionOptions = {}) {
 
       const resultPayload = result?.payload || result;
       if (resultPayload?.isNewUser) {
-        const appleData = resultPayload.appleData || {};
-        router.push({
-          pathname: '/(auth)/register',
-          params: {
-            email: appleData.email || '',
-            name: appleData.name || '',
-            isAppleSso: 'true',
-          },
-        });
+        reportError('This Apple ID isn\'t linked to a community yet. Ask your community admin to invite you, then open the invitation link.');
         return;
       }
 
       if (onSuccess) onSuccess(resultPayload);
-      else router.replace('/(resident)/dashboard');
+      else router.replace('/');
     } catch (error: any) {
       // Dismissing Apple's system sheet is an expected user action, not an error.
       if (error?.code === 'ERR_REQUEST_CANCELED') return;
@@ -142,7 +128,7 @@ export function useAppleAuthSession(options: UseAppleAuthSessionOptions = {}) {
     } finally {
       setAuthInProgress(false);
     }
-  }, [acceptSsoInvite, inviteToken, isAvailable, loginWithApple, onSuccess, reportError]);
+  }, [inviteToken, isAvailable, loginWithApple, onSuccess, reportError]);
 
   return {
     handleAppleSignIn,

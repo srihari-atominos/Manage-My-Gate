@@ -283,23 +283,20 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                 </View>
               </ScrollView>
 
-              {/* Create New Organization CTA */}
+              {/* Joining another community happens by accepting its invitation */}
               <TouchableOpacity
                 onPress={() => {
                   onClose();
-                  router.push({
-                    pathname: '/(auth)/setup-organization' as any,
-                    params: { intent: 'create-org', canGoBack: 'true' },
-                  });
+                  router.push('/(auth)/pending-invitations' as any);
                 }}
                 activeOpacity={0.8}
                 className="flex-row min-h-11 items-center justify-center p-3 rounded-2xl border border-dashed border-primary/50 bg-primary/5 active:bg-primary/10 mt-1 gap-2"
                 accessibilityRole="button"
-                accessibilityLabel={t('create_new_organization', '+ Create New Organization')}
+                accessibilityLabel={t('pending_invitations', 'Pending invitations')}
               >
                 <Plus size={16} color="#03A9F4" />
                 <Text className="text-xs font-bold text-primary">
-                  {t('create_new_organization', '+ Create New Organization')}
+                  {t('pending_invitations', 'Pending invitations')}
                 </Text>
               </TouchableOpacity>
 

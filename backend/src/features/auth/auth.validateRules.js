@@ -112,12 +112,20 @@ export const acceptInviteRules = [
  * Accept / decline one invitation chosen from the pending list
  */
 export const respondInvitationRules = [
+  // Either the id from the pending list, or the raw token from an invitation link
   body('invitationId')
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
-    .notEmpty()
-    .withMessage('Invitation is required')
     .isMongoId()
     .withMessage('Invitation is not valid'),
+  body('inviteToken')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body().custom((value) => {
+    if (!value?.invitationId && !value?.inviteToken) throw new Error('Invitation is required');
+    return true;
+  }),
   body('ticket')
     .optional({ nullable: true, checkFalsy: true })
     .isString()

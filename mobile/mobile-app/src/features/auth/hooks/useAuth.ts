@@ -13,6 +13,7 @@ import {
   updateOrganizationFeaturesThunk,
   requestOtp,
   verifyOtpLogin,
+  respondToInvitationThunk,
   performLogout,
   deleteAccountThunk,
   requestPasswordReset,
@@ -131,8 +132,15 @@ export const useAuth = () => {
   );
 
   const handleVerifyOtp = useCallback(
-    (identifier: string, code: string, isEmail: boolean = false) => {
-      return dispatch ? dispatch(verifyOtpLogin({ identifier, code, isEmail })) : Promise.resolve();
+    (identifier: string, code: string, isEmail: boolean = false, inviteToken: string | null = null) => {
+      return dispatch ? dispatch(verifyOtpLogin({ identifier, code, isEmail, inviteToken })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleRespondToInvitation = useCallback(
+    (args: { action: 'accept' | 'decline'; invitationId?: string; inviteToken?: string; ticket?: string | null }) => {
+      return dispatch ? dispatch(respondToInvitationThunk(args)) : Promise.resolve();
     },
     [dispatch]
   );
@@ -203,6 +211,7 @@ export const useAuth = () => {
     loginWithApple: handleLoginWithApple,
     requestOtp: handleRequestOtp,
     verifyOtp: handleVerifyOtp,
+    respondToInvitation: handleRespondToInvitation,
     forgotPassword: handleForgotPassword,
     verifyResetOtp: handleVerifyResetOtp,
     resetPassword: handleResetPassword,

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import apiClient from '../../../services/apiClient';
+import { getPendingInviteToken } from '../utils/inviteContext';
 
 export const login = async (credentials: any) => {
   return await apiClient.post('/auth/login', credentials);
@@ -42,14 +43,20 @@ export const verifyRegistration = async (email: string, code: string) => {
   return await apiClient.post('/auth/register/verify', { email, code });
 };
 
+/** SSO sign-in carries the invitation being answered, if the person came from an invite link. */
+const withPendingInvite = (body: any) => {
+  const inviteToken = body?.inviteToken || getPendingInviteToken();
+  return inviteToken ? { ...body, inviteToken } : body;
+};
+
 export const loginWithGoogle = async (payload: any) => {
   const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
-  return await apiClient.post('/auth/google', body);
+  return await apiClient.post('/auth/google', withPendingInvite(body));
 };
 
 export const loginWithMicrosoft = async (payload: any) => {
   const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
-  return await apiClient.post('/auth/microsoft', body);
+  return await apiClient.post('/auth/microsoft', withPendingInvite(body));
 };
 
 export const loginWithApple = async (payload: {
@@ -57,23 +64,45 @@ export const loginWithApple = async (payload: {
   nonce: string;
   fullName?: string;
 }) => {
-  return await apiClient.post('/auth/apple', payload);
+  return await apiClient.post('/auth/apple', withPendingInvite(payload));
 };
 
 export const initiatePhoneLogin = async (phone: string) => {
   return await apiClient.post('/auth/login/phone', { phone });
 };
 
-export const verifyPhoneLogin = async (phone: string, code: string) => {
-  return await apiClient.post('/auth/login/phone/verify', { phone, code });
+export const verifyPhoneLogin = async (phone: string, code: string, inviteToken?: string | null) => {
+  return await apiClient.post('/auth/login/phone/verify', { phone, code, ...(inviteToken ? { inviteToken } : {}) });
 };
 
 export const initiateEmailOtpLogin = async (email: string) => {
   return await apiClient.post('/auth/login/email-otp', { email });
 };
 
-export const verifyEmailOtpLogin = async (email: string, code: string) => {
-  return await apiClient.post('/auth/login/email-otp/verify', { email, code });
+export const verifyEmailOtpLogin = async (email: string, code: string, inviteToken?: string | null) => {
+  return await apiClient.post('/auth/login/email-otp/verify', { email, code, ...(inviteToken ? { inviteToken } : {}) });
+};
+
+/** Pending invitations for the signed-in user. */
+export const getPendingInvitations = async () => {
+  return await apiClient.get('/auth/invitations/pending');
+};
+
+/**
+ * Accept or decline exactly one invitation: by id (from the pending list) or by the
+ * invitation link's token. Signed-in users use their session; a not-yet-activated
+ * invitee passes the short-lived ticket from code verification.
+ */
+export const respondToInvitation = async (
+  action: 'accept' | 'decline',
+  ref: { invitationId?: string; inviteToken?: string; ticket?: string | null }
+) => {
+  return await apiClient.post(`/auth/invitations/${action}`, ref);
+};
+
+/** Public mobile bootstrap config (minimum supported app version, store links). */
+export const getAppConfig = async () => {
+  return await apiClient.get('/public/app/config');
 };
 
 export const forgotPassword = async (identifier: string) => {
@@ -226,6 +255,9 @@ export default {
   verifyPhoneLogin,
   initiateEmailOtpLogin,
   verifyEmailOtpLogin,
+  getPendingInvitations,
+  respondToInvitation,
+  getAppConfig,
   forgotPassword,
   verifyResetPasswordOtp,
   resetPassword,

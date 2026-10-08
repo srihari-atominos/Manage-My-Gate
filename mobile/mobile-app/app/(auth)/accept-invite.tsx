@@ -1,1107 +1,206 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, ScrollView, Platform, Alert } from 'react-native';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
-import {
-  ShieldCheck,
-  Lock,
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
-  Building2,
-} from 'lucide-react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { Input } from '@/components/ui/input';
-import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
-import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
-import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
-import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { useForm, Controller } from 'react-hook-form';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { Building2, Mail, ShieldCheck, Home } from 'lucide-react-native';
+import * as React from 'react';
+import { View, ActivityIndicator, ImageBackground, Platform, ScrollView } from 'react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
-import { acceptInviteThunk } from '../../src/features/auth/store/authSlice';
 import authService from '../../src/features/auth/services/authService';
-import apiClient from '../../src/services/apiClient';
-import { AppLoader } from '@/components/ui/AppLoader';
+import { setPendingInviteToken, clearPendingInviteToken } from '@/src/features/auth/utils/inviteContext';
+import { useTranslation } from '@/src/utils/i18n';
 
-// Accept Invite Password Validation Schema - token is managed silently, not by user input
-const acceptInviteSchema = yup.object().shape({
-  password: yup
-    .string()
-    .required('Password is required')
-    .min(6, 'Password must be at least 6 characters'),
-  confirmPassword: yup
-    .string()
-    .required('Please repeat your password')
-    .oneOf([yup.ref('password')], 'Passwords do not match'),
-});
+type InviteState = 'loading' | 'valid' | 'invalid' | 'declined';
 
-type AcceptInviteFormValues = yup.InferType<typeof acceptInviteSchema>;
+interface InviteMeta {
+  orgName?: string;
+  role?: string;
+  unit?: string;
+  email?: string;
+  invitedEmail?: string;
+  message?: string;
+}
 
-export default function AcceptInviteScreen() {
-  const {
-    isAuthenticated,
-    isInitialized,
-    user,
-    clearStatus,
-    acceptInvite,
-    logout,
-    switchWorkspaceContext,
-  } = useAuth();
-  const searchParams = useLocalSearchParams<{
-    token?: string;
-    invitationId?: string;
-    code?: string;
-    email?: string;
-    action?: string;
-    mode?: string;
-  }>();
-  const [submitting, setSubmitting] = useState(false);
-  const [isRejecting, setIsRejecting] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [inviteMeta, setInviteMeta] = useState<{
-    state?: string;
-    valid?: boolean;
-    orgId?: string;
-    orgName?: string;
-    villa?: string;
-    unit?: string;
-    role?: string;
-    email?: string;
-    invitedEmail?: string;
-    authenticatedEmail?: string;
-    membershipStatus?: string;
-    invitationStatus?: string;
-    message?: string;
-  } | null>(null);
-  const [validating, setValidating] = useState(false);
-  const acceptedNavigationRef = useRef(false);
-
-  // Status & Modal visibility states
-  const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
-  const [isRejectedState, setIsRejectedState] = useState(false);
-  const [isAlreadyRegisteredModalVisible, setIsAlreadyRegisteredModalVisible] = useState(false);
-  const [isInvalidTokenModalVisible, setIsInvalidTokenModalVisible] = useState(false);
-  const [alreadyRegisteredEmail, setAlreadyRegisteredEmail] = useState('');
-
-  const loggedInEmail = (user?.email || '').trim().toLowerCase();
-  const targetInviteEmail = (
-    inviteMeta?.invitedEmail ||
-    inviteMeta?.email ||
-    searchParams.email ||
-    alreadyRegisteredEmail ||
-    ''
-  )
-    .trim()
-    .toLowerCase();
-  const flowState = (inviteMeta?.state || '').toUpperCase();
-  const isAlreadyAccepted = flowState === 'ALREADY_ACCEPTED';
-  const isResolvingInvite = validating || (isAlreadyAccepted && isAuthenticated && submitting);
-  const isAccountMismatch =
-    flowState === 'ACCOUNT_MISMATCH' ||
-    flowState === 'ALREADY_ACCEPTED_OTHER_ACCOUNT' ||
-    Boolean(
-      isAuthenticated && loggedInEmail && targetInviteEmail && loggedInEmail !== targetInviteEmail
+/** Pulls the invitation token from route params or, on web, from the URL. */
+const resolveToken = (params: Record<string, string | undefined>): string => {
+  const fromParams = params.token || params.code || params.inviteToken || params.invitationId;
+  if (fromParams) return String(fromParams).trim();
+  if (typeof window !== 'undefined' && window.location?.href) {
+    const match = window.location.href.match(
+      /[\/?&](?:token|code|inviteToken)=([^&#]+)|\/invite\/(?:app\/|web\/)?([^/?&#]+)/i
     );
+    if (match) return decodeURIComponent(match[1] || match[2] || '').trim();
+  }
+  return '';
+};
 
-  // Extract token or invitationId from route searchParams, query params, or URL path
-  const getTokenFromContext = useCallback(() => {
-    if (searchParams.token) return searchParams.token;
-    if (searchParams.invitationId) return searchParams.invitationId;
-    if (searchParams.code) return searchParams.code;
-    if (typeof window !== 'undefined' && window.location?.href) {
-      const match = window.location.href.match(
-        /[\/?&](?:token|code|invitationId)=([^&#]+)|\/invite\/(?:app\/|web\/)?([a-f0-9]{32,64}|[^/?&#]+)/i
-      );
-      if (match) return match[1] || match[2];
-    }
-    return '';
-  }, [searchParams.token, searchParams.invitationId, searchParams.code]);
+/**
+ * "Step Into Your Community" landing for invitation links. Opening the link never
+ * signs anyone in: it shows what the invitation is for, then the person signs in
+ * with email/phone OTP or SSO and exactly this invitation is accepted.
+ */
+export default function AcceptInviteScreen() {
+  const { t } = useTranslation();
+  const params = useLocalSearchParams<Record<string, string>>();
+  const { isAuthenticated, respondToInvitation, logout } = useAuth() as any;
+  const token = React.useMemo(() => resolveToken(params), [params.token, params.code, params.inviteToken, params.invitationId]);
+  const wantsDecline = params.action === 'reject';
 
-  const getActionFromContext = useCallback(() => {
-    if (searchParams.action) return searchParams.action;
-    if (typeof window !== 'undefined' && window.location?.href) {
-      const match = window.location.href.match(/[\/?&]action=([^&#]+)/i);
-      if (match) return decodeURIComponent(match[1]);
-    }
-    return '';
-  }, [searchParams.action]);
+  const [state, setState] = React.useState<InviteState>('loading');
+  const [meta, setMeta] = React.useState<InviteMeta>({});
+  const [busy, setBusy] = React.useState(false);
+  const [message, setMessage] = React.useState<string | null>(null);
 
-  const [resolvedToken, setResolvedToken] = useState<string>(getTokenFromContext);
-  const [resolvedAction, setResolvedAction] = useState<string>(getActionFromContext);
-
-  useEffect(() => {
-    const extracted = getTokenFromContext();
-    if (extracted && extracted !== resolvedToken) {
-      setResolvedToken(extracted);
-    }
-  }, [getTokenFromContext, resolvedToken]);
-
-  useEffect(() => {
-    const extracted = getActionFromContext();
-    if (extracted && extracted !== resolvedAction) {
-      setResolvedAction(extracted);
-    }
-  }, [getActionFromContext, resolvedAction]);
-
-  const form = useForm<AcceptInviteFormValues>({
-    resolver: yupResolver(acceptInviteSchema),
-    defaultValues: {
-      password: '',
-      confirmPassword: '',
-    },
-  });
-
-  const handleNavigateToLogin = useCallback(
-    (emailTarget?: string, tokenTarget?: string) => {
-      const targetEmail = (
-        emailTarget ||
-        searchParams.email ||
-        alreadyRegisteredEmail ||
-        inviteMeta?.email ||
-        ''
-      ).trim();
-      const currentToken = (
-        tokenTarget ||
-        resolvedToken ||
-        getTokenFromContext() ||
-        searchParams.token ||
-        searchParams.code ||
-        ''
-      ).trim();
-      const loginParams: Record<string, string> = {};
-      if (targetEmail) loginParams.email = targetEmail;
-      if (currentToken) loginParams.inviteToken = currentToken;
-
-      try {
-        router.replace({
-          pathname: '/(auth)/login',
-          params: loginParams,
-        });
-      } catch (e) {}
-
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        const q = new URLSearchParams(loginParams);
-        const url = q.toString() ? `/(auth)/login?${q.toString()}` : '/(auth)/login';
-        if (!window.location.pathname.includes('login')) {
-          window.location.href = url;
-        }
-      }
-    },
-    [
-      searchParams.email,
-      searchParams.token,
-      searchParams.code,
-      resolvedToken,
-      getTokenFromContext,
-      alreadyRegisteredEmail,
-      inviteMeta?.email,
-    ]
-  );
-
-  const handleSignOutAndSwitch = useCallback(
-    async (customEmail?: string) => {
-      setSubmitting(true);
-      setApiError(null);
-      const targetEmail = (customEmail || targetInviteEmail).trim();
-      const inviteToken = (resolvedToken || getTokenFromContext() || '').trim();
-      try {
-        await logout();
-        clearStatus();
-        if (targetEmail) {
-          handleNavigateToLogin(targetEmail, inviteToken);
-        }
-      } catch (e) {
-        console.warn('Logout error during invite account switch', e);
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [logout, clearStatus, targetInviteEmail, resolvedToken, getTokenFromContext, handleNavigateToLogin]
-  );
-
-  // Auto-switch disabled: Mismatched users are presented with an explicit UI choice
-
-  const handleRejectInvitation = useCallback(async () => {
-    setIsRejecting(true);
-    setApiError(null);
-    const targetEmail = (searchParams.email || inviteMeta?.email || '').trim();
-    const inviteToken = (
-      resolvedToken ||
-      getTokenFromContext() ||
-      searchParams.token ||
-      searchParams.code ||
-      ''
-    ).trim();
-    try {
-      await authService.rejectInvite({
-        token: inviteToken,
-        email: targetEmail || undefined,
-      });
-      setIsRejectedState(true);
-    } catch (err: any) {
-      const errMsg = err?.response?.data?.message || err?.message || '';
-      if (errMsg.toLowerCase().includes('reject')) {
-        setIsRejectedState(true);
-      } else {
-        setApiError(errMsg || 'Failed to reject invitation.');
-      }
-    } finally {
-      setIsRejecting(false);
-    }
-  }, [
-    searchParams.email,
-    searchParams.token,
-    searchParams.code,
-    inviteMeta?.email,
-    resolvedToken,
-    getTokenFromContext,
-  ]);
-
-  const handleAcceptAuthenticatedInvite = useCallback(async () => {
-    setSubmitting(true);
-    setApiError(null);
-    try {
-      const inviteToken = (resolvedToken || getTokenFromContext() || '').trim();
-      const actionResult: any = await acceptInvite(inviteToken, undefined, loggedInEmail);
-      if (acceptInviteThunk.fulfilled.match(actionResult)) {
-        router.replace('/(resident)/dashboard');
-        return;
-      }
-      const errMsg =
-        (actionResult?.payload as string) ||
-        actionResult?.error?.message ||
-        'Failed to accept invitation.';
-
-      if (
-        errMsg.toLowerCase().includes('identity') ||
-        errMsg.toLowerCase().includes('match')
-      ) {
-        // Mismatch detected: automatically sign out current account and route to invited account
-        try {
-          await logout();
-          clearStatus();
-        } catch (_) {}
-
-        const targetEmail = (
-          inviteMeta?.invitedEmail ||
-          inviteMeta?.email ||
-          searchParams.email ||
-          ''
-        ).trim();
-
-        if ((inviteMeta as any)?.isExisting || (inviteMeta as any)?.isAlreadyRegistered) {
-          handleNavigateToLogin(targetEmail, inviteToken);
-        } else {
-          setApiError(null);
-        }
-        return;
-      }
-
-      setApiError(errMsg);
-    } catch (err: any) {
-      const errMsg = err?.message || 'Failed to accept invitation.';
-      if (
-        errMsg.toLowerCase().includes('identity') ||
-        errMsg.toLowerCase().includes('match')
-      ) {
-        try {
-          await logout();
-          clearStatus();
-        } catch (_) {}
-        const targetEmail = (
-          inviteMeta?.invitedEmail ||
-          inviteMeta?.email ||
-          searchParams.email ||
-          ''
-        ).trim();
-        if ((inviteMeta as any)?.isExisting || (inviteMeta as any)?.isAlreadyRegistered) {
-          handleNavigateToLogin(targetEmail, inviteToken);
-        } else {
-          setApiError(null);
-        }
-        return;
-      }
-      setApiError(errMsg);
-    } finally {
-      setSubmitting(false);
-    }
-  }, [
-    resolvedToken,
-    getTokenFromContext,
-    loggedInEmail,
-    acceptInvite,
-    logout,
-    clearStatus,
-    inviteMeta,
-    searchParams.email,
-    handleNavigateToLogin,
-  ]);
-
-  // Validate the invitation link on mount / token change
-  useEffect(() => {
-    if (!isInitialized) return;
-    const tokenToValidate = (resolvedToken || getTokenFromContext() || '').trim();
-    const emailToValidate = (searchParams.email || '').trim();
-
-    if (!tokenToValidate && !emailToValidate) {
+  React.useEffect(() => {
+    if (!token) {
+      setState('invalid');
+      setMeta({ message: t('invite_link_incomplete', 'This invitation link is incomplete. Please open the link from your email again.') });
       return;
     }
-
-    let isMounted = true;
-    setValidating(true);
-
-    const checkInvite = async () => {
-      const actionToPerform = (resolvedAction || getActionFromContext() || '').trim().toLowerCase();
-
-      // If the incoming intent is explicitly to REJECT, execute rejection immediately
-      // and do not evaluate registration or auto-login workflows.
-      if (actionToPerform === 'reject') {
-        await handleRejectInvitation();
-        // Best-effort fetch invite metadata for clean community/role presentation
-        try {
-          const query = new URLSearchParams();
-          if (tokenToValidate) query.append('token', tokenToValidate);
-          if (emailToValidate) query.append('email', emailToValidate);
-          const res: any = await apiClient.get(`/auth/validate-invite?${query.toString()}`);
-          const data = res?.data?.data || res?.data || res;
-          if (isMounted && data) {
-            setInviteMeta(data);
-          }
-        } catch (_) {}
-        if (isMounted) setValidating(false);
-        return;
-      }
-
-      try {
-        const query = new URLSearchParams();
-        if (tokenToValidate) query.append('token', tokenToValidate);
-        if (emailToValidate) query.append('email', emailToValidate);
-
-        const res: any = await apiClient.get(`/auth/validate-invite?${query.toString()}`);
-        const data = res?.data?.data || res?.data || res;
-
-        if (isMounted && data) {
-          setInviteMeta(data);
-          const state = String(data.state || '').toUpperCase();
-          const targetEmail = (data.invitedEmail || data.email || emailToValidate || '').trim().toLowerCase();
-          const isMismatch =
-            state === 'ACCOUNT_MISMATCH' ||
-            state === 'ALREADY_ACCEPTED_OTHER_ACCOUNT' ||
-            Boolean(isAuthenticated && loggedInEmail && targetEmail && loggedInEmail !== targetEmail);
-
-          if (isMismatch) {
-            setApiError(null);
-            setIsAlreadyRegistered(false);
-            try {
-              await logout();
-              clearStatus();
-            } catch (_) {}
-
-            if (data.isExisting || data.isAlreadyRegistered) {
-              handleNavigateToLogin(targetEmail, tokenToValidate);
-              return;
-            }
-          } else if (state === 'ALREADY_ACCEPTED') {
-            const userEmail = data.invitedEmail || data.email || emailToValidate;
-            setIsAlreadyRegistered(true);
-            setAlreadyRegisteredEmail(userEmail);
-            if (!isAuthenticated) setIsAlreadyRegisteredModalVisible(true);
-          } else if (data.valid) {
-            setApiError(null);
-            if (data.membershipStatus === 'Rejected' || data.invitationStatus === 'REJECTED') {
-              setIsRejectedState(true);
-            } else if (data.isExisting || data.isAlreadyRegistered) {
-              const userEmail = data.email || emailToValidate;
-              setIsAlreadyRegistered(true);
-              setAlreadyRegisteredEmail(userEmail);
-
-              if (!isAuthenticated) {
-                setIsAlreadyRegisteredModalVisible(true);
-
-                if (Platform.OS !== 'web') {
-                  Alert.alert(
-                    'Already Registered',
-                    'Your account is already active and your password has been set. Please sign in to access your community workspace.',
-                    [
-                      {
-                        text: 'Sign In',
-                        onPress: () => handleNavigateToLogin(userEmail),
-                      },
-                    ]
-                  );
-                }
-              }
-            }
-          } else {
-            // Handle non-valid status responses returned from backend state matrix
-            const invStatus = (
-              data.state ||
-              data.invitationStatus ||
-              data.membershipStatus ||
-              ''
-            ).toUpperCase();
-            if (invStatus === 'REJECTED') {
-              setIsRejectedState(true);
-            } else if (invStatus === 'ACCEPTED') {
-              const userEmail = data.email || emailToValidate;
-              setIsAlreadyRegistered(true);
-              setAlreadyRegisteredEmail(userEmail);
-            } else {
-              setIsInvalidTokenModalVisible(true);
-              setApiError(data.message || 'This invitation link is invalid or has expired.');
-            }
-          }
-        }
-      } catch (err: any) {
-        if (isMounted) {
-          const errMsg = err?.response?.data?.message || err?.message || '';
-          if (errMsg.toLowerCase().includes('reject')) {
-            setIsRejectedState(true);
-            setApiError(null);
-          } else if (
-            errMsg.toLowerCase().includes('already active') ||
-            errMsg.toLowerCase().includes('already registered') ||
-            (errMsg.toLowerCase().includes('already') &&
-              (errMsg.toLowerCase().includes('accepted') ||
-                errMsg.toLowerCase().includes('member')))
-          ) {
-            setIsAlreadyRegistered(true);
-            setAlreadyRegisteredEmail(emailToValidate);
-            setIsAlreadyRegisteredModalVisible(true);
-          } else {
-            setIsInvalidTokenModalVisible(true);
-            setApiError(errMsg || 'This invitation link is invalid or has expired.');
-          }
-        }
-      } finally {
-        if (isMounted) setValidating(false);
-      }
-    };
-
-    checkInvite();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    isInitialized,
-    isAuthenticated,
-    user?.id,
-    resolvedToken,
-    getTokenFromContext,
-    resolvedAction,
-    getActionFromContext,
-    searchParams.email,
-    handleNavigateToLogin,
-    handleRejectInvitation,
-  ]);
-
-  useEffect(() => {
-    if (
-      !isInitialized ||
-      !isAuthenticated ||
-      !isAlreadyAccepted ||
-      !inviteMeta?.orgId ||
-      acceptedNavigationRef.current
-    )
-      return;
-    acceptedNavigationRef.current = true;
-    setSubmitting(true);
-    switchWorkspaceContext({ targetOrgId: inviteMeta.orgId })
-      .unwrap()
-      .then(() => router.replace('/(resident)/dashboard'))
-      .catch((err: any) => {
-        acceptedNavigationRef.current = false;
-        setApiError(err?.message || 'Unable to activate the invited workspace.');
+    setPendingInviteToken(token);
+    authService
+      .validateInvite(token)
+      .then((res: any) => {
+        const data = res?.data?.data || res?.data || {};
+        setMeta(data);
+        setState(data.valid === false || ['EXPIRED', 'REVOKED', 'REJECTED'].includes(data.state) ? 'invalid' : 'valid');
       })
-      .finally(() => setSubmitting(false));
-  }, [
-    isInitialized,
-    isAuthenticated,
-    isAlreadyAccepted,
-    inviteMeta?.orgId,
-    switchWorkspaceContext,
-  ]);
+      .catch((err: any) => {
+        setMeta({ message: err?.response?.data?.message || t('invite_invalid', 'This invitation is no longer valid.') });
+        setState('invalid');
+      });
+  }, [token]);
 
-  useEffect(() => {
-    clearStatus();
-    return () => {
-      clearStatus();
-      if (
-        Platform.OS === 'web' &&
-        typeof document !== 'undefined' &&
-        document.activeElement instanceof HTMLElement
-      ) {
-        document.activeElement.blur();
-      }
-    };
-  }, [clearStatus]);
+  const stepIn = async () => {
+    setMessage(null);
+    if (!isAuthenticated) {
+      // Same sign-in page as everyone else; the invitation travels with it
+      router.replace({ pathname: '/(auth)/login', params: { inviteToken: token, email: meta.invitedEmail || meta.email || '' } });
+      return;
+    }
+    setBusy(true);
+    const result: any = await respondToInvitation({ action: 'accept', inviteToken: token });
+    setBusy(false);
+    if (result?.meta?.requestStatus === 'fulfilled') {
+      clearPendingInviteToken();
+      router.replace('/');
+      return;
+    }
+    setMessage(result?.payload?.message || t('invite_accept_failed', 'Could not accept this invitation.'));
+  };
 
-  const onSubmit = async (data: AcceptInviteFormValues) => {
-    setSubmitting(true);
-    setApiError(null);
-    let targetEmail = (searchParams.email || inviteMeta?.email || '').trim();
-    const inviteToken = (resolvedToken || getTokenFromContext() || '').trim();
-
+  const decline = async () => {
+    setBusy(true);
+    setMessage(null);
     try {
-
-      // Dispatch acceptInviteThunk via useAuth to activate membership and persist session
-      const actionResult: any = await acceptInvite(
-        inviteToken,
-        data.password,
-        targetEmail || undefined
-      );
-
-      if (acceptInviteThunk.fulfilled.match(actionResult)) {
-        // Session successfully adopted into Redux store and async storage!
-        // Immediately navigate to resident dashboard with the accepted community workspace context
-        router.replace('/(resident)/dashboard');
-        return;
-      }
-
-      // If rejected, inspect the error message
-      const errMsg =
-        (actionResult?.payload as string) ||
-        actionResult?.error?.message ||
-        'Failed to save password.';
-
-      if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('active')) {
-        // User account is already active -> redirect to login page with email prefilled
-        handleNavigateToLogin(targetEmail, inviteToken);
-      } else {
-        setApiError(errMsg);
-      }
+      await authService.rejectInvite({ token });
+      clearPendingInviteToken();
+      setState('declined');
     } catch (err: any) {
-      const errMsg = err?.response?.data?.message || err?.message || 'Failed to save password.';
-      if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('active')) {
-        // User account is already active -> directly redirect to login page immediately
-        handleNavigateToLogin(targetEmail, inviteToken);
-      } else {
-        setApiError(errMsg);
-      }
+      setMessage(err?.response?.data?.message || t('invite_decline_failed', 'Could not decline this invitation.'));
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   };
 
-  const handleSaveAndConfirm = () => {
-    form.handleSubmit(
-      (validData) => onSubmit(validData),
-      (_errors) => {
-        const currentVals = form.getValues();
-        onSubmit(currentVals);
-      }
-    )();
+  const signInAsSomeoneElse = async () => {
+    await logout();
+    router.replace({ pathname: '/(auth)/login', params: { inviteToken: token } });
   };
 
-  const handleSsoSuccess = useCallback((_data: any) => {
-    router.replace('/(resident)/dashboard');
-  }, []);
-
-  const handleSsoError = useCallback((err: any) => {
-    const msg =
-      typeof err === 'string' ? err : err?.message || 'Failed to accept invitation with SSO';
-    setApiError(msg);
-  }, []);
-
-  const currentInviteToken = (resolvedToken || getTokenFromContext() || '').trim();
+  const detail = (Icon: any, label: string, value?: string) =>
+    value ? (
+      <View className="flex-row items-center gap-2.5">
+        <Icon size={16} className="text-muted-foreground" />
+        <Text className="text-xs text-muted-foreground w-28">{label}</Text>
+        <Text className="text-sm font-semibold text-foreground flex-1" numberOfLines={1}>{value}</Text>
+      </View>
+    ) : null;
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Accept Workspace Invitation', headerBackVisible: true }} />
-      <KeyboardAvoidingShell
-        className="bg-background"
-        scrollViewProps={{
-          contentContainerStyle: {
-            paddingHorizontal: 16,
-            paddingVertical: 24,
-            flexGrow: 1,
-            paddingBottom: 80,
-          },
-          automaticallyAdjustKeyboardInsets: Platform.OS === 'ios',
-        }}>
-        <View className="mx-auto w-full max-w-sm flex-1 justify-center gap-5 py-2 sm:max-w-md sm:py-4">
-          {/* Header / Brand Icon */}
-          <View className="mb-1 items-center">
-            <View
-              className={`${isRejectedState ? 'bg-red-500/10' : 'bg-primary/10'} mb-2.5 items-center justify-center rounded-2xl p-3.5`}>
-              {isRejectedState ? (
-                <XCircle className="size-9 text-red-600 dark:text-red-400" size={34} />
-              ) : (
-                <ShieldCheck className="size-9 text-primary" size={34} />
-              )}
-            </View>
-            <Text className="text-center text-2xl font-extrabold tracking-tight text-foreground">
-              {isRejectedState ? 'Invitation Declined' : 'Accept Invitation'}
-            </Text>
-            <Text className="mt-1 px-2 text-center text-sm text-muted-foreground">
-              {isRejectedState
-                ? 'You have declined this workspace invitation'
-                : 'Set up your password to activate your account and join your community workspace'}
-            </Text>
-          </View>
-
-          {isResolvingInvite ? <AppLoader variant="inline" /> : null}
-
-          {/* CASE 0: Invitation Rejected State */}
-          {!isResolvingInvite && isRejectedState ? (
-            <View className="shadow-xs items-center gap-4 rounded-2xl border border-border bg-card p-6">
-              <View className="items-center justify-center rounded-full border border-red-500/20 bg-red-500/10 p-4">
-                <XCircle size={38} className="text-red-600 dark:text-red-400" />
-              </View>
-              <View className="items-center gap-1.5">
-                <Text className="text-center text-xl font-extrabold text-foreground">
-                  Invitation Declined
+      <Stack.Screen options={{ headerShown: false }} />
+      <ImageBackground
+        source={require('../../assets/images/auth-bg.jpg')}
+        style={{ flex: 1 }}
+        blurRadius={Platform.OS === 'ios' ? 3 : 2}
+        resizeMode="cover"
+      >
+        <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} className="p-6">
+          <View className="max-w-sm mx-auto w-full bg-white/80 dark:bg-[#1C1917]/80 border border-white/70 dark:border-white/15 rounded-3xl p-6 gap-4">
+            {state === 'loading' ? (
+              <ActivityIndicator />
+            ) : state === 'declined' ? (
+              <>
+                <Text className="text-xl font-extrabold text-foreground text-center">{t('invite_declined', 'Invitation declined')}</Text>
+                <Text className="text-sm text-muted-foreground text-center">
+                  {t('invite_declined_help', 'You will not be added to this community. You can close this screen.')}
                 </Text>
-                <Text className="px-2 text-center text-sm text-muted-foreground">
-                  {inviteMeta?.orgName
-                    ? `You have declined the invitation to join ${inviteMeta.orgName}.`
-                    : 'You have declined this workspace invitation.'}
+                <Button variant="ghost" onPress={() => router.replace('/')}>
+                  <Text className="text-primary font-semibold">{t('done', 'Done')}</Text>
+                </Button>
+              </>
+            ) : state === 'invalid' ? (
+              <>
+                <Text className="text-xl font-extrabold text-foreground text-center">{t('invite_unavailable', 'Invitation unavailable')}</Text>
+                <Text testID="invite-invalid-message" className="text-sm text-muted-foreground text-center">
+                  {meta.message || t('invite_invalid', 'This invitation is no longer valid.')}
                 </Text>
-                {inviteMeta?.role ? (
-                  <Text className="mt-1 text-center text-xs text-muted-foreground">
-                    Role: <Text className="font-semibold text-foreground">{inviteMeta.role}</Text>
+                <Button variant="ghost" onPress={() => router.replace('/(auth)/login')}>
+                  <Text className="text-primary font-semibold">{t('go_to_sign_in', 'Go to sign in')}</Text>
+                </Button>
+              </>
+            ) : (
+              <>
+                <View className="items-center gap-2">
+                  <View className="bg-primary/10 p-4 rounded-full">
+                    <Building2 size={28} className="text-primary" />
+                  </View>
+                  <Text className="text-xl font-extrabold text-foreground text-center">
+                    {t('invited_to', "You're invited to")} {meta.orgName || t('a_community', 'a community')}
                   </Text>
-                ) : null}
-                <Text className="mt-1 px-2 text-center text-xs text-muted-foreground">
-                  No further action is required. You will not be added to this community.
-                </Text>
-              </View>
-              <Button
-                onPress={() => {
-                  if (router.canGoBack()) {
-                    router.back();
-                  } else {
-                    try {
-                      router.replace('/');
-                    } catch (_) {}
-                  }
-                }}
-                variant="outline"
-                className="mt-3 h-12 w-full items-center justify-center rounded-xl border-border"
-                textClassName="font-semibold text-sm text-foreground">
-                Close
-              </Button>
-              <Button
-                onPress={() => handleNavigateToLogin()}
-                variant="ghost"
-                className="h-10 w-full items-center justify-center"
-                textClassName="text-xs text-muted-foreground">
-                Sign in with an existing account
-              </Button>
-            </View>
-          ) : null}
-
-          {/* CASE 1A: Authenticated Session with Account Mismatch */}
-          {!isResolvingInvite && !isRejectedState && isAccountMismatch ? (
-            <View className="shadow-xs items-center gap-4 rounded-2xl border border-border bg-card p-6">
-              <View className="items-center justify-center rounded-full border border-orange-500/20 bg-orange-500/10 p-4">
-                <AlertCircle size={38} className="text-orange-500" />
-              </View>
-              <View className="w-full items-center gap-2">
-                <Text className="text-center text-xl font-extrabold text-foreground">
-                  Different Account Invited
-                </Text>
-                <Text className="mt-2 px-2 text-center text-sm text-muted-foreground">
-                  You are currently signed in as <Text className="font-bold text-foreground">{user?.email}</Text>.
-                </Text>
-                <Text className="px-2 text-center text-sm text-muted-foreground">
-                  However, this invitation is intended for:
-                </Text>
-                <View className="mb-2 mt-1 w-full items-center rounded-xl border border-primary/20 bg-primary/10 px-3.5 py-3">
-                  <Text className="font-bold text-base text-primary">{targetInviteEmail}</Text>
                 </View>
-              </View>
+                <View className="gap-2.5 bg-muted/40 rounded-2xl p-3.5">
+                  {detail(Building2, t('community', 'Community'), meta.orgName)}
+                  {detail(Mail, t('registered_email', 'Registered email'), meta.invitedEmail || meta.email)}
+                  {detail(ShieldCheck, t('role', 'Role'), meta.role)}
+                  {detail(Home, t('unit', 'Unit'), meta.unit)}
+                </View>
 
-              {apiError ? <ErrorBanner message={apiError} /> : null}
-
-              <View className="mt-2 w-full flex-col gap-3">
-                <Button
-                  onPress={() => handleSignOutAndSwitch(targetInviteEmail)}
-                  loading={submitting}
-                  className="h-12 w-full items-center justify-center rounded-xl bg-primary"
-                  textClassName="font-bold text-base">
-                  Sign Out & Continue as {targetInviteEmail || 'Invited User'}
-                </Button>
-                <Button
-                  onPress={() => router.replace('/(resident)/dashboard')}
-                  variant="outline"
-                  className="h-12 w-full items-center justify-center rounded-xl border-border"
-                  textClassName="font-semibold text-base text-foreground">
-                  Stay Signed In as {user?.email}
-                </Button>
-              </View>
-            </View>
-          ) : null}
-
-          {/* CASE 1B: Authenticated Session with Matching Account (Joining Workspace) */}
-          {!isResolvingInvite &&
-          !isRejectedState &&
-          !isAccountMismatch &&
-          !isAlreadyAccepted &&
-          isAuthenticated ? (
-            <View className="shadow-xs items-center gap-4 rounded-2xl border border-border bg-card p-6">
-              <View className="items-center justify-center rounded-full border border-primary/20 bg-primary/10 p-4">
-                <Building2 size={38} className="text-primary" />
-              </View>
-              <View className="items-center gap-1.5">
-                <Text className="text-center text-xl font-extrabold text-foreground">
-                  Join {inviteMeta?.orgName || 'Community Workspace'}
-                </Text>
-                <Text className="px-2 text-center text-sm text-muted-foreground">
-                  You have been invited to join{' '}
-                  <Text className="font-bold text-foreground">
-                    {inviteMeta?.orgName || 'this community'}
-                  </Text>
-                  .
-                </Text>
-                {inviteMeta?.role ? (
-                  <Text className="mt-1 text-center text-xs text-muted-foreground">
-                    Role: <Text className="font-semibold text-foreground">{inviteMeta.role}</Text>
-                    {inviteMeta.unit || inviteMeta.villa ? (
-                      <>
-                        {' '}
-                        • Unit:{' '}
-                        <Text className="font-semibold text-foreground">
-                          {inviteMeta.unit || inviteMeta.villa}
-                        </Text>
-                      </>
-                    ) : null}
-                  </Text>
-                ) : null}
-                <Text className="mt-1 px-2 text-center text-xs text-muted-foreground">
-                  Accepting will add this community to your available workspaces and switch your
-                  active workspace immediately.
-                </Text>
-              </View>
-
-              {apiError ? <ErrorBanner message={apiError} /> : null}
-
-              {apiError &&
-              (apiError.toLowerCase().includes('identity') ||
-                apiError.toLowerCase().includes('match')) ? (
-                <Button
-                  onPress={() => handleSignOutAndSwitch(targetInviteEmail)}
-                  loading={submitting}
-                  variant="outline"
-                  className="mt-1 h-11 w-full items-center justify-center rounded-xl border-primary/40"
-                  textClassName="font-semibold text-sm text-primary">
-                  Sign Out to Switch Accounts
-                </Button>
-              ) : null}
-
-              <View className="mt-2 w-full flex-col gap-2.5">
-                <Button
-                  onPress={handleAcceptAuthenticatedInvite}
-                  loading={submitting}
-                  disabled={isRejecting}
-                  className="h-12 w-full items-center justify-center rounded-xl bg-primary"
-                  textClassName="font-bold text-base">
-                  Accept & Switch Workspace
-                </Button>
-                <Button
-                  onPress={handleRejectInvitation}
-                  loading={isRejecting}
-                  disabled={submitting}
-                  variant="outline"
-                  className="h-11 w-full items-center justify-center rounded-xl border-red-500/30"
-                  textClassName="font-semibold text-sm text-red-600">
-                  Reject Invitation
-                </Button>
-              </View>
-            </View>
-          ) : null}
-
-          {/* CASE 1C: Unauthenticated User - Account Already Registered / Active State */}
-          {!isResolvingInvite && !isRejectedState && !isAuthenticated && isAlreadyRegistered ? (
-            <View className="shadow-xs items-center gap-4 rounded-2xl border border-border bg-card p-6">
-              <View className="items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10 p-4">
-                <CheckCircle2 size={38} className="text-emerald-600 dark:text-emerald-400" />
-              </View>
-              <View className="items-center gap-1.5">
-                <Text className="text-center text-xl font-extrabold text-foreground">
-                  Account Already Active
-                </Text>
-                <Text className="px-2 text-center text-sm text-muted-foreground">
-                  {alreadyRegisteredEmail
-                    ? `Your account for ${alreadyRegisteredEmail} has already been registered and your password is configured.`
-                    : 'Your account has already been registered and your password is configured.'}
-                </Text>
-                <Text className="mt-1 text-center text-xs text-muted-foreground">
-                  Please sign in with your email and password to enter your workspace.
-                </Text>
-              </View>
-              <Button
-                onPress={() => handleNavigateToLogin(alreadyRegisteredEmail)}
-                className="mt-3 h-12 w-full items-center justify-center rounded-xl bg-primary"
-                textClassName="font-bold text-base">
-                Sign In to Workspace
-              </Button>
-            </View>
-          ) : null}
-
-          {/* CASE 2: Invalid or Expired Token State */}
-          {!isResolvingInvite &&
-          !isRejectedState &&
-          !isAlreadyRegistered &&
-          isInvalidTokenModalVisible &&
-          apiError ? (
-            <View className="shadow-xs items-center gap-4 rounded-2xl border border-border bg-card p-6">
-              <View className="items-center justify-center rounded-full border border-amber-500/20 bg-amber-500/10 p-4">
-                <AlertCircle size={38} className="text-amber-600 dark:text-amber-400" />
-              </View>
-              <View className="items-center gap-1.5">
-                <Text className="text-center text-xl font-extrabold text-foreground">
-                  Invitation Expired or Used
-                </Text>
-                <Text className="px-2 text-center text-sm text-muted-foreground">{apiError}</Text>
-                <Text className="mt-1 text-center text-xs text-muted-foreground">
-                  If you already set your password, you can sign in directly to your account.
-                </Text>
-              </View>
-              <Button
-                onPress={() => handleNavigateToLogin()}
-                className="mt-3 h-12 w-full items-center justify-center rounded-xl bg-primary"
-                textClassName="font-bold text-base">
-                Go to Sign In
-              </Button>
-            </View>
-          ) : null}
-
-          {/* CASE 3: Normal Form Container (Unauthenticated, Token valid, not yet registered, not rejected) */}
-          {!isResolvingInvite &&
-          !isRejectedState &&
-          !isAuthenticated &&
-          !isAlreadyRegistered &&
-          (!isInvalidTokenModalVisible || !apiError) ? (
-            <View className="shadow-xs gap-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
-              <View className="gap-3.5">
-                {inviteMeta ? (
-                  <View className="mb-1 rounded-xl border border-primary/20 bg-primary/5 p-3">
-                    <Text className="mb-1 font-bold text-xs text-primary">
-                      Community: {inviteMeta.orgName || 'Nahom Community'}
-                    </Text>
-                    {(() => {
-                      const unitValue = (inviteMeta.unit || inviteMeta.villa || '').trim();
-                      const isInvalidUnit =
-                        !unitValue ||
-                        unitValue.toLowerCase() === 'none' ||
-                        (inviteMeta.role &&
-                          unitValue.toLowerCase() === inviteMeta.role.trim().toLowerCase());
-                      if (isInvalidUnit) return null;
-                      return (
-                        <Text className="text-xs text-muted-foreground">
-                          Unit: <Text className="font-semibold text-foreground">{unitValue}</Text>
-                        </Text>
-                      );
-                    })()}
-                    {inviteMeta.role ? (
-                      <Text className="text-xs text-muted-foreground">
-                        Role:{' '}
-                        <Text className="font-semibold text-foreground">{inviteMeta.role}</Text>
-                      </Text>
-                    ) : null}
+                {message ? (
+                  <View className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 gap-2">
+                    <Text className="text-destructive text-xs text-center font-medium">{message}</Text>
+                    {isAuthenticated && (
+                      <Button variant="ghost" className="h-8" onPress={signInAsSomeoneElse}>
+                        <Text className="text-primary text-xs font-semibold">{t('sign_in_different_account', 'Sign in with a different account')}</Text>
+                      </Button>
+                    )}
                   </View>
                 ) : null}
 
-                {/* Password Form (Wrapped in form on Web to satisfy browser password managers) */}
-                {Platform.OS === 'web' ? (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleSaveAndConfirm();
-                    }}
-                    style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
-                    {/* New Password Field */}
-                    <Controller
-                      control={form.control}
-                      name="password"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <View>
-                          <Input
-                            label="New Password"
-                            placeholder="••••••••"
-                            isPassword
-                            leftIcon={<Lock size={18} className="me-1 text-muted-foreground" />}
-                            onBlur={onBlur}
-                            onChangeText={onChange}
-                            value={value}
-                            autoCapitalize="none"
-                            autoComplete="new-password"
-                            error={form.formState.errors.password?.message}
-                          />
-                          <PasswordStrengthIndicator password={value} />
-                        </View>
-                      )}
-                    />
-
-                    {/* Confirm Password Field */}
-                    <Controller
-                      control={form.control}
-                      name="confirmPassword"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <Input
-                          label="Confirm New Password"
-                          placeholder="••••••••"
-                          isPassword
-                          leftIcon={<Lock size={18} className="me-1 text-muted-foreground" />}
-                          onBlur={onBlur}
-                          onChangeText={onChange}
-                          value={value}
-                          autoCapitalize="none"
-                          autoComplete="new-password"
-                          error={form.formState.errors.confirmPassword?.message}
-                        />
-                      )}
-                    />
-                  </form>
+                {wantsDecline ? (
+                  <Button testID="invite-decline" className="h-12" disabled={busy} onPress={decline} variant="destructive">
+                    {busy ? <ActivityIndicator color="#fff" /> : <Text className="font-bold text-white">{t('decline_invitation', 'Decline invitation')}</Text>}
+                  </Button>
                 ) : (
                   <>
-                    {/* New Password Field */}
-                    <Controller
-                      control={form.control}
-                      name="password"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <View>
-                          <Input
-                            label="New Password"
-                            placeholder="••••••••"
-                            isPassword
-                            leftIcon={<Lock size={18} className="me-1 text-muted-foreground" />}
-                            onBlur={onBlur}
-                            onChangeText={onChange}
-                            value={value}
-                            autoCapitalize="none"
-                            autoComplete="new-password"
-                            error={form.formState.errors.password?.message}
-                          />
-                          <PasswordStrengthIndicator password={value} />
-                        </View>
+                    <Button testID="invite-step-in" className="h-12" disabled={busy} onPress={stepIn}>
+                      {busy ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text className="font-bold text-primary-foreground">{t('step_into_community', 'Step Into Your Community')}</Text>
                       )}
-                    />
-
-                    {/* Confirm Password Field */}
-                    <Controller
-                      control={form.control}
-                      name="confirmPassword"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <Input
-                          label="Confirm New Password"
-                          placeholder="••••••••"
-                          isPassword
-                          leftIcon={<Lock size={18} className="me-1 text-muted-foreground" />}
-                          onBlur={onBlur}
-                          onChangeText={onChange}
-                          value={value}
-                          autoCapitalize="none"
-                          autoComplete="new-password"
-                          error={form.formState.errors.confirmPassword?.message}
-                        />
-                      )}
-                    />
+                    </Button>
+                    <Button testID="invite-decline" variant="ghost" className="h-10" disabled={busy} onPress={decline}>
+                      <Text className="text-muted-foreground text-sm font-semibold">{t('decline_invitation', 'Decline invitation')}</Text>
+                    </Button>
                   </>
                 )}
-
-                {/* Global Error Banner */}
-                {apiError ? <ErrorBanner message={apiError} /> : null}
-
-                {/* Accept & Reject Action Buttons */}
-                <View className="mt-2 flex-col gap-2 sm:flex-row">
-                  <Button
-                    onPress={handleSaveAndConfirm}
-                    loading={submitting}
-                    disabled={isRejecting}
-                    textClassName="font-bold text-base text-white"
-                    className="h-12 flex-1 items-center justify-center rounded-xl bg-emerald-600">
-                    Accept Invitation
-                  </Button>
-                  <Button
-                    onPress={handleRejectInvitation}
-                    loading={isRejecting}
-                    disabled={submitting}
-                    variant="outline"
-                    className="h-12 items-center justify-center rounded-xl border-red-500/30 px-4"
-                    textClassName="font-semibold text-sm text-red-600">
-                    Reject
-                  </Button>
-                </View>
-              </View>
-
-              {/* SSO Separator */}
-              <View className="my-2 flex-row items-center">
-                <View className="h-px flex-1 bg-border" />
-                <Text className="px-3 font-semibold text-[11px] uppercase tracking-wider text-muted-foreground">
-                  OR ACCEPT WITH SSO
-                </Text>
-                <View className="h-px flex-1 bg-border" />
-              </View>
-
-              {/* SSO Buttons */}
-              <View className="flex-col gap-2.5 sm:flex-row sm:gap-3">
-                <View className="flex-1">
-                  <GoogleSignInButton
-                    inviteToken={currentInviteToken}
-                    onSuccess={handleSsoSuccess}
-                    onError={handleSsoError}
-                  />
-                </View>
-                {Platform.OS === 'ios' ? (
-                  <View className="flex-1">
-                    <AppleSignInButton
-                      inviteToken={currentInviteToken}
-                      onSuccess={handleSsoSuccess}
-                      onError={handleSsoError}
-                    />
-                  </View>
-                ) : null}
-              </View>
-
-              {/* Return to Login Link */}
-              <View className="mt-2 items-center">
-                <Button variant="link" onPress={() => router.push({ pathname: '/(auth)/login' })}>
-                  <Text className="font-medium text-sm text-primary">
-                    Already have an active account? Sign In
-                  </Text>
-                </Button>
-              </View>
-            </View>
-          ) : null}
-        </View>
-      </KeyboardAvoidingShell>
-
-      {/* MODAL 1: Account Already Registered Notification Popup */}
-      <ConfirmationModal
-        visible={isAlreadyRegisteredModalVisible}
-        title="Already Registered"
-        message="Your account is already active and your password has been set. Please sign in to access your workspace."
-        confirmLabel="Sign In"
-        cancelLabel="Dismiss"
-        variant="info"
-        onConfirm={() => {
-          setIsAlreadyRegisteredModalVisible(false);
-          handleNavigateToLogin(alreadyRegisteredEmail);
-        }}
-        onCancel={() => setIsAlreadyRegisteredModalVisible(false)}
-      />
-
-      {/* MODAL 2: Invalid or Expired Token Popup */}
-      <ConfirmationModal
-        visible={isInvalidTokenModalVisible && !isAlreadyRegistered}
-        title="Invitation Link Expired"
-        message="This invitation link is invalid or has already been used. If you have already set up your password, please sign in."
-        confirmLabel="Go to Sign In"
-        cancelLabel="Dismiss"
-        variant="warning"
-        onConfirm={() => {
-          setIsInvalidTokenModalVisible(false);
-          handleNavigateToLogin();
-        }}
-        onCancel={() => setIsInvalidTokenModalVisible(false)}
-      />
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </ImageBackground>
     </>
   );
 }

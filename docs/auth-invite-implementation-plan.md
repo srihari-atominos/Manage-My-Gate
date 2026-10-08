@@ -247,3 +247,33 @@ _Each phase appends: date, commit, completed, deferred, blockers, tests._
 **Tests**
 - New `backend/tests/auth.phase4.platform.test.mjs`: 13/13 (incl. community admin locked out of CRM, pricing, provisioning and other communities' admins).
 - Phases 0–3: 19, 13, 16, 16 all passing; phone 17/17, google 8/8, apple 6/6, payment.security 4/4; multiOrgAuth 13/15 (same pre-existing failures).
+
+### Phase 5 — 2026-10-08
+
+**Completed (mobile)**
+- Login: Email + code, Phone + code, Google, Apple. No password field, no "Forgot?", no "Create Community" (replaced by "New here? Ask your community admin to invite you."). An invitation link's token is kept for the session (`auth/utils/inviteContext.ts`) and a banner explains which account to sign in with.
+- Code screen: story messages driven by the server's codes — "Incorrect OTP. N attempts remaining.", "Request New OTP" once a code is used up or expired, "Didn't receive the OTP? Resend available in N seconds" (25 s, or the server's `retryAfterSeconds`). Sends the pending invite token with the code.
+- `(auth)/pending-invitations`: choose exactly one invitation to accept or decline (with the identity ticket, or signed in). Also reachable from the community switcher ("Pending invitations", replacing "Create New Organization").
+- `(auth)/no-community`: signed in with no community — check invitations or sign out.
+- `(auth)/accept-invite` rebuilt (1,107 → ~200 lines) as the "Step Into Your Community" landing: validates the link, shows community/email/role/unit, then sends the person to the same sign-in (or accepts directly when already signed in); decline supported, including the email's reject link. The link never signs anyone in.
+- SSO requests carry the pending invite token; Apple no longer uses the legacy accept-invite/sso endpoint; unknown SSO users get an "ask for an invitation" message instead of a sign-up screen.
+- First screen from the server's `landing` (`auth/utils/landing.ts`), used by the start route and the root guard.
+- Every sign-in path stores the same login result (`persistLoginResult`), including `landing`.
+- Force update: `ForceUpdateGate` checks `GET /public/app/config` (`MOBILE_MIN_SUPPORTED_VERSION`) and blocks older builds with a store link; fails open.
+- Removed: signup, register, register-otp, forgot-password, setup-organization, select-features screens; the organization (self-serve creation) feature and its store slice; unused Google/Microsoft button components.
+
+**Completed (backend)**
+- `/auth/invitations/accept|decline` also accept `inviteToken` (signed-in user answering a link).
+- `GET /api/v1/public/app/config` with `minSupportedVersion` and store links.
+
+**Deviations**
+- Platform accounts still land on the dashboard (it already has platform tiles such as Organizations and Audit logs) instead of a "use the web console" screen; redirecting would have removed working features.
+- Password-era thunks (`loginUser`, register, reset, `acceptInviteThunk`) remain in the auth slice but are unreachable from the UI; removed in Phase 8 with the endpoints.
+
+**Found on the way**
+- `npx tsc` never type-checked the app: `tsconfig.json` sets `ignoreDeprecations: "6.0"` but TypeScript 5.9 is installed, so tsc stops at a config error. Earlier phases' "tsc clean" notes were therefore not real checks. Checked here with a temporary config overriding only that option: no errors in changed files; 3 pre-existing errors elsewhere (`expo-location` missing, `expo-contacts` typing). Fixing the tsconfig/TypeScript version is left to the team.
+
+**Tests**
+- New mobile `auth/__tests__/invitationLogin.test.ts` (11: invite token passthrough, ticket result, attempts/cooldown details, accept/decline, landing routes, version compare, invite context) and `otpScreen.test.tsx` (5: countdown, attempts message, Request New OTP, invite hand-off, invitation choice). Mobile unit suite 699 passed / 29 failed — the 29 failures are 7 suites (amenities, roleBuilder, phone util) that fail identically on the pre-change code.
+- Backend Phase 3 suite extended to 19/19 (link-token accept while signed in, app config). Phases 0, 1, 2, 4: 19, 13, 16, 13.
+- Not covered: device testing (deep links, SSO on real devices) — Phase 7.

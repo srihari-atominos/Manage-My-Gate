@@ -790,7 +790,8 @@ export class AuthService {
    * Accept or decline one invitation chosen from the pending list. The caller is
    * either signed in, or holds a fresh identity ticket from OTP/SSO verification.
    */
-  async respondToInvitation({ action, invitationId, authUserId = null, ticket = null, deviceInfo = {} }) {
+  async respondToInvitation({ action, invitationId = null, inviteToken = null, authUserId = null, ticket = null, deviceInfo = {} }) {
+    const ref = inviteToken ? { rawToken: inviteToken } : { invitationId };
     const { verifyIdentityTicket, acceptInvitationForUser, declineInvitationForUser, emitInvitationAccepted } =
       await import('./invitationAcceptance.js');
     let userId = authUserId;
@@ -812,9 +813,9 @@ export class AuthService {
         throw new HttpError(403, 'Account is inactive or suspended.');
       }
       if (action === 'decline') {
-        ({ orgId } = await declineInvitationForUser(user, { invitationId }, session));
+        ({ orgId } = await declineInvitationForUser(user, ref, session));
       } else {
-        ({ orgId } = await acceptInvitationForUser(user, { invitationId }, verifiedVia, session));
+        ({ orgId } = await acceptInvitationForUser(user, ref, verifiedVia, session));
       }
       await session.commitTransaction();
     } catch (error) {
