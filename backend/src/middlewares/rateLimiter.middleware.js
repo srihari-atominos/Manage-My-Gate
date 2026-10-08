@@ -19,7 +19,8 @@ export const apiLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 60, // Limit each IP to 60 attempts per 15-minute window
+  // Per-IP backstop; per-identifier OTP limits live in otp.services. Overridable via env.
+  max: () => Number(process.env.AUTH_IP_RATE_LIMIT) || 60,
   skipSuccessfulRequests: true, // Do not penalize successful authentications
   standardHeaders: true,
   legacyHeaders: false,
@@ -34,7 +35,9 @@ export const authLimiter = rateLimit({
  */
 export const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per `window`
+  // Per-IP backstop only: many residents share one IP (carrier NAT, community Wi-Fi),
+  // so the real limits are per email/phone in otp.services. Overridable via env.
+  max: () => Number(process.env.OTP_IP_RATE_LIMIT) || 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

@@ -46,7 +46,7 @@ const SetPasswordPage = () => {
       }
       try {
         const response = await apiClient.get(
-          `/auth/check-account-status?email=${encodeURIComponent(emailParam)}`,
+          `/auth/check-account-status?email=${encodeURIComponent(emailParam)}&setupToken=${encodeURIComponent(setupTokenParam)}`,
         )
         const resData = response.data?.data || response.data || {}
         if (isMounted && resData.isAlreadyConfigured) {

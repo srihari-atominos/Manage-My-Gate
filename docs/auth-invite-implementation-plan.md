@@ -148,3 +148,26 @@ _Each phase appends: date, commit, completed, deferred, blockers, tests._
 - New `backend/tests/auth.phase0.security.test.mjs`: 19/19 (runs only against a DB named `*auth_test*`).
 - Existing: google 7/7, apple 6/6, payment.security 4/4, phone.lifecycle 11/11, phone.international 6/6. multiOrgAuth 13/15, auth.integration 0/1, session.lifecycle 13/14 — identical failures on the pre-change baseline.
 - Mobile `src/features/auth` Jest 8/8; `tsc` clean for accept-invite.
+
+### Phase 1 — 2026-10-08
+
+**Completed**
+- `otp.services.js` rewritten: expiry checked in code; 3 attempts then the code is deleted; atomic single-use consume; a new code invalidates earlier ones; failed attempts recorded **outside** the caller's transaction; Firebase failures counted via `recordFailedAttempt`.
+- New `OtpThrottle` collection (per email/phone): 25 s resend cooldown, 5 sends per hour then a 15-minute lock. Applies to unknown identifiers too.
+- Error codes in `details.code`: `OTP_INVALID {attemptsRemaining}`, `OTP_EXPIRED`, `OTP_EXHAUSTED`, `OTP_COOLDOWN {retryAfterSeconds}`, `OTP_LOCKED {retryAfterSeconds}`. Messages use the story's wording.
+- No enumeration: email-code, phone-code and forgot-password requests give the same response whether or not the account exists (nothing is sent for unknown ones); reset-code verification no longer checks the account first. `check-account-status` answers only signed-in inviters or a matching setup-token holder; everyone else gets `exists: false`.
+- Codes never appear in responses or logs unless `OTP_DEBUG=true` (and never in production): auth service, profile verification and the OTP email/SMS listener.
+- Duplicate `verifyResetPasswordOtp` removed (the later copy silently overrode the normalizing one).
+- Per-IP limiters are now a backstop: OTP 30/15 min (was 5 — too strict behind carrier NAT/community Wi-Fi), auth 60/15 min; both overridable via `OTP_IP_RATE_LIMIT` / `AUTH_IP_RATE_LIMIT`.
+
+**Found on the way**
+- Register, phone login and profile verification checked codes inside a transaction, so every failed attempt was rolled back: unlimited guesses on those flows. Fixed by recording failures outside the transaction (test covers phone login).
+
+**Deferred / noted**
+- The User model still requires a password for Active users (Phase 8).
+- Web `PublicCheckoutPage` used `check-account-status` anonymously; it now always gets `isAlreadyConfigured: false` (cosmetic: shows the "set password" state).
+- The mobile code screen's attempts/cooldown UI is Phase 5; today it shows the server message.
+
+**Tests**
+- New `backend/tests/auth.phase1.otp.test.mjs`: 13/13. Phase 0 suite 19/19.
+- Existing: phone.lifecycle 11/11, phone.international 6/6, google 7/7, apple 6/6, payment.security 4/4; multiOrgAuth 13/15 (same pre-existing failures).

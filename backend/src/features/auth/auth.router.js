@@ -310,7 +310,7 @@ router.post('/forgot-password/initiate', otpLimiter, validate(forgotPasswordRule
 router.post('/forgot-password/verify-otp', authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
 router.post('/reset-password', authLimiter, validate(resetPasswordRules), authController.resetPassword);
 router.post('/setup-account-password', authLimiter, validate(setupAccountPasswordRules), authController.setupAccountPassword);
-router.get('/check-account-status', authController.checkAccountStatus);
+router.get('/check-account-status', optionalAuth, authController.checkAccountStatus);
 
 // Session Routes
 router.post('/refresh-token', authController.refreshToken);

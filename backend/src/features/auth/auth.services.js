@@ -6,7 +6,7 @@ import { signToken, verifyToken } from '../../utils/jwt.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
 import tokenService from '../token/token.services.js';
-import otpService from '../otp/otp.services.js';
+import otpService, { isOtpDebugEnabled } from '../otp/otp.services.js';
 import sessionService from '../session/session.services.js';
 import userIdentityService from '../userIdentity/userIdentity.services.js';
 import integrationHubService from '../integrationHub/integrationHub.service.js';
@@ -14,6 +14,17 @@ import config from '../../config/config.js';
 import authEvents from './auth.events.js';
 import userEvents from '../user/user.events.js';
 import { normalizePhone } from '../../utils/phone.utils.js';
+
+// Same wording whether or not an account exists, so code requests can't reveal accounts
+const OTP_SENT_PHONE_MESSAGE = 'If an account exists for this phone number, a verification code has been sent.';
+const OTP_SENT_EMAIL_MESSAGE = 'If an account exists for this email, a verification code has been sent.';
+
+/** Plain codes are only echoed back when OTP_DEBUG=true outside production. */
+const devCodeField = (identifier, plainCode) => {
+  if (!isOtpDebugEnabled()) return {};
+  logger.info(`[OTP_DEBUG] Code for ${identifier}: ${plainCode}`);
+  return { devCode: plainCode };
+};
 
 export class AuthService {
   /**
@@ -122,17 +133,11 @@ export class AuthService {
         console.warn('[Register] Non-blocking CRM inquiry auto-creation error:', inqErr.message);
       }
       
-      const isDev = process.env.NODE_ENV !== 'production';
-      if (isDev) {
-        console.log('\n=========================================');
-        console.log(`[DEV MODE REGISTER] OTP for ${email} is: ${plainCode}`);
-        console.log('=========================================\n');
-      }
-
       return {
-        message: isDev ? `Registration successful. OTP sent for verification. (Dev Code: ${plainCode})` : 'Registration successful. OTP sent for verification.',
+        message: 'Registration successful. OTP sent for verification.',
         email: newUser.email,
-        status: 'Pending Verification'
+        status: 'Pending Verification',
+        ...devCodeField(email, plainCode),
       };
     } catch (error) {
       if (session) {
@@ -1615,9 +1620,13 @@ export class AuthService {
   async initiatePhoneLogin(phone) {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
+    await otpService.assertCanSend(normalizedPhone);
     const user = await userService.getUserByPhone(normalizedPhone);
     if (!user) {
-      throw new HttpError(404, 'This phone number is not registered. Please sign up first.');
+      // Same response (and same throttling) as a real account, so the endpoint
+      // can't be used to discover which numbers are registered. Nothing is sent.
+      await otpService.recordSend(normalizedPhone);
+      return { message: OTP_SENT_PHONE_MESSAGE };
     }
 
     // Check for Firebase Integration globally
@@ -1647,8 +1656,8 @@ export class AuthService {
         
         // Save the sessionInfo in OTP service to verify later
         await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, sessionInfo);
-        
-        return { message: 'OTP sent via Firebase successfully' };
+
+        return { message: OTP_SENT_PHONE_MESSAGE };
       }
     }
 
@@ -1668,14 +1677,7 @@ export class AuthService {
     // Emit event for SMS delivery
     authEvents.emit('OTP_SENT', { identifier: normalizedPhone, code: plainCode, type: 'SMS' });
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      console.log('\n=========================================');
-      console.log(`[DEV MODE SMS] OTP for ${normalizedPhone} is: ${plainCode}`);
-      console.log('=========================================\n');
-    }
-
-    return { message: isDev ? `OTP sent successfully (Dev Code: ${plainCode})` : 'OTP sent successfully' };
+    return { message: OTP_SENT_PHONE_MESSAGE, ...devCodeField(normalizedPhone, plainCode) };
   }
 
   /**
@@ -1715,8 +1717,8 @@ export class AuthService {
         });
 
         if (!response.ok) {
-          const responseData = await response.json();
-          throw new HttpError(400, `Firebase Verification Failed: ${responseData.error?.message || response.statusText}`);
+          // Count the failure against the code (throws OTP_INVALID / OTP_EXHAUSTED)
+          await otpService.recordFailedAttempt(normalizedPhone, 'LOGIN');
         }
       }
 
@@ -1783,23 +1785,19 @@ export class AuthService {
    * @param {string} email - User email address
    */
   async initiateEmailOtpLogin(email) {
+    await otpService.assertCanSend(email);
     const user = await userService.getUserByEmail(email);
-    
+
     if (!user) {
-      throw new HttpError(404, 'No account found with this email.');
+      // Identical response for unknown emails; nothing is sent
+      await otpService.recordSend(email);
+      return { message: OTP_SENT_EMAIL_MESSAGE };
     }
 
     const plainCode = await otpService.createOTP(email, 'LOGIN');
     authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      console.log('\n=========================================');
-      console.log(`[DEV MODE EMAIL] OTP for ${email} is: ${plainCode}`);
-      console.log('=========================================\n');
-    }
-
-    return { message: isDev ? `OTP sent to email (Dev Code: ${plainCode})` : 'OTP sent to email' };
+    return { message: OTP_SENT_EMAIL_MESSAGE, ...devCodeField(email, plainCode) };
   }
 
   /**
@@ -1879,26 +1877,23 @@ export class AuthService {
     const cleanId = typeof identifier === 'string'
       ? (identifier.includes('@') ? identifier.trim().toLowerCase() : identifier.replace(/\s+/g, ''))
       : identifier;
+    await otpService.assertCanSend(cleanId);
     const user = await userService.getUserByEmailOrPhone(cleanId);
 
     if (!user) {
-      throw new HttpError(404, 'No account found with this identifier.');
+      // Identical response for unknown identifiers; nothing is sent
+      await otpService.recordSend(cleanId);
+      return { message: 'Password reset instructions sent' };
     }
 
     const type = cleanId.includes('@') ? 'EMAIL' : 'SMS';
     const plainCode = await otpService.createOTP(cleanId, 'RESET');
-    
-    authEvents.emit('OTP_SENT', { identifier: cleanId, code: plainCode, type });
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      console.log('\n=========================================');
-      console.log(`[DEV MODE RESET] OTP for ${cleanId} is: ${plainCode}`);
-      console.log('=========================================\n');
-    }
+    authEvents.emit('OTP_SENT', { identifier: cleanId, code: plainCode, type });
 
     return {
       message: 'Password reset instructions sent',
+      ...devCodeField(cleanId, plainCode),
     };
   }
 
@@ -1911,11 +1906,7 @@ export class AuthService {
     const cleanId = typeof identifier === 'string'
       ? (identifier.includes('@') ? identifier.trim().toLowerCase() : identifier.replace(/\s+/g, ''))
       : identifier;
-    const user = await userService.getUserByEmailOrPhone(cleanId);
-    if (!user) {
-      throw new HttpError(404, 'No account found with this identifier.');
-    }
-
+    // No account means no code was ever issued, so verifyOTP fails the same way
     await otpService.verifyOTP(cleanId, code, 'RESET', null, false);
     return true;
   }
@@ -2386,10 +2377,6 @@ export class AuthService {
       invitationSource,
       ...identityFields,
     };
-  }
-
-  async verifyResetPasswordOtp(identifier, code) {
-    return await otpService.verifyOTP(identifier, code, 'RESET', null, false);
   }
 
   async setupAccountPassword(email, newPassword, deviceInfo = {}, orgNameFromReq = null, setupToken = null) {

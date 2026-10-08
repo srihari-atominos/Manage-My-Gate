@@ -322,8 +322,22 @@ export class AuthController {
 
   async checkAccountStatus(req, res, next) {
     try {
-      const { email } = req.query;
-      const data = await authService.checkAccountStatus(email);
+      const { email, setupToken } = req.query;
+      // Account existence is only revealed to someone entitled to know it:
+      // a signed-in inviter, or the holder of a setup link for that same email.
+      let allowed = false;
+      if (req.user) {
+        const { checkIsAdmin } = await import('../../middlewares/rbac.middleware.js');
+        const perms = Array.isArray(req.user.permissions) ? req.user.permissions : [];
+        allowed = (await checkIsAdmin(req)) || perms.includes('users:create') || perms.includes('villas:update');
+      } else if (setupToken && email) {
+        const { verifyAccountSetupToken } = await import('./accountSetupToken.js');
+        const claims = await verifyAccountSetupToken(setupToken).catch(() => null);
+        allowed = !!claims && claims.email === String(email).trim().toLowerCase();
+      }
+      const data = allowed
+        ? await authService.checkAccountStatus(email)
+        : { exists: false, hasPassword: false, isAlreadyConfigured: false };
       res.success(data, 'Account status fetched successfully.');
     } catch (error) {
       next(error);
