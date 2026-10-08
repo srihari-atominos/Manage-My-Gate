@@ -84,7 +84,7 @@ export const OrganizationManager = () => {
               onClick={() => navigate('/super-admin/organizations/create')}
             >
               <CIcon icon={cilFolderOpen} className="me-2" />
-              {t('superAdmin.orgManager.createOrg', { defaultValue: 'Create Organization' })}
+              {t('superAdmin.orgManager.createOrg', { defaultValue: 'Create Community' })}
             </button>
           </div>
         </div>

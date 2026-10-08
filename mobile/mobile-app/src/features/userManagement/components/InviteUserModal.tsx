@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { X, Mail, CheckCircle2, Copy, Check, Send, AlertTriangle } from 'lucide-react-native';
 import { TextInput } from '@/components/forms/TextInput';
+import { PhoneInput } from '@/components/forms/PhoneInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/common/Button';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
@@ -20,6 +21,7 @@ import { useTranslation } from '@/src/utils/i18n';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import {
   validateEmail,
+  validatePhone,
   validateRequired,
   parseBackendError,
   ValidationStatus,
@@ -56,6 +58,9 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   const [emailMessage, setEmailMessage] = useState<string | undefined>(undefined);
   const [isEmailChecking, setIsEmailChecking] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [phoneStatus, setPhoneStatus] = useState<ValidationStatus>('idle');
+  const [phoneMessage, setPhoneMessage] = useState<string | undefined>(undefined);
+  const [isPhoneChecking, setIsPhoneChecking] = useState(false);
 
   // Field errors
   const [roleError, setRoleError] = useState<string | undefined>(undefined);
@@ -74,6 +79,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   // Debounce ref for async email availability check
   const emailCheckTimerRef = useRef<any>(null);
   const emailSeqRef = useRef<number>(0);
+  const phoneCheckTimerRef = useRef<any>(null);
+  const phoneSeqRef = useRef<number>(0);
 
   // Load roles & villas on open
   useEffect(() => {
@@ -109,12 +116,16 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     setEmailMessage(undefined);
     setIsEmailChecking(false);
     setEmailTouched(false);
+    setPhoneStatus('idle');
+    setPhoneMessage(undefined);
+    setIsPhoneChecking(false);
     setRoleError(undefined);
     setVillaError(undefined);
     setSubmitError(null);
     setSuccessResults(null);
     setCopiedLink(false);
     if (emailCheckTimerRef.current) clearTimeout(emailCheckTimerRef.current);
+    if (phoneCheckTimerRef.current) clearTimeout(phoneCheckTimerRef.current);
   };
 
   const selectedRoleObj = roles.find((r) => r.name === selectedRoleName);
@@ -216,6 +227,42 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     }, 450);
   };
 
+  const handlePhoneChange = (fullPhone: string) => {
+    setPhone(fullPhone);
+    setSubmitError(null);
+    if (phoneCheckTimerRef.current) clearTimeout(phoneCheckTimerRef.current);
+    const currentSeq = ++phoneSeqRef.current;
+    const validation = validatePhone(fullPhone);
+    if (!fullPhone || !validation.isValid) {
+      setPhoneStatus(validation.status);
+      setPhoneMessage(fullPhone ? validation.message : undefined);
+      setIsPhoneChecking(false);
+      return;
+    }
+    setPhoneStatus('validating');
+    setPhoneMessage('Checking phone number availability...');
+    setIsPhoneChecking(true);
+    phoneCheckTimerRef.current = setTimeout(async () => {
+      try {
+        const response: any = await apiClient.get(`/auth/check-account-status?identifier=${encodeURIComponent(fullPhone)}`);
+        if (currentSeq !== phoneSeqRef.current) return;
+        const account = response.data?.data || response.data;
+        if (account?.exists) {
+          setPhoneStatus('invalid');
+          setPhoneMessage('This phone number is already registered. Please use another phone number.');
+        } else {
+          setPhoneStatus('valid');
+          setPhoneMessage('Phone number is available.');
+        }
+      } catch {
+        if (currentSeq !== phoneSeqRef.current) return;
+        setPhoneStatus('valid');
+        setPhoneMessage('Phone number format is valid.');
+      } finally {
+        if (currentSeq === phoneSeqRef.current) setIsPhoneChecking(false);
+      }
+    }, 450);
+  };
   const handleEmailBlur = () => {
     setEmailTouched(true);
     if (!email.trim()) {
@@ -258,8 +305,10 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       return;
     }
 
-    if (!phone.trim()) {
-      setSubmitError('Phone number is required.');
+    const phoneRes = validatePhone(phone);
+    if (!phoneRes.isValid || phoneStatus === 'invalid' || isPhoneChecking) {
+      setPhoneStatus('invalid');
+      setPhoneMessage(phoneStatus === 'invalid' ? phoneMessage : phoneRes.message);
       return;
     }
 
@@ -440,13 +489,15 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                   </View>
 
                   <View>
-                    <TextInput
+                    <PhoneInput
                       label={t('phone_number', 'Phone Number')}
                       required
-                      placeholder="+1234567890"
                       value={phone}
-                      onChangeText={setPhone}
-                      keyboardType="phone-pad"
+                      onChangeText={handlePhoneChange}
+                      placeholder={t('phone_number_placeholder', 'Enter your phone number')}
+                      showCount={false}
+                      error={phoneStatus === 'invalid' ? phoneMessage : undefined}
+                      helperText={phoneStatus === 'valid' || phoneStatus === 'validating' ? phoneMessage : undefined}
                     />
                   </View>
 
@@ -479,7 +530,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                       variant="default"
                       onPress={handleSubmit}
                       loading={submitting}
-                      disabled={submitting || isEmailChecking}
+                      disabled={submitting || isEmailChecking || isPhoneChecking || phoneStatus === 'invalid'}
                       className="bg-white border-neutral-300"
                       textClassName="text-black font-bold"
                     >

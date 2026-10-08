@@ -97,18 +97,24 @@ export const fetchVillaStats = async () => {
 /**
  * Bulk uploads units.
  */
-export const bulkUploadVillas = async (villas) => {
-  const response = await apiClient.post('/villas/bulk-upload', { villas })
+export const bulkUploadVillas = async (villas, targetOrgId = null) => {
+  const config = {}
+  if (targetOrgId) {
+    config.headers = { 'x-organization-id': targetOrgId }
+  }
+  const response = await apiClient.post('/villas/bulk-upload', { villas }, config)
   return response.data
 }
 
 /**
  * Downloads the Excel template for bulk uploading units.
  */
-export const downloadBulkUploadTemplate = async () => {
-  const response = await apiClient.get('/villas/bulk-upload/template', {
-    responseType: 'blob',
-  })
+export const downloadBulkUploadTemplate = async (targetOrgId = null) => {
+  const config = { responseType: 'blob' }
+  if (targetOrgId) {
+    config.headers = { 'x-organization-id': targetOrgId }
+  }
+  const response = await apiClient.get('/villas/bulk-upload/template', config)
   return response
 }
 

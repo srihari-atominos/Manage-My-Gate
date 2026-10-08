@@ -37,7 +37,7 @@
   },
   {
     "feature": "billing",
-    "actions": ["billing_hub", "my_dues", "assessments", "ledger", "my_invoices"]
+    "actions": ["assessments", "ledger", "my_invoices"]
   },
   {
     "feature": "workspaces",

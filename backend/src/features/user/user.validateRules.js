@@ -25,7 +25,8 @@ export const inviteUserRules = [
     .withMessage('Resident type must be a string')
     .trim(),
   body('roleName')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('Role is required')
     .isString()
     .withMessage('Role name must be a string')
     .trim(),
@@ -35,10 +36,13 @@ export const inviteUserRules = [
     .withMessage('Name must be a string')
     .trim(),
   body('phone')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('Phone number is required')
     .isString()
     .withMessage('Phone must be a string')
-    .trim(),
+    .trim()
+    .custom((value) => Boolean(normalizePhone(value)))
+    .withMessage('Please provide a valid phone number with country code'),
 ];
 
 /**
@@ -171,18 +175,20 @@ export const bulkInviteUserRules = [
     .custom((item) => {
       const hasEmail = item && item.email && typeof item.email === 'string' && item.email.trim().length > 0;
       const hasPhone = item && item.phone && typeof item.phone === 'string' && item.phone.trim().length > 0;
-      if (!hasEmail && !hasPhone) {
-        throw new Error('Either email address or phone number must be provided for each user.');
+      if (!hasEmail || !hasPhone) {
+        throw new Error('Email address and phone number are required for each user.');
       }
       return true;
     }),
   body('invitations.*.email')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('Email address is required')
     .isEmail()
     .withMessage('Please provide a valid email address')
     .trim(),
   body('invitations.*.phone')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('Phone number is required')
     .custom((val) => Boolean(normalizePhone(val)))
     .withMessage('Please provide a valid phone number format'),
   body('invitations.*.residentType')

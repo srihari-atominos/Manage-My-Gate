@@ -59,9 +59,13 @@ export const normalizeUser = (user: any): User | null => {
     user.orgName ||
     user.activeOrganizationName ||
     user.organization?.name ||
-    currentWorkspace?.name ||
-    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0]?.name) ||
+    currentWorkspace?.name || currentWorkspace?.organizationName || currentWorkspace?.orgName || currentWorkspace?.communityOrg ||
+    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0] && (user.availableWorkspaces[0].name || user.availableWorkspaces[0].organizationName || user.availableWorkspaces[0].orgName || user.availableWorkspaces[0].communityOrg)) ||
     '';
+  const isPlatform =
+    user.isPlatform === true ||
+    currentWorkspace?.isPlatform === true ||
+    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces.length === 1 && user.availableWorkspaces[0]?.isPlatform === true);
 
   const effectiveRole = user.role || (Array.isArray(user.roles) && user.roles[0]) || '';
   const isResidentRole = /resident|tenant|owner|family/i.test(effectiveRole);
@@ -101,6 +105,7 @@ export const normalizeUser = (user: any): User | null => {
   return {
     ...user,
     id: canonicalId,
+    isPlatform,
     _id: canonicalId || user._id,
     orgId: canonicalOrgId,
     activeOrgId: canonicalOrgId,
@@ -919,25 +924,6 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.isInitialized = true;
       })
-      // Login User
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.successMsg = null;
-      })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.loading = false;
-        state.token = action.payload?.token || action.payload?.data?.token || null;
-        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
-        const rawUser = action.payload?.user || action.payload?.data?.user || null;
-        state.user = normalizeUser(rawUser);
-        state.isAuthenticated = !!(state.token && state.user?.id);
-        state.successMsg = action.payload?.message || 'Login successful!';
-      })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Login failed';
-      })
       // Register User
       .addCase(registerUserThunk.pending, (state) => {
         state.loading = true;
@@ -1039,26 +1025,6 @@ const authSlice = createSlice({
       .addCase(loginWithAppleThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Apple Login failed';
-      })
-      // Accept Invitation
-      .addCase(acceptInviteThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.successMsg = null;
-      })
-      .addCase(acceptInviteThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.token = action.payload?.token || action.payload?.data?.token || null;
-        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
-        const rawUser = action.payload?.user || action.payload?.data?.user || null;
-        const availableWorkspaces = action.payload?.availableWorkspaces || action.payload?.data?.availableWorkspaces || rawUser?.availableWorkspaces || [];
-        state.user = normalizeUser(rawUser ? { ...rawUser, availableWorkspaces } : rawUser);
-        state.isAuthenticated = !!(state.token && state.user?.id);
-        state.successMsg = action.payload?.message || 'Invitation accepted and account activated successfully!';
-      })
-      .addCase(acceptInviteThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || 'Failed to accept invitation';
       })
       // Accept SSO Invitation
       .addCase(acceptSsoInviteThunk.pending, (state) => {

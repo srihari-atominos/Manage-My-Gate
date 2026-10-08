@@ -89,14 +89,6 @@ const Step5Review = ({ data, onBack, onSubmit, loading, error }) => {
             </CCol>
             <CCol sm={8}>{admin.phone}</CCol>
           </CRow>
-          <CRow className="mb-2">
-            <CCol sm={4} className="text-muted fw-bold">
-              {t('organization.wizard.password', { defaultValue: 'Password' })}
-            </CCol>
-            <CCol sm={8} className="text-muted fst-italic">
-              ******** (Hidden for security)
-            </CCol>
-          </CRow>
         </CCardBody>
       </CCard>
 
@@ -134,7 +126,7 @@ const Step5Review = ({ data, onBack, onSubmit, loading, error }) => {
               {t('organization.wizard.creating', { defaultValue: 'Creating Organization...' })}
             </>
           ) : (
-            t('organization.wizard.submit', { defaultValue: 'Create Organization' })
+            t('organization.wizard.submit', { defaultValue: 'Create Community' })
           )}
         </CButton>
       </div>

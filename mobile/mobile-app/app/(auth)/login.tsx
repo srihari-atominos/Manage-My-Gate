@@ -1,4 +1,4 @@
-import { Text } from '@/components/ui/text';
+﻿import { Text } from '@/components/ui/text';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import {
   Mail,
@@ -43,6 +43,7 @@ import { AuthMethodSelector } from '@/components/auth/AuthMethodSelector';
 import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
 import { TextInput } from '@/components/forms/TextInput';
 import { PasswordInput } from '@/components/forms/PasswordInput';
+import { OtpInputField } from '@/components/auth/OtpInputField';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Checkbox } from '@/components/forms/Checkbox';
 import { parseBackendError } from '@/src/utils/validation';
@@ -84,7 +85,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   
-  const { user, login: performLogin, requestOtp, error, isAuthenticated, otpSent, clearStatus } = useAuth();
+  const { user, requestOtp, verifyOtp, error, isAuthenticated, otpSent, clearStatus } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{
     intent?: string;
@@ -112,7 +113,13 @@ export default function LoginScreen() {
   }, [params.intent]);
 
   const [authMode, setAuthMode] = React.useState<'basic' | 'phone'>('basic');
+  const [keepSignedIn, setKeepSignedIn] = React.useState(true);
+  const handleKeepSignedInChange = React.useCallback((checked: boolean) => {
+    setKeepSignedIn(checked);
+    storage.setItem('keep_signed_in', checked ? 'true' : 'false').catch(() => {});
+  }, []);
   const [submittedPhone, setSubmittedPhone] = React.useState('');
+  const [phoneOtpCode, setPhoneOtpCode] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
     const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
   const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
@@ -498,12 +505,12 @@ export default function LoginScreen() {
     }
   }, [isAuthenticated, user, isCreateOrgIntent, dispatch]);
 
-  // Reactively route to OTP screen if Phone OTP sent
+  // Route both email and phone OTP requests to the shared verification screen.
   React.useEffect(() => {
-    if (otpSent) {
+    if (otpSent && authMode === 'basic') {
       router.push({
         pathname: '/(auth)/otp',
-        params: { phone: submittedPhone, email: basicForm.getValues("login") },
+        params: { phone: submittedPhone, email: basicForm.getValues("login"), inviteToken: String(params.inviteToken || params.token || '') },
       });
     }
   }, [otpSent, submittedPhone]);
@@ -524,7 +531,10 @@ export default function LoginScreen() {
     setSubmittedPhone(data.phone);
     setIsSubmittingPhone(true);
     try {
-      await savePreferences();
+      if (otpSent) {
+        await verifyOtp(data.phone, phoneOtpCode, false, String(params.inviteToken || params.token || ''));
+        return;
+      }
       await requestOtp(data.phone, false);
     } finally {
       setIsSubmittingPhone(false);
@@ -611,8 +621,8 @@ export default function LoginScreen() {
             <AuthMethodSelector
               value={authMode}
               onChange={(mode) => { Keyboard.dismiss(); setAuthMode(mode); }}
-              emailLabel={t('email_password', 'Email / Password')}
-              otpLabel={t('sign_in_with_otp', 'Sign in with OTP')}
+              emailLabel={t('email_id', 'Email ID')}
+              otpLabel={t('phone_no', 'Phone No')}
               reduceMotion={reduceMotion}
               disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
             />
@@ -708,7 +718,7 @@ export default function LoginScreen() {
                     {/* Step 5: Email or Username Input */}
                     <View>
                       <Text className="text-xs font-semibold text-white mb-1.5 font-sans">
-                        {t('email_or_username', 'Email or Username')} <Text className="text-[#EA580C] font-bold">*</Text>
+                        {t('email_id', 'Email ID')} <Text className="text-[#EA580C] font-bold">*</Text>
                       </Text>
                       <Controller
                         control={basicForm.control}
@@ -723,7 +733,7 @@ export default function LoginScreen() {
                               setIsLoginFocused(false);
                               onBlur();
                             }}
-                            placeholder={t('enter_email_or_username', 'Enter your email or username')}
+                            placeholder={t('enter_email', 'Enter your email')}
                             placeholderTextColor="#9CA3AF"
                             autoCapitalize="none"
                             autoCorrect={false}
@@ -749,57 +759,6 @@ export default function LoginScreen() {
                       />
                     </View>
 
-                    {/* Step 6: Password Input */}
-                    <View>
-                      <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-xs font-semibold text-white font-sans">
-                          {t('password', 'Password')} <Text className="text-[#EA580C] font-bold">*</Text>
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => router.push('/(auth)/forgot-password')}
-                          activeOpacity={0.8}
-                          hitSlop={8}
-                        >
-                          <Text className="text-[13px] font-bold text-white" style={{ textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                            {t('forgot_password', 'Forgot?')}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Controller
-                        control={basicForm.control}
-                        name="password"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                          <PasswordInput
-                            ref={passwordInputRef}
-                            value={value}
-                            onChangeText={onChange}
-                            onFocus={handlePasswordFieldFocus}
-                            onBlur={() => {
-                              setIsPasswordFocused(false);
-                              onBlur();
-                            }}
-                            placeholder={t('enter_password', 'Enter your password')}
-                            placeholderTextColor="#9CA3AF"
-                            className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
-                            inputClassName="text-slate-900 text-[15px] font-medium"
-                            style={{ fontSize: 15, fontWeight: '500', color: '#0F172A' }}
-                            selectionColor="#EA580C"
-                            cursorColor="#EA580C"
-                            leftIcon={
-                              <Animated.View style={{ transform: [{ scale: passwordIconScale }] }}>
-                                <Lock size={18} color="#64748B" />
-                              </Animated.View>
-                            }
-                            rightIconColor="#64748B"
-                            error={basicForm.formState.errors.password?.message}
-                            feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
-                            errorClassName="text-[11.5px] font-bold text-red-400"
-                            returnKeyType="go"
-                            onSubmitEditing={handleBasicSignIn}
-                          />
-                        )}
-                      />
-                    </View>
 
                     {/* Stay signed in Checkbox */}
                     <View className="flex-row items-center pt-0.5">
@@ -818,26 +777,6 @@ export default function LoginScreen() {
                         <Text className="text-rose-200 text-xs text-center font-medium">
                           {error}
                         </Text>
-                        {(error.toLowerCase().includes('pending verification') ||
-                          error.toLowerCase().includes('invitation') ||
-                          error.toLowerCase().includes('password is not set') ||
-                          error.toLowerCase().includes('active membership')) && (
-                          <TouchableOpacity
-                            onPress={() => {
-                              const currentLogin = basicForm.getValues('login');
-                              router.push({
-                                pathname: '/(auth)/accept-invite',
-                                params: currentLogin ? { email: currentLogin } : {},
-                              });
-                            }}
-                            className="bg-primary/25 border border-primary/40 rounded-lg py-1.5 px-3 self-center flex-row items-center gap-1.5"
-                          >
-                            <Sparkles size={13} color="#FF7A00" />
-                            <Text className="text-xs font-bold text-white">
-                              {t('accept_invitation_cta', 'Accept Workspace Invitation')}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
                       </View>
                     ) : null}
 
@@ -893,7 +832,7 @@ export default function LoginScreen() {
                         ) : (
                           <View className="flex-row items-center justify-center gap-2 z-10">
                             <Text className="font-bold text-white text-base font-sans">
-                              {t('sign_in', 'Sign In')}
+                              {t('send_otp', 'Send OTP')}
                             </Text>
                             <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
                               <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
@@ -912,6 +851,7 @@ export default function LoginScreen() {
                       render={({ field: { onChange, value } }) => (
                         <PhoneInput
                           variant="glass"
+                          defaultCountry="IN"
                           label={t('phone_number', 'Mobile Number')}
                           placeholder="98765 43210"
                           placeholderTextColor="#9CA3AF"
@@ -933,6 +873,20 @@ export default function LoginScreen() {
                         />
                       )}
                     />
+
+                    {otpSent && (
+                      <View className="gap-2">
+                        <Text className="text-xs font-semibold text-white mb-1.5">
+                          {t('enter_verification_code', 'Enter verification code')}
+                        </Text>
+                        <OtpInputField
+                          length={4}
+                          value={phoneOtpCode}
+                          onValueChange={setPhoneOtpCode}
+                          error={Boolean(error)}
+                        />
+                      </View>
+                    )}
 
                     {/* Stay signed in Checkbox */}
                     <View className="flex-row items-center pt-0.5">
@@ -1006,7 +960,7 @@ export default function LoginScreen() {
                         ) : (
                           <View className="flex-row items-center justify-center gap-2 z-10">
                             <Text className="font-bold text-white text-base font-sans">
-                              {t('sign_in_with_otp', 'Sign in with OTP')}
+                              {otpSent ? t('verify_and_sign_in', 'Verify & Sign In') : t('send_otp', 'Send OTP')}
                             </Text>
                             <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
                               <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />

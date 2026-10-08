@@ -154,7 +154,7 @@ function CTAButton({
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { register: performRegister, login: performLogin, requestOtp, otpSent, loading, error, clearStatus, isAuthenticated } = useAuth();
+  const { register: performRegister, requestOtp, otpSent, loading, error, clearStatus, isAuthenticated } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
 
   const [userType, setUserType] = React.useState<'new' | 'existing'>('new');
@@ -261,13 +261,10 @@ export default function SignupScreen() {
   };
 
   const onSignInSubmit = async (data: SignInFormValues) => {
+    setSignInLoading(true);
+    setSignInError(null);
     try {
-      setSignInLoading(true);
-      setSignInError(null);
-      await performLogin({ login: data.login.trim(), password: data.password });
-    } catch (err: any) {
-      const parsed = parseBackendError(err, 'Sign in failed. Please try again.');
-      setSignInError(parsed.userMessage);
+      await requestOtp(data.login.trim(), true);
     } finally {
       setSignInLoading(false);
     }

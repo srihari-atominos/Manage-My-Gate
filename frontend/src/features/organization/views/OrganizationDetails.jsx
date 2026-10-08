@@ -9,7 +9,6 @@ import useOrganizationUsers from '../hooks/useOrganizationUsers.js'
 import OrganizationOverviewCards from '../components/OrganizationOverviewCards.jsx'
 import OrganizationInfoCard from '../components/OrganizationInfoCard.jsx'
 import OrganizationFeaturesCard from '../components/OrganizationFeaturesCard.jsx'
-import OrganizationOnboardingCard from '../components/OrganizationOnboardingCard.jsx'
 import UserFiltersBar from '../components/UserFiltersBar.jsx'
 import UserDirectoryTable from '../components/UserDirectoryTable.jsx'
 import UserDetailDrawer from '../components/UserDetailDrawer.jsx'
@@ -90,7 +89,7 @@ export const OrganizationDetails = () => {
   }
 
   const handleBulkUploadUnits = async (villas) => {
-    const res = await bulkUploadVillas(villas)
+    const res = await bulkUploadVillas(villas, organizationId)
     fetchDetails(organizationId)
     fetchUsers(usersPage)
     return res
@@ -181,9 +180,6 @@ export const OrganizationDetails = () => {
             {/* Feature Management */}
             <OrganizationFeaturesCard organization={organization} />
 
-            {/* Global Onboarding Strategy */}
-            <OrganizationOnboardingCard organization={organization} />
-
             {/* User Directory Section */}
             <div className="section-card">
               <div
@@ -270,7 +266,6 @@ export const OrganizationDetails = () => {
             visible={showBulkInviteModal}
             onClose={() => setShowBulkInviteModal(false)}
             onBulkInvite={bulkInviteUsers}
-            globalOnboardingMode={organization?.onboardingMode || 'INVITATION'}
           />
         )}
 
@@ -280,6 +275,7 @@ export const OrganizationDetails = () => {
             visible={showBulkUploadUnitsModal}
             onClose={() => setShowBulkUploadUnitsModal(false)}
             onBulkUpload={handleBulkUploadUnits}
+            targetOrgId={organizationId}
           />
         )}
       </div>

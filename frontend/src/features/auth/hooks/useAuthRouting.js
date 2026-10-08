@@ -50,15 +50,7 @@ export const useAuthRouting = () => {
 
     // Clear stored temporary auth intent once evaluated
     sessionStorage.removeItem('auth_intent')
-
-    // 1. Invite Sign-up/Login Flow:
-    // If we have an invite token and we aren't explicitly skipping it, route to accept-invite
-    if (inviteToken && !options.skipInviteToken) {
-      navigate(`/accept-invite/${inviteToken}`)
-      return
-    }
-
-    // Check if the user already has an active organization
+    // Invitation activation is completed server-side during OTP/SSO verification.    // Check if the user already has an active organization
     const hasOrg = !!(
       user &&
       (user.orgId ||

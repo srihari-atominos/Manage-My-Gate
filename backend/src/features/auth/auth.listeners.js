@@ -6,7 +6,9 @@ import { maskPhone, maskEmail } from '../../utils/phone.utils.js';
 import nodemailer from 'nodemailer';
 
 export const sendOtpNotification = async ({ identifier, code, type }) => {
-  if (type === 'EMAIL') {
+  const effectiveType = type === 'EMAIL' || (type !== 'SMS' && identifier?.includes('@')) ? 'EMAIL' : 'SMS';
+
+  if (effectiveType === 'EMAIL') {
     if (process.env.NODE_ENV !== 'production') {
       logger.info(`[AUTH OTP DELIVERED] Identifier: ${maskEmail(identifier)} | Verification OTP Code: ${code}`);
     } else {
@@ -60,7 +62,7 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
       const resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
       
       if (resendIntegration) {
-        const apiKeyCred = resendIntegration.credentials.find((c) => c.key === 'apiKey');
+        const apiKeyCred = resendIntegration.credentials.find((c) => c.key === key);
         if (apiKeyCred) {
           const apiKey = decryptCredential(apiKeyCred);
           
@@ -114,14 +116,62 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
         logger.info(`[FALLBACK DEV OTP] Code for ${maskEmail(identifier)}: ${code}`);
       }
     }
-  } else if (type === 'SMS') {
+  } else if (effectiveType === 'SMS') {
     if (process.env.NODE_ENV !== 'production') {
       logger.info(`[AUTH OTP DELIVERED - SMS] Phone: ${maskPhone(identifier)} | Verification OTP Code: ${code}`);
     } else {
       logger.info(`[AUTH OTP DISPATCHED - SMS] Phone: ${maskPhone(identifier)}`);
     }
     try {
-      // 1. Check Twilio
+      // 1. Check MSG91 (either via IntegrationHub or environment configuration)
+      const msg91Integration = await IntegrationHub.findOne({ provider: 'msg91', status: 'connected' });
+      const msg91EnvConfigured = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+      if (msg91Integration || msg91EnvConfigured) {
+        try {
+          const getCred = (key) => {
+            const cred = msg91Integration?.credentials.find((c) => c.key === key);
+            return cred ? decryptCredential(cred) : null;
+          };
+          const authKey = process.env.MSG91_AUTH_KEY || getCred('authKey');
+          const templateId = process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID || getCred('templateId');
+          const senderId = process.env.MSG91_SENDER_ID || getCred('senderId');
+
+          if (authKey && templateId) {
+            const cleanMobile = identifier.replace(/^\+/, '');
+            const sendUrl = new URL('https://control.msg91.com/api/v5/otp');
+            sendUrl.searchParams.set('template_id', templateId);
+            sendUrl.searchParams.set('mobile', cleanMobile);
+            sendUrl.searchParams.set('otp', String(code));
+            if (senderId) {
+              sendUrl.searchParams.set('sender', senderId);
+            }
+
+            const response = await fetch(sendUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+                'authkey': authKey,
+              },
+              body: JSON.stringify({ otp: String(code) }),
+            });
+
+            let responseData = null;
+            try { responseData = await response.json(); } catch (_) {}
+
+            if (response.ok && String(responseData?.type || '').toLowerCase() === 'success') {
+              logger.info(`OTP SMS sent to ${maskPhone(identifier)} via MSG91`);
+              return;
+            } else {
+              logger.warn(`MSG91 SMS delivery attempt failed: ${responseData?.message || response.statusText}. Trying next SMS provider...`);
+            }
+          }
+        } catch (msg91Err) {
+          logger.warn(`MSG91 send error: ${msg91Err.message}. Trying next provider...`);
+        }
+      }
+
+      // 2. Check Twilio
       const twilioIntegration = await IntegrationHub.findOne({ provider: 'twilio', status: 'connected' });
       if (twilioIntegration) {
         const getCred = (key) => {

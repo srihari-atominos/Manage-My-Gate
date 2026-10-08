@@ -222,7 +222,7 @@ function AuthRouteGuard() {
     const isRoot = !firstSegment || firstSegment === 'index';
     const u = user as any;
 
-    const isExplicitNonInviteAuthRoute = inAuthGroup && currentRoute && currentRoute !== 'accept-invite';
+    const isExplicitNonInviteAuthRoute = inAuthGroup && currentRoute && currentRoute !== 'login';
 
     const hasTokenParam = !!(searchParams?.token || searchParams?.code);
     const isWebInviteUrl =
@@ -230,21 +230,21 @@ function AuthRouteGuard() {
       typeof window.location !== 'undefined' &&
       window.location?.pathname &&
       (window.location.pathname.startsWith('/invite/') ||
-       window.location.pathname === '/accept-invite' ||
-       window.location.pathname.startsWith('/(auth)/accept-invite'));
+       window.location.pathname === '/login' ||
+       window.location.pathname.startsWith('/(auth)/login'));
 
     const isInviteRoute =
       !isExplicitNonInviteAuthRoute &&
       (firstSegment === 'invite' ||
-        firstSegment === 'accept-invite' ||
-        (inAuthGroup && currentRoute === 'accept-invite') ||
+        firstSegment === 'login' ||
+        (inAuthGroup && currentRoute === 'login') ||
         (isRoot && (hasTokenParam || isWebInviteUrl)));
 
     if (isInviteRoute) {
       if (firstSegment === 'invite') {
         return;
       }
-      if (firstSegment !== '(auth)' || currentRoute !== 'accept-invite') {
+      if (firstSegment !== '(auth)' || currentRoute !== 'login') {
         let tokenToPass = stableSearchParams?.token || stableSearchParams?.code;
         if (!tokenToPass && typeof window !== 'undefined' && window.location?.href) {
           const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app\/|web\/)?([a-f0-9]{32,64}|[^/?&#]+)/i);
@@ -253,7 +253,7 @@ function AuthRouteGuard() {
           }
         }
         replaceOnce({
-          pathname: '/(auth)/accept-invite',
+          pathname: '/(auth)/login',
           params: { ...stableSearchParams, ...(tokenToPass ? { token: tokenToPass } : {}) },
         });
       }
@@ -288,7 +288,7 @@ function AuthRouteGuard() {
               replaceOnce(`/invite/handoff/${context.value}` as any);
             } else {
               replaceOnce({
-                pathname: '/(auth)/accept-invite',
+                pathname: '/(auth)/login',
                 params: { token: context.value },
               });
             }

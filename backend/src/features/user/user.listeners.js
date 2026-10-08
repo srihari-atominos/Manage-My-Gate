@@ -26,6 +26,26 @@ const DEFAULT_INVITE_BODY = `
 // Register user domain events
 userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting }) => {
   try {
+    // An invite can be replaced while this asynchronous listener is preparing
+    // the email (for example, when an admin corrects and re-sends an invite).
+    // Never let a stale USER_INVITED event send an old action link.
+    const tokenService = (await import('../token/token.services.js')).default;
+    const isCurrentPendingInvitation = async () => {
+      const tokenDoc = await tokenService.getInvitationToken(invitationToken, 'INVITATION').catch(() => null);
+      return Boolean(
+        tokenDoc &&
+        tokenDoc.status === 'PENDING' &&
+        tokenDoc.used !== true &&
+        (!orgId || tokenDoc.orgId?.toString() === orgId.toString()) &&
+        (!userId || tokenDoc.userId?.toString() === userId.toString())
+      );
+    };
+
+    if (!(await isCurrentPendingInvitation())) {
+      logger.info(`[INVITATION EMAIL SKIPPED] Stale or replaced invitation event for ${maskEmail(email || '')}.`);
+      return;
+    }
+
     const baseInviteLink = generateInviteLink(invitationToken, invitationSource);
 
     // 1. Fetch organization name for branded invite presentation
@@ -274,6 +294,13 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
     // Mask raw token in logs to comply with security directive
     const maskedToken = invitationToken ? `${invitationToken.slice(0, 6)}...` : '[MASKED]';
     logger.info(`[INVITATION CREATED] Email: ${email} | Token: ${maskedToken} | Universal URL: /invite/${maskedToken}`);
+
+    // Check again immediately before dispatch. This closes the race where a
+    // newer invite supersedes this one while its branded email is rendering.
+    if (!(await isCurrentPendingInvitation())) {
+      logger.info(`[INVITATION EMAIL SKIPPED] Invitation was replaced before delivery for ${maskEmail(email || '')}.`);
+      return;
+    }
 
     const { sendEmail } = await import('../../utils/email.utils.js');
     const sent = await sendEmail(orgId, email, compiledSubject, compiledBody);

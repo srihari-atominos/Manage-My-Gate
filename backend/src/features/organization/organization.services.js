@@ -1,8 +1,9 @@
-import organizationRepository from './organization.repository.js';
+﻿import organizationRepository from './organization.repository.js';
 import HttpError from '../../utils/httpError.utils.js';
 import mongoose from 'mongoose';
 import orgEventEmitter from './organization.events.js';
 import { DEFAULT_ROLE_PERMISSIONS } from './defaultRolePermissions.js';
+import { normalizePhone } from '../../utils/phone.utils.js';
 
 
 export class OrganizationService {
@@ -332,30 +333,27 @@ export class OrganizationService {
 
       // 3. Handle Community Admin User
       const userService = (await import('../user/user.services.js')).default;
-      const { hashPassword } = await import('../../utils/crypto.utils.js');
-
+      const normalizedAdminPhone = communityAdmin.phone ? normalizePhone(communityAdmin.phone) : null;
+      if (communityAdmin.phone && !normalizedAdminPhone) {
+        throw new HttpError(400, 'Phone number must be a valid international number.');
+      }
       let communityAdminUser = await userService.resolveUserIdentity({
         email: communityAdmin.email,
-        phone: communityAdmin.phone,
+        phone: normalizedAdminPhone,
       }, session);
 
       if (!communityAdminUser) {
-        if (!communityAdmin.password) {
-          throw new HttpError(400, 'Password is required for new community admins.');
-        }
-        if (!communityAdmin.phone) {
+        if (!normalizedAdminPhone) {
           throw new HttpError(400, 'Phone number is required for new community admins.');
         }
-        const hashedPassword = await hashPassword(communityAdmin.password);
-        
         const User = (await import('../user/user.model.js')).default;
         const newCommunityAdmin = new User({
           name: communityAdmin.fullName,
           username: communityAdmin.username,
           email: communityAdmin.email.toLowerCase(),
-          phone: communityAdmin.phone,
-          password: hashedPassword,
+          phone: normalizedAdminPhone,
           status: 'Active',
+          credentialStatus: 'NOT_INITIALIZED',
           emailVerified: true,
           phoneVerified: true
         });

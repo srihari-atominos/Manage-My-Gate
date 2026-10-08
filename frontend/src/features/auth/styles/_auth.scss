@@ -213,6 +213,19 @@
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+// Password authentication is retired. Keep the legacy tab inaccessible while the
+// component continues to support existing OTP and SSO controls.
+.login-method-tab:first-child {
+  display: none;
+}
+
+.google-sso-control {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .login-method-tab {
   flex: 1;
   padding: 9px 12px;

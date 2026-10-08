@@ -4,6 +4,7 @@ import { verify as verifyResend } from './resend.handler.js';
 import { verify as verifySMTP } from './smtp.handler.js';
 import { verify as verifyFirebase } from './firebase.handler.js';
 import { verify as verifyMessageCentral } from './messageCentral.handler.js';
+import { verify as verifyMsg91 } from './msg91.handler.js';
 import { verify as verifyBanking } from './banking.handler.js';
 import { verify as verifyRazorpay } from './razorpay.handler.js';
 
@@ -14,6 +15,7 @@ const providerHandlers = {
   smtp: verifySMTP,
   firebase: verifyFirebase,
   messagecentral: verifyMessageCentral,
+  msg91: verifyMsg91,
   banking: verifyBanking,
   razorpay: verifyRazorpay,
 };

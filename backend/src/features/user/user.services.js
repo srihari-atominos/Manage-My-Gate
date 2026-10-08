@@ -779,11 +779,13 @@ export class UserService {
     }
 
     if (process.env.NODE_ENV === 'production') {
-      const [twilio, messageCentral] = await Promise.all([
+      const [twilio, messageCentral, msg91] = await Promise.all([
         integrationHubService.getGlobalConnectionByProvider('twilio'),
-        integrationHubService.getGlobalConnectionByProvider('messagecentral')
+        integrationHubService.getGlobalConnectionByProvider('messagecentral'),
+        integrationHubService.getGlobalConnectionByProvider('msg91')
       ]);
-      if (!twilio && !messageCentral) {
+      const msg91Env = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+      if (!twilio && !messageCentral && !msg91 && !msg91Env) {
         throw new HttpError(503, 'SMS verification is temporarily unavailable. Please contact support.');
       }
     }

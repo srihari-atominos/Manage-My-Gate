@@ -165,7 +165,7 @@ export const syncPermissions = async () => {
       'notices:active_board', 'notices:polls', 'notices:manage_notices',
       'polls:read', 'polls:create', 'polls:update', 'polls:delete', 'polls:publish',
       'polls:vote', 'polls:view_voters', 'polls:close', 'polls:export',
-      'billing:billing_hub', 'billing:my_dues', 'billing:assessments', 'billing:ledger', 'billing:my_invoices',
+      'billing:assessments', 'billing:ledger', 'billing:my_invoices',
       'workspaces:read', 'workspaces:update',
     ];
 

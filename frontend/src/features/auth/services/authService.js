@@ -1,12 +1,18 @@
+const legacyAuthRemoved = () => Promise.reject(new Error('This legacy authentication flow has been removed. Use unified OTP or SSO.'));
+export const login = legacyAuthRemoved;
+export const initiateInvitationOtp = legacyAuthRemoved;
+export const verifyInvitationOtp = legacyAuthRemoved;
+export const acceptInvite = legacyAuthRemoved;
+export const forgotPassword = legacyAuthRemoved;
+export const verifyResetPasswordOtp = legacyAuthRemoved;
+export const resetPassword = legacyAuthRemoved;
+export const acceptSsoInvite = legacyAuthRemoved;
+
 import apiClient from '../../../services/apiClient.js'
 
 /**
  * Authentication and Workspace API Client Service
  */
-export const login = async (credentials) => {
-  return await apiClient.post('/auth/login', credentials)
-}
-
 export const register = async (userData) => {
   return await apiClient.post('/auth/register', userData)
 }
@@ -15,21 +21,8 @@ export const verifyRegistration = async (email, code) => {
   return await apiClient.post('/auth/register/verify', { email, code })
 }
 
-export const initiateInvitationOtp = async (token) => {
-  return await apiClient.post('/auth/invite/otp', { token })
-}
-
-export const verifyInvitationOtp = async (token, code) => {
-  return await apiClient.post('/auth/invite/otp/verify', { token, code })
-}
-
 export const validateInvite = async (token) => {
   return await apiClient.get('/auth/validate-invite', { params: { token } })
-}
-
-export const acceptInvite = async (payload) => {
-  const body = typeof payload === 'string' ? { token: payload } : payload || {}
-  return await apiClient.post('/auth/accept-invite', body)
 }
 
 export const rejectInvite = async (payload) => {
@@ -67,18 +60,6 @@ export const verifyEmailOtpLogin = async (email, code) => {
   return await apiClient.post('/auth/login/email-otp/verify', { email, code })
 }
 
-export const forgotPassword = async (identifier) => {
-  return await apiClient.post('/auth/forgot-password', { identifier })
-}
-
-export const verifyResetPasswordOtp = async (identifier, code) => {
-  return await apiClient.post('/auth/forgot-password/verify-otp', { identifier, code })
-}
-
-export const resetPassword = async (identifier, code, newPassword) => {
-  return await apiClient.post('/auth/reset-password', { identifier, code, newPassword })
-}
-
 export const logoutApi = async () => {
   return await apiClient.post('/auth/logout')
 }
@@ -97,10 +78,6 @@ export const revokeAllSessions = async () => {
 
 export const emailOtpLogin = async (payload) => {
   return await apiClient.post('/auth/login/email-otp', payload)
-}
-
-export const acceptSsoInvite = async (payload) => {
-  return await apiClient.post('/auth/accept-invite/sso', payload)
 }
 
 export const switchContext = async (payload) => {

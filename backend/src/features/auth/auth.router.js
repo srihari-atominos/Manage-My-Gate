@@ -20,6 +20,14 @@ import { authLimiter, otpLimiter } from '../../middlewares/rateLimiter.middlewar
 
 const router = Router();
 
+// Password and direct invitation-acceptance endpoints are deliberately retained
+// as explicit 410 responses during the client migration. They must never provide
+// an alternate authentication or membership-activation path.
+const legacyAuthEndpoint = (_req, res) => res.status(410).json({
+  success: false,
+  message: 'This legacy authentication flow has been removed. Use Email OTP, Phone OTP, or SSO from the unified login page.',
+});
+
 /**
  * @swagger
  * /auth/register:
@@ -118,7 +126,7 @@ router.post('/register/verify', otpLimiter, validate(emailOtpVerifyRules), authC
  *       400:
  *         description: Invalid credentials or validation error.
  */
-router.post('/login', authLimiter, validate(loginRules), authController.login);
+router.post('/login', legacyAuthEndpoint);
 
 /**
  * @swagger
@@ -150,7 +158,7 @@ router.post('/login', authLimiter, validate(loginRules), authController.login);
  *       400:
  *         description: Invalid token or validation error.
  */
-router.post('/accept-invite', optionalAuth, validate(acceptInviteRules), authController.acceptInvite);
+router.post('/accept-invite', legacyAuthEndpoint);
 router.post('/reject-invite', authController.rejectInvite);
 
 /**
@@ -185,7 +193,7 @@ router.post('/reject-invite', authController.rejectInvite);
  *       400:
  *         description: Validation error.
  */
-router.post('/accept-invite/sso', validate(acceptInviteSsoRules), authController.acceptInviteWithSSO);
+router.post('/accept-invite/sso', legacyAuthEndpoint);
 
 /**
  * @swagger
@@ -301,19 +309,19 @@ router.post('/login/phone', otpLimiter, validate(phoneLoginRules), authControlle
 router.post('/login/phone/verify', authLimiter, validate(phoneVerifyRules), authController.verifyPhoneLogin);
 
 // Invitation OTP Routes
-router.post('/invite/otp', otpLimiter, validate(inviteOtpInitiateRules), authController.initiateInvitationOtp);
-router.post('/invite/otp/verify', authLimiter, validate(inviteOtpVerifyRules), authController.verifyInvitationOtp);
+router.post('/invite/otp', legacyAuthEndpoint);
+router.post('/invite/otp/verify', legacyAuthEndpoint);
 
 router.post('/login/email-otp', otpLimiter, validate(emailOtpLoginRules), authController.initiateEmailOtpLogin);
 
 router.post('/login/email-otp/verify', authLimiter, validate(emailOtpVerifyRules), authController.verifyEmailOtpLogin);
-router.post('/forgot-password', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
-router.post('/forgot-password/initiate', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
-router.post('/forgot-password/verify-otp', authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
-router.post('/reset-password', authLimiter, validate(resetPasswordRules), authController.resetPassword);
-router.post('/setup-account-password', validate(setupAccountPasswordRules), authController.setupAccountPassword);
-router.post('/first-time-setup/send-otp', otpLimiter, validate(sendFirstTimeSetupOtpRules), authController.sendFirstTimeSetupOtp);
-router.post('/first-time-setup/complete', authLimiter, validate(completeFirstTimeSetupRules), authController.completeFirstTimeSetup);
+router.post('/forgot-password', legacyAuthEndpoint);
+router.post('/forgot-password/initiate', legacyAuthEndpoint);
+router.post('/forgot-password/verify-otp', legacyAuthEndpoint);
+router.post('/reset-password', legacyAuthEndpoint);
+router.post('/setup-account-password', legacyAuthEndpoint);
+router.post('/first-time-setup/send-otp', legacyAuthEndpoint);
+router.post('/first-time-setup/complete', legacyAuthEndpoint);
 router.get('/check-account-status', authController.checkAccountStatus);
 
 // Session Routes

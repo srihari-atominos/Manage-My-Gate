@@ -33,7 +33,7 @@ export const createOrganization = createAsyncThunk(
       return response.data
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to create organization',
+        error.response?.data?.message || error.message || 'Failed to Create Community',
       )
     }
   },
@@ -323,7 +323,7 @@ export const organizationSlice = createSlice({
       })
       .addCase(createOrganization.rejected, (state, action) => {
         state.createLoading = false
-        state.createError = action.payload || 'Failed to create organization'
+        state.createError = action.payload || 'Failed to Create Community'
       })
   },
 })

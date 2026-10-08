@@ -271,7 +271,7 @@ export class AuthController {
 
   async verifyEmailOtpLogin(req, res, next) {
     try {
-      const { email, code } = req.body;
+      const { email, code, inviteToken } = req.body;
       const deviceInfo = {
         deviceName: req.headers['user-agent'],
         browser: 'Browser',

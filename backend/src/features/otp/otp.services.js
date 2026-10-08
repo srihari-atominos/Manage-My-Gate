@@ -88,8 +88,13 @@ export class OtpService {
 
     if (!isValid) {
       otpDoc.attempts += 1;
+      const remainingAttempts = Math.max(0, 3 - otpDoc.attempts);
+      if (remainingAttempts === 0) {
+        await Otp.deleteOne({ _id: otpDoc._id }).session(session);
+        throw new HttpError(400, 'Too many incorrect attempts. Your current OTP is no longer valid. Please request a new OTP.');
+      }
       await otpDoc.save({ session });
-      throw new HttpError(400, 'Invalid OTP');
+      throw new HttpError(400, `Incorrect OTP. ${remainingAttempts === 1 ? '1 attempt' : `${remainingAttempts} attempts`} remaining.`);
     }
 
     // OTP is valid, conditionally delete it

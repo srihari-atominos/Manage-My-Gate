@@ -218,7 +218,7 @@ export const routes = [
   },
   {
     path: '/super-admin/organizations/create',
-    name: 'Create Organization',
+    name: 'Create Community',
     element: CreateOrganizationWizard,
     requirePlatform: true,
   },

@@ -42,7 +42,7 @@ describe('CreateOrganizationWizard Flow', () => {
 
   it('renders Step 1 Organization Info by default', () => {
     renderComponent()
-    expect(screen.getByText('Create Organization')).toBeInDocument()
+    expect(screen.getByText('Create Community')).toBeInDocument()
     expect(screen.getByLabelText('Organization Name')).toBeInDocument()
   })
 

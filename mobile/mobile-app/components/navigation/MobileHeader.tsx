@@ -70,16 +70,20 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     // 2. Fall back to availableWorkspaces list matching active workspace orgId
     const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
     const workspaces = (user as any)?.availableWorkspaces || reduxWorkspaces || [];
+    if ((user as any)?.isPlatform === true || (Array.isArray(workspaces) && workspaces.some((workspace: any) => workspace?.isPlatform === true))) {
+      return 'System Platform';
+    }
     if (Array.isArray(workspaces) && workspaces.length > 0) {
       if (activeOrgId) {
         const activeWs = workspaces.find(
           (w: any) => w.orgId === activeOrgId || w._id === activeOrgId || w.id === activeOrgId,
         );
-        if (activeWs?.name) return activeWs.name;
+        const wsName = activeWs?.name || activeWs?.organizationName || activeWs?.orgName || activeWs?.communityOrg;
+        if (wsName) return wsName;
       }
-      if (workspaces[0]?.name) {
-        return workspaces[0].name;
-      }
+      const firstWs = workspaces[0];
+      const firstWsName = firstWs?.name || firstWs?.organizationName || firstWs?.orgName || firstWs?.communityOrg;
+      if (firstWsName) return firstWsName;
     }
 
     return t('community_workspace', 'Community Workspace');
@@ -210,7 +214,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     const defaultComm = t('green_meadows', 'Green Meadows');
     const comm = activeCommunity ? translateText(activeCommunity) : defaultComm;
     if (isResidentRole && hasUnit && activeVilla) {
-      return `${activeVilla} • ${comm}`;
+      return `${activeVilla} â€¢ ${comm}`;
     }
     return comm;
   }, [isResidentRole, hasUnit, activeVilla, activeCommunity, language, t, translateText]);

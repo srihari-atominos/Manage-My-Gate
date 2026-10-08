@@ -33,7 +33,7 @@ import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/src/store/store';
 import {
-  acceptInviteThunk,
+  
   rejectInviteThunk,
   switchWorkspaceContextThunk,
 } from '@/src/features/auth/store/authSlice';
@@ -132,37 +132,11 @@ export default function NotificationsScreen() {
 
   // Full acceptance workflow with automatic workspace context switch and navigation
   const handleAcceptInvitation = useCallback(
-    async (token: string, orgId?: string, orgName?: string) => {
-      try {
-        const actionResult: any = await dispatch(
-          acceptInviteThunk({ token, email: user?.email })
-        ).unwrap();
-
-        const targetOrg = orgId || actionResult?.orgId || actionResult?.user?.orgId;
-        if (targetOrg) {
-          try {
-            await dispatch(switchWorkspaceContextThunk({ targetOrgId: targetOrg })).unwrap();
-          } catch (_) {}
-        }
-
-        const notifId = selectedInviteNotification?.id || selectedInviteNotification?._id;
-        if (notifId) {
-          markAsRead(notifId);
-          setInviteStatusMap((prev) => ({ ...prev, [notifId]: 'ACCEPTED' }));
-        }
-
-        setIsInviteModalVisible(false);
-        setSelectedInviteNotification(null);
-
-        // Seamlessly navigate to the community page
-        router.replace('/(resident)/dashboard');
-      } catch (err: any) {
-        const msg = err?.message || err || 'Failed to accept invitation';
-        Alert.alert(t('invitation_error', 'Invitation Error'), msg);
-        throw err;
-      }
+    async (token: string) => {
+      // Notifications carry invitation context only; they never activate access.
+      router.push({ pathname: '/(auth)/login', params: { inviteToken: token } });
     },
-    [dispatch, user?.email, selectedInviteNotification, markAsRead, router, t]
+    [router]
   );
 
   // Full rejection workflow matching email rejection logic
@@ -194,47 +168,20 @@ export default function NotificationsScreen() {
     [dispatch, user?.email, selectedInviteNotification, markAsRead, fetchNotifications, t]
   );
 
-  // Quick card accept button handler
+  // A notification does not accept an invitation. It opens unified login with
+  // the token as server-validated context.
   const handleCardQuickAccept = useCallback(
     async (notification: NotificationItemData) => {
       const token = extractInvitationToken(notification);
       if (!token) {
-        // Fallback to opening details modal
         setSelectedInviteNotification(notification);
         setIsInviteModalVisible(true);
         return;
       }
-      const notifId = notification.id || notification._id || '';
-      setActionInProgressId(notifId);
-      try {
-        const actionResult: any = await dispatch(
-          acceptInviteThunk({ token, email: user?.email })
-        ).unwrap();
-
-        const targetOrg =
-          notification.metadata?.orgId || actionResult?.orgId || actionResult?.user?.orgId;
-        if (targetOrg) {
-          try {
-            await dispatch(switchWorkspaceContextThunk({ targetOrgId: targetOrg })).unwrap();
-          } catch (_) {}
-        }
-
-        if (notifId) {
-          markAsRead(notifId);
-          setInviteStatusMap((prev) => ({ ...prev, [notifId]: 'ACCEPTED' }));
-        }
-
-        router.replace('/(resident)/dashboard');
-      } catch (err: any) {
-        const msg = err?.message || err || 'Failed to accept invitation';
-        Alert.alert(t('invitation_error', 'Invitation Error'), msg);
-      } finally {
-        setActionInProgressId(null);
-      }
+      router.push({ pathname: '/(auth)/login', params: { inviteToken: token } });
     },
-    [dispatch, user?.email, markAsRead, router, t]
+    [router]
   );
-
   // Quick card reject button handler
   const handleCardQuickReject = useCallback(
     async (notification: NotificationItemData) => {

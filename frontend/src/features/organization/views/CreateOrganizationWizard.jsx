@@ -44,8 +44,6 @@ const CreateOrganizationWizard = () => {
       username: '',
       email: '',
       phone: '',
-      password: '',
-      confirmPassword: '',
     },
     features: [],
   })
@@ -64,11 +62,9 @@ const CreateOrganizationWizard = () => {
     setLoading(true)
     setError(null)
 
-    // Strip confirmPassword before sending to API
-    const { confirmPassword, ...adminData } = formData.communityAdmin
     const payload = {
       organization: formData.organization,
-      communityAdmin: adminData,
+      communityAdmin: formData.communityAdmin,
       features: formData.features,
     }
 
@@ -79,7 +75,7 @@ const CreateOrganizationWizard = () => {
       } else {
         setError(
           resultAction.payload ||
-            t('organization.wizard.error', { defaultValue: 'Failed to create organization' }),
+            t('organization.wizard.error', { defaultValue: 'Failed to Create Community' }),
         )
       }
     } catch (err) {
@@ -206,7 +202,7 @@ const CreateOrganizationWizard = () => {
       <div className="view-container">
         <CCard className="mb-4 shadow-sm">
           <CCardHeader className="bg-white pb-0">
-            <h4>{t('organization.wizard.title', { defaultValue: 'Create Organization' })}</h4>
+            <h4>{t('organization.wizard.title', { defaultValue: 'Create Community' })}</h4>
             <p className="text-muted small mb-3">
               {t('organization.wizard.subtitle', {
                 defaultValue: 'Provision a new community and community admin',

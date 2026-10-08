@@ -199,7 +199,7 @@ const parseCSV = (csvText) => {
   return parsed
 }
 
-export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
+export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload, targetOrgId }) => {
   const { t } = useTranslation()
   const [parsedRows, setParsedRows] = useState([])
   const [fileName, setFileName] = useState('')
@@ -210,7 +210,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
 
   const handleDownloadTemplate = async () => {
     try {
-      const blob = await downloadBulkUploadTemplate()
+      const blob = await downloadBulkUploadTemplate(targetOrgId)
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.setAttribute('href', url)
@@ -601,6 +601,7 @@ BulkUploadVillasModal.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onBulkUpload: PropTypes.func.isRequired,
+  targetOrgId: PropTypes.string,
 }
 
 export default BulkUploadVillasModal

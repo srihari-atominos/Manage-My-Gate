@@ -60,10 +60,10 @@ const parseCSV = (text) => {
     headers.forEach((header, index) => {
       let key = header
       if (header === 'email') key = 'email'
-      else if (header === 'phone' || header === 'mobile' || header === 'contact') key = 'phone'
+      else if (header === 'phone' || header === 'phone number' || header === 'phone no' || header === 'mobile' || header === 'contact') key = 'phone'
       else if (header === 'name' || header === 'fullname' || header === 'full name') key = 'name'
       else if (header === 'role') key = 'roleName'
-      // Ignore other potential columns like Type, VillaNumber
+      // Ignore columns outside Email, Phone Number, and Role.
 
       if (key) {
         row[key] = values[index] || ''
@@ -71,16 +71,16 @@ const parseCSV = (text) => {
     })
 
     // Skip reference rows that are completely empty in data fields
-    if (!row.email?.trim() && !row.phone?.trim() && !row.name?.trim() && !row.roleName?.trim()) {
+    if (!row.email?.trim() && !row.phone?.trim() && !row.roleName?.trim()) {
       continue
     }
 
-    row.hasEmailOrPhone = !!(row.email?.trim() || row.phone?.trim())
+    row.hasEmailAndPhone = !!(row.email?.trim() && row.phone?.trim())
     row.isValidEmail = !row.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())
     row.isValidPhone = !row.phone || row.phone.trim().length >= 8
     row.isValidRole = !!row.roleName
 
-    row.isValid = row.hasEmailOrPhone && row.isValidEmail && row.isValidPhone && row.isValidRole
+    row.isValid = row.hasEmailAndPhone && row.isValidEmail && row.isValidPhone && row.isValidRole
 
     parsed.push(row)
   }
@@ -92,7 +92,6 @@ export const BulkInviteModal = ({
   onClose,
   onBulkInvite,
   availableRoles = [],
-  globalOnboardingMode,
 }) => {
   const [parsedRows, setParsedRows] = useState([])
   const [fileName, setFileName] = useState('')
@@ -103,12 +102,8 @@ export const BulkInviteModal = ({
   const fileInputRef = useRef(null)
 
   const handleDownloadTemplate = () => {
-    const roleHints =
-      availableRoles && availableRoles.length > 0
-        ? availableRoles.join('\n,,,,')
-        : 'Community Admin\n,,,,Security Guard\n,,,,Resident Owner'
-
-    const dynamicTemplate = `Email,Phone,Name,Role,Available Roles (Reference Only)\njohn.doe@example.com,,John Doe,Community Admin,${roleHints}\njane.smith@example.com,+919876543211,Jane Smith,Security Guard,`
+    const defaultRole = availableRoles?.[0] || 'Community Admin'
+    const dynamicTemplate = `Email,Phone Number,Role\njohn.doe@example.com,+919876543211,${defaultRole}\njane.smith@example.com,+919876543212,Security Guard`
 
     const blob = new Blob([dynamicTemplate], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -240,31 +235,6 @@ export const BulkInviteModal = ({
       </CModalHeader>
 
       <CModalBody className="p-4">
-        {/* Onboarding Method Selection */}
-        {!results && (
-          <div className="mb-4 p-3 border rounded-3 bg-body-tertiary">
-            <label className="fw-semibold mb-2 d-block" style={{ fontSize: '0.9rem' }}>
-              Onboarding Method
-            </label>
-            <div className="d-flex flex-column gap-2">
-              <div className="d-flex align-items-start gap-2 p-3 border rounded bg-light">
-                <div>
-                  <strong className="d-block small">
-                    Current Strategy:{' '}
-                    {globalOnboardingMode === 'ADMIN_ANNOUNCEMENT'
-                      ? 'Admin Announcement (Immediate Activation)'
-                      : 'Normal Invitation'}
-                  </strong>
-                  <span className="text-muted small">
-                    {globalOnboardingMode === 'ADMIN_ANNOUNCEMENT'
-                      ? 'Membership is activated immediately. Existing user passwords are preserved. Configured globally in Organization Settings.'
-                      : 'Membership is Pending until the user accepts the invitation link via email or SMS. Configured globally in Organization Settings.'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Step 1: Template Download */}
         {!fileName && !parsedRows.length && !results && (
@@ -273,8 +243,7 @@ export const BulkInviteModal = ({
               1. Download CSV Template
             </h5>
             <p className="text-muted small mb-3">
-              Use our standard format to prepare your invitation list. Provide Email OR Phone for
-              each row.
+              Use Email, Phone Number, and Role for each invitation row.
             </p>
             <CButton
               color="primary"
@@ -356,7 +325,7 @@ export const BulkInviteModal = ({
                     <th scope="col" className="ps-3">
                       Contact (Email / Phone)
                     </th>
-                    <th scope="col">Name</th>
+
                     <th scope="col">Role</th>
                     <th scope="col" className="pe-3 text-center">
                       Status
@@ -374,9 +343,6 @@ export const BulkInviteModal = ({
                         {row.email || row.phone || (
                           <span className="text-danger">Missing Contact</span>
                         )}
-                      </td>
-                      <td className="text-truncate bulk-text-truncate-role">
-                        {row.name || <span className="text-muted">—</span>}
                       </td>
                       <td className="text-truncate bulk-text-truncate-role">
                         {row.roleName || <span className="text-danger">Missing</span>}
@@ -401,7 +367,7 @@ export const BulkInviteModal = ({
                         ) : (
                           <CBadge
                             color="danger"
-                            title="Validation failed: Provide Email or Phone and Role."
+                            title="Validation failed: Provide Email, Phone Number, and Role."
                           >
                             Fix Row
                           </CBadge>
@@ -432,11 +398,7 @@ export const BulkInviteModal = ({
                 <h6 className="fw-semibold mb-0">Bulk Processing Completed</h6>
               </div>
               <p className="mb-0 small">
-                Successfully processed {results.successCount} of {results.total} users using{' '}
-                {globalOnboardingMode === 'ADMIN_ANNOUNCEMENT'
-                  ? 'Admin Announcement'
-                  : 'Normal Invitation'}
-                .
+                Successfully processed {results.successCount} of {results.total} users .
               </p>
             </CAlert>
 

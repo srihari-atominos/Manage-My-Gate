@@ -49,18 +49,6 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       if (!selectedMembership) {
         selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
       }
-      // Auto-heal fallback: If user was invited and has a membership in this org that is still in 'Pending' status,
-      // and the organization is active, auto-promote it to 'Active' so valid authenticated users are never denied entry.
-      if (!selectedMembership) {
-        const pendingMatch = memberships.find((m) => m.orgId && m.orgId._id && m.orgId._id.toString() === targetOrgIdStr);
-        if (pendingMatch && (!pendingMatch.orgId.status || pendingMatch.orgId.status.toLowerCase() === 'active')) {
-          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
-          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, targetOrgIdStr, 'Active');
-          pendingMatch.status = 'Active';
-          selectedMembership = pendingMatch;
-          activeMemberships.push(pendingMatch);
-        }
-      }
       if (!selectedMembership) {
         if (user.isPlatform === true) {
           selectedMembership = activeMemberships.find((m) => m.orgId && m.orgId.isPlatform === true) || activeMemberships[0];
@@ -708,6 +696,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       if (inviteToken) {
         const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
         if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (!tokenRes.orgId) throw new HttpError(400, 'Invitation is missing community context.');
         if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
         await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
         const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
@@ -798,18 +787,6 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       // Fallback to first membership in org if no specific villa requested or found
       if (!selectedMembership) {
         selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
-      }
-      // Auto-heal fallback: If user was invited and has a membership in this org that is still in 'Pending' status,
-      // and the organization is active, auto-promote it to 'Active' so valid authenticated users are never denied entry.
-      if (!selectedMembership) {
-        const pendingMatch = memberships.find((m) => m.orgId && m.orgId._id && m.orgId._id.toString() === targetOrgIdStr);
-        if (pendingMatch && (!pendingMatch.orgId.status || pendingMatch.orgId.status.toLowerCase() === 'active')) {
-          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
-          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, targetOrgIdStr, 'Active');
-          pendingMatch.status = 'Active';
-          selectedMembership = pendingMatch;
-          activeMemberships.push(pendingMatch);
-        }
       }
       if (!selectedMembership) {
         if (user.isPlatform === true) {
@@ -2262,12 +2239,45 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       }
     }
 
+    // MSG91 is a global provider-managed OTP path. Firebase remains preferred
+    // when configured; MSG91 is used before the legacy SMS fallback.
+    const msg91Integration = await integrationHubService.getGlobalConnectionByProvider('msg91');
+    const msg91EnvConfigured = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+    if (msg91Integration || msg91EnvConfigured) {
+      const { decryptCredential } = await import('../integrationHub/utils/crypto.util.js');
+      const authKeyCred = msg91Integration?.credentials.find(c => c.key === 'authKey');
+      const templateIdCred = msg91Integration?.credentials.find(c => c.key === 'templateId');
+      const authKey = process.env.MSG91_AUTH_KEY || (authKeyCred && decryptCredential(authKeyCred));
+      const templateId = process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID || (templateIdCred && decryptCredential(templateIdCred));
+      const senderIdCred = msg91Integration?.credentials.find(c => c.key === 'senderId');
+      const senderId = process.env.MSG91_SENDER_ID || (senderIdCred && decryptCredential(senderIdCred));
+      if (!authKey || !templateId) throw new HttpError(503, 'MSG91 OTP is not configured correctly.');
+      const sendUrl = new URL('https://control.msg91.com/api/v5/otp');
+      sendUrl.searchParams.set('template_id', templateId);
+      sendUrl.searchParams.set('mobile', normalizedPhone.replace(/^\+/, ''));
+      if (senderId) {
+        sendUrl.searchParams.set('sender', senderId);
+      }
+      logger.info('MSG91 OTP send request', { mobile: normalizedPhone.replace(/^\+/, ''), templateId, senderId });
+      const response = await fetch(sendUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', accept: 'application/json', authkey: authKey } });
+      let responseData = null;
+      try { responseData = await response.json(); } catch (_) { /* provider may return an empty body */ }
+      logger.info('MSG91 OTP send response', { status: response.status, type: responseData?.type, message: responseData?.message, request_id: responseData?.request_id });
+      if (!response.ok || String(responseData?.type || '').toLowerCase() !== 'success') {
+        logger.error('MSG91 OTP send FAILED', { status: response.status, responseData, mobile: normalizedPhone.replace(/^\+/, ''), templateId });
+        throw new HttpError(502, `MSG91 could not send the OTP: ${responseData?.message || 'Unknown error'}. Verify the MSG91 OTP template and account configuration.`);
+      }
+      await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, 'MSG91');
+      return { message: 'OTP sent via MSG91 successfully' };
+    }
     if (process.env.NODE_ENV === 'production') {
-      const [twilio, messageCentral] = await Promise.all([
+      const [twilio, messageCentral, msg91] = await Promise.all([
         integrationHubService.getGlobalConnectionByProvider('twilio'),
-        integrationHubService.getGlobalConnectionByProvider('messagecentral')
+        integrationHubService.getGlobalConnectionByProvider('messagecentral'),
+        integrationHubService.getGlobalConnectionByProvider('msg91')
       ]);
-      if (!twilio && !messageCentral) {
+      const msg91Env = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+      if (!twilio && !messageCentral && !msg91 && !msg91Env) {
         throw new HttpError(503, 'SMS login is temporarily unavailable. Please use email login or contact support.');
       }
     }
@@ -2306,7 +2316,26 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       // 1. Verify OTP
       const otpResult = await otpService.verifyOTP(normalizedPhone, code, 'LOGIN', session, false);
 
-      if (otpResult && otpResult.sessionInfo) {
+      if (otpResult && otpResult.sessionInfo === 'MSG91') {
+        const msg91Integration = await integrationHubService.getGlobalConnectionByProvider('msg91', session);
+        const { decryptCredential } = await import('../integrationHub/utils/crypto.util.js');
+        const authKeyCred = msg91Integration?.credentials.find(c => c.key === 'authKey');
+        const authKey = process.env.MSG91_AUTH_KEY || (authKeyCred && decryptCredential(authKeyCred));
+        if (!authKey) throw new HttpError(400, 'MSG91 configuration missing.');
+        const verifyUrl = new URL('https://control.msg91.com/api/v5/otp/verify');
+        verifyUrl.searchParams.set('otp', String(code).trim());
+        verifyUrl.searchParams.set('mobile', normalizedPhone.replace(/^\+/, ''));
+        const response = await fetch(verifyUrl, { method: 'GET', headers: { authkey: authKey, accept: 'application/json' } });
+        let responseData = null;
+        try { responseData = await response.json(); } catch (_) { /* provider may return an empty body */ }
+        const providerMessage = String(responseData?.message || '').toLowerCase();
+        if (responseData?.code === '418' || providerMessage.includes('ip is not whitelisted')) {
+          logger.error('[CRITICAL MSG91] Request rejected by MSG91: IP is not whitelisted in MSG91 dashboard. Whitelist the server public IP or disable IP restrictions on the AuthKey.', { responseData });
+          throw new HttpError(502, 'MSG91 service error: Server IP is not whitelisted in your MSG91 dashboard.');
+        }
+        const verified = response.ok && (String(responseData?.type || '').toLowerCase() === 'success' || providerMessage.includes('otp verified') || providerMessage.includes('number_verified'));
+        if (!verified) throw new HttpError(400, 'Invalid or expired OTP.');
+      } else if (otpResult && otpResult.sessionInfo) {
         // This was a Firebase managed OTP
         const firebaseIntegration = await integrationHubService.getGlobalConnectionByProvider('firebase', session);
         if (!firebaseIntegration) throw new HttpError(400, 'Firebase configuration missing.');
@@ -2350,6 +2379,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       if (inviteToken) {
         const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
         if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (!tokenRes.orgId) throw new HttpError(400, 'Invitation is missing community context.');
         if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
         await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
         const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
@@ -2551,6 +2581,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       if (inviteToken) {
         const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
         if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (!tokenRes.orgId) throw new HttpError(400, 'Invitation is missing community context.');
         if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
         await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
         const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);

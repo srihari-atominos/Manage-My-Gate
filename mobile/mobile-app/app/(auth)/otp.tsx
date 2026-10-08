@@ -24,7 +24,7 @@ interface OtpFormValues {
 
 export default function OtpScreen() {
   const { t } = useTranslation();
-  const { phone, email } = useLocalSearchParams<{ phone?: string; email?: string }>();
+  const { phone, email, inviteToken } = useLocalSearchParams<{ phone?: string; email?: string; inviteToken?: string }>();
   const { verifyOtp, requestOtp, loading, error, successMsg, isAuthenticated, clearStatus } = useAuth();
   const [resendCooldown, setResendCooldown] = React.useState(30);
 
@@ -67,7 +67,7 @@ export default function OtpScreen() {
 
   const onSubmit = async (data: OtpFormValues) => {
     if (!identifier) return;
-    await verifyOtp(identifier, data.code, isEmail);
+    await verifyOtp(identifier, data.code, isEmail, inviteToken);
   };
 
   const handleResend = async () => {
