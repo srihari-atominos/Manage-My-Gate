@@ -2,7 +2,7 @@ import { Router } from 'express';
 import enquiryController from './enquiry.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
-import authorizeRoles from '../../middlewares/rbac.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 import {
   createEnquiryRules,
   updateEnquiryStatusRules,
@@ -22,7 +22,9 @@ router.post(
 
 // Protected CRM routes
 router.use(isAuthenticated);
-router.use(authorizeRoles('SUPER_ADMIN', 'ADMIN', 'SALES_EXECUTIVE'));
+// Platform staff only. Decided by the signed isPlatform claim, never by role names
+// (the default rbac export is authorizePermission, which let any community admin through).
+router.use(tenantContext({ requirePlatformContext: true }));
 
 router.post('/enquiries/ensure', enquiryController.ensureInquiry);
 
@@ -50,7 +52,6 @@ router.patch(
 
 router.post(
   '/enquiries/:id/convert',
-  authorizeRoles('SUPER_ADMIN', 'ADMIN'), // Restrict conversion to admins
   validate(convertEnquiryRules),
   enquiryController.convert
 );

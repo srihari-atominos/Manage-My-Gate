@@ -68,6 +68,26 @@ export class OrganizationController {
     }
   }
 
+  async provisionCommunity(req, res, next) {
+    try {
+      const platformUserId = req.user?.id || req.user?._id;
+      const result = await organizationService.provisionCommunity(req.body, platformUserId);
+      res.success(result, 'Community created', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async assignCommunityAdmin(req, res, next) {
+    try {
+      const platformUserId = req.user?.id || req.user?._id;
+      const result = await organizationService.assignCommunityAdmin(req.params.id, req.body, platformUserId);
+      res.success(result, 'Community Admin invited', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getDetails(req, res, next) {
     try {
       const orgId = req.params.id;

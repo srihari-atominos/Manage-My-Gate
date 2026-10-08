@@ -223,3 +223,27 @@ _Each phase appends: date, commit, completed, deferred, blockers, tests._
 **Tests**
 - New `backend/tests/auth.phase3.acceptance.test.mjs`: 16/16 (exact-invitation activation incl. multi-community John case, ticket flow, mismatch/expired/revoked, decline, password path, landing, SSO linking).
 - Phase 0 19/19, Phase 1 13/13, Phase 2 16/16 (one assertion updated for the ticket result). google 8/8 and apple 6/6 (fixtures now carry `email_verified`; new unverified case). phone suites 17/17, payment.security 4/4, multiOrgAuth 13/15 (pre-existing). Mobile Jest 8/8.
+
+### Phase 4 — 2026-10-08
+
+**Completed**
+- `OrganizationService._createCommunityWithDefaults` — one place that creates a community with its five default roles and permissions; used by self-serve setup, platform provisioning and CRM conversion.
+- `POST /organizations/provision` (platform only): creates the community; the platform user does not join; optional `admin: { email, phone, name }` is invited as Community Admin through the normal invite flow. Duplicate name → 409 `COMMUNITY_NAME_TAKEN`. Protected fields in the body are stripped.
+- `POST /organizations/:id/admins` (platform only): invite or re-invite a community's Community Admin; email and phone required.
+- `POST /organizations/setup` is now platform-only (self-serve creation closed, story 1).
+- Feature selection: `administration_security` maps to users/roles/villas/integrations/workspaces; users, roles, villas and workspaces are always kept for the admin role; `polls` is selectable; unknown feature keys are rejected (they used to be accepted and grant nothing).
+- CRM enquiry conversion rewritten on the shared provisioning (it was broken: wrong field names/status values, a global `COMMUNITY_ADMIN` role, and it activated any existing account with the lead's email).
+
+**Found and fixed on the way (security)**
+- `platform-crm` and `master-pricing` imported `authorizeRoles` as the rbac module's *default* export, which is `authorizePermission`. The check therefore let through anyone whose role name contains "admin": every Community Admin could read all CRM leads, convert enquiries (create communities) and create/change/delete platform pricing plans. Both routers now use `tenantContext({ requirePlatformContext: true })` (signed `isPlatform` claim).
+
+**Deviations**
+- Endpoints are `/organizations/provision` and `/organizations/:id/admins` (not `/platform/communities`), next to the existing organization routes.
+- Payment provisioning (`processCompleteProvisioningFlow`) still creates the community itself and sends the set-password email; it moves to provisioning + admin invitation when passwords are removed (Phase 8). CRM conversion no longer creates a trial subscription (the old code wrote invalid fields, so none was ever created).
+
+**Behaviour change to watch**
+- The current mobile "create community" screens now get 403 for non-platform users; they are removed in Phase 5.
+
+**Tests**
+- New `backend/tests/auth.phase4.platform.test.mjs`: 13/13 (incl. community admin locked out of CRM, pricing, provisioning and other communities' admins).
+- Phases 0–3: 19, 13, 16, 16 all passing; phone 17/17, google 8/8, apple 6/6, payment.security 4/4; multiOrgAuth 13/15 (same pre-existing failures).

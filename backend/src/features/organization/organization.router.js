@@ -9,6 +9,8 @@ import {
   setupWorkspaceRules,
   updateFeaturesRules,
   updateStatusRules,
+  provisionCommunityRules,
+  assignAdminRules,
 } from './organization.validator.js';
 
 const router = Router();
@@ -21,12 +23,31 @@ router.get(
   organizationController.checkName
 );
 
-// Setup Workspace route (authenticated context, validated)
+// Communities are created by the platform team only (story 1); self-serve creation is closed
 router.post(
   '/setup',
   isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
   validate(setupWorkspaceRules),
   organizationController.setupWorkspace
+);
+
+// Platform Admin: create a community, optionally inviting its Community Admin
+router.post(
+  '/provision',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(provisionCommunityRules),
+  organizationController.provisionCommunity
+);
+
+// Platform Admin: invite (or re-invite) a community's Community Admin
+router.post(
+  '/:id/admins',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(assignAdminRules),
+  organizationController.assignCommunityAdmin
 );
 
 
