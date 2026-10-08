@@ -203,15 +203,6 @@ export const getCurrentContext = async (orgId?: string) => {
   return await apiClient.get(`/auth/current-context${query}`);
 };
 
-export const initiateInvitationOtp = async (inviteToken: string) => {
-  return await apiClient.post('/auth/invitation/otp/initiate', { inviteToken });
-};
-
-export const verifyInvitationOtp = async (inviteToken: string, otpCode: string) => {
-  return await apiClient.post('/auth/invitation/otp/verify', { inviteToken, otpCode });
-};
-
-
 export default {
   register,
   verifyRegistration,
@@ -239,8 +230,6 @@ export default {
   checkOrganizationName,
   createWorkspace,
   updateOrganizationFeatures,
-  exchangeHandoff,
-  initiateInvitationOtp,
-  verifyInvitationOtp,
-  getCurrentContext,
+  exchangeHandoff,getCurrentContext,
 };
+
