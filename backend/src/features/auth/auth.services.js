@@ -2383,12 +2383,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     // Emit event for SMS delivery
     sendOtpNotification({ identifier: normalizedPhone, code: plainCode, type: 'SMS' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      
-    }
-
-    return { message: 'OTP sent successfully' };
+    return { message: 'OTP sent successfully', ...devCodeField(normalizedPhone, plainCode) };
   }
 
   /**
@@ -2470,18 +2465,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       await otpService.clearOTP(normalizedPhone, 'LOGIN', session);
 
       // 3. Generate session refresh token
-      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
-      if (inviteToken) {
-        const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
-        if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
-        if (!tokenRes.orgId) throw new HttpError(400, 'Invitation is missing community context.');
-        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
-        await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
-        const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
-        if (membership && membership.units) { const villaService = (await import('../villa/villa.services.js')).default; for (const unit of membership.units) { if (unit.villaId) { await villaService.assignResidentToVilla(unit.villaId._id || unit.villaId, user._id, unit.residentType || 'Resident', session, tokenRes.orgId); } } }
-        await tokenService.consumeInvitationToken(inviteToken, session);
-      }
-
+      const finish = await this._completeVerifiedLogin(user, { inviteToken, verifiedVia: 'phone', session });
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
@@ -2516,12 +2500,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     const plainCode = await otpService.createOTP(email, 'LOGIN');
     sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      
-    }
-
-    return { message: 'OTP sent to email' };
+    return { message: OTP_SENT_EMAIL_MESSAGE, ...devCodeField(email, plainCode) };
   }
 
   /**
@@ -2562,7 +2541,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       logger.error(`Failed to send INVITATION_LOGIN OTP to ${finalIdentifier}: ${err.message}`);
     });
 
-    return { message: 'OTP sent' };
+    return { message: 'OTP sent', ...devCodeField(finalIdentifier, plainCode) };
   }
 
   
@@ -2653,18 +2632,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         await userService.updateUser(user._id, { emailVerified: true }, session);
       }
 
-      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
-      if (inviteToken) {
-        const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
-        if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
-        if (!tokenRes.orgId) throw new HttpError(400, 'Invitation is missing community context.');
-        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
-        await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
-        const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
-        if (membership && membership.units) { const villaService = (await import('../villa/villa.services.js')).default; for (const unit of membership.units) { if (unit.villaId) { await villaService.assignResidentToVilla(unit.villaId._id || unit.villaId, user._id, unit.residentType || 'Resident', session, tokenRes.orgId); } } }
-        await tokenService.consumeInvitationToken(inviteToken, session);
-      }
-
+      const finish = await this._completeVerifiedLogin(user, { inviteToken, verifiedVia: 'email', session });
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---

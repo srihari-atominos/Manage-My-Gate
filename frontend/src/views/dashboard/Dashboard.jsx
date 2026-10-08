@@ -1,13 +1,18 @@
 import React from 'react'
 import { useSelector } from 'react-redux'
 import useDashboard from './hooks/useDashboard'
+import { useAuth } from '../../features/auth/hooks/useAuth'
 import AdminDashboard from './components/AdminDashboard'
 import ResidentDashboard from './components/ResidentDashboard'
 import GuardDashboard from './components/GuardDashboard'
 
 const Dashboard = () => {
-  const activeRole = useSelector((state) => state.workspace?.activeRole)
+  const { checkPermission } = useAuth()
   const { groups, appName } = useDashboard()
+
+  const isGuard = checkPermission('visitors:guard') || checkPermission('guard:dashboard')
+  const isAdmin = checkPermission('users:read') || checkPermission('dashboard:view_analytics') || checkPermission('roles:read') || checkPermission('billing:dashboard')
+
 
   return (
     <div className="portal-hub">
@@ -144,14 +149,12 @@ const Dashboard = () => {
       `}</style>
 
       {/* Dynamic Dashboard Selector based on Role */}
-      {activeRole === 'Resident Owner' ||
-      activeRole === 'Resident Tenant' ||
-      activeRole === 'Family Member' ? (
-        <ResidentDashboard />
-      ) : activeRole === 'Security Guard' ? (
+      {isAdmin ? (
+        <AdminDashboard groups={groups} appName={appName} />
+      ) : isGuard ? (
         <GuardDashboard />
       ) : (
-        <AdminDashboard groups={groups} appName={appName} />
+        <ResidentDashboard />
       )}
     </div>
   )
