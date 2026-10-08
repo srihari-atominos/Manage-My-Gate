@@ -694,6 +694,149 @@ export class AuthService {
   }
 
   /**
+   * Which first screen the app should open. Derived from server-side permissions,
+   * never from role names (custom roles exist). It only picks a screen; every
+   * request is still authorised server-side.
+   * @returns {'platform'|'community_admin'|'member'|'pending_invitations'|'no_community'}
+   */
+  _computeLanding(tokenPayload, permissions = [], pendingInvitations = []) {
+    if (tokenPayload.isPlatform) return 'platform';
+    if (!tokenPayload.orgId) return pendingInvitations.length > 0 ? 'pending_invitations' : 'no_community';
+    const granted = new Set(permissions.map((p) => (typeof p === 'string' ? p : p?.name)).filter(Boolean));
+    const adminPermissions = ['*', 'users:create', 'roles:create', 'roles:update'];
+    return adminPermissions.some((p) => granted.has(p)) ? 'community_admin' : 'member';
+  }
+
+  /**
+   * The single login result returned by every sign-in method (password, email
+   * code, phone code, SSO, invitation acceptance). Creates the session.
+   */
+  async _buildLoginResult(user, { targetOrgId = null, deviceInfo = {}, method = 'unknown' } = {}) {
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgId);
+    if (tokenPayload.isPlatform && tokenPayload.role === 'Super Admin' && !permissions.includes('*')) {
+      permissions.push('*');
+    }
+    const token = signToken(tokenPayload);
+    const refreshToken = await sessionService.createSession(user._id, deviceInfo || {});
+    const { listPendingInvitationsForUser } = await import('./invitationAcceptance.js');
+    const pendingInvitations = await listPendingInvitationsForUser(user._id);
+
+    authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method });
+
+    return {
+      token,
+      refreshToken,
+      user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
+      availableWorkspaces,
+      pendingInvitations,
+      landing: this._computeLanding(tokenPayload, permissions, pendingInvitations),
+    };
+  }
+
+  /**
+   * After identity is verified (OTP or SSO): accept the exact invitation if a
+   * token was supplied, otherwise sign in normally. An invited placeholder
+   * without a token gets a short-lived ticket and its pending invitations to
+   * choose from instead of a session.
+   * Runs inside the caller's transaction; returns a function that completes the
+   * login after commit.
+   */
+  async _completeVerifiedLogin(user, { inviteToken = null, verifiedVia, session }) {
+    if (['Suspended', 'Blocked', 'Deleted'].includes(user.status)) {
+      throw new HttpError(403, `Your account has been ${user.status.toLowerCase()}. Please contact support.`);
+    }
+    const isPlaceholder = user.status === 'Pending Verification' || user.status === 'Pending';
+    const { acceptInvitationForUser, emitInvitationAccepted, listPendingInvitationsForUser, issueIdentityTicket } =
+      await import('./invitationAcceptance.js');
+
+    if (inviteToken) {
+      const { orgId } = await acceptInvitationForUser(user, { rawToken: inviteToken }, verifiedVia, session);
+      return async (deviceInfo, method) => {
+        emitInvitationAccepted(user._id, orgId);
+        return this._buildLoginResult(user, { targetOrgId: orgId, deviceInfo, method });
+      };
+    }
+
+    if (isPlaceholder) {
+      return async () => {
+        const pendingInvitations = await listPendingInvitationsForUser(user._id);
+        if (pendingInvitations.length === 0) {
+          throw new HttpError(403, 'You don\'t have an active invitation. Please ask your community admin to invite you.', {
+            code: 'INVITATION_REQUIRED',
+          });
+        }
+        return {
+          requiresInvitationSelection: true,
+          ticket: issueIdentityTicket(user._id, verifiedVia),
+          pendingInvitations,
+          landing: 'pending_invitations',
+        };
+      };
+    }
+
+    if (user.status !== 'Active') {
+      throw new HttpError(403, `Account is ${user.status}`);
+    }
+    return async (deviceInfo, method) => this._buildLoginResult(user, { deviceInfo, method });
+  }
+
+  /** Pending invitations for a signed-in user. */
+  async getPendingInvitations(userId) {
+    const { listPendingInvitationsForUser } = await import('./invitationAcceptance.js');
+    return listPendingInvitationsForUser(userId);
+  }
+
+  /**
+   * Accept or decline one invitation chosen from the pending list. The caller is
+   * either signed in, or holds a fresh identity ticket from OTP/SSO verification.
+   */
+  async respondToInvitation({ action, invitationId, authUserId = null, ticket = null, deviceInfo = {} }) {
+    const { verifyIdentityTicket, acceptInvitationForUser, declineInvitationForUser, emitInvitationAccepted } =
+      await import('./invitationAcceptance.js');
+    let userId = authUserId;
+    let verifiedVia = 'session';
+    if (!userId) {
+      const claims = verifyIdentityTicket(ticket);
+      userId = claims.userId;
+      verifiedVia = claims.verifiedVia;
+    }
+
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    let orgId;
+    let user;
+    try {
+      user = await userService.getUserById(userId, session);
+      if (['Suspended', 'Blocked', 'Deleted'].includes(user.status)) {
+        throw new HttpError(403, 'Account is inactive or suspended.');
+      }
+      if (action === 'decline') {
+        ({ orgId } = await declineInvitationForUser(user, { invitationId }, session));
+      } else {
+        ({ orgId } = await acceptInvitationForUser(user, { invitationId }, verifiedVia, session));
+      }
+      await session.commitTransaction();
+    } catch (error) {
+      try { await session.abortTransaction(); } catch (_) {}
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+
+    if (action === 'decline') {
+      authEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
+      userEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
+      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'rejected' });
+      const { listPendingInvitationsForUser } = await import('./invitationAcceptance.js');
+      return { declined: true, orgId, pendingInvitations: await listPendingInvitationsForUser(user._id) };
+    }
+
+    emitInvitationAccepted(user._id, orgId);
+    return this._buildLoginResult(user, { targetOrgId: orgId, deviceInfo, method: 'invitation' });
+  }
+
+  /**
    * Helper to format consistent auth user payload containing unit and organization context.
    */
   _formatAuthUser(user, tokenPayload, permissions = [], availableWorkspaces = []) {
@@ -769,96 +912,31 @@ export class AuthService {
       throw new HttpError(401, 'Invalid credentials. Incorrect password.');
     }
 
-    // 2b. Process invitation token if provided during login
+    // 2b. Identity proven by password: accept the exact invitation if one was supplied
     let targetOrgIdFromInvite = null;
     if (inviteToken) {
+      const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
+      const mongoose = (await import('mongoose')).default;
+      const session = await mongoose.startSession();
+      session.startTransaction();
       try {
-        const inviteDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION');
-        if (!inviteDoc?.userId || inviteDoc.userId.toString() !== user._id.toString()) {
-          throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
-        }
-        try {
-          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION');
-          targetOrgIdFromInvite = orgId;
-        } catch (tokenErr) {
-          // If token was already accepted or consumed on a previous/concurrent request,
-          // recover orgId from the existing token document so the user can still sign in and access the workspace!
-          const existingTokenDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION');
-          if (existingTokenDoc && (existingTokenDoc.status === 'ACCEPTED' || existingTokenDoc.used === true)) {
-            targetOrgIdFromInvite = existingTokenDoc.orgId;
-          } else {
-            throw tokenErr;
-          }
-        }
-
-        if (targetOrgIdFromInvite) {
-          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-          await orgMembershipService.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
-
-          // If user was in Pending Verification, activate their global user profile
-          if (user.status === 'Pending Verification' || user.status === 'Pending') {
-            const User = (await import('../user/user.model.js')).default;
-            await User.updateOne(
-              { _id: user._id },
-              { $set: { status: 'Active', emailVerified: true } }
-            );
-            user.status = 'Active';
-            user.emailVerified = true;
-          }
-
-          // Assign resident to villa upon accepting invitation during login
-          const updatedMembership = await orgMembershipService.getMembershipWithVilla(user._id, targetOrgIdFromInvite);
-          if (updatedMembership) {
-            const villaService = (await import('../villa/villa.services.js')).default;
-            if (updatedMembership.units && updatedMembership.units.length > 0) {
-              for (const unit of updatedMembership.units) {
-                if (unit.villaId) {
-                  const vId = unit.villaId._id || unit.villaId;
-                  await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', null, targetOrgIdFromInvite);
-                }
-              }
-            } else if (updatedMembership.villaId) {
-              const vId = updatedMembership.villaId._id || updatedMembership.villaId;
-              await villaService.assignResidentToVilla(vId, user._id, updatedMembership.residentType || 'Resident', null, targetOrgIdFromInvite);
-            }
-          }
-
-          const Technician = (await import('../technician/technician.model.js')).default;
-          await Technician.findOneAndUpdate({ userId: user._id, orgId: targetOrgIdFromInvite }, { status: 'Active' }).catch(() => null);
-
-          userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId: targetOrgIdFromInvite });
-          userEvents.emit('USER_UPDATED', { userId: user._id, orgId: targetOrgIdFromInvite, action: 'activated' });
-        }
-      } catch (tokenError) {
-        throw tokenError;
+        ({ orgId: targetOrgIdFromInvite } = await acceptInvitationForUser(user, { rawToken: inviteToken }, 'password', session));
+        await session.commitTransaction();
+      } catch (error) {
+        try { await session.abortTransaction(); } catch (_) {}
+        throw error;
+      } finally {
+        await session.endSession();
       }
+      emitInvitationAccepted(user._id, targetOrgIdFromInvite);
     }
 
-    // 3. Resolve context and generate permissions
-    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
-
-    // Super Admin Bypass for Platform Org
-    if (tokenPayload.isPlatform && tokenPayload.role === 'Super Admin') {
-      permissions.push('*');
-    }
-
-    // 4. Generate JWT token
-    const token = signToken(tokenPayload);
-
-    // 5. Create session & Refresh Token
-    const deviceInfo = loginData.deviceInfo || {};
-    const refreshToken = await sessionService.createSession(user._id, deviceInfo);
-
-    // Emit event for successful login write operation
-    authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'credentials' });
-
-    // 6. Return response payload matching new structure
-    return {
-      token,
-      refreshToken,
-      user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
-      availableWorkspaces,
-    };
+    // 3. Scoped token, session and the shared login result
+    return this._buildLoginResult(user, {
+      targetOrgId: targetOrgIdFromInvite,
+      deviceInfo: loginData.deviceInfo || {},
+      method: 'credentials',
+    });
   }
 
   /**
@@ -1082,10 +1160,13 @@ export class AuthService {
         throw new HttpError(401, 'You already have an account. Please sign in to accept this invitation.');
       }
 
-      // Transition invitation token to ACCEPTED only after identity verification succeeds
-      await tokenService.consumeInvitationToken(rawToken, session);
+      if (!isEstablishedAccount && !password && !(user.password && authenticatedUserId)) {
+        throw new HttpError(400, 'Password is required to activate a new account.');
+      }
 
-      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+      // Accept exactly this invitation (the emailed link proves the email address)
+      const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
+      await acceptInvitationForUser(user, { rawToken }, 'email', session);
 
       if (isEstablishedAccount) {
         if (profileData.name || profileData.phone) {
@@ -1097,61 +1178,14 @@ export class AuthService {
         await userService.activateUser(user._id, hashedPassword, session, profileData);
       } else if (user.password && authenticatedUserId) {
         await userService.activateUser(user._id, user.password, session, profileData);
-      } else {
-        throw new HttpError(400, 'Password is required to activate a new account.');
       }
-
-      // Activate only the membership this invitation belongs to
-      await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
-
-      // Assign resident to villa upon accepting invitation
-      if (orgId) {
-        const membership = await orgMembershipService.getMembershipWithVilla(user._id, orgId, session);
-        if (membership) {
-          const villaService = (await import('../villa/villa.services.js')).default;
-          if (membership.units && membership.units.length > 0) {
-            for (const unit of membership.units) {
-              if (unit.villaId) {
-                const vId = unit.villaId._id || unit.villaId;
-                await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', session, orgId);
-              }
-            }
-          } else if (membership.villaId) {
-            const vId = membership.villaId._id || membership.villaId;
-            await villaService.assignResidentToVilla(vId, user._id, membership.residentType || 'Resident', session, orgId);
-          }
-        }
-      }
-
-      if (orgId) {
-        const Technician = (await import('../technician/technician.model.js')).default;
-        await Technician.findOneAndUpdate({ userId: user._id, orgId }, { status: 'Active' }).session(session).catch(() => null);
-      }
-
-      // Auto-login session creation (inside transaction for atomic flow validation)
-      const refreshToken = await sessionService.createSession(user._id, {}, session);
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      // Auto-login logic (read scopes are done outside transaction block)
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, orgId);
-      const token = signToken(tokenPayload);
-
-      // Emit event for successful activation and login write operations
       authEvents.emit('USER_ACTIVATED', { userId: user._id });
-      authEvents.emit('INVITATION_ACCEPTED', { userId: user._id, orgId });
-      userEvents.emit('INVITATION_ACCEPTED', { userId: user._id, orgId });
-      userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
-      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'invitation' });
-
-      return {
-        token,
-        refreshToken,
-        user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
-        availableWorkspaces,
-      };
+      emitInvitationAccepted(user._id, orgId);
+      return await this._buildLoginResult(user, { targetOrgId: orgId, method: 'invitation' });
     } catch (error) {
       if (session) {
         try { await session.abortTransaction(); } catch (e) {}
@@ -1377,7 +1411,8 @@ export class AuthService {
         }
       } 
       
-      if (!user) {
+      if (!user && identityData.emailVerified === true) {
+        // Link by email only when Google has verified it
         user = await userService.getUserByEmail(email, session);
       }
 
@@ -1394,39 +1429,17 @@ export class AuthService {
       await this._assertSsoAccountAndInvite(user, inviteToken, session);
       user = await this._updateExistingSsoUser(user, identityData, session);
 
+      const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
       let targetOrgIdFromInvite = null;
       if (inviteToken) {
-        try {
-          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
-          targetOrgIdFromInvite = orgId;
-          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-          await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
-          userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
-          userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
-        } catch (tokenError) {
-          if (user.status === 'Pending Verification') {
-            throw tokenError;
-          }
-          console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
-        }
+        ({ orgId: targetOrgIdFromInvite } = await acceptInvitationForUser(user, { rawToken: inviteToken }, 'sso', session));
       }
-
-      const refreshToken = await sessionService.createSession(user._id, {}, session);
       await session.commitTransaction();
 
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
-      const token = signToken(tokenPayload);
-      
+      if (targetOrgIdFromInvite) emitInvitationAccepted(user._id, targetOrgIdFromInvite);
       authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: provider });
-
-      return {
-        isNewUser: false,
-        token,
-        refreshToken,
-        user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
-        availableWorkspaces,
-      };
+      const result = await this._buildLoginResult(user, { targetOrgId: targetOrgIdFromInvite, method: provider });
+      return { isNewUser: false, ...result };
     } catch (error) {
       authEvents.emit('LOGIN_FAILED', { email: email, reason: error.message, method: provider });
       if (session) {
@@ -1571,8 +1584,8 @@ export class AuthService {
         }
       } 
       
-      if (!user && email) {
-        // Fallback: Check if user exists by email to link them
+      if (!user && email && identityData.emailVerified === true) {
+        // Fallback: link by email, but only when the provider has verified it
         user = await userService.getUserByEmail(email, session);
       }
 
@@ -1583,54 +1596,19 @@ export class AuthService {
         user = await this._updateExistingSsoUser(user, identityData, session);
       }
 
-      // Process invitation token if provided during SSO login
+      // Accept the exact invitation, if one was supplied
+      const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
       let targetOrgIdFromInvite = null;
       if (inviteToken) {
-        try {
-          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
-          targetOrgIdFromInvite = orgId;
-          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-          await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
-        } catch (tokenError) {
-          if (user.status === 'Pending Verification') {
-            throw tokenError;
-          }
-          console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
-        }
+        ({ orgId: targetOrgIdFromInvite } = await acceptInvitationForUser(user, { rawToken: inviteToken }, 'sso', session));
       }
-
-      const refreshToken = await sessionService.createSession(user._id, {}, session);
       await session.commitTransaction();
 
-      // Resolve scoped token and workspaces
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
-      
-      // Enforce organization check
-      if (!availableWorkspaces || availableWorkspaces.length === 0) {
-        throw new HttpError(403, 'Your account does not have access to any active organization.');
-      }
-
-      const token = signToken(tokenPayload);
-      
+      if (targetOrgIdFromInvite) emitInvitationAccepted(user._id, targetOrgIdFromInvite);
       authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: provider });
-
-      return {
-        token,
-        refreshToken,
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          role: tokenPayload.role,
-          roles: tokenPayload.roles,
-          permissions: permissions,
-          orgId: tokenPayload.orgId,
-          isPlatform: tokenPayload.isPlatform,
-          visitorContext: tokenPayload.visitorContext,
-        },
-        availableWorkspaces,
-      };
+      // A user with no community gets landing 'no_community' / 'pending_invitations'
+      // instead of an error after a session was already created
+      return await this._buildLoginResult(user, { targetOrgId: targetOrgIdFromInvite, method: provider });
     } catch (error) {
       authEvents.emit('LOGIN_FAILED', { email: email, reason: error.message, method: provider });
       if (session) {
@@ -1717,7 +1695,7 @@ export class AuthService {
    * @param {string} code - OTP verification code
    * @param {object} deviceInfo - Client device meta
    */
-  async verifyPhoneLogin(phone, code, deviceInfo) {
+  async verifyPhoneLogin(phone, code, deviceInfo, inviteToken = null) {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
     const mongoose = (await import('mongoose')).default;
@@ -1753,52 +1731,23 @@ export class AuthService {
         }
       }
 
-      // 2. Fetch user
+      // 2. Identity proven: resolve the account
       const user = await userService.getUserByPhone(normalizedPhone, session);
       if (!user) {
-        throw new HttpError(404, 'User not found.');
+        throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
       }
 
-      if (user.status !== 'Active') {
-        throw new HttpError(403, `Account is ${user.status}`);
-      }
-
-      // Mark phone as verified if not already
-      if (!user.phoneVerified) {
+      // 3. Accept the exact invitation (if any), or sign in normally
+      const finish = await this._completeVerifiedLogin(user, { inviteToken, verifiedVia: 'phone', session });
+      if (user.status === 'Active' && !user.phoneVerified) {
         await userService.updateUser(user._id, { phoneVerified: true }, session);
       }
 
       await otpService.clearOTP(normalizedPhone, 'LOGIN', session);
-
-      // 3. Generate session refresh token
-      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
-
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      // Scoped token and available workspaces resolved outside the transaction context
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
-      const token = signToken(tokenPayload);
-
-      // Emit event on successful login
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'phone' });
-
-      return {
-        token,
-        refreshToken,
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          role: tokenPayload.role,
-          roles: tokenPayload.roles,
-          permissions: permissions,
-          orgId: tokenPayload.orgId,
-          isPlatform: tokenPayload.isPlatform,
-          visitorContext: tokenPayload.visitorContext,
-        },
-        availableWorkspaces,
-      };
+      return await finish(deviceInfo, 'phone');
     } catch (error) {
       if (session) {
         try { await session.abortTransaction(); } catch (e) {}
@@ -1837,7 +1786,7 @@ export class AuthService {
    * @param {string} code - OTP verification code
    * @param {object} deviceInfo - Client device meta
    */
-  async verifyEmailOtpLogin(email, code, deviceInfo) {
+  async verifyEmailOtpLogin(email, code, deviceInfo, inviteToken = null) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -1846,48 +1795,23 @@ export class AuthService {
     session.startTransaction();
 
     try {
-      await otpService.verifyOTP(email, code, 'LOGIN');
+      await otpService.verifyOTP(email, code, 'LOGIN', session);
 
       const user = await userService.getUserByEmail(email, session);
       if (!user) {
-        throw new HttpError(404, 'User not found.');
+        throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
       }
 
-      if (user.status !== 'Active') {
-        throw new HttpError(403, `Account is ${user.status}`);
-      }
-
-      if (!user.emailVerified) {
+      // Accept the exact invitation (if any), or sign in normally
+      const finish = await this._completeVerifiedLogin(user, { inviteToken, verifiedVia: 'email', session });
+      if (user.status === 'Active' && !user.emailVerified) {
         await userService.updateUser(user._id, { emailVerified: true }, session);
       }
-
-      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
-      const token = signToken(tokenPayload);
-
-      // Emit event on successful login
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'email_otp' });
-
-      return {
-        token,
-        refreshToken,
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          role: tokenPayload.role,
-          roles: tokenPayload.roles,
-          permissions: permissions,
-          orgId: tokenPayload.orgId,
-          isPlatform: tokenPayload.isPlatform,
-          visitorContext: tokenPayload.visitorContext,
-        },
-        availableWorkspaces,
-      };
+      return await finish(deviceInfo, 'email_otp');
     } catch (error) {
       if (session) {
         try { await session.abortTransaction(); } catch (e) {}

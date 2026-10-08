@@ -109,6 +109,22 @@ export const acceptInviteRules = [
 ];
 
 /**
+ * Accept / decline one invitation chosen from the pending list
+ */
+export const respondInvitationRules = [
+  body('invitationId')
+    .trim()
+    .notEmpty()
+    .withMessage('Invitation is required')
+    .isMongoId()
+    .withMessage('Invitation is not valid'),
+  body('ticket')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+];
+
+/**
  * Validation rules for declining an invitation
  */
 export const rejectInviteRules = [

@@ -78,6 +78,9 @@ export class MicrosoftProvider {
       provider: 'microsoft',
       providerId,
       providerEmail: resolvedEmail.trim().toLowerCase(),
+      // Microsoft's email/preferred_username claims are not verified (they can be
+      // set freely in multi-tenant directories), so they never link accounts by email
+      emailVerified: false,
       profileData: {
         name: name || '',
       }

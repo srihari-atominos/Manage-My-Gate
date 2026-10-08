@@ -116,6 +116,8 @@ export class GoogleProvider {
       provider: 'google',
       providerId,
       providerEmail: email.trim().toLowerCase(),
+      // Accounts are only ever linked by email when Google vouches for it
+      emailVerified: payload.email_verified === true || payload.email_verified === 'true',
       profileData: {
         name: name || '',
         avatar: picture || '',

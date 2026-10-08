@@ -42,6 +42,7 @@ describe('GoogleProvider SSO Verification', () => {
     const rawPayload = {
       sub: 'google-uid-999',
       email: 'TestUser@example.com',
+      email_verified: true,
       name: 'Test User',
       picture: 'https://example.com/avatar.jpg'
     };
@@ -52,11 +53,18 @@ describe('GoogleProvider SSO Verification', () => {
       provider: 'google',
       providerId: 'google-uid-999',
       providerEmail: 'testuser@example.com',
+      emailVerified: true,
       profileData: {
         name: 'Test User',
         avatar: 'https://example.com/avatar.jpg'
       }
     });
+  });
+
+  it('marks the email unverified when Google does not vouch for it', () => {
+    const identity = googleProvider.normalizeIdentity({ sub: 'g-1', email: 'x@example.com', email_verified: false });
+    assert.equal(identity.emailVerified, false);
+    assert.equal(googleProvider.normalizeIdentity({ sub: 'g-2', email: 'y@example.com' }).emailVerified, false);
   });
 
   it('should throw 400 if email is missing from Google profile', () => {

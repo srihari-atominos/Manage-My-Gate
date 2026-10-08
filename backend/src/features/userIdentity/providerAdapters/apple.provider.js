@@ -91,6 +91,7 @@ export class AppleProvider {
       // Existing identities are resolved by the stable `sub` when those fields
       // are absent on later sign-ins.
       providerEmail: email || null,
+      emailVerified: !!email && (payload?.email_verified === true || payload?.email_verified === 'true'),
       profileData: {
         name: typeof fullName === 'string' ? fullName.trim() : '',
       },

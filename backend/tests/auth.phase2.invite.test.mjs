@@ -294,14 +294,16 @@ describe('Phase 2 — creating invitations', () => {
       assert.equal((await User.findOne({ email })).status, 'Pending Verification');
     });
 
-    it('cannot log in with an email code', async () => {
+    it('gets no session from an email code alone (only a ticket to choose an invitation)', async () => {
       const email = `otpph_${t}@p2.test`;
       await userService.inviteUser(email, orgA._id, null, 'None', 'Viewer', nextPhone(), '', 'APP', adminA._id);
       process.env.OTP_DEBUG = 'true';
       const sent = await api('POST', '/auth/login/email-otp', { body: { email } });
       process.env.OTP_DEBUG = '';
       const res = await api('POST', '/auth/login/email-otp/verify', { body: { email, code: sent.body.data.devCode } });
-      assert.equal(res.status, 403);
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+      assert.equal(res.body.data.requiresInvitationSelection, true);
+      assert.equal(res.body.data.token, undefined);
       assert.equal((await User.findOne({ email })).status, 'Pending Verification');
     });
   });

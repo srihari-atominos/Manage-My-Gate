@@ -198,3 +198,28 @@ _Each phase appends: date, commit, completed, deferred, blockers, tests._
 **Tests**
 - New `backend/tests/auth.phase2.invite.test.mjs`: 16/16. Phase 0 (updated for mandatory phone and per-row bulk) 19/19, Phase 1 13/13.
 - Existing suites unchanged (multiOrgAuth's 2 pre-existing failures). Mobile auth Jest 8/8; `tsc` clean for edited files; edited web files parse.
+
+### Phase 3 — 2026-10-08
+
+**Completed**
+- `auth/invitationAcceptance.js`: the single acceptance path. Resolves the invitation by raw token or id, checks it belongs to the verified user and is usable, consumes it atomically, activates the placeholder user, marks email/phone verified, activates only that community's membership, assigns its units and technician record. Plus decline, pending-invitation listing and a 15-minute identity ticket (own secret, never an access token).
+- Email-code and phone-code verification accept `inviteToken`. Password login, both SSO paths and the legacy `/auth/accept-invite` now use the shared acceptance (each had its own partial copy; SSO skipped unit assignment and never checked token ownership).
+- Placeholder without a token: verification returns `{ requiresInvitationSelection, ticket, pendingInvitations, landing: 'pending_invitations' }` and no session/cookies. With no live invitation: 403 `INVITATION_REQUIRED`.
+- New endpoints: `GET /auth/invitations/pending` (signed in), `POST /auth/invitations/accept` and `/decline` with `{ invitationId }` and either a session or the ticket.
+- One login result for every method: `token, refreshToken, user (full), availableWorkspaces, pendingInvitations, landing`. Phone/email/SSO used to return a slim user.
+- `landing` from server permissions (`*`, `users:create`, `roles:create`, `roles:update` → `community_admin`), `platform`, `member`, `pending_invitations`, `no_community`.
+- SSO links an existing account by email only when the provider verified it: Google `email_verified`, Apple `email_verified`, Microsoft never (its email/UPN claims are unverified in multi-tenant directories).
+- SSO for a user without a community no longer creates a session and then fails with 403; it returns `landing: 'no_community'`.
+- Validation errors no longer write passwords, codes or tokens to the console, `validation_errors.log` or the response.
+
+**Deviations**
+- Endpoints live under `/auth/invitations/*` (not `/invitations/*`) to reuse the auth router, limiter and cookie helpers.
+- `/auth/accept-invite/sso` is unchanged; it is legacy once the app sends `inviteToken` with SSO (Phase 5) and is deleted in Phase 8.
+
+**Behaviour changes to watch**
+- Existing Microsoft users whose identity was never linked can no longer be matched by email; they need an invitation link or an already-linked identity.
+- The current app shows "Choose the invitation to accept" if a not-yet-accepted invitee signs in with a phone code; the selection screen arrives in Phase 5.
+
+**Tests**
+- New `backend/tests/auth.phase3.acceptance.test.mjs`: 16/16 (exact-invitation activation incl. multi-community John case, ticket flow, mismatch/expired/revoked, decline, password path, landing, SSO linking).
+- Phase 0 19/19, Phase 1 13/13, Phase 2 16/16 (one assertion updated for the ticket result). google 8/8 and apple 6/6 (fixtures now carry `email_verified`; new unverified case). phone suites 17/17, payment.security 4/4, multiOrgAuth 13/15 (pre-existing). Mobile Jest 8/8.

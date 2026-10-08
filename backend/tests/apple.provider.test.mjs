@@ -13,7 +13,8 @@ describe('AppleProvider SSO verification', () => {
 
   it('normalizes a first Apple authorization response', () => {
     const identity = appleProvider.normalizeIdentity(
-      { sub: 'apple-user-123', email: 'Resident@Privaterelay.AppleID.com' },
+      // Apple sends email_verified as the string "true"
+      { sub: 'apple-user-123', email: 'Resident@Privaterelay.AppleID.com', email_verified: 'true' },
       { fullName: 'Asha Nair' }
     );
 
@@ -21,6 +22,7 @@ describe('AppleProvider SSO verification', () => {
       provider: 'apple',
       providerId: 'apple-user-123',
       providerEmail: 'resident@privaterelay.appleid.com',
+      emailVerified: true,
       profileData: { name: 'Asha Nair' },
     });
   });

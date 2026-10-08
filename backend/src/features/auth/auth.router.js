@@ -6,6 +6,7 @@ import {
   registerRules, 
   acceptInviteRules,
   rejectInviteRules,
+  respondInvitationRules,
   switchContextRules,
   ssoVerifyRules,
   phoneLoginRules,
@@ -156,6 +157,11 @@ router.post('/login', authLimiter, validate(loginRules), authController.login);
  */
 router.post('/accept-invite', authLimiter, optionalAuth, validate(acceptInviteRules), authController.acceptInvite);
 router.post('/reject-invite', authLimiter, validate(rejectInviteRules), authController.rejectInvite);
+
+// Pending invitations for an identity already verified by OTP/SSO (session or ticket)
+router.get('/invitations/pending', isAuthenticated, authController.getPendingInvitations);
+router.post('/invitations/accept', authLimiter, optionalAuth, validate(respondInvitationRules), authController.acceptPendingInvitation);
+router.post('/invitations/decline', authLimiter, optionalAuth, validate(respondInvitationRules), authController.declinePendingInvitation);
 
 /**
  * @swagger
