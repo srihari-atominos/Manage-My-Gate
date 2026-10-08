@@ -277,3 +277,14 @@ _Each phase appends: date, commit, completed, deferred, blockers, tests._
 - New mobile `auth/__tests__/invitationLogin.test.ts` (11: invite token passthrough, ticket result, attempts/cooldown details, accept/decline, landing routes, version compare, invite context) and `otpScreen.test.tsx` (5: countdown, attempts message, Request New OTP, invite hand-off, invitation choice). Mobile unit suite 699 passed / 29 failed — the 29 failures are 7 suites (amenities, roleBuilder, phone util) that fail identically on the pre-change code.
 - Backend Phase 3 suite extended to 19/19 (link-token accept while signed in, app config). Phases 0, 1, 2, 4: 19, 13, 16, 13.
 - Not covered: device testing (deep links, SSO on real devices) — Phase 7.
+
+### Phase 6 — 2026-10-08
+
+**Audit:** the app already had an invitations screen (`admin/invitations.tsx`, resend/revoke) and a bulk-invite form; the single invite form got its phone field in Phase 2.
+
+**Completed**
+- `GET /users/assignable-roles` (backend): the community roles the caller may assign, using the same ceiling as the invite endpoints. Single and bulk invite forms load roles from it, so the picker never offers a role the server would refuse.
+- Bulk invite (mobile): phone column (mandatory, validated, duplicate check); CSV parsed by header so files without a Phone column still load (their rows are flagged); template updated; the results view shows real counts and each row that was not sent with its reason (it used to report every row as sent).
+
+**Tests**
+- Backend Phase 2 suite 18/18 (admin sees every role; a non-admin inviter only roles within their permissions). Mobile auth + user management Jest 24/24; type-check clean for changed files.

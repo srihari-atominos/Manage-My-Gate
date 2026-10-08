@@ -159,6 +159,14 @@ router.get(
   userController.getInvitations
 )
 
+// Roles the caller may assign when inviting (role ceiling), for invite forms
+router.get(
+  '/assignable-roles',
+  tenantContext,
+  authorizeAnyPermission(['users:create', 'villas:update']),
+  userController.getAssignableRoles
+)
+
 /**
  * @swagger
  * /users/invitations/{id}/resend:

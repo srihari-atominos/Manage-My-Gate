@@ -226,6 +226,22 @@ describe('Phase 2 — creating invitations', () => {
     });
   });
 
+  describe('assignable roles for invite forms', () => {
+    it('an admin can assign every community role', async () => {
+      const res = await api('GET', '/users/assignable-roles', { token: adminToken });
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+      const names = res.body.data.map((r) => r.name).sort();
+      assert.deepEqual(names, ['Community Admin', 'Resident Owner', 'Unit Manager', 'Viewer']);
+    });
+
+    it('a non-admin inviter only sees roles within their own permissions', async () => {
+      const res = await api('GET', '/users/assignable-roles', { token: managerToken });
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+      const names = res.body.data.map((r) => r.name).sort();
+      assert.deepEqual(names, ['Unit Manager', 'Viewer']);
+    });
+  });
+
   describe('invitation lifecycle', () => {
     const invite = async (label) => {
       const email = `${label}_${t}@p2.test`;

@@ -59,4 +59,23 @@ export const assertRolesAssignable = async (req, orgId, roleNames) => {
   }
 };
 
+/**
+ * The community's roles the caller may assign in an invitation (same ceiling as
+ * assertRolesAssignable), for role pickers.
+ */
+export const listAssignableRoles = async (req, orgId) => {
+  const Role = (await import('../../role/role.model.js')).default;
+  const roles = await Role.find({ orgId }).select('name description isTenantRole').sort({ name: 1 }).lean();
+  const assignable = [];
+  for (const role of roles) {
+    try {
+      await assertRolesAssignable(req, orgId, role.name);
+      assignable.push(role);
+    } catch (_) {
+      // not assignable by this user
+    }
+  }
+  return assignable;
+};
+
 export default assertRolesAssignable;

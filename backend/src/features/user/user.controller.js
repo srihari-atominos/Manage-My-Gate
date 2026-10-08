@@ -1,7 +1,7 @@
 import userService from './user.services.js'
 import HttpError from '../../utils/httpError.utils.js'
 import { generateInviteLink, resolveInvitationSource } from './utils/invite.utils.js'
-import { assertRolesAssignable } from './utils/roleAssignment.js'
+import { assertRolesAssignable, listAssignableRoles } from './utils/roleAssignment.js'
 import fs from 'fs'
 
 
@@ -210,6 +210,15 @@ export class UserController {
   /**
    * Bulk invites multiple users.
    */
+  async getAssignableRoles(req, res, next) {
+    try {
+      const roles = await listAssignableRoles(req, req.tenant.orgId)
+      res.success(roles, 'Assignable roles fetched successfully')
+    } catch (error) {
+      next(error)
+    }
+  }
+
   async bulkInviteUsers(req, res, next) {
     try {
       const { invitations } = req.body;

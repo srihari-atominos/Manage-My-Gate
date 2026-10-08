@@ -85,7 +85,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       resetForm();
       setLoadingRoles(true);
       apiClient
-        .get('/roles?limit=100')
+        .get('/users/assignable-roles')
         .then((res: any) => {
           const fetched = res.data?.data || res.data || [];
           setRoles(Array.isArray(fetched) ? fetched : []);

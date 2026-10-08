@@ -15,12 +15,13 @@ try {
   }
 }
 import { TextInput } from '@/components/forms/TextInput';
+import { PhoneInput } from '@/components/forms/PhoneInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/common/Button';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { downloadCSVFile } from '@/src/utils/downloadHelper';
-import { validateEmail, parseBackendError } from '@/src/utils/validation';
+import { validateEmail, validatePhone, parseBackendError } from '@/src/utils/validation';
 import apiClient from '../../../services/apiClient';
 import { InviteUserData } from '../services/userService';
 
@@ -33,6 +34,7 @@ interface BulkInviteModalProps {
 interface InviteRowItem {
   id: string;
   email: string;
+  phone: string;
   roleName: string;
   villaId: string;
   residentType: string;
@@ -40,10 +42,11 @@ interface InviteRowItem {
   error?: string;
 }
 
-const SAMPLE_CSV_CONTENT = `Email,Role,Villa,ResidentType
-resident.owner@example.com,Resident Owner,Villa 01,Owner
-resident.tenant@example.com,Resident Tenant,Villa 02,Tenant
-security.guard@example.com,Security Guard,,None`;
+// Email, phone and role are mandatory for every invitation
+const SAMPLE_CSV_CONTENT = `Email,Phone,Role,Villa,ResidentType
+resident.owner@example.com,+919876543201,Resident Owner,Villa 01,Owner
+resident.tenant@example.com,+919876543202,Resident Tenant,Villa 02,Tenant
+security.guard@example.com,+919876543203,Security Guard,,None`;
 
 export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   visible,
@@ -73,7 +76,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
 
       setLoadingOptions(true);
       Promise.all([
-        apiClient.get('/roles?limit=100').catch(() => ({ data: [] })),
+        apiClient.get('/users/assignable-roles').catch(() => ({ data: [] })),
         apiClient.get('/villas?limit=1000').catch(() => ({ data: [] })),
       ])
         .then(([rolesRes, villasRes]: any[]) => {
@@ -89,6 +92,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
             {
               id: String(Date.now()),
               email: '',
+              phone: '',
               roleName: defaultRole,
               villaId: '',
               residentType: 'None',
@@ -115,6 +119,15 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     if (hasDuplicate) {
       return { ...row, isValid: false, error: 'Duplicate email in this list' };
     }
+    if (!row.phone.trim()) {
+      return { ...row, isValid: false, error: 'Phone number is required' };
+    }
+    if (!validatePhone(row.phone.trim()).isValid) {
+      return { ...row, isValid: false, error: 'Invalid phone number' };
+    }
+    if (allRows.some((r) => r.id !== row.id && r.phone.trim() && r.phone.trim() === row.phone.trim())) {
+      return { ...row, isValid: false, error: 'Duplicate phone in this list' };
+    }
     if (!row.roleName) {
       return { ...row, isValid: false, error: 'Role is required' };
     }
@@ -128,16 +141,27 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     if (lines.length === 0) return;
 
+    // Columns are read by header so older files (without Phone) still parse; their rows show as invalid
+    const firstLine = lines[0].toLowerCase();
+    const hasHeader = firstLine.includes('email') || firstLine.includes('role');
+    const header = hasHeader
+      ? lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/\s+/g, ''))
+      : ['email', 'phone', 'role', 'villa', 'residenttype'];
+    const col = (parts: string[], ...names: string[]) => {
+      const idx = header.findIndex((h) => names.includes(h));
+      return idx >= 0 ? (parts[idx] || '').trim() : '';
+    };
+
     const parsed: InviteRowItem[] = [];
     lines.forEach((line, index) => {
-      // Skip header row if present
-      if (index === 0 && (line.toLowerCase().includes('email') || line.toLowerCase().includes('role'))) return;
+      if (index === 0 && hasHeader) return;
 
       const parts = line.split(',').map((p) => p.trim());
-      const email = parts[0] || '';
-      const roleName = parts[1] || (roles[0]?.name || '');
-      const villaName = parts[2] || '';
-      const residentType = parts[3] || 'None';
+      const email = col(parts, 'email');
+      const phone = col(parts, 'phone', 'phonenumber', 'mobile');
+      const roleName = col(parts, 'role', 'rolename') || (roles[0]?.name || '');
+      const villaName = col(parts, 'villa', 'villanumber', 'unit');
+      const residentType = col(parts, 'residenttype') || 'None';
 
       const matchingVilla = villas.find(
         (v) =>
@@ -148,6 +172,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       const row: InviteRowItem = {
         id: String(Date.now() + index),
         email,
+        phone,
         roleName,
         villaId: matchingVilla?._id || matchingVilla?.id || '',
         residentType,
@@ -212,6 +237,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     const newRow: InviteRowItem = {
       id: String(Date.now() + Math.random()),
       email: '',
+      phone: '',
       roleName: defaultRole,
       villaId: '',
       residentType: 'None',
@@ -259,7 +285,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
 
     const validRows = validatedRows.filter((r) => r.isValid);
     if (validRows.length === 0) {
-      setErrorMsg('No valid invitation entries found. Please enter email and select role.');
+      setErrorMsg('No valid invitation entries found. Each row needs an email, a phone number and a role.');
       return;
     }
 
@@ -269,6 +295,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     try {
       const payload: InviteUserData[] = validRows.map((r) => ({
         email: r.email.trim(),
+        phone: r.phone.trim(),
         roleName: r.roleName || null,
         villaId: r.villaId || null,
         residentType: r.residentType || 'None',
@@ -329,11 +356,29 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                 <CheckCircle2 size={32} color="#10b981" />
               </View>
               <Text className="text-base font-bold text-foreground mb-1 text-center">
-                Bulk Invitations Processed!
+                Bulk Invitations Processed
               </Text>
-              <Text className="text-xs text-muted-foreground text-center mb-4 px-4">
-                Successfully dispatched invitation tokens for {validCount} user(s).
-              </Text>
+              {(() => {
+                // Server reports each row: invited, or not invited with the reason
+                const result = successResults?.data || successResults || {};
+                const sent = result.successCount ?? result.successes?.length ?? validCount;
+                const failures: any[] = Array.isArray(result.failures) ? result.failures : [];
+                return (
+                  <View className="w-full px-2 mb-4 gap-2">
+                    <Text testID="bulk-invite-sent-count" className="text-xs text-muted-foreground text-center">
+                      {`${sent} invitation(s) sent${failures.length ? `, ${failures.length} not sent` : ''}.`}
+                    </Text>
+                    {failures.map((f, i) => (
+                      <View key={`${f.row ?? i}-${f.email}`} className="p-2.5 bg-destructive/5 border border-destructive/20 rounded-xl">
+                        <Text className="text-xs font-semibold text-foreground">
+                          {f.row ? `Row ${f.row}: ` : ''}{f.email}
+                        </Text>
+                        <Text className="text-[11px] text-destructive">{f.error}</Text>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
               <Button variant="default" size="sm" onPress={onClose}>
                 Done & Close
               </Button>
@@ -469,6 +514,16 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                               onChangeText={(val) => handleRowChange(row.id, 'email', val)}
                               keyboardType="email-address"
                               autoCapitalize="none"
+                            />
+                          </View>
+
+                          {/* Phone Field (mandatory) */}
+                          <View className="mb-2.5">
+                            <PhoneInput
+                              label="Phone Number *"
+                              value={row.phone}
+                              onChangeText={(val: string) => handleRowChange(row.id, 'phone', val)}
+                              testID={`bulk-invite-phone-${index}`}
                             />
                           </View>
 
