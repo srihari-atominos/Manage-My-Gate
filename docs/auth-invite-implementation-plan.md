@@ -327,3 +327,30 @@ _Each phase appends: date, commit, completed, deferred, blockers, tests._
 **Tests**
 - New `backend/tests/auth.phase8.passwordFlag.test.mjs` 4/4 (password-less Active account saves; login works with flag on; all 6 sampled password endpoints return 410 with flag off; OTP still works). All backend suites as before (Phases 0–4, 7: 19/13/18/19/13/5; phone 17; google 8; apple 6; payment.security 4; multiOrgAuth 13/15 pre-existing).
 - Mobile unit suite 697 passed (4 password-variant persistence tests removed); same 7 pre-existing failing suites. Type-check clean for changed files.
+
+### Phase 9 — 2026-10-08
+
+**Completed**
+- `backend/tests/auth.phase9.journey.test.mjs`: the whole story over HTTP as the apps call it — Platform Admin OTP sign-in → provision community + invite Community Admin → link validates without signing in → admin signs in with code + invitation (lands `community_admin`) → invites an existing member of another community (body `orgId` ignored) → bulk invite with per-row errors → new user on a fresh install verifies by phone and picks the invitation → wrong-code countdown and lock → existing user accepts with the link (one account, both communities Active) → resident can't invite or provision → refresh keeps the chosen community → logout revokes. 11/11.
+- `npm run test:auth` runs every auth suite (102 tests) — set `MONGODB_URI` to a database whose name contains `auth_test` and `NODE_ENV=test`.
+
+**Not done**
+- Mobile UI end-to-end tests against a running backend (the visitor/amenity harness pattern) for the new screens; screen-level unit tests cover the code screen, and the API journey covers the flow.
+- Device matrix for deep links (Phase 7 blockers) and the Phase 8 switch-off checklist.
+
+## Summary of the branch (Phases 0–9)
+
+| Phase | Commit | Tests added |
+|---|---|---|
+| 0 Security holes | 80fafb8a | 19 |
+| 1 OTP security | 059f7636 | 13 |
+| 2 Invite creation | 2aacb13e | 16 (+2 in P6) |
+| 3 Acceptance + login result | 18bda0e9 | 16 (+3 in P5) |
+| 4 Platform provisioning | c5133263 | 13 |
+| 5 Mobile sign-in | bb81f862 | 16 mobile |
+| 6 Invite management | 93fc0408 | 2 |
+| 7 Deep links + sessions | 4cd86899 | 5 + 2 mobile |
+| 8 Password retirement prep | f108b184 | 4 |
+| 9 Journey | (this commit) | 11 |
+
+Rollout order: deploy backend (Phases 0–4, 7, 8 with `AUTH_PASSWORD_ENABLED` on) → set the Apple Team ID in the AASA files → native mobile release (Phases 5–7) → set `MOBILE_MIN_SUPPORTED_VERSION` → web moves to OTP → run the migration report and fix blocking accounts → `AUTH_PASSWORD_ENABLED=false` → delete the retired endpoints.
