@@ -3,7 +3,8 @@ import sessionService from './session.services.js';
 import { asyncHandler } from '../../utils/asyncHandler.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import authService from '../auth/auth.services.js'; // To generate new access tokens
-import { setAuthCookie } from '../../utils/cookie.utils.js';
+import { setAuthCookie, setRefreshTokenCookie } from '../../utils/cookie.utils.js';
+import { signToken } from '../../utils/jwt.utils.js';
 
 export const getUserSessions = asyncHandler(async (req, res) => {
   const userId = req.user.id || req.user._id;
@@ -33,8 +34,9 @@ export const revokeAllSessions = asyncHandler(async (req, res) => {
 });
 
 export const refreshToken = asyncHandler(async (req, res) => {
+  const { targetOrgId = null, targetRole = null, targetVillaId = null } = req.body || {};
   const token = req.cookies.refreshToken || req.body.refreshToken;
-  
+
   if (!token) {
     throw new HttpError(401, 'Refresh token required');
   }
@@ -44,18 +46,32 @@ export const refreshToken = asyncHandler(async (req, res) => {
 
   // Fetch the user
   const user = await authService.getUserById(validSession.userId);
-  
+
   if (!user || user.status !== 'Active') {
     throw new HttpError(401, 'User is inactive or not found');
   }
 
-  // Generate a new access token for the user's primary context
-  const newAccessToken = await authService.generateToken(user);
-  
+  // Rotate: every refresh token is single-use (a racing duplicate within the grace
+  // window gets an access token but no new refresh token)
+  const newRefreshToken = validSession.status === 'Active' ? await sessionService.rotateToken(validSession) : null;
+
+  // Keep the community/role/unit the app is using. Membership is re-checked server-side;
+  // if it is no longer active, fall back to the user's default context.
+  let scoped;
+  try {
+    scoped = await authService.getScopedTokenPayload(user, targetOrgId, targetRole, targetVillaId);
+  } catch (_) {
+    scoped = await authService.getScopedTokenPayload(user);
+  }
+  const newAccessToken = signToken(scoped.tokenPayload);
+
   setAuthCookie(res, newAccessToken);
+  if (newRefreshToken) setRefreshTokenCookie(res, newRefreshToken);
 
   res.status(200).json({
     success: true,
-    token: newAccessToken
+    token: newAccessToken,
+    ...(newRefreshToken ? { refreshToken: newRefreshToken } : {}),
+    data: { token: newAccessToken, ...(newRefreshToken ? { refreshToken: newRefreshToken } : {}) },
   });
 });

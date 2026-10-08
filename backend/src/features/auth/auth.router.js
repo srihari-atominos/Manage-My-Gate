@@ -319,7 +319,7 @@ router.post('/setup-account-password', authLimiter, validate(setupAccountPasswor
 router.get('/check-account-status', optionalAuth, authController.checkAccountStatus);
 
 // Session Routes
-router.post('/refresh-token', authController.refreshToken);
+router.post('/refresh-token', authLimiter, authController.refreshToken);
 router.post('/logout', optionalAuth, authController.logout);
 
 export default router;

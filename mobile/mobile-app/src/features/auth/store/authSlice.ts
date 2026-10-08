@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import authService from '../services/authService';
 import storage from '../../../utils/storage';
+import { deviceTokenService } from '../../notification/services/deviceTokenService';
 
 export interface User {
   id: string;
@@ -762,9 +763,25 @@ export const updateOrganizationFeaturesThunk = createAsyncThunk(
 
 export const performLogout = createAsyncThunk(
   'auth/performLogout',
-  async (_, { dispatch }) => {
+  async (_, { dispatch, getState }) => {
+    const state: any = getState();
+    const userId = state?.auth?.user?.id || state?.auth?.user?._id;
+    // Stop push notifications for this device while the session is still valid
+    // (afterwards the unregister request would be rejected and pushes would continue)
+    if (userId) {
+      try {
+        const pushToken = await storage.getItem(`registered_push_token_${userId}`);
+        if (pushToken) {
+          await deviceTokenService.unregisterToken(pushToken, userId);
+        }
+      } catch (_) {
+        // best effort; logout continues
+      }
+    }
     try {
-      await authService.logoutApi();
+      // Sending the refresh token lets the server revoke this session even if the access token expired
+      const refreshToken = state?.auth?.refreshToken || (await storage.getItem('refreshToken'));
+      await authService.logoutApi(refreshToken);
     } catch (error) {
       console.warn('Logout API call failed, removing local session anyway.');
     }

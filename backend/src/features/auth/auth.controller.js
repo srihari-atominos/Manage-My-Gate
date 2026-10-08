@@ -306,7 +306,16 @@ export class AuthController {
   async logout(req, res, next) {
     try {
       const token = req.cookies?.refreshToken || req.body?.refreshToken;
-      const userId = req.user?._id || req.user?.id;
+      let userId = req.user?._id || req.user?.id;
+      // The access token may already have expired; the refresh token still identifies the session
+      if (!userId && token) {
+        try {
+          const { verifyRefreshToken } = await import('../../utils/jwt.utils.js');
+          userId = verifyRefreshToken(token)?.id || null;
+        } catch (_) {
+          userId = null;
+        }
+      }
       if (userId) {
         await authService.logout(userId, token);
       }

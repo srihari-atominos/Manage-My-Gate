@@ -434,7 +434,10 @@ const InviteHandlerContent = () => {
                         (typeof navigator !== 'undefined' &&
                           navigator.platform === 'MacIntel' &&
                           navigator.maxTouchPoints > 1)
-                      const targetStoreUrl = isIosDevice ? APP_STORE_URL : PLAY_STORE_URL
+                      // The Play install referrer carries the invitation, so the app opens it right after install
+                      const targetStoreUrl = isIosDevice
+                        ? APP_STORE_URL
+                        : `${PLAY_STORE_URL}&referrer=${encodeURIComponent(`token=${token}`)}`
                       const targetStoreLabel = isIosDevice ? 'App Store' : 'Play Store'
 
                       return (

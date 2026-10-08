@@ -326,7 +326,13 @@ apiClient.interceptors.response.use(
       originalRequest.url.includes('/auth/forgot-password') ||
       originalRequest.url.includes('/auth/reset-password') ||
       originalRequest.url.includes('/auth/google') ||
-      originalRequest.url.includes('/auth/microsoft')
+      originalRequest.url.includes('/auth/microsoft') ||
+      originalRequest.url.includes('/auth/apple') ||
+      originalRequest.url.includes('/auth/logout') ||
+      // An expired invitation ticket is a sign-in problem, not an expired session
+      originalRequest.url.includes('/auth/invitations/accept') ||
+      originalRequest.url.includes('/auth/invitations/decline') ||
+      originalRequest.url.includes('/auth/accept-invite')
     );
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
@@ -364,9 +370,16 @@ apiClient.interceptors.response.use(
           return Promise.reject(new Error('Session expired. Please log in again.'));
         }
 
+        // Keep the community/role/unit the app is using; the server re-checks membership
+        const activeUser: any = store?.getState?.()?.auth?.user || null;
         const res = await axios.post(
           `${getApiBaseUrl()}/auth/refresh-token`,
-          { refreshToken },
+          {
+            refreshToken,
+            ...(activeUser?.orgId ? { targetOrgId: activeUser.orgId } : {}),
+            ...(activeUser?.role ? { targetRole: activeUser.role } : {}),
+            ...(activeUser?.villaId ? { targetVillaId: activeUser.villaId } : {}),
+          },
           { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
         );
 

@@ -64,12 +64,12 @@
             {
               "scheme": "https",
               "host": "nahom.e3esg.com",
-              "pathPrefix": "/invite/handoff"
+              "pathPrefix": "/invite"
             },
             {
               "scheme": "https",
               "host": "app.managemygate.com",
-              "pathPrefix": "/invite/handoff"
+              "pathPrefix": "/invite"
             },
             {
               "scheme": "https",

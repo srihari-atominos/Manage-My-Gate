@@ -5,7 +5,7 @@
       {
         "appID": "<APPLE_TEAM_ID>.com.atominosconsulting.nahom",
         "paths": [
-          "/invite/handoff/*",
+          "/invite/*",
           "/billing/*"
         ],
         "components": [
@@ -14,13 +14,8 @@
             "comment": "Invoice links from billing emails open the app"
           },
           {
-            "/": "/invite/handoff/*",
-            "comment": "Mobile invitation handoff redirect"
-          },
-          {
             "/": "/invite/*",
-            "exclude": true,
-            "comment": "Web-first invitation wizard handled in Safari/Browser"
+            "comment": "Invitation links (and /invite/handoff/*) open the app when installed; otherwise the web page offers the store or the web app"
           }
         ]
       }

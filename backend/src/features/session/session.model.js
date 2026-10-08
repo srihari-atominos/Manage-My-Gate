@@ -33,8 +33,13 @@ const sessionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Active', 'Revoked'],
+      // Rotated: replaced by a newer refresh token; honoured briefly for concurrent refreshes
+      enum: ['Active', 'Revoked', 'Rotated'],
       default: 'Active',
+    },
+    rotatedAt: {
+      type: Date,
+      default: null,
     },
     expiresAt: {
       type: Date,

@@ -288,3 +288,22 @@ _Each phase appends: date, commit, completed, deferred, blockers, tests._
 
 **Tests**
 - Backend Phase 2 suite 18/18 (admin sees every role; a non-admin inviter only roles within their permissions). Mobile auth + user management Jest 24/24; type-check clean for changed files.
+
+### Phase 7 — 2026-10-08
+
+**Completed**
+- Deep links: `/invite/*` now opens the app when installed — AASA (`backend/public` and `frontend/public`) includes `/invite/*` (it was explicitly excluded), Android intent filters use `pathPrefix: /invite` on both domains (covers `/invite/handoff`). The app's `/invite/[token]` route already forwards to the invitation landing.
+- Web invite page (one line): on Android the Play Store link carries `referrer=token=<invite>`, which the app already reads after install to open that invitation (deferred deep link).
+- Refresh: keeps the community/role/unit the app sends (`targetOrgId/targetRole/targetVillaId`), re-checks membership server-side and falls back to the default community if it is gone; rotates the refresh token on every use (old one honoured for 30 s so racing requests don't log the user out); rate-limited. Mobile sends its current context.
+- Logout: server revokes the session from the refresh token even if the access token expired; mobile sends the refresh token and unregisters this device's push token first (it used to try after the session was cleared, get a 401, and keep receiving pushes).
+- Mobile interceptor no longer treats 401s from Apple sign-in, logout or invitation accept/decline as an expired session.
+
+**Blockers / not done here**
+- `apple-app-site-association` still has the placeholder `<APPLE_TEAM_ID>` (pre-existing): iOS universal links cannot work until the real Team ID is set and the file is served from both domains.
+- `app.json` intent-filter changes need a new native build (EAS); existing installs keep the old link handling.
+- iOS has no install referrer: after a fresh App Store install the invitation token is lost, which is why the pending-invitations screen exists (Phase 5).
+- The device test matrix (Android/iOS × installed/not installed, desktop) needs real devices and the deployed domains; not run here.
+
+**Tests**
+- New `backend/tests/auth.phase7.session.test.mjs` 5/5 (context kept, rotation, grace window, fallback when membership is gone, logout without access token). Phases 0–4 all passing (19, 13, 18, 19, 13). `session.lifecycle.phaseA` 13/14 as before.
+- New mobile `logoutCleanup.test.ts` 2/2. Mobile unit suite 701 passed; the same 7 pre-existing suites fail (29 tests). Type-check clean for changed files.

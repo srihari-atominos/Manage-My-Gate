@@ -117,8 +117,8 @@ export const resetPassword = async ({ identifier, code, newPassword }: any) => {
   return await apiClient.post('/auth/reset-password', { identifier, code, newPassword });
 };
 
-export const logoutApi = async () => {
-  return await apiClient.post('/auth/logout');
+export const logoutApi = async (refreshToken?: string | null) => {
+  return await apiClient.post('/auth/logout', refreshToken ? { refreshToken } : {});
 };
 
 export const fetchSessions = async () => {
