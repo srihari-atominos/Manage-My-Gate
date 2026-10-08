@@ -1,6 +1,7 @@
 import userService from './user.services.js'
 import HttpError from '../../utils/httpError.utils.js'
 import { generateInviteLink, resolveInvitationSource } from './utils/invite.utils.js'
+import { assertRolesAssignable } from './utils/roleAssignment.js'
 import fs from 'fs'
 
 
@@ -57,6 +58,8 @@ export class UserController {
       // always point to the smart /invite/:token web landing page, never to a
       // mobile-specific path. Do NOT derive this from Referer/Origin headers.
       const invitationSource = 'WEB';
+
+      await assertRolesAssignable(req, orgId, roleName);
 
       const { user, invitationToken, membership } = await userService.inviteUser(
         email,
@@ -214,6 +217,8 @@ export class UserController {
       const inviterId = req.user?.id || req.user?._id || null;
 
       const defaultSource = resolveInvitationSource(req);
+
+      await assertRolesAssignable(req, orgId, (invitations || []).map((i) => i?.roleName));
 
       const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId);
       res.success(result, 'Bulk invitation process completed');

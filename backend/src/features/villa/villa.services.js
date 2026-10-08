@@ -378,7 +378,7 @@ export class VillaService {
     return await villaRepository.findByUnitNumber(unitNumber, orgId, session);
   }
 
-  async bulkUploadVillasAndResidents(villasArray, orgId, invitationSource = 'WEB') {
+  async bulkUploadVillasAndResidents(villasArray, orgId, invitationSource = 'WEB', { assertRoleAssignable = null } = {}) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info(`bulkUploadVillasAndResidents request received`, { orgId, count: villasArray?.length, correlationId });
 
@@ -453,6 +453,10 @@ export class VillaService {
             let finalRoleName = roleName ? roleName.trim() : null;
             if (!finalRoleName) {
               finalRoleName = normalizedResidentType;
+            }
+
+            if (assertRoleAssignable) {
+              await assertRoleAssignable(finalRoleName);
             }
 
             await userService.inviteUser(trimmedEmail, orgId, villa._id, normalizedResidentType, finalRoleName, phone, name, invitationSource);

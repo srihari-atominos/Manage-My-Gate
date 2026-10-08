@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import OrgMembership from './orgMembership.model.js';
+import HttpError from '../../utils/httpError.utils.js';
 
 export class OrgMembershipRepository {
   async create(membershipData, session) {
@@ -233,13 +234,16 @@ export class OrgMembershipRepository {
   }
 
   async updateStatus(userId, orgId, status, session = null) {
-    const query = {};
-    if (userId) {
-      query.userId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+    // A status change must always target exactly one (user, community) membership.
+    // Without both ids this used to fall through to an updateMany over every
+    // membership of the user (or of the whole community).
+    if (!userId || !orgId) {
+      throw new HttpError(400, 'Membership status change requires both a user and a community.');
     }
-    if (orgId) {
-      query.orgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
-    }
+    const query = {
+      userId: mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId,
+      orgId: mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId,
+    };
     return await OrgMembership.updateMany(
       query,
       { status },

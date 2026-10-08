@@ -24,8 +24,9 @@ const SetPasswordPage = () => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
 
-  const emailParam = searchParams.get('email') || 'naveenpv5886@gmail.com'
+  const emailParam = searchParams.get('email') || ''
   const orgParam = searchParams.get('org') || 'Your Community'
+  const setupTokenParam = searchParams.get('token') || ''
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -84,7 +85,7 @@ const SetPasswordPage = () => {
       const response = await apiClient.post('/auth/setup-account-password', {
         email: emailParam,
         password: password,
-        orgName: orgParam,
+        setupToken: setupTokenParam,
       })
 
       const responseData = response.data?.data || response.data || {}

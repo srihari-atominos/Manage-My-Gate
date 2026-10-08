@@ -895,7 +895,9 @@ export class PlatformPaymentService {
     }
 
     const appOrigin = process.env.CLIENT_URL || 'http://localhost:3004';
-    const setPasswordUrl = `${appOrigin}/#/set-password?email=${encodeURIComponent(recipientEmail)}&org=${encodeURIComponent(orgName)}`;
+    const { issueAccountSetupToken } = await import('../auth/accountSetupToken.js');
+    const setupToken = issueAccountSetupToken(recipientEmail, provisionedOrg?._id);
+    const setPasswordUrl = `${appOrigin}/#/set-password?email=${encodeURIComponent(recipientEmail)}&org=${encodeURIComponent(orgName)}&token=${encodeURIComponent(setupToken)}`;
     const loginUrl = `${appOrigin}/#/login`;
 
     if (host && port && authUsername && authPassword) {

@@ -319,7 +319,7 @@ export default function AcceptInviteScreen() {
           ''
         ).trim();
         if ((inviteMeta as any)?.isExisting || (inviteMeta as any)?.isAlreadyRegistered) {
-          handleNavigateToLogin(targetEmail);
+          handleNavigateToLogin(targetEmail, inviteToken);
         } else {
           setApiError(null);
         }
@@ -545,9 +545,9 @@ export default function AcceptInviteScreen() {
     setSubmitting(true);
     setApiError(null);
     let targetEmail = (searchParams.email || inviteMeta?.email || '').trim();
+    const inviteToken = (resolvedToken || getTokenFromContext() || '').trim();
 
     try {
-      const inviteToken = (resolvedToken || getTokenFromContext() || '').trim();
 
       // Dispatch acceptInviteThunk via useAuth to activate membership and persist session
       const actionResult: any = await acceptInvite(
@@ -571,7 +571,7 @@ export default function AcceptInviteScreen() {
 
       if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('active')) {
         // User account is already active -> redirect to login page with email prefilled
-        handleNavigateToLogin(targetEmail);
+        handleNavigateToLogin(targetEmail, inviteToken);
       } else {
         setApiError(errMsg);
       }
@@ -579,7 +579,7 @@ export default function AcceptInviteScreen() {
       const errMsg = err?.response?.data?.message || err?.message || 'Failed to save password.';
       if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('active')) {
         // User account is already active -> directly redirect to login page immediately
-        handleNavigateToLogin(targetEmail);
+        handleNavigateToLogin(targetEmail, inviteToken);
       } else {
         setApiError(errMsg);
       }

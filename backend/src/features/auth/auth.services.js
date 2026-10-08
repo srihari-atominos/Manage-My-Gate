@@ -258,17 +258,8 @@ export class AuthService {
       if (!selectedMembership) {
         selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
       }
-      // Auto-heal fallback: If user was invited and has a membership in this org that is still in 'Pending' status,
-      // and the organization is active, auto-promote it to 'Active' so valid authenticated users are never denied entry.
-      if (!selectedMembership) {
-        const pendingMatch = memberships.find((m) => m.orgId && m.orgId._id && m.orgId._id.toString() === targetOrgIdStr);
-        if (pendingMatch && (!pendingMatch.orgId.status || pendingMatch.orgId.status.toLowerCase() === 'active')) {
-          await orgMembershipService.updateStatus(user._id, targetOrgIdStr, 'Active');
-          pendingMatch.status = 'Active';
-          selectedMembership = pendingMatch;
-          activeMemberships.push(pendingMatch);
-        }
-      }
+      // Pending or Rejected memberships are never promoted here: a membership only
+      // becomes Active by accepting its exact invitation.
       if (!selectedMembership) {
         throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
       }
@@ -1044,79 +1035,61 @@ export class AuthService {
     // Encapsulate invitation validation, deletion, and activation in a single database transaction.
     session.startTransaction();
     try {
-      let userId = null;
-      let orgId = null;
-
-      if (rawToken) {
-        const tokenRes = await tokenService.validateInvitationToken(rawToken, session);
-        userId = tokenRes.userId;
-        orgId = tokenRes.orgId;
-      } else if (email) {
-        const userByEmail = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
-        if (userByEmail) {
-          userId = userByEmail._id;
-        }
+      // The invitation token is the only thing that identifies which invitation
+      // (and therefore which membership) is being accepted. Email alone never is.
+      if (!rawToken) {
+        throw new HttpError(400, 'Invitation token is required.');
       }
 
-      let user = null;
-      if (userId) {
-        user = await userService.getUserById(userId, session).catch(() => null);
+      const tokenRes = await tokenService.validateInvitationToken(rawToken, session);
+      const userId = tokenRes.userId;
+      const orgId = tokenRes.orgId;
+      if (!orgId) {
+        throw new HttpError(400, 'This invitation is not linked to a community. Please ask for a new invitation.');
       }
 
-      if (!user && email) {
-        user = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
-      }
-
+      const user = await userService.getUserById(userId, session).catch(() => null);
       if (!user) {
         throw new HttpError(404, 'No pending user account found to activate.');
       }
 
-      // Server-side identity verification: authenticated user check
       if (authenticatedUserId && user._id.toString() !== authenticatedUserId.toString()) {
-        const authUser = await userService.getUserById(authenticatedUserId).catch(() => null);
-        if (authUser && authUser.email && user.email && authUser.email.trim().toLowerCase() === user.email.trim().toLowerCase()) {
-          const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
-          await OrgMembership.updateMany({ userId: user._id }, { $set: { userId: authUser._id } }).session(session).catch(() => null);
-          user = authUser;
-        } else {
-          throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
-        }
+        throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
       }
 
-      // Server-side identity verification: email match check
       if (email && user.email && user.email.toLowerCase() !== email.trim().toLowerCase()) {
         throw new HttpError(403, 'The provided email does not match the invitation identity.');
       }
 
-      // Transition invitation token to ACCEPTED only after identity verification succeeds
-      if (rawToken) {
-        await tokenService.consumeInvitationToken(rawToken, session);
+      // An account that is already set up can only accept while signed in as itself,
+      // and accepting never changes its credentials. Otherwise anyone holding the
+      // invite link could reset an existing user's password.
+      const isEstablishedAccount = user.status === 'Active' && !!user.password;
+      if (isEstablishedAccount && !authenticatedUserId) {
+        throw new HttpError(401, 'You already have an account. Please sign in to accept this invitation.');
       }
+
+      // Transition invitation token to ACCEPTED only after identity verification succeeds
+      await tokenService.consumeInvitationToken(rawToken, session);
 
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-      if (!orgId) {
-        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
-        const pendingMembership = await OrgMembership.findOne({ userId: user._id, status: 'Pending' }).session(session).catch(() => null);
-        if (pendingMembership) {
-          orgId = pendingMembership.orgId;
-        }
-      }
 
-      if (password) {
+      if (isEstablishedAccount) {
+        if (profileData.name || profileData.phone) {
+          await userService.activateUser(user._id, user.password, session, profileData);
+        }
+      } else if (password) {
         const { hashPassword } = await import('../../utils/crypto.utils.js');
         const hashedPassword = await hashPassword(password);
         await userService.activateUser(user._id, hashedPassword, session, profileData);
+      } else if (user.password && authenticatedUserId) {
+        await userService.activateUser(user._id, user.password, session, profileData);
       } else {
-        if (!user.password) {
-          throw new HttpError(400, 'Password is required to activate a new account.');
-        }
-        if (user.status !== 'Active' || profileData.name || profileData.phone) {
-          await userService.activateUser(user._id, user.password, session, profileData);
-        }
+        throw new HttpError(400, 'Password is required to activate a new account.');
       }
 
-      // Update OrgMembership status to Active for this organization or user
-      await orgMembershipService.updateStatus(user._id, orgId || null, 'Active', session);
+      // Activate only the membership this invitation belongs to
+      await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
 
       // Assign resident to villa upon accepting invitation
       if (orgId) {
@@ -1189,69 +1162,52 @@ export class AuthService {
     
     session.startTransaction();
     try {
+      // Only the invitation token identifies what is being declined. An email
+      // alone must never touch anyone's memberships.
+      if (!rawToken) {
+        throw new HttpError(400, 'Invitation token is required.');
+      }
+
       let userId = null;
       let orgId = null;
-
-      if (rawToken) {
-        try {
-          const tokenRes = await tokenService.rejectInvitationToken(rawToken, session);
-          userId = tokenRes.userId;
-          orgId = tokenRes.orgId;
-        } catch (tokenErr) {
-          const msg = tokenErr.message ? tokenErr.message.toLowerCase() : '';
-          if (msg.includes('already been rejected') || msg.includes('already been accepted')) {
-            const tokenDoc = await tokenService.getInvitationToken(rawToken, 'INVITATION');
-            userId = tokenDoc?.userId;
-            orgId = tokenDoc?.orgId;
-            if (msg.includes('already been accepted')) {
-              await session.commitTransaction();
-              return {
-                message: 'Invitation has already been accepted',
-                userId,
-                orgId,
-                status: 'ACCEPTED',
-              };
-            }
-          } else {
-            throw tokenErr;
-          }
+      try {
+        const tokenRes = await tokenService.rejectInvitationToken(rawToken, session);
+        userId = tokenRes.userId;
+        orgId = tokenRes.orgId;
+      } catch (tokenErr) {
+        const msg = tokenErr.message ? tokenErr.message.toLowerCase() : '';
+        if (msg.includes('already been rejected') || msg.includes('already been accepted')) {
+          const tokenDoc = await tokenService.getInvitationToken(rawToken, 'INVITATION');
+          await session.commitTransaction();
+          return {
+            message: msg.includes('already been accepted')
+              ? 'Invitation has already been accepted'
+              : 'Invitation has already been rejected',
+            userId: tokenDoc?.userId,
+            orgId: tokenDoc?.orgId,
+            status: msg.includes('already been accepted') ? 'ACCEPTED' : 'REJECTED',
+          };
         }
-      } else if (email) {
-        const userByEmail = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
-        if (userByEmail) {
-          userId = userByEmail._id;
-        }
+        throw tokenErr;
       }
 
-      let user = null;
-      if (userId) {
-        user = await userService.getUserById(userId, session).catch(() => null);
-      }
-
-      if (!user && email) {
-        user = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
-      }
-
+      const user = await userService.getUserById(userId, session).catch(() => null);
       if (!user) {
         throw new HttpError(404, 'No pending user account found to reject invitation.');
       }
-
-      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-      if (!orgId) {
-        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
-        const pendingMembership = await OrgMembership.findOne({ userId: user._id, status: 'Pending' }).session(session).catch(() => null);
-        if (pendingMembership) {
-          orgId = pendingMembership.orgId;
-        }
+      if (email && user.email && user.email.toLowerCase() !== email.trim().toLowerCase()) {
+        throw new HttpError(403, 'The provided email does not match the invitation identity.');
       }
 
-      // Update OrgMembership status to Rejected for this organization
-      await orgMembershipService.updateStatus(user._id, orgId || null, 'Rejected', session).catch(() => null);
-
-      // Ensure user is removed from any villa in this organization
+      // Decline only this invitation's membership, and only while it is still Pending
       if (orgId) {
-        const villaService = (await import('../villa/villa.services.js')).default;
-        await villaService.removeUserFromAllVillasInOrg(user._id, orgId, session).catch(() => null);
+        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+        const membership = await orgMembershipService.getMembership(user._id, orgId, session);
+        if (membership && membership.status === 'Pending') {
+          await orgMembershipService.updateStatus(user._id, orgId, 'Rejected', session);
+          const villaService = (await import('../villa/villa.services.js')).default;
+          await villaService.removeUserFromAllVillasInOrg(user._id, orgId, session).catch(() => null);
+        }
       }
 
       await session.commitTransaction();
@@ -2436,9 +2392,15 @@ export class AuthService {
     return await otpService.verifyOTP(identifier, code, 'RESET', null, false);
   }
 
-  async setupAccountPassword(email, newPassword, deviceInfo = {}, orgNameFromReq = null) {
+  async setupAccountPassword(email, newPassword, deviceInfo = {}, orgNameFromReq = null, setupToken = null) {
     if (!email || !newPassword) {
       throw new HttpError(400, 'Email and password are required.');
+    }
+    // Only the holder of the emailed, single-use setup link may set this password
+    const { verifyAccountSetupToken, markAccountSetupTokenUsed } = await import('./accountSetupToken.js');
+    const setupClaims = await verifyAccountSetupToken(setupToken);
+    if (setupClaims.email !== String(email).trim().toLowerCase()) {
+      throw new HttpError(403, 'This account setup link was issued for a different email address.');
     }
     if (newPassword.length < 6) {
       throw new HttpError(400, 'Password must be at least 6 characters long.');
@@ -2449,10 +2411,11 @@ export class AuthService {
     const passHash = await hashPassword(newPassword);
 
     if (!user) {
+      // createUser hashes the password itself; passing passHash here double-hashed it
       user = await userService.createUser({
         email,
         username: email.split('@')[0],
-        password: passHash,
+        password: newPassword,
         status: 'Active',
         emailVerified: true
       });
@@ -2463,6 +2426,7 @@ export class AuthService {
         emailVerified: true
       });
     }
+    await markAccountSetupTokenUsed(setupClaims, user._id);
 
     // Auto-link user to their provisioned Organization & Membership
     try {
@@ -2478,7 +2442,9 @@ export class AuthService {
 
       const quote = inquiry ? await PlatformQuote.findOne({ inquiryId: inquiry._id }).sort({ createdAt: -1 }).catch(() => null) : null;
 
-      const orgName = orgNameFromReq || inquiry?.organizationName || quote?.communitySnapshot?.organizationName || 'Your Community';
+      // The community comes from the signed setup link, never from the request body
+      const linkedOrg = setupClaims.orgId ? await Organization.findById(setupClaims.orgId).catch(() => null) : null;
+      const orgName = linkedOrg?.name || inquiry?.organizationName || quote?.communitySnapshot?.organizationName || 'Your Community';
       const selectedPlan = quote?.pricingSnapshot?.planName || quote?.pricingSnapshot?.tier || quote?.planName || inquiry?.planName || 'COMMUNITY_STARTER';
 
       let basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'notices'];
@@ -2493,13 +2459,9 @@ export class AuthService {
       const customAddonKeys = Array.isArray(addOns) ? addOns.map(a => (typeof a === 'string' ? a : a.code || a.key || a.name)) : [];
       const finalAllowedFeatures = Array.from(new Set([...basePlanFeatures, ...customAddonKeys]));
 
-      const escapedOrgName = orgName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      let org = await Organization.findOne({
-        $or: [
-          { name: new RegExp('^' + escapedOrgName.trim() + '$', 'i') },
-          { contactEmail: email }
-        ]
-      }).catch(() => null);
+      // Never attach the caller to a community found only by name: an unrelated
+      // community could share it. Use the linked community, or one this email owns.
+      let org = linkedOrg || await Organization.findOne({ contactEmail: email }).catch(() => null);
 
       if (!org) {
         org = await Organization.create({

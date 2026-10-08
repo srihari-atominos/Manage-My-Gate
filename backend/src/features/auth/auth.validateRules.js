@@ -51,6 +51,10 @@ export const setupAccountPasswordRules = [
     .withMessage('Password is required')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
+  body('setupToken')
+    .trim()
+    .notEmpty()
+    .withMessage('Account setup link is missing or incomplete. Please use the link from your email.'),
   body('orgName')
     .optional()
     .trim(),
@@ -81,8 +85,9 @@ export const loginRules = [
  */
 export const acceptInviteRules = [
   body('token')
-    .optional({ nullable: true, checkFalsy: true })
-    .trim(),
+    .trim()
+    .notEmpty()
+    .withMessage('Invitation token is required'),
   body('email')
     .optional({ nullable: true, checkFalsy: true })
     .isEmail()
@@ -100,6 +105,20 @@ export const acceptInviteRules = [
   body('phone')
     .optional({ nullable: true, checkFalsy: true })
     .isString()
+    .trim(),
+];
+
+/**
+ * Validation rules for declining an invitation
+ */
+export const rejectInviteRules = [
+  body('token')
+    .trim()
+    .notEmpty()
+    .withMessage('Invitation token is required'),
+  body('email')
+    .optional({ nullable: true, checkFalsy: true })
+    .isEmail()
     .trim(),
 ];
 

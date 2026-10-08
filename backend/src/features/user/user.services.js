@@ -336,7 +336,8 @@ export class UserService {
         const roleNames = roleName.split(',').map((r) => r.trim()).filter(Boolean);
         for (const rName of roleNames) {
           const foundRole = await roleService.getRoleByName(rName, orgId, session);
-          if (foundRole) {
+          // Only this community's own roles can be assigned; never a global/system role
+          if (foundRole && foundRole.orgId && String(foundRole.orgId) === String(orgId)) {
             roleIds.push(foundRole._id);
             if (!role) role = foundRole;
           }

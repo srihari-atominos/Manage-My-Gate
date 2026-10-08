@@ -169,7 +169,10 @@ export class VillaController {
       const { villas } = req.body;
       const { resolveInvitationSource } = await import('../user/utils/invite.utils.js');
       const invitationSource = resolveInvitationSource(req);
-      const result = await villaService.bulkUploadVillasAndResidents(villas, orgId, invitationSource);
+      const { assertRolesAssignable } = await import('../user/utils/roleAssignment.js');
+      const result = await villaService.bulkUploadVillasAndResidents(villas, orgId, invitationSource, {
+        assertRoleAssignable: (roleName) => assertRolesAssignable(req, orgId, roleName),
+      });
       res.success(result, 'Bulk unit upload process completed');
     } catch (error) {
       next(error);

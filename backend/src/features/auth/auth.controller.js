@@ -306,14 +306,14 @@ export class AuthController {
 
   async setupAccountPassword(req, res, next) {
     try {
-      const { email, password, orgName } = req.body;
+      const { email, password, setupToken } = req.body;
       const deviceInfo = {
         deviceName: req.headers['user-agent'],
         browser: 'Browser',
         os: 'OS',
         ipAddress: req.ip,
       };
-      const data = await authService.setupAccountPassword(email, password, deviceInfo, orgName);
+      const data = await authService.setupAccountPassword(email, password, deviceInfo, null, setupToken);
       res.success(data, 'Password configured successfully. Account activated.');
     } catch (error) {
       next(error);

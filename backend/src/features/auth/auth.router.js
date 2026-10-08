@@ -4,8 +4,9 @@ import { validate } from '../../middlewares/validator.middleware.js';
 import { 
   loginRules, 
   registerRules, 
-  acceptInviteRules, 
-  switchContextRules, 
+  acceptInviteRules,
+  rejectInviteRules,
+  switchContextRules,
   ssoVerifyRules,
   phoneLoginRules,
   phoneVerifyRules,
@@ -153,8 +154,8 @@ router.post('/login', authLimiter, validate(loginRules), authController.login);
  *       400:
  *         description: Invalid token or validation error.
  */
-router.post('/accept-invite', optionalAuth, validate(acceptInviteRules), authController.acceptInvite);
-router.post('/reject-invite', authController.rejectInvite);
+router.post('/accept-invite', authLimiter, optionalAuth, validate(acceptInviteRules), authController.acceptInvite);
+router.post('/reject-invite', authLimiter, validate(rejectInviteRules), authController.rejectInvite);
 
 /**
  * @swagger
@@ -308,7 +309,7 @@ router.post('/forgot-password', otpLimiter, validate(forgotPasswordRules), authC
 router.post('/forgot-password/initiate', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
 router.post('/forgot-password/verify-otp', authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
 router.post('/reset-password', authLimiter, validate(resetPasswordRules), authController.resetPassword);
-router.post('/setup-account-password', validate(setupAccountPasswordRules), authController.setupAccountPassword);
+router.post('/setup-account-password', authLimiter, validate(setupAccountPasswordRules), authController.setupAccountPassword);
 router.get('/check-account-status', authController.checkAccountStatus);
 
 // Session Routes

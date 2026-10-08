@@ -80,7 +80,7 @@ router.post(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizePermission('villas', ['create', 'update', 'read']),
+  authorizePermission('villas', ['create', 'update']),
   validate(bulkUploadVillasRules),
   villaController.bulkUpload
 );

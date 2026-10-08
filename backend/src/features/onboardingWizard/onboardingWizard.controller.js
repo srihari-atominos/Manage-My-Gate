@@ -8,9 +8,9 @@ export class OnboardingWizardController {
         throw new HttpError(400, 'File upload is required. Please upload a .csv or .xlsx file.');
       }
 
-      const organisationId = req.tenant?.orgId || req.body?.organisationId || req.body?.orgId;
+      const organisationId = req.tenant?.orgId;
       if (!organisationId) {
-        throw new HttpError(400, 'Organization ID is required.');
+        throw new HttpError(400, 'No active community selected.');
       }
 
       const summary = await onboardingWizardService.validateImportFile(req.file.buffer, organisationId);
@@ -22,9 +22,9 @@ export class OnboardingWizardController {
 
   async executeImport(req, res, next) {
     try {
-      const organisationId = req.tenant?.orgId || req.body?.organisationId || req.body?.orgId;
+      const organisationId = req.tenant?.orgId;
       if (!organisationId) {
-        throw new HttpError(400, 'Organization ID is required.');
+        throw new HttpError(400, 'No active community selected.');
       }
 
       const { validDataArray } = req.body;
