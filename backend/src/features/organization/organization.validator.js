@@ -197,7 +197,7 @@ export const updateFeaturesRules = [
         throw new Error(`Invalid feature in list. Allowed features are: ${ALLOWED_FEATURES.join(', ')}`);
       }
       // Unknown keys used to be accepted silently and grant nothing
-      const unknown = value.filter((item) => !ALLOWED_FEATURES.includes(item));
+      const unknown = features.filter((item) => !ALLOWED_FEATURES.includes(item));
       if (unknown.length > 0) {
         throw new Error(`Unknown feature(s): ${unknown.join(', ')}. Allowed: ${ALLOWED_FEATURES.join(', ')}`);
       }

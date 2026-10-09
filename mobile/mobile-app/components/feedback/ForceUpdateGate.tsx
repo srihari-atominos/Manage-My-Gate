@@ -4,7 +4,7 @@ import Constants from 'expo-constants';
 import { Download } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import authService from '@/src/features/auth/services/authService';
+import { getAppConfig } from '@/src/features/auth/services/authService';
 import { isVersionSupported } from '@/src/features/auth/utils/appVersion';
 import { useTranslation } from '@/src/utils/i18n';
 
@@ -20,8 +20,7 @@ export function ForceUpdateGate() {
 
   React.useEffect(() => {
     const installed = Constants.expoConfig?.version || '0.0.0';
-    authService
-      .getAppConfig()
+    getAppConfig()
       .then((res: any) => {
         const config = res?.data?.data || res?.data || {};
         if (!isVersionSupported(installed, config.minSupportedVersion)) {

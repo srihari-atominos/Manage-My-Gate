@@ -48,16 +48,16 @@ export const initiatePhoneLogin = async (phone) => {
   return await apiClient.post('/auth/login/phone', { phone })
 }
 
-export const verifyPhoneLogin = async (phone, code) => {
-  return await apiClient.post('/auth/login/phone/verify', { phone, code })
+export const verifyPhoneLogin = async (phone, code, inviteToken) => {
+  return await apiClient.post('/auth/login/phone/verify', { phone, code, inviteToken })
 }
 
 export const initiateEmailOtpLogin = async (email) => {
   return await apiClient.post('/auth/login/email-otp', { email })
 }
 
-export const verifyEmailOtpLogin = async (email, code) => {
-  return await apiClient.post('/auth/login/email-otp/verify', { email, code })
+export const verifyEmailOtpLogin = async (email, code, inviteToken) => {
+  return await apiClient.post('/auth/login/email-otp/verify', { email, code, inviteToken })
 }
 
 export const logoutApi = async () => {

@@ -49,9 +49,7 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email, phone, roleName, name, onboardingMode = 'INVITATION' } = req.body;
-      const villaId = null;
-      const residentType = 'None';
+      const { email, phone, roleName, name, villaId = null, residentType = 'None', onboardingMode = 'INVITATION' } = req.body;
       const orgId = req.tenant.orgId;
 
       const inviterId = req.user?.id || req.user?._id || null;
@@ -247,6 +245,12 @@ export class UserController {
       const inviterId = req.user?.id || req.user?._id || null;
 
       const defaultSource = resolveInvitationSource(req);
+      
+      for (const invite of invitations) {
+        if (invite.roleName) {
+          await assertRolesAssignable(req, orgId, invite.roleName);
+        }
+      }
 
       const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId, effectiveOnboardingMode);
       res.success(result, 'Bulk user processing completed');

@@ -1,4 +1,4 @@
-﻿import { Text } from '@/components/ui/text';
+import { Text } from '@/components/ui/text';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import {
   Mail,
@@ -111,6 +111,7 @@ export default function LoginScreen() {
     setKeepSignedIn(checked);
     storage.setItem('keep_signed_in', checked ? 'true' : 'false').catch(() => {});
   }, []);
+  const [submitted, setSubmitted] = React.useState<{value: string, isEmail: boolean} | null>(null);
   const [submittedPhone, setSubmittedPhone] = React.useState('');
   const [phoneOtpCode, setPhoneOtpCode] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
@@ -481,7 +482,7 @@ export default function LoginScreen() {
       Keyboard.dismiss();
 
       dispatch(clearPendingRoute());
-      sessionStore.removeItem('mobile_auth_intent');
+      storage.removeItem('mobile_auth_intent');
       router.replace('/(resident)');
     } else if (!isAuthenticated) {
       hasNavigatedRef.current = false;

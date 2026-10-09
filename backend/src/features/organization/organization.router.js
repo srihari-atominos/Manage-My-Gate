@@ -14,6 +14,8 @@ import {
   updateOnboardingModeRules,
   sendAdminEmailOtpRules,
   verifyAdminEmailOtpRules,
+  provisionCommunityRules,
+  assignAdminRules,
 } from './organization.validator.js';
 
 const router = Router();

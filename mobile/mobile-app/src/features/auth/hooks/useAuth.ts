@@ -1,17 +1,15 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
+import authService from '../services/authService';
 import {
     loginWithGoogleThunk,
   loginWithMicrosoftThunk,
   loginWithAppleThunk,
   registerUserThunk,
   verifyRegistrationThunk,
-    acceptSsoInviteThunk,
-  createWorkspaceThunk,
-  updateOrganizationFeaturesThunk,
+  acceptSsoInviteThunk,
   requestOtp,
   verifyOtpLogin,
-  respondToInvitationThunk,
   performLogout,
   deleteAccountThunk,
   clearStatus,
@@ -92,21 +90,7 @@ export const useAuth = () => {
     [dispatch]
   );
 
-  const handleCreateWorkspace = useCallback(
-    (workspaceData: any) => {
-      return dispatch ? dispatch(createWorkspaceThunk(workspaceData)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleUpdateOrganizationFeatures = useCallback(
-    (orgId: string, features: string[]) => {
-      return dispatch ? dispatch(updateOrganizationFeaturesThunk({ orgId, features })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleCheckOrganizationName = useCallback((name: string) => {
+    const handleCheckOrganizationName = useCallback((name: string) => {
     return authService.checkOrganizationName(name);
   }, []);
 
@@ -159,15 +143,13 @@ export const useAuth = () => {
     register: handleRegister,
     verifyRegistration: handleVerifyRegistration,
     acceptSsoInvite: handleAcceptSsoInvite,
-    createWorkspace: handleCreateWorkspace,
-    updateOrganizationFeatures: handleUpdateOrganizationFeatures,
     checkOrganizationName: handleCheckOrganizationName,
     loginWithGoogle: handleLoginWithGoogle,
     loginWithMicrosoft: handleLoginWithMicrosoft,
     loginWithApple: handleLoginWithApple,
     requestOtp: handleRequestOtp,
     verifyOtp: handleVerifyOtp,
-    respondToInvitation: handleRespondToInvitation,
+    
     logout: handleLogout,
     deleteAccount: handleDeleteAccount,
     clearStatus: handleClearStatus,

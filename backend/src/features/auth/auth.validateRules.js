@@ -267,8 +267,8 @@ export const phoneVerifyRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
   body('inviteToken').optional({ nullable: true }).isString().trim(),
@@ -302,8 +302,8 @@ export const emailOtpVerifyRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
   body('inviteToken').optional({ nullable: true }).isString().trim(),
@@ -361,8 +361,8 @@ export const verifyResetPasswordOtpRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
 ];
@@ -395,8 +395,8 @@ export const resetPasswordRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
   body('newPassword')
@@ -502,8 +502,8 @@ export const completeFirstTimeSetupRules = [
     .withMessage('OTP code is required')
     .isString()
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('OTP code must be 6 digits'),
+    
+    ,
   body('password')
     .notEmpty()
     .withMessage('Password is required')
@@ -544,8 +544,8 @@ export const inviteOtpVerifyRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
 ];

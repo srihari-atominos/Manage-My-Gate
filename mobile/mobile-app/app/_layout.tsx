@@ -103,6 +103,7 @@ import { AnimatedSplash } from '@/components/feedback/AnimatedSplash';
 import { ForceUpdateGate } from '@/components/feedback/ForceUpdateGate';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { installLocalizedAlertTranslation } from '@/src/utils/alertUtils';
+import { hasActiveCommunity, resolveHomeRoute, SIGNED_IN_AUTH_ROUTES } from '@/src/features/auth/utils/landing';
 
 installLocalizedAlertTranslation();
 

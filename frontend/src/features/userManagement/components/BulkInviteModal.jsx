@@ -63,7 +63,8 @@ const parseCSV = (text) => {
       else if (header === 'phone' || header === 'phone number' || header === 'phone no' || header === 'mobile' || header === 'contact') key = 'phone'
       else if (header === 'name' || header === 'fullname' || header === 'full name') key = 'name'
       else if (header === 'role') key = 'roleName'
-      // Ignore columns outside Email, Phone Number, and Role.
+        else if (header === 'villa' || header === 'villa no' || header === 'villa number' || header === 'unit' || header === 'unit no') key = 'villaNumber'
+        // Ignore unrecognized columns
 
       if (key) {
         row[key] = values[index] || ''
@@ -105,7 +106,7 @@ export const BulkInviteModal = ({
 
   const handleDownloadTemplate = () => {
     const defaultRole = availableRoles?.[0] || 'Community Admin'
-    const dynamicTemplate = `Email,Phone Number,Role\njohn.doe@example.com,+919876543211,${defaultRole}\njane.smith@example.com,+919876543212,Security Guard`
+    const dynamicTemplate = `Email,Phone Number,Role,Name,Villa Number\njohn.doe@example.com,+919876543211,${defaultRole},John Doe,A-101\njane.smith@example.com,+919876543212,Security Guard,Jane Smith,`
 
     const blob = new Blob([dynamicTemplate], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -195,12 +196,24 @@ export const BulkInviteModal = ({
     setLoading(true)
     setErrorMsg('')
     try {
-      const invitations = validRows.map((r) => ({
-        email: r.email || undefined,
-        phone: r.phone || undefined,
-        name: r.name || undefined,
-        roleName: r.roleName,
-      }))
+      const invitations = validRows.map((r) => {
+          let residentType = 'None'
+          if (r.roleName) {
+            const lowerName = r.roleName.toLowerCase()
+            if (lowerName.includes('owner')) residentType = 'Owner'
+            else if (lowerName.includes('tenant')) residentType = 'Tenant'
+            else if (lowerName.includes('family')) residentType = 'Family'
+            else residentType = 'Guest'
+          }
+          return {
+            email: r.email || undefined,
+            phone: r.phone || undefined,
+            name: r.name || undefined,
+            roleName: r.roleName,
+            villaNumber: r.villaNumber || undefined,
+            residentType,
+          }
+        })
       const res = await onBulkInvite(invitations)
       setResults(res)
       setParsedRows([])
@@ -329,6 +342,7 @@ export const BulkInviteModal = ({
                     </th>
 
                     <th scope="col">Role</th>
+                    <th scope="col">Villa/Unit</th>
                     <th scope="col" className="pe-3 text-center">
                       Status
                     </th>
@@ -348,6 +362,9 @@ export const BulkInviteModal = ({
                       </td>
                       <td className="text-truncate bulk-text-truncate-role">
                         {row.roleName || <span className="text-danger">Missing</span>}
+                      </td>
+                      <td className="text-truncate bulk-text-truncate-role">
+                        {row.villaNumber || <span className="text-muted small">-</span>}
                       </td>
                       <td className="pe-3 text-center">
                         {row.isValid && !row.isDuplicate ? (

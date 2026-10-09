@@ -301,13 +301,20 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
     // Validate phone (mandatory for every invitation)
     if (!phone.trim() || !validatePhone(phone).isValid) {
-      setPhoneError('Please enter a valid phone number.');
+      setPhoneMessage('Please enter a valid phone number.');
+      setPhoneStatus('invalid');
       return;
     }
 
     // Validate role
     if (!selectedRoleName) {
       setRoleError('Please select a user role.');
+      return;
+    }
+
+    // Validate villa (mandatory for tenant roles)
+    if (isTenantRole && !selectedVillaId) {
+      setVillaError(t('select_villa_error', 'Please choose a villa or unit'));
       return;
     }
 
@@ -334,6 +341,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
         email: email.trim(),
         phone: phone.trim(),
         roleName: selectedRoleName || null,
+        villaId: isTenantRole ? selectedVillaId || null : null,
+        residentType,
       });
 
       // Show persistent success confirmation inside modal
@@ -345,7 +354,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     } catch (err: any) {
       const parsed = parseBackendError(err, 'Failed to send invitation. Please try again.');
       if (parsed.field === 'phone' || /phone/i.test(parsed.userMessage || '')) {
-        setPhoneError(parsed.userMessage);
+        setPhoneMessage(parsed.userMessage);
+        setPhoneStatus('invalid');
       } else if (parsed.isDuplicate || parsed.field === 'email') {
         setEmailStatus('invalid');
         setEmailMessage(parsed.userMessage);
@@ -528,6 +538,28 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                       />
                     )}
                   </View>
+
+                  {/* Villa / Unit Dropdown (Conditionally Rendered) */}
+                  {isTenantRole && (
+                    <View className="mb-4">
+                      {loadingVillas ? (
+                        <View className="py-3 items-center justify-center">
+                          <AppLoader variant="inline" />
+                          <Text className="text-xs text-muted-foreground mt-1">{t('loading_units', 'Loading units...')}</Text>
+                        </View>
+                      ) : (
+                        <DropdownSelect
+                          label={t('select_unit', 'Select Villa / Unit')}
+                          required
+                          options={villaOptions}
+                          value={selectedVillaId}
+                          onValueChange={handleVillaChange}
+                          placeholder={t('select_unit_placeholder', '-- Choose a Villa --')}
+                          error={villaError}
+                        />
+                      )}
+                    </View>
+                  )}
 
                   {/* Modal Footer */}
                   <View className="flex-row items-center justify-end gap-3 pt-3 border-t border-border mt-2">

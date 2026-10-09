@@ -106,7 +106,7 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
           senderId: inviterId || null,
           orgId,
           title: `Invitation to ${communityName}`,
-          body: `You have been invited to join ${communityName}${descStr}. Tap to Accept or Reject this invitation.`,
+          body: `You have been invited to join ${communityName}${descStr}. Tap to access your invitation.`,
           actionUrl: baseInviteLink,
           type: 'INVITATION',
           metadata: {
@@ -125,177 +125,65 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
 
     const inviteMode = hasPassword ? 'signin' : 'signup';
     const inviteLink = baseInviteLink;
-    const rejectInviteLink = `${baseInviteLink}${baseInviteLink.includes('?') ? '&' : '?'}action=reject`;
-    const ctaButtonText = 'Step Into Your Community';
-
-    const registeredPhone = phone || targetUser?.phone || '';
-    const detailRow = (label, value, last = false) =>
-      value
-        ? `
-            <div style="font-size: 14px; color: #334155;${last ? '' : ' margin-bottom: 6px;'}">
-              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 130px;">${label}</span>
-              <strong style="color: #0f172a;">${escapeHtml(value)}</strong>
-            </div>`
-        : '';
-    // Community, registered email/phone and role (story 5). Never credentials or codes.
-    const unitRoleDetails = `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin: 18px 0 22px 0;">
-        <tr>
-          <td style="padding: 16px 18px;">
-            ${detailRow('Community:', communityName)}
-            ${detailRow('Registered email:', email)}
-            ${detailRow('Registered phone:', registeredPhone)}
-            ${detailRow('Villa / Unit:', villaLabel)}
-            ${detailRow('Role:', roleName, true)}
-          </td>
-        </tr>
-      </table>
-    `;
+    const ctaButtonText = 'Access Your Community';
     const safeCommunityName = escapeHtml(communityName);
+    const targetUserName = targetUser?.name || 'User';
+    const registeredPhone = phone || targetUser?.phone || '';
 
     const customInviteBody = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invitation to join ${safeCommunityName}</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f1f5f9; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; margin: 0; padding: 24px 12px; width: 100%;">
-    <tr>
-      <td align="center">
-        <!-- Main Email Card Container -->
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 520px; width: 100%; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: left;">
-          <!-- Card Header Section -->
-          <tr>
-            <td style="padding: 28px 24px 12px 24px;">
-              <div style="margin-bottom: 14px;">
-                <span style="display: inline-block; background-color: #e0e7ff; color: #4338ca; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.06em;">
-                  Community Invitation
-                </span>
-              </div>
-              <h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 10px 0; line-height: 1.35; letter-spacing: -0.01em;">
-                You're invited to join ${safeCommunityName}
-              </h1>
-              <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0;">
-                Hello,<br/><br/>
-                You have been invited to join <strong>${safeCommunityName}</strong>. Please select your response below to proceed.
-              </p>
-            </td>
-          </tr>
-
-          <!-- Details Box (Org, Villa, Role) -->
-          <tr>
-            <td style="padding: 0 24px;">
-              ${unitRoleDetails}
-            </td>
-          </tr>
-
-          <!-- Instruction Notice -->
-          <tr>
-            <td style="padding: 0 24px 16px 24px;">
-              <p style="color: #64748b; font-size: 13.5px; line-height: 1.5; margin: 0;">
-                Please select an option below to respond to your invitation:
-              </p>
-            </td>
-          </tr>
-
-          <!-- Action Buttons (Centered, accessible on desktop and mobile) -->
-          <tr>
-            <td style="padding: 0 24px 24px 24px;" align="center">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 360px; margin: 0 auto; width: 100%;">
-                <tr>
-                  <td align="center" style="padding-bottom: 12px;">
-                    <a href="{{invite_link}}" target="_blank" style="display: block; width: 100%; box-sizing: border-box; background-color: #16a34a; color: #ffffff; padding: 14px 24px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 15px; text-align: center; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25); letter-spacing: 0.01em;">
-                      ${ctaButtonText}
-                    </a>
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center">
-                    <a href="{{reject_link}}" target="_blank" style="display: block; width: 100%; box-sizing: border-box; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 12px 24px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; text-align: center;">
-                      Reject Invitation
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Mobile App Download Strip -->
-          <tr>
-            <td style="padding: 0 24px 24px 24px;" align="center">
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: center;">
-                <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
-                  📱 Prefer using our mobile app?
-                </div>
-                <div style="font-size: 12px; color: #64748b; margin-bottom: 12px;">
-                  Download Nahom for your smartphone:
-                </div>
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
-                  <tr>
-                    <td style="padding: 0 6px;">
-                      <a href="https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 8px 14px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 12px; text-align: center;">
-                        Google Play (Android)
-                      </a>
-                    </td>
-                    <td style="padding: 0 6px;">
-                      <a href="https://apps.apple.com/app/manage-my-gate/id6746501635" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 8px 14px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 12px; text-align: center;">
-                        App Store (iOS)
-                      </a>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Footer & Security Notice -->
-          <tr>
-            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px;">
-              <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0 0 6px 0;">
-                &bull; This invitation link is single-use and will expire in ${INVITATION_VALID_DAYS} days.
-              </p>
-              <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0 0 14px 0;">
-                &bull; If you were not expecting this invitation, you can click Reject or safely ignore this email.
-              </p>
-              <div style="font-size: 12px; color: #64748b; word-break: break-all; line-height: 1.45;">
-                <strong style="color: #475569;">Direct Link:</strong><br/>
-                <a href="{{invite_link}}" style="color: #4f46e5; text-decoration: underline;">{{invite_link}}</a>
-              </div>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
+<div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: 0 auto; line-height: 1.6;">
+  <p>Hello ${escapeHtml(targetUserName)},</p>
+  
+  <p>You have been invited to join <strong>${safeCommunityName}</strong> by the community administration.</p>
+  
+  <p>Your registered details are:</p>
+  <ul style="list-style: none; padding-left: 0;">
+    <li><strong>Email:</strong> ${escapeHtml(email || '')}</li>
+    <li><strong>Phone:</strong> ${escapeHtml(registeredPhone)}</li>
+    <li><strong>Role:</strong> ${escapeHtml(roleName || '')}</li>
+  </ul>
+  
+  <p>To access your community, click the button below:</p>
+  
+  <div style="margin: 30px 0;">
+    <a href="{{invite_link}}" style="background-color: #16a34a; color: #ffffff; padding: 14px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+      ${ctaButtonText}
+    </a>
+  </div>
+  
+  <p>After clicking the button, you will be taken to the appropriate application based on your device. You can sign in using your registered <strong>email address or phone number and OTP</strong>.</p>
+  
+  <p>If the application is not installed on your mobile device, you will be directed to the appropriate app store.</p>
+  
+  <p>If you were not expecting this invitation, you can safely ignore this email.</p>
+  
+  <p style="margin-top: 30px;">
+    Thank you,<br/>
+    <strong>${safeCommunityName} Team</strong>
+  </p>
+</div>
 `;
 
     // Fetch organization's customized user_invitation email template if available
     const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'user_invitation');
 
-    const defaultSubject = `You're invited to join ${communityName}`;
+    const defaultSubject = `You’re Invited to Join ${communityName}`;
     const subject = template?.subject
       ? template.subject.replace(/{{community_name}}/g, communityName).replace(/{{invite_link}}/g, inviteLink)
       : defaultSubject;
 
     const bodyTemplate = template?.body || customInviteBody;
 
-    // Compile variables — also rewrite any legacy URL formats that may be
+    // Compile variables – also rewrite any legacy URL formats that may be
     // stored in custom MongoDB email templates (hash-router, /invite/app/, /invite/web/)
     const compiledSubject = subject
-      .replace(/{{invite_link}}/g, inviteLink)
-      .replace(/{{reject_link}}/g, rejectInviteLink);
+      .replace(/{{invite_link}}/g, inviteLink);
     const compiledBody = bodyTemplate
       // Rewrite ONLY legacy sub-path style: /invite/app/<token> or /invite/web/<token>
-      // Do NOT rewrite /#/invite?token=<token> — that is the correct format for this HashRouter app
+      // Do NOT rewrite /#/invite?token=<token> – that is the correct format for this HashRouter app
       .replace(/https?:\/\/[^\s"'>]+\/invite\/(?:app|web)\/[^\s"'>]*/gi, inviteLink)
       .replace(/https?:\/\/[^\s"']+\/(?:#\/)?invite(?:\/(?:web|app))?(?:\?token=|\/)[^\s"']*/gi, inviteLink)
       .replace(/{{invite_link}}/g, inviteLink)
-      .replace(/{{reject_link}}/g, rejectInviteLink)
       .replace(/{{community_name}}/g, safeCommunityName);
 
     // Mask raw token in logs to comply with security directive

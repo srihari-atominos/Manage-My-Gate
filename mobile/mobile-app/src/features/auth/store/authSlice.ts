@@ -378,15 +378,46 @@ export const loginWithAppleThunk = createAsyncThunk(
     }
   }
 );
+/** Accepts an invitation using a verified SSO provider and persists the session. */
+export const acceptSsoInviteThunk = createAsyncThunk(
+  'auth/acceptSsoInvite',
+  async (
+    payload: {
+      inviteToken: string;
+      ssoCredential?: string;
+      code?: string;
+      codeVerifier?: string;
+      redirectUri?: string;
+      clientId?: string;
+      nonce?: string;
+      fullName?: string;
+      provider: 'google' | 'microsoft' | 'apple';
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await authService.acceptSsoInvite(payload);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+      const persisted = await persistLoginResult(innerData);
+      if (!persisted) {
+        return rejectWithValue(body?.message || 'Invalid invitation acceptance response');
+      }
+      return persisted as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation via SSO');
+    }
+  }
+);
 
 
 
 /** Decline one invitation (signed in) from a notification: by invitation id or link token. */
 export const rejectInviteThunk = createAsyncThunk(
   'auth/rejectInvite',
-  async ({ token }: { token: string; email?: string }, { rejectWithValue }) => {
+  async ({ token, email }: { token: string; email?: string }, { rejectWithValue }) => {
     try {
-      const response = await authService.respondToInvitation('decline', invitationRef(token));
+      const response = await authService.rejectInvite({ token, email });
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       return body?.data || body;
     } catch (error: any) {
@@ -482,35 +513,6 @@ export const verifyOtpLogin = createAsyncThunk(
   }
 );
 
-/**
- * Accept or decline exactly one invitation (by id from the pending list, or by the
- * invitation link's token). Accepting returns a full login result.
- */
-export const respondToInvitationThunk = createAsyncThunk(
-  'auth/respondToInvitation',
-  async (
-    { action, invitationId, inviteToken, ticket }: { action: 'accept' | 'decline'; invitationId?: string; inviteToken?: string; ticket?: string | null },
-    { rejectWithValue }
-  ) => {
-    try {
-      const response = await authService.respondToInvitation(action, {
-        ...(invitationId ? { invitationId } : {}),
-        ...(inviteToken ? { inviteToken } : {}),
-        ...(ticket ? { ticket } : {}),
-      });
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      const innerData = body?.data || body;
-      if (action === 'decline') {
-        return { declined: true, pendingInvitations: innerData?.pendingInvitations || [] } as any;
-      }
-      const persisted = await persistLoginResult(innerData);
-      if (!persisted) return rejectWithValue({ message: 'Invalid response from server' } as AuthErrorDetail);
-      return persisted as any;
-    } catch (error: any) {
-      return rejectWithValue(toAuthErrorDetail(error, `Could not ${action} the invitation`));
-    }
-  }
-);
 
 export const switchWorkspaceContextThunk = createAsyncThunk<
   any,
@@ -619,8 +621,7 @@ export const performLogout = createAsyncThunk(
     }
     try {
       // Sending the refresh token lets the server revoke this session even if the access token expired
-      const refreshToken = state?.auth?.refreshToken || (await storage.getItem('refreshToken'));
-      await authService.logoutApi(refreshToken);
+      await authService.logoutApi();
     } catch (error) {
       console.warn('Logout API call failed, removing local session anyway.');
     }
@@ -1015,32 +1016,6 @@ const authSlice = createSlice({
         state.errorDetail = detail
           ? { code: detail.code, attemptsRemaining: detail.attemptsRemaining, retryAfterSeconds: detail.retryAfterSeconds }
           : null;
-      })
-      // Accept / decline one invitation
-      .addCase(respondToInvitationThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.errorDetail = null;
-      })
-      .addCase(respondToInvitationThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        if (action.payload?.declined) {
-          if (state.invitationSelection) {
-            state.invitationSelection.pendingInvitations = action.payload.pendingInvitations || [];
-          }
-          return;
-        }
-        state.invitationSelection = null;
-        state.token = action.payload?.token || null;
-        state.refreshToken = action.payload?.refreshToken || null;
-        state.user = normalizeUser(action.payload?.user || null);
-        state.isAuthenticated = !!(state.token && state.user?.id);
-      })
-      .addCase(respondToInvitationThunk.rejected, (state, action) => {
-        const detail = action.payload as AuthErrorDetail | undefined;
-        state.loading = false;
-        state.error = detail?.message || 'Could not update the invitation';
-        state.errorDetail = detail ? { code: detail.code } : null;
       })
       // Switch Workspace Context
       .addCase(switchWorkspaceContextThunk.pending, (state) => {

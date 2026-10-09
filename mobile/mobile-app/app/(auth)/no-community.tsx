@@ -36,11 +36,8 @@ export default function NoCommunityScreen() {
               {t('not_in_community_yet', "You're not part of a community yet")}
             </Text>
             <Text className="text-sm text-muted-foreground text-center">
-              {t('not_in_community_help', 'Ask your community admin to invite you. When they do, open the invitation link or check your invitations here.')}
+              {t('not_in_community_help', 'Ask your community admin to invite you. When they do, click the invitation link to join.')}
             </Text>
-            <Button testID="no-community-check-invitations" className="w-full h-11" onPress={() => router.push('/(auth)/pending-invitations' as any)}>
-              <Text className="font-bold text-primary-foreground">{t('check_invitations', 'Check my invitations')}</Text>
-            </Button>
             <Button variant="ghost" className="h-10" onPress={signOut}>
               <Text className="text-primary text-sm font-semibold">{t('sign_out', 'Sign out')}</Text>
             </Button>

@@ -198,6 +198,11 @@ export const exchangeHandoff = async (handoffId: string, deviceInfo?: any) => {
   return await apiClient.post('/auth/invite/handoff/exchange', { handoffId, deviceInfo });
 };
 
+/** Public mobile bootstrap configuration (minimum supported version and store URLs). */
+export const getAppConfig = async () => {
+  return await apiClient.get('/public/app/config');
+};
+
 export const getCurrentContext = async (orgId?: string) => {
   const query = orgId ? `?orgId=${encodeURIComponent(orgId)}` : '';
   return await apiClient.get(`/auth/current-context${query}`);
@@ -230,6 +235,7 @@ export default {
   checkOrganizationName,
   createWorkspace,
   updateOrganizationFeatures,
+  getAppConfig,
   exchangeHandoff,getCurrentContext,
 };
 

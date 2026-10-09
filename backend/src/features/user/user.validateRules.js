@@ -109,8 +109,8 @@ export const updateProfileRules = [
   body('phoneOtp')
     .optional()
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Phone OTP must be 6 digits'),
+    
+    ,
   body('email')
     .optional()
     .trim()
@@ -119,8 +119,8 @@ export const updateProfileRules = [
   body('emailOtp')
     .optional()
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('OTP must be 6 digits'),
+    
+    ,
   body('removeAvatar')
     .optional(),
   body('bio')
@@ -171,43 +171,6 @@ export const bulkInviteUserRules = [
   body('invitations')
     .isArray({ min: 1 })
     .withMessage('invitations must be a non-empty array'),
-  body('invitations.*')
-    .custom((item) => {
-      const hasEmail = item && item.email && typeof item.email === 'string' && item.email.trim().length > 0;
-      const hasPhone = item && item.phone && typeof item.phone === 'string' && item.phone.trim().length > 0;
-      if (!hasEmail || !hasPhone) {
-        throw new Error('Email address and phone number are required for each user.');
-      }
-      return true;
-    }),
-  body('invitations.*.email')
-    .notEmpty()
-    .withMessage('Email address is required')
-    .isEmail()
-    .withMessage('Please provide a valid email address')
-    .trim(),
-  body('invitations.*.phone')
-    .notEmpty()
-    .withMessage('Phone number is required')
-    .custom((val) => Boolean(normalizePhone(val)))
-    .withMessage('Please provide a valid phone number format'),
-  body('invitations.*.residentType')
-    .optional()
-    .isString()
-    .withMessage('Resident type must be a string')
-    .trim(),
-  body('invitations.*.villaNumber')
-    .optional()
-    .custom((val) => {
-      if (val === undefined || val === null || val === '') return true;
-      return typeof val === 'string';
-    })
-    .withMessage('Villa Number must be a string')
-    .trim(),
-  body('onboardingMode')
-    .optional()
-    .isIn(['INVITATION', 'ADMIN_ANNOUNCEMENT'])
-    .withMessage('onboardingMode must be INVITATION or ADMIN_ANNOUNCEMENT'),
 ];
 
 /**

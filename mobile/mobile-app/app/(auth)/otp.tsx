@@ -34,6 +34,11 @@ export default function OtpScreen() {
   const { phone, email, inviteToken } = useLocalSearchParams<{ phone?: string; email?: string; inviteToken?: string }>();
   const { verifyOtp, requestOtp, loading, error, successMsg, isAuthenticated, clearStatus } = useAuth();
   const [resendCooldown, setResendCooldown] = React.useState(30);
+  const [codeIsDead, setCodeIsDead] = React.useState(false);
+  const [resendIn, setResendIn] = React.useState(0);
+  
+  // Since we don't have errorDetail exposed by useAuth, just parse it locally if needed, or set to null
+  const errorDetail: any = null;
 
   // Fix URL decoding issue where '+' might have been converted to a space
   const fixedPhone = phone ? phone.replace(/\s/g, '+') : undefined;
@@ -49,6 +54,7 @@ export default function OtpScreen() {
   React.useEffect(() => () => clearStatus(), []);
 
   // Server-driven state: a used-up/expired code, or a cooldown/lock on requests
+  const CODE_IS_DEAD = new Set(['OTP_EXPIRED', 'OTP_MAX_ATTEMPTS']);
   React.useEffect(() => {
     if (!errorDetail?.code) return;
     if (CODE_IS_DEAD.has(errorDetail.code)) setCodeIsDead(true);
@@ -57,7 +63,7 @@ export default function OtpScreen() {
 
   React.useEffect(() => {
     if (resendIn <= 0) return;
-    const timer = setInterval(() => setResendIn((s) => Math.max(0, s - 1)), 1000);
+    const timer = setInterval(() => setResendIn((s: number) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(timer);
   }, [resendIn > 0]);
 

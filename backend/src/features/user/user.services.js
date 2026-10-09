@@ -1015,8 +1015,14 @@ export class UserService {
       const mode = (itemMode || onboardingMode || 'INVITATION').toUpperCase();
 
       try {
-        if (!trimmedEmail && !trimmedPhone) {
-          throw new HttpError(400, 'Email address or phone number is required.');
+        if (!trimmedEmail) {
+          throw new HttpError(400, 'Email address is required.');
+        }
+        if (!trimmedPhone) {
+          throw new HttpError(400, 'Phone number is required.');
+        }
+        if (!roleName) {
+          throw new HttpError(400, 'Role is required.');
         }
 
         let villaId = payloadVillaId || null;

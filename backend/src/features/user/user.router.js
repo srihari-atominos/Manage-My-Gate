@@ -101,7 +101,7 @@ router.get(
 router.post(
   '/invite',
   tenantContext,
-  authorizeAnyPermission(['users:create', 'villas:update']),
+  authorizePermission('users', 'create'),
   validate(inviteUserRules),
   userController.inviteUser
 )
@@ -178,7 +178,7 @@ router.get(
 router.get(
   '/assignable-roles',
   tenantContext,
-  authorizeAnyPermission(['users:create', 'villas:update']),
+  authorizePermission('users', 'create'),
   userController.getAssignableRoles
 )
 

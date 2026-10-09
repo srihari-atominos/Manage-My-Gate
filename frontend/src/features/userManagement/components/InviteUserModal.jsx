@@ -254,9 +254,9 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
                 htmlFor="invite-villa-select"
                 style={{ fontSize: '0.85rem', fontWeight: 600 }}
               >
-                Select Villa / Unit
+                Select Villa / Unit <span className="text-danger">*</span>
               </CFormLabel>
-              <div className="dropdown w-100">
+              <div className={`dropdown w-100 ${roleTouched && !selectedVillaId ? 'is-invalid border border-danger rounded' : ''}`}>
                 <button
                   className="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center form-select-sm bg-white"
                   type="button"
@@ -320,6 +320,11 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
                   ))}
                 </ul>
               </div>
+              {roleTouched && !selectedVillaId && (
+                <div className="invalid-feedback d-block" style={{ fontSize: '0.875em' }}>
+                  Please choose a villa or unit
+                </div>
+              )}
             </div>
           )}
 
