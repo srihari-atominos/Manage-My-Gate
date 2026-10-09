@@ -11,6 +11,15 @@ export function normalizePhone(rawPhone, defaultCountry = 'IN') {
   const trimmed = rawPhone.trim();
   if (!trimmed) return null;
 
+  // Development Fallback for local testing numbers (e.g., 9999999999, 9876543210, 1234567890)
+  if (process.env.NODE_ENV !== 'production') {
+    const digits = trimmed.replace(/\D/g, '');
+    if (digits.length >= 10) {
+      const last10 = digits.slice(-10);
+      return `+91${last10}`;
+    }
+  }
+
   try {
     const phoneNumber = parsePhoneNumberFromString(trimmed, defaultCountry);
     const compactInternational = trimmed.replace(/[\s().-]/g, '');

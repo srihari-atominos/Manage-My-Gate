@@ -190,7 +190,7 @@ export const VillaManagementView = () => {
   )
 
   return (
-    <div className="p-4" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="app-page-container">
       <PageHeader
         title={t('villas.pageTitle', 'Unit Management')}
         subtitle={t(

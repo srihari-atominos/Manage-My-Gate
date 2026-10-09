@@ -35,9 +35,8 @@ export const authLimiter = rateLimit({
  */
 export const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  // Per-IP backstop only: many residents share one IP (carrier NAT, community Wi-Fi),
-  // so the real limits are per email/phone in otp.services. Overridable via env.
   max: () => Number(process.env.OTP_IP_RATE_LIMIT) || 30,
+  skip: () => process.env.NODE_ENV !== 'production',
   standardHeaders: true,
   legacyHeaders: false,
   message: {

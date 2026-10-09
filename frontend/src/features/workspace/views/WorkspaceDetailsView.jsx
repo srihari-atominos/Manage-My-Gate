@@ -164,19 +164,19 @@ export const WorkspaceDetailsView = () => {
           </CNav>
         </div>
 
-        <CCard className="mb-4 border-0 shadow-sm rounded-4">
+        <CCard className="mb-4 border shadow-sm rounded-4" style={{ backgroundColor: 'var(--cui-card-bg)', color: 'var(--cui-body-color)', borderColor: 'var(--cui-border-color)' }}>
           <CCardBody className="p-4">
             {/* 2. MODULE MANAGEMENT (FEATURES LIST & CREATE MODULE) TAB */}
             {activeTab === 'create' && (
               <div>
                 {/* Header aligned with the reference UI mockup */}
                 <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h3 className="fw-bold text-dark mb-0" style={{ fontSize: '24px' }}>
+                  <h3 className="fw-bold mb-0" style={{ fontSize: '24px', color: 'var(--cui-body-color)' }}>
                     {t('workspace.details.createHeader', 'Module Management')}
                   </h3>
                 </div>
 
-                <p className="text-muted mb-4" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
+                <p className="mb-4" style={{ fontSize: '14.5px', lineHeight: '1.6', color: 'var(--cui-text-muted, #94a3b8)' }}>
                   Turn a feature on and it shows up in the sidebar on the left. Turn it off, and
                   it's gone from the sidebar completely -- not greyed out, just not there.
                 </p>
@@ -189,28 +189,38 @@ export const WorkspaceDetailsView = () => {
                     return (
                       <div
                         key={mod._id}
-                        className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-white shadow-sm"
-                        style={{ minHeight: '80px', borderColor: '#f1f5f9' }}
+                        className="d-flex align-items-center justify-content-between p-3 border rounded-3 shadow-sm"
+                        style={{
+                          minHeight: '80px',
+                          backgroundColor: 'var(--cui-card-bg)',
+                          borderColor: 'var(--cui-border-color, #e2e8f0)',
+                          color: 'var(--cui-body-color)',
+                        }}
                       >
                         <div className="d-flex align-items-center gap-3">
                           {/* Left icon wrapper */}
                           <div
-                            className="rounded-3 d-flex align-items-center justify-content-center bg-light text-secondary border"
-                            style={{ width: '48px', height: '48px', backgroundColor: '#f8fafc' }}
+                            className="rounded-3 d-flex align-items-center justify-content-center border"
+                            style={{
+                              width: '48px',
+                              height: '48px',
+                              backgroundColor: 'var(--cui-tertiary-bg, #f8fafc)',
+                              borderColor: 'var(--cui-border-color, #e2e8f0)',
+                            }}
                           >
-                            <CIcon icon={IconComponent} size="lg" style={{ color: '#475569' }} />
+                            <CIcon icon={IconComponent} size="lg" style={{ color: '#FA6400' }} />
                           </div>
                           <div>
-                            <h5 className="mb-1 fw-bold text-dark" style={{ fontSize: '16px' }}>
+                            <h5 className="mb-1 fw-bold" style={{ fontSize: '16px', color: 'var(--cui-body-color)' }}>
                               {mod.moduleName}
                             </h5>
                             <span
                               className="small"
                               style={{
                                 color: mod.enabled
-                                  ? 'var(--text-muted, #64748b)'
-                                  : 'var(--text-light, #94a3b8)',
-                                fontWeight: '500',
+                                  ? '#FA6400'
+                                  : 'var(--cui-text-muted, #94a3b8)',
+                                fontWeight: '600',
                               }}
                             >
                               {mod.enabled ? 'Visible in sidebar' : 'Hidden from sidebar'}
@@ -250,12 +260,12 @@ export const WorkspaceDetailsView = () => {
             {/* 4. WORKSPACE SETTINGS TAB */}
             {activeTab === 'settings' && (
               <div>
-                <h4 className="mb-4 fw-bold">
+                <h4 className="mb-4 fw-bold" style={{ color: 'var(--cui-body-color)' }}>
                   {t('workspace.details.settingsHeader', 'Workspace Settings')}
                 </h4>
 
                 {/* General config form */}
-                <h5 className="fw-semibold text-dark mb-3">
+                <h5 className="fw-semibold mb-3" style={{ color: 'var(--cui-body-color)' }}>
                   {t('workspace.details.metaTitle', 'Workspace Metadata')}
                 </h5>
                 <CForm onSubmit={handleSubmitEdit(handleGeneralInfoSubmit)} className="mb-5">

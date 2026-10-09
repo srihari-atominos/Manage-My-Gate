@@ -254,18 +254,24 @@ export const SearchableLanguageSelect = ({ label, value, onChange, disabled }) =
 
       {isOpen && !disabled && (
         <div
-          className="position-absolute w-100 bg-white border rounded-3 mt-1 shadow-lg overflow-y-auto"
-          style={{ zIndex: 1050, maxHeight: '200px' }}
+          className="position-absolute w-100 border rounded-3 mt-1 shadow-lg overflow-y-auto"
+          style={{
+            zIndex: 1050,
+            maxHeight: '200px',
+            backgroundColor: 'var(--cui-card-bg, #ffffff)',
+            color: 'var(--cui-body-color, #14213d)',
+            borderColor: 'var(--cui-border-color, #e2e8f0)',
+          }}
         >
           {filteredLanguages.length > 0 ? (
             filteredLanguages.map((lang) => (
               <div
                 key={lang.code}
-                className="p-2 cursor-pointer hover-bg-light text-dark"
-                style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                className="p-2 cursor-pointer"
+                style={{ cursor: 'pointer', transition: 'background-color 0.2s', color: 'var(--cui-body-color)' }}
                 onClick={() => handleSelectLanguage(lang.code)}
-                onMouseEnter={(e) => (e.target.style.backgroundColor = '#f1f5f9')}
-                onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--cui-tertiary-bg, #f1f5f9)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 {lang.name} <span className="text-muted small">({lang.code})</span>
               </div>

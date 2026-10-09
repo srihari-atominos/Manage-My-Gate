@@ -129,7 +129,9 @@
   .screenshot-preview-container {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    transition:
+      transform 0.15s ease-in-out,
+      box-shadow 0.15s ease-in-out;
     cursor: pointer;
 
     &:hover {
@@ -154,5 +156,109 @@
 
   .text-end {
     text-align: left !important;
+  }
+}
+
+/* Shared light/dark theme treatment for the platform issue-report screens. */
+.issue-report-container {
+  box-sizing: border-box;
+  width: min(100%, 90rem);
+  margin: 0 auto;
+  padding: var(--nahom-space-8);
+  color: var(--nahom-text);
+
+  .card,
+  .email-config-card {
+    border: 1px solid var(--nahom-border) !important;
+    border-radius: var(--nahom-radius-md) !important;
+    background: var(--nahom-surface) !important;
+    box-shadow: var(--nahom-shadow-sm) !important;
+    color: var(--nahom-text);
+  }
+
+  .card-header,
+  .email-config-card .card-header {
+    border-bottom: 1px solid var(--nahom-border) !important;
+    background: var(--nahom-surface-muted) !important;
+    color: var(--nahom-text);
+  }
+
+  .card-header h3,
+  .card-header h5,
+  .text-dark,
+  .table-title-text {
+    color: var(--nahom-text) !important;
+  }
+
+  :is(.card-header p, .card-header small, .text-muted, .text-body-secondary) {
+    color: var(--nahom-text-muted) !important;
+  }
+
+  .form-control,
+  .form-select,
+  .input-group-text {
+    border-color: var(--nahom-border);
+    background: var(--nahom-surface-muted);
+    color: var(--nahom-text);
+  }
+
+  .form-control::placeholder {
+    color: var(--nahom-text-muted);
+    opacity: 1;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: var(--nahom-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--nahom-primary) 20%, transparent);
+  }
+
+  .btn-primary {
+    --cui-btn-color: var(--nahom-on-primary);
+    --cui-btn-bg: var(--nahom-primary);
+    --cui-btn-border-color: var(--nahom-primary);
+  }
+
+  .btn-outline-primary {
+    --cui-btn-color: var(--nahom-primary);
+    --cui-btn-border-color: var(--nahom-primary);
+    --cui-btn-hover-color: var(--nahom-on-primary);
+    --cui-btn-hover-bg: var(--nahom-primary);
+  }
+
+  .bg-light,
+  .issue-report-table thead {
+    background: var(--nahom-surface-muted) !important;
+  }
+
+  .issue-report-table {
+    --cui-table-color: var(--nahom-text);
+    --cui-table-bg: var(--nahom-surface);
+    --cui-table-border-color: var(--nahom-border);
+  }
+
+  .issue-report-table th {
+    color: var(--nahom-text-muted);
+    background: var(--nahom-surface-muted);
+  }
+
+  .issue-report-table td {
+    color: var(--nahom-text);
+  }
+
+  .issue-report-table tbody tr:hover > * {
+    background: color-mix(in srgb, var(--nahom-primary) 6%, var(--nahom-surface));
+    color: var(--nahom-text);
+  }
+
+  .text-center.border.rounded.bg-light {
+    border-color: var(--nahom-border) !important;
+    background: var(--nahom-surface-muted) !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .issue-report-container {
+    padding: var(--nahom-space-5) var(--nahom-space-4) var(--nahom-space-8);
   }
 }

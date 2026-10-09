@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { loadOrganizations, toggleOrgStatus } from '../store/organizationSlice.js'
@@ -17,17 +18,26 @@ export const useOrganizationManager = () => {
   const loading = useSelector((state) => state.organization.loading)
   const error = useSelector((state) => state.organization.error)
 
-  const fetchOrgs = (pageNumber = 1, limitNumber = 10) => {
-    dispatch(loadOrganizations({ page: pageNumber, limit: limitNumber }))
-  }
+  const fetchOrgs = useCallback(
+    (pageNumber = 1, limitNumber = 10) => {
+      dispatch(loadOrganizations({ page: pageNumber, limit: limitNumber }))
+    },
+    [dispatch],
+  )
 
-  const toggleStatus = (orgId, currentStatus) => {
-    dispatch(toggleOrgStatus({ orgId, currentStatus }))
-  }
+  const toggleStatus = useCallback(
+    (orgId, currentStatus) => {
+      dispatch(toggleOrgStatus({ orgId, currentStatus }))
+    },
+    [dispatch],
+  )
 
-  const viewDetails = (orgId) => {
-    navigate(`/super-admin/organizations/${orgId}`)
-  }
+  const viewDetails = useCallback(
+    (orgId) => {
+      navigate(`/super-admin/organizations/${orgId}`)
+    },
+    [navigate],
+  )
 
   return {
     organizations,

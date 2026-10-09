@@ -208,6 +208,14 @@ export const getCurrentContext = async (orgId?: string) => {
   return await apiClient.get(`/auth/current-context${query}`);
 };
 
+export const initiateInvitationOtp = async (token: string) => {
+  return await apiClient.post('/auth/invite/otp', { token });
+};
+
+export const verifyInvitationOtp = async (token: string, otp: string) => {
+  return await apiClient.post('/auth/invite/otp/verify', { token, otp });
+};
+
 export default {
   register,
   verifyRegistration,

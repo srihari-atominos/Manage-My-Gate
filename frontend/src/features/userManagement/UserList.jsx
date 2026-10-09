@@ -431,7 +431,7 @@ const UserList = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-4" style={{ maxWidth: '1100px', margin: '0 auto' }}>
+    <div className="app-page-container">
       {/* Page Header */}
       <PageHeader
         title={t('userManagement.title', 'User Management')}

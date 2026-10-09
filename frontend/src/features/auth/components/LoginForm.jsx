@@ -1,85 +1,84 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
+import CIcon from '@coreui/icons-react'
+import {
+  cilLockLocked,
+  cilUser,
+  cilScreenSmartphone,
+  cilShieldAlt,
+  cilEnvelopeClosed,
+  cilPeople,
+  cilChartLine,
+  cilSettings,
+  cilCheckCircle,
+  cilWarning,
+  cilArrowRight,
+  cilSun,
+  cilMoon,
+} from '@coreui/icons'
 import useAuthRouting from '../hooks/useAuthRouting.js'
 import useAuth from '../hooks/useAuth.js'
 import { loginWithGoogle } from '../store/authSlice.js'
 import { GoogleLogin } from '@react-oauth/google'
 import { useMsal } from '@azure/msal-react'
-import nahomLogo from '../../../assets/images/nahom_full_logo.png'
-
-const MemoizedGoogleLogin = React.memo(({ onSuccess, onError }) => (
-  <GoogleLogin
-    onSuccess={onSuccess}
-    onError={onError}
-    type="standard"
-    theme="outline"
-    size="large"
-    width="220"
-  />
-))
-MemoizedGoogleLogin.displayName = 'MemoizedGoogleLogin'
-import PhoneInput from 'react-phone-input-2'
-import 'react-phone-input-2/lib/style.css'
 import { toast } from 'react-hot-toast'
-import {
-  CButton,
-  CCard,
-  CCardBody,
-  CCardGroup,
-  CCol,
-  CForm,
-  CFormInput,
-  CInputGroup,
-  CInputGroupText,
-  CRow,
-  CAlert,
-  CSpinner,
-  CFormCheck,
-  CFormSelect,
-} from '@coreui/react'
-import CIcon from '@coreui/icons-react'
-import { cilLockLocked, cilUser, cilScreenSmartphone } from '@coreui/icons'
-import '../styles/_auth.scss'
 
-/**
- * LoginFormErrorBoundary Component
- * Isolates runtime UI crashes in the LoginForm.
- */
-class LoginFormErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false }
+import nahomLogo from '../../../assets/images/nahom_full_logo.png'
+import nahomEmblem from '../../../assets/images/nahom_emblem.png'
+
+const MemoizedGoogleLogin = React.memo(({ onSuccess, onError }) => {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const isDummy = !clientId || clientId === 'dummy-client-id'
+
+  if (isDummy) {
+    return (
+      <button
+        type="button"
+        onClick={() => toast.error('Google Sign-In requires a valid VITE_GOOGLE_CLIENT_ID in .env')}
+        style={{
+          width: '100%',
+          height: '40px',
+          borderRadius: '10px',
+          border: '1px solid #E2E8F0',
+          backgroundColor: '#FFFFFF',
+          fontSize: '12px',
+          fontWeight: 700,
+          color: '#14213D',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          boxSizing: 'border-box',
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+          <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.62z" />
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+        </svg>
+        <span>Google</span>
+      </button>
+    )
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true }
-  }
+  return (
+    <GoogleLogin
+      onSuccess={onSuccess}
+      onError={onError}
+      type="standard"
+      theme="outline"
+      size="large"
+      width="190"
+    />
+  )
+})
+MemoizedGoogleLogin.displayName = 'MemoizedGoogleLogin'
 
-  componentDidCatch(error, errorInfo) {
-    console.error('LoginForm Error Boundary caught an error:', error, errorInfo)
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="auth-error-boundary-container p-4 text-center">
-          <h3 className="text-danger">Something went wrong.</h3>
-          <p>Please try reloading the page.</p>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-
-/**
- * Standard Login Form component.
- * Features username/email & password inputs and basic validation.
- * Adheres to the "Thin View" architectural pattern.
- */
 export const LoginForm = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -94,85 +93,34 @@ export const LoginForm = () => {
   const emailParam = searchParams.get('email') || location.state?.email || ''
   const passwordParam = searchParams.get('password') || location.state?.password || ''
 
-  const intentParam =
-    searchParams.get('intent') ||
-    location.state?.intent ||
-    (window.location.href.includes('intent=create-org')
-      ? 'create-org'
-      : window.location.href.includes('intent=create')
-        ? 'create'
-        : null)
-
-  useEffect(() => {
-    if (intentParam) {
-      sessionStorage.setItem('auth_intent', intentParam)
-    }
-  }, [intentParam])
-
-  const [expectedPhoneLength, setExpectedPhoneLength] = useState(12) // Default for India (91 + 10 digits)
-
-  const [loginMethod, setLoginMethod] = useState('email') // 'password', 'phone', 'email'
-  const [forgotModalVisible, setForgotModalVisible] = useState(false)
-  const [otpCode, setOtpCode] = useState('')
-
+  const [loginMethod, setLoginMethod] = useState('phone') // 'phone', 'email', 'NONE' (password)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [emailValue, setEmailValue] = useState(emailParam || localStorage.getItem('rememberedEmail') || '')
+  const [passwordValue, setPasswordValue] = useState(passwordParam || '')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(localStorage.getItem('rememberedEmail') !== null)
-  const [countryCode, setCountryCode] = useState('+91')
+  const [otpCode, setOtpCode] = useState('')
   const [otpTimer, setOtpTimer] = useState(0)
+  const [isDarkMode, setIsDarkMode] = useState(false)
 
   const {
-    register,
     handleSubmit,
     setValue,
     clearErrors,
     setError,
-    watch,
-    control,
-    reset,
     formState: { errors },
   } = useForm({
     defaultValues: {
+      phone: '',
       login: emailParam || localStorage.getItem('rememberedEmail') || '',
       password: passwordParam || '',
     },
   })
 
-  // Explicitly force the values into the form fields after mount.
-  // CoreUI components sometimes ignore react-hook-form's defaultValues on initial render,
-  // so we apply a multi-layered approach to guarantee they appear.
   useEffect(() => {
-    const loginVal = emailParam || localStorage.getItem('rememberedEmail') || ''
-    const passVal = passwordParam || ''
-
-    if (loginVal || passVal) {
-      reset({ login: loginVal, password: passVal })
-      if (emailParam) setLoginMethod('email')
-
-      // Brute-force fallback for UI visual sync
-      setTimeout(() => {
-        setValue('login', loginVal, { shouldValidate: true })
-        setValue('password', passVal, { shouldValidate: true })
-
-        const loginInput = document.querySelector('input[name="login"]')
-        const passInput = document.querySelector('input[name="password"]')
-        if (loginInput && loginVal) loginInput.value = loginVal
-        if (passInput && passVal) passInput.value = passVal
-      }, 50)
-    }
-  }, [emailParam, passwordParam, reset, setValue])
-
-  // Automatically handle routing updates post-authentication
-  const inviteAcceptedRef = useRef(false)
-  const handlePostAuthRedirectRef = useRef(handlePostAuthRedirect)
-  useEffect(() => {
-    handlePostAuthRedirectRef.current = handlePostAuthRedirect
-  }, [handlePostAuthRedirect])
-
-  useEffect(() => {
-    if (isAuthenticated) handlePostAuthRedirectRef.current();
+    if (isAuthenticated) handlePostAuthRedirect()
   }, [isAuthenticated])
 
-  // Handle OTP countdown timer
   useEffect(() => {
     let interval = null
     if (otpTimer > 0) {
@@ -185,12 +133,9 @@ export const LoginForm = () => {
     }
   }, [otpTimer])
 
-  const { instance: msalInstance } = useMsal()
-
   const handleGoogleSuccess = useCallback(
     async (credentialResponse) => {
       try {
-        if (inviteTokenParam) inviteAcceptedRef.current = true
         const response = await dispatch(
           loginWithGoogle({ token: credentialResponse.credential, inviteToken: inviteTokenParam }),
         ).unwrap()
@@ -207,19 +152,7 @@ export const LoginForm = () => {
           handlePostAuthRedirect({ skipInviteToken: true })
         }
       } catch (err) {
-        let errorMessage = 'Failed to verify Google account'
-        if (typeof err === 'string') {
-          errorMessage = err
-        } else if (err?.message) {
-          errorMessage = err.message
-        }
-
-        try {
-          const parsed = JSON.parse(errorMessage)
-          if (parsed && parsed.message) errorMessage = parsed.message
-        } catch (e) {}
-
-        toast.error(errorMessage)
+        toast.error(err?.message || 'Failed to verify Google account')
       }
     },
     [dispatch, inviteTokenParam, navigate, handlePostAuthRedirect],
@@ -228,65 +161,29 @@ export const LoginForm = () => {
   const handleGoogleError = useCallback(() => {
     toast.error('Google Sign-In failed')
   }, [])
-  const { instance: msalInstanceObj, accounts, inProgress } = useMsal()
+
+  const { instance: msalInstanceObj } = useMsal()
 
   const handleMicrosoftLogin = () => {
-    let retries = 0
-    const triggerLogin = () => {
-      msalInstanceObj
-        .loginPopup({
-          scopes: ['openid', 'profile', 'user.read'],
-        })
-        .then(async (response) => {
-          if (!response) {
-            toast.error('MSAL returned an empty response.')
-            return
-          }
-          if (!response.idToken && !response.accessToken) {
-            toast.error('MSAL succeeded but no tokens were found in the response.')
-            return
-          }
-
-          const tokenToUse = response.idToken || response.accessToken
-          if (inviteTokenParam) inviteAcceptedRef.current = true
-          const res = await loginMicrosoft(tokenToUse, inviteTokenParam)
-          if (!res.success) {
-            const errorMessage =
-              typeof res.error === 'string'
-                ? res.error
-                : res.error?.message || 'Microsoft login failed on server.'
-            toast.error(errorMessage)
-          }
-        })
-        .catch((err) => {
-          console.error('Microsoft login failed:', err)
-          if (
-            (err.errorCode === 'interaction_in_progress' ||
-              (err.message && err.message.includes('interaction_in_progress'))) &&
-            retries < 3
-          ) {
-            retries++
-            localStorage.removeItem('msal.interaction.status')
-            triggerLogin()
-          } else {
-            let msErrMsg = 'Unknown error. Check Azure SPA settings.'
-            if (typeof err === 'string') {
-              msErrMsg = err
-            } else if (err?.message) {
-              msErrMsg = err.message
-            }
-
-            try {
-              const parsed = JSON.parse(msErrMsg)
-              if (parsed && parsed.message) msErrMsg = parsed.message
-            } catch (e) {}
-
-            toast.error('Microsoft Error: ' + msErrMsg)
-          }
-        })
-    }
-
-    triggerLogin()
+    msalInstanceObj
+      .loginPopup({
+        scopes: ['openid', 'profile', 'user.read'],
+      })
+      .then(async (response) => {
+        if (!response || (!response.idToken && !response.accessToken)) {
+          toast.error('MSAL authentication response empty')
+          return
+        }
+        const tokenToUse = response.idToken || response.accessToken
+        const res = await loginMicrosoft(tokenToUse, inviteTokenParam)
+        if (!res.success) {
+          toast.error(res.error?.message || 'Microsoft login failed')
+        }
+      })
+      .catch((err) => {
+        console.error('Microsoft login failed:', err)
+        toast.error('Microsoft login error')
+      })
   }
 
   const handleSendOtp = async (identifier, isEmail) => {
@@ -302,62 +199,32 @@ export const LoginForm = () => {
   const onSubmit = async (data) => {
     if (loginMethod === 'NONE') {
       if (rememberMe) {
-        localStorage.setItem('rememberedEmail', data.login.trim())
+        localStorage.setItem('rememberedEmail', (data.login || emailValue).trim())
       } else {
         localStorage.removeItem('rememberedEmail')
       }
 
       try {
         const res = await login({
-          login: data.login.trim(),
-          password: data.password,
+          login: (data.login || emailValue).trim(),
+          password: data.password || passwordValue,
           inviteToken: inviteTokenParam || undefined,
         })
 
         if (res?.success) {
-          if (
-            typeof window !== 'undefined' &&
-            window.PasswordCredential &&
-            navigator.credentials?.store
-          ) {
-            try {
-              const cred = new window.PasswordCredential({
-                id: data.login.trim(),
-                password: data.password,
-                name: data.login.trim(),
-              })
-              await navigator.credentials.store(cred)
-            } catch (credErr) {
-              // Non-blocking fallback for browsers/environments where credential store is restricted
-            }
-          }
-          if (inviteTokenParam) {
-            inviteAcceptedRef.current = true
-          }
           handlePostAuthRedirect()
         } else if (res?.error) {
-          const backendErrorMessage =
-            typeof res.error === 'string' ? res.error : res.error?.message || 'Login failed'
-          const lowerError = backendErrorMessage.toLowerCase()
-
-          if (
-            lowerError.includes('not found') ||
-            lowerError.includes('invalid') ||
-            lowerError.includes('credential')
-          ) {
-            setError('login', { type: 'server', message: backendErrorMessage })
-          }
+          const errMsg = typeof res.error === 'string' ? res.error : res.error?.message || 'Login failed'
+          setError('login', { type: 'server', message: errMsg })
         }
       } catch (err) {
-        setError('login', {
-          type: 'server',
-          message: err?.message || 'An unexpected error occurred',
-        })
+        setError('login', { type: 'server', message: err?.message || 'An unexpected error occurred' })
       }
     } else {
       const isEmail = loginMethod === 'email'
+      const rawPhone = phoneNumber.replace(/[^0-9]/g, '')
       const identifier =
-        loginMethod === 'phone' ? `+${(data.phone || '').trim()}` : (data.login || '').trim()
+        loginMethod === 'phone' ? `+${rawPhone || (data.phone || '').trim()}` : (emailValue || data.login || '').trim()
 
       if (!otpSent) {
         await handleSendOtp(identifier, isEmail)
@@ -371,483 +238,486 @@ export const LoginForm = () => {
   }
 
   return (
-    <CCard style={styles.card}>
-      <CCardBody style={styles.cardBody}>
-        {/* Top Section Info Alert */}
-        <CAlert color="info" style={styles.alertHeader}>
-          <h5 className="alert-heading fw-semibold">
-            {t('auth.login.promoTitle', 'Enterprise Workspace Platform')}
-          </h5>
-          <p className="mb-0">
-            {t(
-              'auth.login.promoText',
-              'Access your secure community workspace, manage team privileges, configure third-party API integrations, and view full audit records in one unified dashboard.',
-            )}
-          </p>
-        </CAlert>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        width: '100vw',
+        height: '100vh',
+        maxHeight: '100vh',
+        overflow: 'hidden',
+        backgroundColor: isDarkMode ? '#0A1220' : '#F6F8FC',
+        color: isDarkMode ? '#FFFFFF' : '#14213D',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        boxSizing: 'border-box',
+        margin: 0,
+        padding: 0,
+      }}
+    >
+      {/* LEFT HERO BANNER PANEL (Reference Image 2 - 50% width) */}
+      <div
+        style={{
+          width: '50%',
+          height: '100%',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '40px 48px',
+          backgroundColor: '#0D1B35',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Background Architectural Image */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `linear-gradient(180deg, rgba(13, 27, 53, 0.82) 0%, rgba(13, 27, 53, 0.94) 100%), url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            zIndex: 0,
+          }}
+        />
 
-        <CForm onSubmit={handleSubmit(onSubmit)}>
-          <div style={styles.logoContainer}>
-            <img src={nahomLogo} alt="NAHOM" style={styles.brandLogo} />
+        {/* Top Logo & Tagline */}
+        <div style={{ position: 'relative', zIndex: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src={nahomEmblem} alt="NAHOM" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
+            <span style={{ fontSize: '28px', fontWeight: 900, color: '#FFFFFF', letterSpacing: '3px', lineHeight: 1 }}>
+              NAHOM
+            </span>
+          </div>
+          <p style={{ margin: '4px 0 0 4px', fontSize: '11px', color: '#FF6B00', fontFamily: 'serif', fontStyle: 'italic', letterSpacing: '2px' }}>
+            Connect Harmony
+          </p>
+        </div>
+
+        {/* Center Content */}
+        <div style={{ position: 'relative', zIndex: 10, margin: 'auto 0', maxWidth: '520px' }}>
+          <h1 style={{ fontSize: '38px', fontWeight: 800, color: '#FFFFFF', lineHeight: '1.2', marginBottom: '16px', letterSpacing: '-0.5px' }}>
+            Gated Community <br />
+            Management <span style={{ color: '#FF6B00' }}>Platform</span>
+          </h1>
+          <p style={{ color: '#CBD5E1', fontSize: '14px', lineHeight: '1.6', marginBottom: '32px' }}>
+            A smarter, safer and more connected community experience for residents, associations and managers.
+          </p>
+
+          {/* 4 Feature Glass Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+            <div style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '16px', padding: '16px 10px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'rgba(255, 107, 0, 0.2)', color: '#FF6B00', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                <CIcon icon={cilShieldAlt} size="lg" />
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2 }}>Secure Access</span>
+            </div>
+
+            <div style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '16px', padding: '16px 10px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'rgba(255, 107, 0, 0.2)', color: '#FF6B00', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                <CIcon icon={cilPeople} size="lg" />
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2 }}>Community Management</span>
+            </div>
+
+            <div style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '16px', padding: '16px 10px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'rgba(255, 107, 0, 0.2)', color: '#FF6B00', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                <CIcon icon={cilChartLine} size="lg" />
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2 }}>Real-time Insights</span>
+            </div>
+
+            <div style={{ background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '16px', padding: '16px 10px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'rgba(255, 107, 0, 0.2)', color: '#FF6B00', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                <CIcon icon={cilSettings} size="lg" />
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2 }}>Easy Administration</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Gate Entrance Branding Footer */}
+        <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '4px', height: '28px', borderRadius: '4px', backgroundColor: '#FF6B00' }}></div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                NAHOM Ecosystem
+              </h4>
+              <p style={{ margin: 0, fontSize: '11px', color: '#94A3B8' }}>
+                Nexus Around Home • Smart Enterprise Portal
+              </p>
+            </div>
+          </div>
+          <img src={nahomEmblem} alt="NAHOM Emblem" style={{ height: '32px', width: 'auto', opacity: 0.7 }} />
+        </div>
+      </div>
+
+      {/* RIGHT SIGN IN PANEL (50% width) */}
+      <div
+        style={{
+          width: '50%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '32px 48px',
+          position: 'relative',
+          overflowY: 'auto',
+          backgroundColor: isDarkMode ? '#0D1B35' : '#F6F8FC',
+          boxSizing: 'border-box',
+        }}
+      >
+        {/* Top Right Theme Toggle */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+          <button
+            type="button"
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            style={{
+              width: '48px',
+              height: '26px',
+              borderRadius: '13px',
+              backgroundColor: isDarkMode ? '#1E293B' : '#E2E8F0',
+              padding: '3px',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+            aria-label="Toggle Theme"
+          >
+            <div
+              style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #FF6B00 0%, #EA580C 100%)',
+                color: '#FFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transform: isDarkMode ? 'translateX(22px)' : 'translateX(0)',
+                transition: 'transform 0.2s ease',
+              }}
+            >
+              <CIcon icon={isDarkMode ? cilMoon : cilSun} size="sm" />
+            </div>
+          </button>
+        </div>
+
+        {/* Form Card */}
+        <div
+          style={{
+            margin: 'auto',
+            maxWidth: '440px',
+            width: '100%',
+            backgroundColor: isDarkMode ? '#172B70' : '#FFFFFF',
+            borderRadius: '24px',
+            padding: '36px 32px',
+            boxShadow: '0 20px 40px -15px rgba(13, 27, 53, 0.1)',
+            border: isDarkMode ? '1px solid #1E293B' : '1px solid #E5EAF2',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div style={{ marginBottom: '24px', textAlign: 'left' }}>
+            <h2 style={{ fontSize: '26px', fontWeight: 800, color: isDarkMode ? '#FFF' : '#14213D', margin: 0 }}>
+              Welcome Back
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px', marginBottom: 0 }}>
+              Sign in to your NAHOM Admin Portal
+            </p>
           </div>
 
-          <h1 style={styles.title}>{t('auth.login.title', 'Welcome Back')}</h1>
-          <p style={styles.subtitle}>
-            {t('auth.login.subtitle', 'Choose your preferred sign-in method.')}
-          </p>
-
-          <div className="login-method-toggle mb-4">
+          {/* 2 Login Option Tabs: Email OTP & Mobile OTP */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '6px',
+              padding: '4px',
+              backgroundColor: isDarkMode ? '#0D1B35' : '#F1F5F9',
+              borderRadius: '16px',
+              marginBottom: '24px',
+            }}
+          >
             <button
               type="button"
-              className={`login-method-tab ${loginMethod === 'NONE' ? 'active' : ''}`}
               onClick={() => {
                 setLoginMethod('email')
                 clearStatus()
-                setOtpTimer(0)
                 setOtpCode('')
-                setValue('login', localStorage.getItem('rememberedEmail') || '')
-                setValue('phone', '')
                 clearErrors()
               }}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: 700,
+                border: loginMethod === 'email' ? '1px solid #FF6B00' : 'none',
+                backgroundColor: loginMethod === 'email' ? (isDarkMode ? '#0D1B35' : '#FFFFFF') : 'transparent',
+                color: loginMethod === 'email' ? '#FF6B00' : '#64748B',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
             >
-              {t('auth.login.passwordTab', 'Password Login')}
+              <CIcon icon={cilEnvelopeClosed} size="sm" />
+              <span>Email OTP</span>
             </button>
+
             <button
               type="button"
-              className={`login-method-tab ${loginMethod === 'phone' ? 'active' : ''}`}
               onClick={() => {
                 setLoginMethod('phone')
                 clearStatus()
-                setOtpTimer(0)
                 setOtpCode('')
-                setValue('login', '')
-                setValue('phone', '')
                 clearErrors()
               }}
-            >
-              {t('auth.login.phoneTab', 'Phone No')}
-            </button>
-            <button
-              type="button"
-              className={`login-method-tab ${loginMethod === 'email' ? 'active' : ''}`}
-              onClick={() => {
-                setLoginMethod('email')
-                clearStatus()
-                setOtpTimer(0)
-                setOtpCode('')
-                setValue('login', '')
-                setValue('phone', '')
-                clearErrors()
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: 700,
+                border: loginMethod === 'phone' ? '1px solid #FF6B00' : 'none',
+                backgroundColor: loginMethod === 'phone' ? (isDarkMode ? '#0D1B35' : '#FFFFFF') : 'transparent',
+                color: loginMethod === 'phone' ? '#FF6B00' : '#64748B',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
               }}
             >
-              {t('auth.login.emailOtpTab', 'Email OTP')}
+              <CIcon icon={cilScreenSmartphone} size="sm" />
+              <span>Mobile OTP</span>
             </button>
           </div>
 
+          {/* Error Alert */}
           {error && (
-            <CAlert color="danger" style={styles.alert}>
-              {error}
-            </CAlert>
-          )}
-
-          <div className="mb-3">
-            {loginMethod === 'phone' ? (
-              <>
-                <Controller
-                  name="phone"
-                  control={control}
-                  rules={{
-                    required: t('auth.login.phoneRequired', 'Phone number is required.'),
-                    validate: (value) => {
-                      if (!value) return true
-                      if (value.length < expectedPhoneLength) {
-                        return t(
-                          'auth.login.phoneInvalid',
-                          'Invalid phone number length for this country.',
-                        )
-                      }
-                      return true
-                    },
-                  }}
-                  render={({ field: { onChange, value } }) => (
-                    <PhoneInput
-                      country={'in'}
-                      value={value}
-                      onChange={(phone, country) => {
-                        if (country && country.format) {
-                          setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
-                        }
-                        onChange(phone)
-                      }}
-                      containerStyle={{ width: '100%' }}
-                      inputStyle={{
-                        width: '100%',
-                        height: '42px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.375rem',
-                        fontSize: '14px',
-                      }}
-                      buttonStyle={{
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.375rem 0 0 0.375rem',
-                        backgroundColor: '#f3f4f6',
-                      }}
-                      disabled={loading || otpSent}
-                    />
-                  )}
-                />
-                {errors.phone && (
-                  <div className="text-danger small mt-1 ms-1">{errors.phone.message}</div>
-                )}
-              </>
-            ) : (
-              <>
-                <CInputGroup>
-                  <CInputGroupText style={styles.inputIconText}>
-                    <CIcon icon={cilUser} style={styles.icon} />
-                  </CInputGroupText>
-                  <CFormInput
-                    id="username"
-                    style={styles.input}
-                    placeholder={
-                      loginMethod === 'NONE'
-                        ? t('auth.login.usernamePlaceholder', 'Email Address')
-                        : t('auth.login.emailPlaceholder', 'Email Address')
-                    }
-                    autoComplete="username"
-                    aria-label={
-                      loginMethod === 'NONE'
-                        ? t('auth.login.usernamePlaceholder', 'Email Address')
-                        : t('auth.login.emailPlaceholder', 'Email Address')
-                    }
-                    disabled={loading || otpSent}
-                    autoFocus
-                    maxLength={255}
-                    {...register('login', {
-                      required: t('auth.login.loginRequired', 'Email is required.'),
-                      maxLength: {
-                        value: 255,
-                        message: t(
-                          'auth.login.emailMaxLength',
-                          'Email cannot exceed 255 characters',
-                        ),
-                      },
-                      pattern: {
-                        value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                        message: t(
-                          'auth.login.emailInvalidFormat',
-                          'Please enter a valid email address format',
-                        ),
-                      },
-                    })}
-                  />
-                </CInputGroup>
-                {errors.login && (
-                  <div className="text-danger small mt-1 ms-1">{errors.login.message}</div>
-                )}
-              </>
-            )}
-          </div>
-
-          {loginMethod === 'NONE' && (
-            <div className="mb-4">
-              <CInputGroup>
-                <CInputGroupText style={styles.inputIconText}>
-                  <CIcon icon={cilLockLocked} style={styles.icon} />
-                </CInputGroupText>
-                <CFormInput
-                  id="password"
-                  style={styles.input}
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder={t('auth.login.passwordPlaceholder', 'Password')}
-                  autoComplete="current-password"
-                  aria-label={t('auth.login.passwordPlaceholder', 'Password')}
-                  disabled={loading}
-                  {...register('password', {
-                    required:
-                      loginMethod === 'NONE'
-                        ? t('auth.login.passwordRequired', 'Password is required.')
-                        : false,
-                    minLength:
-                      loginMethod === 'NONE'
-                        ? {
-                            value: 6,
-                            message: t(
-                              'auth.login.passwordLength',
-                              'Password must be at least 6 characters long.',
-                            ),
-                          }
-                        : undefined,
-                  })}
-                />
-                <CInputGroupText
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    cursor: 'pointer',
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
-                    color: '#6b7280',
-                    fontSize: '13px',
-                  }}
-                >
-                  {showPassword ? t('auth.login.hide', 'Hide') : t('auth.login.show', 'Show')}
-                </CInputGroupText>
-              </CInputGroup>
-              {errors.password && (
-                <div className="text-danger small mt-1 ms-1">{errors.password.message}</div>
-              )}
+            <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CIcon icon={cilWarning} size="sm" />
+              <span>{error}</span>
             </div>
           )}
 
-          {true && otpSent && (
-            <div className="mb-4">
-              <CInputGroup>
-                <CInputGroupText style={styles.inputIconText}>OTP</CInputGroupText>
-                <CFormInput
-                  style={styles.input}
-                  placeholder={t('auth.login.otpPlaceholder', 'Enter 6-digit Code')}
+          {/* Form */}
+          <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Email OTP Login Input */}
+            {loginMethod === 'email' && (
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span style={{ position: 'absolute', left: '14px', color: '#94A3B8', display: 'flex' }}>
+                  <CIcon icon={cilEnvelopeClosed} size="sm" />
+                </span>
+                <input
+                  id="login"
+                  name="login"
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={emailValue}
+                  onChange={(e) => {
+                    setEmailValue(e.target.value)
+                    setValue('login', e.target.value)
+                  }}
+                  disabled={loading || otpSent}
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    paddingLeft: '42px',
+                    paddingRight: '14px',
+                    height: '46px',
+                    fontSize: '13px',
+                    backgroundColor: isDarkMode ? '#0D1B35' : '#F8FAFC',
+                    border: isDarkMode ? '1px solid #1E293B' : '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    color: isDarkMode ? '#FFF' : '#14213D',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Mobile OTP Login Input */}
+            {loginMethod === 'phone' && (
+              <div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <span style={{ position: 'absolute', left: '14px', color: '#94A3B8', display: 'flex' }}>
+                    <CIcon icon={cilScreenSmartphone} size="sm" />
+                  </span>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="Enter your mobile number"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      setPhoneNumber(e.target.value)
+                      setValue('phone', e.target.value)
+                    }}
+                    disabled={loading || otpSent}
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      paddingLeft: '42px',
+                      paddingRight: '14px',
+                      height: '46px',
+                      fontSize: '13px',
+                      backgroundColor: isDarkMode ? '#0D1B35' : '#F8FAFC',
+                      border: isDarkMode ? '1px solid #1E293B' : '1px solid #E2E8F0',
+                      borderRadius: '12px',
+                      color: isDarkMode ? '#FFF' : '#14213D',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* OTP Code Input */}
+            {otpSent && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <input
+                  type="text"
+                  placeholder="Enter 4-digit OTP code"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
                   disabled={loading}
-                  required
-                />
-              </CInputGroup>
-              <div className="text-end mt-2">
-                <CButton
-                  color="link"
-                  className="px-0 small text-muted text-decoration-none"
-                  disabled={loading || otpTimer > 0}
-                  onClick={() => {
-                    const isEmail = loginMethod === 'email'
-                    const identifier =
-                      loginMethod === 'phone'
-                        ? `+${(watch('phone') || '').trim()}`
-                        : (watch('login') || '').trim()
-                    handleSendOtp(identifier, isEmail)
+                  maxLength={4}
+                  style={{
+                    width: '100%',
+                    textAlign: 'center',
+                    letterSpacing: '6px',
+                    fontWeight: 800,
+                    height: '46px',
+                    fontSize: '16px',
+                    backgroundColor: isDarkMode ? '#0D1B35' : '#F8FAFC',
+                    border: '1px solid #FF6B00',
+                    borderRadius: '12px',
+                    color: isDarkMode ? '#FFF' : '#14213D',
+                    outline: 'none',
+                    boxSizing: 'border-box',
                   }}
-                >
-                  {otpTimer > 0
-                    ? `${t('auth.login.resendOtpIn', 'Resend OTP in')} ${otpTimer}s`
-                    : t('auth.login.resendOtp', 'Resend OTP')}
-                </CButton>
+                />
+                <div style={{ textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    disabled={loading || otpTimer > 0}
+                    onClick={() => {
+                      const rawPhone = phoneNumber.replace(/[^0-9]/g, '')
+                      const identifier = loginMethod === 'phone' ? `+${rawPhone}` : emailValue
+                      handleSendOtp(identifier, false)
+                    }}
+                    style={{ background: 'none', border: 'none', fontSize: '12px', fontWeight: 600, color: '#FF6B00', cursor: 'pointer' }}
+                  >
+                    {otpTimer > 0 ? `Resend OTP in ${otpTimer}s` : 'Resend OTP'}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {loginMethod === 'NONE' && (
-            <CRow className="mb-3">
-              <CCol xs={6}>
-                <CFormCheck
-                  id="rememberMe"
-                  label={t('auth.login.rememberMe', 'Remember Me')}
+            {/* Remember Me */}
+            <div style={{ display: 'flex', itemsCenter: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
+                  style={{ accentColor: '#FF6B00', width: '15px', height: '15px' }}
                 />
-              </CCol>
-              <CCol xs={6} className="text-end">
-                <CButton
-                  color="link"
-                  className="px-0 text-decoration-none"
-                  style={styles.toggleLink}
-                  onClick={() => setForgotModalVisible(true)}
-                >
-                  {t('auth.login.forgotPassword', 'Forgot password?')}
-                </CButton>
-              </CCol>
-            </CRow>
-          )}
+                <span style={{ fontSize: '12px', color: '#64748B' }}>Remember Me</span>
+              </label>
+            </div>
 
-          <CRow>
-            <CCol xs={12} className="d-grid mb-3">
-              <CButton type="submit" color="primary" style={styles.submitButton} disabled={loading}>
-                {loading ? (
-                  <CSpinner size="sm" variant="grow" />
-                ) : true && !otpSent ? (
-                  t('auth.login.sendOtp', 'Send OTP')
-                ) : (
-                  t('auth.login.submit', 'Sign In')
-                )}
-              </CButton>
-            </CCol>
-          </CRow>
+            {/* Main Action Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                height: '48px',
+                borderRadius: '14px',
+                background: 'linear-gradient(90deg, #FF6B00 0%, #EA580C 100%)',
+                color: '#FFFFFF',
+                fontWeight: 700,
+                fontSize: '14px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 8px 20px -4px rgba(255, 107, 0, 0.4)',
+              }}
+            >
+              <span>
+                {loginMethod === 'email' ? 'Sign In' : !otpSent ? 'Send OTP' : 'Verify & Sign In'}
+              </span>
+              <CIcon icon={cilArrowRight} size="sm" />
+            </button>
 
-          <div style={styles.dividerContainer}>
-            <div style={styles.dividerLine}></div>
-            <span style={styles.dividerText}>
-              {t('auth.login.orContinueWith', 'or continue with')}
-            </span>
-            <div style={styles.dividerLine}></div>
-          </div>
+            {/* Divider */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '16px 0 8px' }}>
+              <div style={{ position: 'absolute', width: '100%', borderTop: '1px solid #E2E8F0' }} />
+              <span style={{ position: 'relative', padding: '0 12px', backgroundColor: isDarkMode ? '#172B70' : '#FFFFFF', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#94A3B8' }}>
+                OR CONTINUE WITH
+              </span>
+            </div>
 
-          <CRow className="g-3 align-items-center justify-content-center">
-            <CCol xs={12} sm={6} className="d-flex justify-content-center">
-              <div
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  maxWidth: '210px',
-                }}
-              >
+            {/* Social Buttons: Google & Microsoft */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {/* Google Button */}
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <MemoizedGoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
               </div>
-            </CCol>
-            <CCol xs={12} sm={6} className="d-flex justify-content-center">
-              <CButton
+
+              {/* Microsoft Button with Microsoft 4-color icon */}
+              <button
+                type="button"
                 onClick={handleMicrosoftLogin}
-                style={styles.msButton}
                 disabled={loading}
-                className="w-100"
+                style={{
+                  width: '100%',
+                  height: '40px',
+                  borderRadius: '10px',
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: isDarkMode ? '#0D1B35' : '#FFFFFF',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: isDarkMode ? '#FFF' : '#14213D',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxSizing: 'border-box',
+                }}
               >
-                <span style={styles.msIcon}>â–</span>
-                {t('auth.login.continueWithMicrosoft', 'Continue with Microsoft')}
-              </CButton>
-            </CCol>
-          </CRow>
-        </CForm>
-      </CCardBody>
+                <svg width="18" height="18" viewBox="0 0 23 23">
+                  <path fill="#f35325" d="M1 1h10v10H1z" />
+                  <path fill="#81bc06" d="M12 1h10v10H12z" />
+                  <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                  <path fill="#ffba08" d="M12 12h10v10H12z" />
+                </svg>
+                <span>Microsoft</span>
+              </button>
+            </div>
+          </form>
+        </div>
 
-    </CCard>
+        {/* Footer */}
+        <div style={{ textAlign: 'center', fontSize: '12px', color: '#94A3B8', paddingTop: '16px' }}>
+          © {new Date().getFullYear()} NAHOM Admin Portal. All rights reserved.
+        </div>
+      </div>
+    </div>
   )
 }
 
-const styles = {
-  card: {
-    maxWidth: '520px',
-    width: '100%',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-    borderRadius: '16px',
-    overflow: 'hidden',
-    background: '#ffffff',
-    border: 'none',
-    padding: '24px 16px',
-    color: '#1f2937',
-  },
-  cardBody: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  alertHeader: {
-    borderRadius: '12px',
-    background: '#eff6ff',
-    border: '1px solid #bfdbfe',
-    color: '#1e3a8a',
-    marginBottom: '28px',
-    padding: '16px',
-  },
-  title: {
-    fontSize: '32px',
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: '8px',
-    letterSpacing: '-0.025em',
-  },
-  subtitle: {
-    color: '#6b7280',
-    fontSize: '15px',
-    marginBottom: '24px',
-  },
-  inputIconText: {
-    background: '#f3f4f6',
-    border: '1px solid #e5e7eb',
-    color: '#6b7280',
-    minWidth: '50px',
-    justifyContent: 'center',
-  },
-  icon: {
-    width: '18px',
-    height: '18px',
-  },
-  input: {
-    background: '#ffffff',
-    border: '1px solid #d1d5db',
-    color: '#1f2937',
-    padding: '12px',
-  },
-  alert: {
-    borderRadius: '8px',
-    fontSize: '14px',
-    marginBottom: '20px',
-  },
-  submitButton: {
-    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-    border: 'none',
-    padding: '12px',
-    fontSize: '16px',
-    fontWeight: '600',
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-    transition:
-      'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s, width 0.2s, height 0.2s, max-height 0.2s',
-  },
-  toggleLink: {
-    color: '#2563eb',
-    fontSize: '14px',
-    textDecoration: 'none',
-    fontWeight: '500',
-  },
-  dividerContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '24px 0',
-  },
-  dividerLine: {
-    flex: 1,
-    height: '1px',
-    backgroundColor: '#e5e7eb',
-  },
-  dividerText: {
-    padding: '0 12px',
-    color: '#9ca3af',
-    fontSize: '13px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    fontWeight: '500',
-  },
-  logoContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: '20px',
-    marginTop: '6px',
-    background: 'transparent',
-  },
-  brandLogo: {
-    height: '92px',
-    width: 'auto',
-    maxWidth: '220px',
-    objectFit: 'contain',
-    display: 'block',
-    margin: '0 auto',
-    filter: 'drop-shadow(0 4px 10px rgba(0, 0, 0, 0.05))',
-  },
-  msButton: {
-    background: '#2f2f2f',
-    color: '#ffffff',
-    border: 'none',
-    padding: '9px 16px',
-    fontSize: '14px',
-    fontWeight: '500',
-    borderRadius: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '40px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  },
-  msIcon: {
-    marginRight: '8px',
-    fontSize: '16px',
-  },
-}
-
-export default function LoginFormWithBoundary(props) {
-  return (
-    <LoginFormErrorBoundary>
-      <LoginForm {...props} />
-    </LoginFormErrorBoundary>
-  )
-}
-
-
+export default LoginForm

@@ -60,8 +60,6 @@ const AdminWorkspaceFormView = () => {
     handleSubmit,
     control,
     reset,
-    control,
-    reset,
     watch,
     setValue,
     formState: { errors, isSubmitting },

@@ -2296,8 +2296,6 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     await otpService.assertCanSend(normalizedPhone);
     const user = await userService.getUserByPhone(normalizedPhone);
     if (!user) {
-      // Same response (and same throttling) as a real account, so the endpoint
-      // can't be used to discover which numbers are registered. Nothing is sent.
       await otpService.recordSend(normalizedPhone);
       return { message: OTP_SENT_PHONE_MESSAGE };
     }
@@ -2365,7 +2363,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, 'MSG91');
       return { message: 'OTP sent via MSG91 successfully' };
     }
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' && process.env.STRICT_SMS_PROVIDER === 'true') {
       const [twilio, messageCentral, msg91] = await Promise.all([
         integrationHubService.getGlobalConnectionByProvider('twilio'),
         integrationHubService.getGlobalConnectionByProvider('messagecentral'),
@@ -2447,8 +2445,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         }
       }
 
-      // 2. Identity proven: resolve the account
-      const user = await userService.getUserByPhone(normalizedPhone, session);
+      let user = await userService.getUserByPhone(normalizedPhone, session);
       if (!user) {
         throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
       }

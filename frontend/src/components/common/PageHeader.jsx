@@ -10,27 +10,14 @@ import { CCard, CCardBody } from '@coreui/react'
  */
 const PageHeader = ({ title, subtitle, actionButtons }) => {
   return (
-    <CCard className="mb-4 border-0 shadow-sm" style={{ background: 'var(--cui-card-bg, #fff)' }}>
-      <CCardBody className="p-4">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
-          <div>
-            <h1
-              className="mb-1"
-              style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--cui-body-color)' }}
-            >
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>
-                {subtitle}
-              </p>
-            )}
+    <CCard className="app-page-header border-0">
+      <CCardBody>
+        <div className="app-page-header__content">
+          <div className="app-page-header__copy">
+            <h1>{title}</h1>
+            {subtitle && <p>{subtitle}</p>}
           </div>
-          {actionButtons && (
-            <div className="mt-3 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
-              {actionButtons}
-            </div>
-          )}
+          {actionButtons && <div className="app-page-header__actions">{actionButtons}</div>}
         </div>
       </CCardBody>
     </CCard>

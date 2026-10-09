@@ -1,6 +1,40 @@
 .page-wrapper {
-    margin-left: calc(0px + 270px);
+    /* The desktop layout already reserves the sidebar's 270px column. */
+    margin-left: 0;
     transition: .2s ease-in;
+}
+
+/*
+ * Keep the authenticated desktop experience on the NAHOM palette even when
+ * the application theme is dark. These variables are intentionally scoped to
+ * the web shell so authentication and the separate mobile UI keep their own
+ * presentation rules.
+ */
+@media screen and (min-width: 1280px) {
+    .page-wrapper {
+        --primary: #FF6B00;
+        --secondary: #172B70;
+        --ring: #FF6B00;
+        --chart-1: #FF6B00;
+        --chart-2: #172B70;
+        --sidebar-primary: #FF6B00;
+        --sidebar-accent: rgba(255, 107, 0, 0.15);
+        --sidebar-accent-foreground: #FF6B00;
+        --sidebar-ring: #FF6B00;
+    }
+
+    .dark .page-wrapper {
+        --primary: #FF6B00;
+        --secondary: #172B70;
+        --ring: #FF6B00;
+        --chart-1: #FF6B00;
+        --chart-2: #172B70;
+        --accent-foreground: #FF6B00;
+        --sidebar-primary: #FF6B00;
+        --sidebar-accent: rgba(255, 107, 0, 0.18);
+        --sidebar-accent-foreground: #FF6B00;
+        --sidebar-ring: #FF6B00;
+    }
 }
 .rounded-bars .apexcharts-bar-series.apexcharts-plot-series .apexcharts-series path {
     clip-path: inset(0 0 5% 0 round 20px);
@@ -10,4 +44,3 @@
         margin-left: 0;
     }
 }
-
