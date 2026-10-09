@@ -16,7 +16,7 @@ import {
 import { checkOrganizationName } from '../../services/organizationApi.js'
 
 const orgInfoSchema = yup.object().shape({
-  name: yup.string().required('Organization Name is required'),
+  name: yup.string().required('Community Name is required'),
   contactEmail: yup.string().email('Invalid email format').nullable().notRequired(),
   country: yup.string().required('Country is required'),
   state: yup.string().required('State is required'),
@@ -251,11 +251,11 @@ const Step1OrgInfo = ({ data, onNext, onCancel }) => {
       <CRow className="mb-4">
         <CCol md={12}>
           <CFormInput
-            label={t('organization.wizard.orgName', { defaultValue: 'Organization Name' })}
+            label={t('organization.wizard.orgName', { defaultValue: 'Community Name' })}
             {...register('name')}
             invalid={!!errors.name || isNameAvailable === false}
             feedbackInvalid={errors.name?.message}
-            placeholder="Enter organization or community name"
+            placeholder="Enter community name"
           />
           {/* Live Validation Feedback */}
           {(checkingName || isNameAvailable !== null || nameCheckError) && (

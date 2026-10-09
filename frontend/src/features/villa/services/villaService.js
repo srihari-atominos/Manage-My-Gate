@@ -89,6 +89,11 @@ export const batchGenerateVillas = async (batchData) => {
 /**
  * Fetches occupancy stats.
  */
+export const downloadBulkUploadTemplate = async () => {
+  const blob = await apiClient.get('/villas/bulk-upload/template', { responseType: 'blob' });
+  return blob;
+};
+
 export const fetchVillaStats = async () => {
   const response = await apiClient.get('/villas/stats')
   return response.data
@@ -106,17 +111,7 @@ export const bulkUploadVillas = async (villas, targetOrgId = null) => {
   return response.data
 }
 
-/**
- * Downloads the Excel template for bulk uploading units.
- */
-export const downloadBulkUploadTemplate = async (targetOrgId = null) => {
-  const config = { responseType: 'blob' }
-  if (targetOrgId) {
-    config.headers = { 'x-organization-id': targetOrgId }
-  }
-  const response = await apiClient.get('/villas/bulk-upload/template', config)
-  return response
-}
+
 
 /**
  * Assigns an existing organization user to the unit.
@@ -176,9 +171,9 @@ export default {
   exportVillas,
   assignPrimaryResident,
   batchGenerateVillas,
+  downloadBulkUploadTemplate,
   fetchVillaStats,
   bulkUploadVillas,
-  downloadBulkUploadTemplate,
   assignExistingUser,
   updateResidencyType,
   removeResident,

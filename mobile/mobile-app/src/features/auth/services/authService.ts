@@ -190,6 +190,19 @@ export const updateProfile = async (data: any) => {
   return await apiClient.put('/users/profile', payload);
 };
 
+
+export const requestCurrentContactOtp = async () => {
+  return await apiClient.post('/users/request-current-contact-otp');
+};
+
+export const verifyCurrentContactOtp = async (otp: string) => {
+  return await apiClient.post('/users/verify-current-contact-otp', { otp });
+};
+
+export const requestPhoneChangeOtp = async (newPhone: string) => {
+  return await apiClient.post('/users/request-phone-otp', { newPhone });
+};
+
 export const requestEmailChangeOtp = async (newEmail: string) => {
   return await apiClient.post('/users/request-email-otp', { newEmail });
 };
@@ -228,6 +241,9 @@ export default {
   deleteAccount,
   updateProfile,
   requestEmailChangeOtp,
+  requestCurrentContactOtp,
+  verifyCurrentContactOtp,
+  requestPhoneChangeOtp,
   fetchSessions,
   revokeSession,
   revokeAllSessions,

@@ -3,9 +3,100 @@ import HttpError from '../../utils/httpError.utils.js'
 import { generateInviteLink, resolveInvitationSource } from './utils/invite.utils.js'
 import { assertRolesAssignable, listAssignableRoles } from './utils/roleAssignment.js'
 import fs from 'fs'
+import ExcelJS from 'exceljs'
+import villaService from '../villa/villa.services.js'
 
 
 export class UserController {
+  /**
+   * Generates and downloads the Excel template for bulk inviting users,
+   * with a dropdown for Villa Number.
+   */
+  async downloadBulkInviteTemplate(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      
+      const { data: villas } = await villaService.getUnitsPaginated({ orgId, page: 1, limit: 10000 });
+      
+      const assignableRoles = await listAssignableRoles(req, orgId);
+      let roleNames = assignableRoles.map(r => r.name);
+      if (roleNames.length === 0) {
+        roleNames = ['Resident Owner', 'Resident Tenant', 'Family Member', 'Security Guard'];
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Bulk Invite Users');
+      const dataSheet = workbook.addWorksheet('DropdownData');
+      dataSheet.state = 'hidden';
+      
+      const roleSheet = workbook.addWorksheet('RoleData');
+      roleSheet.state = 'hidden';
+      
+      roleNames.forEach((r, idx) => {
+        roleSheet.getCell(`A${idx + 1}`).value = r;
+      });
+
+
+      const villaNames = villas.map(v => `Unit ${v.unitNumber || ''} (${v.blockOrBuilding || ''})`.trim());
+      
+      if (villaNames.length > 0) {
+        villaNames.forEach((name, idx) => {
+          dataSheet.getCell(`A${idx + 1}`).value = name;
+        });
+      } else {
+        dataSheet.getCell('A1').value = 'No Villas Created Yet';
+      }
+
+      sheet.columns = [
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Phone Number', key: 'phone', width: 20 },
+        { header: 'Role', key: 'role', width: 25 },
+        { header: 'Villa Number', key: 'villa', width: 30 }
+      ];
+
+      sheet.addRow({ email: 'resident.owner@example.com', phone: '+919876543211', role: 'Resident Owner', villa: villaNames[0] || '' });
+      sheet.addRow({ email: 'resident.tenant@example.com', phone: '+919876543212', role: 'Resident Tenant', villa: villaNames[1] || '' });
+      sheet.addRow({ email: 'security.guard@example.com', phone: '+919876543213', role: 'Security Guard', villa: '' });
+
+      
+      const endRow = Math.max(villaNames.length, 1);
+      const roleEndRow = Math.max(roleNames.length, 1);
+      
+      for (let i = 2; i <= 1000; i++) {
+        sheet.getCell(`C${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`RoleData!$A$1:$A${roleEndRow}`],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Role',
+          error: 'Please select a valid Role from the dropdown list.'
+        };
+
+        sheet.getCell(`D${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`DropdownData!$A$1:$A${endRow}`],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Villa',
+          error: 'Please select a valid Villa from the dropdown list.'
+        };
+      }
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="bulk_invite_users_template.xlsx"');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Retrieves and formats all users.
    */
@@ -132,6 +223,28 @@ export class UserController {
   /**
    * Requests an OTP to verify a new email address during profile update.
    */
+  
+  async requestCurrentContactOtp(req, res, next) {
+    try {
+      const userId = req.user.id || req.user._id;
+      const result = await userService.requestCurrentContactOtp(userId);
+      res.success(result, 'Authorization OTP sent to current contact method');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyCurrentContactOtp(req, res, next) {
+    try {
+      const userId = req.user.id || req.user._id;
+      const { otp } = req.body;
+      const result = await userService.verifyCurrentContactOtp(userId, otp);
+      res.success(result, 'Authorization successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async requestEmailOtp(req, res, next) {
     try {
       const userId = req.user.id;
@@ -163,7 +276,7 @@ export class UserController {
   async updateProfile(req, res, next) {
     try {
       const userId = req.user.id || req.user._id;
-      const { name, phone, phoneOtp, email, emailOtp, removeAvatar, bio, work, hometown, allowIntercomCalls } = req.body;
+      const { name, phone, phoneOtp, email, emailOtp, updateAuthToken, removeAvatar, bio, work, hometown, allowIntercomCalls } = req.body;
       let interests = req.body.interests;
       if (typeof interests === 'string') {
         interests = JSON.parse(interests);
@@ -183,6 +296,7 @@ export class UserController {
         interests,
         avatarFilename,
         removeAvatar: removeAvatar === 'true' || removeAvatar === true || removeAvatar === '1',
+        updateAuthToken,
       });
       
       res.success({

@@ -72,21 +72,12 @@ const parseXLSX = (arrayBuffer) => {
 
     if (row.email) {
       row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
-      row.isValidResidentType =
-        !row.residentType ||
-        ['owner', 'tenant', 'family', 'resident owner', 'resident tenant', 'family member'].some(
-          (t) => (row.residentType || '').toLowerCase().includes(t),
-        )
+      row.isValidResidentType = true
 
       // Fallback to determine roleName from residentType if not provided
       if (!row.roleName && row.residentType) {
-        const lowerRes = row.residentType.toLowerCase()
-        if (lowerRes.includes('owner')) row.roleName = 'Resident Owner'
-        else if (lowerRes.includes('tenant') || lowerRes.includes('resident'))
-          row.roleName = 'Resident Tenant'
-        else if (lowerRes.includes('family')) row.roleName = 'Family Member'
-        else row.roleName = 'Resident Tenant'
-      }
+          row.roleName = row.residentType
+        }
       row.isValidRole = !!row.roleName
     } else {
       row.isValidEmail = true
@@ -214,11 +205,12 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload, targetOr
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.setAttribute('href', url)
-      link.setAttribute('download', 'bulk_upload_units_template.csv')
+      link.setAttribute('download', 'bulk_upload_units_template.xlsx')
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (err) {
       console.error('Download Template Error:', err)
       setErrorMsg(t('villas.bulk.downloadError', 'Failed to download template.'))

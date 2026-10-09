@@ -450,10 +450,7 @@ export class VillaService {
             else if (normalizedResidentType.toLowerCase().includes('family')) normalizedResidentType = 'Family Member';
             else normalizedResidentType = 'Resident Tenant';
 
-            let finalRoleName = roleName ? roleName.trim() : null;
-            if (!finalRoleName) {
-              finalRoleName = normalizedResidentType;
-            }
+            let finalRoleName = roleName ? roleName.trim() : normalizedResidentType;
 
             if (!phone) {
               throw new HttpError(400, 'Phone number is required to invite this resident.');

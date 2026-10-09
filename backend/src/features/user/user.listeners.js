@@ -13,18 +13,18 @@ const escapeHtml = (value) =>
 const INVITATION_VALID_DAYS = 7;
 
 const DEFAULT_INVITE_BODY = `
-<div style="font-family: sans-serif; padding: 20px; color: #333;">
-  <h2>Workspace Invitation</h2>
+<div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px;">
+  <h2 style="color: #F45A0A;">Workspace Invitation</h2>
   <p>You have been invited to join our secure workspace.</p>
   <p>Please click the button below to complete your profile registration and activate your account:</p>
   <p style="margin: 30px 0;">
-    <a href="{{invite_link}}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+    <a href="{{invite_link}}" style="background-color: #F45A0A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 18px; font-weight: bold; display: inline-block;">
       Accept Invitation
     </a>
   </p>
-  <p style="color: #666; font-size: 0.85rem; margin-top: 40px;">
+  <p style="color: #6F6A64; font-size: 0.85rem; margin-top: 40px;">
     If the button above does not work, copy and paste this link in your browser:<br/>
-    <a href="{{invite_link}}">{{invite_link}}</a>
+    <a href="{{invite_link}}" style="color: #F45A0A;">{{invite_link}}</a>
   </p>
 </div>
 `;
@@ -125,42 +125,52 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
 
     const inviteMode = hasPassword ? 'signin' : 'signup';
     const inviteLink = baseInviteLink;
-    const ctaButtonText = 'Access Your Community';
+    const ctaButtonText = 'Step into your Community';
     const safeCommunityName = escapeHtml(communityName);
     const targetUserName = targetUser?.name || 'User';
     const registeredPhone = phone || targetUser?.phone || '';
 
     const customInviteBody = `
-<div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: 0 auto; line-height: 1.6;">
-  <p>Hello ${escapeHtml(targetUserName)},</p>
+<div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px; line-height: 1.6; border: 1px solid #EFE6DC;">
+  
+  <!-- Nahom Logo Header -->
+  <div style="text-align: center; margin-bottom: 25px;">
+    <img src="https://nahom.app/logo.png" alt="Nahom Logo" style="max-height: 45px; width: auto;" onerror="this.style.display='none'" />
+  </div>
+
+  <p style="font-size: 18px; font-weight: bold; color: #F45A0A;">Hello ${escapeHtml(targetUserName)},</p>
   
   <p>You have been invited to join <strong>${safeCommunityName}</strong> by the community administration.</p>
   
-  <p>Your registered details are:</p>
-  <ul style="list-style: none; padding-left: 0;">
-    <li><strong>Email:</strong> ${escapeHtml(email || '')}</li>
-    <li><strong>Phone:</strong> ${escapeHtml(registeredPhone)}</li>
-    <li><strong>Role:</strong> ${escapeHtml(roleName || '')}</li>
-  </ul>
+  <div style="background-color: #FFF0E5; padding: 15px; border-radius: 12px; margin: 20px 0;">
+    <p style="margin-top: 0; font-weight: bold; color: #F45A0A;">Your registered details are:</p>
+    <ul style="list-style: none; padding-left: 0; margin-bottom: 0;">
+      <li style="margin-bottom: 8px;"><strong>Email:</strong> ${escapeHtml(email || '')}</li>
+      <li style="margin-bottom: 8px;"><strong>Phone:</strong> ${escapeHtml(registeredPhone)}</li>
+      <li><strong>Role:</strong> ${escapeHtml(roleName || '')}</li>
+    </ul>
+  </div>
   
   <p>To access your community, click the button below:</p>
   
-  <div style="margin: 30px 0;">
-    <a href="{{invite_link}}" style="background-color: #16a34a; color: #ffffff; padding: 14px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+  <div style="margin: 30px 0; text-align: center;">
+    <a href="{{invite_link}}" style="background-color: #F45A0A; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 18px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(244, 90, 10, 0.2);">
       ${ctaButtonText}
     </a>
   </div>
   
-  <p>After clicking the button, you will be taken to the appropriate application based on your device. You can sign in using your registered <strong>email address or phone number and OTP</strong>.</p>
+  <p style="color: #6F6A64; font-size: 14px;">After clicking the button, you will be taken to the appropriate application based on your device. You can sign in using your registered <strong>email address or phone number and OTP</strong>.</p>
   
-  <p>If the application is not installed on your mobile device, you will be directed to the appropriate app store.</p>
+  <p style="color: #6F6A64; font-size: 14px;">If the application is not installed on your mobile device, you will be directed to the appropriate play store or app store.</p>
   
-  <p>If you were not expecting this invitation, you can safely ignore this email.</p>
+  <p style="color: #6F6A64; font-size: 14px;">If you were not expecting this invitation, you can safely ignore this email.</p>
   
-  <p style="margin-top: 30px;">
-    Thank you,<br/>
-    <strong>${safeCommunityName} Team</strong>
-  </p>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #EFE6DC;">
+    <p style="margin: 0;">
+      Thank you,<br/>
+      <strong style="color: #F45A0A;">${safeCommunityName} Team</strong>
+    </p>
+  </div>
 </div>
 `;
 
@@ -211,8 +221,8 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
 });
 
 const DEFAULT_ADDED_BODY = `
-<div style="font-family: sans-serif; padding: 20px; color: #333;">
-  <h2>Workspace Update</h2>
+<div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px;">
+  <h2 style="color: #F45A0A; margin-top: 0;">Workspace Update</h2>
   <p>You have been added to a new workspace/community.</p>
   <p>Please log in to your account to access it.</p>
 </div>
@@ -271,14 +281,14 @@ userEvents.on('EMAIL_OTP_SENT', async ({ email, code }) => {
     const { sendEmail } = await import('../../utils/email.utils.js');
     const emailSubject = 'Your Email Verification Code';
     const emailBody = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px;">
-        <h2 style="color: #4f46e5; margin-top: 0;">Email Verification</h2>
+      <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 500px; margin: 0 auto; border: 1px solid #EFE6DC; border-radius: 18px;">
+        <h2 style="color: #F45A0A; margin-top: 0;">Email Verification</h2>
         <p>You requested to update your account email to <strong>${email}</strong>.</p>
         <p>Please enter the following 6-digit verification code in the app to verify this change:</p>
-        <div style="background-color: #f3f4f6; border-radius: 6px; padding: 16px; text-align: center; margin: 24px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #111827;">${code}</span>
+        <div style="background-color: #FFF0E5; border-radius: 12px; padding: 24px; text-align: center; margin: 30px 0; border: 1px solid #F45A0A;">
+          <span style="font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #F45A0A;">${code}</span>
         </div>
-        <p style="font-size: 13px; color: #6b7280;">This code is valid for 15 minutes. If you did not request this change, please ignore this email or contact support.</p>
+        <p style="font-size: 13px; color: #6F6A64; line-height: 1.5;">This code is valid for 15 minutes. If you did not request this change, please ignore this email or contact support.</p>
       </div>
     `;
     const sent = await sendEmail(null, email, emailSubject, emailBody);

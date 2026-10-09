@@ -52,6 +52,11 @@ export default defineConfig(() => {
     },
     server: {
       port: 3004,
+      host: true,
+      hmr: {
+        protocol: 'ws',
+        host: 'localhost',
+      },
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
       },

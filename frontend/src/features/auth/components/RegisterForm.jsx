@@ -787,6 +787,7 @@ const styles = {
     fontWeight: '500',
   },
   msButton: {
+    maxWidth: '210px',
     background: '#2f2f2f',
     color: '#ffffff',
     border: 'none',

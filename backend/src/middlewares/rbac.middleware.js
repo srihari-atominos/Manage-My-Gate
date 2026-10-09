@@ -223,6 +223,7 @@ export const authorizePermission = (feature, action) => {
           
           if (!isCoreFeature) {
             const hasAllowedFeature = features.some(f => org.allowedFeatures.includes(f) || org.allowedFeatures.includes(f.split(':')[0]));
+              console.log('RBAC DEBUG:', { targetOrgId, features, allowedFeatures: org.allowedFeatures, hasAllowedFeature });
             if (!hasAllowedFeature) {
               throw new HttpError(403, `Forbidden. The feature "${features.join(', ')}" is disabled for this community.`);
             }

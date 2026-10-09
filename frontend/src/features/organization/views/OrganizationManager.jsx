@@ -74,7 +74,7 @@ export const OrganizationManager = () => {
             <p className="page-subtitle">
               {t('superAdmin.orgManager.subtitle', {
                 defaultValue:
-                  'Manage all system organizations, view status, and block/unblock access.',
+                  'Manage all system communities, view status, and block/unblock access.',
               })}
             </p>
           </div>
@@ -97,18 +97,18 @@ export const OrganizationManager = () => {
           <div className="loading-center">
             <AppLoader variant="block" />
             <span>
-              {t('superAdmin.orgManager.loading', { defaultValue: 'Loading organizations...' })}
+              {t('superAdmin.orgManager.loading', { defaultValue: 'Loading communities...' })}
             </span>
           </div>
         ) : organizations.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">🏢</div>
             <div className="empty-title">
-              {t('superAdmin.orgManager.noData', { defaultValue: 'No organizations found.' })}
+              {t('superAdmin.orgManager.noData', { defaultValue: 'No communities found.' })}
             </div>
             <div className="empty-desc">
               {t('superAdmin.orgManager.noDataDesc', {
-                defaultValue: 'Organizations will appear here once created.',
+                defaultValue: 'Communities will appear here once created.',
               })}
             </div>
           </div>
@@ -120,7 +120,7 @@ export const OrganizationManager = () => {
                 <thead>
                   <tr>
                     <th>
-                      {t('superAdmin.orgManager.tableName', { defaultValue: 'Organization' })}
+                      {t('superAdmin.orgManager.tableName', { defaultValue: 'Community' })}
                     </th>
                     <th className="text-center">
                       {t('superAdmin.orgManager.tableVillas', { defaultValue: 'Villas' })}
@@ -221,7 +221,7 @@ export const OrganizationManager = () => {
                     defaultValue: `Page ${page} of ${totalPages}`,
                   })}
                 </div>
-                <CPagination aria-label="Organization pagination">
+                <CPagination aria-label="Community pagination">
                   <CPaginationItem
                     disabled={page === 1}
                     onClick={() => handlePageChange(page - 1)}

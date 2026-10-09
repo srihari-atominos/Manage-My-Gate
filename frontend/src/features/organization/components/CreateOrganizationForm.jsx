@@ -165,7 +165,7 @@ export const CreateOrganizationForm = () => {
                         <>
                           <CSpinner size="sm" className="me-2" />
                           {t('organization.create.loading', {
-                            defaultValue: 'Creating Organization...',
+                            defaultValue: 'Creating Community...',
                           })}
                         </>
                       ) : (

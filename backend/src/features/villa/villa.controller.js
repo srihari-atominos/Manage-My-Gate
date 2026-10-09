@@ -214,49 +214,92 @@ export class VillaController {
     }
   }
 
+  
   async downloadBulkUploadTemplate(req, res, next) {
     try {
-      const headers = [
-        'Unit Number',
-        'Block/Building',
-        'Floor',
-        'Unit Type',
-        'Floor Area (Sq Ft)',
-        'Occupancy Status',
-        'Resident Name',
-        'Resident Email',
-        'Resident Type',
-        'Phone Number'
+      const orgId = req.tenant.orgId;
+      const Role = (await import('../role/role.model.js')).default;
+      const roles = await Role.find({ orgId, isTenantRole: true }).lean();
+      let roleNames = roles.map(r => r.name);
+      if (roleNames.length === 0) {
+        roleNames = ['Resident Owner', 'Resident Tenant', 'Family Member'];
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Upload Data');
+      
+      const roleSheet = workbook.addWorksheet('RoleData');
+      roleSheet.state = 'hidden';
+      roleNames.forEach((r, idx) => {
+        roleSheet.getCell(`A${idx + 1}`).value = r;
+      });
+
+      sheet.columns = [
+        { header: 'Unit Number', key: 'unitNumber', width: 15 },
+        { header: 'Block/Building', key: 'block', width: 20 },
+        { header: 'Floor', key: 'floor', width: 10 },
+        { header: 'Unit Type', key: 'unitType', width: 20 },
+        { header: 'Floor Area (Sq Ft)', key: 'floorArea', width: 20 },
+        { header: 'Occupancy Status', key: 'occupancy', width: 20 },
+        { header: 'Resident Name', key: 'residentName', width: 25 },
+        { header: 'Resident Email', key: 'residentEmail', width: 30 },
+        { header: 'Resident Type', key: 'residentType', width: 20 },
+        { header: 'Phone Number', key: 'phone', width: 20 }
       ];
 
-      const sampleRows = [
-        ['101', 'Block A', '1', 'Apartment', '1200', 'Vacant', '', '', '', ''],
-        ['102', 'Block A', '1', '2 BHK', '1350', 'Occupied', 'John Doe', 'john@example.com', 'Resident Owner', '9876543210'],
-        ['103', 'Block A', '2', '3 BHK', '1600', 'Occupied', 'Jane Smith', 'jane@example.com', 'Tenant', '9876543211'],
-        ['201', 'Block B', '1', 'Villa', '2400', 'Under Maintenance', '', '', '', ''],
-        ['202', 'Block B', '2', 'Penthouse', '3200', 'Occupied', 'Alice Johnson', 'alice@example.com', 'Family Member', '9876543212']
-      ];
+      sheet.addRow({ unitNumber: '101', block: 'Block A', floor: '1', unitType: 'Apartment', floorArea: '1200', occupancy: 'Vacant', residentName: '', residentEmail: '', residentType: '', phone: '' });
+      sheet.addRow({ unitNumber: '102', block: 'Block A', floor: '1', unitType: '2 BHK', floorArea: '1350', occupancy: 'Occupied', residentName: 'John Doe', residentEmail: 'john@example.com', residentType: roleNames[0], phone: '+919876543210' });
+      sheet.addRow({ unitNumber: '103', block: 'Block A', floor: '2', unitType: '3 BHK', floorArea: '1600', occupancy: 'Occupied', residentName: 'Jane Smith', residentEmail: 'jane@example.com', residentType: roleNames[1] || roleNames[0], phone: '+919876543211' });
 
-      const escapeCSV = (arr) => arr.map(val => `"${val}"`).join(',');
+      const roleEndRow = Math.max(roleNames.length, 1);
 
-      const csvContent = [
-        escapeCSV(headers),
-        ...sampleRows.map(row => escapeCSV(row))
-      ].join('\n');
+      for (let i = 2; i <= 1000; i++) {
+        sheet.getCell(`D${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: ['"Apartment,Villa,Penthouse,Townhouse,Studio,Duplex,2 BHK,3 BHK,4 BHK"'],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Unit Type',
+          error: 'Please select a valid unit type from the list.'
+        };
 
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', 'attachment; filename="bulk_upload_units_template.csv"');
+        sheet.getCell(`F${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: ['"Vacant,Occupied,Under Maintenance"'],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Occupancy Status',
+          error: 'Please select a valid occupancy status from the list.'
+        };
+
+        sheet.getCell(`I${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`RoleData!$A$1:$A${roleEndRow}`],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Resident Type',
+          error: 'Please select a valid Resident Type from the list.'
+        };
+      }
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="bulk_upload_units_template.xlsx"');
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      
-      res.send(csvContent);
+
+      await workbook.xlsx.write(res);
+      res.end();
     } catch (error) {
       next(error);
     }
   }
 
   async exportUnits(req, res, next) {
+
     try {
       const orgId = req.tenant.orgId;
       const { data } = await villaService.getUnitsPaginated({ orgId, page: 1, limit: 10000 });

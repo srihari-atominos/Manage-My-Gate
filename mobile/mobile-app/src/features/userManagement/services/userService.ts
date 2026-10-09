@@ -191,3 +191,11 @@ export default {
   revokeInvitation,
 };
 
+
+/**
+ * Downloads the Excel template for bulk inviting users.
+ */
+export const downloadBulkInviteTemplate = async () => {
+  const response: any = await apiClient.get('/users/bulk-invite/template', { responseType: 'blob' });
+  return response.data || response;
+};

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { TextInput } from '@/components/forms/TextInput';
 import { SuccessToast } from '@/components/feedback/SuccessToast';
 import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
-import { ProfileHeaderCard, VerifyEmailOtpModal, LocationPickerModal } from '@/src/features/profile/components';
+import { ProfileHeaderCard, ContactChangeWizardModal, LocationPickerModal } from '@/src/features/profile/components';
 import { RoleSwitchModal, OrgSwitchModal, AssignmentSwitchModal, VillaSwitchModal } from '@/components/navigation';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
 import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
@@ -104,7 +104,8 @@ export default function ProfileScreen() {
   const [touched, setTouched] = useState<{ name?: boolean; email?: boolean; phone?: boolean }>({});
 
   // Email verification OTP modal state
-  const [showEmailOtpModal, setShowEmailOtpModal] = useState(false);
+  const [wizardVisible, setWizardVisible] = useState(false);
+  const [wizardType, setWizardType] = useState<'email' | 'phone'>('email');
   const [pendingNewEmail, setPendingNewEmail] = useState('');
   const [emailOtpLoading, setEmailOtpLoading] = useState(false);
   const [emailOtpResending, setEmailOtpResending] = useState(false);
@@ -505,7 +506,7 @@ export default function ProfileScreen() {
         );
         setSelectedAvatarFile(null);
         if (emailToUpdate) {
-          setShowEmailOtpModal(false);
+          
           setPendingNewEmail('');
           setEmailOtpError(null);
         }
@@ -587,7 +588,7 @@ export default function ProfileScreen() {
     }
 
     // If user has changed their email address, request verification OTP
-    if (trimmedEmail && trimmedEmail !== currentEmail) {
+    if (false) {
       setProfileSaving(true);
       setEmailOtpError(null);
       try {
@@ -599,7 +600,7 @@ export default function ProfileScreen() {
           setDevOtpCode(null);
         }
         setPendingNewEmail(trimmedEmail);
-        setShowEmailOtpModal(true);
+        
       } catch (err: any) {
         const errorMsg = parseBackendError(err, t('failed_send_otp', 'Failed to send verification OTP')).userMessage;
         if (errorMsg.toLowerCase().includes('email')) {
@@ -779,12 +780,12 @@ export default function ProfileScreen() {
 
             {/* Action Buttons (Rendered if multiple switchable options exist) */}
             {(hasMultipleOrgs || hasMultipleRoles || (isResidentRole && hasMultipleUnits) || hasMultipleAssignments) && (
-              <View className="flex-row flex-wrap gap-2.5 pt-2 border-t border-border/50">
+              <View className="flex-col gap-2.5 pt-2 border-t border-border/50">
                 {hasMultipleOrgs && (
                   <Button
                     variant="outline"
                     size="default"
-                    className="flex-1 min-w-[130px] h-11 rounded-2xl border-indigo-500/40 bg-indigo-500/5 active:bg-indigo-500/10"
+                    className="w-full h-11 rounded-2xl border-indigo-500/40 bg-indigo-500/5 active:bg-indigo-500/10"
                     onPress={() => setOrgModalOpen(true)}
                   >
                     <View className="flex-row items-center justify-center gap-2">
@@ -800,7 +801,7 @@ export default function ProfileScreen() {
                   <Button
                     variant="outline"
                     size="default"
-                    className="flex-1 min-w-[130px] h-11 rounded-2xl border-primary/40 bg-primary/5 active:bg-primary/10"
+                    className="w-full h-11 rounded-2xl border-primary/40 bg-primary/5 active:bg-primary/10"
                     onPress={() => setRoleModalOpen(true)}
                   >
                     <View className="flex-row items-center justify-center gap-2">
@@ -816,7 +817,7 @@ export default function ProfileScreen() {
                   <Button
                     variant="outline"
                     size="default"
-                    className="flex-1 min-w-[130px] h-11 rounded-2xl border-emerald-500/40 bg-emerald-500/5 active:bg-emerald-500/10"
+                    className="w-full h-11 rounded-2xl border-emerald-500/40 bg-emerald-500/5 active:bg-emerald-500/10"
                     onPress={() => setVillaModalOpen(true)}
                   >
                     <View className="flex-row items-center justify-center gap-2">
@@ -886,76 +887,21 @@ export default function ProfileScreen() {
             <TextInput
               label={t('email_address', 'Email Address')}
               labelClassName="text-sm font-bold"
-              placeholder={t('email_placeholder', 'e.g. user@example.com')}
-              keyboardType="email-address"
-              autoCapitalize="none"
               value={email}
-              onChangeText={(val) => {
-                setEmail(val);
-                if (fieldErrors.email) {
-                  setFieldErrors((prev) => ({ ...prev, email: undefined }));
-                }
-              }}
-              onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
-              status={
-                fieldErrors.email
-                  ? 'invalid'
-                  : email.trim()
-                  ? validateEmail(email).status === 'valid'
-                    ? 'valid'
-                    : validateEmail(email).status === 'incomplete' && touched.email
-                    ? 'incomplete'
-                    : 'idle'
-                  : 'idle'
-              }
-              helperText={
-                !fieldErrors.email && email.trim() && touched.email && validateEmail(email).status === 'incomplete'
-                  ? validateEmail(email).message
-                  : undefined
-              }
+              editable={false}
               error={fieldErrors.email}
-              clearable
-              onClear={() => {
-                setEmail('');
-                setFieldErrors((prev) => ({ ...prev, email: undefined }));
-              }}
+              rightIcon={<Text className="text-[#F45A0A] font-bold text-sm me-2">{t('change', 'Change')}</Text>}
+              onRightIconPress={() => { setWizardType('email'); setWizardVisible(true); }}
             />
 
             <TextInput
               label={t('phone_number', 'Phone Number')}
               labelClassName="text-sm font-bold"
-              placeholder={t('phone_placeholder', 'e.g. +91 9876543210')}
-              keyboardType="phone-pad"
               value={phone}
-              onChangeText={(val) => {
-                setPhone(val);
-                if (fieldErrors.phone) {
-                  setFieldErrors((prev) => ({ ...prev, phone: undefined }));
-                }
-              }}
-              onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
-              status={
-                fieldErrors.phone
-                  ? 'invalid'
-                  : phone.trim()
-                  ? validatePhone(phone, 'IN').status === 'valid'
-                    ? 'valid'
-                    : validatePhone(phone, 'IN').status === 'incomplete' && touched.phone
-                    ? 'incomplete'
-                    : 'idle'
-                  : 'idle'
-              }
-              helperText={
-                !fieldErrors.phone && phone.trim() && touched.phone
-                  ? validatePhone(phone, 'IN').message
-                  : undefined
-              }
+              editable={false}
               error={fieldErrors.phone}
-              clearable
-              onClear={() => {
-                setPhone('');
-                setFieldErrors((prev) => ({ ...prev, phone: undefined }));
-              }}
+              rightIcon={<Text className="text-[#F45A0A] font-bold text-sm me-2">{t('change', 'Change')}</Text>}
+              onRightIconPress={() => { setWizardType('phone'); setWizardVisible(true); }}
             />
 
             <View className="h-px bg-border/70" />
@@ -1392,19 +1338,30 @@ export default function ProfileScreen() {
       </Modal>
 
       {/* Email Verification OTP Modal */}
-      <VerifyEmailOtpModal
-        visible={showEmailOtpModal}
-        email={pendingNewEmail}
-        onClose={() => {
-          setShowEmailOtpModal(false);
-          setEmailOtpError(null);
+      <ContactChangeWizardModal
+        visible={wizardVisible}
+        type={wizardType}
+        onClose={() => setWizardVisible(false)}
+        onSuccess={async (payload) => {
+          setWizardVisible(false);
+          const formData = new FormData() as any;
+          if (payload.email) {
+            formData.append('email', payload.email);
+            formData.append('emailOtp', payload.emailOtp);
+          } else {
+            formData.append('phone', payload.phone);
+            formData.append('phoneOtp', payload.phoneOtp);
+          }
+          formData.append('updateAuthToken', payload.updateAuthToken);
+          
+          const res = await dispatch(updateProfileThunk(formData) as any);
+          if (res.meta.requestStatus === 'fulfilled') {
+            setProfileSuccess(t('profile_updated', 'Profile updated successfully!'));
+            setTimeout(() => setProfileSuccess(null), 2000);
+          } else {
+            Alert.alert('Error', (res.payload as any)?.message || 'Failed to update profile');
+          }
         }}
-        onVerify={handleVerifyEmailOtp}
-        onResend={handleResendEmailOtp}
-        loading={emailOtpLoading}
-        resending={emailOtpResending}
-        errorMessage={emailOtpError}
-        devCode={devOtpCode}
       />
 
       {/* Role Switch Modal */}

@@ -18,18 +18,18 @@ const Step5Review = ({ data, onBack, onSubmit, loading, error }) => {
       </h5>
       <p className="text-muted small mb-4">
         {t('organization.wizard.reviewDesc', {
-          defaultValue: 'Please review the organization details before final provisioning.',
+          defaultValue: 'Please review the community details before final provisioning.',
         })}
       </p>
 
       <CCard className="mb-4 border-info">
         <CCardBody>
           <h6 className="text-info border-bottom pb-2 mb-3">
-            {t('organization.wizard.orgInfoLabel', { defaultValue: 'Organization Information' })}
+            {t('organization.wizard.orgInfoLabel', { defaultValue: 'Community Information' })}
           </h6>
           <CRow className="mb-2">
             <CCol sm={4} className="text-muted fw-bold">
-              {t('organization.wizard.orgName', { defaultValue: 'Organization Name' })}
+              {t('organization.wizard.orgName', { defaultValue: 'Community Name' })}
             </CCol>
             <CCol sm={8}>{org.name}</CCol>
           </CRow>
@@ -123,7 +123,7 @@ const Step5Review = ({ data, onBack, onSubmit, loading, error }) => {
           {loading ? (
             <>
               <CSpinner size="sm" className="me-2" />
-              {t('organization.wizard.creating', { defaultValue: 'Creating Organization...' })}
+              {t('organization.wizard.creating', { defaultValue: 'Creating Community...' })}
             </>
           ) : (
             t('organization.wizard.submit', { defaultValue: 'Create Community' })

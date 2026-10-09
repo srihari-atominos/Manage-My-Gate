@@ -54,6 +54,9 @@ router.get(
   villaController.getStats
 );
 
+
+
+
 /**
  * @swagger
  * /villas/bulk-upload/template:

@@ -102,7 +102,7 @@ export const OrganizationDetails = () => {
         <button className="back-nav" onClick={handleBack}>
           <CIcon icon={cilArrowLeft} size="sm" />
           <span>
-            {t('superAdmin.orgDetails.backBtn', { defaultValue: 'Back to Organizations' })}
+            {t('superAdmin.orgDetails.backBtn', { defaultValue: 'Back to Communities' })}
           </span>
         </button>
 
@@ -115,7 +115,7 @@ export const OrganizationDetails = () => {
             >
               <span>
                 {organization?.name ||
-                  t('superAdmin.orgDetails.title', { defaultValue: 'Organization Details' })}
+                  t('superAdmin.orgDetails.title', { defaultValue: 'Community Details' })}
               </span>
               {organization?.status && (
                 <span className={`status-pill ${getStatusClass(organization.status)}`}>
@@ -266,6 +266,7 @@ export const OrganizationDetails = () => {
             visible={showBulkInviteModal}
             onClose={() => setShowBulkInviteModal(false)}
             onBulkInvite={bulkInviteUsers}
+            targetOrgId={organizationId}
           />
         )}
 

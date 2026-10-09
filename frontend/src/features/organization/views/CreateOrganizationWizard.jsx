@@ -95,7 +95,7 @@ const CreateOrganizationWizard = () => {
                 <div style={{ fontSize: '4rem', color: 'green' }}>✅</div>
                 <h2 className="mt-3">
                   {t('organization.wizard.successTitle', {
-                    defaultValue: 'Organization Created Successfully!',
+                    defaultValue: 'Community Created Successfully!',
                   })}
                 </h2>
                 <p className="text-muted">
@@ -129,7 +129,7 @@ const CreateOrganizationWizard = () => {
                   }
                 >
                   {t('organization.wizard.goToDashboard', {
-                    defaultValue: 'Go to Organization Dashboard',
+                    defaultValue: 'Go to Community Dashboard',
                   })}
                 </CButton>
               </div>
@@ -191,7 +191,7 @@ const CreateOrganizationWizard = () => {
   }
 
   const stepTitles = [
-    t('organization.wizard.step1', { defaultValue: 'Organization Info' }),
+    t('organization.wizard.step1', { defaultValue: 'Community Info' }),
     t('organization.wizard.step2', { defaultValue: 'Admin Details' }),
     t('organization.wizard.step4', { defaultValue: 'Features' }),
     t('organization.wizard.step5', { defaultValue: 'Review' }),

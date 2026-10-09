@@ -19,6 +19,7 @@ import config from '../../../config/config.js'
 import useAuth from '../hooks/useAuth'
 import { switchWorkspaceContext } from '../store/authSlice'
 import useWorkspace from '../../workspace/hooks/useWorkspace'
+import ContactChangeWizard from '../components/ContactChangeWizard'
 import '../styles/_auth.scss'
 
 const ProfileView = () => {
@@ -35,6 +36,8 @@ const ProfileView = () => {
   const [showAssignmentPicker, setShowAssignmentPicker] = useState(false)
   const [switchingContext, setSwitchingContext] = useState(false)
   const [contextError, setContextError] = useState(null)
+  const [wizardVisible, setWizardVisible] = useState(false)
+  const [wizardType, setWizardType] = useState('email')
 
   const activeOrgId = activeOrganizationId || currentUser?.orgId
   const activeOrgName =
@@ -223,9 +226,7 @@ const ProfileView = () => {
   const onSubmit = async (data) => {
     const formData = new FormData()
     formData.append('name', data.name)
-    if (data.phone !== undefined) {
-      formData.append('phone', data.phone)
-    }
+    // Phone is handled via wizard
     if (data.avatar && data.avatar.length > 0) {
       formData.append('avatar', data.avatar[0])
     }
@@ -730,7 +731,25 @@ const ProfileView = () => {
                 </div>
               )}
             </CCardBody>
-          </CCard>
+          
+      <ContactChangeWizard 
+        visible={wizardVisible}
+        onClose={() => setWizardVisible(false)}
+        type={wizardType}
+        onSuccess={async (payload) => {
+          const formData = new FormData()
+          if (payload.email) {
+            formData.append('email', payload.email)
+            formData.append('emailOtp', payload.emailOtp)
+          } else {
+            formData.append('phone', payload.phone)
+            formData.append('phoneOtp', payload.phoneOtp)
+          }
+          formData.append('updateAuthToken', payload.updateAuthToken)
+          await updateProfile(formData)
+        }}
+      />
+    </CCard>
 
           {/* Personal Details Form */}
           <CCard className="shadow-sm border-0">
@@ -803,48 +822,43 @@ const ProfileView = () => {
                   <CFormLabel htmlFor="page-profile-phone-input" className="fw-semibold small">
                     Phone Number
                   </CFormLabel>
-                  <Controller
-                    name="phone"
-                    control={control}
-                    rules={{
-                      validate: (value) => {
-                        if (!value) return true
-                        if (value.length < expectedPhoneLength) {
-                          return 'Invalid phone number length for this country.'
-                        }
-                        return true
-                      },
-                    }}
-                    render={({ field: { onChange, value } }) => (
-                      <PhoneInput
-                        country={'in'}
-                        value={value}
-                        onChange={(phone, country) => {
-                          if (country && country.format) {
-                            setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
-                          }
-                          onChange(phone)
-                        }}
-                        containerStyle={{ width: '100%' }}
-                        inputStyle={{
-                          width: '100%',
-                          height: '38px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.375rem',
-                          fontSize: '14px',
-                        }}
-                        buttonStyle={{
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.375rem 0 0 0.375rem',
-                          backgroundColor: '#f3f4f6',
-                        }}
-                        disabled={loading}
+                  <div className="d-flex gap-2 align-items-start">
+                    <div style={{ flex: 1 }}>
+                      <Controller
+                        name="phone"
+                        control={control}
+                        render={({ field: { value } }) => (
+                          <PhoneInput
+                            country={'in'}
+                            value={value}
+                            containerStyle={{ width: '100%' }}
+                            inputStyle={{
+                              width: '100%',
+                              height: '38px',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '0.375rem',
+                              fontSize: '14px',
+                              backgroundColor: '#e9ecef',
+                            }}
+                            buttonStyle={{
+                              border: '1px solid #d1d5db',
+                              borderRadius: '0.375rem 0 0 0.375rem',
+                              backgroundColor: '#e9ecef',
+                            }}
+                            disabled={true}
+                          />
+                        )}
                       />
-                    )}
-                  />
-                  {errors.phone && (
-                    <div className="text-danger small mt-1">{errors.phone.message}</div>
-                  )}
+                    </div>
+                    <CButton 
+                      color="secondary" 
+                      variant="outline" 
+                      style={{ height: '38px' }}
+                      onClick={() => { setWizardType('phone'); setWizardVisible(true); }}
+                    >
+                      Change
+                    </CButton>
+                  </div>
                 </div>
 
                 <div className="d-flex justify-content-end">

@@ -151,8 +151,9 @@ export const bulkUploadVillasRules = [
     .trim(),
   body('villas.*.residentType')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Family Member', 'Resident Owner', 'Tenant', 'Owner', 'Family'])
-    .withMessage('Resident type must be Tenant, Resident Owner, or Family Member'),
+    .isString()
+    .trim()
+    .withMessage('Resident type must be a string'),
 ];
 
 export const assignExistingUserRules = [

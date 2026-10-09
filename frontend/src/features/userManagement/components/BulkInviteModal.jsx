@@ -21,7 +21,8 @@ import {
   cilWarning,
   cilXCircle,
 } from '@coreui/icons'
-import { bulkValidateUsers } from '../services/userApi'
+import * as XLSX from 'xlsx'
+import { bulkValidateUsers, downloadBulkInviteTemplate } from '../services/userApi'
 
 const splitCSVLine = (line) => {
   const result = []
@@ -44,7 +45,7 @@ const splitCSVLine = (line) => {
 
 const parseCSV = (text) => {
   const lines = text
-    .split(/\r?\n/)
+    .split(/\\r?\\n/)
     .map((line) => line.trim())
     .filter(Boolean)
   if (lines.length < 2) return []
@@ -59,30 +60,65 @@ const parseCSV = (text) => {
     const row = {}
     headers.forEach((header, index) => {
       let key = header
-      if (header === 'email') key = 'email'
-      else if (header === 'phone' || header === 'phone number' || header === 'phone no' || header === 'mobile' || header === 'contact') key = 'phone'
-      else if (header === 'name' || header === 'fullname' || header === 'full name') key = 'name'
-      else if (header === 'role') key = 'roleName'
-        else if (header === 'villa' || header === 'villa no' || header === 'villa number' || header === 'unit' || header === 'unit no') key = 'villaNumber'
-        // Ignore unrecognized columns
+      if (header === 'email' || header.includes('email')) key = 'email'
+      else if (header === 'phone' || header.includes('phone') || header === 'mobile' || header === 'contact') key = 'phone'
+      else if (header === 'name' || header.includes('name')) key = 'name'
+      else if (header === 'role' || header.includes('role')) key = 'roleName'
+      else if (header === 'villa' || header.includes('villa') || header.includes('unit')) key = 'villaNumber'
 
       if (key) {
         row[key] = values[index] || ''
       }
     })
 
-    // Skip reference rows that are completely empty in data fields
-    if (!row.email?.trim() && !row.phone?.trim() && !row.roleName?.trim()) {
-      continue
-    }
+    if (!row.email?.trim() && !row.phone?.trim() && !row.roleName?.trim()) continue
 
-    row.hasEmailAndPhone = !!(row.email?.trim() && row.phone?.trim())
+    row.hasEmailAndPhone = !!(row.email?.trim() || row.phone?.trim())
     row.isValidEmail = !row.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())
     row.isValidPhone = !row.phone || row.phone.trim().length >= 8
     row.isValidRole = !!row.roleName
-    // Phone is mandatory for every invitation; the server normalises the format
-    row.isValidPhone = /^\+?[0-9\s-]{8,16}$/.test((row.phone || '').trim())
+    row.isValid = row.hasEmailAndPhone && row.isValidEmail && row.isValidPhone && row.isValidRole
 
+    parsed.push(row)
+  }
+  return parsed
+}
+
+const parseXLSX = (arrayBuffer) => {
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+  const sheetName = workbook.SheetNames.find((s) => s === 'Bulk Invite Users') || workbook.SheetNames[0]
+  const sheet = workbook.Sheets[sheetName]
+  const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 })
+
+  if (jsonData.length < 2) return []
+
+  const headers = (jsonData[0] || []).map((h) => (h || '').toString().trim().toLowerCase())
+
+  const parsed = []
+  for (let i = 1; i < jsonData.length; i++) {
+    const values = jsonData[i]
+    if (!values || values.length === 0 || (values.length === 1 && !values[0])) continue
+
+    const row = {}
+    headers.forEach((header, index) => {
+      let key = header
+      if (header === 'email' || header.includes('email')) key = 'email'
+      else if (header === 'phone' || header.includes('phone') || header === 'mobile' || header === 'contact') key = 'phone'
+      else if (header === 'name' || header.includes('name')) key = 'name'
+      else if (header === 'role' || header.includes('role')) key = 'roleName'
+      else if (header === 'villa' || header.includes('villa') || header.includes('unit')) key = 'villaNumber'
+
+      if (key) {
+        row[key] = (values[index] || '').toString()
+      }
+    })
+
+    if (!row.email?.trim() && !row.phone?.trim() && !row.roleName?.trim()) continue
+
+    row.hasEmailAndPhone = !!(row.email?.trim() || row.phone?.trim())
+    row.isValidEmail = !row.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())
+    row.isValidPhone = !row.phone || row.phone.trim().length >= 8
+    row.isValidRole = !!row.roleName
     row.isValid = row.hasEmailAndPhone && row.isValidEmail && row.isValidPhone && row.isValidRole
 
     parsed.push(row)
@@ -95,6 +131,7 @@ export const BulkInviteModal = ({
   onClose,
   onBulkInvite,
   availableRoles = [],
+  targetOrgId = null,
 }) => {
   const [parsedRows, setParsedRows] = useState([])
   const [fileName, setFileName] = useState('')
@@ -104,66 +141,78 @@ export const BulkInviteModal = ({
 
   const fileInputRef = useRef(null)
 
-  const handleDownloadTemplate = () => {
-    const defaultRole = availableRoles?.[0] || 'Community Admin'
-    const dynamicTemplate = `Email,Phone Number,Role,Name,Villa Number\njohn.doe@example.com,+919876543211,${defaultRole},John Doe,A-101\njane.smith@example.com,+919876543212,Security Guard,Jane Smith,`
-
-    const blob = new Blob([dynamicTemplate], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', 'bulk_invite_users_template.csv')
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleDownloadTemplate = async () => {
+    try {
+      const blob = await downloadBulkInviteTemplate(targetOrgId)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', 'bulk_invite_users_template.xlsx')
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (err) {
+      console.error('Download Template Error:', err)
+      setErrorMsg('Failed to download Excel template.')
+    }
   }
 
-  const processFileText = async (text) => {
-    try {
-      let rows = parseCSV(text)
-      if (rows.length === 0) {
-        setErrorMsg('The uploaded file is empty or missing headers.')
-        return
-      }
+  const processFile = async (file) => {
+    setFileName(file.name)
+    setErrorMsg('')
+    setResults(null)
 
-      setLoading(true)
+    const reader = new FileReader()
+    reader.onload = async (event) => {
       try {
-        const { existingEmails, existingPhones } = await bulkValidateUsers(rows)
-        rows = rows.map((r) => {
-          const isDuplicate =
-            (r.email && existingEmails.includes(r.email.toLowerCase())) ||
-            (r.phone && existingPhones.includes(r.phone))
-          if (isDuplicate) {
-            // We do not set r.isValid = false so existing members can be linked
-            // or updated (e.g. via Admin Announcement).
-            r.isDuplicate = true
-          }
-          return r
-        })
-      } catch (apiErr) {
-        // Continue normally if validation API fails
-        console.error('Validation API failed', apiErr)
+        let rows = []
+        if (file.name.endsWith('.csv')) {
+          rows = parseCSV(event.target.result)
+        } else {
+          rows = parseXLSX(event.target.result)
+        }
+        
+        if (rows.length === 0) {
+          setErrorMsg('The uploaded file is empty or missing headers.')
+          return
+        }
+
+        setLoading(true)
+        try {
+          const { existingEmails, existingPhones } = await bulkValidateUsers(rows)
+          rows = rows.map((r) => {
+            const isDuplicate =
+              (r.email && existingEmails.includes(r.email.toLowerCase())) ||
+              (r.phone && existingPhones.includes(r.phone))
+            if (isDuplicate) {
+              r.isDuplicate = true
+            }
+            return r
+          })
+        } catch (apiErr) {
+          console.error('Validation API failed', apiErr)
+        }
+        setParsedRows(rows)
+      } catch (err) {
+        setErrorMsg('Failed to parse file. Please ensure it is correctly formatted.')
+      } finally {
+        setLoading(false)
       }
-      setParsedRows(rows)
-    } catch (err) {
-      setErrorMsg('Failed to parse CSV file. Please ensure it is correctly formatted.')
-    } finally {
-      setLoading(false)
+    }
+
+    if (file.name.endsWith('.csv')) {
+      reader.readAsText(file)
+    } else {
+      reader.readAsArrayBuffer(file)
     }
   }
 
   const handleFileChange = (e) => {
     const file = e.target.files[0]
     if (!file) return
-
-    setFileName(file.name)
-    setErrorMsg('')
-    setResults(null)
-
-    const reader = new FileReader()
-    reader.onload = (event) => processFileText(event.target.result)
-    reader.readAsText(file)
+    processFile(file)
   }
 
   const handleDragOver = (e) => {
@@ -173,16 +222,10 @@ export const BulkInviteModal = ({
   const handleDrop = (e) => {
     e.preventDefault()
     const file = e.dataTransfer.files[0]
-    if (file && file.type === 'text/csv') {
-      setFileName(file.name)
-      setErrorMsg('')
-      setResults(null)
-
-      const reader = new FileReader()
-      reader.onload = (event) => processFileText(event.target.result)
-      reader.readAsText(file)
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.csv'))) {
+      processFile(file)
     } else {
-      setErrorMsg('Please upload a valid CSV file.')
+      setErrorMsg('Please upload a valid Excel (.xlsx) or CSV (.csv) file.')
     }
   }
 
@@ -210,16 +253,16 @@ export const BulkInviteModal = ({
             phone: r.phone || undefined,
             name: r.name || undefined,
             roleName: r.roleName,
-            villaNumber: r.villaNumber || undefined,
-            residentType,
+            villaNumber: r.villaNumber || undefined
           }
-        })
+      })
+
       const res = await onBulkInvite(invitations)
       setResults(res)
       setParsedRows([])
       setFileName('')
     } catch (err) {
-      setErrorMsg(err.message || 'Bulk invitation request failed.')
+      setErrorMsg(err.message || 'Bulk user upload failed.')
     } finally {
       setLoading(false)
     }
@@ -230,7 +273,6 @@ export const BulkInviteModal = ({
     setFileName('')
     setResults(null)
     setErrorMsg('')
-
     onClose()
   }
 
@@ -241,21 +283,27 @@ export const BulkInviteModal = ({
     <CModal
       visible={visible}
       onClose={handleClose}
-      id="bulk-invite-modal"
       alignment="center"
       size="lg"
+      className="bulk-invite-modal"
     >
       <CModalHeader className="border-bottom">
-        <CModalTitle className="bulk-modal-title">Bulk Onboard Members & Staff</CModalTitle>
+        <CModalTitle className="modal-title-bold">Bulk Invite Users</CModalTitle>
       </CModalHeader>
 
       <CModalBody className="p-4">
+        {errorMsg && (
+          <CAlert color="danger" className="d-flex align-items-center mb-4 py-2 small fw-semibold">
+            <CIcon icon={cilXCircle} className="me-2" size="lg" />
+            {errorMsg}
+          </CAlert>
+        )}
 
-        {/* Step 1: Template Download */}
+        {/* Step 1: Download Template */}
         {!fileName && !parsedRows.length && !results && (
           <div className="mb-4 text-center p-4 border rounded-3 bg-body-secondary">
             <h5 className="fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>
-              1. Download CSV Template
+              1. Download Excel Template
             </h5>
             <p className="text-muted small mb-3">
               Use Email, Phone Number, and Role for each invitation row.
@@ -272,38 +320,30 @@ export const BulkInviteModal = ({
           </div>
         )}
 
-        {/* Error Messages */}
-        {errorMsg && (
-          <CAlert color="danger" className="mb-4 d-flex align-items-center gap-2 py-2 small">
-            <CIcon icon={cilWarning} size="sm" />
-            <span>{errorMsg}</span>
-          </CAlert>
-        )}
-
-        {/* Step 2: Upload Area */}
+        {/* Step 2: Upload File */}
         {!results && (
           <div className="mb-4">
             <h5 className="fw-semibold mb-3" style={{ fontSize: '0.95rem' }}>
-              {fileName ? 'Uploaded File' : '2. Upload Filled CSV'}
+              {fileName ? 'Uploaded File' : '2. Upload Filled Excel/CSV'}
             </h5>
             <div
               className="dropzone-area p-4 border rounded-3 text-center bg-body-secondary bulk-dropzone"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
+              style={{ cursor: 'pointer', borderStyle: 'dashed !important' }}
             >
               <input
                 type="file"
-                accept=".csv"
+                accept=".xlsx,.csv"
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
               <CIcon
                 icon={cilCloudUpload}
-                size="xl"
-                className="text-muted mb-2"
-                style={{ opacity: 0.6 }}
+                size="3xl"
+                className="text-primary mb-3 dropzone-icon"
               />
               {fileName ? (
                 <div>
@@ -313,7 +353,7 @@ export const BulkInviteModal = ({
               ) : (
                 <div>
                   <div className="fw-semibold mb-1">Click to Upload or Drag & Drop File</div>
-                  <div className="text-muted small">CSV files only. Maximum file size 2MB.</div>
+                  <div className="text-muted small">Excel (.xlsx) or CSV files only. Maximum file size 2MB.</div>
                 </div>
               )}
             </div>
@@ -386,7 +426,7 @@ export const BulkInviteModal = ({
                         ) : (
                           <CBadge
                             color="danger"
-                            title="Validation failed: Provide Email, Phone Number, and Role."
+                            title="Validation failed: Provide Email/Phone Number and Role."
                           >
                             Fix Row
                           </CBadge>
@@ -417,7 +457,7 @@ export const BulkInviteModal = ({
                 <h6 className="fw-semibold mb-0">Bulk Processing Completed</h6>
               </div>
               <p className="mb-0 small">
-                Successfully processed {results.successCount} of {results.total} users .
+                Successfully processed {results.successCount} of {results.total} users.
               </p>
             </CAlert>
 
@@ -501,6 +541,7 @@ BulkInviteModal.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onBulkInvite: PropTypes.func.isRequired,
+  availableRoles: PropTypes.array,
 }
 
 export default BulkInviteModal

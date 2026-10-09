@@ -40,10 +40,10 @@ describe('CreateOrganizationWizard Flow', () => {
       </Provider>,
     )
 
-  it('renders Step 1 Organization Info by default', () => {
+  it('renders Step 1 Community Info by default', () => {
     renderComponent()
     expect(screen.getByText('Create Community')).toBeInDocument()
-    expect(screen.getByLabelText('Organization Name')).toBeInDocument()
+    expect(screen.getByLabelText('Community Name')).toBeInDocument()
   })
 
   it('validates Step 1 and blocks navigation on empty required fields', async () => {
@@ -51,14 +51,14 @@ describe('CreateOrganizationWizard Flow', () => {
     fireEvent.click(screen.getByText('Next'))
 
     await waitFor(() => {
-      expect(screen.getByText('Organization Name is required')).toBeInDocument()
+      expect(screen.getByText('Community Name is required')).toBeInDocument()
       expect(screen.getByText('Contact Email is required')).toBeInDocument()
     })
   })
 
   it('navigates to Step 2 when Step 1 is valid', async () => {
     renderComponent()
-    fireEvent.change(screen.getByLabelText('Organization Name'), { target: { value: 'Test Org' } })
+    fireEvent.change(screen.getByLabelText('Community Name'), { target: { value: 'Test Org' } })
     fireEvent.change(screen.getByLabelText('Contact Phone Number'), {
       target: { value: '9876543210' },
     })

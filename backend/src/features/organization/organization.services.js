@@ -1,4 +1,4 @@
-﻿import organizationRepository from './organization.repository.js';
+import organizationRepository from './organization.repository.js';
 import HttpError from '../../utils/httpError.utils.js';
 import mongoose from 'mongoose';
 import orgEventEmitter from './organization.events.js';
@@ -355,20 +355,28 @@ export class OrganizationService {
       }, session);
 
       if (!communityAdminUser) {
-        if (!normalizedAdminPhone) {
-          throw new HttpError(400, 'Phone number is required for new community admins.');
-        }
-        const User = (await import('../user/user.model.js')).default;
-        const newCommunityAdmin = new User({
-          name: communityAdmin.fullName,
-          username: communityAdmin.username,
-          email: communityAdmin.email.toLowerCase(),
-          phone: normalizedAdminPhone,
-          status: 'Active',
-          credentialStatus: 'NOT_INITIALIZED',
-          emailVerified: true,
-          phoneVerified: true
-        });
+          if (!normalizedAdminPhone) {
+            throw new HttpError(400, 'Phone number is required for new community admins.');
+          }
+          const User = (await import('../user/user.model.js')).default;
+
+          let finalUsername = communityAdmin.username;
+          let usernameExists = await User.exists({ username: finalUsername }).session(session);
+          while (usernameExists) {
+            finalUsername = communityAdmin.username + '_' + Math.random().toString(36).substring(2, 6);
+            usernameExists = await User.exists({ username: finalUsername }).session(session);
+          }
+
+          const newCommunityAdmin = new User({
+            name: communityAdmin.fullName,
+            username: finalUsername,
+            email: communityAdmin.email.toLowerCase(),
+            phone: normalizedAdminPhone,
+            status: 'Active',
+            credentialStatus: 'NOT_INITIALIZED',
+            emailVerified: true,
+            phoneVerified: true
+          });
 
         communityAdminUser = await newCommunityAdmin.save({ session });
       }
@@ -387,6 +395,9 @@ export class OrganizationService {
         organizationId: newOrg._id.toString(),
         organizationName: newOrg.name,
         creatorUserId: creatorUserId.toString(),
+        adminEmail: communityAdminUser.email,
+        adminName: communityAdminUser.name,
+        adminPhone: communityAdminUser.phone
       });
 
       // Return clean response payload without sensitive tokens or passwords

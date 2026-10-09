@@ -144,3 +144,16 @@ export const revokeInvitation = async (invitationId) => {
   const response = await apiClient.post(`/users/invitations/${invitationId}/revoke`)
   return response.data
 }
+
+/**
+ * Downloads the Excel template for bulk inviting users.
+ * @returns {Promise<Blob>}
+ */
+export const downloadBulkInviteTemplate = async (orgId = null) => {
+  const config = { responseType: 'blob' };
+  if (orgId) {
+    config.headers = { 'x-organization-id': orgId };
+  }
+  const blob = await apiClient.get('/users/bulk-invite/template', config);
+  return blob;
+};

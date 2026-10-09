@@ -60,6 +60,23 @@ export const verifyEmailOtpLogin = async (email, code, inviteToken) => {
   return await apiClient.post('/auth/login/email-otp/verify', { email, code, inviteToken })
 }
 
+
+export const requestCurrentContactOtp = async () => {
+  return await apiClient.post('/users/request-current-contact-otp')
+}
+
+export const verifyCurrentContactOtp = async (otp) => {
+  return await apiClient.post('/users/verify-current-contact-otp', { otp })
+}
+
+export const requestEmailChangeOtp = async (newEmail) => {
+  return await apiClient.post('/users/request-email-otp', { newEmail })
+}
+
+export const requestPhoneChangeOtp = async (newPhone) => {
+  return await apiClient.post('/users/request-phone-otp', { newPhone })
+}
+
 export const logoutApi = async () => {
   return await apiClient.post('/auth/logout')
 }
@@ -101,6 +118,10 @@ export const checkAccountStatus = async (identifier) => {
 }
 
 export default {
+  requestCurrentContactOtp,
+  verifyCurrentContactOtp,
+  requestEmailChangeOtp,
+  requestPhoneChangeOtp,
   login,
   register,
   verifyRegistration,

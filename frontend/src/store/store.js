@@ -34,16 +34,6 @@ import pricingReducer from '../features/pricing/store/pricingSlice.js'
 import platformQuoteReducer from '../features/platformQuote/store/platformQuoteSlice.js'
 import platformSubscriptionReducer from '../features/platformSubscription/store/platformSubscriptionSlice.js'
 
-// Custom lightweight state logger middleware for development mode
-const stateLoggerMiddleware = (store) => (next) => (action) => {
-  console.group(`Action: ${action.type}`)
-  console.log('%cPrev State:', 'color: #9E9E9E; font-weight: bold;', store.getState())
-  console.log('%cAction:', 'color: #03A9F4; font-weight: bold;', action)
-  const result = next(action)
-  console.log('%cNext State:', 'color: #4CAF50; font-weight: bold;', store.getState())
-  console.groupEnd()
-  return result
-}
 
 import config from '../config/config.js'
 
@@ -88,9 +78,6 @@ export const store = configureStore({
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware()
-    if (isDev) {
-      middlewares.push(stateLoggerMiddleware)
-    }
     return middlewares
   },
   devTools: isDev,

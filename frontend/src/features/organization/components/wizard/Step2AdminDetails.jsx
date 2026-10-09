@@ -240,7 +240,7 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
       </h5>
       <p className="text-muted small mb-4">
         {t('organization.wizard.adminDetailsDesc', {
-          defaultValue: 'This user will be assigned as Community Admin for this organization.',
+          defaultValue: 'This user will be assigned as Community Admin for this community.',
         })}
       </p>
 

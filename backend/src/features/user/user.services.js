@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import { signToken, verifyToken } from '../../utils/jwt.utils.js';
+
 import userRepository from './user.repository.js';
 import userEvents from './user.events.js';
 import otpService, { isOtpDebugEnabled } from '../otp/otp.services.js';
@@ -340,19 +342,24 @@ export class UserService {
 
       // Step 1: Resolve existing user identity safely across Email and Phone
       const existing = await this.resolveUserIdentity(
-        { email: trimmedEmail, phone: phoneToAssign },
-        session
-      );
-      const isExisting = !!existing;
+          { email: trimmedEmail, phone: phoneToAssign },
+          session
+        );
+        const isExisting = !!existing;
+        let isAlreadyActiveMemberAssigningUnit = false;
 
       // Check if membership already exists in this organization
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       const existingMembership = existing ? await orgMembershipService.getMembership(existing._id, orgId, session) : null;
 
       if (existing) {
-        if (existingMembership && existingMembership.status === 'Active' && existing.status === 'Active' && mode === 'INVITATION') {
-          throw new HttpError(409, `User '${trimmedEmail || phoneToAssign}' is already an active member of this community.`);
-        }
+          if (existingMembership && existingMembership.status === 'Active' && existing.status === 'Active' && mode === 'INVITATION') {
+            if (villaId) {
+              isAlreadyActiveMemberAssigningUnit = true;
+            } else {
+              throw new HttpError(409, `User '${trimmedEmail || phoneToAssign}' is already an active member of this community.`);
+            }
+          }
 
         if (phoneToAssign) {
           const existingPhoneUser = await userRepository.findByPhone(phoneToAssign, session);
@@ -464,7 +471,7 @@ export class UserService {
       }
 
       // Step 4: Membership status based on onboardingMode
-      const targetMembershipStatus = mode === 'ADMIN_ANNOUNCEMENT' ? 'Active' : 'Pending';
+      const targetMembershipStatus = (mode === 'ADMIN_ANNOUNCEMENT' || isAlreadyActiveMemberAssigningUnit) ? 'Active' : 'Pending';
 
       let membership = null;
       if (existingMembership) {
@@ -496,13 +503,7 @@ export class UserService {
         await userRepository.update(user._id, { residencyType: userResidencyType }, session);
       }
 
-      // Step 5: Immediate Unit Assignment for ADMIN_ANNOUNCEMENT
-      if (mode === 'ADMIN_ANNOUNCEMENT' && rootVillaId) {
-        const villaService = (await import('../villa/villa.services.js')).default;
-        await villaService.assignExistingUser(rootVillaId, user._id, rootResidentType, orgId, false, session).catch((err) => {
-          logger.warn(`Immediate villa assignment during announcement warning: ${err.message}`);
-        });
-      }
+      
 
       // Step 6: Token Generation & Event Emissions
       const tokenService = (await import('../token/token.services.js')).default;
@@ -520,12 +521,22 @@ export class UserService {
       await outboxEvent.save({ session });
 
       if (roleName) {
-        await this.syncTechnicianForStaffUser(user._id, orgId, [roleName], session);
-      }
+          await this.syncTechnicianForStaffUser(user._id, orgId, [roleName], session);
+        }
 
-      await session.commitTransaction();
+        await session.commitTransaction();
 
-      const domainEventName = mode === 'ADMIN_ANNOUNCEMENT' ? 'USER_ANNOUNCED' : 'USER_INVITED';
+        // Step 5: Immediate Unit Assignment for ADMIN_ANNOUNCEMENT or Existing Active Member (Moved after commit to avoid deadlock)
+        if (villaId || rootVillaId) {
+          const targetAssignVillaId = villaId || rootVillaId;
+          const targetAssignResidentType = villaId ? calculatedResidentType : rootResidentType;
+          const villaService = (await import('../villa/villa.services.js')).default;
+          await villaService.assignExistingUser(targetAssignVillaId, user._id, targetAssignResidentType, orgId, false).catch((err) => {
+            logger.warn(`Immediate villa assignment during announcement warning: ${err.message}`);
+          });
+        }
+
+      const domainEventName = mode === 'ADMIN_ANNOUNCEMENT' ? 'USER_ANNOUNCED' : (isAlreadyActiveMemberAssigningUnit ? 'UNIT_ASSIGNED' : 'USER_INVITED');
       userEvents.emit(domainEventName, {
         email: user.email,
         phone: user.phone,
@@ -718,6 +729,44 @@ export class UserService {
     return updatedUser;
   }
 
+  
+  async requestCurrentContactOtp(userId) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new HttpError(404, 'User not found.');
+
+    const contact = user.email || user.phone;
+    if (!contact) {
+      throw new HttpError(400, 'No email or phone number found on your profile to verify.');
+    }
+
+    const type = 'AUTHORIZE_UPDATE';
+    const length = user.email ? 6 : 4;
+    const plainCode = await otpService.createOTP(contact, type, 15, null, null, length);
+
+    if (user.email) {
+      const authEvents = (await import('../auth/auth.events.js')).default;
+      authEvents.emit('OTP_SENT', { identifier: user.email, code: plainCode, type: 'EMAIL' });
+      return { message: 'Authorization code sent to your current email.', type: 'email', ...(process.env.NODE_ENV !== 'production' && { devCode: plainCode }) };
+    } else {
+      const authEvents = (await import('../auth/auth.events.js')).default;
+      authEvents.emit('OTP_SENT', { identifier: user.phone, code: plainCode, type: 'SMS' });
+      return { message: 'Authorization code sent to your current phone.', type: 'phone', ...(process.env.NODE_ENV !== 'production' && { devCode: plainCode }) };
+    }
+  }
+
+  async verifyCurrentContactOtp(userId, code) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new HttpError(404, 'User not found.');
+
+    const contact = user.email || user.phone;
+    if (!contact) throw new HttpError(400, 'No contact information found to verify.');
+
+    await otpService.verifyOTP(contact, code, 'AUTHORIZE_UPDATE', null, true);
+
+    const updateAuthToken = signToken({ userId: user._id.toString(), authorizedAction: 'UPDATE_CONTACT' }, '15m');
+    return { verified: true, updateAuthToken };
+  }
+
   async requestEmailOtp(userId, newEmail) {
     if (!newEmail) {
       throw new HttpError(400, 'New email address is required.');
@@ -791,7 +840,7 @@ export class UserService {
     }
 
     // 3. Generate OTP via otpService (valid for 15 minutes)
-    const plainCode = await otpService.createOTP(normalizedPhone, 'VERIFY', 15);
+    const plainCode = await otpService.createOTP(normalizedPhone, 'VERIFY', 15, null, null, 4);
 
     // 4. Emit event for logging and SMS dispatch
     const authEvents = (await import('../auth/auth.events.js')).default;
@@ -823,7 +872,26 @@ export class UserService {
     try {
       const user = await this.getUserById(id, session);
 
-      const payload = { $set: {}, $unset: {} };
+      
+        const isEmailChanged = email !== undefined && email.trim() !== '' && email.trim().toLowerCase() !== (user.email || '').toLowerCase();
+        const isPhoneChanged = phone !== undefined && phone.trim() !== '' && phone.trim() !== (user.phone || '');
+        
+        if (isEmailChanged || isPhoneChanged) {
+          const updateAuthToken = arguments[1].updateAuthToken;
+          if (!updateAuthToken) {
+            throw new HttpError(401, 'Contact update authorization token is missing. Please verify your current contact first.');
+          }
+          try {
+            const decoded = verifyToken(updateAuthToken);
+            if (decoded.userId !== id.toString() || decoded.authorizedAction !== 'UPDATE_CONTACT') {
+              throw new HttpError(401, 'Invalid or expired contact update authorization token.');
+            }
+          } catch (err) {
+            throw new HttpError(401, 'Invalid or expired contact update authorization token.');
+          }
+        }
+
+        const payload = { $set: {}, $unset: {} };
       if (name !== undefined) payload.$set.name = name;
       if (bio !== undefined) payload.$set.bio = String(bio).trim();
       if (work !== undefined) payload.$set.work = String(work).trim();

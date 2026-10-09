@@ -70,7 +70,7 @@ export const UserDirectoryTable = ({
                     <AppLoader variant="block" />
                     <span>
                       {t('superAdmin.orgDetails.loadingUsers', {
-                        defaultValue: 'Loading organization users...',
+                        defaultValue: 'Loading community users...',
                       })}
                     </span>
                   </div>

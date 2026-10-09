@@ -63,7 +63,7 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
       const resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
       
       if (resendIntegration) {
-        const apiKeyCred = resendIntegration.credentials.find((c) => c.key === key);
+        const apiKeyCred = resendIntegration.credentials.find((c) => c.key === 'apiKey');
         if (apiKeyCred) {
           const apiKey = decryptCredential(apiKeyCred);
           

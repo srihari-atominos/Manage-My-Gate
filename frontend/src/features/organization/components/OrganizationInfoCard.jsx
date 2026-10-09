@@ -35,7 +35,7 @@ export const OrganizationInfoCard = ({ organization }) => {
     <div className="section-card">
       <div className="section-card-header">
         <h4 className="section-title">
-          {t('superAdmin.orgDetails.infoTitle', { defaultValue: 'Organization Information' })}
+          {t('superAdmin.orgDetails.infoTitle', { defaultValue: 'Community Information' })}
         </h4>
         <span className={`status-pill ${getStatusClass(organization.status)}`}>
           {organization.status || 'Unknown'}

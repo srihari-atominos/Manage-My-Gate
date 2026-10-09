@@ -563,19 +563,19 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
 
     if (isPlaceholder) {
-      return async () => {
-        const pendingInvitations = await listPendingInvitationsForUser(user._id);
-        if (pendingInvitations.length === 0) {
-          throw new HttpError(403, 'You don\'t have an active invitation. Please ask your community admin to invite you.', {
-            code: 'INVITATION_REQUIRED',
-          });
-        }
-        return {
-          requiresInvitationSelection: true,
-          ticket: issueIdentityTicket(user._id, verifiedVia),
-          pendingInvitations,
-          landing: 'pending_invitations',
-        };
+      const pendingInvitations = await listPendingInvitationsForUser(user._id);
+      if (pendingInvitations.length === 0) {
+        throw new HttpError(403, 'You don\'t have an active invitation. Please ask your community admin to invite you.', {
+          code: 'INVITATION_REQUIRED',
+        });
+      }
+      
+      const firstInvite = pendingInvitations[0];
+      const { orgId } = await acceptInvitationForUser(user, { invitationId: firstInvite.id }, verifiedVia, session);
+      
+      return async (deviceInfo, method) => {
+        emitInvitationAccepted(user._id, orgId);
+        return this._buildLoginResult(user, { targetOrgId: orgId, deviceInfo, method });
       };
     }
 
@@ -2157,14 +2157,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
     // An invited-but-unaccepted placeholder only becomes usable by accepting its own invitation
     const isPlaceholder = user.status === 'Pending Verification' || user.status === 'Pending';
-    if (!inviteToken) {
-      if (isPlaceholder) {
-        throw new HttpError(403, 'Please open your invitation link to join your community.', {
-          code: 'INVITATION_REQUIRED',
-        });
-      }
-      return;
-    }
+    if (!inviteToken) { return; }
     // Never consume (and so burn) an invitation that belongs to someone else
     const tokenDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION', session);
     if (!tokenDoc || !tokenDoc.userId || String(tokenDoc.userId) !== String(user._id)) {
@@ -2378,7 +2371,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
 
     // Fallback: Generate local OTP
-    const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
+    const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, null, 4);
 
     // Emit event for SMS delivery
     sendOtpNotification({ identifier: normalizedPhone, code: plainCode, type: 'SMS' }).catch(err => logger.error('Failed to send OTP:' + err.message));
@@ -2668,7 +2661,8 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
 
     const type = cleanId.includes('@') ? 'EMAIL' : 'SMS';
-    const plainCode = await otpService.createOTP(cleanId, 'RESET');
+    const length = type === 'SMS' ? 4 : 6;
+    const plainCode = await otpService.createOTP(cleanId, 'RESET', 5, null, null, length);
     
     sendOtpNotification({ identifier: cleanId, code: plainCode, type }).catch(err => logger.error('Failed to send OTP:' + err.message));
 

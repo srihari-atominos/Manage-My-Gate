@@ -26,8 +26,10 @@ export class OtpService {
    * Generates a random 6-digit OTP code.
    * @returns {string} The plain OTP code
    */
-  generateCode() {
-    return crypto.randomInt(100000, 999999).toString();
+  generateCode(length = 6) {
+    const min = Math.pow(10, length - 1);
+    const max = Math.pow(10, length) - 1;
+    return crypto.randomInt(min, max).toString();
   }
 
   /**
@@ -111,12 +113,12 @@ export class OtpService {
    * @param {object} [session] - Mongoose session
    * @param {string} [sessionInfo] - Optional third-party session info (e.g. Firebase)
    */
-  async createOTP(identifier, type, validityMinutes = 5, session = null, sessionInfo = null) {
+  async createOTP(identifier, type, validityMinutes = 5, session = null, sessionInfo = null, length = 6) {
     const id = normalizeIdentifier(identifier);
     await this.assertCanSend(id);
     await this.recordSend(id);
 
-    let plainCode = this.generateCode();
+    let plainCode = this.generateCode(length);
     let hashedCode;
 
     if (sessionInfo) {
