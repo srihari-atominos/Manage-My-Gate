@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nahom",
     "slug": "atominos",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": [
@@ -23,10 +23,11 @@
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "20",
+      "buildNumber": "25",
       "associatedDomains": [
         "applinks:nahom.e3esg.com",
-        "applinks:app.managemygate.com"
+        "applinks:app.managemygate.com",
+        "applinks:managemygate.e3esg.com"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -45,7 +46,7 @@
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
-      "versionCode": 24,
+      "versionCode": 25,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D1015"
@@ -73,12 +74,22 @@
             },
             {
               "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
               "host": "nahom.e3esg.com",
               "pathPrefix": "/billing"
             },
             {
               "scheme": "https",
               "host": "app.managemygate.com",
+              "pathPrefix": "/billing"
+            },
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
               "pathPrefix": "/billing"
             },
             {
@@ -90,6 +101,26 @@
               "scheme": "https",
               "host": "app.managemygate.com",
               "pathPrefix": "/invite/"
+            },
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite/"
+            },
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "nahom.e3esg.com",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "app.managemygate.com",
+              "pathPrefix": "/"
             }
           ],
           "category": [
