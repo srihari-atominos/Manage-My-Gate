@@ -25,6 +25,8 @@ import { loginWithGoogle } from '../store/authSlice.js'
 import { GoogleLogin } from '@react-oauth/google'
 import { useMsal } from '@azure/msal-react'
 import { toast } from 'react-hot-toast'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 
 import nahomLogo from '../../../assets/images/nahom_full_logo.png'
 import nahomEmblem from '../../../assets/images/nahom_emblem.png'
@@ -546,37 +548,37 @@ export const LoginForm = () => {
             {/* Mobile OTP Login Input */}
             {loginMethod === 'phone' && (
               <div>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <span style={{ position: 'absolute', left: '14px', color: '#94A3B8', display: 'flex' }}>
-                    <CIcon icon={cilScreenSmartphone} size="sm" />
-                  </span>
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder="Enter your mobile number"
-                    value={phoneNumber}
-                    onChange={(e) => {
-                      setPhoneNumber(e.target.value)
-                      setValue('phone', e.target.value)
-                    }}
-                    disabled={loading || otpSent}
-                    autoFocus
-                    style={{
-                      width: '100%',
-                      paddingLeft: '42px',
-                      paddingRight: '14px',
-                      height: '46px',
-                      fontSize: '13px',
-                      backgroundColor: isDarkMode ? '#0D1B35' : '#F8FAFC',
-                      border: isDarkMode ? '1px solid #1E293B' : '1px solid #E2E8F0',
-                      borderRadius: '12px',
-                      color: isDarkMode ? '#FFF' : '#14213D',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
+                <PhoneInput
+                  country={'in'}
+                  value={phoneNumber}
+                  onChange={(phone) => {
+                    setPhoneNumber(phone)
+                    setValue('phone', phone)
+                  }}
+                  disabled={loading || otpSent}
+                  containerStyle={{
+                    width: '100%',
+                  }}
+                  inputStyle={{
+                    width: '100%',
+                    height: '46px',
+                    fontSize: '13px',
+                    backgroundColor: isDarkMode ? '#0D1B35' : '#F8FAFC',
+                    border: isDarkMode ? '1px solid #1E293B' : '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    color: isDarkMode ? '#FFF' : '#14213D',
+                    boxSizing: 'border-box',
+                  }}
+                  buttonStyle={{
+                    backgroundColor: isDarkMode ? '#0D1B35' : '#F8FAFC',
+                    border: isDarkMode ? '1px solid #1E293B' : '1px solid #E2E8F0',
+                    borderRadius: '12px 0 0 12px',
+                  }}
+                  dropdownStyle={{
+                    backgroundColor: isDarkMode ? '#1E293B' : '#FFF',
+                    color: isDarkMode ? '#FFF' : '#14213D',
+                  }}
+                />
               </div>
             )}
 
@@ -585,11 +587,11 @@ export const LoginForm = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <input
                   type="text"
-                  placeholder="Enter 4-digit OTP code"
+                  placeholder={loginMethod === 'email' ? 'Enter 6-digit OTP code' : 'Enter 4-digit OTP code'}
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
                   disabled={loading}
-                  maxLength={4}
+                  maxLength={loginMethod === 'email' ? 6 : 4}
                   style={{
                     width: '100%',
                     textAlign: 'center',

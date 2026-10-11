@@ -52,9 +52,18 @@ const parseCSV = (text) => {
     const row = {};
     headers.forEach((header, index) => {
       let key = header;
-      if (header === 'email') key = 'email';
+      if (header === 'name' || header === 'fullname' || header === 'full name') key = 'name';
+      else if (header === 'email') key = 'email';
       else if (header === 'type') key = 'type';
-      else if (header === 'villanumber' || header === 'villa number') key = 'villaNumber';
+      else if (
+        header === 'villanumber' ||
+        header === 'villa number' ||
+        header === 'unitnumber' ||
+        header === 'unit number' ||
+        header === 'unit' ||
+        header.startsWith('unit number') ||
+        header.startsWith('unit')
+      ) key = 'villaNumber';
       else if (header === 'residenttype' || header === 'resident type') key = 'residentType';
       else if (header === 'role') key = 'roleName';
 
@@ -117,7 +126,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
         email: r.email,
         residentType: r.type === 'Resident' ? r.residentType : 'None',
         roleName: r.roleName,
-        villaNumber: r.type === 'Resident' ? r.villaNumber : undefined,
+        villaNumber: r.type === 'Resident' && r.villaNumber?.trim().toLowerCase() !== 'none' ? r.villaNumber : undefined,
       }));
       const res = await onBulkInvite(payload);
       setResults(res);
@@ -223,7 +232,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                     <tr>
                       <th className="py-2 px-3 font-semibold text-black dark:text-white">Email</th>
                       <th className="py-2 px-3 font-semibold text-black dark:text-white">Type</th>
-                      <th className="py-2 px-3 font-semibold text-black dark:text-white">Villa Number</th>
+                      <th className="py-2 px-3 font-semibold text-black dark:text-white">Villa / Unit Number</th>
                       <th className="py-2 px-3 font-semibold text-black dark:text-white">Resident Type</th>
                       <th className="py-2 px-3 font-semibold text-black dark:text-white">Role</th>
                       <th className="py-2 px-3 font-semibold text-black dark:text-white text-center">Status</th>
@@ -243,7 +252,15 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                             {row.type || 'None'}
                           </Badge>
                         </td>
-                        <td className="py-2.5 px-3 text-gray-500 dark:text-gray-400">{row.villaNumber || <span className="text-gray-300 dark:text-gray-600">—</span>}</td>
+                        <td className="py-2.5 px-3 text-gray-500 dark:text-gray-400">
+                          {row.villaNumber ? (
+                            row.villaNumber
+                          ) : row.type !== 'Resident' ? (
+                            <span className="text-xs text-gray-400 dark:text-gray-500 italic">Not required (Global)</span>
+                          ) : (
+                            <span className="text-gray-300 dark:text-gray-600">—</span>
+                          )}
+                        </td>
                         <td className="py-2.5 px-3 text-gray-500 dark:text-gray-400">{row.residentType || <span className="text-gray-300 dark:text-gray-600">—</span>}</td>
                         <td className="py-2.5 px-3 text-gray-500 dark:text-gray-400 max-w-[120px] truncate">{row.roleName || <span className="text-red-500">Missing</span>}</td>
                         <td className="py-2.5 px-3 text-center">

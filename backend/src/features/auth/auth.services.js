@@ -563,19 +563,19 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
 
     if (isPlaceholder) {
-      return async () => {
-        const pendingInvitations = await listPendingInvitationsForUser(user._id);
-        if (pendingInvitations.length === 0) {
-          throw new HttpError(403, 'You don\'t have an active invitation. Please ask your community admin to invite you.', {
-            code: 'INVITATION_REQUIRED',
-          });
-        }
-        return {
-          requiresInvitationSelection: true,
-          ticket: issueIdentityTicket(user._id, verifiedVia),
-          pendingInvitations,
-          landing: 'pending_invitations',
-        };
+      const pendingInvitations = await listPendingInvitationsForUser(user._id);
+      if (pendingInvitations.length === 0) {
+        throw new HttpError(403, 'You don\'t have an active invitation. Please ask your community admin to invite you.', {
+          code: 'INVITATION_REQUIRED',
+        });
+      }
+      
+      const firstInvite = pendingInvitations[0];
+      const { orgId } = await acceptInvitationForUser(user, { invitationId: firstInvite.id }, verifiedVia, session);
+      
+      return async (deviceInfo, method) => {
+        emitInvitationAccepted(user._id, orgId);
+        return this._buildLoginResult(user, { targetOrgId: orgId, deviceInfo, method });
       };
     }
 
@@ -2075,14 +2075,10 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       let targetOrgIdFromInvite = null;
       if (inviteToken) {
         try {
-          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
-          targetOrgIdFromInvite = orgId;
-          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
-          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId, 'Active', session);
-          userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
-          userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
+          const res = await acceptInvitationForUser(user, { rawToken: inviteToken }, 'google', session);
+          targetOrgIdFromInvite = res.orgId;
         } catch (tokenError) {
-          if (user.status === 'Pending Verification') {
+          if (user.status === 'Pending Verification' || user.status === 'Pending') {
             throw tokenError;
           }
           console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
@@ -2157,14 +2153,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
     // An invited-but-unaccepted placeholder only becomes usable by accepting its own invitation
     const isPlaceholder = user.status === 'Pending Verification' || user.status === 'Pending';
-    if (!inviteToken) {
-      if (isPlaceholder) {
-        throw new HttpError(403, 'Please open your invitation link to join your community.', {
-          code: 'INVITATION_REQUIRED',
-        });
-      }
-      return;
-    }
+    if (!inviteToken) { return; }
     // Never consume (and so burn) an invitation that belongs to someone else
     const tokenDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION', session);
     if (!tokenDoc || !tokenDoc.userId || String(tokenDoc.userId) !== String(user._id)) {
@@ -2192,7 +2181,15 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
 
     const existingIdentity = await userIdentityService.getIdentityByProviderId(provider, providerId, session);
     if (existingIdentity && existingIdentity.userId?.toString() !== user._id?.toString()) {
-      throw new HttpError(409, `This ${provider} account is already linked to another user.`);
+      const User = (await import('../user/user.model.js')).default;
+      const oldUser = await User.findById(existingIdentity.userId).session(session);
+      if (!oldUser) {
+        await userIdentityService.unlinkIdentity(existingIdentity.userId, provider, session);
+        await userIdentityService.linkIdentity(user._id, identityData, session);
+        authEvents.emit('USER_LINKED_PROVIDER', { userId: user._id, provider });
+      } else {
+        throw new HttpError(409, `This ${provider} account is already linked to another user.`);
+      }
     }
     if (!existingIdentity) {
       await userIdentityService.linkIdentity(user._id, identityData, session);
@@ -2255,12 +2252,10 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       let targetOrgIdFromInvite = null;
       if (inviteToken) {
         try {
-          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
-          targetOrgIdFromInvite = orgId;
-          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
-          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId, 'Active', session);
+          const res = await acceptInvitationForUser(user, { rawToken: inviteToken }, provider, session);
+          targetOrgIdFromInvite = res.orgId;
         } catch (tokenError) {
-          if (user.status === 'Pending Verification') {
+          if (user.status === 'Pending Verification' || user.status === 'Pending') {
             throw tokenError;
           }
           console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
@@ -2376,7 +2371,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
 
     // Fallback: Generate local OTP
-    const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
+    const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, null, 4);
 
     // Emit event for SMS delivery
     sendOtpNotification({ identifier: normalizedPhone, code: plainCode, type: 'SMS' }).catch(err => logger.error('Failed to send OTP:' + err.message));
@@ -2665,7 +2660,8 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
 
     const type = cleanId.includes('@') ? 'EMAIL' : 'SMS';
-    const plainCode = await otpService.createOTP(cleanId, 'RESET');
+    const length = type === 'SMS' ? 4 : 6;
+    const plainCode = await otpService.createOTP(cleanId, 'RESET', 5, null, null, length);
     
     sendOtpNotification({ identifier: cleanId, code: plainCode, type }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
@@ -2833,7 +2829,14 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       // Never allow an SSO account already linked to one person to activate a
       // different invitation. This protects every provider, not just Apple.
       if (existingIdentity && existingIdentity.userId?.toString() !== user._id?.toString()) {
-        throw new HttpError(409, `This ${provider} account is already linked to another user.`);
+        const User = (await import('../user/user.model.js')).default;
+        const oldUser = await User.findById(existingIdentity.userId).session(session);
+        if (!oldUser) {
+          await userIdentityService.unlinkIdentity(existingIdentity.userId, provider, session);
+          await userIdentityService.linkIdentity(user._id, identityData, session);
+        } else {
+          throw new HttpError(409, `This ${provider} account is already linked to another user.`);
+        }
       }
 
       // Transition invitation token to ACCEPTED only after identity verification succeeds

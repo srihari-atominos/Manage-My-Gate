@@ -5,6 +5,8 @@ import {
   KeyboardAvoidingViewProps,
   ScrollViewProps,
   View,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { cn } from '../../lib/utils';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
@@ -60,9 +62,11 @@ export const KeyboardAvoidingShell = ({
       className={cn('flex-1 bg-background', className)}
       {...props}
     >
-      <View className={cn('flex-1', contentContainerClassName)}>
-        {children}
-      </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View className={cn('flex-1', contentContainerClassName)}>
+          {children}
+        </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };

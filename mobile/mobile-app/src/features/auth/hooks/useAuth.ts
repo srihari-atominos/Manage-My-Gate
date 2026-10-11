@@ -8,6 +8,7 @@ import {
   registerUserThunk,
   verifyRegistrationThunk,
   acceptSsoInviteThunk,
+  acceptPendingInvitationThunk,
   requestOtp,
   verifyOtpLogin,
   performLogout,
@@ -138,11 +139,19 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const handleAcceptInvitation = useCallback(
+    (inviteToken: string) => {
+      return dispatch(acceptPendingInvitationThunk(inviteToken));
+    },
+    [dispatch]
+  );
+
   return {
     ...authState,
     register: handleRegister,
     verifyRegistration: handleVerifyRegistration,
     acceptSsoInvite: handleAcceptSsoInvite,
+    acceptInvitation: handleAcceptInvitation,
     checkOrganizationName: handleCheckOrganizationName,
     loginWithGoogle: handleLoginWithGoogle,
     loginWithMicrosoft: handleLoginWithMicrosoft,

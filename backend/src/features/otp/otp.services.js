@@ -23,11 +23,13 @@ export const isOtpDebugEnabled = () =>
 
 export class OtpService {
   /**
-   * Generates a random 4-digit OTP code.
+   * Generates a random 6-digit OTP code.
    * @returns {string} The plain OTP code
    */
-  generateCode() {
-    return crypto.randomInt(1000, 9999).toString();
+  generateCode(length = 6) {
+    const min = Math.pow(10, length - 1);
+    const max = Math.pow(10, length) - 1;
+    return crypto.randomInt(min, max).toString();
   }
 
   /**
@@ -37,7 +39,6 @@ export class OtpService {
    * @param {string} identifier - Email or phone
    */
   async assertCanSend(identifier) {
-    if (process.env.NODE_ENV !== 'production') return;
     const id = normalizeIdentifier(identifier);
     const throttle = await OtpThrottle.findOne({ identifier: id }).lean();
     if (!throttle) return;
@@ -112,12 +113,12 @@ export class OtpService {
    * @param {object} [session] - Mongoose session
    * @param {string} [sessionInfo] - Optional third-party session info (e.g. Firebase)
    */
-  async createOTP(identifier, type, validityMinutes = 5, session = null, sessionInfo = null) {
+  async createOTP(identifier, type, validityMinutes = 5, session = null, sessionInfo = null, length = 6) {
     const id = normalizeIdentifier(identifier);
     await this.assertCanSend(id);
     await this.recordSend(id);
 
-    let plainCode = this.generateCode();
+    let plainCode = this.generateCode(length);
     let hashedCode;
 
     if (sessionInfo) {
@@ -182,10 +183,10 @@ export class OtpService {
    * @param {object} [session] - Mongoose session
    * @param {boolean} [deleteOnSuccess=true] - Consume the code on success (single use)
    * @returns {Promise<true|{sessionInfo: string}>} For third-party codes, the caller must
+   *   verify `sessionInfo` with the provider and call recordFailedAttempt on failure.
+   */
   async verifyOTP(identifier, code, type, session = null, deleteOnSuccess = true) {
     const id = normalizeIdentifier(identifier);
-    const cleanCode = String(code || '').trim();
-
     const otpDoc = await Otp.findOne({ identifier: id, type })
       .sort({ createdAt: -1 })
       .session(session);

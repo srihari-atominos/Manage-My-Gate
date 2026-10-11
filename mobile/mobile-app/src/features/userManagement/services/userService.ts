@@ -31,6 +31,7 @@ export interface FetchUsersParams {
 
 export interface InviteUserData {
   email: string;
+  name?: string;
   phone?: string;
   villaId?: string | null;
   residentType?: string;
@@ -191,3 +192,16 @@ export default {
   revokeInvitation,
 };
 
+
+/**
+ * Downloads the Excel template for bulk inviting users.
+ */
+export const downloadBulkInviteTemplate = async (orgId?: string) => {
+  const config: any = { responseType: 'blob' };
+  if (orgId) {
+    config.params = { orgId };
+    config.headers = { 'x-organization-id': orgId };
+  }
+  const response: any = await apiClient.get('/users/bulk-invite/template', config);
+  return response.data || response;
+};

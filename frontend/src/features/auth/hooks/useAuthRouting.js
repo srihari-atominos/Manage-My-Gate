@@ -1,5 +1,6 @@
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { acceptPendingInvitation } from '../store/authSlice.js'
 
 /**
  * useAuthRouting Custom Hook
@@ -11,6 +12,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 export const useAuthRouting = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useDispatch()
 
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
   const token = useSelector((state) => state.auth.token)
@@ -50,17 +52,22 @@ export const useAuthRouting = () => {
 
     // Clear stored temporary auth intent once evaluated
     sessionStorage.removeItem('auth_intent')
-    // Invitation activation is completed server-side during OTP/SSO verification.    // Check if the user already has an active organization
-    const hasOrg = !!(
-      user &&
-      (user.orgId ||
-        user.activeOrgId ||
-        user.organizationId ||
-        authWorkspaces.length > 0 ||
-        availableWorkspaces.length > 0)
-    )
 
-    // 2. Existing Organization Users / Fallback:
+    // If an invitation token is present and not explicitly skipped, accept it and refresh context
+    if (inviteToken && !options.skipInviteToken) {
+      dispatch(acceptPendingInvitation(inviteToken))
+        .unwrap()
+        .then(() => {
+          navigate('/dashboard', { replace: true })
+        })
+        .catch((err) => {
+          console.warn('[useAuthRouting] Could not auto-accept invite token:', err)
+          navigate('/dashboard', { replace: true })
+        })
+      return
+    }
+
+    // Existing Organization Users / Fallback:
     navigate('/dashboard')
   }
 

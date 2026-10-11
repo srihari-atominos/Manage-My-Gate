@@ -19,6 +19,14 @@ export const acceptSsoInvite = async (payload: {
   return await apiClient.post('/auth/accept-invite/sso', payload);
 };
 
+export const acceptInvitation = async (inviteToken: string) => {
+  return await apiClient.post('/auth/invitations/accept', { inviteToken });
+};
+
+export const getPendingInvitations = async () => {
+  return await apiClient.get('/auth/invitations/pending');
+};
+
 export const rejectInvite = async ({ token, email }: { token: string; email?: string }) => {
   return await apiClient.post('/auth/reject-invite', { token, email });
 };
@@ -34,13 +42,17 @@ export const verifyRegistration = async (email: string, code: string) => {
   return await apiClient.post('/auth/register/verify', { email, code });
 };
 
-export const loginWithGoogle = async (payload: any) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
+export const loginWithGoogle = async (payload: any, inviteToken?: string) => {
+  const body = typeof payload === 'object' && payload !== null
+    ? { ...payload, ...(inviteToken ? { inviteToken } : {}) }
+    : { token: payload, ...(inviteToken ? { inviteToken } : {}) };
   return await apiClient.post('/auth/google', body);
 };
 
-export const loginWithMicrosoft = async (payload: any) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
+export const loginWithMicrosoft = async (payload: any, inviteToken?: string) => {
+  const body = typeof payload === 'object' && payload !== null
+    ? { ...payload, ...(inviteToken ? { inviteToken } : {}) }
+    : { token: payload, ...(inviteToken ? { inviteToken } : {}) };
   return await apiClient.post('/auth/microsoft', body);
 };
 
@@ -190,6 +202,19 @@ export const updateProfile = async (data: any) => {
   return await apiClient.put('/users/profile', payload);
 };
 
+
+export const requestCurrentContactOtp = async () => {
+  return await apiClient.post('/users/request-current-contact-otp');
+};
+
+export const verifyCurrentContactOtp = async (otp: string) => {
+  return await apiClient.post('/users/verify-current-contact-otp', { otp });
+};
+
+export const requestPhoneChangeOtp = async (newPhone: string) => {
+  return await apiClient.post('/users/request-phone-otp', { newPhone });
+};
+
 export const requestEmailChangeOtp = async (newEmail: string) => {
   return await apiClient.post('/users/request-email-otp', { newEmail });
 };
@@ -220,6 +245,8 @@ export default {
   register,
   verifyRegistration,
   acceptSsoInvite,
+  acceptInvitation,
+  getPendingInvitations,
   rejectInvite,
   validateInvite,
   loginWithGoogle,
@@ -236,6 +263,9 @@ export default {
   deleteAccount,
   updateProfile,
   requestEmailChangeOtp,
+  requestCurrentContactOtp,
+  verifyCurrentContactOtp,
+  requestPhoneChangeOtp,
   fetchSessions,
   revokeSession,
   revokeAllSessions,

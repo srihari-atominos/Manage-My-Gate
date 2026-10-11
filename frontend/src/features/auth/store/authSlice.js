@@ -165,6 +165,46 @@ export const rejectInvitation = createAsyncThunk(
   },
 )
 
+export const acceptPendingInvitation = createAsyncThunk(
+  'auth/acceptPendingInvitation',
+  async (payload, { dispatch, rejectWithValue }) => {
+    try {
+      const inviteToken = typeof payload === 'string' ? payload : payload?.inviteToken || payload?.token
+      const response = await authService.acceptInvitation(inviteToken)
+
+      const responseData = response?.data || response
+      const token = responseData?.token
+      const user = responseData?.user
+      const availableWorkspaces = responseData?.availableWorkspaces || []
+
+      if (token && user) {
+        dispatch(updateTokenAndUser({ token, user }))
+      }
+
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId || user.activeOrgId,
+            activeVillaId: user.villaId || null,
+            activeRole: user.role,
+            activeAssignment: user.activeAssignment || null,
+            availableAssignments: user.availableAssignments || [],
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          }),
+        )
+      }
+
+      return responseData
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to accept invitation',
+      )
+    }
+  },
+)
+
 export const switchWorkspaceContext = createAsyncThunk(
   'auth/switchWorkspaceContext',
   async (arg, { dispatch, rejectWithValue }) => {
@@ -592,8 +632,35 @@ const authSlice = createSlice({
         state.loading = false
         state.error = action.payload || 'Profile update failed'
       })
-      // Accept Invitation
-      // Accept SSO Invitation
+      // Accept Pending Invitation
+      .addCase(acceptPendingInvitation.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(acceptPendingInvitation.fulfilled, (state, action) => {
+        state.loading = false
+        state.isAuthenticated = true
+        const resData = action.payload?.data || action.payload
+        state.token = resData?.token || state.token
+        state.user = resData?.user || state.user
+        state.successMsg = resData?.message || 'Invitation accepted successfully!'
+
+        if (resData?.token) {
+          localStorage.setItem('token', resData.token)
+        }
+        if (resData?.user) {
+          localStorage.setItem('user', JSON.stringify(resData.user))
+        }
+        const availableWs = resData?.availableWorkspaces || resData?.user?.availableWorkspaces
+        if (availableWs) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(availableWs))
+        }
+      })
+      .addCase(acceptPendingInvitation.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Failed to accept invitation'
+      })
       // Switch Workspace Context
       .addCase(switchWorkspaceContext.pending, (state) => {
         state.loading = true

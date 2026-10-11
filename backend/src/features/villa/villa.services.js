@@ -370,12 +370,20 @@ export class VillaService {
     return await villaRepository.update(id, orgId, { status }, session);
   }
 
-  async getVillaByNumber(unitNumber, orgId, session = null) {
+  async getVillaByNumber(unitNumber, orgId, blockOrBuilding = null, session = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info(`getVillaByNumber request received`, { unitNumber, orgId, correlationId });
+    logger.info(`getVillaByNumber request received`, { unitNumber, orgId, blockOrBuilding, correlationId });
 
     if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
-    return await villaRepository.findByUnitNumber(unitNumber, orgId, session);
+
+    let block = blockOrBuilding;
+    let actualSession = session;
+    if (blockOrBuilding && typeof blockOrBuilding === 'object' && ('id' in blockOrBuilding || 'client' in blockOrBuilding)) {
+      actualSession = blockOrBuilding;
+      block = null;
+    }
+
+    return await villaRepository.findByUnitNumber(unitNumber, orgId, block, actualSession);
   }
 
   async bulkUploadVillasAndResidents(villasArray, orgId, invitationSource = 'WEB', { assertRoleAssignable = null } = {}) {
@@ -450,10 +458,7 @@ export class VillaService {
             else if (normalizedResidentType.toLowerCase().includes('family')) normalizedResidentType = 'Family Member';
             else normalizedResidentType = 'Resident Tenant';
 
-            let finalRoleName = roleName ? roleName.trim() : null;
-            if (!finalRoleName) {
-              finalRoleName = normalizedResidentType;
-            }
+            let finalRoleName = roleName ? roleName.trim() : normalizedResidentType;
 
             if (!phone) {
               throw new HttpError(400, 'Phone number is required to invite this resident.');

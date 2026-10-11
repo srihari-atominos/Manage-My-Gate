@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as XLSX from 'xlsx';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/common/Button';
@@ -8,7 +10,20 @@ import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Download, UploadCloud, CheckCircle, FileText, Trash2, User, Sparkles } from 'lucide-react-native';
 import { VillaPayload } from '../services/villaService';
-import { downloadCSVFile } from '@/src/utils/downloadHelper';
+import { downloadCSVFile, downloadExcelFile } from '@/src/utils/downloadHelper';
+import { Platform, Alert } from 'react-native';
+
+let LegacyFileSystem: any = null;
+try {
+  LegacyFileSystem = require('expo-file-system/legacy');
+} catch (e) {
+  try {
+    LegacyFileSystem = require('expo-file-system');
+  } catch (err) {
+    LegacyFileSystem = null;
+  }
+}
+
 
 interface BulkUploadVillasModalProps {
   visible: boolean;
@@ -18,12 +33,7 @@ interface BulkUploadVillasModalProps {
   loading?: boolean;
 }
 
-export const DEFAULT_VILLA_CSV_TEMPLATE = `Unit Number,Block/Building,Floor,Unit Type,Floor Area (Sq Ft),Occupancy Status,Resident Name,Resident Email,Resident Type,Phone Number
-101,Block A,1,Apartment,1200,Vacant,,,,
-102,Block A,1,2 BHK,1350,Occupied,John Doe,john@example.com,Resident Owner,9876543210
-103,Block A,2,3 BHK,1600,Occupied,Jane Smith,jane@example.com,Tenant,9876543211
-201,Block B,1,Villa,2400,Under Maintenance,,,,
-202,Block B,2,Penthouse,3200,Occupied,Alice Johnson,alice@example.com,Family Member,9876543212`;
+
 
 /**
  * Dynamic CSV line parser handling quotes and flexible headers
@@ -110,11 +120,7 @@ export const parseVillaCSV = (fileContent: string): VillaPayload[] => {
         } else if (hdr.includes('residentemail') || hdr.includes('email')) {
           rowObj.email = val;
         } else if (hdr.includes('residenttype')) {
-          const lowerVal = val.toLowerCase();
-          if (lowerVal.includes('owner')) rowObj.residentType = 'Resident Owner';
-          else if (lowerVal.includes('tenant')) rowObj.residentType = 'Tenant';
-          else if (lowerVal.includes('family')) rowObj.residentType = 'Family Member';
-          else rowObj.residentType = val;
+          rowObj.residentType = val;
         } else if (hdr.includes('phone') || hdr.includes('mobile')) {
           rowObj.phone = val;
         }
@@ -130,7 +136,7 @@ export const parseVillaCSV = (fileContent: string): VillaPayload[] => {
       rowObj.status = cols[5] ? (cols[5].toLowerCase().includes('occupied') ? 'Occupied' : cols[5].toLowerCase().includes('maintenance') ? 'Under Maintenance' : 'Vacant') : 'Vacant';
       rowObj.name = cols[6] || undefined;
       rowObj.email = cols[7] || undefined;
-      rowObj.residentType = cols[8] ? (cols[8].toLowerCase().includes('owner') ? 'Resident Owner' : cols[8].toLowerCase().includes('family') ? 'Family Member' : 'Tenant') : undefined;
+      rowObj.residentType = cols[8] || undefined;
       rowObj.phone = cols[9] || undefined;
     }
 
@@ -173,16 +179,33 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
 
         if (asset.uri) {
           try {
-            const fileContent = await fetch(asset.uri).then((res) => res.text());
+            let fileContent = '';
+            if (asset.name.toLowerCase().endsWith('.xlsx')) {
+                if (Platform.OS === 'web' && (asset as any).file) {
+                  const buffer = await (asset as any).file.arrayBuffer();
+                  const workbook = XLSX.read(buffer, { type: 'array' });
+                  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                  fileContent = XLSX.utils.sheet_to_csv(sheet);
+                } else {
+                  const fsModule = LegacyFileSystem || FileSystem;
+                  const b64 = await fsModule.readAsStringAsync(asset.uri, { encoding: fsModule.EncodingType?.Base64 || 'base64' });
+                  const workbook = XLSX.read(b64, { type: 'base64' });
+                  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                  fileContent = XLSX.utils.sheet_to_csv(sheet);
+                }
+              } else {
+              fileContent = await fetch(asset.uri).then((res) => res.text());
+            }
+            
             const parsed = parseVillaCSV(fileContent);
             if (parsed.length === 0) {
-              setErrorMsg('No valid unit rows could be parsed. Please check your CSV format.');
+              setErrorMsg('No valid unit rows could be parsed. Please check your format.');
             } else {
               setParsedData(parsed);
             }
-          } catch (e: any) {
-            console.log('[BulkUploadModal] Text parse error:', e);
-            setErrorMsg('Failed to parse file content. Please upload a valid CSV file.');
+          } catch (err) {
+            console.error('File read error:', err);
+            setErrorMsg('Failed to read the selected file. Ensure it is a valid format.');
           }
         }
       }
@@ -199,17 +222,16 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
 
   const handleDownloadTemplateClick = async () => {
     try {
-      let content: any = DEFAULT_VILLA_CSV_TEMPLATE;
       if (onDownloadTemplate) {
         const res = await onDownloadTemplate();
-        if (res && res.data) {
-          content = res.data;
-        }
+        const blob = res.data || res;
+        await downloadExcelFile(blob, 'bulk_upload_units_template.xlsx');
+      } else {
+        Alert.alert('Download Error', 'Template download function not provided.');
       }
-      await downloadCSVFile(content, 'bulk_upload_units_template.csv');
     } catch (e) {
-      console.log('[BulkUploadModal] Falling back to default CSV template content');
-      await downloadCSVFile(DEFAULT_VILLA_CSV_TEMPLATE, 'bulk_upload_units_template.csv');
+      console.log('[BulkUploadModal] Template download failed', e);
+      Alert.alert('Download Error', 'Could not download the Excel template.');
     }
   };
 
@@ -252,10 +274,10 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
           onPress={handleDownloadTemplateClick}
           className="flex-row items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary/10 border border-primary/20 active:opacity-80"
           accessibilityRole="button"
-          accessibilityLabel="Download CSV Template"
+          accessibilityLabel="Download Excel Template"
         >
           <Icon as={Download} size={16} className="text-primary" />
-          <Text className="text-xs font-bold text-primary">Download Sample CSV Template</Text>
+          <Text className="text-xs font-bold text-primary">Download Excel Template</Text>
         </TouchableOpacity>
 
         {/* CSV Format Guide when no file selected */}
@@ -263,7 +285,7 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
           <View className="bg-card border border-border rounded-2xl p-3.5 space-y-2.5">
             <View className="flex-row items-center gap-2">
               <Icon as={FileText} size={16} className="text-primary" />
-              <Text className="text-xs font-bold text-foreground text-start">Sample CSV Format & Structure</Text>
+              <Text className="text-xs font-bold text-foreground text-start">Template Format & Structure</Text>
             </View>
 
             {/* Easy-to-understand Example Data Preview Cards */}
@@ -315,10 +337,10 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
               <Icon as={UploadCloud} size={22} className="text-primary" />
             </View>
             <Text className="text-xs font-bold text-foreground text-center">
-              Tap to select CSV spreadsheet
+              Tap to select Excel/CSV spreadsheet
             </Text>
             <Text variant="muted" className="text-[11px] text-center">
-              Supports .csv formatted spreadsheets
+              Supports .xlsx or .csv formatted spreadsheets
             </Text>
           </TouchableOpacity>
         ) : (

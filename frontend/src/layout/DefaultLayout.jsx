@@ -119,6 +119,7 @@ const DefaultLayout = () => {
         <div className="body flex-grow-1 position-relative">
           {!isPlatformUser && accessGranted === false && (
             <div
+              className="subscription-access-overlay"
               style={{
                 position: 'absolute',
                 top: 0,
@@ -135,6 +136,7 @@ const DefaultLayout = () => {
               }}
             >
               <div
+                className="subscription-access-card"
                 style={{
                   backgroundColor: '#ffffff',
                   borderRadius: '16px',
@@ -194,6 +196,7 @@ const DefaultLayout = () => {
                   }}
                 >
                   <div
+                    className="subscription-access-row"
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -206,6 +209,7 @@ const DefaultLayout = () => {
                     </strong>
                   </div>
                   <div
+                    className="subscription-access-row"
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -226,6 +230,7 @@ const DefaultLayout = () => {
                 <button
                   onClick={handleRenewNow}
                   disabled={isRenewing}
+                  className="subscription-access-renew-button"
                   style={{
                     width: '100%',
                     padding: '14px 24px',

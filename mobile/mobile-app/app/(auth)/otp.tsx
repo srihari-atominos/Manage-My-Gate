@@ -22,7 +22,7 @@ const otpSchema = yup.object().shape({
   code: yup
     .string()
     .required('Verification code is required')
-    .matches(/^\d{4,8}$/, 'Code must be between 4 and 8 digits'),
+    .matches(/^(\d{4}|\d{6})$/, 'Code must be exactly 4 or 6 digits'),
 });
 
 interface OtpFormValues {
@@ -69,7 +69,8 @@ export default function OtpScreen() {
 
   const onSubmit = async (data: OtpFormValues) => {
     if (!identifier) return;
-    await verifyOtp(identifier, data.code, isEmail, inviteToken);
+    const tokenToUse = inviteToken || getPendingInviteToken() || undefined;
+    await verifyOtp(identifier, data.code, isEmail, tokenToUse);
   };
 
   const handleResend = async () => {
@@ -136,7 +137,7 @@ export default function OtpScreen() {
                       keyboardType="number-pad"
                       autoComplete="one-time-code"
                       textContentType="oneTimeCode"
-                      maxLength={8}
+                      maxLength={isEmail ? 6 : 4}
                       className="bg-white/75 dark:bg-[#292524]/75 text-[#1C1917] dark:text-white border border-white/80 dark:border-white/20 rounded-xl px-4 py-3.5 text-center text-lg font-bold tracking-[6px] shadow-2xs"
                     />
                   )}

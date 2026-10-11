@@ -42,7 +42,7 @@ export const tenantContext = (optionsOrReq, res, next) => {
         }
 
         // Logic Branch B (Tenant Context):
-        const orgIdHeader = req.headers['x-organization-id'] || req.user?.orgId;
+        const orgIdHeader = req.headers['x-organization-id'] || req.query?.orgId || req.user?.orgId;
         if (!orgIdHeader) {
           throw new HttpError(400, 'Workspace context is required.');
         }

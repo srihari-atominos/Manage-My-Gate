@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import authService from '../services/authService';
 import storage from '../../../utils/storage';
 import { deviceTokenService } from '../../notification/services/deviceTokenService';
+import { getPendingInviteToken, clearPendingInviteToken } from '../utils/inviteContext';
 
 export interface User {
   id: string;
@@ -323,9 +324,10 @@ export const verifyRegistrationThunk = createAsyncThunk(
 
 export const loginWithGoogleThunk = createAsyncThunk(
   'auth/loginWithGoogle',
-  async (tokenPayload: string | { token: string }, { rejectWithValue }) => {
+  async (tokenPayload: string | { token: string; inviteToken?: string }, { rejectWithValue }) => {
     try {
-      const response = await authService.loginWithGoogle(tokenPayload);
+      const activeInvite = (typeof tokenPayload === 'object' && tokenPayload?.inviteToken) ? tokenPayload.inviteToken : (getPendingInviteToken() || undefined);
+      const response = await authService.loginWithGoogle(tokenPayload, activeInvite);
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       const innerData = body?.data || body;
 
@@ -333,6 +335,7 @@ export const loginWithGoogleThunk = createAsyncThunk(
         return { isNewUser: true, googleData: innerData.googleData || innerData };
       }
 
+      clearPendingInviteToken();
       return ((await persistLoginResult(innerData)) || innerData) as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Google Login failed');
@@ -342,9 +345,10 @@ export const loginWithGoogleThunk = createAsyncThunk(
 
 export const loginWithMicrosoftThunk = createAsyncThunk(
   'auth/loginWithMicrosoft',
-  async (tokenPayload: string | { token: string }, { rejectWithValue }) => {
+  async (tokenPayload: string | { token: string; inviteToken?: string }, { rejectWithValue }) => {
     try {
-      const response = await authService.loginWithMicrosoft(tokenPayload);
+      const activeInvite = (typeof tokenPayload === 'object' && tokenPayload?.inviteToken) ? tokenPayload.inviteToken : (getPendingInviteToken() || undefined);
+      const response = await authService.loginWithMicrosoft(tokenPayload, activeInvite);
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       const innerData = body?.data || body;
 
@@ -352,6 +356,7 @@ export const loginWithMicrosoftThunk = createAsyncThunk(
         return { isNewUser: true, googleData: innerData.microsoftData || innerData.googleData || innerData };
       }
 
+      clearPendingInviteToken();
       return ((await persistLoginResult(innerData)) || innerData) as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Microsoft Login failed');
@@ -426,6 +431,37 @@ export const rejectInviteThunk = createAsyncThunk(
   }
 );
 
+/** Accepts an invitation for an authenticated user and switches to the newly joined community. */
+export const acceptPendingInvitationThunk = createAsyncThunk(
+  'auth/acceptPendingInvitation',
+  async (
+    payload: string | { inviteToken?: string; token?: string },
+    { dispatch, rejectWithValue }
+  ) => {
+    try {
+      const inviteToken = typeof payload === 'string' ? payload : (payload?.inviteToken || payload?.token || '');
+      const response = await authService.acceptInvitation(inviteToken);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+      const persisted = await persistLoginResult(innerData);
+      if (innerData?.user) {
+        const { fetchQuickActionsThunk, resetQuickActionsForContext } = require('../../dashboard/dashboardSlice');
+        dispatch(resetQuickActionsForContext());
+        dispatch(
+          fetchQuickActionsThunk({
+            orgId: innerData.user.activeOrgId || innerData.user.orgId,
+            villaId: innerData.user.activeVillaId || innerData.user.villaId,
+            villaNumber: innerData.user.activeVillaNumber || innerData.user.villaNumber,
+          })
+        );
+      }
+      return (persisted || innerData) as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation');
+    }
+  }
+);
+
 
 
 /** OTP / invitation error details from the API (code, attempts left, retry time). */
@@ -487,9 +523,10 @@ export const verifyOtpLogin = createAsyncThunk(
   'auth/verifyOtpLogin',
   async ({ identifier, code, isEmail, inviteToken }: { identifier: string; code: string; isEmail: boolean; inviteToken?: string }, { rejectWithValue }) => {
     try {
+      const activeInvite = inviteToken || getPendingInviteToken() || undefined;
       const response = isEmail
-        ? await authService.verifyEmailOtpLogin(identifier, code, inviteToken)
-        : await authService.verifyPhoneLogin(identifier, code, inviteToken);
+        ? await authService.verifyEmailOtpLogin(identifier, code, activeInvite)
+        : await authService.verifyPhoneLogin(identifier, code, activeInvite);
 
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       if (body && body.success === false) {
@@ -506,6 +543,7 @@ export const verifyOtpLogin = createAsyncThunk(
       if (!persisted) {
         return rejectWithValue({ message: body?.message || 'Invalid OTP response from server' } as AuthErrorDetail);
       }
+      clearPendingInviteToken();
       return persisted as any;
     } catch (error: any) {
       return rejectWithValue(toAuthErrorDetail(error, 'OTP verification failed'));

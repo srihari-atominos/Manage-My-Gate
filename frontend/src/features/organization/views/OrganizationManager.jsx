@@ -225,19 +225,46 @@ const Icon = ({ icon, width = 16, className = '' }) => {
           <polyline points="9 18 15 12 9 6" />
         </svg>
       )
+    case 'solar:lock-linear':
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      )
+    case 'solar:unlock-linear':
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+        </svg>
+      )
     default:
       return null
   }
 }
 
-const COMMUNITY_IMAGES = [
-  'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?q=80&w=200&auto=format&fit=crop',
-]
+
 
 /**
  * Super Admin View container listing system organizations with Block/Unblock toggle triggers.
@@ -477,20 +504,23 @@ export const OrganizationManager = () => {
                       </tr>
                     ) : (
                       filteredOrganizations.map((org, idx) => {
-                        const thumb = COMMUNITY_IMAGES[idx % COMMUNITY_IMAGES.length]
                         const dateStr = org.createdAt
                           ? new Date(org.createdAt).toLocaleDateString('en-GB', {
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric',
                             })
-                          : '12 Sep 2026'
+                          : 'N/A'
                         const timeStr = org.createdAt
                           ? new Date(org.createdAt).toLocaleTimeString('en-US', {
                               hour: '2-digit',
                               minute: '2-digit',
                             })
-                          : '10:30 AM'
+                          : ''
+                          const locationParts = [];
+                          if (org.city) locationParts.push(org.city);
+                          if (org.state) locationParts.push(org.state);
+                          const locationString = locationParts.join(', ') || 'Location not specified';
 
                         return (
                           <tr key={org._id}>
@@ -498,11 +528,29 @@ export const OrganizationManager = () => {
 
                             <td>
                               <div className="org-manager-table__community">
-                                <img
-                                  src={thumb}
-                                  alt={org.name}
-                                  className="org-manager-table__thumbnail"
-                                />
+                                {org.logo ? (
+                                  <img
+                                    src={org.logo}
+                                    alt={org.name}
+                                    className="org-manager-table__thumbnail"
+                                  />
+                                ) : (
+                                  <div
+                                    className="org-manager-table__thumbnail"
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      backgroundColor: '#FFF8EF',
+                                      color: '#F45A0A',
+                                      fontSize: '1.2rem',
+                                      fontWeight: '700',
+                                      border: '1px solid #EFE6DC'
+                                    }}
+                                  >
+                                    {org.name ? org.name.charAt(0).toUpperCase() : 'C'}
+                                  </div>
+                                )}
                                 <div>
                                   <h4
                                     className="org-manager-table__community-name"
@@ -512,7 +560,7 @@ export const OrganizationManager = () => {
                                   </h4>
                                   <span className="org-manager-table__location">
                                     <Icon icon="solar:map-point-linear" width="12" />
-                                    Chennai, Tamil Nadu
+                                    {locationString}
                                   </span>
                                 </div>
                               </div>
@@ -520,13 +568,13 @@ export const OrganizationManager = () => {
 
                             <td>
                               <span className="org-manager-table__count">
-                                {org.villaCount ?? 1} Villas
+                                {org.villaCount ?? 0} Villas
                               </span>
                             </td>
 
                             <td>
                               <span className="org-manager-table__count">
-                                {org.userCount ?? 2} Users
+                                {org.userCount ?? 0} Users
                               </span>
                             </td>
 
@@ -571,16 +619,7 @@ export const OrganizationManager = () => {
                                   title={org.status === 'Active' ? 'Block' : 'Unblock'}
                                   className="org-manager-table__action"
                                 >
-                                  <Icon icon="solar:pen-linear" width="16" />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => toggleStatus(org._id, org.status)}
-                                  title="More Options"
-                                  className="org-manager-table__action"
-                                >
-                                  <Icon icon="solar:menu-dots-bold" width="16" />
+                                  <Icon icon={org.status === 'Active' ? 'solar:lock-linear' : 'solar:unlock-linear'} width="16" />
                                 </button>
                               </div>
                             </td>

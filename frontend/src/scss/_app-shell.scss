@@ -719,3 +719,115 @@
     transition: none;
   }
 }
+
+.subscription-access-overlay {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.subscription-access-card {
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+}
+
+@media (max-width: 575.98px) {
+  .subscription-access-overlay {
+    align-items: flex-start !important;
+    padding: var(--nahom-space-3) !important;
+  }
+
+  .subscription-access-card {
+    padding: var(--nahom-space-5) !important;
+  }
+
+  .subscription-access-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--nahom-space-1);
+  }
+}
+// Global responsive contract for CoreUI and the feature-specific views.
+.wrapper,
+.body,
+.container,
+.container-fluid,
+.app-page-container { min-width: 0; }
+
+.body { overflow-x: clip; }
+
+.wrapper :is(img, svg, canvas, video) { max-width: 100%; }
+.wrapper :is(p, span, small, td, th, .text-break-responsive) { overflow-wrap: anywhere; }
+
+.data-table__scroll,
+.wrapper .table-responsive {
+  width: 100%;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.wrapper .table-responsive > .table,
+.wrapper .data-table__scroll > .table { min-width: max-content; }
+
+.responsive-toolbar,
+.responsive-actions,
+.wrapper :is(.filters, .filter-bar, .table-toolbar, .action-bar) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nahom-space-3);
+  min-width: 0;
+}
+
+.responsive-actions { gap: var(--nahom-space-2); }
+
+.wrapper :is(.modal, .offcanvas) { --cui-modal-margin: var(--nahom-space-3); }
+.wrapper .modal-dialog { max-width: min(calc(100vw - 1.5rem), var(--cui-modal-width, 31.25rem)); }
+
+.modal-overlay,
+.complaint-modal-overlay,
+.billing-modal-overlay {
+  padding: max(var(--nahom-space-3), env(safe-area-inset-top)) max(var(--nahom-space-3), env(safe-area-inset-right)) max(var(--nahom-space-3), env(safe-area-inset-bottom)) max(var(--nahom-space-3), env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-box,
+.billing-modal-box {
+  width: min(100%, 56rem) !important;
+  max-height: calc(100dvh - 1.5rem);
+  margin: auto;
+  overflow: auto;
+}
+
+.modal-box :is(.modal-footer, .form-actions, .dialog-actions),
+.billing-modal-box :is(.modal-footer, .form-actions, .dialog-actions) {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding-block: var(--nahom-space-3);
+  background: var(--nahom-surface);
+}
+
+@media (max-width: 991.98px) {
+  .wrapper .container-lg,
+  .wrapper .container-xl,
+  .wrapper .container-xxl { max-width: none; }
+}
+
+@media (max-width: 575.98px) {
+  .wrapper .container,
+  .wrapper .container-fluid { padding-inline: var(--nahom-space-3) !important; }
+  .app-page-header__copy h1,
+  .wrapper h1 { font-size: clamp(1.5rem, 7vw, var(--nahom-font-2xl)); }
+  .app-page-header__actions,
+  .app-page-header__actions > div,
+  .responsive-actions { width: 100%; }
+  .app-page-header__actions > .btn,
+  .responsive-actions > .btn { flex: 1 1 auto; }
+  .wrapper .card-header,
+  .wrapper .modal-header { padding: var(--nahom-space-3) var(--nahom-space-4); }
+  .wrapper :is(.form-row, .form-row-grid, .row.g-3, .row.g-4) { grid-template-columns: minmax(0, 1fr) !important; }
+  .wrapper :is(.pagination, .data-table__footer) { flex-wrap: wrap; }
+  .app-workspace-switcher__menu { width: min(calc(100vw - 1.5rem), 20rem); min-width: 0; }
+}

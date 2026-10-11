@@ -124,13 +124,25 @@ const handleAssignmentNotification = async ({ orgId, complaint, previousAssignee
       const assigneeUser = await User.findById(techIdStr);
       if (assigneeUser && assigneeUser.email) {
         const { sendEmail } = await import('../../utils/email.utils.js');
+        const clientUrl = process.env.CLIENT_URL || process.env.APP_CLIENT_URL || 'https://managemygate.e3esg.com';
         const emailBody = `
-        <div style="font-family: sans-serif; padding: 20px; color: #333;">
-          <h2>Admin Allocated Work</h2>
+        <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 500px; margin: 0 auto; border: 1px solid #EFE6DC; border-radius: 18px;">
+          <div style="text-align: center; margin-bottom: 25px;">
+            <img src="${clientUrl}/public/logo.png" alt="Nahom Logo" style="max-height: 45px; width: auto;" onerror="this.style.display='none'" />
+          </div>
+          <h2 style="color: #F45A0A; margin-top: 0;">Admin Allocated Work</h2>
           <p>You have been assigned to a new complaint/task.</p>
-          <p><strong>Ticket #:</strong> ${complaint.complaintNumber}</p>
-          <p><strong>Title:</strong> ${complaint.title}</p>
+          <div style="background-color: #FFF0E5; border-radius: 12px; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0 0 8px 0;"><strong>Ticket #:</strong> ${complaint.complaintNumber}</p>
+            <p style="margin: 0;"><strong>Title:</strong> ${complaint.title}</p>
+          </div>
           <p>Please log in to the application to view details in the Assignee tab.</p>
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #EFE6DC;">
+            <p style="margin: 0; font-size: 14px; color: #6F6A64;">
+              Thank you,<br/>
+              <strong style="color: #F45A0A;">Nahom Team</strong>
+            </p>
+          </div>
         </div>`;
         await sendEmail(orgId, assigneeUser.email, 'New Task Assignment', emailBody);
       }

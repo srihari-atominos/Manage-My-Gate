@@ -2,7 +2,6 @@ const legacyAuthRemoved = () => Promise.reject(new Error('This legacy authentica
 export const login = legacyAuthRemoved;
 export const initiateInvitationOtp = legacyAuthRemoved;
 export const verifyInvitationOtp = legacyAuthRemoved;
-export const acceptInvite = legacyAuthRemoved;
 export const forgotPassword = legacyAuthRemoved;
 export const verifyResetPasswordOtp = legacyAuthRemoved;
 export const resetPassword = legacyAuthRemoved;
@@ -25,6 +24,21 @@ export const validateInvite = async (token) => {
   return await apiClient.get('/auth/validate-invite', { params: { token } })
 }
 
+export const acceptInvitation = async (inviteToken) => {
+  const body = typeof inviteToken === 'object' && inviteToken !== null ? inviteToken : { inviteToken }
+  return await apiClient.post('/auth/invitations/accept', body)
+}
+export const acceptInvite = acceptInvitation
+
+export const getPendingInvitations = async () => {
+  return await apiClient.get('/auth/invitations/pending')
+}
+
+export const declineInvitation = async (inviteToken) => {
+  const body = typeof inviteToken === 'object' && inviteToken !== null ? inviteToken : { inviteToken }
+  return await apiClient.post('/auth/invitations/decline', body)
+}
+
 export const rejectInvite = async (payload) => {
   const body = typeof payload === 'string' ? { token: payload } : payload || {}
   return await apiClient.post('/auth/reject-invite', body)
@@ -34,13 +48,17 @@ export const createWorkspace = async (workspaceData) => {
   return await apiClient.post('/organizations/setup', workspaceData)
 }
 
-export const loginWithGoogle = async (payload) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload }
+export const loginWithGoogle = async (payload, inviteToken = null) => {
+  const body = typeof payload === 'object' && payload !== null
+    ? { ...payload, ...(inviteToken ? { inviteToken } : {}) }
+    : { token: payload, ...(inviteToken ? { inviteToken } : {}) }
   return await apiClient.post('/auth/google', body)
 }
 
-export const loginWithMicrosoft = async (payload) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload }
+export const loginWithMicrosoft = async (payload, inviteToken = null) => {
+  const body = typeof payload === 'object' && payload !== null
+    ? { ...payload, ...(inviteToken ? { inviteToken } : {}) }
+    : { token: payload, ...(inviteToken ? { inviteToken } : {}) }
   return await apiClient.post('/auth/microsoft', body)
 }
 
@@ -108,6 +126,9 @@ export default {
   verifyInvitationOtp,
   validateInvite,
   acceptInvite,
+  acceptInvitation,
+  getPendingInvitations,
+  declineInvitation,
   rejectInvite,
   createWorkspace,
   loginWithGoogle,

@@ -214,7 +214,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload, targetOr
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.setAttribute('href', url)
-      link.setAttribute('download', 'bulk_upload_units_template.csv')
+      link.setAttribute('download', 'bulk_upload_units_template.xlsx')
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()

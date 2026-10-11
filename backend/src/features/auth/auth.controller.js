@@ -393,7 +393,7 @@ export class AuthController {
       const data = await authService.respondToInvitation({
         action: 'accept',
         invitationId: req.body.invitationId || null,
-        inviteToken: req.body.inviteToken || null,
+        inviteToken: req.body.inviteToken || req.body.token || null,
         authUserId: req.user?.id || req.user?._id || null,
         ticket: req.body.ticket || null,
         deviceInfo: requestDeviceInfo(req),
@@ -409,7 +409,7 @@ export class AuthController {
       const data = await authService.respondToInvitation({
         action: 'decline',
         invitationId: req.body.invitationId || null,
-        inviteToken: req.body.inviteToken || null,
+        inviteToken: req.body.inviteToken || req.body.token || null,
         authUserId: req.user?.id || req.user?._id || null,
         ticket: req.body.ticket || null,
       });

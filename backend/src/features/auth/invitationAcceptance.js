@@ -23,7 +23,10 @@ const invitationError = (code, message) => new HttpError(400, message, { code })
 export const resolveInvitationForUser = async (user, { rawToken = null, invitationId = null } = {}, session = null) => {
   let tokenDoc = null;
   if (rawToken) {
-    tokenDoc = await Token.findOne({ token: hashToken(rawToken), type: 'INVITATION' }).session(session);
+    tokenDoc = await Token.findOne({
+      $or: [{ token: hashToken(rawToken) }, { token: String(rawToken).trim() }],
+      type: 'INVITATION',
+    }).session(session);
   } else if (invitationId) {
     if (!/^[a-f0-9]{24}$/i.test(String(invitationId))) throw invitationError('INVITATION_INVALID', 'Invitation not found.');
     tokenDoc = await Token.findOne({ _id: invitationId, type: 'INVITATION' }).session(session);
@@ -31,7 +34,16 @@ export const resolveInvitationForUser = async (user, { rawToken = null, invitati
   if (!tokenDoc) throw invitationError('INVITATION_INVALID', 'Invitation not found or no longer valid.');
 
   if (!tokenDoc.userId || String(tokenDoc.userId) !== String(user._id)) {
-    throw new HttpError(403, 'This invitation was sent to a different account.', { code: 'INVITATION_MISMATCH' });
+    // If the token was created for another user document that shares the exact same email or phone, allow matching
+    const tokenUser = tokenDoc.userId ? await (await import('../user/user.model.js')).default.findById(tokenDoc.userId).session(session) : null;
+    const emailMatches = tokenUser && user.email && tokenUser.email && tokenUser.email.toLowerCase() === user.email.toLowerCase();
+    const phoneMatches = tokenUser && user.phone && tokenUser.phone && tokenUser.phone === user.phone;
+    if (emailMatches || phoneMatches) {
+      tokenDoc._originalPlaceholderUserId = tokenDoc.userId;
+      tokenDoc.userId = user._id;
+    } else {
+      throw new HttpError(403, 'This invitation was sent to a different account.', { code: 'INVITATION_MISMATCH' });
+    }
   }
   if (tokenDoc.status === 'REVOKED') throw invitationError('INVITATION_REVOKED', 'Invitation has been revoked by the administrator.');
   if (tokenDoc.status === 'REJECTED') throw invitationError('INVITATION_REJECTED', 'Invitation has already been rejected.');
@@ -68,7 +80,7 @@ export const acceptInvitationForUser = async (user, ref, verifiedVia, session) =
   // Atomic consume: concurrent requests with the same invitation can't both win
   const consumed = await Token.findOneAndUpdate(
     { _id: tokenDoc._id, status: 'PENDING', used: { $ne: true } },
-    { $set: { status: 'ACCEPTED', used: true, usedAt: new Date() } },
+    { $set: { status: 'ACCEPTED', used: true, usedAt: new Date(), userId: user._id } },
     { session, returnDocument: 'after' }
   );
   if (!consumed) throw invitationError('INVITATION_USED', 'Invitation has already been accepted.');
@@ -84,7 +96,15 @@ export const acceptInvitationForUser = async (user, ref, verifiedVia, session) =
   }
 
   const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-  const membership = await orgMembershipService.getMembership(user._id, orgId, session);
+  const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+  let membership = await orgMembershipService.getMembership(user._id, orgId, session);
+  if (!membership && tokenDoc._originalPlaceholderUserId) {
+    await OrgMembership.updateMany(
+      { userId: tokenDoc._originalPlaceholderUserId, orgId },
+      { $set: { userId: user._id } }
+    ).session(session);
+    membership = await orgMembershipService.getMembership(user._id, orgId, session);
+  }
   if (!membership) {
     throw invitationError('INVITATION_INVALID', 'The membership for this invitation no longer exists.');
   }

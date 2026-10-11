@@ -10,6 +10,7 @@ import {
   clearInvitation as clearInvitationAction,
   validateInvitation,
   rejectInvitation,
+  acceptPendingInvitation,
   loginWithGoogle,
   loginWithMicrosoft,
   registerUser,
@@ -114,6 +115,22 @@ export const useAuth = () => {
       } else {
         const errorMsg =
           resultAction.payload || t('auth.invite.error', 'Failed to reject invitation')
+        return { success: false, error: errorMsg }
+      }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  }
+
+  const handleAcceptInvitation = async (inviteToken) => {
+    try {
+      const resultAction = await dispatch(acceptPendingInvitation(inviteToken))
+      if (acceptPendingInvitation.fulfilled.match(resultAction)) {
+        toast.success(t('auth.invite.acceptedSuccess', 'Invitation accepted! Welcome to the community.'))
+        return { success: true, payload: resultAction.payload }
+      } else {
+        const errorMsg =
+          resultAction.payload || t('auth.invite.error', 'Failed to accept invitation')
         return { success: false, error: errorMsg }
       }
     } catch (err) {
@@ -317,6 +334,7 @@ export const useAuth = () => {
     handleValidateInvitation,
     handleClearInvitation,
     handleRejectInvitation,
+    handleAcceptInvitation,
     loginGoogle,
     loginMicrosoft,
     register,

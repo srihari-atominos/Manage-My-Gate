@@ -49,7 +49,7 @@ import { Checkbox } from '@/components/forms/Checkbox';
 import { parseBackendError } from '@/src/utils/validation';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { storage } from '@/src/utils/storage';
-import { setPendingInviteToken, getPendingInviteToken } from '@/src/features/auth/utils/inviteContext';
+import { setPendingInviteToken, getPendingInviteToken, clearPendingInviteToken } from '@/src/features/auth/utils/inviteContext';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearPendingRoute } from '@/src/features/notification/store/notificationSlice';
 import { useTranslation } from '@/src/utils/i18n';
@@ -86,7 +86,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   
-  const { user, requestOtp, verifyOtp, error, isAuthenticated, otpSent, clearStatus } = useAuth();
+  const { user, requestOtp, verifyOtp, error, isAuthenticated, otpSent, clearStatus, acceptInvitation } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{
     intent?: string;
@@ -474,20 +474,40 @@ export default function LoginScreen() {
   }, [authMode]);
 
   React.useEffect(() => {
-    if (isAuthenticated && !hasNavigatedRef.current) {
-      hasNavigatedRef.current = true;
-      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
-      Keyboard.dismiss();
+    let isCancelled = false;
+    const handleRedirect = async () => {
+      if (isAuthenticated && !hasNavigatedRef.current) {
+        hasNavigatedRef.current = true;
+        if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        Keyboard.dismiss();
 
-      dispatch(clearPendingRoute());
-      storage.removeItem('mobile_auth_intent');
-      router.replace('/(resident)');
-    } else if (!isAuthenticated) {
-      hasNavigatedRef.current = false;
-    }
-  }, [isAuthenticated, dispatch]);
+        const activeInviteToken = (params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken()) as string | undefined;
+        if (activeInviteToken) {
+          try {
+            await acceptInvitation(activeInviteToken);
+            clearPendingInviteToken();
+          } catch (e) {
+            console.warn('Failed to accept invitation during login redirect:', e);
+          }
+        }
+
+        if (!isCancelled) {
+          dispatch(clearPendingRoute());
+          storage.removeItem('mobile_auth_intent');
+          router.replace('/(resident)');
+        }
+      } else if (!isAuthenticated) {
+        hasNavigatedRef.current = false;
+      }
+    };
+
+    handleRedirect();
+    return () => {
+      isCancelled = true;
+    };
+  }, [isAuthenticated, dispatch, params.inviteToken, params.token, (params as any).invite_token, acceptInvitation]);
 
   // Route both email and phone OTP requests to the shared verification screen.
   React.useEffect(() => {

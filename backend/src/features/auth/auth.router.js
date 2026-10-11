@@ -159,8 +159,13 @@ router.post('/login', legacyAuthEndpoint);
  *       400:
  *         description: Invalid token or validation error.
  */
-router.post('/accept-invite', legacyAuthEndpoint);
+router.post('/accept-invite', optionalAuth, authController.acceptPendingInvitation);
 router.post('/reject-invite', authController.rejectInvite);
+
+// Invitations Management Routes
+router.get('/invitations/pending', isAuthenticated, authController.getPendingInvitations);
+router.post('/invitations/accept', optionalAuth, authController.acceptPendingInvitation);
+router.post('/invitations/decline', optionalAuth, authController.declinePendingInvitation);
 
 /**
  * @swagger

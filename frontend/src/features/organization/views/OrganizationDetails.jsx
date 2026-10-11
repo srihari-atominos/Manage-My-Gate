@@ -266,6 +266,7 @@ export const OrganizationDetails = () => {
             visible={showBulkInviteModal}
             onClose={() => setShowBulkInviteModal(false)}
             onBulkInvite={bulkInviteUsers}
+            orgId={organizationId}
           />
         )}
 
