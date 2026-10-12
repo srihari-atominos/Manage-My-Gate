@@ -3409,11 +3409,8 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     const targetIdentifier = identifier.trim().includes('@') ? user.email : (user.phone || user.email);
     const plainCode = await otpService.createOTP(targetIdentifier, 'FIRST_TIME_ACCOUNT_SETUP', 15);
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      console.log(`\n=========================================`);
-      console.log(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
-      console.log(`=========================================\n`);
+    if (isOtpDebugEnabled()) {
+      logger.info(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
     }
 
     sendOtpNotification({ identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' }).catch(err => logger.error('Failed to send OTP:' + err.message));

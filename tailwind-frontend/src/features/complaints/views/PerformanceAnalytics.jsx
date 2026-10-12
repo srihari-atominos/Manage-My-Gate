@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { useComplaints } from '../hooks/useComplaints'
 import ComplaintTopNav from '../components/ComplaintTopNav'
+import { complaintService } from '../services/complaint.service'
 import { useComplaintAnalyticsSocket } from '../hooks/useComplaintAnalyticsSocket'
 import { Badge } from 'src/components/ui/badge'
 import { Button } from 'src/components/ui/button'
@@ -78,12 +79,20 @@ const PerformanceAnalytics = () => {
             variant="outline"
             size="sm"
             className="text-xs font-semibold px-4 py-2 border-stroke dark:border-strokedark text-black dark:text-white flex items-center gap-1.5"
-            onClick={() => {
-              const token = localStorage.getItem('token')
-              window.open(
-                `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api/complaints/export?auth_token=${token}`,
-                '_blank',
-              )
+            onClick={async () => {
+              try {
+                const blob = await complaintService.exportComplaints()
+                const url = window.URL.createObjectURL(new Blob([blob]))
+                const link = document.createElement('a')
+                link.href = url
+                link.setAttribute('download', `complaints-report-${Date.now()}.csv`)
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+                window.URL.revokeObjectURL(url)
+              } catch (err) {
+                console.error('Failed to export complaints:', err)
+              }
             }}
           >
             <FileDown className="h-4 w-4" />

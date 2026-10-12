@@ -2,6 +2,15 @@ import { Platform, Share, Alert } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import { Invoice } from '../types';
 
+const escapeHtml = (value: unknown): string => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+} as Record<string, string>)[character] || character);
+
+const finiteNumber = (value: unknown): number => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+};
+
 let LegacyFileSystem: any = null;
 try {
   LegacyFileSystem = require('expo-file-system/legacy');
@@ -114,7 +123,7 @@ export function generateInvoiceHtml(item: Invoice | any, options: GenerateInvoic
   const optComm = options.communityName;
   const isGeneric = optComm && (optComm.toLowerCase().includes('managemygate') || optComm.toLowerCase().includes('manage-my-gate'));
 
-  const communityName =
+  const rawCommunityName =
     (!isGeneric && optComm ? optComm : null) ||
     item?.communityName ||
     item?.orgName ||
@@ -124,27 +133,28 @@ export function generateInvoiceHtml(item: Invoice | any, options: GenerateInvoic
     optComm ||
     'Community Workspace';
 
-  const communityAddress = options.communityAddress || '';
+  const communityName = escapeHtml(rawCommunityName);
+  const communityAddress = escapeHtml(options.communityAddress || '');
 
-  const invoiceNum = item.invoiceNumber || item.invoiceId || item._id || '—';
-  const unitNumber = item.unitNumber || '—';
-  const unitType = item.type || '';
-  const billingPeriod = item.billingPeriodString || '—';
-  const assessmentName = item.assessmentName || 'Maintenance';
-  const residentName = options.residentName || item.residentName || item.targetUser || '—';
-  const status = (item.status || 'UNKNOWN').replace(/_/g, ' ');
+  const invoiceNum = escapeHtml(item.invoiceNumber || item.invoiceId || item._id || '—');
+  const unitNumber = escapeHtml(item.unitNumber || '—');
+  const unitType = escapeHtml(item.type || '');
+  const billingPeriod = escapeHtml(item.billingPeriodString || '—');
+  const assessmentName = escapeHtml(item.assessmentName || 'Maintenance');
+  const residentName = escapeHtml(options.residentName || item.residentName || item.targetUser || '—');
+  const status = escapeHtml((item.status || 'UNKNOWN').replace(/_/g, ' '));
   const invoiceDate = item.createdAt
     ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
     : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  const currentCharge = item.currentCharge || item.totalDue || item.amount || 0;
-  const previousOutstanding = item.previousOutstanding || 0;
-  const lateFee = item.lateFeeAmount || 0;
-  const totalDue = item.totalDue || item.amount || 0;
-  const paidAmount = item.paidAmount || 0;
-  const outstanding = item.outstandingAmount !== undefined ? item.outstandingAmount : Math.max(0, totalDue - paidAmount);
-  const paymentMethod = item.paymentMethod || '—';
-  const offlineRef = item.offlineReference || '—';
+  const currentCharge = finiteNumber(item.currentCharge || item.totalDue || item.amount);
+  const previousOutstanding = finiteNumber(item.previousOutstanding);
+  const lateFee = finiteNumber(item.lateFeeAmount);
+  const totalDue = finiteNumber(item.totalDue || item.amount);
+  const paidAmount = finiteNumber(item.paidAmount);
+  const outstanding = item.outstandingAmount !== undefined ? finiteNumber(item.outstandingAmount) : Math.max(0, totalDue - paidAmount);
+  const paymentMethod = escapeHtml(item.paymentMethod || '—');
+  const offlineRef = escapeHtml(item.offlineReference || '—');
 
   const paidAt = item.paid_at || item.paymentCompletionDate || item.updatedAt
     ? new Date(item.paid_at || item.paymentCompletionDate || item.updatedAt).toLocaleDateString('en-IN', {
