@@ -100,6 +100,8 @@ services:
       - REDIS_URL=${REDIS_URL}
       - NODE_ENV=${NODE_ENV:-production}
       - TZ=${TZ:-Asia/Kolkata}
+      - REVIEW_STATIC_OTP=${REVIEW_STATIC_OTP:-123456}
+      - REVIEW_IDENTIFIERS=${REVIEW_IDENTIFIERS:-naveen@atominosconsulting.com,naveenpv5886@gmail.com,+919847561230,+919786608686}
     depends_on:
       mongodb:
         condition: service_healthy
