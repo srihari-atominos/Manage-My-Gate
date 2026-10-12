@@ -118,7 +118,7 @@ const AppHeader = () => {
 
   return (
     <CHeader position="sticky" className="app-header mb-4 p-0" ref={headerRef}>
-      <CContainer className="border-bottom px-4" fluid>
+      <CContainer className="border-bottom px-3 px-md-4" fluid>
         <CHeaderToggler
           onClick={() => dispatch({ type: 'set', sidebarShow: !sidebarShow })}
           className="app-header-icon-button"
@@ -171,13 +171,13 @@ const AppHeader = () => {
           )}
         </div>
         <CHeaderNav className="ms-auto align-items-center">
-          <div className="me-3">
+          <div className="me-2 me-md-3">
             <WorkspaceSwitcher />
           </div>
-          <div className="me-3">
+          <div className="me-2 me-md-3">
             <NotificationBell />
           </div>
-          <div className="me-3">
+          <div className="me-2 me-md-3">
             <button
               type="button"
               className="app-theme-toggle"
@@ -193,7 +193,7 @@ const AppHeader = () => {
               <CIcon icon={colorMode === 'dark' ? cilMoon : cilSun} size="lg" aria-hidden="true" />
             </button>
           </div>
-          <div className="ms-2">
+          <div className="ms-1 ms-md-2">
             <AppHeaderDropdown />
           </div>
         </CHeaderNav>

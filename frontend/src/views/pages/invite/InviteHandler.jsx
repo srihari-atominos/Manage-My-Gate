@@ -89,21 +89,24 @@ export default function InviteHandler() {
           alignItems: 'center',
           justifyContent: 'center',
           minHeight: '100vh',
-          padding: '24px',
+          padding: '24px 16px',
           backgroundColor: '#0D1B35',
           color: '#FFFFFF',
           fontFamily: 'system-ui, -apple-system, sans-serif',
           textAlign: 'center',
+          boxSizing: 'border-box',
         }}
       >
         <div
           style={{
             maxWidth: '460px',
+            width: '100%',
             background: 'rgba(255, 255, 255, 0.08)',
             border: '1px solid rgba(255, 255, 255, 0.15)',
             borderRadius: '16px',
-            padding: '32px 28px',
+            padding: '32px 24px',
             backdropFilter: 'blur(10px)',
+            boxSizing: 'border-box',
           }}
         >
           <div

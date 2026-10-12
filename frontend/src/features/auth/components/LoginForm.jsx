@@ -27,6 +27,7 @@ import { useMsal } from '@azure/msal-react'
 import { toast } from 'react-hot-toast'
 import PhoneInput from 'react-phone-input-2'
 import 'react-phone-input-2/lib/style.css'
+import '../styles/_auth.scss'
 
 import nahomLogo from '../../../assets/images/nahom_full_logo.png'
 import nahomEmblem from '../../../assets/images/nahom_emblem.png'
@@ -69,14 +70,15 @@ const MemoizedGoogleLogin = React.memo(({ onSuccess, onError }) => {
   }
 
   return (
-    <GoogleLogin
-      onSuccess={onSuccess}
-      onError={onError}
-      type="standard"
-      theme="outline"
-      size="large"
-      width="190"
-    />
+    <div style={{ width: '100%', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
+      <GoogleLogin
+        onSuccess={onSuccess}
+        onError={onError}
+        type="standard"
+        theme="outline"
+        size="large"
+      />
+    </div>
   )
 })
 MemoizedGoogleLogin.displayName = 'MemoizedGoogleLogin'
@@ -241,36 +243,14 @@ export const LoginForm = () => {
 
   return (
     <div
+      className="nahom-auth-page"
       style={{
-        display: 'flex',
-        flexDirection: 'row',
-        width: '100vw',
-        height: '100vh',
-        maxHeight: '100vh',
-        overflow: 'hidden',
         backgroundColor: isDarkMode ? '#0A1220' : '#F6F8FC',
         color: isDarkMode ? '#FFFFFF' : '#14213D',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        boxSizing: 'border-box',
-        margin: 0,
-        padding: 0,
       }}
     >
-      {/* LEFT HERO BANNER PANEL (Reference Image 2 - 50% width) */}
-      <div
-        style={{
-          width: '50%',
-          height: '100%',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '40px 48px',
-          backgroundColor: '#0D1B35',
-          boxSizing: 'border-box',
-          overflow: 'hidden',
-        }}
-      >
+      {/* LEFT HERO BANNER PANEL (Desktop only - 50% width) */}
+      <div className="nahom-auth-hero-panel">
         {/* Background Architectural Image */}
         <div
           style={{
@@ -355,23 +335,15 @@ export const LoginForm = () => {
         </div>
       </div>
 
-      {/* RIGHT SIGN IN PANEL (50% width) */}
+      {/* RIGHT SIGN IN PANEL */}
       <div
+        className="nahom-auth-form-panel"
         style={{
-          width: '50%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '32px 48px',
-          position: 'relative',
-          overflowY: 'auto',
           backgroundColor: isDarkMode ? '#0D1B35' : '#F6F8FC',
-          boxSizing: 'border-box',
         }}
       >
-        {/* Top Right Theme Toggle */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+        {/* Top Right Theme Toggle Bar */}
+        <div className="nahom-auth-top-bar">
           <button
             type="button"
             onClick={() => setIsDarkMode(!isDarkMode)}
@@ -407,18 +379,26 @@ export const LoginForm = () => {
           </button>
         </div>
 
+        {/* Mobile Header Branding (visible only on <= 991px) */}
+        <div className="nahom-auth-mobile-brand">
+          <div className="nahom-auth-mobile-logo-row">
+            <img src={nahomEmblem} alt="NAHOM" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
+            <span
+              className="nahom-auth-mobile-title"
+              style={{ color: isDarkMode ? '#FFFFFF' : '#14213D' }}
+            >
+              NAHOM
+            </span>
+          </div>
+          <p className="nahom-auth-mobile-tagline">Connect Harmony</p>
+        </div>
+
         {/* Form Card */}
         <div
+          className="nahom-auth-card"
           style={{
-            margin: 'auto',
-            maxWidth: '440px',
-            width: '100%',
             backgroundColor: isDarkMode ? '#172B70' : '#FFFFFF',
-            borderRadius: '24px',
-            padding: '36px 32px',
-            boxShadow: '0 20px 40px -15px rgba(13, 27, 53, 0.1)',
             border: isDarkMode ? '1px solid #1E293B' : '1px solid #E5EAF2',
-            boxSizing: 'border-box',
           }}
         >
           <div style={{ marginBottom: '24px', textAlign: 'left' }}>
@@ -547,7 +527,7 @@ export const LoginForm = () => {
 
             {/* Mobile OTP Login Input */}
             {loginMethod === 'phone' && (
-              <div>
+              <div className="nahom-auth-phone-container">
                 <PhoneInput
                   country={'in'}
                   value={phoneNumber}
@@ -673,7 +653,7 @@ export const LoginForm = () => {
             </div>
 
             {/* Social Buttons: Google & Microsoft */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="nahom-auth-social-grid">
               {/* Google Button */}
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <MemoizedGoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
@@ -714,7 +694,7 @@ export const LoginForm = () => {
         </div>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', fontSize: '12px', color: '#94A3B8', paddingTop: '16px' }}>
+        <div className="nahom-auth-footer">
           © {new Date().getFullYear()} NAHOM Admin Portal. All rights reserved.
         </div>
       </div>
