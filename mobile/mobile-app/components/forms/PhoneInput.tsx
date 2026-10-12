@@ -58,6 +58,8 @@ export interface PhoneInputProps {
   testID?: string;
   /** 'form' matches the standard Input card field; 'glass' is the translucent auth-screen look. */
   variant?: 'form' | 'glass';
+  /** Whether the input is editable. Defaults to true. */
+  editable?: boolean;
 }
 
 const buildFullNumber = (digits: string, country: PhoneCountry): string => {
@@ -94,6 +96,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   rightElement,
   testID,
   variant = 'form',
+  editable = true,
 }) => {
   const { translateText } = useTranslation();
   const isGlass = variant === 'glass';
@@ -213,7 +216,8 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         {/* Country Picker Trigger */}
         <TouchableOpacity
           onPress={() => setIsPickerVisible(true)}
-          className={cn("flex-row items-center me-2.5 pe-2.5 border-e border-border/80", dividerClassName)}
+          disabled={!editable}
+          className={cn("flex-row items-center me-2.5 pe-2.5 border-e border-border/80", dividerClassName, !editable && "opacity-80")}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={`Selected country ${selectedCountry.name}, dial code ${selectedCountry.dialCode}. Tap to change.`}
@@ -242,10 +246,12 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           );
           return (
             <RNTextInput
+              editable={editable}
               className={cn(
                 'flex-1 text-foreground self-stretch min-h-[44px] py-3 outline-none focus:outline-none focus-visible:outline-none',
                 isGlass ? 'text-sm' : 'text-[16px]',
                 !hasFontFamily && 'font-sans',
+                !editable && 'opacity-80',
                 inputClassName
               )}
               style={[

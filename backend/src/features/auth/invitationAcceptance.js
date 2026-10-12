@@ -48,6 +48,10 @@ export const resolveInvitationForUser = async (user, { rawToken = null, invitati
   if (tokenDoc.status === 'REVOKED') throw invitationError('INVITATION_REVOKED', 'Invitation has been revoked by the administrator.');
   if (tokenDoc.status === 'REJECTED') throw invitationError('INVITATION_REJECTED', 'Invitation has already been rejected.');
   if (tokenDoc.status === 'ACCEPTED' || tokenDoc.used === true) {
+    if (tokenDoc.userId && String(tokenDoc.userId) === String(user._id)) {
+      tokenDoc._alreadyAccepted = true;
+      return tokenDoc;
+    }
     throw invitationError('INVITATION_USED', 'Invitation has already been accepted.');
   }
   if (tokenDoc.status === 'EXPIRED' || (tokenDoc.expiresAt && tokenDoc.expiresAt <= new Date())) {
@@ -77,13 +81,34 @@ export const acceptInvitationForUser = async (user, ref, verifiedVia, session) =
   const tokenDoc = await resolveInvitationForUser(user, ref, session);
   const orgId = tokenDoc.orgId;
 
+  if (tokenDoc._alreadyAccepted) {
+    const User = (await import('../user/user.model.js')).default;
+    const userUpdate = {};
+    if (user.status === 'Pending Verification' || user.status === 'Pending') userUpdate.status = 'Active';
+    if (verifiedVia === 'email') userUpdate.emailVerified = true;
+    if (verifiedVia === 'phone') userUpdate.phoneVerified = true;
+    if (Object.keys(userUpdate).length > 0) {
+      await User.updateOne({ _id: user._id }, { $set: userUpdate }).session(session);
+      Object.assign(user, userUpdate);
+    }
+    const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+    await orgMembershipService.updateStatus(user._id, orgId, 'Active', session).catch(() => null);
+    return { orgId: String(orgId), alreadyAccepted: true };
+  }
+
   // Atomic consume: concurrent requests with the same invitation can't both win
   const consumed = await Token.findOneAndUpdate(
     { _id: tokenDoc._id, status: 'PENDING', used: { $ne: true } },
     { $set: { status: 'ACCEPTED', used: true, usedAt: new Date(), userId: user._id } },
     { session, returnDocument: 'after' }
   );
-  if (!consumed) throw invitationError('INVITATION_USED', 'Invitation has already been accepted.');
+  if (!consumed) {
+    const currentDoc = await Token.findById(tokenDoc._id).session(session);
+    if (currentDoc && (currentDoc.status === 'ACCEPTED' || currentDoc.used === true) && currentDoc.userId && String(currentDoc.userId) === String(user._id)) {
+      return { orgId: String(orgId), alreadyAccepted: true };
+    }
+    throw invitationError('INVITATION_USED', 'Invitation has already been accepted.');
+  }
 
   const User = (await import('../user/user.model.js')).default;
   const userUpdate = {};

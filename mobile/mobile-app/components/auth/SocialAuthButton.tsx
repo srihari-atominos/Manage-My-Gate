@@ -97,7 +97,11 @@ export const SocialAuthButton = ({
   const isApple = provider === 'apple';
   const isGlass = variant === 'glass';
   const providerName = isGoogle ? 'Google' : isApple ? 'Apple' : 'Microsoft';
-  const buttonLabel = isGoogle ? 'Sign in with Google' : isApple
+  const buttonLabel = isGoogle
+    ? variant === 'full'
+      ? 'Sign in with Google'
+      : 'Google'
+    : isApple
     ? variant === 'full'
       ? 'Sign in with Apple'
       : 'Apple'

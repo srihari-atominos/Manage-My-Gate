@@ -64,8 +64,13 @@ export function AuthMethodSelector({ value, onChange, emailLabel, otpLabel, redu
         <Pressable key={mode} disabled={disabled} onPress={() => onChange(mode)}
           accessibilityRole="tab" accessibilityState={{ selected: value === mode, disabled }}
           accessibilityLabel={mode === 'basic' ? emailLabel : otpLabel}
-          style={{ flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 }}>
-          <Text numberOfLines={1} style={{ color: value === mode ? '#1C1C1E' : '#636366', fontSize: 14, fontWeight: '600', textAlign: 'center' }}>
+          style={{ flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            style={{ color: value === mode ? '#1C1C1E' : '#636366', fontSize: 13.5, fontWeight: '600', textAlign: 'center' }}
+          >
             {mode === 'basic' ? emailLabel : otpLabel}
           </Text>
         </Pressable>

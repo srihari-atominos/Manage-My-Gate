@@ -2455,7 +2455,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         await userService.updateUser(user._id, { status: 'Active', phoneVerified: true }, session);
       }
 
-      if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
+      if (user.status !== 'Active' && !['Pending Verification', 'Pending'].includes(user.status)) {
         throw new HttpError(403, `Account is ${user.status}`);
       }
 
@@ -2631,7 +2631,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         await userService.updateUser(user._id, { status: 'Active', emailVerified: true }, session);
       }
 
-      if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
+      if (user.status !== 'Active' && !['Pending Verification', 'Pending'].includes(user.status)) {
         throw new HttpError(403, `Account is ${user.status}`);
       }
 

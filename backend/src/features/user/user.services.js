@@ -379,7 +379,10 @@ export class UserService {
       let user = existing;
       if (!existing) {
         let emailToUse = trimmedEmail;
-        let baseUsername = trimmedEmail ? trimmedEmail.split('@')[0] : `user_${phoneToAssign.replace(/\D/g, '')}`;
+        const cleanedName = name ? name.trim() : '';
+        let baseUsername = cleanedName
+          ? cleanedName.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()
+          : (trimmedEmail ? trimmedEmail.split('@')[0] : `user_${phoneToAssign.replace(/\D/g, '')}`);
         if (!emailToUse && phoneToAssign) {
           emailToUse = `user_${phoneToAssign.replace(/\D/g, '')}@noemail.local`;
         }
@@ -394,7 +397,7 @@ export class UserService {
         const userData = {
           email: emailToUse,
           username: username,
-          name: name || username,
+          name: cleanedName || username,
           status: mode === 'ADMIN_ANNOUNCEMENT' ? 'Active' : 'Pending Verification',
           credentialStatus: 'NOT_INITIALIZED',
           appAccessStatus: 'NOT_YET_ACCESSED',
@@ -404,7 +407,7 @@ export class UserService {
       } else {
         const updates = {};
         if (phoneToAssign && !user.phone) updates.phone = phoneToAssign;
-        if (name && !user.name) updates.name = name;
+        if (name && (!user.name || user.name === user.username)) updates.name = name.trim();
         if (Object.keys(updates).length > 0) {
           user = await userRepository.update(user._id, updates, session);
         }

@@ -114,12 +114,23 @@ export default function LoginScreen() {
   const [submitted, setSubmitted] = React.useState<{value: string, isEmail: boolean} | null>(null);
   const [submittedPhone, setSubmittedPhone] = React.useState('');
   const [phoneOtpCode, setPhoneOtpCode] = React.useState('');
+  const [emailOtpCode, setEmailOtpCode] = React.useState('');
+  const [resendCooldown, setResendCooldown] = React.useState(0);
   const [showPassword, setShowPassword] = React.useState(false);
-    const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
+  const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
   const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
   const hasNavigatedRef = React.useRef(false);
   const [switchDismissed, setSwitchDismissed] = React.useState(false);
   const passwordInputRef = React.useRef<RNTextInput>(null);
+
+  // Resend cooldown timer
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   React.useEffect(() => {
     const loadSavedPreferences = async () => {
@@ -464,6 +475,9 @@ export default function LoginScreen() {
 
   React.useEffect(() => {
     clearStatus();
+    setEmailOtpCode('');
+    setPhoneOtpCode('');
+    setResendCooldown(0);
     return () => {
       clearStatus();
       if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
@@ -484,10 +498,10 @@ export default function LoginScreen() {
         Keyboard.dismiss();
 
         const activeInviteToken = (params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken()) as string | undefined;
+        clearPendingInviteToken();
         if (activeInviteToken) {
           try {
             await acceptInvitation(activeInviteToken);
-            clearPendingInviteToken();
           } catch (e) {
             console.warn('Failed to accept invitation during login redirect:', e);
           }
@@ -509,39 +523,74 @@ export default function LoginScreen() {
     };
   }, [isAuthenticated, dispatch, params.inviteToken, params.token, (params as any).invite_token, acceptInvitation]);
 
-  // Route both email and phone OTP requests to the shared verification screen.
-  React.useEffect(() => {
-    if (otpSent && authMode === 'basic') {
-      router.push({
-        pathname: '/(auth)/otp',
-        params: { phone: submittedPhone, email: basicForm.getValues("login"), inviteToken: String(params.inviteToken || params.token || '') },
-      });
-      // A resend from the code screen must not open a second code screen
-      setSubmitted(null);
-    }
-  }, [otpSent, submitted]);
+  // Handle Changing Email or Phone (Reset OTP state to allow re-entering)
+  const handleChangeEmailOrPhone = () => {
+    clearStatus();
+    setEmailOtpCode('');
+    setPhoneOtpCode('');
+    setResendCooldown(0);
+  };
 
-  
-  // Handle Basic Auth Submit
+  // Handle Resending OTP for either Email or Phone
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    if (authMode === 'basic') {
+      const emailVal = basicForm.getValues('login')?.trim();
+      if (!emailVal) return;
+      setIsSubmittingBasic(true);
+      try {
+        await requestOtp(emailVal, true);
+        setEmailOtpCode('');
+        setResendCooldown(25);
+      } finally {
+        setIsSubmittingBasic(false);
+      }
+    } else {
+      const phoneVal = phoneForm.getValues('phone');
+      if (!phoneVal) return;
+      setIsSubmittingPhone(true);
+      try {
+        await requestOtp(phoneVal, false);
+        setPhoneOtpCode('');
+        setResendCooldown(25);
+      } finally {
+        setIsSubmittingPhone(false);
+      }
+    }
+  };
+
+  // Handle Basic (Email) Auth Submit: request code or verify code inline
   const onBasicSubmit = async (data: EmailFormValues) => {
+    const trimmedEmail = data.login.trim();
+    setSubmitted({ value: trimmedEmail, isEmail: true });
     setIsSubmittingBasic(true);
     try {
-      await requestOtp(data.login.trim(), true);
+      if (otpSent) {
+        const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
+        await verifyOtp(trimmedEmail, emailOtpCode, true, tokenToPass);
+        clearPendingInviteToken();
+        return;
+      }
+      await requestOtp(trimmedEmail, true);
+      setResendCooldown(25);
     } finally {
       setIsSubmittingBasic(false);
     }
   };
 
-  // Phone + OTP: send a code by SMS
+  // Phone + OTP: send a code by SMS or verify code inline
   const onPhoneSubmit = async (data: PhoneFormValues) => {
     setSubmitted({ value: data.phone, isEmail: false });
     setIsSubmittingPhone(true);
     try {
       if (otpSent) {
-        await verifyOtp(data.phone, phoneOtpCode, false, String(params.inviteToken || params.token || ''));
+        const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
+        await verifyOtp(data.phone, phoneOtpCode, false, tokenToPass);
+        clearPendingInviteToken();
         return;
       }
       await requestOtp(data.phone, false);
+      setResendCooldown(25);
     } finally {
       setIsSubmittingPhone(false);
     }
@@ -732,9 +781,23 @@ export default function LoginScreen() {
                   /* Email + OTP Form */
                   <View className="gap-3.5">
                     <View>
-                      <Text className="text-xs font-semibold text-white mb-1.5 font-sans">
-                        {t('email_id', 'Email ID')} <Text className="text-[#EA580C] font-bold">*</Text>
-                      </Text>
+                      <View className="flex-row items-center justify-between mb-1.5">
+                        <Text className="text-xs font-semibold text-white font-sans">
+                          {t('email_id', 'Email ID')} <Text className="text-[#EA580C] font-bold">*</Text>
+                        </Text>
+                        {otpSent && (
+                          <TouchableOpacity
+                            onPress={handleChangeEmailOrPhone}
+                            disabled={isSubmittingBasic}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text className="text-xs font-semibold text-[#FF7A00]">
+                              {t('change', 'Change')}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                       <Controller
                         control={basicForm.control}
                         name="login"
@@ -753,9 +816,10 @@ export default function LoginScreen() {
                             autoCapitalize="none"
                             autoCorrect={false}
                             keyboardType="email-address"
+                            editable={!otpSent}
                             className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
                             inputClassName="text-slate-900 text-[15px] font-medium"
-                            style={{ fontSize: 15, fontWeight: '500', color: '#0F172A' }}
+                            style={{ fontSize: 15, fontWeight: '500', color: '#0F172A', backgroundColor: 'transparent' }}
                             selectionColor="#EA580C"
                             cursorColor="#EA580C"
                             leftIcon={
@@ -766,14 +830,45 @@ export default function LoginScreen() {
                             error={basicForm.formState.errors.login?.message}
                             feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
                             errorClassName="text-[11.5px] font-bold text-red-400"
-                            returnKeyType="next"
-                            
+                            returnKeyType={otpSent ? 'done' : 'next'}
                             blurOnSubmit={false}
                           />
                         )}
                       />
                     </View>
 
+                    {otpSent && (
+                      <View className="gap-2.5 mt-0.5">
+                        <View className="flex-row items-center justify-between">
+                          <Text className="text-xs font-semibold text-white mb-1.5 font-sans">
+                            {t('enter_verification_code', 'Enter verification code')}
+                          </Text>
+                          {resendCooldown > 0 ? (
+                            <Text className="text-xs font-medium text-white/80">
+                              {t('resend_in', 'Resend in')} {resendCooldown}s
+                            </Text>
+                          ) : (
+                            <TouchableOpacity
+                              onPress={handleResendOtp}
+                              disabled={isSubmittingBasic}
+                              activeOpacity={0.7}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text className="text-xs font-bold text-[#FF7A00]">
+                                {t('resend_code', 'Resend Code')}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <OtpInputField
+                          length={6}
+                          value={emailOtpCode}
+                          onValueChange={setEmailOtpCode}
+                          variant="light"
+                          error={Boolean(error)}
+                        />
+                      </View>
+                    )}
 
                     {/* Stay signed in Checkbox */}
                     <View className="flex-row items-center pt-0.5">
@@ -799,7 +894,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handleBasicSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && emailOtpCode.length < 6)}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -841,13 +936,13 @@ export default function LoginScreen() {
                           <View className="flex-row items-center gap-2 z-10">
                             <ActivityIndicator color="#FFFFFF" size="small" />
                             <Text className="font-bold text-white text-sm font-sans">
-                              {t('sending_otp', 'Sending OTP Code...')}
+                              {otpSent ? t('verifying_code', 'Verifying...') : t('sending_otp', 'Sending OTP Code...')}
                             </Text>
                           </View>
                         ) : (
                           <View className="flex-row items-center justify-center gap-2 z-10">
                             <Text className="font-bold text-white text-base font-sans">
-                              {t('send_otp', 'Send OTP')}
+                              {otpSent ? t('verify_and_sign_in', 'Verify & Sign In') : t('send_otp', 'Send OTP')}
                             </Text>
                             <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
                               <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
@@ -860,44 +955,82 @@ export default function LoginScreen() {
                 ) : (
                   /* Phone OTP Form */
                   <View className="gap-3.5">
-                    <Controller
-                      control={phoneForm.control}
-                      name="phone"
-                      render={({ field: { onChange, value } }) => (
-                        <PhoneInput
-                          variant="glass"
-                          defaultCountry="IN"
-                          label={t('phone_number', 'Mobile Number')}
-                          placeholder="98765 43210"
-                          placeholderTextColor="#9CA3AF"
-                          labelClassName="text-xs font-semibold text-white mb-1.5"
-                          className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
-                          inputClassName="text-slate-900 text-[15px] font-medium"
-                          codeClassName="text-slate-900 font-bold"
-                          dividerClassName="border-slate-300"
-                          chevronColor="#64748B"
-                          showCount={false}
-                          helperContainerClassName="bg-black/40 border border-white/25 px-2.5 py-1 rounded-lg self-start mt-1.5 backdrop-blur-md"
-                          helperClassName="text-xs font-bold text-white"
-                          style={{ fontSize: 15, fontWeight: '500', color: '#0F172A' }}
-                          value={value}
-                          onChangeText={onChange}
-                          error={phoneForm.formState.errors.phone?.message}
-                          feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
-                          errorClassName="text-[11.5px] font-bold text-red-400"
-                        />
-                      )}
-                    />
+                    <View>
+                      <View className="flex-row items-center justify-between mb-1.5">
+                        <Text className="text-xs font-semibold text-white">
+                          {t('phone_number', 'Mobile Number')}
+                        </Text>
+                        {otpSent && (
+                          <TouchableOpacity
+                            onPress={handleChangeEmailOrPhone}
+                            disabled={isSubmittingPhone}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text className="text-xs font-semibold text-[#FF7A00]">
+                              {t('change', 'Change')}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <Controller
+                        control={phoneForm.control}
+                        name="phone"
+                        render={({ field: { onChange, value } }) => (
+                          <PhoneInput
+                            variant="glass"
+                            defaultCountry="IN"
+                            label=""
+                            placeholder="98765 43210"
+                            placeholderTextColor="#9CA3AF"
+                            className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
+                            inputClassName="text-slate-900 text-[15px] font-medium"
+                            codeClassName="text-slate-900 font-bold"
+                            dividerClassName="border-slate-300"
+                            chevronColor="#64748B"
+                            showCount={false}
+                            helperContainerClassName="bg-black/40 border border-white/25 px-2.5 py-1 rounded-lg self-start mt-1.5 backdrop-blur-md"
+                            helperClassName="text-xs font-bold text-white"
+                            style={{ fontSize: 15, fontWeight: '500', color: '#0F172A', backgroundColor: 'transparent' }}
+                            value={value}
+                            onChangeText={onChange}
+                            editable={!otpSent}
+                            error={phoneForm.formState.errors.phone?.message}
+                            feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
+                            errorClassName="text-[11.5px] font-bold text-red-400"
+                          />
+                        )}
+                      />
+                    </View>
 
                     {otpSent && (
-                      <View className="gap-2">
-                        <Text className="text-xs font-semibold text-white mb-1.5">
-                          {t('enter_verification_code', 'Enter verification code')}
-                        </Text>
+                      <View className="gap-2.5 mt-0.5">
+                        <View className="flex-row items-center justify-between">
+                          <Text className="text-xs font-semibold text-white mb-1.5">
+                            {t('enter_verification_code', 'Enter verification code')}
+                          </Text>
+                          {resendCooldown > 0 ? (
+                            <Text className="text-xs font-medium text-white/80">
+                              {t('resend_in', 'Resend in')} {resendCooldown}s
+                            </Text>
+                          ) : (
+                            <TouchableOpacity
+                              onPress={handleResendOtp}
+                              disabled={isSubmittingPhone}
+                              activeOpacity={0.7}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text className="text-xs font-bold text-[#FF7A00]">
+                                {t('resend_code', 'Resend Code')}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
                         <OtpInputField
                           length={4}
                           value={phoneOtpCode}
                           onValueChange={setPhoneOtpCode}
+                          variant="light"
                           error={Boolean(error)}
                         />
                       </View>
@@ -927,7 +1060,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handlePhoneSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && phoneOtpCode.length < 4)}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -969,7 +1102,7 @@ export default function LoginScreen() {
                           <View className="flex-row items-center gap-2 z-10">
                             <ActivityIndicator color="#FFFFFF" size="small" />
                             <Text className="font-bold text-white text-sm font-sans">
-                              {t('sending_otp', 'Sending OTP Code...')}
+                              {otpSent ? t('verifying_code', 'Verifying...') : t('sending_otp', 'Sending OTP Code...')}
                             </Text>
                           </View>
                         ) : (

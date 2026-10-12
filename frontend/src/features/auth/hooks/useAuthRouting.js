@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { acceptPendingInvitation } from '../store/authSlice.js'
+import { acceptPendingInvitation, clearStatus } from '../store/authSlice.js'
 
 /**
  * useAuthRouting Custom Hook
@@ -62,6 +62,7 @@ export const useAuthRouting = () => {
         })
         .catch((err) => {
           console.warn('[useAuthRouting] Could not auto-accept invite token:', err)
+          dispatch(clearStatus())
           navigate('/dashboard', { replace: true })
         })
       return

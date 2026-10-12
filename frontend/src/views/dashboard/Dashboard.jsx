@@ -10,7 +10,7 @@ const Dashboard = () => {
   const { checkPermission } = useAuth()
   const { groups } = useDashboard()
   const userName = useSelector(
-    (state) => state.auth.user?.username || state.auth.user?.name || 'there',
+    (state) => state.auth.user?.name || state.auth.user?.username || 'there',
   )
 
   const isGuard = checkPermission('visitors:guard') || checkPermission('guard:dashboard')

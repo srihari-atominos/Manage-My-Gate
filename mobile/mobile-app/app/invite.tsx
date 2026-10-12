@@ -22,8 +22,8 @@ export default function InviteRedirectScreen() {
       setIsProcessing(true);
       (async () => {
         try {
-          await acceptInvitation(rawToken);
           clearPendingInviteToken();
+          await acceptInvitation(rawToken);
         } catch (err) {
           console.warn('Failed to auto-accept invitation in invite redirect:', err);
         } finally {

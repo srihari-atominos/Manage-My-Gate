@@ -457,7 +457,11 @@ export const acceptPendingInvitationThunk = createAsyncThunk(
       }
       return (persisted || innerData) as any;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation');
+      const msg = error.response?.data?.message || error.message || 'Failed to accept invitation';
+      if (typeof msg === 'string' && (msg.toLowerCase().includes('already been accepted') || msg.toLowerCase().includes('already accepted'))) {
+        return null;
+      }
+      return rejectWithValue(msg);
     }
   }
 );

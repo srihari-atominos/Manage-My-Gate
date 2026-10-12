@@ -74,7 +74,7 @@ const parseCSV = (text) => {
       let key = header
       if (header === 'email') key = 'email'
       else if (header === 'phone' || header === 'phone number' || header === 'phone no' || header === 'mobile' || header === 'contact') key = 'phone'
-      else if (header === 'name' || header === 'fullname' || header === 'full name') key = 'name'
+      else if (['name', 'fullname', 'full name', 'username', 'user name', 'resident name', 'staff name', 'member name'].includes(header)) key = 'name'
       else if (header === 'role') key = 'roleName'
       else if (
         header === 'unit number' ||
@@ -208,7 +208,7 @@ export const BulkInviteModal = ({
           let key = header
           if (header === 'email') key = 'email'
           else if (header === 'phone' || header === 'phone number' || header === 'phone no' || header === 'mobile' || header === 'contact') key = 'phone'
-          else if (header === 'name' || header === 'fullname' || header === 'full name') key = 'name'
+          else if (['name', 'fullname', 'full name', 'username', 'user name', 'resident name', 'staff name', 'member name'].includes(header)) key = 'name'
           else if (header === 'role') key = 'roleName'
           else if (
             header === 'unit number' ||

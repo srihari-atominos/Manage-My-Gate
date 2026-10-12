@@ -214,7 +214,7 @@ export const LoginForm = () => {
         })
 
         if (res?.success) {
-          handlePostAuthRedirect()
+          handlePostAuthRedirect({ skipInviteToken: !!inviteTokenParam })
         } else if (res?.error) {
           const errMsg = typeof res.error === 'string' ? res.error : res.error?.message || 'Login failed'
           setError('login', { type: 'server', message: errMsg })
@@ -233,7 +233,7 @@ export const LoginForm = () => {
       } else {
         const res = await verifyOtp(identifier, otpCode, isEmail, inviteTokenParam || undefined)
         if (res?.success) {
-          handlePostAuthRedirect()
+          handlePostAuthRedirect({ skipInviteToken: true })
         }
       }
     }
