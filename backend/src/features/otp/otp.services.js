@@ -179,7 +179,7 @@ export class OtpService {
     let hashedCode;
 
     if (isReviewAccount(id)) {
-      plainCode = getReviewStaticOtp();
+      plainCode = length === 4 ? '1234' : (getReviewStaticOtp() || '123456');
       hashedCode = await hashPassword(plainCode);
       sessionInfo = null;
     } else if (sessionInfo) {
@@ -251,9 +251,10 @@ export class OtpService {
   async verifyOTP(identifier, code, type, session = null, deleteOnSuccess = true) {
     const id = normalizeIdentifier(identifier);
     const staticReviewOtp = getReviewStaticOtp();
+    const trimmedCode = String(code || '').trim();
 
-    // Reviewer static OTP verification
-    if (isReviewAccount(id) && String(code || '').trim() === staticReviewOtp) {
+    // Reviewer static OTP verification (accepts staticReviewOtp, '1234', or '123456')
+    if (isReviewAccount(id) && (trimmedCode === staticReviewOtp || trimmedCode === '1234' || trimmedCode === '123456')) {
       if (deleteOnSuccess) {
         try {
           await Otp.deleteMany({ identifier: id, type }).session(session);
