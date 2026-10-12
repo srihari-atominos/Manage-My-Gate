@@ -5,6 +5,7 @@ import logger from '../../utils/logger.utils.js';
 import { maskEmail, maskPhone } from '../../utils/phone.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from './utils/invite.utils.js';
+import { getEmailLogoHtml } from '../../utils/email.utils.js';
 
 // Admin-entered values (community, unit, role names) are inserted into email HTML
 const escapeHtml = (value) =>
@@ -130,14 +131,10 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
     const targetUserName = targetUser?.name || 'User';
     const registeredPhone = phone || targetUser?.phone || '';
 
-    const clientUrl = process.env.CLIENT_URL || process.env.APP_CLIENT_URL || 'https://managemygate.e3esg.com';
     const customInviteBody = `
 <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px; line-height: 1.6; border: 1px solid #EFE6DC;">
   
-  <!-- Nahom Logo Header -->
-  <div style="text-align: center; margin-bottom: 25px;">
-    <img src="${clientUrl}/public/logo.png" alt="Nahom Logo" style="max-height: 45px; width: auto;" onerror="this.style.display='none'" />
-  </div>
+${getEmailLogoHtml()}
 
   <p style="font-size: 18px; font-weight: bold; color: #F45A0A;">Hello ${escapeHtml(targetUserName)},</p>
   
@@ -221,12 +218,9 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
   }
 });
 
-const clientUrl = process.env.CLIENT_URL || process.env.APP_CLIENT_URL || 'https://managemygate.e3esg.com';
 const DEFAULT_ADDED_BODY = `
 <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px;">
-  <div style="text-align: center; margin-bottom: 25px;">
-    <img src="${clientUrl}/public/logo.png" alt="Nahom Logo" style="max-height: 45px; width: auto;" onerror="this.style.display='none'" />
-  </div>
+${getEmailLogoHtml()}
   <h2 style="color: #F45A0A; margin-top: 0;">Workspace Update</h2>
   <p>You have been added to a new workspace/community.</p>
   <p>Please log in to your account to access it.</p>
@@ -293,9 +287,7 @@ userEvents.on('EMAIL_OTP_SENT', async ({ email, code }) => {
     const emailSubject = 'Your Email Verification Code';
     const emailBody = `
       <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 500px; margin: 0 auto; border: 1px solid #EFE6DC; border-radius: 18px;">
-        <div style="text-align: center; margin-bottom: 25px;">
-          <img src="${clientUrl}/public/logo.png" alt="Nahom Logo" style="max-height: 45px; width: auto;" onerror="this.style.display='none'" />
-        </div>
+${getEmailLogoHtml()}
         <h2 style="color: #F45A0A; margin-top: 0;">Email Verification</h2>
         <p>You requested to update your account email to <strong>${email}</strong>.</p>
         <p>Please enter the following 6-digit verification code in the app to verify this change:</p>

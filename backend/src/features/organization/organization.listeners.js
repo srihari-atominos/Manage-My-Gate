@@ -11,14 +11,11 @@ export const initOrganizationListeners = () => {
     }
 
     try {
-      const { sendEmail } = await import('../../utils/email.utils.js');
-      const clientUrl = process.env.CLIENT_URL || process.env.APP_CLIENT_URL || 'https://managemygate.e3esg.com';
+      const { sendEmail, getEmailLogoHtml } = await import('../../utils/email.utils.js');
       const emailSubject = 'Verify your email for Workspace Setup';
       const emailBody = `
         <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 500px; margin: 0 auto; border: 1px solid #EFE6DC; border-radius: 18px;">
-          <div style="text-align: center; margin-bottom: 25px;">
-            <img src="${clientUrl}/public/logo.png" alt="Nahom Logo" style="max-height: 45px; width: auto;" onerror="this.style.display='none'" />
-          </div>
+${getEmailLogoHtml()}
           <h2 style="color: #F45A0A; margin-top: 0;">Workspace Setup Verification</h2>
           <p>You have been nominated as a Community Admin for a new workspace.</p>
           <p>Please provide the following 6-digit verification code to the Platform Admin to proceed with the setup:</p>
@@ -59,7 +56,7 @@ export const initOrganizationListeners = () => {
     }
 
     try {
-      const { sendEmail } = await import('../../utils/email.utils.js');
+      const { sendEmail, getEmailLogoHtml } = await import('../../utils/email.utils.js');
       
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       
@@ -67,15 +64,14 @@ export const initOrganizationListeners = () => {
       const targetUserName = adminName ? escapeHtml(adminName) : 'Community Admin';
       const registeredPhone = adminPhone || 'Not Provided';
       
-      const clientUrl = process.env.CLIENT_URL || process.env.APP_CLIENT_URL || 'https://managemygate.e3esg.com';
+      const isLocalhost = (url) => !url || /localhost|127\.0\.0\.1|::1/i.test(url);
+      const rawUrl = process.env.WEB_APP_URL || process.env.CLIENT_URL || process.env.APP_CLIENT_URL;
+      const clientUrl = (rawUrl && !isLocalhost(rawUrl)) ? rawUrl.trim().replace(/\/+$/, '') : 'https://managemygate.e3esg.com';
       
       const emailSubject = `Welcome to ${safeCommunityName}`;
       const emailBody = `
 <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px;">
-  <!-- Nahom Logo Header -->
-  <div style="text-align: center; margin-bottom: 25px;">
-    <img src="${clientUrl}/public/logo.png" alt="Nahom Logo" style="max-height: 45px; width: auto;" onerror="this.style.display='none'" />
-  </div>
+${getEmailLogoHtml()}
 
   <p style="font-size: 18px; font-weight: bold; color: #F45A0A;">Hello ${targetUserName},</p>
   

@@ -123,13 +123,10 @@ const handleAssignmentNotification = async ({ orgId, complaint, previousAssignee
       // Send email notification
       const assigneeUser = await User.findById(techIdStr);
       if (assigneeUser && assigneeUser.email) {
-        const { sendEmail } = await import('../../utils/email.utils.js');
-        const clientUrl = process.env.CLIENT_URL || process.env.APP_CLIENT_URL || 'https://managemygate.e3esg.com';
+        const { sendEmail, getEmailLogoHtml } = await import('../../utils/email.utils.js');
         const emailBody = `
         <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 500px; margin: 0 auto; border: 1px solid #EFE6DC; border-radius: 18px;">
-          <div style="text-align: center; margin-bottom: 25px;">
-            <img src="${clientUrl}/public/logo.png" alt="Nahom Logo" style="max-height: 45px; width: auto;" onerror="this.style.display='none'" />
-          </div>
+${getEmailLogoHtml()}
           <h2 style="color: #F45A0A; margin-top: 0;">Admin Allocated Work</h2>
           <p>You have been assigned to a new complaint/task.</p>
           <div style="background-color: #FFF0E5; border-radius: 12px; padding: 15px; margin: 20px 0;">

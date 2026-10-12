@@ -96,3 +96,42 @@ export const sendEmail = async (orgId, to, subject, htmlBody, options = {}) => {
     return false;
   }
 };
+
+/**
+ * Resolves the absolute public HTTPS URL for the application logo to be used in emails.
+ * Emails are opened in external email clients (e.g. Gmail proxy) which can NEVER reach
+ * localhost/private IPs. If the configured client URL is localhost or missing, it safely
+ * falls back to the public production domain where the brand logo is hosted.
+ */
+export const getAppLogoUrl = () => {
+  const isLocalhost = (url) => !url || /localhost|127\.0\.0\.1|::1/i.test(url);
+
+  if (process.env.APP_LOGO_URL && !isLocalhost(process.env.APP_LOGO_URL)) {
+    return process.env.APP_LOGO_URL.trim();
+  }
+
+  const rawUrl =
+    process.env.PUBLIC_APP_URL ||
+    process.env.WEB_APP_URL ||
+    process.env.WEB_CLIENT_URL ||
+    process.env.CLIENT_URL ||
+    process.env.APP_CLIENT_URL;
+
+  const baseUrl = (rawUrl && !isLocalhost(rawUrl))
+    ? rawUrl.trim().replace(/\/+$/, '')
+    : 'https://managemygate.e3esg.com';
+
+  return `${baseUrl}/nahom_full_logo.png`;
+};
+
+/**
+ * Returns clean, cross-client-compatible HTML for the centered logo header in email templates.
+ */
+export const getEmailLogoHtml = () => {
+  const logoUrl = getAppLogoUrl();
+  return `  <!-- Nahom Logo Header -->
+  <div style="text-align: center; margin-bottom: 25px;">
+    <img src="${logoUrl}" alt="Nahom Logo" width="140" style="max-height: 45px; height: 45px; width: auto; max-width: 180px; display: inline-block; border: 0; outline: none; text-decoration: none;" />
+  </div>`;
+};
+

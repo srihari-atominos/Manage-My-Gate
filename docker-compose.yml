@@ -97,6 +97,7 @@ services:
       - APP_CLIENT_URL=${APP_CLIENT_URL:-https://managemygate.e3esg.com}
       - WEB_CLIENT_URL=${WEB_CLIENT_URL:-https://managemygate.e3esg.com}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - APP_LOGO_URL=${APP_LOGO_URL:-https://managemygate.e3esg.com/nahom_full_logo.png}
       - REDIS_URL=${REDIS_URL}
       - NODE_ENV=${NODE_ENV:-production}
       - TZ=${TZ:-Asia/Kolkata}
