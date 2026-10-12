@@ -74,6 +74,10 @@ export class MicrosoftProvider {
       throw new HttpError(400, 'Email is required from Microsoft profile but was not provided.');
     }
 
+    if (payload.email_verified === false || payload.email_verified === 'false') {
+      throw new HttpError(403, 'Email address is not verified by Microsoft.');
+    }
+
     return {
       provider: 'microsoft',
       providerId,

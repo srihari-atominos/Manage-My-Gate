@@ -11,7 +11,9 @@ const userSchema = new mongoose.Schema(
     },
     emailVerified: {
       type: Boolean,
-      default: true,
+      default: function() {
+        return this.status === 'Active';
+      },
     },
     username: {
       type: String,

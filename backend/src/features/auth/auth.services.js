@@ -14,6 +14,7 @@ import config from '../../config/config.js';
 import authEvents from './auth.events.js';
 import userEvents from '../user/user.events.js';
 import { normalizePhone } from '../../utils/phone.utils.js';
+import { sendOtpNotification } from './auth.listeners.js';
 
 export class AuthService {
   /**
@@ -93,6 +94,7 @@ export class AuthService {
           phone, 
           name: nameToUse || undefined, 
           status: 'Pending Verification',
+          emailVerified: false,
           privacyPolicyAcceptedAt: new Date()
         },
         session
@@ -269,7 +271,13 @@ export class AuthService {
       }
       if (!selectedMembership) {
         if (user.isPlatform === true) {
-          selectedMembership = activeMemberships.find((m) => m.orgId && m.orgId.isPlatform === true) || activeMemberships[0];
+          const orgData = await import('../org/org.model.js').then(m => m.default.findById(targetOrgIdStr).lean());
+          if (!orgData) throw new HttpError(404, 'Target community not found.');
+          selectedMembership = {
+            orgId: orgData,
+            roleIds: [],
+            status: 'Active'
+          };
         } else {
           throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
         }
@@ -304,7 +312,7 @@ export class AuthService {
 
     if (selectedMembership) {
       orgId = selectedMembership.orgId._id.toString();
-      isPlatform = selectedMembership.orgId.isPlatform || false;
+      isPlatform = selectedMembership.orgId.isPlatform || user.isPlatform || false;
 
       // Consolidate all roles assigned to this user within the selected organization
       const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === orgId);
@@ -329,7 +337,11 @@ export class AuthService {
 
       roleNames = uniqueRoles.map(r => r?.name).filter(Boolean);
 
-      if (targetRole) {
+      if (isPlatform) {
+        roleName = 'Platform Super Admin';
+        roleNames = Array.from(new Set([...roleNames, 'Platform Super Admin']));
+        permissions = ['*'];
+      } else if (targetRole) {
         if (!roleNames.includes(targetRole)) {
           throw new HttpError(400, `User does not have role '${targetRole}' in this organization.`);
         }
@@ -363,6 +375,11 @@ export class AuthService {
         mRoles.push(m.roleId);
       }
       const validRoles = mRoles.filter(Boolean);
+      if (user.isPlatform) {
+        if (!validRoles.some(r => r.name === 'Platform Super Admin')) {
+           validRoles.push({ name: 'Platform Super Admin' });
+        }
+      }
       const hasResidentInWs = validRoles.some(r => /resident|tenant|owner|family/i.test(r.name || ''));
       const firstUnit = m.units && m.units.length > 0 ? m.units[0] : null;
       const primaryVillaDoc = hasResidentInWs ? (m.villaId || firstUnit?.villaId || null) : null;
@@ -768,8 +785,8 @@ export class AuthService {
       throw new HttpError(403, `Your account has been ${user.status.toLowerCase()}. Please contact support.`);
     }
 
-    if (user.status === 'Pending Verification' && !inviteToken) {
-      throw new HttpError(403, 'Your account is pending verification. Please accept your workspace invitation first.');
+    if ((user.status === 'Pending Verification' || user.emailVerified === false) && !inviteToken) {
+      throw new HttpError(403, 'Email verification required. Please verify your email before logging in.');
     }
 
     if (!user.password) {
@@ -808,8 +825,8 @@ export class AuthService {
           const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
           await orgMembershipService.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
 
-          // If user was in Pending Verification, activate their global user profile
-          if (user.status === 'Pending Verification' || user.status === 'Pending') {
+          // If user was in Pending Verification or unverified, activate their global user profile
+          if (user.status === 'Pending Verification' || user.status === 'Pending' || user.emailVerified === false) {
             const User = (await import('../user/user.model.js')).default;
             await User.updateOne(
               { _id: user._id },
@@ -1064,16 +1081,13 @@ export class AuthService {
       let userId = null;
       let orgId = null;
 
-      if (rawToken) {
-        const tokenRes = await tokenService.validateInvitationToken(rawToken, session);
-        userId = tokenRes.userId;
-        orgId = tokenRes.orgId;
-      } else if (email) {
-        const userByEmail = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
-        if (userByEmail) {
-          userId = userByEmail._id;
-        }
+      if (!rawToken) {
+        throw new HttpError(400, 'Invitation token is required.');
       }
+
+      const tokenRes = await tokenService.validateInvitationToken(rawToken, session);
+      userId = tokenRes.userId;
+      orgId = tokenRes.orgId;
 
       let user = null;
       if (userId) {
@@ -1090,13 +1104,14 @@ export class AuthService {
 
       // Server-side identity verification: authenticated user check
       if (authenticatedUserId && user._id.toString() !== authenticatedUserId.toString()) {
+        console.log(`[DEBUG acceptInvitation] user._id=${user._id.toString()}, authenticatedUserId=${authenticatedUserId.toString()}`);
         const authUser = await userService.getUserById(authenticatedUserId).catch(() => null);
         if (authUser && authUser.email && user.email && authUser.email.trim().toLowerCase() === user.email.trim().toLowerCase()) {
           const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
           await OrgMembership.updateMany({ userId: user._id }, { $set: { userId: authUser._id } }).session(session).catch(() => null);
           user = authUser;
         } else {
-          throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
+          throw new HttpError(403, `The authenticated account does not match the invitation identity. user._id=${user._id.toString()}, auth._id=${authenticatedUserId.toString()}, userEmail=${user?.email}, authEmail=${authUser?.email}`);
         }
       }
 
@@ -1851,6 +1866,14 @@ export class AuthService {
       throw new HttpError(404, 'No account found with this email.');
     }
 
+    if (user.status === 'Pending Verification' || user.emailVerified === false) {
+      throw new HttpError(403, 'Email verification required. Please verify your email before logging in.');
+    }
+
+    if (user.status !== 'Active') {
+      throw new HttpError(403, `Account is ${user.status}`);
+    }
+
     const plainCode = await otpService.createOTP(email, 'LOGIN');
     sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
@@ -1974,18 +1997,21 @@ export class AuthService {
     // --- TRANSACTION BOUNDARY START ---
     // Encapsulate email OTP validation, user activation verification, and session setup.
     session.startTransaction();
-
     try {
-      await otpService.verifyOTP(email, code, 'LOGIN');
-
       const user = await userService.getUserByEmail(email, session);
       if (!user) {
         throw new HttpError(404, 'User not found.');
       }
 
+      if (user.status === 'Pending Verification' || user.emailVerified === false) {
+        throw new HttpError(403, 'Email verification required. Please verify your email before logging in.');
+      }
+
       if (user.status !== 'Active') {
         throw new HttpError(403, `Account is ${user.status}`);
       }
+
+      await otpService.verifyOTP(email, code, 'LOGIN', session);
 
       if (!user.emailVerified) {
         await userService.updateUser(user._id, { emailVerified: true }, session);

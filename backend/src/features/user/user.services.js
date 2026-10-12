@@ -189,6 +189,12 @@ export class UserService {
         if (existingEmailUser && existingEmailUser._id.toString() !== id.toString()) {
           throw new HttpError(409, `User with email '${updateData.email}' already exists.`);
         }
+        const currentUser = await userRepository.findById(id, currentSession);
+        if (currentUser && currentUser.email && currentUser.email.toLowerCase() !== normalizedEmail) {
+          if (updateData.emailVerified === undefined) {
+            updateData.emailVerified = false;
+          }
+        }
         updateData.email = normalizedEmail;
       }
       if (updateData.username && updateData.username.trim()) {
@@ -487,10 +493,13 @@ export class UserService {
           existingMembership.roleIds = roleIds;
           existingMembership.roleId = roleIds[0] || null;
         }
+        
+        // Always ensure the units array reflects the latest assignment, even for already active users
+        existingMembership.villaId = rootVillaId;
+        existingMembership.residentType = rootResidentType;
+        existingMembership.units = membershipUnits;
+        
         if (!existing || existing.status !== 'Active' || existingMembership.status !== 'Active') {
-          existingMembership.villaId = rootVillaId;
-          existingMembership.residentType = rootResidentType;
-          existingMembership.units = membershipUnits;
           existingMembership.status = targetMembershipStatus;
         }
         membership = await existingMembership.save({ session });

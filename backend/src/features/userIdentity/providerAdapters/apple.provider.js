@@ -84,6 +84,10 @@ export class AppleProvider {
     }
 
     const email = typeof payload?.email === 'string' ? payload.email.trim().toLowerCase() : '';
+
+    if (payload?.email_verified === false || payload?.email_verified === 'false') {
+      throw new HttpError(403, 'Email address is not verified by Apple.');
+    }
     return {
       provider: 'apple',
       providerId,

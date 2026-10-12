@@ -112,6 +112,10 @@ export class GoogleProvider {
       throw new HttpError(400, 'Email is required from Google profile but was not provided.');
     }
 
+    if (payload.email_verified === false || payload.email_verified === 'false') {
+      throw new HttpError(403, 'Email address is not verified by Google.');
+    }
+
     return {
       provider: 'google',
       providerId,

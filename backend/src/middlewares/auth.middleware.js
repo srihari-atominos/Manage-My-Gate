@@ -38,8 +38,7 @@ const assertOrgHeaderAllowed = async (req, decoded) => {
   const membership = await OrgMembership.findOne({ userId: decoded.id, orgId: requested, status: 'Active' })
     .select('_id')
     .lean();
-  console.error(`AUTH DEBUG: decoded.orgId=${decoded.orgId}, requested=${requested}, decoded=`, decoded);
-    if (!membership) {
+  if (!membership) {
     throw new HttpError(403, 'Forbidden. You are not a member of the requested community.');
   }
 };
@@ -84,6 +83,10 @@ export const isAuthenticated = async (req, res, next) => {
       throw new HttpError(401, 'User account is inactive.');
     }
 
+    if (user.emailVerified === false) {
+      throw new HttpError(403, 'Email verification required. Please verify your email.');
+    }
+
     await assertOrgHeaderAllowed(req, decoded);
 
     req.user = decoded; // Contains user ID, email, role, permissions, etc.
@@ -115,7 +118,7 @@ export const optionalAuth = async (req, res, next) => {
     if (token) {
       const decoded = jwt.verify(token, config.jwt.secret, JWT_VERIFY_OPTIONS);
       const user = await userService.getUserById(decoded.id).catch(() => null);
-      if (user && user.status === 'Active') {
+      if (user && user.status === 'Active' && user.emailVerified !== false) {
         req.user = decoded;
       }
     }
