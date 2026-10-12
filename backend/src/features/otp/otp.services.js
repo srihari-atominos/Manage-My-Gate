@@ -21,7 +21,62 @@ const secondsUntil = (date) => Math.max(1, Math.ceil((date.getTime() - Date.now(
 export const isOtpDebugEnabled = () =>
   process.env.OTP_DEBUG === 'true' && process.env.NODE_ENV !== 'production';
 
+/**
+ * Checks whether an identifier is a designated review account for Google Play/App Store review.
+ */
+export const isReviewAccount = (identifier) => {
+  if (!identifier) return false;
+  const raw = String(identifier).trim().toLowerCase();
+  const digitsOnly = raw.replace(/\D/g, '');
+
+  const envList = (process.env.REVIEW_IDENTIFIERS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  const defaultReviewers = [
+    'naveen@atominosconsulting.com',
+    'naveenpv5886@gmail.com',
+    '+919847561230',
+    '+919786608686',
+    '9847561230',
+    '9786608686',
+  ];
+
+  if (defaultReviewers.includes(raw) || envList.includes(raw)) {
+    return true;
+  }
+
+  for (const item of [...defaultReviewers, ...envList]) {
+    const itemDigits = item.replace(/\D/g, '');
+    if (
+      itemDigits.length >= 10 &&
+      digitsOnly.length >= 10 &&
+      (digitsOnly === itemDigits || digitsOnly.slice(-10) === itemDigits.slice(-10))
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Returns the configured static OTP for review accounts.
+ */
+export const getReviewStaticOtp = () => {
+  return String(process.env.REVIEW_STATIC_OTP || '123456').trim();
+};
+
 export class OtpService {
+  isReviewAccount(identifier) {
+    return isReviewAccount(identifier);
+  }
+
+  getReviewStaticOtp() {
+    return getReviewStaticOtp();
+  }
+
   /**
    * Generates a random 6-digit OTP code.
    * @returns {string} The plain OTP code
@@ -39,6 +94,7 @@ export class OtpService {
    * @param {string} identifier - Email or phone
    */
   async assertCanSend(identifier) {
+    if (isReviewAccount(identifier)) return;
     const id = normalizeIdentifier(identifier);
     const throttle = await OtpThrottle.findOne({ identifier: id }).lean();
     if (!throttle) return;
@@ -70,6 +126,7 @@ export class OtpService {
    * transaction so an aborted transaction can never erase the count.
    */
   async recordSend(identifier) {
+    if (isReviewAccount(identifier)) return;
     const id = normalizeIdentifier(identifier);
     const now = new Date();
     const windowMs = OTP_SEND_WINDOW_MINUTES * 60 * 1000;
@@ -118,18 +175,24 @@ export class OtpService {
     await this.assertCanSend(id);
     await this.recordSend(id);
 
-    let plainCode = this.generateCode(length);
+    let plainCode;
     let hashedCode;
 
-    if (sessionInfo) {
+    if (isReviewAccount(id)) {
+      plainCode = getReviewStaticOtp();
+      hashedCode = await hashPassword(plainCode);
+      sessionInfo = null;
+    } else if (sessionInfo) {
       // For Firebase/third-party, we don't generate/hash a real code since the provider handles it
       hashedCode = 'THIRD_PARTY_MANAGED';
       plainCode = 'THIRD_PARTY_MANAGED';
     } else {
+      plainCode = this.generateCode(length);
       hashedCode = await hashPassword(plainCode);
     }
 
-    const expiresAt = new Date(Date.now() + validityMinutes * 60000);
+    const effectiveMinutes = isReviewAccount(id) ? Math.max(validityMinutes, 1440) : validityMinutes;
+    const expiresAt = new Date(Date.now() + effectiveMinutes * 60000);
 
     // A new code always invalidates every earlier code of this type
     await Otp.deleteMany({ identifier: id, type }).session(session);
@@ -187,6 +250,18 @@ export class OtpService {
    */
   async verifyOTP(identifier, code, type, session = null, deleteOnSuccess = true) {
     const id = normalizeIdentifier(identifier);
+    const staticReviewOtp = getReviewStaticOtp();
+
+    // Reviewer static OTP verification
+    if (isReviewAccount(id) && String(code || '').trim() === staticReviewOtp) {
+      if (deleteOnSuccess) {
+        try {
+          await Otp.deleteMany({ identifier: id, type }).session(session);
+        } catch (_) {}
+      }
+      return true;
+    }
+
     const otpDoc = await Otp.findOne({ identifier: id, type })
       .sort({ createdAt: -1 })
       .session(session);

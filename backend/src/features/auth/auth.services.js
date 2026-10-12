@@ -2295,6 +2295,11 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       return { message: OTP_SENT_PHONE_MESSAGE };
     }
 
+    if (otpService.isReviewAccount(normalizedPhone)) {
+      const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
+      return { message: 'OTP sent successfully', ...devCodeField(normalizedPhone, plainCode) };
+    }
+
     // Check for Firebase Integration globally
     const firebaseIntegration = await integrationHubService.getGlobalConnectionByProvider('firebase');
 
