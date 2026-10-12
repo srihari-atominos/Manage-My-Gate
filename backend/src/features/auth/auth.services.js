@@ -2450,6 +2450,11 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
       }
 
+      if (otpService.isReviewAccount(normalizedPhone) && ['Pending Verification', 'Pending'].includes(user.status)) {
+        user.status = 'Active';
+        await userService.updateUser(user._id, { status: 'Active', phoneVerified: true }, session);
+      }
+
       if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
         throw new HttpError(403, `Account is ${user.status}`);
       }
@@ -2619,6 +2624,11 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       const user = await userService.getUserByEmail(email, session);
       if (!user) {
         throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
+      }
+
+      if (otpService.isReviewAccount(email) && ['Pending Verification', 'Pending'].includes(user.status)) {
+        user.status = 'Active';
+        await userService.updateUser(user._id, { status: 'Active', emailVerified: true }, session);
       }
 
       if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
