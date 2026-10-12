@@ -52,8 +52,9 @@ const parseCSV = (text) => {
     const row = {};
     headers.forEach((header, index) => {
       let key = header;
-      if (header === 'name' || header === 'fullname' || header === 'full name') key = 'name';
+      if (['name', 'fullname', 'full name', 'username', 'user name', 'resident name', 'staff name', 'member name'].includes(header)) key = 'name';
       else if (header === 'email') key = 'email';
+      else if (['phone', 'phone number', 'phonenumber', 'phone no', 'mobile', 'contact'].includes(header)) key = 'phone';
       else if (header === 'type') key = 'type';
       else if (
         header === 'villanumber' ||
@@ -123,7 +124,9 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
     setErrorMsg('');
     try {
       const payload = validRows.map(r => ({
+        name: r.name?.trim() || undefined,
         email: r.email,
+        phone: r.phone?.trim() || undefined,
         residentType: r.type === 'Resident' ? r.residentType : 'None',
         roleName: r.roleName,
         villaNumber: r.type === 'Resident' && r.villaNumber?.trim().toLowerCase() !== 'none' ? r.villaNumber : undefined,
