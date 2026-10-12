@@ -1,3 +1,12 @@
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[character]))
+
+const finiteNumber = (value) => {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : 0
+}
+
 /**
  * invoiceTemplate.js
  *
@@ -11,18 +20,18 @@ export function openInvoicePrintWindow(item, options = {}) {
   const printWindow = window.open('', '_blank')
   if (!printWindow) return
 
-  const communityName = options.communityName || 'Nahom Community'
-  const communityAddress = options.communityAddress || ''
+  const communityName = escapeHtml(options.communityName || 'Nahom Community')
+  const communityAddress = escapeHtml(options.communityAddress || '')
 
   // ── Core fields ──────────────────────────────────────────────────────
-  const invoiceNum = item.invoiceNumber || item.invoiceId || item._id || '—'
-  const unitNumber = item.unitNumber || '—'
-  const unitType = item.type || ''
-  const billingPeriod = item.billingPeriodString || '—'
-  const assessmentName = item.assessmentName || 'Maintenance'
-  const residentName = item.residentName || options.userName || '—'
-  const residentType = item.residentType || 'Resident'
-  const status = (item.status || 'UNKNOWN').replace(/_/g, ' ')
+  const invoiceNum = escapeHtml(item.invoiceNumber || item.invoiceId || item._id || '—')
+  const unitNumber = escapeHtml(item.unitNumber || '—')
+  const unitType = escapeHtml(item.type || '')
+  const billingPeriod = escapeHtml(item.billingPeriodString || '—')
+  const assessmentName = escapeHtml(item.assessmentName || 'Maintenance')
+  const residentName = escapeHtml(item.residentName || options.userName || '—')
+  const residentType = escapeHtml(item.residentType || 'Resident')
+  const status = escapeHtml((item.status || 'UNKNOWN').replace(/_/g, ' '))
   const invoiceDate = item.createdAt
     ? new Date(item.createdAt).toLocaleDateString('en-IN', {
         day: '2-digit',
@@ -32,18 +41,18 @@ export function openInvoicePrintWindow(item, options = {}) {
     : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 
   // ── Financial fields ─────────────────────────────────────────────────
-  const currentCharge = item.currentCharge || item.totalDue || 0
-  const previousOutstanding = item.previousOutstanding || 0
-  const lateFee = item.lateFeeAmount || 0
-  const totalDue = item.totalDue || 0
-  const paidAmount = item.paidAmount || 0
-  const outstanding = item.outstandingAmount ?? totalDue
-  const alreadyPaidAmount = item.alreadyPaidAmount || 0
-  const currentPaymentAmount = item.currentPaymentAmount || 0
+  const currentCharge = finiteNumber(item.currentCharge || item.totalDue)
+  const previousOutstanding = finiteNumber(item.previousOutstanding)
+  const lateFee = finiteNumber(item.lateFeeAmount)
+  const totalDue = finiteNumber(item.totalDue)
+  const paidAmount = finiteNumber(item.paidAmount)
+  const outstanding = finiteNumber(item.outstandingAmount ?? totalDue)
+  const alreadyPaidAmount = finiteNumber(item.alreadyPaidAmount)
+  const currentPaymentAmount = finiteNumber(item.currentPaymentAmount)
 
   // ── Payment details ──────────────────────────────────────────────────
-  const paymentMethod = item.paymentMethod || '—'
-  const offlineRef = item.offlineReference || '—'
+  const paymentMethod = escapeHtml(item.paymentMethod || '—')
+  const offlineRef = escapeHtml(item.offlineReference || '—')
   const paidAt = item.paid_at
     ? new Date(item.paid_at).toLocaleDateString('en-IN', {
         day: '2-digit',

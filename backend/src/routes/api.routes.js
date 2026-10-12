@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import sampleFeatureRouter from '../features/sampleFeature/sampleFeature.router.js';
 import authRouter from '../features/auth/auth.router.js';
 import roleRouter from '../features/role/role.router.js';
 import userRouter from '../features/user/user.router.js';
@@ -62,7 +61,6 @@ import webhookRouter from '../features/webhook/webhook.routes.js';
 // Mount feature routers here
 router.use('/public', publicRouter);
 router.use('/webhooks', webhookRouter);
-router.use('/sample', sampleFeatureRouter);
 router.use('/auth', authRouter);
 router.use('/session', sessionRouter);
 router.use('/sessions', sessionRouter);

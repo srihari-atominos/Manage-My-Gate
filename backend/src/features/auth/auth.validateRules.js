@@ -49,8 +49,10 @@ export const setupAccountPasswordRules = [
   body('password')
     .notEmpty()
     .withMessage('Password is required')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(passwordRegex)
+    .withMessage('Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character'),
   body('setupToken')
     .trim()
     .notEmpty()

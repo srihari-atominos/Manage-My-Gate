@@ -38,8 +38,7 @@ const assertOrgHeaderAllowed = async (req, decoded) => {
   const membership = await OrgMembership.findOne({ userId: decoded.id, orgId: requested, status: 'Active' })
     .select('_id')
     .lean();
-  console.error(`AUTH DEBUG: decoded.orgId=${decoded.orgId}, requested=${requested}, decoded=`, decoded);
-    if (!membership) {
+  if (!membership) {
     throw new HttpError(403, 'Forbidden. You are not a member of the requested community.');
   }
 };
@@ -59,11 +58,6 @@ export const isAuthenticated = async (req, res, next) => {
     else if (req.cookies && req.cookies.token) {
       assertTrustedOriginForCookieAuth(req);
       token = req.cookies.token;
-    }
-    // Check query params (for file downloads like export, pdf)
-    else if (req.method === 'GET' && typeof req.query?.auth_token === 'string') {
-      // Legacy file-download links only; tokens in URLs leak via logs, so never accept them for writes.
-      token = req.query.auth_token;
     }
 
     if (!token) {
@@ -108,8 +102,6 @@ export const optionalAuth = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
     } else if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
-    } else if (req.query && req.query.auth_token) {
-      token = req.query.auth_token;
     }
 
     if (token) {

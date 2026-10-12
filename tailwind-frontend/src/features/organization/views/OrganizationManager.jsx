@@ -419,17 +419,17 @@ export const OrganizationManager = () => {
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => toggleStatus(org._id, org.status)}
-                                  title={org.status === 'Active' ? 'Block Community' : 'Unblock Community'}
+                                  onClick={() => viewDetails(org._id)}
+                                  title="View Details"
                                   className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#FF6B00] hover:border-[#FF6B00] flex items-center justify-center transition-all cursor-pointer"
                                 >
-                                  <Icon icon="solar:folder-linear" width="16" />
+                                  <Icon icon="solar:eye-linear" width="16" />
                                 </button>
 
                                 <button
                                   type="button"
-                                  onClick={() => toggleStatus(org._id, org.status)}
-                                  title="Edit"
+                                  onClick={() => viewDetails(org._id)}
+                                  title="Edit Community"
                                   className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#FF6B00] hover:border-[#FF6B00] flex items-center justify-center transition-all cursor-pointer"
                                 >
                                   <Icon icon="solar:pen-linear" width="16" />
@@ -438,10 +438,10 @@ export const OrganizationManager = () => {
                                 <button
                                   type="button"
                                   onClick={() => toggleStatus(org._id, org.status)}
-                                  title="More options"
+                                  title={org.status === 'Active' ? 'Block Community' : 'Unblock Community'}
                                   className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-[#FF6B00] hover:border-[#FF6B00] flex items-center justify-center transition-all cursor-pointer"
                                 >
-                                  <Icon icon="solar:menu-dots-bold" width="16" />
+                                  <Icon icon="solar:ban-linear" width="16" />
                                 </button>
                               </div>
                             </td>

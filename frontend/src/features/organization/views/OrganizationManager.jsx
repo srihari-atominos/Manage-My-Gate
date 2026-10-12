@@ -162,6 +162,40 @@ const Icon = ({ icon, width = 16, className = '' }) => {
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
         </svg>
       )
+    case 'solar:eye-linear':
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )
+    case 'solar:ban-linear':
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+        </svg>
+      )
     case 'solar:pen-linear':
       return (
         <svg
@@ -610,16 +644,25 @@ export const OrganizationManager = () => {
                                   title="View Details"
                                   className="org-manager-table__action"
                                 >
-                                  <Icon icon="solar:folder-linear" width="16" />
+                                  <Icon icon="solar:eye-linear" width="16" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => viewDetails(org._id)}
+                                  title="Edit Community"
+                                  className="org-manager-table__action"
+                                >
+                                  <Icon icon="solar:pen-linear" width="16" />
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => toggleStatus(org._id, org.status)}
-                                  title={org.status === 'Active' ? 'Block' : 'Unblock'}
+                                  title={org.status === 'Active' ? 'Block Community' : 'Unblock Community'}
                                   className="org-manager-table__action"
                                 >
-                                  <Icon icon={org.status === 'Active' ? 'solar:lock-linear' : 'solar:unlock-linear'} width="16" />
+                                  <Icon icon="solar:ban-linear" width="16" />
                                 </button>
                               </div>
                             </td>

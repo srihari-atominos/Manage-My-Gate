@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import orgEventEmitter from './organization.events.js';
 import { DEFAULT_ROLE_PERMISSIONS } from './defaultRolePermissions.js';
 import { normalizePhone } from '../../utils/phone.utils.js';
+import logger from '../../utils/logger.utils.js';
 
 /** Feature keys shown as one group in the apps, mapped to permission features. */
 const FEATURE_GROUPS = Object.freeze({
@@ -474,11 +475,9 @@ export class OrganizationService {
     const otpService = (await import('../otp/otp.services.js')).default;
     const plainCode = await otpService.createOTP(normalizedEmail, 'COMMUNITY_ADMIN_EMAIL_VERIFICATION', 15);
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      console.log(`\n=========================================`);
-      console.log(`[COMMUNITY ADMIN EMAIL OTP] Code for ${normalizedEmail}: ${plainCode}`);
-      console.log(`=========================================\n`);
+    const { isOtpDebugEnabled } = await import('../otp/otp.services.js');
+    if (isOtpDebugEnabled()) {
+      logger.info(`[COMMUNITY ADMIN EMAIL OTP] Code for ${normalizedEmail}: ${plainCode}`);
     }
 
     orgEventEmitter.emit('COMMUNITY_ADMIN_EMAIL_OTP_SENT', { email: normalizedEmail, code: plainCode });
@@ -486,7 +485,7 @@ export class OrganizationService {
     return {
       message: `Verification code sent to ${normalizedEmail}`,
       email: normalizedEmail,
-      ...(isDev && { devCode: plainCode }),
+      ...(isOtpDebugEnabled() && { devCode: plainCode }),
     };
   }
 

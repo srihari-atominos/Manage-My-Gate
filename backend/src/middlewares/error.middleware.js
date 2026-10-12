@@ -104,8 +104,8 @@ export const errorHandler = (err, req, res, next) => {
     }
   }
 
-  // Do not leak internals of unexpected server errors to clients in production
-  if (statusCode >= 500 && config.nodeEnv === 'production' && !err.statusCode) {
+  // Do not leak internals of server errors to clients in production
+  if (statusCode >= 500 && config.nodeEnv === 'production') {
     message = 'Internal Server Error';
   }
 

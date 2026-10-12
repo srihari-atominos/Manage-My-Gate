@@ -35,7 +35,7 @@ export const revokeAllSessions = asyncHandler(async (req, res) => {
 
 export const refreshToken = asyncHandler(async (req, res) => {
   const { targetOrgId = null, targetRole = null, targetVillaId = null } = req.body || {};
-  const token = req.cookies.refreshToken || req.body.refreshToken;
+  const token = req.cookies?.refreshToken || req.body?.refreshToken;
 
   if (!token) {
     throw new HttpError(401, 'Refresh token required');

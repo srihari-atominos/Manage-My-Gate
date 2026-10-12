@@ -74,6 +74,23 @@ export class SessionService {
     }
 
     if (!validSession) {
+      // Check for token reuse / replay: if token matches a revoked or previously rotated session,
+      // revoke all sessions for this user as mandated by OWASP / OAuth 2.0 Security BCP.
+      const invalidSessions = await Session.find({
+        userId,
+        $or: [
+          { status: 'Revoked' },
+          { status: 'Rotated', rotatedAt: { $lt: graceStart } },
+        ],
+      });
+      for (const invDoc of invalidSessions) {
+        const isMatch = await comparePassword(plainToken, invDoc.refreshToken);
+        if (isMatch) {
+          await this.revokeAllUserSessions(userId);
+          authEvents.emit('REFRESH_TOKEN_REUSE_DETECTED', { userId, compromisedSessionId: invDoc._id });
+          throw new HttpError(401, 'Token reuse detected. All sessions revoked for security.');
+        }
+      }
       throw new HttpError(401, 'Session not found or revoked');
     }
 

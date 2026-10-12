@@ -9,7 +9,7 @@ import config from '../../../config/config.js'
  * Per architecture rules: no Redux dispatch here – caller provides onRefresh callback.
  */
 export const useResidentBookingSocket = (onRefresh) => {
-  const { user } = useSelector((state) => state.auth || {})
+  const { user, token } = useSelector((state) => state.auth || {})
   const refreshRef = useRef(onRefresh)
 
   // Keep the ref in sync without re-triggering the effect
@@ -18,11 +18,12 @@ export const useResidentBookingSocket = (onRefresh) => {
   }, [onRefresh])
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !token) return
 
     const socketUrl = config.socketUrl
 
     const socket = io(socketUrl, {
+      auth: { token },
       transports: ['websocket', 'polling'],
       withCredentials: true,
     })
@@ -72,7 +73,7 @@ export const useResidentBookingSocket = (onRefresh) => {
       socket.off('payment:failed', handleRefresh)
       socket.disconnect()
     }
-  }, [user])
+  }, [user, token])
 
   return null
 }

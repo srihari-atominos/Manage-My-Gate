@@ -5,6 +5,20 @@ import platformInvoiceEvents from './platformInvoice.events.js';
 import platformOrderService from '../platformOrder/platformOrder.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 
+const escapeHtml = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[character]));
+
+const finiteNumber = (value, fallback = 0) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
+
 export class PlatformInvoiceService {
   /**
    * Generate SHA-256 Invoice Checksum for Financial Audit (Mandatory Enhancement).
@@ -248,20 +262,22 @@ export class PlatformInvoiceService {
    */
   async generateInvoiceHtml(invoiceId) {
     const invoice = await this.getInvoiceById(invoiceId);
-    const orgName = invoice.commercialSnapshot?.organizationName || invoice.customerSnapshot?.customerName || invoice.organizationId?.name || 'Your Community';
-    const planName = invoice.commercialSnapshot?.planName || 'COMMUNITY_ENTERPRISE';
-    const totalAmount = invoice.totalAmount || 0;
-    const subtotal = invoice.subtotal || Math.round(totalAmount / 1.18);
-    const taxAmount = invoice.vatAmount || Math.round(totalAmount - subtotal);
-    const amountPaid = invoice.amountPaid || (invoice.status === 'PAID' ? totalAmount : 0);
-    const amountOutstanding = invoice.amountOutstanding !== undefined ? invoice.amountOutstanding : Math.max(0, totalAmount - amountPaid);
+    const orgName = escapeHtml(invoice.commercialSnapshot?.organizationName || invoice.customerSnapshot?.customerName || invoice.organizationId?.name || 'Your Community');
+    const planName = escapeHtml(invoice.commercialSnapshot?.planName || 'COMMUNITY_ENTERPRISE');
+    const invoiceNumber = escapeHtml(invoice.invoiceNumber || invoice._id);
+    const status = escapeHtml(invoice.status || 'ISSUED');
+    const totalAmount = finiteNumber(invoice.totalAmount);
+    const subtotal = finiteNumber(invoice.subtotal) || Math.round(totalAmount / 1.18);
+    const taxAmount = finiteNumber(invoice.vatAmount) || Math.round(totalAmount - subtotal);
+    const amountPaid = finiteNumber(invoice.amountPaid) || (invoice.status === 'PAID' ? totalAmount : 0);
+    const amountOutstanding = invoice.amountOutstanding !== undefined ? finiteNumber(invoice.amountOutstanding) : Math.max(0, totalAmount - amountPaid);
     const invDate = invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString() : new Date().toLocaleDateString();
 
     return `<!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Invoice - ${invoice.invoiceNumber || invoice._id}</title>
+        <title>Invoice - ${invoiceNumber}</title>
         <style>
           body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #f8fafc; padding: 40px; margin: 0; }
           .container { max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
@@ -288,7 +304,7 @@ export class PlatformInvoiceService {
             <div class="logo">🏢 Nahom Platform</div>
             <div class="inv-title">
               <h1>TAX INVOICE</h1>
-              <p># ${invoice.invoiceNumber || invoice._id}</p>
+              <p># ${invoiceNumber}</p>
             </div>
           </div>
 
@@ -303,7 +319,7 @@ export class PlatformInvoiceService {
             </div>
             <div class="meta-col">
               <h3>Status</h3>
-              <p><span class="badge">${invoice.status || 'ISSUED'}</span></p>
+              <p><span class="badge">${status}</span></p>
             </div>
           </div>
 

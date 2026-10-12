@@ -51,27 +51,48 @@ router.get('/checkout/:id', async (req, res, next) => {
   }
 });
 
-const buildInvoiceHtml = (checkoutInfo) => {
-  const invNum = checkoutInfo?.invoiceNumber || (checkoutInfo?.invoiceId ? `INV-2026-${String(checkoutInfo.invoiceId).slice(-6).toUpperCase()}` : `INV-2026-ONLINE`);
-  const orgName = checkoutInfo?.organizationName || checkoutInfo?.organizationDetails?.organizationName || 'Your Community';
-  const custName = checkoutInfo?.contactName || checkoutInfo?.customerDetails?.customerName || 'Valued Customer';
-  const email = checkoutInfo?.email || checkoutInfo?.customerDetails?.email || 'N/A';
-  const phone = checkoutInfo?.contactPhone || checkoutInfo?.customerDetails?.contactPhone || 'N/A';
+const escapeHtml = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[character]));
+
+const finiteNumber = (value, fallback = 0) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
+
+const addOnLabel = (addOn) => {
+  if (typeof addOn === 'string') return addOn;
+  if (addOn && typeof addOn === 'object') return addOn.name || addOn.code || addOn.key || '';
+  return '';
+};
+
+export const buildInvoiceHtml = (checkoutInfo) => {
+  const rawInvoiceNumber = checkoutInfo?.invoiceNumber || (checkoutInfo?.invoiceId ? `INV-2026-${String(checkoutInfo.invoiceId).slice(-6).toUpperCase()}` : 'INV-2026-ONLINE');
+  const invNum = escapeHtml(rawInvoiceNumber);
+  const orgName = escapeHtml(checkoutInfo?.organizationName || checkoutInfo?.organizationDetails?.organizationName || 'Your Community');
+  const custName = escapeHtml(checkoutInfo?.contactName || checkoutInfo?.customerDetails?.customerName || 'Valued Customer');
+  const email = escapeHtml(checkoutInfo?.email || checkoutInfo?.customerDetails?.email || 'N/A');
+  const phone = escapeHtml(checkoutInfo?.contactPhone || checkoutInfo?.customerDetails?.contactPhone || 'N/A');
   const invDate = checkoutInfo?.invoiceDate ? new Date(checkoutInfo.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  const totalAmt = checkoutInfo?.amount || 0;
+  const totalAmt = finiteNumber(checkoutInfo?.amount);
   
   const bd = checkoutInfo?.breakdown || {};
-  const basePrice = bd.basePrice || 0;
-  const unitCount = bd.unitCount || 250;
-  const perUnitRate = bd.perUnitRate || 0;
+  const basePrice = finiteNumber(bd.basePrice);
+  const unitCount = finiteNumber(bd.unitCount, 250) || 250;
+  const perUnitRate = finiteNumber(bd.perUnitRate);
   const unitTotal = unitCount * perUnitRate;
-  const setupFee = bd.setupFee || 0;
-  const discount = bd.discountAmount || 0;
-  const vatAmount = bd.vatAmount || Math.round(totalAmt - Math.round(totalAmt / 1.15));
-  const subtotal = bd.subtotal || (totalAmt > 0 ? Math.round(totalAmt - vatAmount) : 0);
+  const setupFee = finiteNumber(bd.setupFee);
+  const discount = finiteNumber(bd.discountAmount);
+  const vatAmount = finiteNumber(bd.vatAmount) || Math.round(totalAmt - Math.round(totalAmt / 1.15));
+  const subtotal = finiteNumber(bd.subtotal) || (totalAmt > 0 ? Math.round(totalAmt - vatAmount) : 0);
   const isPaid = Boolean(checkoutInfo?.isPaid);
-  const payMethod = checkoutInfo?.paymentDetails?.paymentMethod || 'Razorpay Gateway';
-  const txnId = checkoutInfo?.paymentDetails?.transactionId || `TXN_${Date.now()}`;
+  const payMethod = escapeHtml(checkoutInfo?.paymentDetails?.paymentMethod || 'Razorpay Gateway');
+  const txnId = escapeHtml(checkoutInfo?.paymentDetails?.transactionId || `TXN_${Date.now()}`);
   const addOns = Array.isArray(bd.selectedAddOns) ? bd.selectedAddOns : [];
 
   return `<!DOCTYPE html>
@@ -143,7 +164,7 @@ const buildInvoiceHtml = (checkoutInfo) => {
       <tbody>
         <tr>
           <td>
-            <strong>${bd.planName || 'Enterprise Commercial SaaS Subscription'}</strong><br/>
+            <strong>${escapeHtml(bd.planName || 'Enterprise Commercial SaaS Subscription')}</strong><br/>
             <span style="color: #64748b; font-size: 12px;">Full workspace suite: Visitor, Amenities, Complaints, Notices, Security, Notifications & Billing</span>
           </td>
           <td>1 Term</td>
@@ -167,7 +188,7 @@ const buildInvoiceHtml = (checkoutInfo) => {
           <td colspan="4" style="background: #f8fafc;">
             <strong>Included Feature Add-ons:</strong>
             <div style="margin-top: 4px; font-size: 12px; color: #475569;">
-              ${addOns.map(a => `• ${typeof a === 'string' ? a : (a.name || a.code || a.key)}`).join(' &nbsp;&nbsp;|&nbsp;&nbsp; ')}
+              ${addOns.map((addOn) => `• ${escapeHtml(addOnLabel(addOn))}`).join(' &nbsp;&nbsp;|&nbsp;&nbsp; ')}
             </div>
           </td>
         </tr>` : ''}
@@ -230,9 +251,10 @@ router.get('/invoice/:id/download', async (req, res, next) => {
     const checkoutInfo = await platformPaymentService.getPublicCheckoutInfo(req.params.id);
     const html = buildInvoiceHtml(checkoutInfo);
     const invNum = checkoutInfo?.invoiceNumber || `INV-2026-${String(req.params.id).slice(-4).toUpperCase()}`;
+    const safeFilename = String(invNum).replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120) || 'invoice';
 
     res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Content-Disposition', `attachment; filename=Invoice_${invNum}.html`);
+    res.setHeader('Content-Disposition', `attachment; filename=Invoice_${safeFilename}.html`);
     res.send(html);
   } catch (err) {
     next(err);
