@@ -280,7 +280,7 @@ export default function SettingsScreen() {
           </Pressable>
 
           <View className="flex-1 items-center">
-            <Text className="text-base font-bold text-foreground font-sans">
+            <Text className="text-xl font-extrabold text-foreground font-sans tracking-tight">
               {t('settings', 'Settings')}
             </Text>
           </View>

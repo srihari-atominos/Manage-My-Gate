@@ -6,6 +6,88 @@ import * as Sharing from 'expo-sharing';
 // Pure JS PNG encoder for QR codes in React Native (Zero canvas/DOM/zlib dependencies)
 const QRCode = require('qrcode');
 
+// Small embedded 5x7 font used for the share-card details. Keeping the font
+// local avoids adding a canvas/native image dependency to the Expo app.
+const FONT: Record<string, string[]> = {
+  ' ': ['00000', '00000', '00000', '00000', '00000', '00000', '00000'],
+  ':': ['00000', '00100', '00100', '00000', '00100', '00100', '00000'],
+  '-': ['00000', '00000', '00000', '11111', '00000', '00000', '00000'],
+  '.': ['00000', '00000', '00000', '00000', '00000', '00110', '00110'],
+  '/': ['00001', '00010', '00100', '01000', '10000', '00000', '00000'],
+  '0': ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
+  '1': ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
+  '2': ['01110', '10001', '00001', '00010', '00100', '01000', '11111'],
+  '3': ['11110', '00001', '00001', '01110', '00001', '00001', '11110'],
+  '4': ['00010', '00110', '01010', '10010', '11111', '00010', '00010'],
+  '5': ['11111', '10000', '10000', '11110', '00001', '00001', '11110'],
+  '6': ['01110', '10000', '10000', '11110', '10001', '10001', '01110'],
+  '7': ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
+  '8': ['01110', '10001', '10001', '01110', '10001', '10001', '01110'],
+  '9': ['01110', '10001', '10001', '01111', '00001', '00001', '01110'],
+};
+
+const LETTERS = [
+  ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+  ['11110', '10001', '10001', '11110', '10001', '10001', '11110'],
+  ['01111', '10000', '10000', '10000', '10000', '10000', '01111'],
+  ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+  ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+  ['11111', '10000', '10000', '11110', '10000', '10000', '10000'],
+  ['01111', '10000', '10000', '10111', '10001', '10001', '01111'],
+  ['10001', '10001', '10001', '11111', '10001', '10001', '10001'],
+  ['01110', '00100', '00100', '00100', '00100', '00100', '01110'],
+  ['00111', '00010', '00010', '00010', '10010', '10010', '01100'],
+  ['10001', '10010', '10100', '11000', '10100', '10010', '10001'],
+  ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+  ['10001', '11011', '10101', '10101', '10001', '10001', '10001'],
+  ['10001', '11001', '10101', '10011', '10001', '10001', '10001'],
+  ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+  ['11110', '10001', '10001', '11110', '10000', '10000', '10000'],
+  ['01110', '10001', '10001', '10001', '10101', '10010', '01101'],
+  ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+  ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+  ['11111', '00100', '00100', '00100', '00100', '00100', '00100'],
+  ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
+  ['10001', '10001', '10001', '10001', '10001', '01010', '00100'],
+  ['10001', '10001', '10001', '10101', '10101', '11011', '10001'],
+  ['10001', '10001', '01010', '00100', '01010', '10001', '10001'],
+  ['10001', '10001', '01010', '00100', '00100', '00100', '00100'],
+  ['11111', '00001', '00010', '00100', '01000', '10000', '11111'],
+];
+LETTERS.forEach((glyph, index) => {
+  FONT[String.fromCharCode(65 + index)] = glyph;
+});
+
+function drawText(
+  pixels: Uint8Array,
+  width: number,
+  text: string,
+  x: number,
+  y: number,
+  scale = 2,
+) {
+  const normalized = text.toUpperCase();
+  let cursor = x;
+  for (const character of normalized) {
+    const glyph = FONT[character] || FONT[' '];
+    for (let gy = 0; gy < glyph.length; gy += 1) {
+      for (let gx = 0; gx < glyph[gy].length; gx += 1) {
+        if (glyph[gy][gx] !== '1') continue;
+        for (let sy = 0; sy < scale; sy += 1) {
+          for (let sx = 0; sx < scale; sx += 1) {
+            const px = cursor + gx * scale + sx;
+            const py = y + gy * scale + sy;
+            if (px >= 0 && px < width && py >= 0 && py < pixels.length / width) {
+              pixels[py * width + px] = 0;
+            }
+          }
+        }
+      }
+    }
+    cursor += 6 * scale;
+  }
+}
+
 function crc32(buf: Uint8Array): number {
   let table: number[] = [];
   for (let i = 0; i < 256; i++) {
@@ -149,6 +231,84 @@ export function generateQrPngBytes(text: string, scale = 10, margin = 4): Uint8A
   return concatUint8Arrays(chunks);
 }
 
+function encodeGrayscalePng(pixels: Uint8Array, width: number, height: number): Uint8Array {
+  const scanlineLen = width + 1;
+  const rawData = new Uint8Array(scanlineLen * height);
+  for (let y = 0; y < height; y += 1) {
+    rawData[y * scanlineLen] = 0;
+    rawData.set(pixels.subarray(y * width, (y + 1) * width), y * scanlineLen + 1);
+  }
+
+  const maxBlock = 65535;
+  const deflateParts: Uint8Array[] = [new Uint8Array([0x78, 0x01])];
+  const numBlocks = Math.ceil(rawData.length / maxBlock);
+  for (let i = 0; i < numBlocks; i += 1) {
+    const isLast = i === numBlocks - 1;
+    const start = i * maxBlock;
+    const end = Math.min(start + maxBlock, rawData.length);
+    const len = end - start;
+    const nlen = len ^ 0xFFFF;
+    deflateParts.push(new Uint8Array([
+      isLast ? 0x01 : 0x00,
+      len & 0xFF,
+      (len >>> 8) & 0xFF,
+      nlen & 0xFF,
+      (nlen >>> 8) & 0xFF,
+    ]));
+    deflateParts.push(rawData.subarray(start, end));
+  }
+  deflateParts.push(uint32ToBytesBE(adler32(rawData)));
+
+  const ihdr = new Uint8Array(13);
+  ihdr.set(uint32ToBytesBE(width), 0);
+  ihdr.set(uint32ToBytesBE(height), 4);
+  ihdr[8] = 8;
+  ihdr[9] = 0;
+  const chunks = [
+    new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+    makeChunk('IHDR', ihdr),
+    makeChunk('IDAT', concatUint8Arrays(deflateParts)),
+    makeChunk('IEND', new Uint8Array(0)),
+  ];
+  return concatUint8Arrays(chunks);
+}
+
+/** Creates one WhatsApp-safe image containing both the QR and pass details. */
+export function generateShareCardPngBytes(
+  barcodePayload: string,
+  details: string[],
+): Uint8Array {
+  const qr = QRCode.create(barcodePayload, { errorCorrectionLevel: 'M' });
+  const qrScale = 10;
+  const qrMargin = 4;
+  const qrSize = (qr.modules.size + qrMargin * 2) * qrScale;
+  const width = Math.max(640, qrSize + 40);
+  const textScale = 2;
+  const lineHeight = 22;
+  const height = qrSize + 36 + details.length * lineHeight + 20;
+  const pixels = new Uint8Array(width * height).fill(255);
+
+  const qrLeft = Math.floor((width - qrSize) / 2);
+  const qrTop = 16;
+  for (let y = 0; y < qrSize; y += 1) {
+    const modY = Math.floor(y / qrScale) - qrMargin;
+    for (let x = 0; x < qrSize; x += 1) {
+      const modX = Math.floor(x / qrScale) - qrMargin;
+      if (modX >= 0 && modX < qr.modules.size && modY >= 0 && modY < qr.modules.size && qr.modules.get(modY, modX)) {
+        pixels[(qrTop + y) * width + qrLeft + x] = 0;
+      }
+    }
+  }
+
+  let textY = qrTop + qrSize + 10;
+  for (const detail of details) {
+    const textWidth = detail.length * 6 * textScale;
+    drawText(pixels, width, detail, Math.max(12, Math.floor((width - textWidth) / 2)), textY, textScale);
+    textY += lineHeight;
+  }
+  return encodeGrayscalePng(pixels, width, height);
+}
+
 export function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   const len = bytes.byteLength;
@@ -215,9 +375,15 @@ export function generateUnicodeQr(text: string): string {
 /**
  * Saves a high-resolution QR PNG to the device cache and returns the local file URI.
  */
-export async function exportQrPngFileUri(barcodePayload: string, filenamePrefix: string): Promise<string> {
+export async function exportQrPngFileUri(
+  barcodePayload: string,
+  filenamePrefix: string,
+  details: string[] = [],
+): Promise<string> {
   if (Platform.OS === 'web') return '';
-  const pngBytes = generateQrPngBytes(barcodePayload, 10, 4);
+  const pngBytes = details.length > 0
+    ? generateShareCardPngBytes(barcodePayload, details)
+    : generateQrPngBytes(barcodePayload, 10, 4);
   let targetUri = '';
 
   try {
@@ -262,12 +428,15 @@ export async function exportQrPngFileUri(barcodePayload: string, filenamePrefix:
 export async function shareQrImage(
   barcodePayload: string,
   passCode: string,
-  dialogTitle?: string
+  dialogTitle?: string,
+  details: string[] = [],
 ): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   try {
-    const targetUri = await exportQrPngFileUri(barcodePayload, `MMG_Pass_${passCode}`);
+    const targetUri = await exportQrPngFileUri(barcodePayload, `MMG_Pass_${passCode}`, details);
     if (targetUri && (await Sharing.isAvailableAsync())) {
+      // Share the PNG file itself. Callers use text only if native file sharing
+      // is unavailable, so WhatsApp receives a real scannable QR attachment.
       await Sharing.shareAsync(targetUri, {
         mimeType: 'image/png',
         dialogTitle: dialogTitle || `Nahom Pass - ${passCode}`,
@@ -280,4 +449,3 @@ export async function shareQrImage(
   }
   return false;
 }
-

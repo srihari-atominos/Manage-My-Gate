@@ -92,7 +92,7 @@ export default function OtpScreen() {
         blurRadius={Platform.OS === 'ios' ? 3 : 2}
         resizeMode="cover"
       >
-        <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
+        <View className="absolute inset-0 bg-black/20 dark:bg-[#0B0E14]/55" />
         <KeyboardAwareScrollView
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
@@ -104,10 +104,10 @@ export default function OtpScreen() {
               <View className="bg-primary/10 p-4 rounded-full mb-3">
                 <KeyRoundIcon className="size-8 text-primary" />
               </View>
-              <Text className="text-2xl font-extrabold text-foreground tracking-tight">
+              <Text className="text-2xl font-extrabold text-[#172B4D] tracking-tight">
                 {t('enter_verification_code', 'Enter Verification Code')}
               </Text>
-              <Text className="text-muted-foreground text-sm text-center mt-1.5 px-4">
+              <Text className="text-[#64748B] text-sm text-center mt-1.5 px-4">
                 {isEmail
                   ? t('sent_code_email', 'If an account exists, we sent a verification code to:')
                   : t('sent_code_phone', 'If an account exists, we sent a verification code to:')}
@@ -121,7 +121,7 @@ export default function OtpScreen() {
               className="bg-white/75 dark:bg-[#1C1917]/75 backdrop-blur-xl border border-white/70 dark:border-white/15 rounded-3xl p-5 gap-4 shadow-xl shadow-black/5"
             >
               <View className="gap-2">
-                <Text className="text-[#1C1917] dark:text-white font-semibold text-sm">{t('security_code', 'Security Code')}</Text>
+                <Text className="text-[#172B4D] dark:text-white font-bold text-sm">{t('security_code', 'Security Code')}</Text>
                 <Controller
                   control={control}
                   name="code"
@@ -138,7 +138,9 @@ export default function OtpScreen() {
                       autoComplete="one-time-code"
                       textContentType="oneTimeCode"
                       maxLength={isEmail ? 6 : 4}
-                      className="bg-white/75 dark:bg-[#292524]/75 text-[#1C1917] dark:text-white border border-white/80 dark:border-white/20 rounded-xl px-4 py-3.5 text-center text-lg font-bold tracking-[6px] shadow-2xs"
+                      className="bg-white dark:bg-[#292524]/75 text-[#172B4D] dark:text-white border border-slate-200 dark:border-white/20 rounded-full px-4 py-3.5 text-center text-lg font-bold tracking-[6px] shadow-sm"
+                      selectionColor="#172B4D"
+                      cursorColor="#172B4D"
                     />
                   )}
                 />
@@ -154,7 +156,7 @@ export default function OtpScreen() {
               ) : null}
 
               {codeIsDead ? (
-                <Button testID="otp-request-new" onPress={handleResend} disabled={loading || resendIn > 0} className="mt-2 h-12">
+                <Button testID="otp-request-new" onPress={handleResend} disabled={loading || resendIn > 0} className="mt-2 h-12 rounded-full bg-[#172B4D]">
                   <Text className="font-bold text-primary-foreground">
                     {resendIn > 0
                       ? `${t('request_new_otp', 'Request New OTP')} (${resendIn}s)`
@@ -162,7 +164,7 @@ export default function OtpScreen() {
                   </Text>
                 </Button>
               ) : (
-                <Button testID="otp-verify" onPress={handleSubmit(onSubmit)} disabled={loading} className="mt-2 h-12">
+                <Button testID="otp-verify" onPress={handleSubmit(onSubmit)} disabled={loading} className="mt-2 h-12 rounded-full bg-[#172B4D]">
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (

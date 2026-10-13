@@ -14,6 +14,8 @@ import { VisitorLogDetailsModal } from '@/src/features/visitor/components/histor
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
 import { mapBackendPassToHistoryItem } from '@/src/features/visitor/utils/mapBackendPassToHistoryItem';
 import { History, ShieldCheck, Plus } from 'lucide-react-native';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { useTranslation } from '@/src/utils/i18n';
 
 export default function AdminVisitorDashboardScreen() {
@@ -130,6 +132,7 @@ export default function AdminVisitorDashboardScreen() {
           label={t('create_pass', 'Create Pass')}
           accessibilityRole="button"
           accessibilityLabel={t('create_pass', 'Create Pass')}
+          testID="admin-create-pass-button"
         />
       }
     >
@@ -158,8 +161,6 @@ export default function AdminVisitorDashboardScreen() {
             icon={ShieldCheck}
             title="No Community Passes Recorded"
             description="No entry or exit logs have been recorded today."
-            actionLabel="Create Pass"
-            onAction={() => router.navigate('/(resident)/visitor/admin/create-pass' as any)}
           />
         ) : (
           <View className="gap-2.5">

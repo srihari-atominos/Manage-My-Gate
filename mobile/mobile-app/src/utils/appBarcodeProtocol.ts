@@ -11,7 +11,6 @@
  * - Resident pass (RESIDENT)
  */
 
-import { generateUnicodeQr } from './qrPngGenerator';
 
 export type AppBarcodeType =
   | 'GUEST'
@@ -238,9 +237,9 @@ export interface BuildVisitorPassShareTextOptions {
 }
 
 /**
- * Builds the canonical share message for WhatsApp and messaging apps.
- * Formats the message with rich Unicode QR code block (rendered via monospace triple backticks)
- * so that the actual QR code displays directly in the WhatsApp message chat bubble.
+ * Builds the readable text fallback for WhatsApp and messaging apps.
+ * The primary share action sends a real PNG QR image. This fallback avoids
+ * Unicode QR drawings because WhatsApp can wrap or resize those characters.
  */
 export function buildVisitorPassShareMessage(options: BuildVisitorPassShareTextOptions): string {
   const code = options.passCode || '849201';
@@ -255,22 +254,16 @@ export function buildVisitorPassShareMessage(options: BuildVisitorPassShareTextO
     ? new Date(options.validUntil).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
     : 'Today';
 
-  const unicodeQr = generateUnicodeQr(options.barcodePayload);
   const barcodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=12&data=${encodeURIComponent(options.barcodePayload)}`;
 
   const destinationLine = options.destination ? `📍 *Destination Unit:* ${options.destination}\n` : '';
 
-  let qrSection = '';
-  if (unicodeQr && unicodeQr.trim().length > 0) {
-    qrSection =
-      `📱 *QR PASS:*\n` +
-      `\`\`\`\n` +
-      `${unicodeQr.trimEnd()}\n` +
-      `\`\`\`\n\n` +
-      `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n`;
-  } else {
-    qrSection = `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n`;
-  }
+  const qrSection =
+    `📱 *QR PASS:*\n` +
+    `\`\`\`\n` +
+    `QR image attached separately by Nahom.\n` +
+    `\`\`\`\n\n` +
+    `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n`;
 
   return (
     `🚪 *NAHOM VISITOR PASS* 🚪\n\n` +
@@ -298,16 +291,15 @@ export interface BuildAmenityPassShareTextOptions {
 }
 
 /**
- * Builds the canonical share message for Amenity Access Passes for WhatsApp and messaging apps.
- * Formats the message with rich Unicode QR code block (rendered via monospace triple backticks)
- * and pass attributes so it displays directly in the WhatsApp message chat bubble.
+ * Builds the readable text fallback for Amenity Access Passes. The primary
+ * action shares the real QR PNG; this fallback remains readable when native
+ * file sharing is unavailable.
  */
 export function buildAmenityPassShareMessage(options: BuildAmenityPassShareTextOptions): string {
   const code = options.passCode || 'PASS';
   const facility = options.facilityName || 'Amenity Facility';
   const resident = options.residentName || 'Resident';
 
-  const unicodeQr = generateUnicodeQr(options.barcodePayload);
   const barcodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=12&data=${encodeURIComponent(options.barcodePayload)}`;
 
   const destinationLine = options.destinationUnit ? `📍 *Unit / Villa:* ${options.destinationUnit}\n` : '';
@@ -318,17 +310,12 @@ export function buildAmenityPassShareMessage(options: BuildAmenityPassShareTextO
     ? `⌛ *Valid Until:* ${new Date(options.validUntil).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}\n`
     : '';
 
-  let qrSection = '';
-  if (unicodeQr && unicodeQr.trim().length > 0) {
-    qrSection =
-      `📱 *QR PASS:*\n` +
-      `\`\`\`\n` +
-      `${unicodeQr.trimEnd()}\n` +
-      `\`\`\`\n\n` +
-      `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n`;
-  } else {
-    qrSection = `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n`;
-  }
+  const qrSection =
+    `📱 *QR PASS:*\n` +
+    `\`\`\`\n` +
+    `QR image attached separately by Nahom.\n` +
+    `\`\`\`\n\n` +
+    `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n`;
 
   return (
     `🏊 *AMENITY ACCESS PASS* 🎾\n\n` +
@@ -346,4 +333,3 @@ export function buildAmenityPassShareMessage(options: BuildAmenityPassShareTextO
     `Please present this Pass Code (${code}) or the QR code at the amenity gate/turnstile for access verification.`
   );
 }
-

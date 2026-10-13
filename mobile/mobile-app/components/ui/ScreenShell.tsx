@@ -264,14 +264,14 @@ export function ScreenShell({
                 <Text
                   numberOfLines={subtitle ? 1 : 2}
                   className="text-foreground text-[22px] sm:text-[24px] font-extrabold tracking-tight leading-tight shrink"
-                  style={{ fontWeight: 'bold' }}
+                  style={{ fontWeight: '800' }}
                 >
                   {translateText(title)}
                 </Text>
                 {subtitle ? (
                   <Text
                     numberOfLines={2}
-                    className="text-[14.5px] sm:text-[15.5px] text-muted-foreground mt-1 font-normal leading-snug shrink"
+                    className="text-[14.5px] sm:text-[15.5px] text-muted-foreground mt-1 font-medium leading-snug shrink"
                   >
                     {translateText(subtitle)}
                   </Text>
@@ -364,11 +364,9 @@ export function ScreenShell({
           keyboardVerticalOffset={0}
           className="flex-1 bg-transparent"
         >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View className="flex-1 bg-transparent">
-              {children}
-            </View>
-          </TouchableWithoutFeedback>
+          <View className="flex-1 bg-transparent">
+            {children}
+          </View>
         </KeyboardAvoidingView>
       )}
 

@@ -72,6 +72,14 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
 
     const handleFocus = (e: any) => {
       setIsFocused(true);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const target = e?.target;
+        if (target && typeof target.scrollIntoView === 'function') {
+          setTimeout(() => {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 80);
+        }
+      }
       if (onFocus) onFocus(e);
     };
 
@@ -179,8 +187,9 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             props.multiline ? 'items-start' : 'items-center',
             // Default border
             'border-border/80 dark:border-border/50',
-            // Focused state (avoid ring-2 which causes float/overlap on some Android versions)
-            isFocused && !error && 'border-primary shadow-sm bg-primary/5',
+            // Keep focus visually calm: native focus rings/bright orange halos
+            // are distracting while typing, especially inside sheets on Android.
+            isFocused && !error && 'border-border/80 bg-card',
             // Incomplete status
             effectiveStatus === 'incomplete' && !error && 'border-amber-500/80 bg-amber-500/5',
             // Validating status

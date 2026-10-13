@@ -75,6 +75,32 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
     }
     return originalAddEventListener.call(this, type, listener, options);
   } as any;
+
+  window.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      (e.target as HTMLElement)?.isContentEditable
+    ) {
+      return;
+    }
+    if (e.key === 'PageDown' || e.key === 'PageUp') {
+      const scrollable = Array.from(document.querySelectorAll('div')).filter((el) => {
+        const style = window.getComputedStyle(el);
+        const oy = style.overflowY;
+        return (oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight;
+      });
+      const target = scrollable[scrollable.length - 1] || document.documentElement || document.body;
+      if (target) {
+        e.preventDefault();
+        const delta = Math.round(window.innerHeight * 0.75);
+        target.scrollBy({
+          top: e.key === 'PageDown' ? delta : -delta,
+          behavior: 'smooth',
+        });
+      }
+    }
+  });
 }
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';

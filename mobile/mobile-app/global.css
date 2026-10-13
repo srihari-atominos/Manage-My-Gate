@@ -66,25 +66,25 @@
      THEME 2: VENTOREX ORANGE (ACTIVE - LUXURY WARM EDITION)
      ========================================================================== */
   :root {
-    --background: 34 100% 97%; /* #FFF8EF Primary App Warm Ivory Background */
-    --foreground: 0 0% 9%; /* #171717 Primary Text */
+    --background: 14 100% 97%; /* #FFF7F4 */
+    --foreground: 215 28% 20%; /* #1F2937 */
     --card: 0 0% 100%; /* #FFFFFF Crisp Pure White Surface */
-    --card-foreground: 0 0% 9%;
+    --card-foreground: 215 28% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --primary: 21 92% 50%; /* #F45A0A Primary Orange */
+    --popover-foreground: 215 28% 20%;
+    --primary: 18 100% 62%; /* #FF7A3D */
     --primary-foreground: 0 0% 100%;
-    --secondary: 30 100% 95%; /* #FFF3E7 Secondary Warm Background */
-    --secondary-foreground: 0 0% 9%;
-    --muted: 25 100% 95%; /* #FFF0E5 Soft Orange Surface */
-    --muted-foreground: 33 5% 41%; /* #6F6A64 Secondary Text */
-    --accent: 21 92% 50%; /* #F45A0A Brand Orange Accent */
+    --secondary: 14 100% 95%;
+    --secondary-foreground: 216 54% 20%;
+    --muted: 14 100% 95%;
+    --muted-foreground: 220 9% 46%; /* #6B7280 */
+    --accent: 216 54% 20%; /* #172B4D */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%; /* #DC2626 */
     --destructive-foreground: 0 0% 100%;
-    --border: 30 30% 91%; /* #EFE6DC Subtle Warm Border */
+    --border: 14 25% 90%;
     --input: 30 30% 91%;
-    --ring: 21 92% 50%;
+    --ring: 18 100% 62%;
     --radius: 1.125rem; /* 18px */
     --chart-1: 21 92% 50%;
     --chart-2: 25 95% 53%;
@@ -96,25 +96,25 @@
   .dark:root {
     /* Neutral charcoal surfaces keep dark mode calm and legible without
        introducing a second, dark-navy brand palette. */
-    --background: 240 5% 8%; /* #131316 */
-    --foreground: 0 0% 98%; /* #FAFAFA Soft Crisp White */
-    --card: 240 4% 12%; /* #1D1D20 Elevated charcoal surface */
-    --card-foreground: 0 0% 98%;
-    --popover: 240 4% 15%; /* #252529 */
-    --popover-foreground: 0 0% 98%;
-    --primary: 25 100% 50%; /* #FF6A00 Ventorex Bright Orange */
+    --background: 222 47% 12%; /* #0F172A */
+    --foreground: 214 32% 91%; /* #E5E7EB */
+    --card: 215 28% 17%; /* #1E293B */
+    --card-foreground: 214 32% 91%;
+    --popover: 215 28% 21%;
+    --popover-foreground: 214 32% 91%;
+    --primary: 18 100% 62%; /* #FF7B3D */
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 4% 17%; /* #2A2A2E */
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 17%;
-    --muted-foreground: 240 5% 70%; /* #B2B2B8 */
-    --accent: 24 100% 62%; /* #FF8A3D Soft Bright Orange */
+    --secondary: 219 39% 27%; /* #2A3B5F */
+    --secondary-foreground: 214 32% 91%;
+    --muted: 219 39% 27%;
+    --muted-foreground: 218 11% 65%; /* #9CA3AF */
+    --accent: 219 39% 27%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%; /* #EF4444 */
     --destructive-foreground: 0 0% 100%;
-    --border: 240 4% 25%; /* #3E3E43 */
+    --border: 219 25% 28%;
     --input: 240 4% 25%;
-    --ring: 25 100% 50%;
+    --ring: 18 100% 62%;
     --chart-1: 25 100% 50%;
     --chart-2: 24 100% 62%;
     --chart-3: 23 97% 46%;

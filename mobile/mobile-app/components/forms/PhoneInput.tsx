@@ -206,9 +206,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           isGlass
             ? 'bg-white/75 dark:bg-[#292524]/75 border-white/80 dark:border-white/20 py-2.5 backdrop-blur-sm'
             : 'bg-card border-border/80',
-          isFocused && !error && 'border-primary shadow-sm bg-primary/5',
-          (isIncomplete || isInvalid) && !error && 'border-amber-500/80 bg-amber-500/5',
-          isComplete && !error && 'border-emerald-500/80 bg-emerald-500/5',
+          isFocused && !error && 'border-border/80 bg-card',
+          (isIncomplete || isInvalid) && !error && !isGlass && 'border-amber-500/80 bg-amber-500/5',
+          isComplete && !error && !isGlass && 'border-emerald-500/80 bg-emerald-500/5',
           Boolean(error) && 'border-destructive bg-destructive/5 shadow-sm',
           className
         )}
@@ -277,6 +277,13 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
                 onBlur?.();
               }}
               onChangeText={handleNumberChange}
+              onKeyPress={(event) => {
+                // Keep deletion reliable for controlled phone inputs, especially
+                // React Native Web and Android soft keyboards.
+                if (event.nativeEvent.key === 'Backspace' && nationalNumber.length > 0) {
+                  handleNumberChange(nationalNumber.slice(0, -1));
+                }
+              }}
               maxLength={maxDigits + 1}
               accessibilityLabel={translateText(label)}
               testID={testID}
@@ -292,7 +299,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
 
       {Boolean(error) && (
         <View className={cn('flex-row items-center mt-1 ms-1 gap-1', feedbackContainerClassName)}>
-          <AlertCircle size={12} className="text-destructive shrink-0" />
+          {!isGlass && <AlertCircle size={12} className="text-destructive shrink-0" />}
           <Text className={cn('text-xs text-destructive font-semibold', errorClassName)}>{error}</Text>
         </View>
       )}

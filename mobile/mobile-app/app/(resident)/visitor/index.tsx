@@ -19,6 +19,8 @@ import { mapBackendPassToHistoryItem } from '@/src/features/visitor/utils/mapBac
 import { useTranslation } from '@/src/utils/i18n';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { isFeatureAllowedForUser } from '@/src/utils/rbac';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { UserPlus, History, ShieldAlert, ShieldCheck, Plus } from 'lucide-react-native';
 
 export default function VisitorDashboardScreen() {
@@ -144,9 +146,10 @@ export default function VisitorDashboardScreen() {
         <HeaderActionButton
           onPress={() => setInviteSheetOpen(true)}
           icon={Plus}
-          label={t('invite_visitor', 'Invite')}
+          label={t('new_invite', 'New Invite')}
           accessibilityRole="button"
-          accessibilityLabel="Invite Visitor"
+          accessibilityLabel={t('new_invite', 'New Invite')}
+          testID="new-invite-button"
         />
       }
     >
@@ -176,8 +179,6 @@ export default function VisitorDashboardScreen() {
             icon={ShieldCheck}
             title={t('no_recent_visitor_activity', 'No Active Visitor Passes')}
             description={t('no_recent_visitor_sub', 'Create a new pass to pre-approve visitor entry at the gate.')}
-            actionLabel={t('new_invite', 'New Invite')}
-            onAction={() => setInviteSheetOpen(true)}
           />
         ) : (
           <View className="gap-2.5">

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, ScrollView, Alert, TouchableOpacity, Platform, Image as RNImage } from 'react-native';
+import { View, ScrollView, Alert, TouchableOpacity, Platform, Image as RNImage, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -123,6 +124,7 @@ const SUGGESTED_ISSUES_MAP: Record<string, string[]> = {
 
 export function ResidentRaiseTicketScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ category?: string }>();
   const { t, translateText } = useTranslation();
   const { createComplaint, error, clearErrors } = useComplaints();
@@ -552,6 +554,7 @@ export function ResidentRaiseTicketScreen() {
       title={t('raise_ticket', 'Raise Ticket')}
       subtitle={t('raise_maintenance_ticket_subtitle', 'Report plumbing, electrical, carpentry or common area issues')}
       iconName="PlusCircle"
+      hideBottomNav={true}
     >
       <View className="flex-1 bg-background">
         {/* 3-STEP PROGRESS BAR (WITHOUT PERCENTAGE TEXT) */}
@@ -850,29 +853,37 @@ export function ResidentRaiseTicketScreen() {
         </KeyboardAwareScrollView>
 
         {/* STICKY BOTTOM ACTION FOOTER */}
-        <View className="absolute bottom-0 left-0 right-0 p-4 bg-card border-t border-border/60 flex-row items-center gap-3">
-          {step > 1 ? (
-            <Button
-              variant="outline"
-              size="lg"
-              onPress={handlePrevStep}
-              disabled={isSubmitting}
-              className="w-28"
-            >
-              ← Back
-            </Button>
-          ) : null}
-
-          <Button
-            variant="default"
-            size="lg"
-            loading={isSubmitting}
-            onPress={handleNextStep}
-            className={`flex-1 ${step === 3 ? 'bg-emerald-600 active:bg-emerald-700 border-0' : ''}`}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        >
+          <View 
+            className="px-4 pt-3 bg-card/95 backdrop-blur-md border-t border-border/60 flex-row items-center gap-3 z-30"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) }}
           >
-            {step === 3 ? (isSubmitting ? 'Submitting...' : 'Submit Ticket →') : 'Continue →'}
-          </Button>
-        </View>
+            {step > 1 ? (
+              <Button
+                variant="outline"
+                size="lg"
+                onPress={handlePrevStep}
+                disabled={isSubmitting}
+                className="w-28"
+              >
+                ← Back
+              </Button>
+            ) : null}
+
+            <Button
+              variant="default"
+              size="lg"
+              loading={isSubmitting}
+              onPress={handleNextStep}
+              className={`flex-1 ${step === 3 ? 'bg-emerald-600 active:bg-emerald-700 border-0' : ''}`}
+            >
+              {step === 3 ? (isSubmitting ? 'Submitting...' : 'Submit Ticket →') : 'Continue →'}
+            </Button>
+          </View>
+        </KeyboardAvoidingView>
 
         {/* LIVE WEB CAMERA VIEWFINDER MODAL */}
         {showCameraModal && (

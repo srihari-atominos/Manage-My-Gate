@@ -147,7 +147,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             accessibilityLabel={localizedActionLabel}
           >
             <Text className="text-xs font-bold text-primary">{localizedActionLabel}</Text>
-            <ChevronRight size={13} className="text-primary" color={isDark ? '#FF8A3D' : '#C2410C'} />
+            <ChevronRight size={13} className="text-primary" color={isDark ? '#FF7B3D' : '#FF7A3D'} />
           </Pressable>
         )}
       </View>
@@ -174,7 +174,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           >
             <IconComponent
               size={17}
-              color={iconColor || (isDark ? '#FF8A3D' : '#C2410C')}
+              color={iconColor || (isDark ? '#FF7B3D' : '#FF7A3D')}
               strokeWidth={2.3}
             />
           </View>
@@ -204,25 +204,25 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       {actionLabel && onAction && (
         <Pressable
           onPress={onAction}
-          className="flex-row min-h-11 items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/40 px-3 py-1.5 rounded-full active:scale-95 transition-transform shrink-0 shadow-2xs"
+          className="flex-row min-h-11 items-center gap-1.5 bg-white dark:bg-white border border-gray-200 dark:border-gray-200 px-3 py-1.5 rounded-full active:scale-95 transition-transform shrink-0 shadow-2xs"
           accessibilityRole="button"
           accessibilityLabel={localizedActionLabel}
         >
-          <Text className="text-[13px] font-bold text-primary">
+          <Text className="text-[13px] font-extrabold text-black">
             {localizedActionLabel}
           </Text>
           {isExpanded !== undefined ? (
             <ChevronRight
               size={12}
-              className="text-primary"
-              color={isDark ? '#FF8A3D' : '#C2410C'}
+              className="text-black"
+              color="#111827"
               strokeWidth={2.4}
               style={{
                 transform: [{ rotate: isExpanded ? '90deg' : '0deg' }],
               }}
             />
           ) : (
-            <ArrowRight size={11} className="text-primary" color={isDark ? '#FF8A3D' : '#C2410C'} strokeWidth={2.4} />
+            <ArrowRight size={11} className="text-black" color="#111827" strokeWidth={2.4} />
           )}
         </Pressable>
       )}

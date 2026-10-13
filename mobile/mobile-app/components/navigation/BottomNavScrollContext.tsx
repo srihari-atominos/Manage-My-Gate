@@ -59,8 +59,8 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
     (event: any) => {
       const currentY = extractScrollY(event);
 
-      // Protect against iOS overscroll bounce at top
-      if (currentY <= 15) {
+      // Long-page smart threshold: Never hide bottom bar on top 220px of any page
+      if (currentY <= 220) {
         setIsCompact(false);
         lastScrollY.current = Math.max(0, currentY);
         return;
@@ -68,13 +68,13 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
 
       const delta = currentY - lastScrollY.current;
 
-      // Scrolling Down threshold: 16px -> Compact / Minimize breadth
-      if (delta > 16) {
+      // Scrolling Down threshold: 50px of intentional downward scroll beyond 220px depth
+      if (delta > 50) {
         setIsCompact(true);
         lastScrollY.current = currentY;
       }
-      // Scrolling Up threshold: -16px -> Expand / Restore breadth
-      else if (delta < -16) {
+      // Scrolling Up threshold: 25px of upward scroll immediately reveals the bar
+      else if (delta < -25) {
         setIsCompact(false);
         lastScrollY.current = currentY;
       }
@@ -122,7 +122,7 @@ export const useBottomNavScroll = () => {
   const handleLocalScroll = useCallback((event: any) => {
     const currentY = extractScrollY(event);
 
-    if (currentY <= 15) {
+    if (currentY <= 220) {
       setGlobalBottomNavCompact(false);
       localLastY.current = Math.max(0, currentY);
       return;
@@ -130,10 +130,10 @@ export const useBottomNavScroll = () => {
 
     const delta = currentY - localLastY.current;
 
-    if (delta > 16) {
+    if (delta > 50) {
       setGlobalBottomNavCompact(true);
       localLastY.current = currentY;
-    } else if (delta < -16) {
+    } else if (delta < -25) {
       setGlobalBottomNavCompact(false);
       localLastY.current = currentY;
     }

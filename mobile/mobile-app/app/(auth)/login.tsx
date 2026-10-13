@@ -559,6 +559,14 @@ export default function LoginScreen() {
     }
   };
 
+  // Universal Keyboard Dismiss Helper (React Native + Web)
+  const dismissKeyboard = React.useCallback(() => {
+    Keyboard.dismiss();
+    if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, []);
+
   // Handle Basic (Email) Auth Submit: request code or verify code inline
   const onBasicSubmit = async (data: EmailFormValues) => {
     const trimmedEmail = data.login.trim();
@@ -566,6 +574,7 @@ export default function LoginScreen() {
     setIsSubmittingBasic(true);
     try {
       if (otpSent) {
+        dismissKeyboard();
         const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
         await verifyOtp(trimmedEmail, emailOtpCode, true, tokenToPass);
         clearPendingInviteToken();
@@ -584,6 +593,7 @@ export default function LoginScreen() {
     setIsSubmittingPhone(true);
     try {
       if (otpSent) {
+        dismissKeyboard();
         const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
         await verifyOtp(data.phone, phoneOtpCode, false, tokenToPass);
         clearPendingInviteToken();
@@ -595,6 +605,44 @@ export default function LoginScreen() {
       setIsSubmittingPhone(false);
     }
   };
+
+  // Auto-Submit OTP when 6 digits are fully typed
+  const lastAttemptedCodeRef = React.useRef<string>('');
+
+  React.useEffect(() => {
+    if (!otpSent) {
+      lastAttemptedCodeRef.current = '';
+      return;
+    }
+
+    if (authMode === 'basic') {
+      const trimmed = emailOtpCode.trim();
+      if (trimmed.length === 4 && trimmed !== lastAttemptedCodeRef.current && !isSubmittingBasic) {
+        lastAttemptedCodeRef.current = trimmed;
+        dismissKeyboard();
+        const emailVal = basicForm.getValues('login')?.trim() || submitted?.value?.trim();
+        if (emailVal) {
+          const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
+          setIsSubmittingBasic(true);
+          verifyOtp(emailVal, trimmed, true, tokenToPass)
+            .finally(() => setIsSubmittingBasic(false));
+        }
+      }
+    } else {
+      const trimmed = phoneOtpCode.trim();
+      if (trimmed.length === 4 && trimmed !== lastAttemptedCodeRef.current && !isSubmittingPhone) {
+        lastAttemptedCodeRef.current = trimmed;
+        dismissKeyboard();
+        const phoneVal = phoneForm.getValues('phone')?.trim() || submitted?.value?.trim();
+        if (phoneVal) {
+          const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
+          setIsSubmittingPhone(true);
+          verifyOtp(phoneVal, trimmed, false, tokenToPass)
+            .finally(() => setIsSubmittingPhone(false));
+        }
+      }
+    }
+  }, [emailOtpCode, phoneOtpCode, otpSent, authMode, isSubmittingBasic, isSubmittingPhone, basicForm, phoneForm, submitted, params, verifyOtp, dismissKeyboard]);
 
   return (
     <>
@@ -621,7 +669,7 @@ export default function LoginScreen() {
             resizeMode="cover"
           />
         </Animated.View>
-        <View className="absolute inset-0 bg-black/40 dark:bg-black/60" pointerEvents="none" />
+        <View className="absolute inset-0 bg-black/25 dark:bg-black/55" pointerEvents="none" />
 
         {/* Fixed Brand Identity Section (Stays put when keyboard opens) */}
         <View 
@@ -712,14 +760,15 @@ export default function LoginScreen() {
               className="gap-3.5 w-full"
             >
               {/* Form Container */}
-              <View className="w-full gap-3.5 mt-2">
+              <View
+                className="w-full gap-3.5 mt-2 rounded-[28px] border border-white/80 bg-white/85 p-4 shadow-xl"
+                style={{ shadowColor: '#172B4D', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 7 }}
+              >
                 {/* Welcome Back Header Section */}
-                <Text className="text-[26px] font-bold text-white text-center font-sans tracking-tight"
-                      style={{ textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>
+                <Text className="text-[26px] font-bold text-[#172B4D] text-center font-sans tracking-tight">
                   {t('welcome_back', 'Welcome Back')}
                 </Text>
-                <Text className="text-[14px] font-bold text-white text-center mb-1 -mt-2"
-                      style={{ textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+                <Text className="text-[14px] font-semibold text-[#64748B] text-center mb-1 -mt-2">
                   {t('sign_in_to_continue', 'Sign in to continue to NAHOM')}
                 </Text>
 
@@ -782,7 +831,7 @@ export default function LoginScreen() {
                   <View className="gap-3.5">
                     <View>
                       <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-xs font-semibold text-white font-sans">
+                        <Text className="text-xs font-bold text-[#172B4D] font-sans">
                           {t('email_id', 'Email ID')} <Text className="text-[#EA580C] font-bold">*</Text>
                         </Text>
                         {otpSent && (
@@ -840,11 +889,11 @@ export default function LoginScreen() {
                     {otpSent && (
                       <View className="gap-2.5 mt-0.5">
                         <View className="flex-row items-center justify-between">
-                          <Text className="text-xs font-semibold text-white mb-1.5 font-sans">
+                          <Text className="text-xs font-bold text-[#172B4D] mb-1.5 font-sans">
                             {t('enter_verification_code', 'Enter verification code')}
                           </Text>
                           {resendCooldown > 0 ? (
-                            <Text className="text-xs font-medium text-white/80">
+                            <Text className="text-xs font-semibold text-[#64748B]">
                               {t('resend_in', 'Resend in')} {resendCooldown}s
                             </Text>
                           ) : (
@@ -861,7 +910,7 @@ export default function LoginScreen() {
                           )}
                         </View>
                         <OtpInputField
-                          length={6}
+                          length={4}
                           value={emailOtpCode}
                           onValueChange={setEmailOtpCode}
                           variant="light"
@@ -876,15 +925,15 @@ export default function LoginScreen() {
                         checked={keepSignedIn}
                         onCheckedChange={handleKeepSignedInChange}
                         label={t('stay_signed_in', 'Stay signed in')}
-                        labelClassName="text-[13px] text-white font-medium shadow-sm"
+                        labelClassName="text-[13px] text-[#172B4D] font-semibold"
                         className="items-center"
                       />
                     </View>
 
                     {/* Global Error Banner */}
                     {error ? (
-                      <View className="bg-rose-500/20 border border-rose-500/40 rounded-xl p-2.5 backdrop-blur-md">
-                        <Text className="text-rose-200 text-xs text-center font-medium">
+                      <View className="bg-[#FFF1F2] border border-[#FDA4AF] rounded-xl p-2.5 shadow-sm">
+                        <Text className="text-[#9F1239] text-xs text-center font-bold">
                           {error}
                         </Text>
                       </View>
@@ -894,7 +943,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handleBasicSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && emailOtpCode.length < 6)}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && emailOtpCode.length < 4)}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -957,8 +1006,8 @@ export default function LoginScreen() {
                   <View className="gap-3.5">
                     <View>
                       <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-xs font-semibold text-white">
-                          {t('phone_number', 'Mobile Number')}
+                        <Text className="text-xs font-bold text-[#172B4D]">
+                          {t('phone_number', 'Mobile Number')} <Text className="text-[#FF7A3D] font-bold">*</Text>
                         </Text>
                         {otpSent && (
                           <TouchableOpacity
@@ -981,7 +1030,7 @@ export default function LoginScreen() {
                             variant="glass"
                             defaultCountry="IN"
                             label=""
-                            placeholder="98765 43210"
+                            placeholder="Enter your phone number"
                             placeholderTextColor="#9CA3AF"
                             className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
                             inputClassName="text-slate-900 text-[15px] font-medium"
@@ -1006,11 +1055,11 @@ export default function LoginScreen() {
                     {otpSent && (
                       <View className="gap-2.5 mt-0.5">
                         <View className="flex-row items-center justify-between">
-                          <Text className="text-xs font-semibold text-white mb-1.5">
+                          <Text className="text-xs font-bold text-[#172B4D] mb-1.5">
                             {t('enter_verification_code', 'Enter verification code')}
                           </Text>
                           {resendCooldown > 0 ? (
-                            <Text className="text-xs font-medium text-white/80">
+                            <Text className="text-xs font-semibold text-[#64748B]">
                               {t('resend_in', 'Resend in')} {resendCooldown}s
                             </Text>
                           ) : (
@@ -1042,15 +1091,15 @@ export default function LoginScreen() {
                         checked={keepSignedIn}
                         onCheckedChange={handleKeepSignedInChange}
                         label={t('stay_signed_in', 'Stay signed in')}
-                        labelClassName="text-[13px] text-white font-medium shadow-sm"
+                        labelClassName="text-[13px] text-[#172B4D] font-semibold"
                         className="items-center"
                       />
                     </View>
 
                     {/* Global Error Banner */}
                     {error ? (
-                      <View className="bg-rose-500/20 border border-rose-500/40 rounded-xl p-2.5 backdrop-blur-md">
-                        <Text className="text-rose-200 text-xs text-center font-medium">
+                      <View className="bg-[#FFF1F2] border border-[#FDA4AF] rounded-xl p-2.5 shadow-sm">
+                        <Text className="text-[#9F1239] text-xs text-center font-bold">
                           {error}
                         </Text>
                       </View>
@@ -1145,10 +1194,23 @@ export default function LoginScreen() {
                 />
               </View>
 
+              {/* Brand footer: kept inside the scroll content so it is reachable on short screens and with the keyboard open. */}
+              <View
+                className="mt-5 w-full items-center px-5 py-5"
+              >
+                <Text className="text-[11px] font-bold tracking-[4px] text-white">
+                  NEXUS AROUND HOME
+                </Text>
+                <View className="mt-2 flex-row items-center">
+                  <Text className="text-[14px] font-bold text-[#FF7A3D]">Connect</Text>
+                  <Text className="text-[14px] font-bold text-white"> Harmony</Text>
+                </View>
+              </View>
+
             </Animated.View>
           </View>
           </KeyboardAwareScrollView>
-    </View>
+      </View>
     </>
   );
 }
@@ -1157,4 +1219,3 @@ export default function LoginScreen() {
 function cnText(...classes: (string | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
-

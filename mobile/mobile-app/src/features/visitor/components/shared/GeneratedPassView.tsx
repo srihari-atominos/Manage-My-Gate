@@ -64,7 +64,14 @@ export const GeneratedPassView: React.FC<GeneratedPassViewProps> = ({
       const shared = await shareQrImage(
         barcodePayload,
         passData.code,
-        `Nahom Visitor Pass - ${passData.code}`
+        `Nahom Visitor Pass - ${passData.code}`,
+        [
+          'NAHOM VISITOR PASS',
+          `PASS CODE: ${passData.code}`,
+          `VISITOR: ${passData.visitorName || 'GUEST'}`,
+          `VALID UNTIL: ${passData.validUntil ? new Date(passData.validUntil).toLocaleString() : 'TODAY'}`,
+          'PRESENT CODE OR SCAN AT COMMUNITY GATE',
+        ],
       );
       if (!shared) {
         // Fallback to WhatsApp text message with embedded visual QR code

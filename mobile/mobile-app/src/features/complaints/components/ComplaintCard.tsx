@@ -159,13 +159,13 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
       {/* 2. Main Title & Meta info */}
       <View className="flex-row items-start justify-between mb-1.5">
         <View className="flex-1 me-2">
-          <Text className="text-sm font-bold text-foreground mb-1 text-start" numberOfLines={1}>
+          <Text className="text-[16px] font-bold font-sans text-foreground mb-1 text-start" numberOfLines={1}>
             {complaint.title}
           </Text>
 
           {/* Category & Location Row */}
           <View className="flex-row items-center flex-wrap gap-1.5 mb-1">
-            <Text className="text-xs font-medium text-muted-foreground text-start">
+            <Text className="text-[13px] font-medium font-sans text-muted-foreground text-start">
               {t('category', 'Category')}: <Text className="font-semibold text-foreground">{translateText(complaint.category)}</Text>
             </Text>
 

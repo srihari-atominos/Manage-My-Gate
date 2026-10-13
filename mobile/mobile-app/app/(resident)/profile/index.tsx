@@ -669,6 +669,11 @@ export default function ProfileScreen() {
         contentContainerClassName="p-4 gap-4 pb-36"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        decelerationRate="normal"
+        alwaysBounceVertical={true}
+        overScrollMode="always"
+        directionalLockEnabled={true}
         {...scrollHandlerProps}
       >
         {/* Profile Hero Header Card with Avatar & Live Camera / Photo Trigger */}

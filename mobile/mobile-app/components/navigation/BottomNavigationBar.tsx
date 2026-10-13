@@ -16,7 +16,7 @@ import { useColorScheme } from 'nativewind';
 import {
   Home,
   LayoutGrid,
-  Settings,
+  User,
 } from 'lucide-react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -30,7 +30,7 @@ import Animated, {
 import { cn } from '../../lib/utils';
 import { useBottomNavScroll } from './BottomNavScrollContext';
 
-export type MainTabKey = 'dashboard' | 'view_all' | 'settings';
+export type MainTabKey = 'dashboard' | 'view_all' | 'profile';
 
 interface TabItem {
   key: MainTabKey;
@@ -53,10 +53,10 @@ const TAB_ITEMS: TabItem[] = [
     icon: LayoutGrid,
   },
   {
-    key: 'settings',
-    label: 'Settings',
-    route: '/(resident)/settings',
-    icon: Settings,
+    key: 'profile',
+    label: 'Profile',
+    route: '/(resident)/profile',
+    icon: User,
   },
 ];
 
@@ -283,7 +283,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
 
   const activeTab: MainTabKey = useMemo(() => {
     if (pathname.includes('/all-features')) return 'view_all';
-    if (pathname.includes('/settings')) return 'settings';
+    if (pathname.includes('/profile') || pathname.includes('/account')) return 'profile';
     return 'dashboard';
   }, [pathname]);
 

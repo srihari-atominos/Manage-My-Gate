@@ -119,8 +119,8 @@ export function PaginatedList<T>({
       <RefreshControl
         refreshing={refreshing}
         onRefresh={onRefresh}
-        tintColor="#FF6A00"
-        colors={['#FF6A00']}
+        tintColor="#FF7A3D"
+        colors={['#FF7A3D']}
       />
     ),
     [refreshing, onRefresh],

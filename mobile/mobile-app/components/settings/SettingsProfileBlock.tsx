@@ -58,7 +58,7 @@ export const SettingsProfileBlock: React.FC<SettingsProfileBlockProps> = ({
 
           {/* User Info */}
           <View className="flex-1 min-w-0">
-            <Text className="text-base font-bold text-foreground font-sans tracking-tight" numberOfLines={1}>
+            <Text className="text-lg font-extrabold text-foreground font-sans tracking-tight" numberOfLines={1}>
               {name}
             </Text>
             <View className="flex-row items-center gap-2 mt-1 flex-wrap">

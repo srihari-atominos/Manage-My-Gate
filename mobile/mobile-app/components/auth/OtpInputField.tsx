@@ -53,7 +53,7 @@ export const OtpInputField = ({
             borderRadius: 14,
             backgroundColor: isLight ? '#FFFFFF' : undefined,
             borderWidth: isCurrentFocus ? 2 : 1,
-            borderColor: error ? '#EF4444' : isCurrentFocus ? '#EA580C' : isLight ? '#E2E8F0' : undefined,
+            borderColor: error ? '#EF4444' : isCurrentFocus ? '#172B4D' : isLight ? '#E2E8F0' : undefined,
             shadowColor: '#000000',
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: isLight ? 0.08 : 0.04,
@@ -62,7 +62,7 @@ export const OtpInputField = ({
           }}
           className={cn(
             !isLight && 'border border-border bg-card shadow-xs',
-            !isLight && isCurrentFocus && 'border-primary shadow-sm bg-primary/5',
+            !isLight && isCurrentFocus && 'border-[#172B4D] shadow-sm bg-primary/5',
             !isLight && error && 'border-destructive bg-destructive/10',
             cellClassName
           )}
@@ -94,7 +94,9 @@ export const OtpInputField = ({
       className={cn('flex-row items-center justify-between relative w-full', className)}
       onPress={handlePress}
     >
-      {renderCells()}
+      <View pointerEvents="none" className="flex-row items-center justify-between w-full">
+        {renderCells()}
+      </View>
 
       <TextInput
         ref={inputRef}
@@ -110,8 +112,8 @@ export const OtpInputField = ({
           left: 0,
           right: 0,
           bottom: 0,
-          opacity: 0,
-          zIndex: 10,
+          opacity: 0.01,
+          zIndex: 20,
         }}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}

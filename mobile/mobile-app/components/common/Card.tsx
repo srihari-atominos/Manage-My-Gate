@@ -22,7 +22,7 @@ export const Card = ({
 
   return (
     <View
-      className={cn('rounded-2xl overflow-hidden', variantClasses[variant], className)}
+      className={cn('rounded-[18px] overflow-hidden', variantClasses[variant], className)}
       {...props}
     >
       {children}

@@ -58,26 +58,26 @@ export const THEME_1_NAHOM_NAVY = {
 
 export const THEME_2_VENTOREX_ORANGE = {
   light: {
-    background: 'hsl(34 100% 97%)', // #FFF8EF Primary App Warm Ivory Background
-    foreground: 'hsl(0 0% 9%)', // #171717 Primary Text
+    background: 'hsl(14 100% 97%)', // #FFF7F4
+    foreground: 'hsl(215 28% 20%)', // #1F2937
     card: 'hsl(0 0% 100%)', // #FFFFFF Pure White Surface
-    cardForeground: 'hsl(0 0% 9%)',
+    cardForeground: 'hsl(215 28% 20%)',
     popover: 'hsl(0 0% 100%)',
-    popoverForeground: 'hsl(0 0% 9%)',
-    primary: 'hsl(21 92% 50%)', // #F45A0A Primary Orange
+    popoverForeground: 'hsl(215 28% 20%)',
+    primary: 'hsl(18 100% 62%)', // #FF7A3D
     primaryForeground: 'hsl(0 0% 100%)',
-    secondary: 'hsl(30 100% 95%)', // #FFF3E7 Secondary Warm Background
-    secondaryForeground: 'hsl(0 0% 9%)',
-    muted: 'hsl(25 100% 95%)', // #FFF0E5 Soft Orange Surface
-    mutedForeground: 'hsl(33 5% 41%)', // #6F6A64 Secondary Text
-    accent: 'hsl(21 92% 50%)', // #F45A0A Brand Orange Accent
+    secondary: 'hsl(14 100% 95%)',
+    secondaryForeground: 'hsl(216 54% 20%)',
+    muted: 'hsl(14 100% 95%)',
+    mutedForeground: 'hsl(220 9% 46%)', // #6B7280
+    accent: 'hsl(216 54% 20%)', // #172B4D
     accentForeground: 'hsl(0 0% 100%)',
     destructive: 'hsl(0 72% 51%)', // #DC2626 Error
-    border: 'hsl(30 30% 91%)', // #EFE6DC Subtle Warm Border
-    input: 'hsl(30 30% 91%)',
-    ring: 'hsl(21 92% 50%)',
+    border: 'hsl(14 25% 90%)',
+    input: 'hsl(14 25% 90%)',
+    ring: 'hsl(18 100% 62%)',
     radius: '1.125rem', // 18px
-    chart1: 'hsl(21 92% 50%)',
+    chart1: 'hsl(18 100% 62%)',
     chart2: 'hsl(25 95% 53%)',
     chart3: 'hsl(38 92% 50%)',
     chart4: 'hsl(14 100% 50%)',
@@ -85,26 +85,26 @@ export const THEME_2_VENTOREX_ORANGE = {
   },
 
   dark: {
-    background: 'hsl(240 5% 8%)', // #131316 Neutral charcoal base
-    foreground: 'hsl(0 0% 98%)', // #FAFAFA Soft Crisp White
-    card: 'hsl(240 4% 12%)', // #1D1D20 Elevated charcoal surface
-    cardForeground: 'hsl(0 0% 98%)',
-    popover: 'hsl(240 4% 15%)', // #252529
-    popoverForeground: 'hsl(0 0% 98%)',
-    primary: 'hsl(25 100% 50%)', // #FF6A00 Ventorex Bright Orange
+    background: 'hsl(222 47% 12%)', // #0F172A
+    foreground: 'hsl(214 32% 91%)', // #E5E7EB
+    card: 'hsl(215 28% 17%)', // #1E293B
+    cardForeground: 'hsl(214 32% 91%)',
+    popover: 'hsl(215 28% 21%)',
+    popoverForeground: 'hsl(214 32% 91%)',
+    primary: 'hsl(18 100% 62%)', // #FF7B3D
     primaryForeground: 'hsl(0 0% 100%)',
-    secondary: 'hsl(240 4% 17%)', // #2A2A2E Neutral elevated control
-    secondaryForeground: 'hsl(0 0% 98%)',
-    muted: 'hsl(240 4% 17%)',
-    mutedForeground: 'hsl(240 5% 70%)', // #B2B2B8
-    accent: 'hsl(24 100% 62%)', // #FF8A3D Soft Bright Orange
+    secondary: 'hsl(219 39% 27%)', // #2A3B5F
+    secondaryForeground: 'hsl(214 32% 91%)',
+    muted: 'hsl(219 39% 27%)',
+    mutedForeground: 'hsl(218 11% 65%)', // #9CA3AF
+    accent: 'hsl(219 39% 27%)',
     accentForeground: 'hsl(0 0% 100%)',
     destructive: 'hsl(0 84% 60%)', // #EF4444
-    border: 'hsl(240 4% 25%)', // #3E3E43
-    input: 'hsl(240 4% 25%)',
-    ring: 'hsl(25 100% 50%)',
+    border: 'hsl(219 25% 28%)',
+    input: 'hsl(219 25% 28%)',
+    ring: 'hsl(18 100% 62%)',
     radius: '1.125rem', // 18px
-    chart1: 'hsl(25 100% 50%)',
+    chart1: 'hsl(18 100% 62%)',
     chart2: 'hsl(24 100% 62%)',
     chart3: 'hsl(23 97% 46%)',
     chart4: 'hsl(14 100% 50%)',
