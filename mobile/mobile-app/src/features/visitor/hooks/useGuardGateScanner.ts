@@ -131,17 +131,17 @@ export function useGuardGateScanner() {
             status,
             title: requiresServerDecision ? 'Pass Located' : 'Visitor Access Denied',
             message: isRevoked
-              ? 'Pass has been revoked by host resident or estate admin.'
+              ? 'Pass has been revoked by host resident or community admin.'
               : isExpired
               ? 'Visitor pass has expired.'
               : requiresServerDecision
-              ? 'Confirm entry to request the current server authorization decision.'
+              ? 'Pass found. Tap Confirm Gate Entry to let the visitor in.'
               : 'Pass is invalid or unrecognized.',
             visitorName: passData.visitorName || 'Guest Visitor',
             visitorPhone: passData.phone || passData.visitorPhone,
             visitorPhoto: passData.visitorPhoto || passData.photo,
             passType: passData.purpose || passData.passType || 'GUEST',
-            unitOrVilla: passData.unit || passData.villaNumber || passData.flatNumber || 'Estate',
+            unitOrVilla: passData.unit || passData.villaNumber || passData.flatNumber || 'Community',
             hostName: passData.hostName || passData.residentName || 'Host Resident',
             bookingReference: passData.code || passData._id,
             validityWindow:
