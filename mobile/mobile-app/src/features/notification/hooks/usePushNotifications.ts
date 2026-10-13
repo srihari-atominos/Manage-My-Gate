@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useDispatch } from 'react-redux';
-import * as Notifications from 'expo-notifications';
+import { isExpoGo, registerForPushNotificationsAsync } from '../services/pushNotificationService';
 import * as Device from 'expo-device';
 import { useAuth } from '../../auth/hooks/useAuth';
-import { registerForPushNotificationsAsync } from '../services/pushNotificationService';
 import deviceTokenService from '../services/deviceTokenService';
 import {
   resolveNotificationRoute,
@@ -15,6 +14,9 @@ import {
   setLastHandledNotificationId,
   addRealTimeNotification,
 } from '../store/notificationSlice';
+
+// The native module cannot load in Expo Go; use a lazy require in development builds.
+const Notifications: any = isExpoGo ? null : require('expo-notifications');
 
 /**
  * Custom hook to register, manage, and handle push notifications for the authenticated user.
@@ -31,6 +33,7 @@ export function usePushNotifications() {
   const userId = user?.id || (user as any)?._id;
 
   // 1. Asynchronous Token Registration & Lifecycle Management
+    if (isExpoGo) return;
   useEffect(() => {
     let isMounted = true;
 
@@ -76,7 +79,7 @@ export function usePushNotifications() {
 
   // 2. Cold-Start Check: Detect if application was launched by tapping a notification
   useEffect(() => {
-    if (Platform.OS === 'web' || coldStartCheckedRef.current) return;
+    if (isExpoGo || Platform.OS === 'web' || coldStartCheckedRef.current) return;
     coldStartCheckedRef.current = true;
 
     async function checkColdStartNotification() {
@@ -104,55 +107,61 @@ export function usePushNotifications() {
 
   // 3. Foreground & Background Notification Listeners
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (isExpoGo || Platform.OS === 'web') return;
 
-    // A. Received while app is in foreground
-    notificationListenerRef.current = Notifications.addNotificationReceivedListener((notification: any) => {
-      console.log('[usePushNotifications] Foreground notification received by Android system:', notification?.request?.content?.title);
-      const content = notification?.request?.content;
-      const data = content?.data || {};
-      const notifId = data?.notificationId || notification?.request?.identifier;
-      if (notifId && isDuplicateNotification(notifId)) return;
+    try {
+      // A. Received while app is in foreground
+      notificationListenerRef.current = Notifications.addNotificationReceivedListener((notification: any) => {
+        console.log('[usePushNotifications] Foreground notification received by Android system:', notification?.request?.content?.title);
+        const content = notification?.request?.content;
+        const data = content?.data || {};
+        const notifId = data?.notificationId || notification?.request?.identifier;
+        if (notifId && isDuplicateNotification(notifId)) return;
 
-      const formattedNotification: any = {
-        id: notifId,
-        _id: notifId,
-        title: content?.title || 'Nahom Alert',
-        body: content?.body || '',
-        type: data?.type || 'INFO',
-        actionUrl: data?.actionUrl || null,
-        metadata: data,
-        createdAt: data?.createdAt || new Date().toISOString(),
-        isRead: false,
-      };
-      dispatch(addRealTimeNotification(formattedNotification));
-    });
+        const formattedNotification: any = {
+          id: notifId,
+          _id: notifId,
+          title: content?.title || 'Nahom Alert',
+          body: content?.body || '',
+          type: data?.type || 'INFO',
+          actionUrl: data?.actionUrl || null,
+          metadata: data,
+          createdAt: data?.createdAt || new Date().toISOString(),
+          isRead: false,
+        };
+        dispatch(addRealTimeNotification(formattedNotification));
+      });
 
-    // B. User tapped notification while app was running or in background
-    responseListenerRef.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
-      const data = response?.notification?.request?.content?.data;
-      const notifId = data?.notificationId || response?.notification?.request?.identifier;
+      // B. User tapped notification while app was running or in background
+      responseListenerRef.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
+        const data = response?.notification?.request?.content?.data;
+        const notifId = data?.notificationId || response?.notification?.request?.identifier;
 
-      if (isDuplicateNotification(notifId)) return;
+        if (isDuplicateNotification(notifId)) return;
 
-      console.log('[usePushNotifications] Notification response tapped with data:', { notifId, data });
-      const targetRoute = resolveNotificationRoute(data);
+        console.log('[usePushNotifications] Notification response tapped with data:', { notifId, data });
+        const targetRoute = resolveNotificationRoute(data);
 
-      dispatch(setLastHandledNotificationId(notifId));
-      dispatch(setPendingRoute(targetRoute));
+        dispatch(setLastHandledNotificationId(notifId));
+        dispatch(setPendingRoute(targetRoute));
 
-      if (!isAuthenticated) {
-        console.log('[usePushNotifications] User unauthenticated; queued pending route:', targetRoute);
-      }
-    });
+        if (!isAuthenticated) {
+          console.log('[usePushNotifications] User unauthenticated; queued pending route:', targetRoute);
+        }
+      });
+    } catch (err) {
+      console.warn('[usePushNotifications] Error attaching notification listeners:', err);
+    }
 
     return () => {
-      if (notificationListenerRef.current) {
-        notificationListenerRef.current.remove();
-      }
-      if (responseListenerRef.current) {
-        responseListenerRef.current.remove();
-      }
+      try {
+        if (notificationListenerRef.current) {
+          notificationListenerRef.current.remove();
+        }
+        if (responseListenerRef.current) {
+          responseListenerRef.current.remove();
+        }
+      } catch (_) {}
     };
   }, [isAuthenticated, dispatch]);
 }

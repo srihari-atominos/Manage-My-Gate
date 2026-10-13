@@ -1,11 +1,16 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import storage from '../../../utils/storage';
 
+export const isExpoGo =
+  Constants?.executionEnvironment === ExecutionEnvironment.StoreClient ||
+  Constants?.appOwnership === 'expo';
+
+// Importing expo-notifications throws in Expo Go on Android as of SDK 53.
+const Notifications: any = isExpoGo ? null : require('expo-notifications');
 // Configure how incoming notifications are handled when the app is in the foreground
-if (Platform.OS !== 'web') {
+if (Platform.OS !== 'web' && !(Platform.OS === 'android' && isExpoGo)) {
   try {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -190,6 +195,11 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     if (!Device.isDevice) {
       console.log('[PushNotificationService] Running on simulator/emulator; returning dev placeholder token.');
       return 'ExponentPushToken[SIMULATOR_DEV_TOKEN_MANAGE_MY_GATE]';
+    }
+
+    if (Platform.OS === 'android' && isExpoGo) {
+      console.log('[PushNotificationService] Running in Expo Go on Android (SDK 53+ lacks native remote push in client); returning dev placeholder token.');
+      return 'ExponentPushToken[EXPO_GO_DEV_TOKEN_MANAGE_MY_GATE]';
     }
 
     const isGranted = await requestNotificationPermissionsAsync(false);
