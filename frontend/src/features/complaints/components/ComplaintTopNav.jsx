@@ -48,6 +48,12 @@ const navItems = [
     requiredPermission: 'complaints:staff',
   },
   {
+    name: 'Attendance',
+    to: '/admin/complaints/staff-attendance',
+    icon: cilPeople,
+    requiredPermission: 'complaints:staff',
+  },
+  {
     name: 'Assignee',
     to: '/admin/complaints/assignee',
     icon: cilBriefcase,

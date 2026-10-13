@@ -10,7 +10,8 @@ const IGNORED_WARNINGS = [
   'Reduced motion setting is enabled on this device',
   '[Reanimated] Reading from `value` during component render',
   '[Reanimated] Writing to `value` during component render',
-  'Password field is not contained in a form'
+  'Password field is not contained in a form',
+  "The action 'GO_BACK' was not handled by any navigator"
 ];
 
 LogBox.ignoreLogs(IGNORED_WARNINGS);

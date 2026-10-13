@@ -309,8 +309,7 @@ export class RoleService {
   }
 
   async getRolesByIds(ids, session = null) {
-    const Role = (await import('./role.model.js')).default;
-    return await Role.find({ _id: { $in: ids } }).session(session);
+    return await roleRepository.findByIds(ids, session);
   }
 }
 

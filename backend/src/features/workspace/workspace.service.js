@@ -9,6 +9,7 @@ import Workspace from './workspace.model.js';
 export const DEFAULT_MODULES = [
   { moduleName: 'Visitor Management', moduleKey: 'visitor', route: '/visitor', icon: 'QrCode', displayOrder: 1, enabled: true, sidebarVisible: true },
   { moduleName: 'Administration & Security', moduleKey: 'administration_security', route: '/admin', icon: 'ShieldCheck', displayOrder: 2, enabled: true, sidebarVisible: true },
+  { moduleName: 'Staff Management', moduleKey: 'staff', route: '/admin/staff', icon: 'Users', displayOrder: 3, enabled: true, sidebarVisible: true },
   { moduleName: 'Amenities & Bookings', moduleKey: 'amenities', route: '/amenities', icon: 'Building', displayOrder: 6, enabled: true, sidebarVisible: true },
   { moduleName: 'Notice Board', moduleKey: 'notices', route: '/notices', icon: 'List', displayOrder: 7, enabled: true, sidebarVisible: true },
   { moduleName: 'Complaints / Maintenance', moduleKey: 'complaints', route: '/complaints', icon: 'Warning', displayOrder: 8, enabled: true, sidebarVisible: true },

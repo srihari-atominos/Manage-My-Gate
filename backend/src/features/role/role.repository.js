@@ -10,6 +10,10 @@ export class RoleRepository {
     return await Role.findById(id).session(session || null);
   }
 
+  async findByIds(ids, session = null) {
+    return await Role.find({ _id: { $in: ids } }).session(session || null);
+  }
+
   async findByName(name, orgId = null, session = null) {
     if (!name) return null;
     const trimmed = String(name).trim();
@@ -77,6 +81,7 @@ export class RoleRepository {
                 name: 1,
                 description: 1,
                 isTenantRole: 1,
+                roleScope: 1,
                 createdAt: 1,
                 updatedAt: 1,
                 permissions: '$permissionsList.name',

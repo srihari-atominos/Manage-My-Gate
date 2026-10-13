@@ -9,6 +9,7 @@ const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required'),
   description: yup.string().trim().optional(),
   isTenantRole: yup.boolean().optional().default(false),
+  roleScope: yup.string().oneOf(['GLOBAL', 'UNIT', 'STAFF']).optional().default('GLOBAL'),
   permissions: yup.array().of(yup.string().required()).required('Permissions array is required'),
   integrationMappings: yup.object().optional().default({}),
 })
@@ -75,21 +76,27 @@ export const useRoleForm = ({ role, visible, onSave }) => {
       name: '',
       description: '',
       isTenantRole: false,
+      roleScope: 'GLOBAL',
       permissions: [],
       integrationMappings: {},
     },
   })
 
   const selectedPermissions = watch('permissions') || []
+  const isTenantRole = watch('isTenantRole') || false
+  const roleScope = watch('roleScope') || (isTenantRole ? 'UNIT' : 'GLOBAL')
   const integrationMappings = watch('integrationMappings') || {}
   const activeMappingsCount = Object.keys(integrationMappings).length
 
   useEffect(() => {
+    register('roleScope')
     if (visible && role) {
+      const derivedScope = role.roleScope || (role.isTenantRole ? 'UNIT' : 'GLOBAL')
       reset({
         name: role.name || '',
         description: role.description || '',
-        isTenantRole: role.isTenantRole || false,
+        isTenantRole: derivedScope === 'UNIT' || derivedScope === 'STAFF',
+        roleScope: derivedScope,
         permissions: role.permissions || [],
         integrationMappings: role.integrationMappings || {},
       })
@@ -98,11 +105,12 @@ export const useRoleForm = ({ role, visible, onSave }) => {
         name: '',
         description: '',
         isTenantRole: false,
+        roleScope: 'GLOBAL',
         permissions: [],
         integrationMappings: {},
       })
     }
-  }, [role, visible, reset])
+  }, [role, visible, reset, register])
 
   const handleSelectAllGroup = (groupCodes, checked) => {
     let newValue
@@ -174,12 +182,20 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     }
   }
 
+  const handleSelectScope = (scope) => {
+    setValue('roleScope', scope, { shouldValidate: true, shouldDirty: true })
+    setValue('isTenantRole', scope === 'UNIT' || scope === 'STAFF', { shouldValidate: true, shouldDirty: true })
+  }
+
   return {
     register,
     handleSubmit: handleSubmit(onSubmit),
     errors,
     control,
     selectedPermissions,
+    isTenantRole,
+    roleScope,
+    handleSelectScope,
     integrationMappings,
     activeMappingsCount,
     setValue,

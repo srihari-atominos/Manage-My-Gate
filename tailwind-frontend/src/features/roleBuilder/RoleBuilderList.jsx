@@ -43,14 +43,32 @@ const RoleBuilderList = () => {
       {
         key: 'isTenantRole',
         label: 'Scope',
-        render: (val) => (
-          <Badge
-            variant={val ? 'lightInfo' : 'lightPrimary'}
-            className="px-2.5 py-0.5 rounded-full text-xs font-medium"
-          >
-            {val ? 'Tenant / Unit' : 'Global'}
-          </Badge>
-        ),
+        render: (val, role) => {
+          const isStaff =
+            role?.roleScope === 'STAFF' ||
+            /staff|guard|technician|vendor|maintenance|maid|driver|cook|gardener|electrician|plumber|carpenter|cleaner|housekeeping/i.test(
+              role?.name || ''
+            );
+          if (isStaff) {
+            return (
+              <Badge
+                variant="lightWarning"
+                className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+              >
+                Staff (Dual Scope)
+              </Badge>
+            );
+          }
+          const isUnit = role?.roleScope === 'UNIT' || (!role?.roleScope && !!val);
+          return (
+            <Badge
+              variant={isUnit ? 'lightInfo' : 'lightPrimary'}
+              className="px-2.5 py-0.5 rounded-full text-xs font-medium"
+            >
+              {isUnit ? 'Unit Scope' : 'Global Scope'}
+            </Badge>
+          );
+        },
       },
       {
         key: 'description',

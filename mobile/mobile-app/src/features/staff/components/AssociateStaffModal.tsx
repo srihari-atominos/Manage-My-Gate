@@ -34,6 +34,8 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [roleOrTrade, setRoleOrTrade] = useState<string>('');
   const [durationPreset, setDurationPreset] = useState<'1m' | '3m' | '6m' | '1y' | 'custom'>('6m');
+  const [passStartDate, setPassStartDate] = useState<string>('');
+  const [passExpireDate, setPassExpireDate] = useState<string>('');
   const [startTime, setStartTime] = useState<string>('08:00');
   const [endTime, setEndTime] = useState<string>('12:00');
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
@@ -54,6 +56,15 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
       setSelectedStaffId('');
       setRoleOrTrade('');
       setDurationPreset('6m');
+      
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      setPassStartDate(todayStr);
+
+      const defaultExp = new Date();
+      defaultExp.setMonth(today.getMonth() + 6);
+      setPassExpireDate(defaultExp.toISOString().split('T')[0]);
+
       setStartTime('08:00');
       setEndTime('12:00');
       setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
@@ -63,6 +74,19 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
       setServerError(null);
     }
   }, [visible, myUnits]);
+
+  const handlePresetSelect = (preset: '1m' | '3m' | '6m' | '1y' | 'custom') => {
+    setDurationPreset(preset);
+    const baseDate = passStartDate ? new Date(passStartDate) : new Date();
+    const exp = new Date(baseDate);
+    if (preset === '1m') exp.setMonth(baseDate.getMonth() + 1);
+    else if (preset === '3m') exp.setMonth(baseDate.getMonth() + 3);
+    else if (preset === '6m') exp.setMonth(baseDate.getMonth() + 6);
+    else if (preset === '1y') exp.setFullYear(baseDate.getFullYear() + 1);
+    if (preset !== 'custom') {
+      setPassExpireDate(exp.toISOString().split('T')[0]);
+    }
+  };
 
   // When staff is selected, prefill suggested role and trigger conflict check
   const handleStaffChange = async (staffId: string) => {
@@ -122,14 +146,8 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
     if (!validateForm()) return;
     setServerError(null);
 
-    // Calculate contract expiry based on preset
-    const now = new Date();
-    const validUntilDate = new Date();
-    if (durationPreset === '1m') validUntilDate.setMonth(now.getMonth() + 1);
-    else if (durationPreset === '3m') validUntilDate.setMonth(now.getMonth() + 3);
-    else if (durationPreset === '6m') validUntilDate.setMonth(now.getMonth() + 6);
-    else if (durationPreset === '1y') validUntilDate.setFullYear(now.getFullYear() + 1);
-    else validUntilDate.setFullYear(now.getFullYear() + 1); // default custom
+    const validFromISO = passStartDate ? new Date(passStartDate).toISOString() : new Date().toISOString();
+    const validUntilISO = passExpireDate ? new Date(passExpireDate).toISOString() : undefined;
 
     const payload: CreateStaffAssociationPayload = {
       villaId: selectedUnitId,
@@ -139,7 +157,9 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
       accessSchedule: {
         days: selectedDays,
         timeWindow: { start: startTime, end: endTime },
-        notes: `Contract Period: ${durationPreset.toUpperCase()}`,
+        validFrom: validFromISO,
+        validUntil: validUntilISO,
+        notes: `Contract: ${passStartDate} to ${passExpireDate} (${durationPreset.toUpperCase()})`,
       },
     };
 
@@ -238,18 +258,19 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
           </View>
         ) : null}
 
-        {/* Contract Duration Presets */}
+        {/* Contract Duration Presets & Pass Dates */}
         <View className="mb-4">
           <Text className="text-xs font-bold text-foreground mb-2">
             Contract Duration Period
           </Text>
-          <View className="flex-row gap-2">
+          <View className="flex-row gap-1.5 mb-3">
             {(
               [
-                { label: '1 Month', value: '1m' },
-                { label: '3 Months', value: '3m' },
-                { label: '6 Months', value: '6m' },
-                { label: '1 Year', value: '1y' },
+                { label: '1 Mo', value: '1m' },
+                { label: '3 Mo', value: '3m' },
+                { label: '6 Mo', value: '6m' },
+                { label: '1 Yr', value: '1y' },
+                { label: 'Custom', value: 'custom' },
               ] as const
             ).map((p) => {
               const isSelected = durationPreset === p.value;
@@ -258,8 +279,8 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
                   key={p.value}
                   variant={isSelected ? 'default' : 'outline'}
                   size="sm"
-                  className="flex-1 py-1.5"
-                  onPress={() => setDurationPreset(p.value)}
+                  className="flex-1 py-1.5 px-1"
+                  onPress={() => handlePresetSelect(p.value)}
                 >
                   <Text
                     className={`text-xs font-semibold ${
@@ -271,6 +292,36 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
                 </Button>
               );
             })}
+          </View>
+
+          {/* Pass Start & Expire Dates */}
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <TextInput
+                label="Pass Start Date (YYYY-MM-DD)"
+                placeholder="e.g. 2026-01-01"
+                value={passStartDate}
+                onChangeText={(t) => {
+                  setPassStartDate(t);
+                  setDurationPreset('custom');
+                }}
+                editable={!isSubmitting}
+                helperText="Access active from"
+              />
+            </View>
+            <View className="flex-1">
+              <TextInput
+                label="Pass Expire Date (YYYY-MM-DD)"
+                placeholder="e.g. 2026-12-31"
+                value={passExpireDate}
+                onChangeText={(t) => {
+                  setPassExpireDate(t);
+                  setDurationPreset('custom');
+                }}
+                editable={!isSubmitting}
+                helperText="Access expires on"
+              />
+            </View>
           </View>
         </View>
 

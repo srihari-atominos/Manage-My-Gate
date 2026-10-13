@@ -23,6 +23,7 @@ import {
 import { CheckCircle2, AlertCircle, Clock, QrCode, Share2 } from 'lucide-react-native';
 import { useTranslation } from '@/src/utils/i18n';
 import { formatBookingWindow } from '../../../utils/amenityStateHelpers';
+import { buildAmenityPassShareMessage } from '@/src/utils/appBarcodeProtocol';
 
 export interface BookingResultViewProps {
   facility: AmenityFacility;
@@ -68,8 +69,15 @@ export function BookingResultView({
     try {
       const passCode = primaryPass?.passCode || reservation.reservationNumber || reservation._id;
       const facilityName = facility?.name || 'Amenity Pass';
-      const validUntilStr = primaryPass?.validUntil ? new Date(primaryPass.validUntil).toLocaleString() : 'As scheduled';
-      const message = `Gate Access Pass for ${facilityName}\nPass Code: ${passCode}\nValid Until: ${validUntilStr}\nPresent this code or QR scanner at community entry gate.`;
+      const barcodePayload = primaryPass?.qrData || `MMG:AMENITY:${passCode}`;
+      const validUntilStr = primaryPass?.validUntil ? String(primaryPass.validUntil) : undefined;
+      const message = buildAmenityPassShareMessage({
+        passCode,
+        facilityName,
+        barcodePayload,
+        validUntil: validUntilStr,
+        location: facility?.location || undefined,
+      });
       await Share.share({
         title: `Amenity Pass - ${facilityName}`,
         message,

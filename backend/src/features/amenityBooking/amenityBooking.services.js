@@ -1334,6 +1334,16 @@ export class AmenityBookingService {
     });
   }
 
+  async checkOutBooking(bookingId, orgId, userId, inspectionDetails = null) {
+    const { amenityAccessPassService } = await import('../amenityManagement/passes/amenityAccessPass.service.js');
+    return await amenityAccessPassService.recordCheckOut({
+      orgId,
+      rawToken: bookingId,
+      guardId: userId,
+      inspectionDetails,
+    });
+  }
+
   async getCalendarIndicators(orgId, year, month) {
     return await amenityBookingRepository.getMonthlyIndicators(orgId, year, month);
   }

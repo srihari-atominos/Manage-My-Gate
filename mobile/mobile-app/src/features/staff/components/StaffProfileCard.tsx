@@ -78,14 +78,8 @@ export const StaffProfileCard: React.FC<StaffProfileCardProps> = ({
       <View className="pt-3">
         <DetailRow label="Department / Trade" value={member.department} />
         <DetailRow label="Employment Type" value={member.type} />
-        <DetailRow label="Registered Phone" value={member.phone} />
-        <DetailRow label="Email Address" value={member.email || 'None on file'} />
-        {member.staffCode ? (
-          <DetailRow label="System Staff Code" value={member.staffCode} />
-        ) : null}
-        {activeOrgId ? (
-          <DetailRow label="Active Workspace" value={`Org ID: ${activeOrgId}`} />
-        ) : null}
+        {member.phone ? <DetailRow label="Phone" value={member.phone} /> : null}
+        {member.email ? <DetailRow label="Email" value={member.email} /> : null}
       </View>
     </View>
   );

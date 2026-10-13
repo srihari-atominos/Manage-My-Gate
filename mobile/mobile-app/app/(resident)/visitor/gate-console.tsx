@@ -80,6 +80,9 @@ export default function GateConsoleScreen() {
   const [scanResult, setScanResult] = useState<ScanResultData | null>(null);
   const [isInsideAction, setIsInsideAction] = useState(false);
   const [activeLogId, setActiveLogId] = useState<string | null>(null);
+  // Group passes: one QR admits many people, so check-in and check-out are both offered while some are inside.
+  const [groupCheckoutLogId, setGroupCheckoutLogId] = useState<string | null>(null);
+  const [groupAdmitAllowed, setGroupAdmitAllowed] = useState(true);
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'CONSOLE' | 'WALK_INS' | 'INSIDE' | 'DIRECTORY'>('CONSOLE');
@@ -148,6 +151,10 @@ export default function GateConsoleScreen() {
     }
     const cleanCode = extractCodeFromRaw(code);
     if (!cleanCode) return;
+
+    // Group-pass sheet state must not leak into staff or non-group results.
+    setGroupCheckoutLogId(null);
+    setGroupAdmitAllowed(true);
 
     // Detect Staff Pass / Service barcode
     const isStaffBarcode =
@@ -269,35 +276,61 @@ export default function GateConsoleScreen() {
     setLoading(false);
 
     if (passData && (passData._id || passData.visitorName || passData.visitorDetails)) {
+      const isGroupPass = Boolean(passData.isGroupPass);
+      const targetId = (passData._id || passData.id)?.toString();
+
       // Check if visitor is currently INSIDE
       let isCurrentlyInside = false;
       let matchedLogId: string | null = null;
+      let groupInsideLogs: any[] = [];
 
       try {
-        const currentActiveList = activeVisitors && activeVisitors.length > 0 ? activeVisitors : await fetchActiveVisitors(activeOrgId);
+        // Group passes need a fresh list: other gates admit and release people from the same pass.
+        const currentActiveList = !isGroupPass && activeVisitors && activeVisitors.length > 0
+          ? activeVisitors
+          : await fetchActiveVisitors(activeOrgId);
         const logs = Array.isArray(currentActiveList) ? currentActiveList : [];
-        const foundInside = logs.find((l: any) => {
+        const matches = logs.filter((l: any) => {
           const lPassId = (l.passId?._id || l.passId)?.toString();
-          const targetId = (passData._id || passData.id)?.toString();
           return lPassId && targetId && lPassId === targetId;
         });
-        if (foundInside) {
+        if (isGroupPass) {
+          // Oldest check-in first: group members share one identity, so release in arrival order.
+          groupInsideLogs = [...matches].sort(
+            (a: any, b: any) => new Date(a.checkInTime || 0).getTime() - new Date(b.checkInTime || 0).getTime()
+          );
+        } else if (matches[0]) {
           isCurrentlyInside = true;
-          matchedLogId = foundInside._id || foundInside.id;
+          matchedLogId = matches[0]._id || matches[0].id;
         }
       } catch {}
-
-      setIsInsideAction(isCurrentlyInside);
-      setActiveLogId(matchedLogId);
 
       const isRevoked = passData.status === 'REVOKED';
       const isExpired =
         passData.status === 'EXPIRED' ||
         (passData.validUntil && new Date(passData.validUntil).getTime() < Date.now());
-      const requiresServerDecision = !isCurrentlyInside && !isRevoked && !isExpired;
+
+      const groupInsideCount = groupInsideLogs.length;
+      const maxUses = passData.usageLimit?.maxUses || 1;
+      const usesLeft = Math.max(0, maxUses - (passData.usageLimit?.currentUses || 0));
+      const groupCanAdmit = isGroupPass && !isRevoked && !isExpired && usesLeft > 0;
+      const groupHasInside = isGroupPass && groupInsideCount > 0;
+      if (groupHasInside) isCurrentlyInside = true;
+
+      // Group: the primary button stays Confirm Entry; check-out is the extra button.
+      setIsInsideAction(isGroupPass ? false : isCurrentlyInside);
+      setActiveLogId(matchedLogId);
+      setGroupCheckoutLogId(groupHasInside ? groupInsideLogs[0]._id || groupInsideLogs[0].id : null);
+      setGroupAdmitAllowed(!groupHasInside || groupCanAdmit);
+
+      const requiresServerDecision = isGroupPass
+        ? groupCanAdmit
+        : !isCurrentlyInside && !isRevoked && !isExpired;
 
       // A visitor already inside is a verified pass awaiting check-out, not a refusal.
-      const status: 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'PENDING' | 'REVOKED' = isCurrentlyInside
+      const status: 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'PENDING' | 'REVOKED' = groupHasInside
+        ? (groupCanAdmit ? 'PENDING' : 'VERIFIED')
+        : isCurrentlyInside
         ? 'VERIFIED'
         : isRevoked
         ? 'REVOKED'
@@ -310,19 +343,28 @@ export default function GateConsoleScreen() {
       const result: ScanResultData = {
         success: isCurrentlyInside,
         status,
-        title: isCurrentlyInside
+        ...(groupHasInside ? { statusLabel: `GROUP PASS · ${groupInsideCount} INSIDE` } : {}),
+        title: groupHasInside
+          ? 'Group Pass: Guests On-Premises'
+          : isCurrentlyInside
           ? 'Visitor Currently On-Premises'
           : requiresServerDecision
           ? 'Pass Located'
           : 'Access Verification Denied',
-        message: isCurrentlyInside
-          ? 'Visitor is currently inside the estate. Tap below to log gate check-out.'
+        message: groupHasInside
+          ? `${groupInsideCount} of this group ${groupInsideCount === 1 ? 'is' : 'are'} inside. ${
+              groupCanAdmit
+                ? `${usesLeft} ${usesLeft === 1 ? 'entry' : 'entries'} left: admit the next guest or check one out.`
+                : 'No entries left: check guests out as they leave.'
+            }`
+          : isCurrentlyInside
+          ? 'Visitor is currently inside the community. Tap below to log gate check-out.'
           : isRevoked
-          ? 'Pass has been revoked by host resident or estate admin.'
+          ? 'Pass has been revoked by host resident or community admin.'
           : isExpired
           ? 'This visitor pass has expired.'
           : requiresServerDecision
-          ? 'Confirm entry to request the current server authorization decision.'
+          ? 'Pass found. Tap Confirm Gate Entry to let the visitor in.'
           : 'Pass is not eligible for entry.',
         visitorName: passData.visitorDetails?.name || passData.visitorName || 'Guest Visitor',
         visitorPhone: passData.visitorDetails?.phone || passData.phone,
@@ -384,14 +426,15 @@ export default function GateConsoleScreen() {
   };
 
   const handleCheckOutFromConsole = async () => {
-    if (!activeLogId) {
+    const logIdToRelease = groupCheckoutLogId && !isInsideAction ? groupCheckoutLogId : activeLogId;
+    if (!logIdToRelease) {
       setScanResultSheetOpen(false);
       return;
     }
 
     setAdmitLoading(true);
     try {
-      await checkoutVisitor(activeLogId);
+      await checkoutVisitor(logIdToRelease);
       setScanResultSheetOpen(false);
       setPassCode('');
       setStatusMessage(`Visitor ${scanResult?.visitorName || ''} checked out successfully!`);
@@ -668,7 +711,11 @@ export default function GateConsoleScreen() {
         loading={admitLoading}
         primaryActionLabel={isInsideAction ? t('gate_check_out', 'Gate Check-Out') : t('confirm_gate_entry', 'Confirm Gate Entry')}
         secondaryActionLabel={t('dismiss', 'Dismiss')}
-        onPrimaryAction={isInsideAction ? handleCheckOutFromConsole : handleAdmitVisitor}
+        onPrimaryAction={
+          isInsideAction ? handleCheckOutFromConsole : groupAdmitAllowed ? handleAdmitVisitor : undefined
+        }
+        extraActionLabel={groupCheckoutLogId ? t('gate_check_out', 'Gate Check-Out') : undefined}
+        onExtraAction={groupCheckoutLogId ? handleCheckOutFromConsole : undefined}
         onSecondaryAction={() => setScanResultSheetOpen(false)}
         onClose={() => setScanResultSheetOpen(false)}
       />

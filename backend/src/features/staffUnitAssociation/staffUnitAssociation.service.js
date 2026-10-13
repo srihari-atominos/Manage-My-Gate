@@ -117,10 +117,14 @@ class StaffUnitAssociationService {
     const { unitIds } = await this.resolveUserAuthorizedUnitIds(userId, orgId, isAdmin);
 
     const filter = {};
-    if (query.status) {
+    if (query.status && query.status !== 'ALL') {
       filter.status = query.status;
-    } else {
+    } else if (!query.status) {
       filter.status = 'Active';
+    }
+
+    if (query.technicianId) {
+      filter.technicianId = query.technicianId;
     }
 
     if (isAdmin) {

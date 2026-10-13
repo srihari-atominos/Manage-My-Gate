@@ -117,6 +117,8 @@ export interface CreateStaffAssociationPayload {
   accessSchedule?: {
     days?: string[];
     timeWindow?: { start?: string; end?: string };
+    validFrom?: string;
+    validUntil?: string;
     notes?: string;
   };
 }
@@ -227,9 +229,9 @@ export const staffService = {
     return Array.isArray(data) ? data : [];
   },
 
-  getUnitAssociations: async (villaId?: string): Promise<StaffUnitAssociation[]> => {
-    const params = villaId ? { villaId } : undefined;
-    const res: any = await apiClient.get(ASSOC_BASE_URL, { params });
+  getUnitAssociations: async (params?: { villaId?: string; technicianId?: string; status?: string } | string): Promise<StaffUnitAssociation[]> => {
+    const queryParams = typeof params === 'string' ? { villaId: params } : params;
+    const res: any = await apiClient.get(ASSOC_BASE_URL, { params: queryParams });
     const data = res?.data?.data || res?.data || res || [];
     return Array.isArray(data) ? data : [];
   },

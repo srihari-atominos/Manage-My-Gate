@@ -7,6 +7,8 @@ import { Clock, LogIn, LogOut, ShieldAlert, User } from 'lucide-react-native';
 
 export interface StaffAttendanceCardProps {
   record: StaffAttendanceRecord;
+  compact?: boolean;
+  hideStaffHeader?: boolean;
 }
 
 function formatTime(isoString?: string | null): string {
@@ -43,7 +45,11 @@ function formatDuration(minutes?: number | null, isOpen?: boolean): string {
   return isOpen ? 'In Progress' : '0m';
 }
 
-export const StaffAttendanceCard: React.FC<StaffAttendanceCardProps> = ({ record }) => {
+export const StaffAttendanceCard: React.FC<StaffAttendanceCardProps> = ({
+  record,
+  compact = false,
+  hideStaffHeader = false,
+}) => {
   const staffObj = typeof record.technicianId === 'object' && record.technicianId ? record.technicianId : null;
   const staffName = staffObj?.name || record.staffCode || 'Staff Member';
   const staffDepartment = staffObj?.department || 'General';
@@ -54,40 +60,58 @@ export const StaffAttendanceCard: React.FC<StaffAttendanceCardProps> = ({ record
 
   return (
     <View className="p-4 rounded-2xl bg-card border border-border mb-3 shadow-xs">
-      {/* Header: Name, Department, Status Badge */}
-      <View className="flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center flex-1 me-2">
-          <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center me-3">
-            <User size={18} className="text-primary" />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
-              {staffName}
-            </Text>
-            <View className="flex-row items-center mt-0.5">
-              <Text className="text-xs text-muted-foreground me-2">
-                {staffDepartment}
+      {/* Header */}
+      {!hideStaffHeader ? (
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center flex-1 me-2">
+            <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center me-3">
+              <User size={18} className="text-primary" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
+                {staffName}
               </Text>
-              {staffCode ? (
-                <View className="px-1.5 py-0.5 rounded bg-muted">
-                  <Text className="text-[10px] font-semibold text-muted-foreground">
-                    {staffCode}
-                  </Text>
-                </View>
-              ) : null}
+              <View className="flex-row items-center mt-0.5">
+                <Text className="text-xs text-muted-foreground me-2">
+                  {staffDepartment}
+                </Text>
+                {staffCode ? (
+                  <View className="px-1.5 py-0.5 rounded bg-muted">
+                    <Text className="text-[10px] font-semibold text-muted-foreground">
+                      {staffCode}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Status Badge */}
-        {isMissing ? (
-          <StatusBadge variant="danger" label="Missing Checkout" dot size="sm" />
-        ) : isOpen ? (
-          <StatusBadge variant="warning" label="On-Site" dot size="sm" />
-        ) : (
-          <StatusBadge variant="success" label="Completed" size="sm" />
-        )}
-      </View>
+          {/* Status Badge */}
+          {isMissing ? (
+            <StatusBadge variant="danger" label="Missing Checkout" dot size="sm" />
+          ) : isOpen ? (
+            <StatusBadge variant="warning" label="On-Site" dot size="sm" />
+          ) : (
+            <StatusBadge variant="success" label="Completed" size="sm" />
+          )}
+        </View>
+      ) : (
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center">
+            <Clock size={15} className="text-muted-foreground me-1.5" />
+            <Text className="text-xs font-semibold text-foreground">
+              {formatDate(record.checkInTime) || 'Attendance Log'}
+            </Text>
+          </View>
+          {isMissing ? (
+            <StatusBadge variant="danger" label="Missing Checkout" dot size="sm" />
+          ) : isOpen ? (
+            <StatusBadge variant="warning" label="On-Site" dot size="sm" />
+          ) : (
+            <StatusBadge variant="success" label="Completed" size="sm" />
+          )}
+        </View>
+      )}
 
       {/* Missing Checkout Alert Banner */}
       {isMissing ? (

@@ -144,13 +144,18 @@ const workspaceSlice = createSlice({
         state.error = null;
         // Optimistic update for instant UI feedback
         const { moduleId, enabled } = action.meta.arg;
+        const targetAllModule = state.allModules.find(m => m._id === moduleId || m.moduleKey === moduleId);
+        if (targetAllModule) {
+          targetAllModule.enabled = enabled;
+        }
         const targetModule = state.modules.find(m => m._id === moduleId || m.moduleKey === moduleId);
         if (targetModule) {
           targetModule.enabled = enabled;
         }
-        const targetAllModule = state.allModules.find(m => m._id === moduleId || m.moduleKey === moduleId);
-        if (targetAllModule) {
-          targetAllModule.enabled = enabled;
+        if (!enabled) {
+          state.modules = state.modules.filter(m => m._id !== moduleId && m.moduleKey !== moduleId && m.enabled !== false);
+        } else if (targetAllModule && !state.modules.some(m => m._id === moduleId || m.moduleKey === moduleId)) {
+          state.modules = [...state.modules, { ...targetAllModule, enabled: true }];
         }
       })
       .addCase(toggleWorkspaceModule.fulfilled, (state, action) => {

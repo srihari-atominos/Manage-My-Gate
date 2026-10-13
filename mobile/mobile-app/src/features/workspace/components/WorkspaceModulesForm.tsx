@@ -66,12 +66,13 @@ export const WorkspaceModulesForm = () => {
               (key === 'complaints' && f.categoryKey === 'complaints_helpdesk') ||
               (key === 'notices' && f.categoryKey === 'notice_board_polls') ||
               (key === 'billing' && f.categoryKey === 'financial_billing') ||
+              (key === 'staff' && f.categoryKey === 'staff_management') ||
               (key === 'administration_security' && f.categoryKey === 'administration_security')
           );
           
-          const iconName = catalogItem?.iconName || module.icon || 'Box';
-          const colorIcon = catalogItem?.colorIcon || '#03A9F4';
-          const colorBg = catalogItem?.colorBg || 'bg-sky-500/10';
+          const iconName = catalogItem?.iconName || (key === 'staff' ? 'Users' : module.icon || 'Box');
+          const colorIcon = catalogItem?.colorIcon || (key === 'staff' ? '#2563EB' : '#03A9F4');
+          const colorBg = catalogItem?.colorBg || (key === 'staff' ? 'bg-blue-500/10' : 'bg-sky-500/10');
           
           return (
             <TouchableOpacity

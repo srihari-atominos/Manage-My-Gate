@@ -170,8 +170,10 @@ export const useVisitorPass = () => {
   );
 
   const checkoutVisitor = useCallback(
-    async (logId: string) => {
-      const res = await dispatch(checkoutVisitorThunk(logId));
+    async (logId: string, payload?: { gateName?: string; reason?: string }) => {
+      const res = await dispatch(
+        checkoutVisitorThunk(payload ? { logId, ...payload } : logId)
+      );
       if (checkoutVisitorThunk.rejected.match(res)) {
         throw new Error(String(res.payload || 'Failed to checkout visitor'));
       }

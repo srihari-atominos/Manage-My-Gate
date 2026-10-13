@@ -161,7 +161,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
   const selectedRoleObj = roles.find((r) => r.name === selectedRoleName);
   const isTenantRole = selectedRoleObj ? !!selectedRoleObj.isTenantRole : false;
-  const isStaff = isStaffRole(selectedRoleName);
+  const isStaff = isStaffRole(selectedRoleName) || selectedRoleObj?.roleScope === 'STAFF';
 
   // Real-time email validation and debounced backend verification
   const handleEmailChange = (text: string) => {

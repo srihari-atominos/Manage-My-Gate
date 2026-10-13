@@ -416,9 +416,32 @@ export class AmenityAccessPassService {
 
     // Anti-replay check
     if (booking.checkInTime !== null || booking.status === 'checked-in') {
+      const User = mongoose.models.User || (await import('../../user/user.model.js')).default;
+      const checkedUser = await User.findById(booking.userId).populate('villaId').lean();
+      const AmenityModel = mongoose.models.Amenity || (await import('../../amenity/amenity.model.js')).default;
+      const bookedAmenity = await AmenityModel.findById(booking.amenityId).lean();
+      const unitNumber =
+        checkedUser?.villaNumber ||
+        checkedUser?.villaId?.unitNumber ||
+        checkedUser?.villaId?.villaNumber ||
+        checkedUser?.flatNumber ||
+        checkedUser?.unit ||
+        'N/A';
+
       throw new HttpError(
         409,
-        `Anti-replay violation: booking was already checked in at ${booking.checkInTime ? booking.checkInTime.toISOString() : 'earlier'}`
+        `Anti-replay violation: booking was already checked in at ${booking.checkInTime ? booking.checkInTime.toISOString() : 'earlier'}`,
+        {
+          code: 'ALREADY_CHECKED_IN',
+          checkedInAt: booking.checkInTime,
+          canCheckOut: !booking.checkOutTime,
+          bookingId: booking.bookingId || String(booking._id),
+          reservationNumber: booking.bookingId || String(booking._id),
+          residentName: checkedUser?.name || checkedUser?.username || 'Resident',
+          unitNumber,
+          facilityName: bookedAmenity?.name || 'Amenity',
+          status: 'CHECKED_IN',
+        }
       );
     }
 
@@ -608,7 +631,90 @@ export class AmenityAccessPassService {
     const { withTransactionRetry } = await import('../domain/concurrency/transaction.utils.js');
     const run = async (trx) => {
       const pass = await this._findPassForGate(orgId, rawToken, trx);
-      if (!pass) throw new HttpError(404, 'Invalid pass: token not found for this organization');
+      if (!pass) {
+        // Fallback to check out a V1 AmenityBooking
+        const mongoose = (await import('mongoose')).default;
+        const token = this.normalizeScanToken(rawToken);
+        const passTokenHash = this.hashToken(token);
+        const AmenityBooking = mongoose.models.AmenityBooking || (await import('../../amenityBooking/amenityBooking.model.js')).default;
+        
+        const typedCodeConditions = [{ bookingId: token }];
+        if (mongoose.Types.ObjectId.isValid(token)) {
+          typedCodeConditions.push({ _id: new mongoose.Types.ObjectId(token) });
+        }
+        const orConditions = [
+          { passTokenHash },
+          { passToken: token },
+          { orgId: new mongoose.Types.ObjectId(String(orgId)), $or: typedCodeConditions },
+        ];
+
+        const booking = await AmenityBooking.findOne({ $or: orConditions }).session(trx);
+        if (!booking) throw new HttpError(404, 'Invalid pass: token not found for this organization');
+        if (booking.orgId.toString() !== orgId.toString()) throw new HttpError(403, 'Access denied: pass belongs to a different organization/community');
+        if (booking.status === 'cancelled') throw new HttpError(403, 'Booking has been cancelled');
+        if (booking.status === 'completed' || booking.checkOutTime) throw new HttpError(409, 'Pass has already been checked out');
+        if (!booking.checkInTime && booking.status !== 'checked-in') {
+          throw new HttpError(400, 'Check-out rejected: pass has not been checked in yet');
+        }
+
+        const updatedBooking = await AmenityBooking.findOneAndUpdate(
+          {
+            _id: booking._id,
+            orgId,
+            status: 'checked-in',
+            checkOutTime: null,
+          },
+          {
+            $set: {
+              status: 'completed',
+              checkOutTime: new Date(),
+              checkedOutBy: guardId || null,
+            },
+          },
+          { new: true, session: trx }
+        );
+
+        if (!updatedBooking) throw new HttpError(409, 'Pass has already been checked out');
+
+        // Emit completed event
+        try {
+          const { amenityBookingEventEmitter, AMENITY_BOOKING_COMPLETED } = await import(
+            '../../amenityBooking/amenityBooking.events.js'
+          );
+          amenityBookingEventEmitter.emit(AMENITY_BOOKING_COMPLETED, updatedBooking);
+        } catch {
+          // ignore event error
+        }
+
+        const User = mongoose.models.User || (await import('../../user/user.model.js')).default;
+        const user = await User.findById(booking.userId).lean();
+        const AmenityModel = mongoose.models.Amenity || (await import('../../amenity/amenity.model.js')).default;
+        const amenity = await AmenityModel.findById(booking.amenityId).lean();
+
+        return {
+          pass: {
+            passId: updatedBooking._id,
+            passCode: updatedBooking.bookingId,
+            status: 'completed',
+            isExit: true,
+            checkOutTimestamp: updatedBooking.checkOutTime,
+          },
+          reservation: {
+            _id: updatedBooking._id,
+            reservationNumber: updatedBooking.bookingId,
+            userName: user?.name || user?.username || 'Resident',
+            facilityName: amenity?.name || 'Amenity',
+            status: 'completed',
+          },
+          deposit: {
+            paid: 0,
+            retained: 0,
+            refunded: 0,
+            uncoveredDamage: 0,
+          },
+        };
+      }
+
       if (pass.isRevoked) throw new HttpError(403, 'Access denied: pass is revoked');
       if (!pass.checkInTimestamp) throw new HttpError(400, 'Check-out rejected: pass has not been checked in yet');
       if (pass.checkOutTimestamp) throw new HttpError(409, 'Pass has already been checked out');

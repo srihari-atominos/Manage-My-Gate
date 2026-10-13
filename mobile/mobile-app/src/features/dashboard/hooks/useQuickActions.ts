@@ -54,7 +54,7 @@ export const useQuickActions = () => {
     (state: RootState) => state.dashboard
   );
 
-  const { modules, loadWorkspaceModules } = useWorkspace();
+  const { modules, allModules, loadWorkspaceModules } = useWorkspace();
   const authUser = useSelector((state: RootState) => (state as any).auth?.user);
   const currentUserId = authUser?._id || authUser?.id;
   const activeOrgId = authUser?.activeOrgId || authUser?.orgId || authUser?.organizationId;
@@ -166,8 +166,9 @@ export const useQuickActions = () => {
       });
     }
     
-    if (modules && modules.length > 0) {
-      const enabledModuleKeys = modules.filter(m => m.enabled).map(m => m.moduleKey);
+    const moduleSource = (allModules && allModules.length > 0) ? allModules : modules;
+    if (moduleSource && moduleSource.length > 0) {
+      const enabledModuleKeys = moduleSource.filter(m => m.enabled).map(m => m.moduleKey);
       
       const categoryToModuleMap: Record<string, string[]> = {
         'visitor_management': ['visitor'],
@@ -179,10 +180,16 @@ export const useQuickActions = () => {
         // top-up is always a valid resident & admin feature.
         'digital_wallet': ['billing', 'amenities', 'wallet'],
         'financial_billing': ['billing'],
+        'staff_management': ['staff', 'staff_management'],
         'administration_security': ['administration_security', 'admin'],
       };
       
-      const itemToModuleMap: Record<string, string[]> = {};
+      const itemToModuleMap: Record<string, string[]> = {
+        'admin_staff_directory': ['staff', 'staff_management'],
+        'admin_staff_attendance': ['staff', 'staff_management'],
+        'admin_staff_allocations': ['staff', 'staff_management'],
+        'admin_staff_portal': ['staff', 'staff_management'],
+      };
       
       baseCatalog = baseCatalog.map(category => {
         let requiredCategoryModules: string[] | undefined = categoryToModuleMap[category.categoryKey];
@@ -222,7 +229,7 @@ export const useQuickActions = () => {
       ...category,
       items: category.items.filter(item => validFeatureIds.has(item.id) && isFeatureAllowedForUser(item, user))
     })).filter(category => category.items.length > 0);
-  }, [rawCatalog, modules, user]);
+  }, [rawCatalog, modules, allModules, user]);
 
   // Flattened array of all available items across categories for easy lookup
   const allFeaturesList = useMemo<FeatureItem[]>(() => {
@@ -240,8 +247,8 @@ export const useQuickActions = () => {
       });
       if (list.length > 0) return list;
     }
-    return (ALL_AVAILABLE_FEATURES as FeatureItem[]).filter(item => isFeatureAllowedForUser(item, user));
-  }, [featureCatalog, user]);
+    return [];
+  }, [featureCatalog]);
 
   // Role-filtered active quick action IDs (strictly permitted, max 7)
   const effectiveQuickActionIds = useMemo<string[]>(() => {
@@ -250,7 +257,7 @@ export const useQuickActions = () => {
     const candidateIds = hasCustomized ? activeQuickActions : defaultIds;
 
     const allowedIds = candidateIds.filter((id) => {
-      const item = allFeaturesList.find((f) => f.id === id) || ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
+      const item = allFeaturesList.find((f) => f.id === id);
       return item ? isFeatureAllowedForUser(item, user) : false;
     });
 
@@ -261,7 +268,7 @@ export const useQuickActions = () => {
 
     // Otherwise, for fresh uncustomized defaults:
     const permittedDefaults = defaultIds.filter((id) => {
-      const item = allFeaturesList.find((f) => f.id === id) || ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
+      const item = allFeaturesList.find((f) => f.id === id);
       return item ? isFeatureAllowedForUser(item, user) : false;
     });
 
@@ -278,11 +285,6 @@ export const useQuickActions = () => {
   const equippedFeatures = useMemo<FeatureItem[]>(() => {
     const itemMap = new Map<string, FeatureItem>();
     allFeaturesList.forEach((item) => itemMap.set(item.id, item));
-    (ALL_AVAILABLE_FEATURES as FeatureItem[]).forEach((item) => {
-      if (!itemMap.has(item.id)) {
-        itemMap.set(item.id, item);
-      }
-    });
 
     return effectiveQuickActionIds
       .map((id: string) => itemMap.get(id))

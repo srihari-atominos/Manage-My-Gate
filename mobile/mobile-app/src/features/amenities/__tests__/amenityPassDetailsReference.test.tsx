@@ -69,15 +69,16 @@ describe('Amenity Pass Details Reference Alignment (Visitor Pattern)', () => {
         barcodePayload: 'MMG:AMENITY:mockToken123456',
       });
 
-      expect(msg).toContain('AMENITY ACCESS PASS');
+      expect(msg).toContain('NAHOM AMENITY PASS');
       expect(msg).toContain('*PASS CODE:* *849201*');
       expect(msg).toContain('*Facility:* Olympic Swimming Pool');
-      expect(msg).toContain('*Passholder:* Jane Resident');
+      expect(msg).toContain('*Passholder / Visitor:* Jane Resident');
+      expect(msg).toContain('*Pass Type:* Amenity Booking');
       expect(msg).toContain('*Unit / Villa:* Villa 404');
-      expect(msg).toContain('*Date:* 15 Oct 2026');
-      expect(msg).toContain('*Time Window:* 09:00 AM - 10:00 AM');
+      expect(msg).toContain('*Valid Until:* 15 Oct 2026, 09:00 AM - 10:00 AM');
       expect(msg).toContain('QR PASS:');
-      expect(msg).toContain('Please present this Pass Code (849201) or the QR code');
+      expect(msg).toContain('https://api.qrserver.com/v1/create-qr-code/');
+      expect(msg).toContain('Please present this 6-digit Pass Code (849201) or the QR code at the security gate');
     });
   });
 

@@ -26,6 +26,7 @@ export const initRoleSocket = () => {
         roleName: role.name,
         permissions: updatedPermissions,
         isTenantRole: role.isTenantRole || false,
+        roleScope: role.roleScope || (role.isTenantRole ? 'UNIT' : 'GLOBAL'),
       };
 
       // Emit to organization room if present, otherwise broadcast to active sockets

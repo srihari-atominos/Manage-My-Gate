@@ -66,10 +66,12 @@ export class VisitorLogController {
   async checkout(req, res, next) {
     try {
       const { id } = req.params;
+      // The guard app sends checkout without a body, and Express 5 leaves req.body undefined then.
+      const { gateName, reason } = req.body || {};
       const data = await visitorLogService.checkout(id, req.user, {
         orgId: req.tenant.orgId,
-        gateName: req.body.gateName,
-        reason: req.body.reason,
+        gateName,
+        reason,
       });
       res.success(data, 'Visitor checked out successfully');
     } catch (error) {

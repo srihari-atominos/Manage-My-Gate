@@ -143,11 +143,11 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'workspaces:read': ['workspaces:read', 'workspaces.read', 'workspaces:view', 'workspaces', 'admin_workspaces', 'admin_workspace_settings'],
   'settings:read': ['settings:read', 'settings.read', 'settings:view', 'settings', 'admin_app_settings'],
   'integrations:read': ['integrations:read', 'integrations.read', 'integrations:view', 'integrations', 'admin_integrations'],
-  'staff:view': ['staff:view', 'staff.view', 'staff:manage', 'staff.manage', 'staff', 'admin_staff'],
-  'staff:manage': ['staff:manage', 'staff.manage', 'staff'],
-  'staff:attendance': ['staff:attendance', 'staff.attendance', 'staff:manage', 'staff.manage', 'staff'],
-  'staff:assign_unit': ['staff:assign_unit', 'staff.assign_unit', 'staff:manage', 'staff.manage', 'staff', 'resident_staff_associations'],
-  'staff:view_own': ['staff:view_own', 'staff.view_own', 'staff_dashboard'],
+  'staff:view': ['staff:view', 'staff.view', 'staff:manage', 'staff.manage', 'staff', 'admin_staff', 'admin_staff_directory', 'staff:directory'],
+  'staff:manage': ['staff:manage', 'staff.manage', 'staff', 'admin_staff', 'admin_staff_directory'],
+  'staff:attendance': ['staff:attendance', 'staff.attendance', 'staff:manage', 'staff.manage', 'admin_staff_attendance'],
+  'staff:assign_unit': ['staff:assign_unit', 'staff.assign_unit', 'staff:manage', 'staff.manage', 'resident_staff_associations', 'admin_staff_allocations'],
+  'staff:view_own': ['staff:view_own', 'staff.view_own', 'staff_dashboard', 'admin_staff_portal', 'staff:portal'],
 };
 
 /**
@@ -178,8 +178,9 @@ const matchesUserPermissions = (
     if (userPermissions.includes(dotPerm) || userPermissions.includes(colonPerm)) return true;
 
     // Check module level match (e.g. 'notices' in permissions array)
+    // Note: 'staff' has granular sub-features, so only match module prefix if userPermissions has generic 'staff' or 'staff:*'
     const modulePrefix = itemPermission.split(/[:.]/)[0];
-    if (userPermissions.includes(modulePrefix)) return true;
+    if (userPermissions.includes(modulePrefix) || userPermissions.includes(`${modulePrefix}:*`)) return true;
 
     // Check synonym map
     const synonyms = PERMISSION_SYNONYMS[itemPermission] || [];
@@ -300,11 +301,6 @@ export const isFeatureAllowedForUser = (
     return true;
   }
 
-  // Community Admin always has access to Administration & Security features
-  if (checkIsAdmin(effectiveUser) && item.categoryKey === 'administration_security') {
-    return true;
-  }
-
   // STRICT ROLE BUILDER ENFORCEMENT
   // If the Role Builder explicitly assigned permissions (array is not empty), it is the sole source of truth.
   if (permissions.length > 0) {
@@ -319,6 +315,12 @@ export const isFeatureAllowedForUser = (
     }
     return matchesUserPermissions(item.permission, item.id, permissions);
   }
+
+  // Community Admin default fallback when no explicit permission array is loaded
+  if (checkIsAdmin(effectiveUser) && (item.categoryKey === 'administration_security' || item.categoryKey === 'staff_management')) {
+    return true;
+  }
+
 
   const isAdmin = checkIsAdmin(effectiveUser);
   const isSecurity = checkIsSecurityRole(effectiveUser);

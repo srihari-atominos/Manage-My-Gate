@@ -95,11 +95,11 @@ const DetailRow = React.forwardRef<View, DetailRowProps>(
         </Text>
 
         {/* Value Container */}
-        <View className="flex-row items-center justify-end shrink-0 max-w-[60%]">
+        <View className="flex-row items-center justify-end shrink min-w-0 max-w-[65%]">
           {isPrimitiveValue ? (
             <Text
               variant="default"
-              className="text-sm font-medium text-right text-foreground"
+              className="text-sm font-medium text-right text-foreground shrink"
               numberOfLines={2}
             >
               {renderedValue}
@@ -112,7 +112,7 @@ const DetailRow = React.forwardRef<View, DetailRowProps>(
           {copyable && isPrimitiveValue ? (
             <Pressable
               onPress={handleCopy}
-              className="ml-2 p-1 rounded active:opacity-60"
+              className="ms-1.5 p-1 rounded active:opacity-60 shrink-0"
               accessibilityRole="button"
               accessibilityLabel={`Copy ${label}`}
             >

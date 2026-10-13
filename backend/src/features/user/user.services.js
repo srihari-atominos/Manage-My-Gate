@@ -604,7 +604,24 @@ export class UserService {
 
   async syncTechnicianForStaffUser(userId, orgId, roleNames = [], session = null, staffExtra = {}) {
     try {
-      const isStaff = staffExtra.isStaff || roleNames.some(r => this.isStaffRole(r));
+      let isStaff = staffExtra.isStaff || roleNames.some(r => this.isStaffRole(r));
+
+      // Also check roleScope on role objects if not already marked as staff
+      if (!isStaff && roleNames.length > 0 && orgId) {
+        try {
+          const roleService = (await import('../role/role.services.js')).default;
+          for (const rName of roleNames) {
+            const roleDoc = await roleService.getRoleByName(rName, orgId, session);
+            if (roleDoc && roleDoc.roleScope === 'STAFF') {
+              isStaff = true;
+              break;
+            }
+          }
+        } catch (_) {
+          // ignore lookup errors, fallback to isStaff
+        }
+      }
+
       if (!isStaff) return;
 
       let name = staffExtra.name;
@@ -1134,12 +1151,15 @@ export class UserService {
 
         let villaId = payloadVillaId || null;
 
-        // Check if role is a staff role or global community role
-        const isStaff = this.isStaffRole(roleName) || Boolean(invite.isStaff || invite.department || invite.designation);
         const roleService = (await import('../role/role.services.js')).default;
         const roleObj = roleName ? await roleService.getRoleByName(roleName.trim(), orgId) : null;
+        // Check if role is a staff role or global community role
+        const isStaff =
+          this.isStaffRole(roleName) ||
+          (roleObj && roleObj.roleScope === 'STAFF') ||
+          Boolean(invite.isStaff || invite.department || invite.designation);
         const isGlobalRole = roleObj
-          ? !roleObj.isTenantRole
+          ? roleObj.roleScope === 'GLOBAL' || (!roleObj.isTenantRole && roleObj.roleScope !== 'STAFF')
           : ['community admin', 'security guard', 'community staff'].includes((roleName || '').toLowerCase().trim());
 
         // If not a global role (or if it's a unit-scoped staff role) and not 'None', resolve villa / unit number if provided

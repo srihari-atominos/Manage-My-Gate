@@ -434,8 +434,8 @@ export const staffSlice = createSlice({
       })
       .addCase(removeAssociationThunk.fulfilled, (state, action) => {
         state.isAssociationSubmitting = false;
-        state.associations = state.associations.filter((a) => a._id !== action.payload._id);
-        state.myAllocations = state.myAllocations.filter((a) => a._id !== action.payload._id);
+        state.associations = (state.associations || []).filter((a) => a._id !== action.payload._id);
+        state.myAllocations = (state.myAllocations || []).filter((a) => a._id !== action.payload._id);
       })
       .addCase(removeAssociationThunk.rejected, (state, action) => {
         state.isAssociationSubmitting = false;
