@@ -316,7 +316,7 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
                 <Text className="font-bold text-foreground">Occupancy Status:</Text> Vacant, Occupied, Under Maintenance
               </Text>
               <Text className="text-[10px] text-muted-foreground text-start">
-                <Text className="font-bold text-foreground">Resident Type:</Text> Tenant, Resident Owner, Family Member
+                <Text className="font-bold text-foreground">Resident Type:</Text> Tenant, Resident Owner, Family Member, Household Staff (Maid, Driver, Cook, Gardener)
               </Text>
               <Text className="text-[10px] text-muted-foreground text-start">
                 <Text className="font-bold text-foreground">Unit Type:</Text> Apartment, Villa, Studio, Penthouse, 1 BHK, 2 BHK, 3 BHK, 4 BHK, Duplex

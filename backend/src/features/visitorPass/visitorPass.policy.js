@@ -7,10 +7,23 @@ export const getActorId = (actor) => actor?.id || actor?._id || actor?.userId ||
 const hasPermission = (actor, permission) =>
   Array.isArray(actor?.permissions) && actor.permissions.some((entry) => entry === '*' || entry === permission);
 
+const CANONICAL_VISITOR_MANAGER_ROLES = [
+  'super admin',
+  'platform super admin',
+  'community admin',
+  'admin',
+  'facility manager',
+  'manager',
+];
+
 export const isVisitorManager = (actor) => {
   const role = normalized(actor?.role);
-  return Boolean(actor?.isPlatform) || hasPermission(actor, 'visitor:admin') || hasPermission(actor, 'visitor:manage') ||
-    role.includes('admin') || role.includes('manager');
+  return (
+    Boolean(actor?.isPlatform) ||
+    hasPermission(actor, 'visitor:admin') ||
+    hasPermission(actor, 'visitor:manage') ||
+    CANONICAL_VISITOR_MANAGER_ROLES.includes(role)
+  );
 };
 
 export const isGateOperator = (actor) => {

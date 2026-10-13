@@ -42,5 +42,9 @@
   {
     "feature": "workspaces",
     "actions": ["read", "update"]
+  },
+  {
+    "feature": "staff",
+    "actions": ["view", "manage", "assign_unit", "attendance", "view_own"]
   }
 ]

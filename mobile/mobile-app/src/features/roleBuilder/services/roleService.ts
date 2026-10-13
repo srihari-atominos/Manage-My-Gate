@@ -6,6 +6,7 @@ export interface RoleData {
   name: string;
   description?: string;
   isTenantRole?: boolean;
+  roleScope?: 'GLOBAL' | 'UNIT' | 'STAFF';
   permissions?: string[];
   integrationMappings?: Record<string, string>;
 }

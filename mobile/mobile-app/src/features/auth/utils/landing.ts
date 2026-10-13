@@ -17,6 +17,7 @@ export const hasActiveCommunity = (user: any): boolean =>
   );
 
 export const resolveHomeRoute = (user: any): string => {
+  if (hasActiveCommunity(user)) return '/(resident)';
   const landing = user?.landing;
   if (landing === 'pending_invitations') return '/(auth)/pending-invitations';
   if (landing === 'no_community' || !hasActiveCommunity(user)) return '/(auth)/no-community';

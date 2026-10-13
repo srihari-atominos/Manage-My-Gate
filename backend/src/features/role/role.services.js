@@ -68,7 +68,7 @@ export class RoleService {
     const currentSession = session || localSession;
 
     try {
-      const { name, description, permissions, integrationMappings, orgId, isTenantRole } = roleData;
+      const { name, description, permissions, integrationMappings, orgId, isTenantRole, roleScope } = roleData;
       const trimmedName = name ? name.trim() : '';
       if (!trimmedName) {
         throw new HttpError(400, 'Role name is required.');
@@ -78,7 +78,22 @@ export class RoleService {
       if (existingRole) {
         throw new HttpError(400, `Role with name '${trimmedName}' already exists.`);
       }
-      const newRole = await roleRepository.create({ name: trimmedName, description, integrationMappings, orgId, isTenantRole }, currentSession);
+
+      // Determine effective scope and tenant boolean
+      let effectiveScope = roleScope;
+      if (!effectiveScope) {
+        effectiveScope = isTenantRole ? 'UNIT' : 'GLOBAL';
+      }
+      const effectiveIsTenantRole = effectiveScope === 'UNIT' || effectiveScope === 'STAFF' || !!isTenantRole;
+
+      const newRole = await roleRepository.create({
+        name: trimmedName,
+        description,
+        integrationMappings,
+        orgId,
+        isTenantRole: effectiveIsTenantRole,
+        roleScope: effectiveScope,
+      }, currentSession);
       
       let populatedPermissions = [];
       if (permissions && permissions.length > 0) {
@@ -136,11 +151,15 @@ export class RoleService {
     session.startTransaction();
     try {
       const currentRole = await this.getRoleById(id, session);
-      const { name, description, permissions, integrationMappings, orgId, isTenantRole } = updateData;
+      const { name, description, permissions, integrationMappings, orgId, isTenantRole, roleScope } = updateData;
       
       const roleUpdates = { description, integrationMappings };
-      if (isTenantRole !== undefined) {
+      if (roleScope !== undefined) {
+        roleUpdates.roleScope = roleScope;
+        roleUpdates.isTenantRole = roleScope === 'UNIT' || roleScope === 'STAFF';
+      } else if (isTenantRole !== undefined) {
         roleUpdates.isTenantRole = isTenantRole;
+        roleUpdates.roleScope = isTenantRole ? 'UNIT' : 'GLOBAL';
       }
       if (name) {
         const trimmedName = name.trim();

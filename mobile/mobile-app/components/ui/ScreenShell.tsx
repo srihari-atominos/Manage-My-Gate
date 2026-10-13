@@ -364,11 +364,17 @@ export function ScreenShell({
           keyboardVerticalOffset={0}
           className="flex-1 bg-transparent"
         >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          {Platform.OS === 'web' ? (
             <View className="flex-1 bg-transparent">
               {children}
             </View>
-          </TouchableWithoutFeedback>
+          ) : (
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+              <View className="flex-1 bg-transparent">
+                {children}
+              </View>
+            </TouchableWithoutFeedback>
+          )}
         </KeyboardAvoidingView>
       )}
 

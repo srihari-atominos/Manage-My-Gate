@@ -23,6 +23,14 @@ export const acceptInvitation = async (inviteToken: string) => {
   return await apiClient.post('/auth/invitations/accept', { inviteToken });
 };
 
+export const respondToInvitation = async (
+  action: 'accept' | 'decline',
+  ref: { invitationId?: string; inviteToken?: string; ticket?: string }
+) => {
+  const path = action === 'accept' ? '/auth/invitations/accept' : '/auth/invitations/decline';
+  return await apiClient.post(path, ref);
+};
+
 export const getPendingInvitations = async () => {
   return await apiClient.get('/auth/invitations/pending');
 };
@@ -246,6 +254,7 @@ export default {
   verifyRegistration,
   acceptSsoInvite,
   acceptInvitation,
+  respondToInvitation,
   getPendingInvitations,
   rejectInvite,
   validateInvite,

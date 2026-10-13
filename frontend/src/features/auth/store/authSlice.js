@@ -167,7 +167,7 @@ export const rejectInvitation = createAsyncThunk(
 
 export const acceptPendingInvitation = createAsyncThunk(
   'auth/acceptPendingInvitation',
-  async (payload, { dispatch, rejectWithValue }) => {
+  async (payload, { dispatch, getState, rejectWithValue }) => {
     try {
       const inviteToken = typeof payload === 'string' ? payload : payload?.inviteToken || payload?.token
       const response = await authService.acceptInvitation(inviteToken)
@@ -198,9 +198,21 @@ export const acceptPendingInvitation = createAsyncThunk(
 
       return responseData
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to accept invitation',
-      )
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to accept invitation'
+      const lower = String(errorMsg).toLowerCase()
+      const isAlreadyConsumed =
+        lower.includes('already been accepted') ||
+        lower.includes('already accepted') ||
+        lower.includes('already a member') ||
+        lower.includes('already member') ||
+        lower.includes('already active')
+
+      const state = typeof getState === 'function' ? getState() : null
+      if (isAlreadyConsumed && state?.auth?.isAuthenticated) {
+        return { alreadyAccepted: true, message: 'Invitation already accepted' }
+      }
+
+      return rejectWithValue(errorMsg)
     }
   },
 )
@@ -641,6 +653,10 @@ const authSlice = createSlice({
       .addCase(acceptPendingInvitation.fulfilled, (state, action) => {
         state.loading = false
         state.isAuthenticated = true
+        state.error = null
+        if (action.payload?.alreadyAccepted) {
+          return
+        }
         const resData = action.payload?.data || action.payload
         state.token = resData?.token || state.token
         state.user = resData?.user || state.user
@@ -659,7 +675,19 @@ const authSlice = createSlice({
       })
       .addCase(acceptPendingInvitation.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload || 'Failed to accept invitation'
+        const msg = String(action.payload || '')
+        const isAlreadyConsumed =
+          msg.toLowerCase().includes('already been accepted') ||
+          msg.toLowerCase().includes('already accepted') ||
+          msg.toLowerCase().includes('already a member') ||
+          msg.toLowerCase().includes('already member') ||
+          msg.toLowerCase().includes('already active')
+
+        if (isAlreadyConsumed && state.isAuthenticated) {
+          state.error = null
+        } else {
+          state.error = action.payload || 'Failed to accept invitation'
+        }
       })
       // Switch Workspace Context
       .addCase(switchWorkspaceContext.pending, (state) => {

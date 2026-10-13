@@ -46,6 +46,47 @@ class TechnicianController {
     }
   }
 
+  async getMe(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const userId = req.user.id || req.user._id;
+      const userDetails = {
+        email: req.user.email,
+        phone: req.user.phone,
+      };
+      const technician = await technicianService.getMyProfile(userId, orgId, userDetails);
+      res.success(technician, 'Staff profile retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMyQr(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const userId = req.user.id || req.user._id;
+      const userDetails = {
+        email: req.user.email,
+        phone: req.user.phone,
+      };
+      const qrData = await technicianService.getMyQr(userId, orgId, userDetails);
+      res.success(qrData, 'Staff QR code retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getStaffQr(req, res, next) {
+    try {
+      const { id } = req.params;
+      const orgId = req.tenant.orgId;
+      const qrData = await technicianService.getStaffQrById(id, orgId);
+      res.success(qrData, 'Staff QR code retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getById(req, res, next) {
     try {
       const { id } = req.params;

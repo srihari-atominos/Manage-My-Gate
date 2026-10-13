@@ -12,12 +12,14 @@ export const DEFAULT_ROLE_PERMISSIONS = Object.freeze({
     'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
     'notices:read',
     'billing:action_center',
+    'staff:assign_unit',
   ],
   'Resident Tenant': [
     'villas:read', 'users:read',
     'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
     'notices:read',
     'billing:action_center',
+    'staff:assign_unit',
   ],
   'Family Member': [
     'villas:read',
@@ -27,11 +29,22 @@ export const DEFAULT_ROLE_PERMISSIONS = Object.freeze({
     'visitor:resident',
     'billing:action_center',
     'billing:dashboard',
+    'staff:assign_unit',
   ],
   'Security Guard': [
     'villas:read', 'users:read',
     'amenities:scanner', 'amenities:security_logs',
     'notices:read',
+  ],
+  'Community Staff': [
+    'workspaces:read',
+    'notices:read',
+    'staff:view_own',
+  ],
+  'Household Staff': [
+    'workspaces:read',
+    'notices:read',
+    'staff:view_own',
   ],
 });
 

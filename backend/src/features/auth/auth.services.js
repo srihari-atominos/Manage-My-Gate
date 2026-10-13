@@ -1486,7 +1486,8 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
 
         if (targetOrgIdFromInvite) {
           if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
-          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
+          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+          await orgMembershipService.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
 
           // If user was in Pending Verification, activate their global user profile
           if (user.status === 'Pending Verification' || user.status === 'Pending') {
@@ -1789,7 +1790,8 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
 
       // Update OrgMembership status to Active for this organization or user
       if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
-          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId || null, 'Active', session);
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+      await orgMembershipService.updateStatus(user._id, orgId || null, 'Active', session);
 
       // Assign resident to villa upon accepting invitation
       if (orgId) {
@@ -2872,7 +2874,8 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       // Update OrgMembership status to Active for this organization
       if (orgId) {
         if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
-          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(userId, orgId, 'Active', session);
+        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+        await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
 
         const membership = await orgMembershipService.getMembershipWithVilla(userId, orgId, session);
         if (membership) {
@@ -2951,6 +2954,18 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     const tokenDoc = await tokenService.getInvitationToken(queryToken, 'INVITATION');
     if (!tokenDoc) {
       throw new HttpError(400, 'Invalid or expired invitation token.');
+    }
+
+    if (tokenDoc.status === 'EXPIRED' || (tokenDoc.expiresAt && new Date() > new Date(tokenDoc.expiresAt))) {
+      throw new HttpError(400, 'Invitation has expired. Please ask your administrator to resend the invitation.', { code: 'INVITATION_EXPIRED' });
+    }
+
+    if (tokenDoc.status === 'REVOKED') {
+      throw new HttpError(400, 'Invitation has been revoked by the administrator.', { code: 'INVITATION_REVOKED' });
+    }
+
+    if (tokenDoc.status === 'REJECTED') {
+      throw new HttpError(400, 'Invitation has already been rejected.', { code: 'INVITATION_REJECTED' });
     }
 
     let user = null;

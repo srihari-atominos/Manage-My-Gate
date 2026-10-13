@@ -27,7 +27,7 @@ import issueReportReducer from '../features/issueReport/store/issueReportSlice';
 import { injectStore } from '../services/apiClient';
 
 import visitorReducer from '../modules/visitor-management/visitorSlice';
-import staffReducer from '../modules/staff-operations/staffSlice';
+import staffReducer from '../features/staff/store/staffSlice';
 import automationReducer from '../modules/automation-engine/automationSlice';
 
 export const store = configureStore({

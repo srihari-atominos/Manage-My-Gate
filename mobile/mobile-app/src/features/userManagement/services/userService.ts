@@ -37,6 +37,13 @@ export interface InviteUserData {
   residentType?: string;
   roleName?: string | null;
   invitationSource?: 'WEB' | 'APP';
+  staffData?: {
+    isStaff?: boolean;
+    department?: string;
+    staffType?: string;
+    designation?: string;
+    staffCode?: string;
+  };
 }
 
 export interface BulkInviteData {

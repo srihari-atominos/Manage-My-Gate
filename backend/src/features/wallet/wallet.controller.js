@@ -1,11 +1,21 @@
 import walletService from './wallet.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 
+const CANONICAL_ADMIN_ROLES = Object.freeze([
+  'Super Admin',
+  'Platform Super Admin',
+  'Community Admin',
+  'Admin',
+  'SuperAdmin',
+  'Facility Manager',
+]);
+
+const isUserAdmin = (user) =>
+  CANONICAL_ADMIN_ROLES.includes(user?.role) || user?.isPlatform === true;
+
 export const getMyWallet = async (req, res, next) => {
   try {
-    const roleUpper = (req.user?.role || '').toUpperCase();
-    const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user?.role) ||
-      roleUpper.includes('ADMIN') || roleUpper.includes('SUPER') || req.user?.isPlatform;
+    const isFullAdmin = isUserAdmin(req.user);
 
     const targetUserId = (isFullAdmin && req.query?.userId)
       ? req.query.userId
@@ -27,9 +37,7 @@ export const getMyWallet = async (req, res, next) => {
 
 export const addMoney = async (req, res, next) => {
   try {
-    const roleUpper = (req.user?.role || '').toUpperCase();
-    const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user?.role) ||
-      roleUpper.includes('ADMIN') || roleUpper.includes('SUPER') || req.user?.isPlatform;
+    const isFullAdmin = isUserAdmin(req.user);
 
     const targetUserId = (isFullAdmin && (req.body?.userId || req.body?.targetUserId))
       ? (req.body.userId || req.body.targetUserId)
@@ -96,9 +104,7 @@ export const payInvoice = async (req, res, next) => {
 export const createOrder = async (req, res, next) => {
   try {
     const { amount } = req.body;
-    const roleUpper = (req.user?.role || '').toUpperCase();
-    const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user?.role) ||
-      roleUpper.includes('ADMIN') || roleUpper.includes('SUPER') || req.user?.isPlatform;
+    const isFullAdmin = isUserAdmin(req.user);
 
     const targetUserId = (isFullAdmin && (req.body?.userId || req.body?.targetUserId))
       ? (req.body.userId || req.body.targetUserId)
@@ -114,9 +120,7 @@ export const createOrder = async (req, res, next) => {
 
 export const verifyPayment = async (req, res, next) => {
   try {
-    const roleUpper = (req.user?.role || '').toUpperCase();
-    const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user?.role) ||
-      roleUpper.includes('ADMIN') || roleUpper.includes('SUPER') || req.user?.isPlatform;
+    const isFullAdmin = isUserAdmin(req.user);
 
     const targetUserId = (isFullAdmin && (req.body?.userId || req.body?.targetUserId))
       ? (req.body.userId || req.body.targetUserId)

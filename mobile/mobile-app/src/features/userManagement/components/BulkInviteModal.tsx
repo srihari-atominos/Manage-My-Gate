@@ -42,6 +42,10 @@ interface InviteRowItem {
   villaId?: string;
   villaName?: string;
   residentType?: string;
+  department?: string;
+  staffType?: string;
+  designation?: string;
+  staffCode?: string;
 
   isValid: boolean;
   error?: string;
@@ -100,12 +104,34 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     }
   }, [visible]);
 
+  const isStaffRole = (roleName?: string) => {
+    if (!roleName) return false;
+    const lower = roleName.toLowerCase();
+    return (
+      lower.includes('staff') ||
+      lower.includes('vendor') ||
+      lower.includes('technician') ||
+      lower.includes('maintenance') ||
+      lower.includes('maid') ||
+      lower.includes('driver') ||
+      lower.includes('cook') ||
+      lower.includes('gardener') ||
+      lower.includes('electrician') ||
+      lower.includes('plumber') ||
+      lower.includes('carpenter') ||
+      lower.includes('cleaner') ||
+      lower.includes('housekeeping')
+    );
+  };
+
   // Validate a row item
   const validateRow = (row: InviteRowItem, currentRoles = roles, allRows: InviteRowItem[] = rows, currentVillas = villas): InviteRowItem => {
     const selectedRoleObj = currentRoles.find((r) => r.name === row.roleName);
     const isTenantRole = selectedRoleObj ? !!selectedRoleObj.isTenantRole : false;
+    const isStaff = isStaffRole(row.roleName);
     
-    if (isTenantRole && !row.villaId) {
+    // For staff roles (Household Staff or Community Staff), unit is optional (assigned = unit household staff; unassigned = community facility staff)
+    if (isTenantRole && !isStaff && !row.villaId) {
       return { ...row, isValid: false, error: 'Select a Unit for this role' };
     }
     if (!row.email.trim()) {
@@ -161,9 +187,13 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       const phone = col(parts, 'phone', 'phonenumber');
       const roleName = col(parts, 'role', 'rolename') || (roles[0]?.name || '');
       const rawVillaName = col(parts, 'villanumber', 'villa', 'unitnumber', 'unit');
+      const department = col(parts, 'department', 'dept');
+      const staffType = col(parts, 'stafftype', 'type');
+      const designation = col(parts, 'designation', 'title');
+      const staffCode = col(parts, 'staffcode', 'code');
       
       let matchedVillaId = undefined;
-      const isNone = rawVillaName.trim().toLowerCase() === 'none';
+      const isNone = rawVillaName.trim().toLowerCase() === 'none' || !rawVillaName.trim();
       if (rawVillaName && !isNone) {
         const found = villas.find((v: any) => {
           const formattedName = `Unit ${v.villaNumber || ''} (${v.blockOrBuilding || ''})`.trim().toLowerCase();
@@ -180,7 +210,10 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
         roleName,
         villaName: rawVillaName,
         villaId: matchedVillaId,
-        
+        department: department || undefined,
+        staffType: staffType || undefined,
+        designation: designation || undefined,
+        staffCode: staffCode || undefined,
         isValid: false,
       };
 
@@ -313,14 +346,26 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     setSubmitting(true);
 
     try {
-      const payload: InviteUserData[] = validRows.map((r) => ({
-        email: r.email.trim(),
-        name: r.name ? r.name.trim() : undefined,
-        phone: r.phone.trim(),
-        roleName: r.roleName || null,
-        villaId: r.villaId || null,
-        residentType: r.residentType || (r.roleName?.toLowerCase().includes('tenant') ? 'Tenant' : 'Primary')
-      }));
+      const payload: InviteUserData[] = validRows.map((r) => {
+        const isStaff = isStaffRole(r.roleName);
+        return {
+          email: r.email.trim(),
+          name: r.name ? r.name.trim() : undefined,
+          phone: r.phone.trim(),
+          roleName: r.roleName || null,
+          villaId: r.villaId || null,
+          residentType: r.residentType || (r.roleName?.toLowerCase().includes('tenant') ? 'Tenant' : 'Primary'),
+          staffData: isStaff
+            ? {
+                isStaff: true,
+                department: r.department || 'Others',
+                staffType: r.staffType || 'In-House Staff',
+                designation: r.designation || r.roleName,
+                staffCode: r.staffCode || undefined,
+              }
+            : undefined,
+        };
+      });
 
       const res = await onBulkInvite(payload);
       setSuccessResults(res || { invitedCount: payload.length });
@@ -494,6 +539,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                     {rows.map((row, index) => {
                       const selectedRoleObj = roles.find((r) => r.name === row.roleName);
                       const isTenantRole = selectedRoleObj ? !!selectedRoleObj.isTenantRole : false;
+                      const isStaff = isStaffRole(row.roleName);
 
                       return (
                         <View
@@ -567,21 +613,28 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                             />
                           </View>
 
-                          {isTenantRole ? (
+                          {isTenantRole || isStaff ? (
                             <View className="mb-2.5">
-                              <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Unit Number *</Text>
+                              <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">
+                                {isStaff ? 'Assigned Unit (Optional for Staff)' : 'Unit Number *'}
+                              </Text>
                               <DropdownSelect
                                 options={[
-                                  { label: 'None', value: '' },
-                                  ...villas.map(v => ({
+                                  { label: 'None (Unassigned / Community)', value: '' },
+                                  ...villas.map((v) => ({
                                     label: v.unitNumber ? `${v.unitNumber}${v.blockOrBuilding ? ` (${v.blockOrBuilding})` : ''}` : (v.villaNumber || 'Unit'),
-                                    value: v._id || v.id
-                                  }))
+                                    value: v._id || v.id,
+                                  })),
                                 ]}
                                 value={row.villaId || null}
                                 onValueChange={(val) => handleRowChange(row.id, 'villaId', val)}
                                 placeholder="-- Select Unit Number --"
                               />
+                              {isStaff && (
+                                <Text className="text-[10px] text-primary/80 mt-1 text-start">
+                                  Configures unit-specific household staff or community-wide access. Automatically synced to Staff Management.
+                                </Text>
+                              )}
                             </View>
                           ) : (
                             <View className="mb-2.5 p-2.5 bg-muted/20 border border-border/60 rounded-xl">

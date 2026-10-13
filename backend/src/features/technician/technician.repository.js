@@ -1,7 +1,11 @@
 import Technician from './technician.model.js';
 
 class TechnicianRepository {
-  async create(data) {
+  async create(data, session = null) {
+    if (session) {
+      const [technician] = await Technician.create([data], { session });
+      return technician;
+    }
     const technician = await Technician.create(data);
     return technician;
   }
@@ -14,16 +18,38 @@ class TechnicianRepository {
     return await Technician.findOne({ userId, orgId, status: 'Active', isDeleted: false });
   }
 
+  async findByUserId(userId, orgId) {
+    return await Technician.findOne({ userId, orgId, isDeleted: false });
+  }
+
+  async findByContactOrUserId(userId, orgId, { email, phone } = {}, session = null) {
+    const conditions = [];
+    if (userId) conditions.push({ userId });
+    if (email) conditions.push({ email: email.toLowerCase() });
+    if (phone && phone !== 'N/A') conditions.push({ phone });
+    if (conditions.length === 0) return null;
+
+    const query = Technician.findOne({
+      orgId,
+      isDeleted: false,
+      $or: conditions
+    });
+    if (session) query.session(session);
+    return await query;
+  }
+
   async findAll(orgId, filter = {}) {
     return await Technician.find({ orgId, isDeleted: false, ...filter }).sort({ name: 1 });
   }
 
-  async update(id, orgId, updateData) {
-    return await Technician.findOneAndUpdate(
+  async update(id, orgId, updateData, session = null) {
+    const query = Technician.findOneAndUpdate(
       { _id: id, orgId, isDeleted: false },
       { $set: updateData },
       { returnDocument: 'after', runValidators: true }
     );
+    if (session) query.session(session);
+    return await query;
   }
 
   async softDelete(id, orgId) {
