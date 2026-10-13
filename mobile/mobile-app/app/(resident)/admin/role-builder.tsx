@@ -52,7 +52,34 @@ export default function RoleBuilderScreen() {
     dismissError,
   } = useRoles();
 
-  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'TENANT' | 'GLOBAL'>('ALL');
+  const isStaffRole = (role: any) => {
+    if (!role) return false;
+    // If role has an explicit roleScope, respect it strictly:
+    if (typeof role === 'object' && role.roleScope) {
+      return role.roleScope === 'STAFF';
+    }
+    const roleName = typeof role === 'string' ? role : role?.name || '';
+    if (!roleName) return false;
+    const lower = roleName.toLowerCase();
+    return (
+      lower.includes('staff') ||
+      lower.includes('guard') ||
+      lower.includes('technician') ||
+      lower.includes('vendor') ||
+      lower.includes('maintenance') ||
+      lower.includes('maid') ||
+      lower.includes('driver') ||
+      lower.includes('cook') ||
+      lower.includes('gardener') ||
+      lower.includes('electrician') ||
+      lower.includes('plumber') ||
+      lower.includes('carpenter') ||
+      lower.includes('cleaner') ||
+      lower.includes('housekeeping')
+    );
+  };
+
+  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'TENANT' | 'GLOBAL' | 'STAFF'>('ALL');
   const [showPageJumpModal, setShowPageJumpModal] = useState(false);
   const [targetPageInput, setTargetPageInput] = useState('');
 
@@ -60,15 +87,18 @@ export default function RoleBuilderScreen() {
     const list = roles || [];
     return {
       total: list.length,
-      global: list.filter((r: any) => !r.isTenantRole).length,
-      unit: list.filter((r: any) => r.isTenantRole === true).length,
+      global: list.filter((r: any) => r.roleScope === 'GLOBAL' || (!r.roleScope && !r.isTenantRole && !isStaffRole(r))).length,
+      unit: list.filter((r: any) => r.roleScope === 'UNIT' || (!r.roleScope && r.isTenantRole && !isStaffRole(r))).length,
+      staff: list.filter((r: any) => isStaffRole(r)).length,
     };
   }, [roles]);
 
   const filteredRoles = useMemo(() => {
     return (roles || []).filter((role: any) => {
-      if (scopeFilter === 'TENANT') return role.isTenantRole === true;
-      if (scopeFilter === 'GLOBAL') return !role.isTenantRole;
+      const isStaff = isStaffRole(role);
+      if (scopeFilter === 'STAFF') return isStaff;
+      if (scopeFilter === 'TENANT') return role.roleScope === 'UNIT' || (!role.roleScope && role.isTenantRole && !isStaff);
+      if (scopeFilter === 'GLOBAL') return role.roleScope === 'GLOBAL' || (!role.roleScope && !role.isTenantRole && !isStaff);
       return true;
     });
   }, [roles, scopeFilter]);
@@ -175,14 +205,20 @@ export default function RoleBuilderScreen() {
         />
 
         {/* Scope Filter Chips (below search bar, outside list) */}
-        <View className="px-3 py-1.5 flex-row items-center gap-1.5">
+        <View className="px-3 py-1.5 flex-row items-center gap-1.5 flex-wrap">
           {[
             { id: 'ALL', label: t('all_roles', 'All Roles'), count: stats.total, color: 'blue' },
             { id: 'GLOBAL', label: t('global', 'Global'), count: stats.global, color: 'blue' },
             { id: 'TENANT', label: t('unit_scope', 'Unit Scope'), count: stats.unit, color: 'green' },
+            { id: 'STAFF', label: t('staff_roles', 'Staff Roles'), count: stats.staff, color: 'amber' },
           ].map((tab) => {
             const isActive = scopeFilter === tab.id;
-            const activeColorClass = tab.color === 'green' ? 'bg-emerald-600 border-emerald-600' : 'bg-blue-600 border-blue-600';
+            const activeColorClass =
+              tab.color === 'green'
+                ? 'bg-emerald-600 border-emerald-600'
+                : tab.color === 'amber'
+                ? 'bg-amber-600 border-amber-600'
+                : 'bg-blue-600 border-blue-600';
             return (
               <TouchableOpacity
                 key={tab.id}

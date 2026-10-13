@@ -62,11 +62,17 @@ export const KeyboardAvoidingShell = ({
       className={cn('flex-1 bg-background', className)}
       {...props}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      {Platform.OS === 'web' ? (
         <View className={cn('flex-1', contentContainerClassName)}>
           {children}
         </View>
-      </TouchableWithoutFeedback>
+      ) : (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View className={cn('flex-1', contentContainerClassName)}>
+            {children}
+          </View>
+        </TouchableWithoutFeedback>
+      )}
     </KeyboardAvoidingView>
   );
 };

@@ -458,10 +458,42 @@ export const acceptPendingInvitationThunk = createAsyncThunk(
       return (persisted || innerData) as any;
     } catch (error: any) {
       const msg = error.response?.data?.message || error.message || 'Failed to accept invitation';
-      if (typeof msg === 'string' && (msg.toLowerCase().includes('already been accepted') || msg.toLowerCase().includes('already accepted'))) {
+      if (
+        typeof msg === 'string' &&
+        (msg.toLowerCase().includes('already been accepted') ||
+          msg.toLowerCase().includes('already accepted') ||
+          msg.toLowerCase().includes('already a member') ||
+          msg.toLowerCase().includes('already member') ||
+          msg.toLowerCase().includes('already active'))
+      ) {
         return null;
       }
       return rejectWithValue(msg);
+    }
+  }
+);
+
+export const respondToInvitationThunk = createAsyncThunk(
+  'auth/respondToInvitation',
+  async (
+    payload: { action: 'accept' | 'decline'; invitationId?: string; inviteToken?: string; ticket?: string },
+    { dispatch, rejectWithValue }
+  ) => {
+    try {
+      const response = await authService.respondToInvitation(payload.action, {
+        invitationId: payload.invitationId,
+        inviteToken: payload.inviteToken,
+        ticket: payload.ticket,
+      });
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+      if (payload.action === 'accept') {
+        const persisted = await persistLoginResult(innerData);
+        return (persisted || innerData) as any;
+      }
+      return innerData;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to respond to invitation');
     }
   }
 );
@@ -1074,6 +1106,30 @@ const authSlice = createSlice({
         state.errorDetail = detail
           ? { code: detail.code, attemptsRemaining: detail.attemptsRemaining, retryAfterSeconds: detail.retryAfterSeconds }
           : null;
+      })
+      // Respond to Invitation (accept / decline)
+      .addCase(respondToInvitationThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(respondToInvitationThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload?.declined) {
+          state.invitationSelection = {
+            ticket: state.invitationSelection?.ticket || null,
+            pendingInvitations: action.payload.pendingInvitations || [],
+          };
+          return;
+        }
+        state.token = action.payload?.token || null;
+        state.refreshToken = action.payload?.refreshToken || null;
+        state.user = normalizeUser(action.payload?.user || null);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.invitationSelection = null;
+      })
+      .addCase(respondToInvitationThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Failed to respond to invitation';
       })
       // Switch Workspace Context
       .addCase(switchWorkspaceContextThunk.pending, (state) => {

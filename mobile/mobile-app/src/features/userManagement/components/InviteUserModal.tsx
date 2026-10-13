@@ -9,7 +9,7 @@ import {
   Pressable,
   Clipboard,
 } from 'react-native';
-import { X, Mail, CheckCircle2, Copy, Check, Send, AlertTriangle } from 'lucide-react-native';
+import { X, Mail, CheckCircle2, Copy, Check, Send, AlertTriangle, User } from 'lucide-react-native';
 import { TextInput } from '@/components/forms/TextInput';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
@@ -42,10 +42,35 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 }) => {
   const { t } = useTranslation();
   // Form values
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedRoleName, setSelectedRoleName] = useState('');
   const [selectedVillaId, setSelectedVillaId] = useState('');
+  const [department, setDepartment] = useState('Others');
+  const [staffType, setStaffType] = useState('In-House Staff');
+  const [designation, setDesignation] = useState('');
+  const [staffCode, setStaffCode] = useState('');
+
+  const isStaffRole = (roleName: string) => {
+    if (!roleName) return false;
+    const lower = roleName.toLowerCase();
+    return (
+      lower.includes('staff') ||
+      lower.includes('vendor') ||
+      lower.includes('technician') ||
+      lower.includes('maintenance') ||
+      lower.includes('maid') ||
+      lower.includes('driver') ||
+      lower.includes('cook') ||
+      lower.includes('gardener') ||
+      lower.includes('electrician') ||
+      lower.includes('plumber') ||
+      lower.includes('carpenter') ||
+      lower.includes('cleaner') ||
+      lower.includes('housekeeping')
+    );
+  };
 
   // Dropdown data
   const [roles, setRoles] = useState<any[]>([]);
@@ -109,9 +134,15 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   }, [visible]);
 
   const resetForm = () => {
+    setName('');
     setEmail('');
     setPhone('');
     setSelectedRoleName('');
+    setSelectedVillaId('');
+    setDepartment('Others');
+    setStaffType('In-House Staff');
+    setDesignation('');
+    setStaffCode('');
     setEmailStatus('idle');
     setEmailMessage(undefined);
     setIsEmailChecking(false);
@@ -130,6 +161,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
   const selectedRoleObj = roles.find((r) => r.name === selectedRoleName);
   const isTenantRole = selectedRoleObj ? !!selectedRoleObj.isTenantRole : false;
+  const isStaff = isStaffRole(selectedRoleName);
 
   // Real-time email validation and debounced backend verification
   const handleEmailChange = (text: string) => {
@@ -312,8 +344,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       return;
     }
 
-    // Validate villa (mandatory for tenant roles)
-    if (isTenantRole && !selectedVillaId) {
+    // Validate villa (mandatory for tenant resident roles, optional for staff)
+    if (isTenantRole && !isStaff && !selectedVillaId) {
       setVillaError(t('select_villa_error', 'Please choose a villa or unit'));
       return;
     }
@@ -329,7 +361,9 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
     try {
       let residentType = 'None';
-      if (isTenantRole && selectedRoleName) {
+      if (isStaff) {
+        residentType = selectedVillaId ? 'Household Staff' : 'Community Staff';
+      } else if (isTenantRole && selectedRoleName) {
         const lower = selectedRoleName.toLowerCase();
         if (lower.includes('owner')) residentType = 'Owner';
         else if (lower.includes('tenant')) residentType = 'Tenant';
@@ -337,13 +371,26 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
         else residentType = 'Guest';
       }
 
-      const res = await onSendInvite({
+      const invitePayload: any = {
+        name: name.trim() || undefined,
         email: email.trim(),
         phone: phone.trim(),
         roleName: selectedRoleName || null,
-        villaId: isTenantRole ? selectedVillaId || null : null,
+        villaId: selectedVillaId || null,
         residentType,
-      });
+      };
+
+      if (isStaff) {
+        invitePayload.staffData = {
+          isStaff: true,
+          department,
+          staffType,
+          designation: designation.trim() || selectedRoleName,
+          staffCode: staffCode.trim() || undefined,
+        };
+      }
+
+      const res = await onSendInvite(invitePayload);
 
       // Show persistent success confirmation inside modal
       setSuccessResults({
@@ -380,12 +427,29 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     value: r.name,
   }));
 
-  const villaOptions = villas.map((v) => ({
-    label: `Unit ${v.unitNumber || v.villaNumber} ${
-      v.blockOrBuilding ? `(${v.blockOrBuilding})` : ''
-    }`,
-    value: v._id || v.id,
-  }));
+  const departmentOptions = [
+    { label: 'Electrical', value: 'Electrical' },
+    { label: 'Plumbing', value: 'Plumbing' },
+    { label: 'Housekeeping', value: 'Housekeeping' },
+    { label: 'Security', value: 'Security' },
+    { label: 'Carpentry', value: 'Carpentry' },
+    { label: 'Others', value: 'Others' },
+  ];
+
+  const staffTypeOptions = [
+    { label: 'In-House Staff', value: 'In-House Staff' },
+    { label: 'External Vendor', value: 'External Vendor' },
+  ];
+
+  const villaOptions = [
+    ...(isStaff ? [{ label: '-- None (Community-wide Staff) --', value: '' }] : []),
+    ...villas.map((v) => ({
+      label: `Unit ${v.unitNumber || v.villaNumber} ${
+        v.blockOrBuilding ? `(${v.blockOrBuilding})` : ''
+      }`,
+      value: v._id || v.id,
+    })),
+  ];
 
   return (
     <BottomSheet
@@ -477,6 +541,23 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                     </View>
                   ) : null}
 
+                  {/* Full Name Field (Optional) */}
+                  <View>
+                    <TextInput
+                      label={t('full_name', 'Full Name')}
+                      placeholder={t('full_name_placeholder', 'Enter full name (optional)')}
+                      value={name}
+                      onChangeText={(val) => {
+                        setName(val);
+                        if (submitError) setSubmitError(null);
+                      }}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      clearable
+                      leftIcon={User}
+                    />
+                  </View>
+
                   {/* Email Field with Real-time & Async Validation */}
                   <View>
                     <TextInput
@@ -539,8 +620,37 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                     )}
                   </View>
 
-                  {/* Villa / Unit Dropdown (Conditionally Rendered) */}
-                  {isTenantRole && (
+                  {/* Staff Specifications Segment */}
+                  {isStaff && (
+                    <View className="p-3.5 bg-muted/40 border border-border rounded-2xl gap-3">
+                      <Text className="text-xs font-bold text-primary">
+                        {t('staff_specifications', 'Staff & Facility Specifications')}
+                      </Text>
+                      <DropdownSelect
+                        label={t('department_trade', 'Department / Trade')}
+                        required
+                        options={departmentOptions}
+                        value={department}
+                        onValueChange={(val) => setDepartment(val)}
+                      />
+                      <DropdownSelect
+                        label={t('employment_type', 'Employment Type')}
+                        required
+                        options={staffTypeOptions}
+                        value={staffType}
+                        onValueChange={(val) => setStaffType(val)}
+                      />
+                      <TextInput
+                        label={t('designation_title', 'Designation / Title')}
+                        placeholder={t('designation_placeholder', 'e.g. Senior Electrician, Private Maid')}
+                        value={designation}
+                        onChangeText={(val) => setDesignation(val)}
+                      />
+                    </View>
+                  )}
+
+                  {/* Villa / Unit Dropdown (Rendered for Tenant roles and Staff) */}
+                  {(isTenantRole || isStaff) && (
                     <View className="mb-4">
                       {loadingVillas ? (
                         <View className="py-3 items-center justify-center">
@@ -548,15 +658,22 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                           <Text className="text-xs text-muted-foreground mt-1">{t('loading_units', 'Loading units...')}</Text>
                         </View>
                       ) : (
-                        <DropdownSelect
-                          label={t('select_unit', 'Select Villa / Unit')}
-                          required
-                          options={villaOptions}
-                          value={selectedVillaId}
-                          onValueChange={handleVillaChange}
-                          placeholder={t('select_unit_placeholder', '-- Choose a Villa --')}
-                          error={villaError}
-                        />
+                        <View>
+                          <DropdownSelect
+                            label={isStaff ? t('associated_unit_optional', 'Associated Villa / Unit (Optional for Community Staff)') : t('select_unit', 'Select Villa / Unit')}
+                            required={!isStaff}
+                            options={villaOptions}
+                            value={selectedVillaId}
+                            onValueChange={handleVillaChange}
+                            placeholder={isStaff ? t('select_unit_or_none', '-- None (Community-wide Staff) --') : t('select_unit_placeholder', '-- Choose a Villa --')}
+                            error={!isStaff ? villaError : undefined}
+                          />
+                          {isStaff ? (
+                            <Text className="text-[11px] text-muted-foreground mt-1 ms-1">
+                              {t('staff_unit_hint', 'Select a unit for dedicated household staff (e.g. Private Maid/Driver), or leave blank for community-wide facility staff.')}
+                            </Text>
+                          ) : null}
+                        </View>
                       )}
                     </View>
                   )}

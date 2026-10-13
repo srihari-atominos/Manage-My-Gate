@@ -219,10 +219,16 @@ export class VillaController {
     try {
       const orgId = req.tenant.orgId;
       const Role = (await import('../role/role.model.js')).default;
-      const roles = await Role.find({ orgId, isTenantRole: true }).lean();
+      const roles = await Role.find({
+        orgId,
+        $or: [{ isTenantRole: true }, { name: /staff/i }]
+      }).lean();
       let roleNames = roles.map(r => r.name);
+      if (!roleNames.includes('Household Staff')) {
+        roleNames.push('Household Staff');
+      }
       if (roleNames.length === 0) {
-        roleNames = ['Resident Owner', 'Resident Tenant', 'Family Member'];
+        roleNames = ['Resident Owner', 'Resident Tenant', 'Family Member', 'Household Staff'];
       }
 
       const workbook = new ExcelJS.Workbook();
@@ -250,6 +256,7 @@ export class VillaController {
       sheet.addRow({ unitNumber: '101', block: 'Block A', floor: '1', unitType: 'Apartment', floorArea: '1200', occupancy: 'Vacant', residentName: '', residentEmail: '', residentType: '', phone: '' });
       sheet.addRow({ unitNumber: '102', block: 'Block A', floor: '1', unitType: '2 BHK', floorArea: '1350', occupancy: 'Occupied', residentName: 'John Doe', residentEmail: 'john@example.com', residentType: roleNames[0], phone: '+919876543210' });
       sheet.addRow({ unitNumber: '103', block: 'Block A', floor: '2', unitType: '3 BHK', floorArea: '1600', occupancy: 'Occupied', residentName: 'Jane Smith', residentEmail: 'jane@example.com', residentType: roleNames[1] || roleNames[0], phone: '+919876543211' });
+      sheet.addRow({ unitNumber: '104', block: 'Block A', floor: '2', unitType: '3 BHK', floorArea: '1600', occupancy: 'Occupied', residentName: 'Private Driver', residentEmail: 'driver@example.com', residentType: 'Household Staff', phone: '+919876543212' });
 
       const roleEndRow = Math.max(roleNames.length, 1);
 

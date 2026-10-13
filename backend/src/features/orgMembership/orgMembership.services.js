@@ -66,6 +66,10 @@ export class OrgMembershipService {
   async getActiveUserIds(orgId, filter = {}, session = null) {
     return await orgMembershipRepository.findActiveUserIds(orgId, filter, session);
   }
+
+  async getCommunityAdmins(orgId, session = null) {
+    return await orgMembershipRepository.findCommunityAdmins(orgId, session);
+  }
 }
 
 export default new OrgMembershipService();

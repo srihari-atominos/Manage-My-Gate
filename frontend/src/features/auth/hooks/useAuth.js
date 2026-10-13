@@ -131,9 +131,34 @@ export const useAuth = () => {
       } else {
         const errorMsg =
           resultAction.payload || t('auth.invite.error', 'Failed to accept invitation')
+        const lowerMsg = String(errorMsg).toLowerCase()
+        if (
+          lowerMsg.includes('already accepted') ||
+          lowerMsg.includes('already been accepted') ||
+          lowerMsg.includes('already a member') ||
+          lowerMsg.includes('already member') ||
+          lowerMsg.includes('already active')
+        ) {
+          dispatch(clearStatusAction())
+          toast.success(t('auth.invite.acceptedSuccess', 'Invitation accepted! Welcome to the community.'))
+          return { success: true, payload: resultAction.payload }
+        }
         return { success: false, error: errorMsg }
       }
     } catch (err) {
+      const msg = err?.message || ''
+      const lowerMsg = String(msg).toLowerCase()
+      if (
+        lowerMsg.includes('already accepted') ||
+        lowerMsg.includes('already been accepted') ||
+        lowerMsg.includes('already a member') ||
+        lowerMsg.includes('already member') ||
+        lowerMsg.includes('already active')
+      ) {
+        dispatch(clearStatusAction())
+        toast.success(t('auth.invite.acceptedSuccess', 'Invitation accepted! Welcome to the community.'))
+        return { success: true, payload: null }
+      }
       return { success: false, error: err.message }
     }
   }

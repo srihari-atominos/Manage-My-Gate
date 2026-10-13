@@ -121,9 +121,13 @@ export const LoginForm = () => {
     },
   })
 
+  const otpVerifiedRef = useRef(false)
+
   useEffect(() => {
-    if (isAuthenticated) handlePostAuthRedirect()
-  }, [isAuthenticated])
+    if (isAuthenticated) {
+      handlePostAuthRedirect({ skipInviteToken: otpVerifiedRef.current || !!inviteTokenParam })
+    }
+  }, [isAuthenticated, inviteTokenParam, handlePostAuthRedirect])
 
   useEffect(() => {
     let interval = null
@@ -235,6 +239,7 @@ export const LoginForm = () => {
       } else {
         const res = await verifyOtp(identifier, otpCode, isEmail, inviteTokenParam || undefined)
         if (res?.success) {
+          otpVerifiedRef.current = true
           handlePostAuthRedirect({ skipInviteToken: true })
         }
       }

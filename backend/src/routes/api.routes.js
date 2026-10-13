@@ -45,6 +45,8 @@ import platformCrmRouter from '../features/platformCrm/enquiry.routes.js';
 import complaintRouter from '../features/complaint/complaint.router.js';
 import complaintSettingsRouter from '../features/complaintSettings/complaintSettings.router.js';
 import technicianRouter from '../features/technician/technician.router.js';
+import staffUnitAssociationRouter from '../features/staffUnitAssociation/staffUnitAssociation.router.js';
+import staffAttendanceRouter from '../features/staffAttendance/staffAttendance.router.js';
 
 import directoryRouter from '../features/directory/directory.router.js';
 import communityNoteRouter from '../features/communityNote/communityNote.router.js';
@@ -99,6 +101,8 @@ router.use('/security-logs', securityLogRouter);
 router.use('/complaints/settings', complaintSettingsRouter);
 router.use('/complaints', complaintRouter);
 router.use('/technicians', technicianRouter);
+router.use('/staff-associations', staffUnitAssociationRouter);
+router.use('/staff-attendance', staffAttendanceRouter);
 
 router.use('/visitor-pass', visitorPassRouter);
 router.use('/visitor-log', visitorLogRouter);

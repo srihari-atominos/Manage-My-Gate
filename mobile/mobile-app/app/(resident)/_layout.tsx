@@ -9,6 +9,7 @@ export default function ResidentLayout() {
       <Stack.Screen name="showcase" />
       <Stack.Screen name="all-features" options={{ ...instantTransition }} />
       <Stack.Screen name="admin" />
+      <Stack.Screen name="staff" />
       <Stack.Screen name="amenities" />
       <Stack.Screen name="billing" />
       <Stack.Screen name="complaints" />

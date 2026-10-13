@@ -29,14 +29,17 @@ export class CommunityEngagementService {
    * @param {'NOTICE'|'POLL'} contentType - Target content type
    */
   async verifyContentTypePermission(user, contentType, action = 'create') {
-    const roleUpper = (user?.role || '').toUpperCase();
+    const canonicalAdminRoles = [
+      'Super Admin',
+      'Platform Super Admin',
+      'Community Admin',
+      'Admin',
+      'SuperAdmin',
+      'Facility Manager',
+    ];
     const isFullAdmin =
-      ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(
-        user?.role
-      ) ||
-      roleUpper.includes('ADMIN') ||
-      roleUpper.includes('SUPER') ||
-      user?.isPlatform;
+      canonicalAdminRoles.includes(user?.role) ||
+      user?.isPlatform === true;
 
     if (isFullAdmin) {
       return true;
@@ -218,14 +221,17 @@ export class CommunityEngagementService {
       }
     }
 
-    const roleUpper = (user?.role || '').toUpperCase();
+    const canonicalAdminRoles = [
+      'Super Admin',
+      'Platform Super Admin',
+      'Community Admin',
+      'Admin',
+      'SuperAdmin',
+      'Facility Manager',
+    ];
     const isCommunityAdmin =
-      ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(
-        user?.role
-      ) ||
-      roleUpper.includes('ADMIN') ||
-      roleUpper.includes('SUPER') ||
-      user?.isPlatform;
+      canonicalAdminRoles.includes(user?.role) ||
+      user?.isPlatform === true;
 
     // Delegation to Notice Domain
     if (contentType === COMMUNITY_ENGAGEMENT_CONTENT_TYPES.NOTICE) {

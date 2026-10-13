@@ -453,10 +453,23 @@ export class VillaService {
         if (trimmedEmail) {
           try {
             let normalizedResidentType = residentType ? residentType.trim() : 'Resident Tenant';
-            if (normalizedResidentType.toLowerCase().includes('owner')) normalizedResidentType = 'Resident Owner';
-            else if (normalizedResidentType.toLowerCase().includes('tenant') || normalizedResidentType.toLowerCase().includes('resident')) normalizedResidentType = 'Resident Tenant';
-            else if (normalizedResidentType.toLowerCase().includes('family')) normalizedResidentType = 'Family Member';
-            else normalizedResidentType = 'Resident Tenant';
+            let isStaffMember = false;
+            const lowerRes = normalizedResidentType.toLowerCase();
+            if (lowerRes.includes('owner')) normalizedResidentType = 'Resident Owner';
+            else if (lowerRes.includes('tenant') || lowerRes.includes('resident')) normalizedResidentType = 'Resident Tenant';
+            else if (lowerRes.includes('family')) normalizedResidentType = 'Family Member';
+            else if (
+              lowerRes.includes('staff') ||
+              lowerRes.includes('maid') ||
+              lowerRes.includes('driver') ||
+              lowerRes.includes('cook') ||
+              lowerRes.includes('gardener')
+            ) {
+              normalizedResidentType = 'Household Staff';
+              isStaffMember = true;
+            } else {
+              normalizedResidentType = 'Resident Tenant';
+            }
 
             let finalRoleName = roleName ? roleName.trim() : normalizedResidentType;
 
@@ -467,7 +480,23 @@ export class VillaService {
               await assertRoleAssignable(finalRoleName);
             }
 
-            await userService.inviteUser(trimmedEmail, orgId, villa._id, normalizedResidentType, finalRoleName, phone, name, invitationSource);
+            const staffData = isStaffMember
+              ? { isStaff: true, designation: residentType || 'Household Staff', department: 'Others' }
+              : {};
+
+            await userService.inviteUser(
+              trimmedEmail,
+              orgId,
+              villa._id,
+              normalizedResidentType,
+              finalRoleName,
+              phone,
+              name,
+              invitationSource,
+              null,
+              'INVITATION',
+              staffData
+            );
             userInvited = true;
           } catch (err) {
             inviteError = err.message || 'User invitation failed';

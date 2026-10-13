@@ -43,6 +43,12 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    dedupKey: {
+      type: String,
+      sparse: true,
+      unique: true,
+      trim: true,
+    },
     isRead: {
       type: Boolean,
       default: false,
@@ -58,6 +64,7 @@ const notificationSchema = new mongoose.Schema(
 );
 
 notificationSchema.index({ recipientId: 1, orgId: 1, createdAt: -1 });
+notificationSchema.index({ 'metadata.staffAttendanceId': 1 }, { sparse: true });
 
 export const Notification = mongoose.model('Notification', notificationSchema);
 export default Notification;

@@ -310,6 +310,90 @@ export class OrgMembershipRepository {
     const memberships = await OrgMembership.find(query).select('userId').session(session || null);
     return [...new Set(memberships.map((m) => m.userId?.toString()).filter(Boolean))];
   }
+
+  /**
+   * Retrieves active community administrators for a given organization.
+   * Matches canonical administrative roles (Community Admin, Admin, Super Admin, Facility Manager)
+   * or memberships with staff:manage permission.
+   * Excludes inactive/suspended/deleted users.
+   * @param {string|mongoose.Types.ObjectId} orgId
+   * @param {mongoose.ClientSession} [session=null]
+   * @returns {Promise<Array<{ userId: string, name: string, email: string }>>}
+   */
+  async findCommunityAdmins(orgId, session = null) {
+    if (!orgId) return [];
+
+    const canonicalCommunityAdminRoles = [
+      'community admin',
+      'admin',
+      'facility manager',
+    ];
+    const clean = (r) => (r || '').toLowerCase().trim().replace(/[_-]/g, ' ');
+
+    const orgIdObj = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
+
+    const memberships = await OrgMembership.find({
+      orgId: orgIdObj,
+      status: 'Active',
+    })
+      .populate('roleId')
+      .populate('roleIds')
+      .populate('userId')
+      .session(session || null);
+
+    const admins = [];
+    const seenUserIds = new Set();
+
+    for (const m of memberships) {
+      const user = m.userId;
+      if (!user) continue;
+
+      const userIdStr = user._id ? user._id.toString() : user.toString();
+      if (seenUserIds.has(userIdStr)) continue;
+
+      // Exclude inactive or deleted user accounts
+      if (user.isDeleted || user.status === 'Inactive' || user.status === 'Suspended') {
+        continue;
+      }
+
+      // Check role names scoped strictly to community administration
+      const roleNames = [
+        m.roleId?.name,
+        ...(Array.isArray(m.roleIds) ? m.roleIds.map((r) => r?.name) : []),
+      ].filter(Boolean);
+
+      const hasCommunityAdminRole = roleNames.some((n) => canonicalCommunityAdminRoles.includes(clean(n)));
+
+      // Check if any role has 'staff:manage' permission in this community
+      let hasStaffManage = false;
+      const allRoles = [m.roleId, ...(Array.isArray(m.roleIds) ? m.roleIds : [])].filter(Boolean);
+      for (const r of allRoles) {
+        if (Array.isArray(r.permissions)) {
+          if (r.permissions.some((p) => p === 'staff:manage' || p === 'staff:*')) {
+            hasStaffManage = true;
+            break;
+          }
+        }
+      }
+
+      // Platform Super Admins without explicit community admin role or staff:manage are excluded from community notifications
+      if (user.isPlatform === true && !hasCommunityAdminRole && !hasStaffManage) {
+        continue;
+      }
+
+      if (hasCommunityAdminRole || hasStaffManage) {
+        seenUserIds.add(userIdStr);
+        admins.push({
+          userId: userIdStr,
+          name: user.name || user.username || 'Community Admin',
+          email: user.email || '',
+          phone: user.phone || '',
+        });
+      }
+    }
+
+    return admins;
+  }
 }
 
 export default new OrgMembershipRepository();

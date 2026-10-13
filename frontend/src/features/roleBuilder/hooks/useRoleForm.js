@@ -8,6 +8,7 @@ const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required'),
   description: yup.string().trim().optional(),
   isTenantRole: yup.boolean().optional().default(false),
+  roleScope: yup.string().oneOf(['GLOBAL', 'UNIT', 'STAFF']).optional().default('GLOBAL'),
   permissions: yup.array().of(yup.string().required()).required('Permissions array is required'),
   integrationMappings: yup.object().optional().default({}),
 })
@@ -30,23 +31,29 @@ export const useRoleForm = ({ role, visible, onSave }) => {
       name: '',
       description: '',
       isTenantRole: false,
+      roleScope: 'GLOBAL',
       permissions: [],
       integrationMappings: {},
     },
   })
 
   const selectedPermissions = watch('permissions') || []
+  const isTenantRole = watch('isTenantRole') || false
+  const roleScope = watch('roleScope') || (isTenantRole ? 'UNIT' : 'GLOBAL')
   const integrationMappings = watch('integrationMappings') || {}
   const activeMappingsCount = Object.keys(integrationMappings).length
 
   useEffect(() => {
     register('permissions')
     register('integrationMappings')
+    register('roleScope')
     if (visible && role) {
+      const derivedScope = role.roleScope || (role.isTenantRole ? 'UNIT' : 'GLOBAL')
       reset({
         name: role.name || '',
         description: role.description || '',
-        isTenantRole: role.isTenantRole || false,
+        isTenantRole: derivedScope === 'UNIT' || derivedScope === 'STAFF',
+        roleScope: derivedScope,
         permissions: role.permissions || [],
         integrationMappings: role.integrationMappings || {},
       })
@@ -55,6 +62,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
         name: '',
         description: '',
         isTenantRole: false,
+        roleScope: 'GLOBAL',
         permissions: [],
         integrationMappings: {},
       })
@@ -131,6 +139,8 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     errors,
     control,
     selectedPermissions,
+    isTenantRole,
+    roleScope,
     integrationMappings,
     activeMappingsCount,
     setValue,

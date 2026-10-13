@@ -9,6 +9,7 @@ export default function AdminLayout() {
       <Stack.Screen name="integrations" />
       <Stack.Screen name="role-builder" />
       <Stack.Screen name="users" />
+      <Stack.Screen name="staff" />
       <Stack.Screen name="invitations" />
       <Stack.Screen name="villas" />
       <Stack.Screen name="workspace-settings" />

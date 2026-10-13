@@ -43,6 +43,30 @@ export const inviteUserRules = [
     .trim()
     .custom((value) => Boolean(normalizePhone(value)))
     .withMessage('Please provide a valid phone number with country code'),
+  body('staffData')
+    .optional({ nullable: true })
+    .isObject()
+    .withMessage('staffData must be an object'),
+  body('department')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('department must be a string')
+    .trim(),
+  body('staffType')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('staffType must be a string')
+    .trim(),
+  body('designation')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('designation must be a string')
+    .trim(),
+  body('staffCode')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('staffCode must be a string')
+    .trim(),
 ];
 
 /**

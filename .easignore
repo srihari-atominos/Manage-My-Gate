@@ -1,0 +1,6 @@
+mongodb-data/
+mongodb_data/
+backend/
+frontend/
+node_modules/
+.git/

@@ -37,6 +37,8 @@ export class UserController {
         'Resident Tenant',
         'Family Member',
         'Security Guard',
+        'Community Staff',
+        'Household Staff',
       ];
 
       let communityCustomRoles = [];
@@ -51,7 +53,7 @@ export class UserController {
         }
       }
 
-      // Merge 5 default community roles and community custom roles, strictly filtering out platform roles
+      // Merge default community roles and community custom roles, strictly filtering out platform roles
       const roleNames = [...new Set([...defaultCommunityRoles, ...communityCustomRoles])].filter(
         (name) => !RESERVED_PLATFORM_ROLES.includes((name || '').toLowerCase().trim())
       );
@@ -89,7 +91,7 @@ export class UserController {
         { header: 'Unit Number (Optional for Global Roles)', key: 'unit', width: 38 }
       ];
 
-      sheet.getCell('E1').note = 'Unit Number is required for resident roles (Owner, Tenant, Family). Select "None" or leave blank for Global Roles (Community Admin, Security Guard).';
+      sheet.getCell('E1').note = 'Unit Number is required for resident roles (Owner, Tenant, Family) and Household Staff. Select "None" or leave blank for Global Roles (Community Admin, Security Guard, Community Staff).';
 
       sheet.addRow({
         name: 'John Doe',
@@ -118,6 +120,20 @@ export class UserController {
         phone: '+919876543214',
         role: 'Community Admin',
         unit: 'None',
+      });
+      sheet.addRow({
+        name: 'Community Electrician',
+        email: 'electrician@example.com',
+        phone: '+919876543215',
+        role: 'Community Staff',
+        unit: 'None',
+      });
+      sheet.addRow({
+        name: 'Private Driver',
+        email: 'driver@example.com',
+        phone: '+919876543216',
+        role: 'Household Staff',
+        unit: unitNames[0] || '101',
       });
 
       const unitEndRow = Math.max(unitDropdownOptions.length, 1);
@@ -201,7 +217,20 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email, phone, roleName, name, villaId = null, residentType = 'None', onboardingMode = 'INVITATION' } = req.body;
+      const {
+        email,
+        phone,
+        roleName,
+        name,
+        villaId = null,
+        residentType = 'None',
+        onboardingMode = 'INVITATION',
+        staffData = null,
+        department,
+        staffType,
+        designation,
+        staffCode
+      } = req.body;
       const orgId = req.tenant.orgId;
 
       const inviterId = req.user?.id || req.user?._id || null;
@@ -213,6 +242,14 @@ export class UserController {
 
       await assertRolesAssignable(req, orgId, roleName);
 
+      const effectiveStaffData = staffData || (department || staffType || designation || staffCode ? {
+        department,
+        staffType,
+        designation,
+        staffCode,
+        isStaff: true
+      } : {});
+
       const { user, invitationToken, membership } = await userService.inviteUser(
         email,
         orgId,
@@ -223,7 +260,8 @@ export class UserController {
         name || '',
         invitationSource,
         inviterId,
-        onboardingMode
+        onboardingMode,
+        effectiveStaffData
       );
 
       // Generate the canonical invite URL for the admin UI "Copy Link" feature

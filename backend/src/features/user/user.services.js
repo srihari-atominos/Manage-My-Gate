@@ -323,7 +323,8 @@ export class UserService {
     name = '',
     invitationSource = 'WEB',
     inviterId = null,
-    onboardingMode = 'INVITATION'
+    onboardingMode = 'INVITATION',
+    staffData = {}
   ) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -523,11 +524,20 @@ export class UserService {
       });
       await outboxEvent.save({ session });
 
-      if (roleName) {
-          await this.syncTechnicianForStaffUser(user._id, orgId, [roleName], session);
-        }
+      const isStaffDesignated = staffData?.isStaff || (roleName && this.isStaffRole(roleName));
+      if (isStaffDesignated || roleName) {
+        await this.syncTechnicianForStaffUser(user._id, orgId, [roleName].filter(Boolean), session, {
+          ...staffData,
+          name: user.name || name,
+          email: user.email,
+          phone: user.phone,
+          status: user.status === 'Active' ? 'Active' : 'Pending',
+          villaId: rootVillaId || villaId || null,
+          inviterId
+        });
+      }
 
-        await session.commitTransaction();
+      await session.commitTransaction();
 
         // Step 5: Immediate Unit Assignment for ADMIN_ANNOUNCEMENT or Existing Active Member (Moved after commit to avoid deadlock)
         if (villaId || rootVillaId) {
@@ -572,55 +582,81 @@ export class UserService {
     }
   }
 
-  async syncTechnicianForStaffUser(userId, orgId, roleNames = [], session = null) {
+  isStaffRole(roleName) {
+    if (!roleName) return false;
+    const lower = String(roleName).toLowerCase().trim();
+    return (
+      lower.includes('staff') ||
+      lower.includes('vendor') ||
+      lower.includes('technician') ||
+      lower.includes('maintenance') ||
+      lower.includes('maid') ||
+      lower.includes('driver') ||
+      lower.includes('cook') ||
+      lower.includes('gardener') ||
+      lower.includes('electrician') ||
+      lower.includes('plumber') ||
+      lower.includes('carpenter') ||
+      lower.includes('cleaner') ||
+      lower.includes('housekeeping')
+    );
+  }
+
+  async syncTechnicianForStaffUser(userId, orgId, roleNames = [], session = null, staffExtra = {}) {
     try {
-      const isStaffRole = roleNames.some(r => {
-        if (!r) return false;
-        const lower = r.toLowerCase();
-        return lower.includes('staff') || lower.includes('vendor') || lower.includes('technician') || lower.includes('maintenance');
-      });
+      const isStaff = staffExtra.isStaff || roleNames.some(r => this.isStaffRole(r));
+      if (!isStaff) return;
 
-      if (!isStaffRole) return;
+      let name = staffExtra.name;
+      let email = staffExtra.email;
+      let phone = staffExtra.phone;
+      let status = staffExtra.status;
 
-      const User = (await import('./user.model.js')).default;
-      const user = await User.findById(userId).session(session || null);
-      if (!user) return;
+      if (!name || !email) {
+        const user = await userRepository.findById(userId, session);
+        if (user) {
+          name = name || user.name || user.username;
+          email = email || user.email;
+          phone = phone || user.phone;
+          status = status || (user.status === 'Active' ? 'Active' : 'Pending');
+        }
+      }
 
-      const Technician = (await import('../technician/technician.model.js')).default;
-
-      const existingTech = await Technician.findOne({
+      const technicianService = (await import('../technician/technician.service.js')).default;
+      const tech = await technicianService.syncOrUpsertTechnicianFromUser({
+        userId,
         orgId,
-        $or: [
-          { userId: user._id },
-          ...(user.email ? [{ email: user.email }] : []),
-          ...(user.phone && user.phone !== 'N/A' ? [{ phone: user.phone }] : [])
-        ]
-      }).session(session || null);
+        name: name || 'Staff Member',
+        email: email || '',
+        phone: phone || 'N/A',
+        department: staffExtra.department || 'Others',
+        type: staffExtra.staffType || staffExtra.type || 'In-House Staff',
+        designation: staffExtra.designation || (roleNames[0] || 'Staff'),
+        staffCode: staffExtra.staffCode || null,
+        status: status || 'Active'
+      }, session);
 
-      if (existingTech) {
-        existingTech.userId = user._id;
-        if (user.name && user.name !== user.username) {
-          existingTech.name = user.name;
-        }
-        if (user.phone && user.phone !== 'N/A') {
-          existingTech.phone = user.phone;
-        }
-        existingTech.isDeleted = false;
-        existingTech.status = user.status === 'Active' ? 'Active' : 'Pending';
-        await existingTech.save(session ? { session } : undefined);
-      } else {
-        await Technician.create([{
+      // If unit is configured, link staff to unit via StaffUnitAssociation
+      const targetVillaId = staffExtra.villaId;
+      if (tech && targetVillaId) {
+        const staffUnitAssociationService = (await import('../staffUnitAssociation/staffUnitAssociation.service.js')).default;
+        await staffUnitAssociationService.createAssociation(
+          staffExtra.inviterId || userId,
           orgId,
-          userId: user._id,
-          name: user.name || user.username || user.email.split('@')[0],
-          email: user.email,
-          phone: user.phone || 'N/A',
-          department: 'Others',
-          type: 'In-House Staff',
-          status: user.status === 'Active' ? 'Active' : 'Pending',
-          whatsappEnabled: true,
-          isDeleted: false
-        }], session ? { session } : undefined);
+          {
+            villaId: targetVillaId,
+            technicianId: tech._id,
+            technicianDoc: tech,
+            roleOrTrade: staffExtra.roleOrTrade || staffExtra.designation || staffExtra.department || roleNames[0] || 'Household Staff',
+            notes: staffExtra.notes || 'Associated via onboarding'
+          },
+          true,
+          session
+        ).catch(err => {
+          if (err && err.status !== 409 && err.statusCode !== 409) {
+            console.error('Failed to link technician to villa during staff user invite:', err);
+          }
+        });
       }
     } catch (err) {
       console.error('Failed to sync technician for staff user:', err);
@@ -1098,12 +1134,15 @@ export class UserService {
 
         let villaId = payloadVillaId || null;
 
-        // Check if role is a global community role (not linked to a residential unit)
+        // Check if role is a staff role or global community role
+        const isStaff = this.isStaffRole(roleName) || Boolean(invite.isStaff || invite.department || invite.designation);
         const roleService = (await import('../role/role.services.js')).default;
         const roleObj = roleName ? await roleService.getRoleByName(roleName.trim(), orgId) : null;
-        const isGlobalRole = roleObj ? !roleObj.isTenantRole : ['community admin', 'security guard'].includes((roleName || '').toLowerCase().trim());
+        const isGlobalRole = roleObj
+          ? !roleObj.isTenantRole
+          : ['community admin', 'security guard', 'community staff'].includes((roleName || '').toLowerCase().trim());
 
-        // If not a global role and not 'None', resolve villa / unit number if provided
+        // If not a global role (or if it's a unit-scoped staff role) and not 'None', resolve villa / unit number if provided
         const isNoneUnit = !villaNumber || String(villaNumber).trim().toLowerCase() === 'none';
         if (!isGlobalRole && !villaId && !isNoneUnit) {
           const rawUnitStr = String(villaNumber).trim();
@@ -1132,7 +1171,17 @@ export class UserService {
           villaId = null;
         }
 
-        // Call the single inviteUser logic with full identity & onboarding parameters
+        const staffData = isStaff
+          ? {
+              isStaff: true,
+              department: invite.department || 'Others',
+              staffType: invite.staffType || invite.type || 'In-House Staff',
+              designation: invite.designation || (roleObj ? roleObj.name : roleName),
+              staffCode: invite.staffCode || null,
+            }
+          : {};
+
+        // Call the single inviteUser logic with full identity, staff & onboarding parameters
         await this.inviteUser(
           trimmedEmail,
           orgId,
@@ -1143,7 +1192,8 @@ export class UserService {
           name,
           source,
           inviterId,
-          mode
+          mode,
+          staffData
         );
 
         successes.push({

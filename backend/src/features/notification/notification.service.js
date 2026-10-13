@@ -13,6 +13,13 @@ export class NotificationService {
    * @returns {Promise<object>} The created notification document
    */
   async createNotification(notificationData) {
+    if (notificationData?.dedupKey) {
+      const existing = await notificationRepository.findByDedupKey(notificationData.dedupKey);
+      if (existing) {
+        return existing;
+      }
+    }
+
     const session = await mongoose.startSession();
     let transactionStarted = false;
     try {
