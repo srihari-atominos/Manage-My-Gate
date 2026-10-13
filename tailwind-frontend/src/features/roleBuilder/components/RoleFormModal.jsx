@@ -31,6 +31,8 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
     handleSubmit,
     errors,
     selectedPermissions,
+    roleScope,
+    handleSelectScope,
     integrationMappings,
     activeMappingsCount,
     setValue,
@@ -96,21 +98,92 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
             )}
           </div>
 
-          <div className="flex items-start gap-2 pt-1">
-            <Checkbox
-              id="role-is-tenant-input"
-              checked={register('isTenantRole').value}
-              onCheckedChange={(checked) => setValue('isTenantRole', !!checked, { shouldDirty: true })}
-              className="checkbox mt-0.5"
-              {...register('isTenantRole')}
-            />
-            <div>
-              <Label htmlFor="role-is-tenant-input" className="text-sm font-semibold text-black dark:text-white cursor-pointer">
-                Is Tenant/Unit Role (Belongs to Villa/Apartment Unit)
-              </Label>
-              <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5">
-                If checked, this role will belong to the unit and be selectable when onboarding residents to specific villas/apartments.
-              </p>
+          {/* Role Scope & Tenancy Archetype Selector */}
+          <div>
+            <Label className="text-sm font-semibold block mb-1">
+              Role Scope & Tenancy Archetype
+            </Label>
+            <p className="text-gray-400 dark:text-gray-500 text-xs mb-2.5">
+              Choose how this role behaves across community facilities and residential units:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {/* Option 1: Global */}
+              <div
+                onClick={() => handleSelectScope('GLOBAL')}
+                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  roleScope === 'GLOBAL'
+                    ? 'border-primary bg-primary/10 shadow-xs'
+                    : 'border-stroke dark:border-strokedark bg-transparent hover:bg-gray-50 dark:hover:bg-meta-4/20'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-xs font-bold ${roleScope === 'GLOBAL' ? 'text-primary' : 'text-black dark:text-white'}`}>
+                    Global Scope
+                  </span>
+                  <input
+                    type="radio"
+                    name="roleScopeOption"
+                    checked={roleScope === 'GLOBAL'}
+                    onChange={() => handleSelectScope('GLOBAL')}
+                    className="cursor-pointer"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                  Community-wide facility & management access. Unrestricted to a single unit.
+                </p>
+              </div>
+
+              {/* Option 2: Unit */}
+              <div
+                onClick={() => handleSelectScope('UNIT')}
+                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  roleScope === 'UNIT'
+                    ? 'border-emerald-500 bg-emerald-500/10 shadow-xs'
+                    : 'border-stroke dark:border-strokedark bg-transparent hover:bg-gray-50 dark:hover:bg-meta-4/20'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-xs font-bold ${roleScope === 'UNIT' ? 'text-emerald-600 dark:text-emerald-400' : 'text-black dark:text-white'}`}>
+                    Unit Scope
+                  </span>
+                  <input
+                    type="radio"
+                    name="roleScopeOption"
+                    checked={roleScope === 'UNIT'}
+                    onChange={() => handleSelectScope('UNIT')}
+                    className="cursor-pointer"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                  Bound to specific villas/apartments when onboarding residents.
+                </p>
+              </div>
+
+              {/* Option 3: Staff */}
+              <div
+                onClick={() => handleSelectScope('STAFF')}
+                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  roleScope === 'STAFF'
+                    ? 'border-amber-500 bg-amber-500/10 shadow-xs'
+                    : 'border-stroke dark:border-strokedark bg-transparent hover:bg-gray-50 dark:hover:bg-meta-4/20'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-xs font-bold ${roleScope === 'STAFF' ? 'text-amber-600 dark:text-amber-400' : 'text-black dark:text-white'}`}>
+                    Staff Member
+                  </span>
+                  <input
+                    type="radio"
+                    name="roleScopeOption"
+                    checked={roleScope === 'STAFF'}
+                    onChange={() => handleSelectScope('STAFF')}
+                    className="cursor-pointer"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                  Dual scope: acts across facilities and links to units. Auto-syncs to Staff Management.
+                </p>
+              </div>
             </div>
           </div>
 

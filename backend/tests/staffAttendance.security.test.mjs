@@ -619,3 +619,61 @@ test('15. Production Security: ALLOW_LEGACY_UNSIGNED_STAFF_SCANS is strictly ign
   }
 });
 
+test('16. Advanced Filters & Reporting: findHistory and getAttendanceStats correctly apply department, type, and search filters', async () => {
+  const origFindHistory = staffAttendanceRepository.findHistory;
+  const origGetStats = staffAttendanceRepository.getAttendanceStats;
+
+  try {
+    let capturedFilter = null;
+    let capturedPagination = null;
+    staffAttendanceRepository.findHistory = async (orgId, filter, pagination) => {
+      capturedFilter = filter;
+      capturedPagination = pagination;
+      return { records: [], pagination: { totalRecords: 0, totalPages: 1, currentPage: 1, limit: pagination.limit } };
+    };
+
+    let capturedStatsQuery = null;
+    staffAttendanceRepository.getAttendanceStats = async (orgId, query) => {
+      capturedStatsQuery = query;
+      return { totalSessions: 0, openSessions: 0, closedSessions: 0, missingCheckoutExceptions: 0, distinctStaffCount: 0 };
+    };
+
+    // Test query via service
+    await staffAttendanceService.getAttendanceHistory(ORG_A, {
+      department: 'Electrical',
+      type: 'In-House Staff',
+      search: 'Ali',
+      gateId: 'Main Gate',
+      status: 'Open',
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
+      limit: 100,
+      page: 1,
+    });
+
+    assert.equal(capturedFilter.department, 'Electrical');
+    assert.equal(capturedFilter.type, 'In-House Staff');
+    assert.equal(capturedFilter.search, 'Ali');
+    assert.equal(capturedFilter.gateId, 'Main Gate');
+    assert.equal(capturedFilter.status, 'Open');
+    assert.equal(capturedFilter.startDate, '2026-01-01');
+    assert.equal(capturedFilter.endDate, '2026-01-31');
+    assert.equal(capturedPagination.limit, 100);
+
+    // Test stats query via service
+    await staffAttendanceService.getAttendanceStats(ORG_A, {
+      department: 'Plumbing',
+      technicianId: TECH_1,
+      gateId: 'North Gate',
+    });
+
+    assert.equal(capturedStatsQuery.department, 'Plumbing');
+    assert.equal(capturedStatsQuery.technicianId, TECH_1);
+    assert.equal(capturedStatsQuery.gateId, 'North Gate');
+  } finally {
+    staffAttendanceRepository.findHistory = origFindHistory;
+    staffAttendanceRepository.getAttendanceStats = origGetStats;
+  }
+});
+
+

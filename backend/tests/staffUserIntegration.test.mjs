@@ -190,3 +190,42 @@ test('5. Bulk Unit Upload: Recognizes Household Staff and triggers staff onboard
     userService.inviteUser = origInvite;
   }
 });
+
+test('6. Dynamic Role Sync: Custom role with roleScope STAFF auto-syncs technician profile', async () => {
+  const origSync = technicianService.syncOrUpsertTechnicianFromUser;
+  const roleService = (await import('../src/features/role/role.services.js')).default;
+  const origGetRoleByName = roleService.getRoleByName;
+  let syncCalled = false;
+
+  try {
+    roleService.getRoleByName = async (name) => {
+      if (name === 'Private Butler') {
+        return { name: 'Private Butler', roleScope: 'STAFF', isTenantRole: true };
+      }
+      return null;
+    };
+
+    technicianService.syncOrUpsertTechnicianFromUser = async (data) => {
+      syncCalled = true;
+      return { _id: 'tech_custom_1', ...data };
+    };
+
+    // Role name does not contain "staff" keyword, but roleScope is 'STAFF'
+    await userService.syncTechnicianForStaffUser(
+      USER_ID,
+      ORG_ID,
+      ['Private Butler'],
+      null,
+      {
+        name: 'James Butler',
+        email: 'james@example.com',
+      }
+    );
+
+    assert.equal(syncCalled, true, 'Custom role with roleScope STAFF should trigger technician sync');
+  } finally {
+    technicianService.syncOrUpsertTechnicianFromUser = origSync;
+    roleService.getRoleByName = origGetRoleByName;
+  }
+});
+

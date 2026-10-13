@@ -17,26 +17,47 @@ export const deviceTokenService = {
    */
   async registerToken(payload: DeviceTokenPayload, userId?: string): Promise<any> {
     try {
+      if (!payload?.pushToken || typeof payload.pushToken !== 'string') {
+        console.warn('[DeviceTokenService] Cannot register device token: Invalid or empty pushToken provided.');
+        return null;
+      }
+
+      const cleanToken = payload.pushToken.trim();
+      if (!cleanToken) {
+        console.warn('[DeviceTokenService] Cannot register device token: Empty pushToken string.');
+        return null;
+      }
+
       const cacheKey = userId ? `${CACHE_KEY_PREFIX}${userId}` : null;
       if (cacheKey) {
         const cached = await storage.getItem(cacheKey);
-        if (cached === payload.pushToken) {
-          console.log('[DeviceTokenService] Push token already registered and cached for user; skipping redundant API call.');
-          return { cached: true, pushToken: payload.pushToken };
+        if (cached === cleanToken) {
+          console.log('[DeviceTokenService] Push token already registered and cached for current user; skipping redundant API call.');
+          return { cached: true, pushToken: cleanToken };
         }
       }
 
-      console.log('[DeviceTokenService] Registering device token with backend API...');
-      const response: any = await apiClient.post('/device-tokens', payload);
-      const data = response?.data || response;
+      console.log('[DeviceTokenService] Submitting device push token to backend (/device-tokens)... Platform:', payload.platform || 'android');
+      const response: any = await apiClient.post('/device-tokens', {
+        ...payload,
+        pushToken: cleanToken,
+      });
 
-      if (cacheKey) {
-        await storage.setItem(cacheKey, payload.pushToken);
+      const responseData = response?.data || response;
+      const isConfirmed = response?.status === 200 || response?.status === 201 || responseData?.success === true || !!responseData?._id || !!responseData?.data?._id;
+
+      if (isConfirmed && cacheKey) {
+        await storage.setItem(cacheKey, cleanToken);
+        console.log('[DeviceTokenService] Device token registration confirmed by backend and cached locally.');
+      } else if (!isConfirmed) {
+        console.warn('[DeviceTokenService] Backend responded without clear registration confirmation:', responseData);
       }
 
-      return data;
-    } catch (error) {
-      console.warn('[DeviceTokenService] Failed to register push token with backend:', error);
+      return responseData;
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const message = error?.response?.data?.message || error?.message;
+      console.warn(`[DeviceTokenService] Failed to register push token with backend (Status: ${status || 'Network/Timeout'}):`, message);
       throw error;
     }
   },

@@ -70,6 +70,11 @@ const AVAILABLE_FEATURES = [
     label: 'IntegrationHub',
     desc: 'Third-party service connections, SMS, and WhatsApp integrations.',
   },
+  {
+    id: 'staff',
+    label: 'Staff Management',
+    desc: 'Staff directory, attendance gate logs, unit allocations, and staff portal.',
+  },
 ]
 
 const OrganizationFeaturesCard = ({ organization }) => {

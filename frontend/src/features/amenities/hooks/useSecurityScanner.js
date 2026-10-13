@@ -9,14 +9,63 @@ export const useSecurityScanner = () => {
   const [scanResult, setScanResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [scannerMode, setScannerMode] = useState('auto') // 'auto' | 'entry' | 'exit'
+  const [lastToken, setLastToken] = useState(null)
+
+  const processCheckOut = useCallback(async (tokenOrId, inspectionDetails = null) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await checkOutBooking(tokenOrId, inspectionDetails)
+      const res = response?.reservation || response?.booking || {}
+      const pass = response?.pass || {}
+      setScanResult({
+        success: true,
+        isExit: true,
+        booking: {
+          ...res,
+          bookingId: res.reservationNumber || res.bookingId || tokenOrId,
+          isExit: true,
+        },
+        pass: {
+          ...pass,
+          isExit: true,
+          checkOutTimestamp: pass.checkOutTimestamp || new Date(),
+        },
+        resident: {
+          name: res.userName || res.residentName || 'Resident',
+          unitNumber: res.unitNumber || 'N/A',
+        },
+        facility: {
+          name: res.facilityName || 'Amenity',
+        },
+        message: 'Exit recorded successfully. Booking completed.',
+      })
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to record exit check-out.'
+      setScanResult({
+        success: false,
+        message: errorMsg,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   const processCheckIn = useCallback(async (tokenOrId) => {
     setLoading(true)
     setError(null)
+    setLastToken(tokenOrId)
+
+    if (scannerMode === 'exit') {
+      return await processCheckOut(tokenOrId)
+    }
+
     try {
       const response = await checkInBooking(tokenOrId)
       setScanResult({
         success: true,
+        isExit: false,
         booking: response?.booking || response?.pass || response || { _id: tokenOrId },
         resident: response?.resident || null,
         facility: response?.facility || null,
@@ -26,15 +75,46 @@ export const useSecurityScanner = () => {
         message: response?.message || 'Check-in successful.',
       })
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to check in.'
-      setScanResult({
-        success: false,
-        message: errorMsg,
-      })
+      const errData = err.response?.data || {}
+      const details = errData.details || errData.data || {}
+      const errorCode = errData.code || details.code
+      const isAlreadyCheckedIn =
+        err.response?.status === 409 &&
+        (errorCode === 'ALREADY_CHECKED_IN' ||
+          errData.message?.toLowerCase().includes('already checked in'))
+
+      if (isAlreadyCheckedIn) {
+        // Visitor Management Pattern: user is inside, present Check-Out option
+        setScanResult({
+          success: false,
+          canCheckOut: true,
+          status: 'ALREADY_CHECKED_IN',
+          token: tokenOrId,
+          booking: {
+            bookingId: details.reservationNumber || details.bookingId || tokenOrId,
+            reservationNumber: details.reservationNumber || details.bookingId || tokenOrId,
+            checkedInAt: details.checkedInAt,
+          },
+          resident: {
+            name: details.residentName || 'Resident',
+            unitNumber: details.unitNumber || 'N/A',
+          },
+          facility: {
+            name: details.facilityName || 'Amenity',
+          },
+          message: errData.message || 'Pass has already been checked in. Record exit now?',
+        })
+      } else {
+        const errorMsg = errData.message || err.message || 'Failed to check in.'
+        setScanResult({
+          success: false,
+          message: errorMsg,
+        })
+      }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [scannerMode, processCheckOut])
 
   const handleScan = useCallback(
     (data) => {
@@ -76,9 +156,20 @@ export const useSecurityScanner = () => {
     [processCheckIn],
   )
 
+  const handleConfirmCheckOut = useCallback(
+    (tokenToCheckout) => {
+      const targetToken = tokenToCheckout || scanResult?.token || lastToken
+      if (targetToken) {
+        processCheckOut(targetToken)
+      }
+    },
+    [scanResult?.token, lastToken, processCheckOut],
+  )
+
   const resetScanner = useCallback(() => {
     setScanResult(null)
     setError(null)
+    setLastToken(null)
   }, [])
 
   const [recentScans, setRecentScans] = useState([])
@@ -128,9 +219,12 @@ export const useSecurityScanner = () => {
     scanResult,
     loading,
     error,
+    scannerMode,
+    setScannerMode,
     recentScans,
     handleScan,
     handleManualEntry,
+    handleConfirmCheckOut,
     resetScanner,
   }
 }

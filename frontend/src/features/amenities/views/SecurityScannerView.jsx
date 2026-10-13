@@ -10,33 +10,73 @@ import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx'
 import '../styles/_amenities.scss'
 
 const SecurityScannerView = () => {
-  const { scanResult, loading, error, recentScans, handleScan, handleManualEntry, resetScanner } =
-    useSecurityScanner()
+  const {
+    scanResult,
+    loading,
+    error,
+    scannerMode,
+    setScannerMode,
+    recentScans,
+    handleScan,
+    handleManualEntry,
+    handleConfirmCheckOut,
+    resetScanner,
+  } = useSecurityScanner()
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
       <AmenitiesTopNav />
       <div className="view-container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
           <div>
             <h1 style={{ margin: 0 }} className="fs-1">
               Security Scanner
             </h1>
-            <p className="text-muted mt-1 mb-0">Validate resident bookings for amenity access</p>
+            <p className="text-muted mt-1 mb-0">Validate resident bookings for amenity access & exit</p>
+          </div>
+          {/* Scanner Mode Selector - Visitor Management Pattern */}
+          <div className="d-flex align-items-center bg-body-secondary p-1 rounded-pill border">
+            <button
+              className={`btn btn-sm rounded-pill px-3 fw-semibold ${scannerMode === 'auto' ? 'btn-primary text-white shadow-sm' : 'text-muted'}`}
+              onClick={() => setScannerMode('auto')}
+            >
+              <i className="fa-solid fa-arrows-rotate me-1"></i> Auto Detect (Entry / Exit)
+            </button>
+            <button
+              className={`btn btn-sm rounded-pill px-3 fw-semibold ${scannerMode === 'entry' ? 'btn-success text-white shadow-sm' : 'text-muted'}`}
+              onClick={() => setScannerMode('entry')}
+            >
+              <i className="fa-solid fa-door-open me-1"></i> Entry Only
+            </button>
+            <button
+              className={`btn btn-sm rounded-pill px-3 fw-semibold ${scannerMode === 'exit' ? 'btn-info text-white shadow-sm' : 'text-muted'}`}
+              onClick={() => setScannerMode('exit')}
+            >
+              <i className="fa-solid fa-arrow-right-from-bracket me-1"></i> Exit Check-Out
+            </button>
           </div>
         </div>
 
         {error && <div className="alert alert-danger mb-4">{error}</div>}
 
         {scanResult ? (
-          <ScanResultCard result={scanResult} onReset={resetScanner} />
+          <ScanResultCard
+            result={scanResult}
+            onReset={resetScanner}
+            onConfirmCheckOut={handleConfirmCheckOut}
+          />
         ) : (
           <>
             <div className="row g-4 mb-4">
               {/* Left Panel: Scanner */}
               <div className="col-lg-6">
                 <div className="card h-100 p-4 border-0 shadow-sm">
-                  <h5 className="fw-semibold mb-3">Scanner</h5>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h5 className="fw-semibold mb-0">Scanner</h5>
+                    <span className="badge bg-secondary">
+                      {scannerMode === 'exit' ? 'Exit Mode' : scannerMode === 'entry' ? 'Entry Mode' : 'Smart Auto'}
+                    </span>
+                  </div>
                   <div className="bg-body-secondary p-3 rounded mb-4 text-center">
                     {loading ? <ScannerLoading /> : <ScannerCamera onScan={handleScan} />}
                   </div>

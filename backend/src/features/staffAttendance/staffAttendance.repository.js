@@ -176,23 +176,51 @@ class StaffAttendanceRepository {
 
     const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
 
-    const pipeline = [
+    const basePipeline = [
       { $match: matchConditions },
+      {
+        $lookup: {
+          from: 'technicians',
+          localField: 'technicianId',
+          foreignField: '_id',
+          as: 'technician',
+        },
+      },
+      { $unwind: { path: '$technician', preserveNullAndEmptyArrays: true } },
+    ];
+
+    const postLookupMatch = {};
+    if (filter.department && filter.department !== 'ALL') {
+      postLookupMatch['technician.department'] = filter.department;
+    }
+    if (filter.type && filter.type !== 'ALL') {
+      postLookupMatch['technician.type'] = filter.type;
+    }
+    if (filter.search && typeof filter.search === 'string' && filter.search.trim()) {
+      const q = filter.search.trim();
+      const regex = new RegExp(q, 'i');
+      postLookupMatch.$or = [
+        { 'technician.name': { $regex: regex } },
+        { 'technician.staffCode': { $regex: regex } },
+        { staffCode: { $regex: regex } },
+        { 'technician.department': { $regex: regex } },
+        { checkInGate: { $regex: regex } },
+        { exitGate: { $regex: regex } },
+      ];
+    }
+
+    if (Object.keys(postLookupMatch).length > 0) {
+      basePipeline.push({ $match: postLookupMatch });
+    }
+
+    const pipeline = [
+      ...basePipeline,
       { $sort: { checkInTime: -1 } },
       {
         $facet: {
           records: [
             { $skip: skip },
             { $limit: limit },
-            {
-              $lookup: {
-                from: 'technicians',
-                localField: 'technicianId',
-                foreignField: '_id',
-                as: 'technician',
-              },
-            },
-            { $unwind: { path: '$technician', preserveNullAndEmptyArrays: true } },
             {
               $lookup: {
                 from: 'users',
@@ -323,10 +351,57 @@ class StaffAttendanceRepository {
       ];
     }
 
+    if (query.technicianId) {
+      matchConditions.technicianId = mongoose.Types.ObjectId.isValid(query.technicianId)
+        ? new mongoose.Types.ObjectId(query.technicianId)
+        : query.technicianId;
+    }
+
+    if (query.status) {
+      matchConditions.status = query.status;
+    }
+
     const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
 
-    const pipeline = [
+    const basePipeline = [
       { $match: matchConditions },
+      {
+        $lookup: {
+          from: 'technicians',
+          localField: 'technicianId',
+          foreignField: '_id',
+          as: 'technician',
+        },
+      },
+      { $unwind: { path: '$technician', preserveNullAndEmptyArrays: true } },
+    ];
+
+    const postLookupMatch = {};
+    if (query.department && query.department !== 'ALL') {
+      postLookupMatch['technician.department'] = query.department;
+    }
+    if (query.type && query.type !== 'ALL') {
+      postLookupMatch['technician.type'] = query.type;
+    }
+    if (query.search && typeof query.search === 'string' && query.search.trim()) {
+      const q = query.search.trim();
+      const regex = new RegExp(q, 'i');
+      postLookupMatch.$or = [
+        { 'technician.name': { $regex: regex } },
+        { 'technician.staffCode': { $regex: regex } },
+        { staffCode: { $regex: regex } },
+        { 'technician.department': { $regex: regex } },
+        { checkInGate: { $regex: regex } },
+        { exitGate: { $regex: regex } },
+      ];
+    }
+
+    if (Object.keys(postLookupMatch).length > 0) {
+      basePipeline.push({ $match: postLookupMatch });
+    }
+
+    const pipeline = [
+      ...basePipeline,
       {
         $facet: {
           totalSessions: [{ $count: 'count' }],

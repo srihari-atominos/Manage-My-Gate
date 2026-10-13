@@ -141,13 +141,13 @@ export const AmenityPassDetailsModal: React.FC<AmenityPassDetailsModalProps> = (
     : booking?.numberOfPersons || booking?.guestsCount;
 
   // Token & QR Resolution (Canonical MMG:AMENITY:<token>)
-  const directToken = accessPass?.qrData || accessPass?.passCode;
+  const directToken = accessPass?.qrData || accessPass?.passCode || passCode;
   const qrString = directToken && String(directToken).startsWith('MMG:AMENITY:')
     ? String(directToken)
     : directToken && !String(directToken).startsWith('data:')
     ? `MMG:AMENITY:${directToken}`
-    : null;
-  const hasIssuedPass = Boolean(accessPass?._id && qrString);
+    : `MMG:AMENITY:${passCode}`;
+  const hasIssuedPass = Boolean(accessPass?._id || passCode);
 
   const isCancellable =
     rawStatus !== 'CANCELLED' &&
@@ -174,7 +174,7 @@ export const AmenityPassDetailsModal: React.FC<AmenityPassDetailsModalProps> = (
       timeWindow: formattedTime,
       location: location || resourceName || undefined,
       destinationUnit: destinationUnit || undefined,
-      barcodePayload: qrString || '',
+      barcodePayload: qrString,
       validUntil: accessPass?.validUntil ? String(accessPass.validUntil) : undefined,
     });
   };
@@ -387,6 +387,25 @@ export const AmenityPassDetailsModal: React.FC<AmenityPassDetailsModalProps> = (
           </Text>
           <StatusBadge label={statusLabel} variant={statusVariant} dot />
         </View>
+
+        {/* Check-In / Exit Instruction Banner */}
+        {((reservation as any)?.accessStatus === 'CHECKED_IN' ||
+          String(rawStatus).toUpperCase() === 'CHECKED_IN' ||
+          (booking as any)?.checkInTime) && (
+          <View className="bg-primary/10 border border-primary/20 rounded-xl p-3 flex-row items-center gap-2.5">
+            <View className="h-8 w-8 rounded-full bg-primary/20 items-center justify-center">
+              <QrCode size={16} className="text-primary" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-xs font-bold text-foreground">
+                {t('amenity_currently_inside', 'Currently Inside Facility')}
+              </Text>
+              <Text className="text-[11px] text-muted-foreground leading-tight">
+                {t('amenity_exit_scan_hint', 'Scan this same QR code at the turnstile or gate scanner when leaving to check out.')}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Detailed Attribute Rows */}
         <View className="bg-card border border-border rounded-xl p-3 gap-2">

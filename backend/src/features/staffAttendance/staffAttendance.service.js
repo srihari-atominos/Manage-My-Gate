@@ -441,8 +441,12 @@ class StaffAttendanceService {
     const filter = {};
     if (query.technicianId) filter.technicianId = query.technicianId;
     if (query.status) filter.status = query.status;
+    if (query.gateId) filter.gateId = query.gateId;
     if (query.startDate) filter.startDate = query.startDate;
     if (query.endDate) filter.endDate = query.endDate;
+    if (query.department) filter.department = query.department;
+    if (query.type) filter.type = query.type;
+    if (query.search) filter.search = query.search;
 
     const pagination = {
       page: query.page || 1,

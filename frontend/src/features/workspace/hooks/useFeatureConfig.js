@@ -50,6 +50,11 @@ export const useFeatureConfig = () => {
       allowedFeatures.some((f) => typeof f === 'string' && f.startsWith('amenities:'))
     )
       initial.push('amenities')
+    if (
+      allowedFeatures.includes('staff') ||
+      allowedFeatures.some((f) => typeof f === 'string' && f.startsWith('staff:'))
+    )
+      initial.push('staff')
     return initial
   })
 
@@ -82,9 +87,14 @@ export const useFeatureConfig = () => {
         allowedFeatures.some((f) => typeof f === 'string' && f.startsWith('amenities:'))
       )
         initial.push('amenities')
+      if (
+        allowedFeatures.includes('staff') ||
+        allowedFeatures.some((f) => typeof f === 'string' && f.startsWith('staff:'))
+      )
+        initial.push('staff')
       setSelectedFeatures(initial)
     } else {
-      setSelectedFeatures(['users', 'roles', 'integrations', 'villas', 'amenities'])
+      setSelectedFeatures(['users', 'roles', 'integrations', 'villas', 'amenities', 'staff'])
     }
   }, [allowedFeatures])
 

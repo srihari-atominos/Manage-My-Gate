@@ -127,7 +127,7 @@ export class PlatformSubscriptionService {
           endDate,
           renewalDate: endDate,
           status: 'ACTIVE',
-          entitlementProfile: { selectedAddOns: org.allowedFeatures || ['visitor', 'villas', 'users', 'roles', 'complaints'] }
+          entitlementProfile: { selectedAddOns: org.allowedFeatures || ['visitor', 'villas', 'users', 'roles', 'complaints', 'staff'] }
         }).catch(() => null);
       }
     }
@@ -283,7 +283,7 @@ export class PlatformSubscriptionService {
         endDate,
         renewalDate: endDate,
         status: 'ACTIVE',
-        entitlementProfile: { selectedAddOns: finalAllowedFeatures || ['visitor', 'villas', 'users', 'roles', 'complaints'] }
+        entitlementProfile: { selectedAddOns: finalAllowedFeatures || ['visitor', 'villas', 'users', 'roles', 'complaints', 'staff'] }
       });
     }
 

@@ -12,6 +12,7 @@ import {
   cilSettings,
   cilAddressBook,
   cilMoney,
+  cilPeople,
 } from '@coreui/icons'
 import useFeatureConfigWizard from '../hooks/useFeatureConfigWizard.js'
 
@@ -87,6 +88,12 @@ export const FeatureConfigWizard = () => {
       titleKey: 'workspace.wizard.billing.title',
       descKey: 'workspace.wizard.billing.desc',
       icon: cilMoney,
+    },
+    {
+      id: 'staff',
+      titleKey: 'workspace.wizard.staff.title',
+      descKey: 'workspace.wizard.staff.desc',
+      icon: cilPeople,
     },
   ]
 

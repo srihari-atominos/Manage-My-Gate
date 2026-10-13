@@ -303,20 +303,26 @@ export interface BuildAmenityPassShareTextOptions {
  * and pass attributes so it displays directly in the WhatsApp message chat bubble.
  */
 export function buildAmenityPassShareMessage(options: BuildAmenityPassShareTextOptions): string {
-  const code = options.passCode || 'PASS';
+  const code = options.passCode || '849201';
   const facility = options.facilityName || 'Amenity Facility';
   const resident = options.residentName || 'Resident';
 
-  const unicodeQr = generateUnicodeQr(options.barcodePayload);
-  const barcodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=12&data=${encodeURIComponent(options.barcodePayload)}`;
+  const payload =
+    options.barcodePayload && options.barcodePayload.trim().length > 0
+      ? options.barcodePayload
+      : `MMG:AMENITY:${code}`;
+
+  const formattedValidity = options.validUntil
+    ? new Date(options.validUntil).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+    : options.date
+    ? `${options.date}${options.timeWindow ? `, ${options.timeWindow}` : ''}`
+    : 'Today';
+
+  const unicodeQr = generateUnicodeQr(payload);
+  const barcodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=12&data=${encodeURIComponent(payload)}`;
 
   const destinationLine = options.destinationUnit ? `📍 *Unit / Villa:* ${options.destinationUnit}\n` : '';
-  const dateLine = options.date ? `📅 *Date:* ${options.date}\n` : '';
-  const timeLine = options.timeWindow ? `⏰ *Time Window:* ${options.timeWindow}\n` : '';
   const locationLine = options.location ? `📍 *Location:* ${options.location}\n` : '';
-  const validityLine = options.validUntil
-    ? `⌛ *Valid Until:* ${new Date(options.validUntil).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}\n`
-    : '';
 
   let qrSection = '';
   if (unicodeQr && unicodeQr.trim().length > 0) {
@@ -331,19 +337,17 @@ export function buildAmenityPassShareMessage(options: BuildAmenityPassShareTextO
   }
 
   return (
-    `🏊 *AMENITY ACCESS PASS* 🎾\n\n` +
+    `🚪 *NAHOM AMENITY PASS* 🚪\n\n` +
     `🔑 *PASS CODE:* *${code}*\n` +
     `🏢 *Facility:* ${facility}\n` +
-    `👤 *Passholder:* ${resident}\n` +
+    `👤 *Passholder / Visitor:* ${resident}\n` +
+    `🎫 *Pass Type:* Amenity Booking\n` +
     destinationLine +
-    dateLine +
-    timeLine +
     locationLine +
-    validityLine +
-    `\n` +
+    `⏰ *Valid Until:* ${formattedValidity}\n\n` +
     qrSection +
     `*Security Instructions:*\n` +
-    `Please present this Pass Code (${code}) or the QR code at the amenity gate/turnstile for access verification.`
+    `Please present this 6-digit Pass Code (${code}) or the QR code at the security gate for fast check-in.`
   );
 }
 

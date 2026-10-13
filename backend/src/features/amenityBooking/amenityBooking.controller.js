@@ -200,6 +200,17 @@ export class AmenityBookingController {
     } catch (error) { next(error); }
   }
 
+  async checkOutBooking(req, res, next) {
+    try {
+      const { id } = req.params;
+      const orgId = req.tenant.orgId;
+      const userId = req.user.id;
+      const { inspectionDetails } = req.body || {};
+      const checkedOut = await amenityBookingService.checkOutBooking(id, orgId, userId, inspectionDetails);
+      res.success(checkedOut, checkedOut.message || 'Checked out successfully');
+    } catch (error) { next(error); }
+  }
+
   async getRecentScans(req, res, next) {
     try {
       const scans = await amenityBookingService.getRecentScans(req.tenant.orgId);

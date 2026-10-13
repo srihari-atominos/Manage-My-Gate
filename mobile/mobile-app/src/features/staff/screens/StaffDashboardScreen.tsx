@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, ScrollView, RefreshControl, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
@@ -10,29 +10,38 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { StaffProfileCard } from '../components/StaffProfileCard';
 import { StaffQrPassModal } from '../components/StaffQrPassModal';
 import { StaffAttendanceCard } from '../components/StaffAttendanceCard';
+import { StaffMemberAttendanceModal } from '../components/StaffMemberAttendanceModal';
 import { useStaffDashboard } from '../hooks/useStaffDashboard';
 import {
   LogOut,
   ClipboardList,
   ChevronRight,
   ShieldAlert,
-  UserX,
-  RotateCw,
-  Info,
   QrCode,
   CalendarClock,
   CheckCircle2,
   Home,
   UserCheck,
+  Check,
+  X,
+  History,
 } from 'lucide-react-native';
 
 interface StaffDashboardScreenProps {
   embeddedMode?: boolean;
+  onSwitchToDirectory?: () => void;
 }
 
-export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embeddedMode = false }) => {
+export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
+  embeddedMode = false,
+  onSwitchToDirectory,
+}) => {
   const router = useRouter();
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showAttendanceHistoryModal, setShowAttendanceHistoryModal] = useState(false);
+  const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
+  const [rejectingAllocationId, setRejectingAllocationId] = useState<string | null>(null);
+
   const {
     myProfile,
     isLoading,
@@ -55,11 +64,47 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
   const activeSession = myAttendanceRecords?.find((s) => s.status === 'Open');
   const recentAttendance = (myAttendanceRecords || []).slice(0, 3);
 
+  const handleNavigateToDirectory = () => {
+    if (onSwitchToDirectory) {
+      onSwitchToDirectory();
+    } else {
+      router.push('/admin/staff');
+    }
+  };
+
+  const onAcceptPress = async (allocId: string) => {
+    try {
+      setActionInProgressId(allocId);
+      await handleAcceptAllocation(allocId);
+      Alert.alert('Assignment Accepted', 'You have successfully accepted the unit allocation.');
+      refreshProfile();
+    } catch (err: any) {
+      Alert.alert('Action Failed', err?.message || 'Could not accept the assignment. Please try again.');
+    } finally {
+      setActionInProgressId(null);
+    }
+  };
+
+  const onConfirmReject = async () => {
+    if (!rejectingAllocationId) return;
+    try {
+      setActionInProgressId(rejectingAllocationId);
+      await handleRejectAllocation(rejectingAllocationId, 'Declined by staff member');
+      Alert.alert('Assignment Declined', 'The household allocation request has been rejected.');
+      refreshProfile();
+    } catch (err: any) {
+      Alert.alert('Action Failed', err?.message || 'Could not decline the assignment. Please try again.');
+    } finally {
+      setActionInProgressId(null);
+      setRejectingAllocationId(null);
+    }
+  };
+
   const content = (
     <View className="flex-1">
       <ScrollView
-        className="flex-1 px-4 pt-4"
-        contentContainerStyle={{ paddingBottom: 60 }}
+        className="flex-1"
+        contentContainerClassName="p-4 gap-4 pb-32"
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -86,26 +131,21 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
             <EmptyState
               title="Staff Portal & Digital Pass"
               description={
-                'This tab is the personal self-service portal for staff members to access their cryptographic gate QR pass, view shift logs, and manage resident household assignment requests.\n\nYour current logged-in account is an Administrator. To test or use this portal as a staff member, link your account to a staff profile in the Directory tab or sign in as a staff member.'
+                'You are currently logged in as an Administrator/Resident.\n\nThis portal displays personal staff QR attendance passes, assigned work orders, and household assignment requests when your account is registered as a staff member.\n\nTo manage staff members or register yourself as staff, visit the Staff Directory.'
               }
               icon={UserCheck}
-              actionLabel="Go to Staff Directory"
-              onAction={() => router.push('/admin/staff')}
             />
           </View>
         ) : (
-          /* 4. Verified Staff Self-Service View */
-          <View>
-            <StaffProfileCard
-              member={myProfile}
-              activeOrgId={activeOrgId}
-            />
+          /* 4. Compact & Clean Staff Self-Service View */
+          <View className="gap-4">
+            {/* Staff Profile Card */}
+            <StaffProfileCard member={myProfile} activeOrgId={activeOrgId} />
 
-            {/* Quick Self-Service Actions */}
-            {/* Household Requests (Pending Resident Invitations) */}
+            {/* A. Pending Household Assignment Requests (Prominent & Actionable) */}
             {pendingAllocations.length > 0 && (
-              <View className="mt-2 mb-4">
-                <View className="flex-row items-center justify-between mb-2">
+              <View className="gap-2.5">
+                <View className="flex-row items-center justify-between">
                   <Text className="text-base font-bold text-foreground">
                     Household Allocation Requests ({pendingAllocations.length})
                   </Text>
@@ -117,44 +157,70 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
                 </View>
 
                 {pendingAllocations.map((alloc) => {
-                  const unitLabel = `${alloc.villaId?.unitNumber || 'Unit'}${alloc.villaId?.blockOrBuilding ? ` (${alloc.villaId.blockOrBuilding})` : ''}`;
+                  const unitLabel = `${alloc.villaId?.unitNumber || 'Unit'}${
+                    alloc.villaId?.blockOrBuilding ? ` (${alloc.villaId.blockOrBuilding})` : ''
+                  }`;
                   const requestedBy = alloc.associatedBy?.name || 'Resident';
+                  const isBusy = actionInProgressId === alloc._id;
+
                   return (
                     <View
                       key={alloc._id}
-                      className="p-4 rounded-2xl bg-card border border-amber-500/30 mb-3 shadow-sm"
+                      className="p-4 rounded-2xl bg-card border border-amber-500/40 shadow-xs"
                     >
                       <View className="flex-row items-center justify-between mb-2">
-                        <View className="flex-row items-center">
-                          <Home size={18} className="text-amber-600 dark:text-amber-400 me-2" />
-                          <Text className="text-base font-bold text-foreground">
-                            {unitLabel}
+                        <View className="flex-row items-center flex-1 me-2">
+                          <View className="h-9 w-9 rounded-xl bg-amber-500/10 items-center justify-center me-2.5">
+                            <Home size={18} className="text-amber-600 dark:text-amber-400" />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
+                              {unitLabel}
+                            </Text>
+                            <Text className="text-xs text-muted-foreground mt-0.5">
+                              {alloc.roleOrTrade || 'Staff Duty'}
+                            </Text>
+                          </View>
+                        </View>
+                        <View className="px-2 py-0.5 rounded-full bg-amber-500/10">
+                          <Text className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                            Awaiting Response
                           </Text>
                         </View>
-                        <Text className="text-xs text-muted-foreground font-medium">
-                          {alloc.roleOrTrade || 'Staff Duty'}
-                        </Text>
                       </View>
 
-                      <Text className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                        Resident <Text className="font-semibold text-foreground">{requestedBy}</Text> has requested to assign you to their household.
+                      <Text className="text-xs text-muted-foreground mb-3.5 leading-relaxed">
+                        Resident <Text className="font-semibold text-foreground">{requestedBy}</Text> has invited you to assist their household.
                         {alloc.notes ? ` Note: "${alloc.notes}"` : ''}
                       </Text>
 
-                      <View className="flex-row items-center gap-2">
+                      {/* Visible Action Row */}
+                      <View className="flex-row items-center gap-2 pt-1 border-t border-border/50">
                         <Button
                           variant="outline"
-                          className="flex-1 py-2"
-                          onPress={() => handleRejectAllocation(alloc._id)}
+                          className="flex-1 h-10 border-destructive/30 active:bg-destructive/10 flex-row items-center justify-center gap-1.5"
+                          onPress={() => setRejectingAllocationId(alloc._id)}
+                          disabled={isBusy}
+                          accessibilityLabel={`Decline allocation for ${unitLabel}`}
                         >
+                          <X size={15} className="text-destructive" />
                           <Text className="text-xs font-semibold text-destructive">Decline</Text>
                         </Button>
                         <Button
                           variant="default"
-                          className="flex-1 py-2"
-                          onPress={() => handleAcceptAllocation(alloc._id)}
+                          className="flex-1 h-10 flex-row items-center justify-center gap-1.5"
+                          onPress={() => onAcceptPress(alloc._id)}
+                          disabled={isBusy}
+                          accessibilityLabel={`Accept allocation for ${unitLabel}`}
                         >
-                          <Text className="text-xs font-bold text-white">Accept Invitation</Text>
+                          {isBusy ? (
+                            <ActivityIndicator size="small" color="#ffffff" />
+                          ) : (
+                            <>
+                              <Check size={15} className="text-primary-foreground" />
+                              <Text className="text-xs font-bold text-primary-foreground">Accept</Text>
+                            </>
+                          )}
                         </Button>
                       </View>
                     </View>
@@ -163,35 +229,42 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
               </View>
             )}
 
-            {/* Allocated Houses (Active Associations) */}
-            <View className="mt-2 mb-4">
-              <View className="flex-row items-center justify-between mb-3">
+            {/* B. Allocated Units Section */}
+            <View className="gap-2.5">
+              <View className="flex-row items-center justify-between">
                 <Text className="text-base font-bold text-foreground">
-                  Allocated Houses ({activeAllocations.length})
+                  Allocated Units ({activeAllocations.length})
                 </Text>
+                {activeAllocations.length > 0 && (
+                  <Text className="text-xs text-muted-foreground">
+                    Active Household Access
+                  </Text>
+                )}
               </View>
 
               {activeAllocations.length === 0 ? (
-                <View className="p-4 rounded-2xl bg-card border border-border mb-3 items-center justify-center">
+                <View className="p-4 rounded-2xl bg-card border border-border items-center justify-center">
                   <Home size={22} className="text-muted-foreground/60 mb-1.5" />
                   <Text className="text-xs text-muted-foreground text-center">
-                    No residential units currently allocated. When residents assign you to their unit and you accept, they will appear here.
+                    No residential units currently allocated. Accepted household invitations will appear here.
                   </Text>
                 </View>
               ) : (
-                activeAllocations.slice(0, 3).map((alloc) => {
-                  const unitLabel = `${alloc.villaId?.unitNumber || 'Unit'}${alloc.villaId?.blockOrBuilding ? ` (${alloc.villaId.blockOrBuilding})` : ''}`;
+                activeAllocations.map((alloc) => {
+                  const unitLabel = `${alloc.villaId?.unitNumber || 'Unit'}${
+                    alloc.villaId?.blockOrBuilding ? ` (${alloc.villaId.blockOrBuilding})` : ''
+                  }`;
                   return (
                     <View
                       key={alloc._id}
-                      className="flex-row items-center justify-between p-3.5 rounded-2xl bg-card border border-border mb-2.5 shadow-sm"
+                      className="flex-row items-center justify-between p-3.5 rounded-2xl bg-card border border-border shadow-xs"
                     >
                       <View className="flex-row items-center flex-1 me-2">
                         <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center me-3">
                           <Home size={18} className="text-primary" />
                         </View>
                         <View className="flex-1">
-                          <Text className="text-sm font-bold text-foreground">
+                          <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
                             {unitLabel}
                           </Text>
                           <Text className="text-xs text-muted-foreground mt-0.5">
@@ -199,9 +272,9 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
                           </Text>
                         </View>
                       </View>
-                      <View className="px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                      <View className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                         <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                          Authorized
+                          Active
                         </Text>
                       </View>
                     </View>
@@ -210,16 +283,16 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
               )}
             </View>
 
-            {/* Quick Self-Service Actions */}
-            <View className="mt-2 mb-4">
-              <Text className="text-base font-bold text-foreground mb-3">
+            {/* C. Assigned Work & Duties */}
+            <View className="gap-2.5">
+              <Text className="text-base font-bold text-foreground">
                 Assigned Work & Duties
               </Text>
 
               {/* Digital Gate QR Pass Card */}
               <TouchableOpacity
                 onPress={() => setShowQrModal(true)}
-                className="flex-row items-center justify-between p-4 rounded-2xl bg-card border border-border mb-3 shadow-sm active:bg-muted/40"
+                className="flex-row items-center justify-between p-4 rounded-2xl bg-card border border-border shadow-xs active:opacity-80"
                 accessibilityRole="button"
                 accessibilityLabel="View staff digital QR pass for gate attendance"
               >
@@ -242,7 +315,7 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
               {/* Assignee Queue / Work Orders Card */}
               <TouchableOpacity
                 onPress={() => router.push('/(resident)/complaints/assignee' as any)}
-                className="flex-row items-center justify-between p-4 rounded-2xl bg-card border border-border mb-3 shadow-sm active:bg-muted/40"
+                className="flex-row items-center justify-between p-4 rounded-2xl bg-card border border-border shadow-xs active:opacity-80"
                 accessibilityRole="button"
                 accessibilityLabel="View assigned work orders"
               >
@@ -263,57 +336,63 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
               </TouchableOpacity>
             </View>
 
-            {/* Gate Attendance & On-Site Status */}
-            <View className="mb-4">
-              <View className="flex-row items-center justify-between mb-3">
+            {/* D. Gate Attendance & History */}
+            <View className="gap-2.5">
+              <View className="flex-row items-center justify-between">
                 <Text className="text-base font-bold text-foreground">
-                  Gate Attendance & History
+                  Gate Attendance
                 </Text>
-                {activeSession ? (
-                  <View className="flex-row items-center px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                    <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400 me-1.5" />
-                    <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      Currently On-Site
-                    </Text>
-                  </View>
-                ) : (
-                  <View className="px-2.5 py-1 rounded-full bg-muted border border-border">
-                    <Text className="text-xs font-semibold text-muted-foreground">
-                      Off-Site
-                    </Text>
-                  </View>
-                )}
+                <View className="flex-row items-center gap-2">
+                  {activeSession ? (
+                    <View className="flex-row items-center px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                      <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 me-1" />
+                      <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        On-Site
+                      </Text>
+                    </View>
+                  ) : (
+                    <View className="px-2.5 py-0.5 rounded-full bg-muted border border-border">
+                      <Text className="text-xs font-semibold text-muted-foreground">
+                        Off-Site
+                      </Text>
+                    </View>
+                  )}
+
+                  {myAttendanceRecords && myAttendanceRecords.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setShowAttendanceHistoryModal(true)}
+                      className="flex-row items-center px-2 py-0.5 rounded-lg active:bg-muted"
+                      accessibilityRole="button"
+                      accessibilityLabel="View all attendance records"
+                    >
+                      <History size={13} className="text-primary me-1" />
+                      <Text className="text-xs font-semibold text-primary">All ({myAttendanceRecords.length})</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
-              {/* Attendance Preview List (Max 3 Items) */}
+              {/* Attendance Preview List (Strict Max 3 Items) */}
               {isAttendanceLoading && recentAttendance.length === 0 ? (
                 <SkeletonLoader count={2} />
               ) : recentAttendance.length === 0 ? (
                 <View className="p-4 rounded-2xl bg-card border border-border items-center justify-center">
-                  <CalendarClock size={24} className="text-muted-foreground/60 mb-2" />
+                  <CalendarClock size={22} className="text-muted-foreground/60 mb-1.5" />
                   <Text className="text-xs text-muted-foreground text-center">
                     No gate check-in or checkout activity recorded yet. Show your QR pass at the security gate to record attendance.
                   </Text>
                 </View>
               ) : (
                 recentAttendance.map((rec) => (
-                  <StaffAttendanceCard key={rec._id} record={rec} />
+                  <StaffAttendanceCard key={rec._id} record={rec} hideStaffHeader={true} />
                 ))
               )}
-            </View>
-
-            {/* Access Boundary Notice */}
-            <View className="p-4 rounded-2xl bg-muted/40 border border-border flex-row items-start">
-              <Info size={16} className="text-muted-foreground me-2.5 mt-0.5" />
-              <Text className="text-xs text-muted-foreground flex-1 leading-relaxed">
-                Self-Service Portal: You are viewing your personal profile and assigned tasks. Community-wide registry management and resident administration are restricted to authorized administrators.
-              </Text>
             </View>
           </View>
         )}
       </ScrollView>
 
-      {/* Staff QR Pass Bottom Sheet */}
+      {/* Staff QR Pass Modal */}
       {myProfile ? (
         <StaffQrPassModal
           visible={showQrModal}
@@ -321,6 +400,30 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
           staffMember={myProfile}
         />
       ) : null}
+
+      {/* Staff Attendance History Dossier Modal */}
+      {myProfile ? (
+        <StaffMemberAttendanceModal
+          visible={showAttendanceHistoryModal}
+          onClose={() => setShowAttendanceHistoryModal(false)}
+          staffName={myProfile.name || 'Staff Member'}
+          department={myProfile.department}
+          records={myAttendanceRecords || []}
+        />
+      ) : null}
+
+      {/* Decline Assignment Confirmation Modal */}
+      <ConfirmationModal
+        visible={Boolean(rejectingAllocationId)}
+        title="Decline Household Allocation"
+        message="Are you sure you want to decline this resident household allocation request?"
+        confirmLabel="Decline"
+        cancelLabel="Keep Pending"
+        onConfirm={onConfirmReject}
+        onCancel={() => setRejectingAllocationId(null)}
+        variant="danger"
+        loading={Boolean(actionInProgressId)}
+      />
 
       {/* Logout Confirmation Dialog */}
       <ConfirmationModal
@@ -348,11 +451,11 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({ embe
       headerRight={
         <TouchableOpacity
           onPress={confirmLogout}
-          className="p-2 rounded-xl bg-destructive/10 border border-destructive/20 items-center justify-center"
+          className="h-9 w-9 rounded-xl bg-destructive/10 border border-destructive/20 items-center justify-center"
           accessibilityRole="button"
           accessibilityLabel="Sign out of staff portal"
         >
-          <LogOut size={18} className="text-destructive" />
+          <LogOut size={16} className="text-destructive" />
         </TouchableOpacity>
       }
     >

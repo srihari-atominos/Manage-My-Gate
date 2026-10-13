@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "318481443027",
+    "project_id": "nahom-b1a8c",
+    "storage_bucket": "nahom-b1a8c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:318481443027:android:9ccb554cc38cd68ce04c26",
+        "android_client_info": {
+          "package_name": "com.atominosconsulting.nahom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAD5_NHKgr8cmiSNjHtxHt_P-jyMcvJQJY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
 import { FAB } from '@/components/ui/FAB';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { EmptyState } from '@/components/feedback/EmptyState';
@@ -172,6 +173,7 @@ export const ResidentStaffScreen: React.FC<ResidentStaffScreenProps> = ({ embedd
             label="Associate Staff"
             iconName="Plus"
             onPress={() => setIsAssociateModalOpen(true)}
+            className="bottom-28 z-50 shadow-lg"
           />
         )}
 
@@ -210,6 +212,20 @@ export const ResidentStaffScreen: React.FC<ResidentStaffScreenProps> = ({ embedd
       subtitle="Household & Private Associates"
       iconName="UsersRound"
       showBackButton
+      headerRight={
+        hasAssignPermission ? (
+          <Button
+            size="sm"
+            variant="default"
+            className="h-9 px-3 flex-row items-center gap-1 shadow-xs"
+            onPress={() => setIsAssociateModalOpen(true)}
+            accessibilityLabel="Associate Staff to Unit"
+          >
+            <Plus size={16} className="text-primary-foreground" />
+            <Text className="text-xs font-bold text-primary-foreground">Associate Staff</Text>
+          </Button>
+        ) : undefined
+      }
     >
       {content}
     </ScreenShell>

@@ -46,7 +46,12 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
   
   const filterWarning = (msg: any) => {
     if (typeof msg === 'string') {
-      if (msg.includes('textShadow') || msg.includes('Cross-Origin-Opener-Policy') || msg.includes('window.closed')) return true;
+      if (
+        msg.includes('textShadow') ||
+        msg.includes('Cross-Origin-Opener-Policy') ||
+        msg.includes('window.closed') ||
+        msg.includes("The action 'GO_BACK' was not handled")
+      ) return true;
     }
     return false;
   };

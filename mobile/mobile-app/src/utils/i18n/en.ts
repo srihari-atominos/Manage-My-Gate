@@ -111,6 +111,8 @@ export const en: Record<string, string> = {
   'cat_resident': 'Resident',
   'cat_security': 'Security',
   'cat_staff': 'Staff',
+  'cat_staff_sub': 'Registry, Duty & Household Passes',
+  'cat_staff_management': 'Staff Management',
   'cat_visitor_sub': 'Security & Gate Access',
   'cat_wallet_sub': 'Prepaid Balance & Ledger',
   'cat_digital_wallet': 'Digital Wallet & Ledger',

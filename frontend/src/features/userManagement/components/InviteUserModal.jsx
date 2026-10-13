@@ -62,7 +62,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
 
   const selectedRoleObj = roles.find((r) => r.name === selectedRoleName)
   const isTenantRole = selectedRoleObj ? selectedRoleObj.isTenantRole : false
-  const isStaff = isStaffRole(selectedRoleName)
+  const isStaff = isStaffRole(selectedRoleName) || selectedRoleObj?.roleScope === 'STAFF'
 
   useEffect(() => {
     if (visible) {

@@ -33,6 +33,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
   const [status, setStatus] = useState<StaffStatus>('Active');
   const [designation, setDesignation] = useState('');
   const [staffCode, setStaffCode] = useState('');
+  const [qrValidFrom, setQrValidFrom] = useState('');
   const [qrValidUntil, setQrValidUntil] = useState('');
   const [shiftStartTime, setShiftStartTime] = useState('08:00');
   const [shiftEndTime, setShiftEndTime] = useState('18:00');
@@ -52,6 +53,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
         setStatus(member.status || 'Active');
         setDesignation(member.designation || '');
         setStaffCode(member.staffCode || '');
+        setQrValidFrom((member as any).qrValidFrom ? new Date((member as any).qrValidFrom).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
         setQrValidUntil((member as any).qrValidUntil ? new Date((member as any).qrValidUntil).toISOString().split('T')[0] : '');
         setShiftStartTime((member as any).shiftWindow?.startTime || '08:00');
         setShiftEndTime((member as any).shiftWindow?.endTime || '18:00');
@@ -64,7 +66,9 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
         setStatus('Active');
         setDesignation('');
         setStaffCode('');
-        // Default pass validity: 1 year from today
+        // Default pass validity: Start today, expire 1 year from today
+        const today = new Date();
+        setQrValidFrom(today.toISOString().split('T')[0]);
         const oneYear = new Date();
         oneYear.setFullYear(oneYear.getFullYear() + 1);
         setQrValidUntil(oneYear.toISOString().split('T')[0]);
@@ -109,6 +113,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
         status,
         designation: designation.trim() || undefined,
         staffCode: staffCode.trim() || undefined,
+        qrValidFrom: qrValidFrom ? new Date(qrValidFrom).toISOString() : undefined,
         qrValidUntil: qrValidUntil ? new Date(qrValidUntil).toISOString() : undefined,
         shiftWindow: {
           startTime: shiftStartTime || '08:00',
@@ -236,14 +241,28 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
               Pass Validity & Daily Shift Schedule
             </Text>
 
-            <TextInput
-              label="Pass Expiration Date (YYYY-MM-DD)"
-              placeholder="e.g. 2026-12-31"
-              value={qrValidUntil}
-              onChangeText={setQrValidUntil}
-              helperText="HMAC QR access will automatically expire on this date"
-              editable={!isSubmitting}
-            />
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <TextInput
+                  label="Pass Start Date (YYYY-MM-DD)"
+                  placeholder="e.g. 2026-01-01"
+                  value={qrValidFrom}
+                  onChangeText={setQrValidFrom}
+                  helperText="Access active from"
+                  editable={!isSubmitting}
+                />
+              </View>
+              <View className="flex-1">
+                <TextInput
+                  label="Pass Expire Date (YYYY-MM-DD)"
+                  placeholder="e.g. 2026-12-31"
+                  value={qrValidUntil}
+                  onChangeText={setQrValidUntil}
+                  helperText="Access expires on"
+                  editable={!isSubmitting}
+                />
+              </View>
+            </View>
 
             <View className="flex-row gap-3">
               <View className="flex-1">

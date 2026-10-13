@@ -809,12 +809,12 @@ export class PlatformPaymentService {
 
       const selectedPlan = quote?.pricingSnapshot?.planName || quote?.pricingSnapshot?.tier || quote?.planName || inquiry?.planName || 'COMMUNITY_STARTER';
       
-      let basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'notices'];
+      let basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'notices', 'staff'];
       const planUpper = String(selectedPlan).toUpperCase();
       if (planUpper.includes('STARTER')) {
-        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints'];
+        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'staff'];
       } else if (planUpper.includes('ENTERPRISE')) {
-        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'amenities', 'notices', 'integrations', 'billing'];
+        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'amenities', 'notices', 'integrations', 'billing', 'staff'];
       }
 
       const addOns = quote?.pricingSnapshot?.selectedAddOns || inquiry?.selectedFeatures || [];

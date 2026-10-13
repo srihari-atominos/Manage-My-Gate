@@ -128,7 +128,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   const validateRow = (row: InviteRowItem, currentRoles = roles, allRows: InviteRowItem[] = rows, currentVillas = villas): InviteRowItem => {
     const selectedRoleObj = currentRoles.find((r) => r.name === row.roleName);
     const isTenantRole = selectedRoleObj ? !!selectedRoleObj.isTenantRole : false;
-    const isStaff = isStaffRole(row.roleName);
+    const isStaff = isStaffRole(row.roleName) || selectedRoleObj?.roleScope === 'STAFF';
     
     // For staff roles (Household Staff or Community Staff), unit is optional (assigned = unit household staff; unassigned = community facility staff)
     if (isTenantRole && !isStaff && !row.villaId) {

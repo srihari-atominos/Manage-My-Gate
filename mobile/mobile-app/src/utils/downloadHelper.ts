@@ -28,11 +28,13 @@ export const downloadCSVFile = async (content: string | Blob, fileName: string) 
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = fileName;
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 200);
     } else {
       const fs = LegacyFileSystem || {};
       const docDir = fs.documentDirectory || fs.cacheDirectory || '';
@@ -50,61 +52,88 @@ export const downloadCSVFile = async (content: string | Blob, fileName: string) 
           UTI: 'public.comma-separated-values-text',
         });
       } else {
-        Alert.alert('Template File Saved', `CSV template saved at:\n${fileUri}`);
+        Alert.alert('File Saved', `CSV file saved at:\n${fileUri}`);
       }
     }
   } catch (err: any) {
     console.error('Download CSV error:', err);
-    Alert.alert('Download Error', 'Could not generate or save CSV template file.');
+    Alert.alert('Download Error', err?.message || 'Could not generate or save CSV file.');
   }
 };
 
-export const downloadExcelFile = async (blob: Blob, fileName: string) => {
+export const downloadExcelFile = async (data: Blob | string | Uint8Array, fileName: string) => {
   try {
+    let excelBlob: Blob;
+
+    if (typeof data === 'string') {
+      // Base64 string from XLSX.write
+      const cleanB64 = data.replace(/^data:.*,/, '');
+      const binaryString = atob(cleanB64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      excelBlob = new Blob([bytes.buffer as ArrayBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    } else if (data instanceof Uint8Array) {
+      excelBlob = new Blob([data.buffer as ArrayBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    } else {
+      excelBlob = data as Blob;
+    }
+
     if (Platform.OS === 'web') {
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(excelBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = fileName;
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 200);
     } else {
       const fs = LegacyFileSystem || {};
       const docDir = fs.documentDirectory || fs.cacheDirectory || '';
       const fileUri = `${docDir}${fileName}`;
       
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const result = reader.result as string;
-        // result is a data URL like data:application/vnd...;base64,...
-        const base64Data = result.split(',')[1];
-        
-        if (fs.writeAsStringAsync) {
-          await fs.writeAsStringAsync(fileUri, base64Data, {
-            encoding: 'base64',
-          });
-        }
+      let base64Data = '';
+      if (typeof data === 'string') {
+        base64Data = data.replace(/^data:.*,/, '');
+      } else {
+        const reader = new FileReader();
+        base64Data = await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const res = reader.result as string;
+            resolve(res.split(',')[1] || res);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(excelBlob);
+        });
+      }
 
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            dialogTitle: `Save or Share ${fileName}`,
-            UTI: 'com.microsoft.excel.xls',
-          });
-        } else {
-          Alert.alert('Template File Saved', `Excel template saved at:\n${fileUri}`);
-        }
-      };
-      reader.onerror = () => {
-        console.error('FileReader error while converting Blob to Base64');
-        Alert.alert('Download Error', 'Could not read Blob data.');
-      };
-      reader.readAsDataURL(blob);
+      if (fs.writeAsStringAsync) {
+        await fs.writeAsStringAsync(fileUri, base64Data, {
+          encoding: 'base64',
+        });
+      }
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          dialogTitle: `Save or Share ${fileName}`,
+          UTI: 'com.microsoft.excel.xls',
+        });
+      } else {
+        Alert.alert('File Saved', `Excel file saved at:\n${fileUri}`);
+      }
     }
   } catch (err: any) {
     console.error('Download Excel error:', err);
-    Alert.alert('Download Error', 'Could not generate or save Excel template file.');
+    Alert.alert('Download Error', err?.message || 'Could not generate or save Excel file.');
   }
 };

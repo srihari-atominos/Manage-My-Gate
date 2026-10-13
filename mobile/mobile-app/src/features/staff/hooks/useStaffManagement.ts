@@ -83,9 +83,19 @@ export function useStaffManagement() {
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
-  // UI Filter state (Attendance Reporting)
+  // UI Filter state (Attendance Reporting) - strictly 4 criteria: Session Status, Department, Date Period, Custom Date
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState<string>('ALL');
+  const [attendanceDepartmentFilter, setAttendanceDepartmentFilter] = useState<string>('ALL');
+  const [attendanceStartDate, setAttendanceStartDate] = useState<string>('');
+  const [attendanceEndDate, setAttendanceEndDate] = useState<string>('');
+  const [attendancePeriodPreset, setAttendancePeriodPreset] = useState<
+    'today' | 'yesterday' | 'week' | 'this_month' | 'last_month' | 'custom' | 'all'
+  >('all');
+  const [attendanceSearch, setAttendanceSearch] = useState<string>('');
+
+  // Legacy compatibility fallbacks
   const [attendanceGateFilter, setAttendanceGateFilter] = useState<string>('ALL');
+  const [attendanceStaffFilter, setAttendanceStaffFilter] = useState<string>('ALL');
 
   // Load data for active community
   const loadStaff = useCallback(() => {
@@ -96,10 +106,27 @@ export function useStaffManagement() {
   const loadAttendance = useCallback(
     (params?: any) => {
       if (!hasViewPermission) return;
-      dispatch(fetchAttendanceStatsThunk(params));
-      dispatch(fetchAttendanceHistoryThunk(params));
+      const queryParams: any = { ...params };
+      if (attendanceStartDate) queryParams.startDate = attendanceStartDate;
+      if (attendanceEndDate) queryParams.endDate = attendanceEndDate;
+      if (attendanceStatusFilter !== 'ALL' && attendanceStatusFilter !== 'Missing Checkout') {
+        queryParams.status = attendanceStatusFilter;
+      }
+      if (attendanceDepartmentFilter !== 'ALL') queryParams.department = attendanceDepartmentFilter;
+      if (attendanceSearch.trim()) queryParams.search = attendanceSearch.trim();
+
+      dispatch(fetchAttendanceStatsThunk(queryParams));
+      dispatch(fetchAttendanceHistoryThunk(queryParams));
     },
-    [dispatch, hasViewPermission]
+    [
+      dispatch,
+      hasViewPermission,
+      attendanceStartDate,
+      attendanceEndDate,
+      attendanceStatusFilter,
+      attendanceDepartmentFilter,
+      attendanceSearch,
+    ]
   );
 
   // Invalidate and reload when active community changes
@@ -207,6 +234,18 @@ export function useStaffManagement() {
   const filteredAttendanceRecords = useMemo(() => {
     let result = [...attendanceRecords];
 
+    if (attendanceSearch.trim()) {
+      const q = attendanceSearch.toLowerCase().trim();
+      result = result.filter((r) => {
+        const staffObj = typeof r.technicianId === 'object' && r.technicianId ? r.technicianId : null;
+        const name = (staffObj?.name || r.staffCode || '').toLowerCase();
+        const dept = (staffObj?.department || '').toLowerCase();
+        const code = (r.staffCode || staffObj?.staffCode || '').toLowerCase();
+        const gate = (r.checkInGate || r.exitGate || '').toLowerCase();
+        return name.includes(q) || dept.includes(q) || code.includes(q) || gate.includes(q);
+      });
+    }
+
     if (attendanceStatusFilter === 'Open') {
       result = result.filter((r) => r.status === 'Open' && !r.isMissingCheckout);
     } else if (attendanceStatusFilter === 'Closed') {
@@ -215,14 +254,37 @@ export function useStaffManagement() {
       result = result.filter((r) => Boolean(r.isMissingCheckout));
     }
 
-    if (attendanceGateFilter !== 'ALL') {
-      result = result.filter(
-        (r) => r.checkInGate === attendanceGateFilter || r.exitGate === attendanceGateFilter
-      );
+    if (attendanceDepartmentFilter !== 'ALL') {
+      result = result.filter((r) => {
+        const staffObj = typeof r.technicianId === 'object' && r.technicianId ? r.technicianId : null;
+        return staffObj?.department === attendanceDepartmentFilter;
+      });
+    }
+
+    // Client-side date boundary matching
+    if (attendanceStartDate) {
+      const start = new Date(`${attendanceStartDate}T00:00:00.000Z`).getTime();
+      if (!isNaN(start)) {
+        result = result.filter((r) => new Date(r.checkInTime).getTime() >= start);
+      }
+    }
+
+    if (attendanceEndDate) {
+      const end = new Date(`${attendanceEndDate}T23:59:59.999Z`).getTime();
+      if (!isNaN(end)) {
+        result = result.filter((r) => new Date(r.checkInTime).getTime() <= end);
+      }
     }
 
     return result;
-  }, [attendanceRecords, attendanceStatusFilter, attendanceGateFilter]);
+  }, [
+    attendanceRecords,
+    attendanceSearch,
+    attendanceStatusFilter,
+    attendanceDepartmentFilter,
+    attendanceStartDate,
+    attendanceEndDate,
+  ]);
 
   return {
     // Auth & Permission
@@ -246,11 +308,25 @@ export function useStaffManagement() {
     isAttendanceLoading,
     attendanceError,
 
-    // Attendance Filters
+    // Attendance Filters (Strict 4 Criteria)
     attendanceStatusFilter,
     setAttendanceStatusFilter,
+    attendanceDepartmentFilter,
+    setAttendanceDepartmentFilter,
+    attendanceStartDate,
+    setAttendanceStartDate,
+    attendanceEndDate,
+    setAttendanceEndDate,
+    attendancePeriodPreset,
+    setAttendancePeriodPreset,
+    attendanceSearch,
+    setAttendanceSearch,
+
+    // Backwards-compat
     attendanceGateFilter,
     setAttendanceGateFilter,
+    attendanceStaffFilter,
+    setAttendanceStaffFilter,
 
     // Filters
     searchQuery,

@@ -1,18 +1,22 @@
 import React, { memo, useEffect } from 'react'
 
-const ScanResultCard = memo(({ result, onReset }) => {
+const ScanResultCard = memo(({ result, onReset, onConfirmCheckOut }) => {
+  const canCheckOut = Boolean(result?.canCheckOut)
+
   useEffect(() => {
-    // Automatically close after 5 seconds
+    // Automatically close after 5 seconds only if not awaiting check-out confirmation
+    if (canCheckOut) return
+
     const timer = setTimeout(() => {
       onReset()
     }, 5002)
     return () => clearTimeout(timer)
-  }, [onReset])
+  }, [onReset, canCheckOut])
 
   if (!result) return null
 
   const isSuccess = result.success
-  const isExit = result.pass?.isExit || result.booking?.isExit
+  const isExit = result.pass?.isExit || result.booking?.isExit || result.isExit
   const booking = result.booking || {}
   const resident = result.resident || booking.userId || {}
   const facility = result.facility || booking.amenityId || {}
@@ -21,10 +25,16 @@ const ScanResultCard = memo(({ result, onReset }) => {
   const organisation = result.organisation || {}
   const message = result.message || ''
 
-  // Theme colors based on success or failure
-  const bgColor = isSuccess ? 'bg-success' : 'bg-danger'
-  const icon = isSuccess ? 'fa-check-circle' : 'fa-times-circle'
-  const title = isSuccess ? (isExit ? 'EXIT RECORDED' : 'ACCESS GRANTED') : 'ACCESS DENIED'
+  // Theme colors based on success, failure, or prompt to checkout
+  let bgColor = isSuccess ? 'bg-success' : 'bg-danger'
+  let icon = isSuccess ? 'fa-check-circle' : 'fa-times-circle'
+  let title = isSuccess ? (isExit ? 'EXIT RECORDED' : 'ACCESS GRANTED') : 'ACCESS DENIED'
+
+  if (canCheckOut) {
+    bgColor = 'bg-primary'
+    icon = 'fa-arrow-right-from-bracket'
+    title = 'RESIDENT CURRENTLY INSIDE'
+  }
 
   const photoUrl = resident.photoUrl || resident.profilePicture || resident.avatar || null
   const residentName = resident.name || resident.username || 'Resident'
@@ -32,7 +42,7 @@ const ScanResultCard = memo(({ result, onReset }) => {
     resident.unitNumber || resident.villaNumber || resident.unit || resident.flatNumber || 'N/A'
   const facilityName = facility.name || 'Amenity'
   const passCode = pass.passCode || booking.bookingId || booking.reservationNumber || 'N/A'
-  const checkInTimestamp = pass.checkInTimestamp || booking.checkInTime
+  const checkInTimestamp = pass.checkInTimestamp || booking.checkInTime || booking.checkedInAt
   const checkOutTimestamp = booking.checkOutTime
 
   return (
@@ -45,7 +55,64 @@ const ScanResultCard = memo(({ result, onReset }) => {
         {title}
       </h1>
 
-      {isSuccess ? (
+      {canCheckOut ? (
+        <div
+          className="bg-body text-body rounded-4 p-4 shadow-lg text-center"
+          style={{ width: '100%', maxWidth: '440px', borderTop: '8px solid #0d6efd' }}
+        >
+          <div className="mb-3">
+            <div className="rounded-circle bg-primary bg-opacity-10 d-inline-flex align-items-center justify-content-center p-3 mb-2">
+              <i className="fs-2 fa-solid fa-person-walking-arrow-right text-primary"></i>
+            </div>
+            <h4 className="fw-bold text-primary mb-1">Exit Check-Out Confirmation</h4>
+            <p className="text-muted small mb-0">
+              Resident scanned again while inside the facility.
+            </p>
+          </div>
+
+          <div className="bg-body-secondary p-3 rounded-3 text-start mb-4">
+            <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+              <span className="text-muted small fw-semibold">Resident</span>
+              <span className="fw-bold small">{residentName} ({unitNumber})</span>
+            </div>
+            <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+              <span className="text-muted small fw-semibold">Amenity</span>
+              <span className="fw-bold small">{facilityName}</span>
+            </div>
+            <div className="d-flex justify-content-between border-bottom pb-2 mb-2">
+              <span className="text-muted small fw-semibold">Booking ID</span>
+              <span className="fw-bold small text-primary">{passCode}</span>
+            </div>
+            {checkInTimestamp && (
+              <div className="d-flex justify-content-between">
+                <span className="text-muted small fw-semibold">Checked-In At</span>
+                <span className="fw-medium small">
+                  {new Date(checkInTimestamp).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="d-flex flex-column gap-2">
+            <button
+              className="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm"
+              onClick={() => onConfirmCheckOut(result.token || passCode)}
+            >
+              <i className="fa-solid fa-arrow-right-from-bracket me-2"></i>
+              Confirm Exit Check-Out
+            </button>
+            <button
+              className="btn btn-light rounded-pill fw-semibold text-muted"
+              onClick={onReset}
+            >
+              Keep Inside / Cancel
+            </button>
+          </div>
+        </div>
+      ) : isSuccess ? (
         <div
           className="bg-body text-body rounded-4 p-4 shadow-lg text-center"
           style={{ width: '100%', maxWidth: '420px' }}
@@ -117,9 +184,16 @@ const ScanResultCard = memo(({ result, onReset }) => {
             </div>
           </div>
 
-          <h5 className="text-success fw-bold mb-0">
+          <h5 className="text-success fw-bold mb-3">
             {isExit ? 'Visit Completed Successfully' : 'Entry Validated Successfully'}
           </h5>
+
+          <button
+            className="btn btn-outline-secondary rounded-pill px-4 fw-semibold small"
+            onClick={onReset}
+          >
+            Dismiss
+          </button>
         </div>
       ) : (
         <div

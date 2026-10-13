@@ -12,5 +12,8 @@ export * from './components/UnitStaffCard';
 export * from './components/AssociateStaffModal';
 export * from './screens/StaffDashboardScreen';
 export * from './screens/ResidentStaffScreen';
+export * from './screens/StaffDirectoryScreen';
+export * from './screens/StaffAttendanceScreen';
 export * from './components/StaffAttendanceCard';
 export * from './components/StaffMemberAttendanceModal';
+export * from './components/StaffAttendanceFilterSheet';
