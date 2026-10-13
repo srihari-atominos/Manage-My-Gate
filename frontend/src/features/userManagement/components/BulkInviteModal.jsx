@@ -26,6 +26,9 @@ import * as XLSX from 'xlsx'
 export const isGlobalRoleName = (roleName) => {
   if (!roleName) return false
   const lower = roleName.trim().toLowerCase()
+  if (lower.includes('household staff') || lower.includes('maid') || lower.includes('driver') || lower.includes('cook')) {
+    return false
+  }
   return (
     lower.includes('admin') ||
     lower.includes('security') ||
@@ -76,6 +79,9 @@ const parseCSV = (text) => {
       else if (header === 'phone' || header === 'phone number' || header === 'phone no' || header === 'mobile' || header === 'contact') key = 'phone'
       else if (['name', 'fullname', 'full name', 'username', 'user name', 'resident name', 'staff name', 'member name'].includes(header)) key = 'name'
       else if (header === 'role') key = 'roleName'
+      else if (header === 'department' || header === 'trade') key = 'department'
+      else if (header === 'staff type' || header === 'employment type') key = 'staffType'
+      else if (header === 'designation' || header === 'title') key = 'designation'
       else if (
         header === 'unit number' ||
         header === 'unit no' ||

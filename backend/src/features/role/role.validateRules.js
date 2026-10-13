@@ -23,6 +23,10 @@ export const createRoleRules = [
     .optional()
     .isBoolean()
     .withMessage('isTenantRole must be a boolean'),
+  body('roleScope')
+    .optional()
+    .isIn(['GLOBAL', 'UNIT', 'STAFF'])
+    .withMessage('roleScope must be one of: GLOBAL, UNIT, STAFF'),
   body('integrationMappings')
     .optional()
     .isObject()
@@ -76,6 +80,10 @@ export const updateRoleRules = [
     .optional()
     .isBoolean()
     .withMessage('isTenantRole must be a boolean'),
+  body('roleScope')
+    .optional()
+    .isIn(['GLOBAL', 'UNIT', 'STAFF'])
+    .withMessage('roleScope must be one of: GLOBAL, UNIT, STAFF'),
   body('permissions')
     .optional()
     .isArray()

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import OutboxEvent from '../features/outbox/outboxEvent.model.js';
 import outboxService from '../features/outbox/outbox.service.js';
 import integrationHubService from '../features/integrationHub/integrationHub.service.js';
@@ -6,6 +7,7 @@ import logger from '../utils/logger.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from '../features/user/utils/invite.utils.js';
 import { sendEmail } from '../utils/email.utils.js';
+import staffNotificationService from '../features/staffNotification/staffNotification.service.js';
 
 const DEFAULT_INVITE_BODY = `
 <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -140,6 +142,8 @@ async function processEvent(event) {
     event.eventType === 'POLL_CLOSING_SOON'
   ) {
     await outboxService.processEvent(event);
+  } else if (event.eventType === 'STAFF_GATE_ENTRY') {
+    await staffNotificationService.processStaffEntryEvent(event.payload);
   } else {
     throw new Error(`Unknown event type: ${event.eventType}`);
   }
@@ -149,14 +153,32 @@ async function processEvent(event) {
  * Polls the database for PENDING outbox events using atomic locking (findOneAndUpdate)
  */
 export async function processOutboxEvents() {
+  // Lease recovery: Reset events stuck in PROCESSING for more than 5 minutes back to PENDING
+  try {
+    await OutboxEvent.updateMany(
+      {
+        status: 'PROCESSING',
+        updatedAt: { $lt: new Date(Date.now() - 5 * 60 * 1000) },
+      },
+      {
+        $set: { status: 'PENDING', leaseToken: null, lockedAt: null },
+        $inc: { retries: 1 },
+      }
+    );
+  } catch (leaseErr) {
+    logger.warn(`[Outbox Worker] Lease recovery check warning: ${leaseErr.message}`);
+  }
+
   const batchLimit = 50;
   let processedCount = 0;
 
   while (processedCount < batchLimit) {
-    // Atomically find one PENDING event and mark it as PROCESSING
+    const claimLeaseToken = crypto.randomUUID();
+
+    // Atomically find one PENDING event and mark it as PROCESSING with a unique lease token
     const event = await OutboxEvent.findOneAndUpdate(
       { status: 'PENDING' },
-      { $set: { status: 'PROCESSING' } },
+      { $set: { status: 'PROCESSING', leaseToken: claimLeaseToken, lockedAt: new Date() } },
       { sort: { createdAt: 1 }, returnDocument: 'after' }
     );
 
@@ -166,29 +188,34 @@ export async function processOutboxEvents() {
     }
 
     processedCount++;
-    logger.info(`[Outbox Worker] Locked event ${event._id} (${event.eventType}). Processing...`);
+    logger.info(`[Outbox Worker] Locked event ${event._id} (${event.eventType}) with leaseToken ${claimLeaseToken}. Processing...`);
 
     try {
       await processEvent(event);
       
-      // Update event status to COMPLETED on success
-      event.status = 'COMPLETED';
-      event.error = null;
-      await event.save();
-      logger.info(`[Outbox Worker] Event ${event._id} processed successfully.`);
+      // Atomic lease fencing: only mark COMPLETED if leaseToken matches current claim (not reclaimed)
+      const res = await OutboxEvent.updateOne(
+        { _id: event._id, leaseToken: claimLeaseToken },
+        { $set: { status: 'COMPLETED', error: null }, $unset: { leaseToken: 1, lockedAt: 1 } }
+      );
+      if (res.matchedCount === 0) {
+        logger.warn(`[Outbox Worker] Event ${event._id} was reclaimed by lease recovery while processing (leaseToken mismatch); skipped completion overwrite.`);
+      } else {
+        logger.info(`[Outbox Worker] Event ${event._id} processed successfully.`);
+      }
     } catch (err) {
       logger.error(`[Outbox Worker] Failed to process event ${event._id}: ${err.message}`);
       
-      event.retries += 1;
-      event.error = err.message;
-      
-      // Retry logic: if retries < 3, set back to PENDING, otherwise mark as FAILED
-      if (event.retries < 3) {
-        event.status = 'PENDING';
-      } else {
-        event.status = 'FAILED';
-      }
-      await event.save();
+      const newRetries = (event.retries || 0) + 1;
+      const nextStatus = newRetries < 3 ? 'PENDING' : 'FAILED';
+      await OutboxEvent.updateOne(
+        { _id: event._id, leaseToken: claimLeaseToken },
+        {
+          $set: { status: nextStatus, error: err.message },
+          $inc: { retries: 1 },
+          $unset: { leaseToken: 1, lockedAt: 1 },
+        }
+      );
     }
   }
 }
@@ -198,12 +225,43 @@ export async function processOutboxEvents() {
  */
 export function init() {
   logger.info('⚙️ Outbox Worker initialized.');
+
+  let isReconciling = false;
+  let isProcessing = false;
+
+  // Run startup reconciliation of un-enqueued staff gate entries
+  staffNotificationService.reconcileMissingStaffEntryEvents().catch((err) => {
+    logger.warn(`[Outbox Worker] Startup reconciliation warning: ${err.message}`);
+  });
+
+  // Run periodic reconciliation of un-enqueued staff gate entries every 10 minutes
+  setInterval(async () => {
+    if (isReconciling) {
+      logger.warn('[Outbox Worker] Reconciliation already in progress. Skipping overlapping run.');
+      return;
+    }
+    isReconciling = true;
+    try {
+      await staffNotificationService.reconcileMissingStaffEntryEvents();
+    } catch (err) {
+      logger.warn(`[Outbox Worker] Periodic reconciliation warning: ${err.message}`);
+    } finally {
+      isReconciling = false;
+    }
+  }, 10 * 60 * 1000);
+
   // Poll every 30 seconds
   setInterval(async () => {
+    if (isProcessing) {
+      return;
+    }
+    isProcessing = true;
     try {
       await processOutboxEvents();
     } catch (err) {
       logger.error(`[Outbox Worker] Polling error: ${err.message}`);
+    } finally {
+      isProcessing = false;
     }
   }, 30000);
 }

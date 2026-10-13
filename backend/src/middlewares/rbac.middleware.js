@@ -11,52 +11,61 @@ const ADMINISTRATION_SECURITY_FEATURES = Object.freeze([
   "villas",
   "integrations",
   "workspaces",
+  "staff",
+  "technician",
+  "staffAttendance",
+  "staffUnitAssociation",
 ]);
 
 export const hasOrganizationFeature = (allowedFeatures = [], feature) =>
   allowedFeatures.includes(feature) ||
   (allowedFeatures.includes("administration_security") &&
-    ADMINISTRATION_SECURITY_FEATURES.includes(feature));
+    ADMINISTRATION_SECURITY_FEATURES.includes(feature)) ||
+  (allowedFeatures.includes("visitor") &&
+    ["staff", "technician", "staffAttendance", "staffUnitAssociation"].includes(feature));
 import Workspace from "../features/workspace/workspace.model.js";
 
 /**
  * Helper to check if a user is an administrator via token role or live OrgMembership.
+ * Enforces exact canonical role matching and strict organization scope to prevent privilege escalation.
  */
 export const checkIsAdmin = async (req) => {
   if (!req?.user) return false;
+  // Platform Super Admins have system-wide access
   if (req.user.isPlatform === true) return true;
-  const adminRoles = [
+
+  const canonicalAdminRoles = [
     "super admin",
     "platform super admin",
     "community admin",
     "admin",
     "superadmin",
     "facility manager",
-    "super_admin",
-    "platform_super_admin",
-    "platform_admin",
-    "community_admin",
-    "facility_manager",
+    "platform admin",
   ];
   const cleanRole = (r) => (r || "").toLowerCase().trim().replace(/[_-]/g, " ");
-  const userRole = cleanRole(req.tenantRole || req.user.role);
-  const userRoles = Array.isArray(req.user.roles)
-    ? req.user.roles.map(cleanRole)
-    : [];
-  if (
-    adminRoles.some((ar) => cleanRole(ar) === userRole) ||
-    userRoles.some((r) => adminRoles.some((ar) => cleanRole(ar) === r)) ||
-    userRole.includes("admin") ||
-    userRole.includes("super")
-  ) {
-    return true;
+
+  const currentOrgId =
+    req.headers?.["x-organization-id"] || req.tenant?.orgId || req.user?.orgId;
+
+  // If no organization context exists (e.g. global/platform route), only platform admin roles qualify
+  if (!currentOrgId) {
+    const platformAdminRoles = ["super admin", "platform super admin", "platform admin", "superadmin"];
+    const userRole = cleanRole(req.tenantRole || req.user.role);
+    return platformAdminRoles.includes(userRole);
   }
 
-  // Live Database OrgMembership verification for active workspace context
+  // 1. If tenantContext middleware already verified active membership for this exact orgId:
+  if (req.tenant?.orgId && String(req.tenant.orgId) === String(currentOrgId) && req.tenantRole) {
+    const verifiedTenantRole = cleanRole(req.tenantRole);
+    if (canonicalAdminRoles.includes(verifiedTenantRole)) {
+      return true;
+    }
+  }
+
+  // 2. Live Database OrgMembership verification for active workspace context
   const userId = req.user.id || req.user._id;
-  const currentOrgId =
-    req.headers["x-organization-id"] || req.tenant?.orgId || req.user.orgId;
-  if (userId) {
+  if (userId && mongoose.connection?.readyState === 1) {
     try {
       const OrgMembership = (
         await import("../features/orgMembership/orgMembership.model.js")
@@ -70,23 +79,38 @@ export const checkIsAdmin = async (req) => {
         .populate("roleIds")
         .lean();
       for (const m of memberships) {
+        // Ensure membership actually belongs to the target organization
+        if (currentOrgId && String(m.orgId) !== String(currentOrgId)) {
+          continue;
+        }
         const names = [
           m.roleId?.name,
           ...(Array.isArray(m.roleIds) ? m.roleIds.map((r) => r?.name) : []),
         ].filter(Boolean);
         if (
-          names.some(
-            (n) =>
-              adminRoles.some((ar) => cleanRole(ar) === cleanRole(n)) ||
-              cleanRole(n).includes("admin") ||
-              cleanRole(n).includes("super"),
-          )
+          names.some((n) => canonicalAdminRoles.includes(cleanRole(n)))
         ) {
           return true;
         }
       }
     } catch (memErr) {
-      // Graceful fallback
+      // Graceful fallback to token verification if database is unavailable or mocked
+    }
+  }
+
+  // 3. Fallback when database is unavailable (e.g. unit tests without DB connection):
+  // Only trust token role if the token's home orgId matches the currentOrgId (no cross-org trust)
+  const tokenOrgId = req.user.orgId;
+  if (tokenOrgId && String(tokenOrgId) === String(currentOrgId)) {
+    const userRole = cleanRole(req.tenantRole || req.user.role);
+    const userRoles = Array.isArray(req.user.roles)
+      ? req.user.roles.map(cleanRole)
+      : [];
+    if (
+      canonicalAdminRoles.includes(userRole) ||
+      userRoles.some((r) => canonicalAdminRoles.includes(r))
+    ) {
+      return true;
     }
   }
 
@@ -483,7 +507,8 @@ export const authorizeAnyPermission = (permissionsArray) => {
         req.headers["x-organization-id"] ||
         req.tenant?.orgId ||
         req.user?.orgId;
-      const permissions = await getPermissionsForUser(req.user, orgId);
+      const permissions =
+        req.tenantPermissions || (await getPermissionsForUser(req.user, orgId));
       const userPermissions = expandUserPermissions(
         permissions.map(mapPermission),
       );

@@ -42,15 +42,28 @@ const RoleBuilderList = () => {
       {
         key: 'isTenantRole',
         label: 'Scope',
-        render: (val) => (
-          <CBadge
-            color={val ? 'info' : 'primary'}
-            shape="rounded-pill"
-            className="px-2 py-1 text-white"
-          >
-            {val ? 'Tenant / Unit' : 'Global'}
-          </CBadge>
-        ),
+        render: (val, role) => {
+          const isStaff =
+            role?.roleScope === 'STAFF' ||
+            /staff|guard|technician|vendor|maid|driver|cook|gardener/i.test(role?.name || '');
+          if (isStaff) {
+            return (
+              <CBadge color="warning" shape="rounded-pill" className="px-2 py-1 text-dark">
+                Staff (Dual Scope)
+              </CBadge>
+            );
+          }
+          const isUnit = role?.roleScope === 'UNIT' || !!val;
+          return (
+            <CBadge
+              color={isUnit ? 'info' : 'primary'}
+              shape="rounded-pill"
+              className="px-2 py-1 text-white"
+            >
+              {isUnit ? 'Unit Scope' : 'Global'}
+            </CBadge>
+          );
+        },
       },
       {
         key: 'description',

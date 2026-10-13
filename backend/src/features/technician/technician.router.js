@@ -3,36 +3,73 @@ import technicianController from './technician.controller.js';
 import { validateTechnicianCreate, validateTechnicianUpdate } from './technician.validators.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
-import { authorizePermission } from '../../middlewares/rbac.middleware.js';
+import { authorizePermission, authorizeAnyPermission } from '../../middlewares/rbac.middleware.js';
 
 const router = Router();
 
 // All technician routes require authentication and tenant context
 router.use(isAuthenticated, tenantContext);
 
-// Residents or others might need to see list of techs for some reason, but typically only Admin manages them
-router.get('/analytics/workload', authorizePermission('complaints', 'view'), technicianController.getAnalytics);
-router.get('/', technicianController.getAll);
-router.get('/:id', technicianController.getById);
+// Read staff / technicians workload analytics: requires staff management or complaint analytics permissions
+router.get(
+  '/analytics/workload',
+  authorizeAnyPermission(['staff:view', 'staff:manage', 'complaints:staff', 'complaints:dashboard']),
+  technicianController.getAnalytics
+);
 
-// Only admins or managers should manage technicians
+// Authenticated staff self-service: retrieve own verified staff profile
+router.get(
+  '/me',
+  authorizeAnyPermission(['staff:view_own', 'staff:view', 'staff:manage']),
+  technicianController.getMe
+);
+
+// Authenticated staff self-service: retrieve own secure QR pass
+router.get(
+  '/me/qr',
+  authorizeAnyPermission(['staff:view_own', 'staff:manage']),
+  technicianController.getMyQr
+);
+
+// Read community-wide staff registry: requires staff:view, staff:manage, or complaint management/staff assignment permissions
+router.get(
+  '/',
+  authorizeAnyPermission(['staff:view', 'staff:manage', 'complaints:staff', 'complaints:assign', 'complaints:settings']),
+  technicianController.getAll
+);
+
+// Read specific technician QR pass: requires staff:manage
+router.get(
+  '/:id/qr',
+  authorizeAnyPermission(['staff:manage']),
+  technicianController.getStaffQr
+);
+
+// Read specific technician by ID: requires staff:view, staff:manage, or complaint assignment permissions
+router.get(
+  '/:id',
+  authorizeAnyPermission(['staff:view', 'staff:manage', 'complaints:staff', 'complaints:assign', 'complaints:settings']),
+  technicianController.getById
+);
+
+// Manage staff / technicians: requires staff:manage, complaints:settings, or admin
 router.post(
-  '/', 
-  authorizePermission('complaints', 'settings'), 
-  validateTechnicianCreate, 
+  '/',
+  authorizeAnyPermission(['staff:manage', 'complaints:settings']),
+  validateTechnicianCreate,
   technicianController.create
 );
 
 router.put(
-  '/:id', 
-  authorizePermission('complaints', 'settings'), 
-  validateTechnicianUpdate, 
+  '/:id',
+  authorizeAnyPermission(['staff:manage', 'complaints:settings']),
+  validateTechnicianUpdate,
   technicianController.update
 );
 
 router.delete(
-  '/:id', 
-  authorizePermission('complaints', 'settings'), 
+  '/:id',
+  authorizeAnyPermission(['staff:manage', 'complaints:settings']),
   technicianController.delete
 );
 

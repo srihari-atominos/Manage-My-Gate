@@ -7,6 +7,8 @@ export const validateTechnicianCreate = validate([
   body('phone').notEmpty().withMessage('Phone number is required'),
   body('department').notEmpty().withMessage('Department is required').isIn(['Electrical', 'Plumbing', 'Housekeeping', 'Security', 'Carpentry', 'Others']).withMessage('Invalid department'),
   body('type').notEmpty().withMessage('Type is required').isIn(['In-House Staff', 'External Vendor']).withMessage('Invalid type'),
+  body('designation').optional().isString().trim(),
+  body('staffCode').optional().isString().trim(),
 ]);
 
 export const validateTechnicianUpdate = validate([
@@ -16,4 +18,6 @@ export const validateTechnicianUpdate = validate([
   body('department').optional().isIn(['Electrical', 'Plumbing', 'Housekeeping', 'Security', 'Carpentry', 'Others']).withMessage('Invalid department'),
   body('type').optional().isIn(['In-House Staff', 'External Vendor']).withMessage('Invalid type'),
   body('status').optional().isIn(['Active', 'Inactive']).withMessage('Invalid status'),
+  body('designation').optional().isString().trim(),
+  body('staffCode').optional().isString().trim(),
 ]);

@@ -27,6 +27,11 @@ const roleSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    roleScope: {
+      type: String,
+      enum: ['GLOBAL', 'UNIT', 'STAFF'],
+      default: 'GLOBAL',
+    },
   },
   {
     timestamps: true,

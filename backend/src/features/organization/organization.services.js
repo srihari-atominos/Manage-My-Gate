@@ -73,7 +73,8 @@ export class OrganizationService {
       if (!adminRole) {
         const rolesResult = await roleService.getAllRoles(orgId, 1, 50);
         const roles = rolesResult?.data || [];
-        adminRole = roles.find((r) => r.name && r.name.toLowerCase().includes('admin'));
+        const canonicalAdminRoleNames = ['community admin', 'admin', 'super admin', 'facility manager'];
+        adminRole = roles.find((r) => r.name && canonicalAdminRoleNames.includes(r.name.toLowerCase().trim()));
       }
       if (!adminRole) {
         throw new HttpError(404, 'Admin role not found for this organization.');
@@ -342,6 +343,22 @@ export class OrganizationService {
       );
       const guardPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Security Guard']);
       await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
+
+      // Create Community Staff Role (Global)
+      const communityStaffRole = await roleService.createRole(
+        { name: 'Community Staff', description: 'Community-wide facility and maintenance staff.', orgId: newOrg._id, isTenantRole: false },
+        session
+      );
+      const communityStaffPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Community Staff'] || []);
+      await rolePermissionService.updateRolePermissions(communityStaffRole._id.toString(), communityStaffPerms, session);
+
+      // Create Household Staff Role (Unit-Scoped)
+      const householdStaffRole = await roleService.createRole(
+        { name: 'Household Staff', description: 'Dedicated household staff configured for residential units.', orgId: newOrg._id, isTenantRole: true },
+        session
+      );
+      const householdStaffPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Household Staff'] || []);
+      await rolePermissionService.updateRolePermissions(householdStaffRole._id.toString(), householdStaffPerms, session);
 
       // 3. Handle Community Admin User
       const userService = (await import('../user/user.services.js')).default;

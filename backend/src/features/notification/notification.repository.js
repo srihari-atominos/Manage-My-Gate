@@ -7,13 +7,38 @@ import Notification from './notification.model.js';
 export class NotificationRepository {
   /**
    * Create a new notification.
+   * If dedupKey is provided, guarantees idempotent creation.
    * @param {object} notificationData - Data payload for creating notification
    * @param {mongoose.ClientSession} [session] - Optional Mongoose session for transaction
-   * @returns {Promise<object>} The created notification document
+   * @returns {Promise<object>} The created or existing notification document
    */
   async create(notificationData, session) {
+    if (notificationData.dedupKey) {
+      const existing = await Notification.findOne({ dedupKey: notificationData.dedupKey }).session(session || null);
+      if (existing) {
+        return existing;
+      }
+    }
     const notification = new Notification(notificationData);
-    return await notification.save(session ? { session } : undefined);
+    try {
+      return await notification.save(session ? { session } : undefined);
+    } catch (err) {
+      if (err.code === 11000 && notificationData.dedupKey) {
+        return await Notification.findOne({ dedupKey: notificationData.dedupKey }).session(session || null);
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Find a notification by dedupKey.
+   * @param {string} dedupKey
+   * @param {mongoose.ClientSession} [session]
+   * @returns {Promise<object|null>}
+   */
+  async findByDedupKey(dedupKey, session = null) {
+    if (!dedupKey) return null;
+    return await Notification.findOne({ dedupKey }).session(session || null);
   }
 
   /**

@@ -58,6 +58,7 @@ export const useAuthRouting = () => {
       dispatch(acceptPendingInvitation(inviteToken))
         .unwrap()
         .then(() => {
+          dispatch(clearStatus())
           navigate('/dashboard', { replace: true })
         })
         .catch((err) => {

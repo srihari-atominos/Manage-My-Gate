@@ -50,6 +50,7 @@ import { parseBackendError } from '@/src/utils/validation';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { storage } from '@/src/utils/storage';
 import { setPendingInviteToken, getPendingInviteToken, clearPendingInviteToken } from '@/src/features/auth/utils/inviteContext';
+import { hasActiveCommunity } from '@/src/features/auth/utils/landing';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearPendingRoute } from '@/src/features/notification/store/notificationSlice';
 import { useTranslation } from '@/src/utils/i18n';
@@ -499,7 +500,7 @@ export default function LoginScreen() {
 
         const activeInviteToken = (params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken()) as string | undefined;
         clearPendingInviteToken();
-        if (activeInviteToken) {
+        if (activeInviteToken && !hasActiveCommunity(user)) {
           try {
             await acceptInvitation(activeInviteToken);
           } catch (e) {

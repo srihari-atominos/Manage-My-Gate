@@ -11,6 +11,7 @@ import { initAmenityBookingSockets } from '../features/amenityBooking/amenityBoo
 import { initCommunityNoteSockets } from '../features/communityNote/communityNote.socket.js';
 import { initDirectoryMessageSockets } from '../features/directoryMessage/directoryMessage.socket.js';
 import { initOrganizationSocket } from '../features/organization/organization.socket.js';
+import { initStaffUnitAssociationSocket } from '../features/staffUnitAssociation/staffUnitAssociation.socket.js';
 
 let io = null;
 
@@ -105,6 +106,7 @@ export const initSocket = async (httpServer) => {
   initAmenityBookingSockets();
   initCommunityNoteSockets();
   initDirectoryMessageSockets();
+  initStaffUnitAssociationSocket();
   setupPaymentSocketListeners().catch((err) => logger.error('Failed to init payment socket listeners', err));
   setupWalletSocketListeners().catch((err) => logger.error('Failed to init wallet socket listeners', err));
 
