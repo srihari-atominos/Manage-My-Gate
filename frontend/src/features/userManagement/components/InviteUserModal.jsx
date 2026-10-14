@@ -35,6 +35,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
   const [loadingVillas, setLoadingVillas] = useState(false)
   const [loadingRoles, setLoadingRoles] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
   const [department, setDepartment] = useState('Others')
   const [staffType, setStaffType] = useState('In-House Staff')
   const [designation, setDesignation] = useState('')
