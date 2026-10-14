@@ -17,13 +17,70 @@ const publicLeadLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
-router.get('/health', (req, res) => {
-  res.success({
-    status: 'UP',
-    service: 'Nahom Backend API',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  }, 'API is healthy');
+router.get('/health', async (req, res) => {
+  try {
+    const mongoose = (await import('mongoose')).default;
+    const { isRedisAdapterReady } = await import('../config/socket.js');
+    const dbReady = mongoose.connection?.readyState === 1;
+    const redisReady = isRedisAdapterReady();
+    const requireRedis = process.env.REQUIRE_REDIS_ADAPTER === 'true';
+
+    const isReady = dbReady && (!requireRedis || redisReady);
+
+    const payload = {
+      status: isReady ? 'UP' : 'DEGRADED',
+      service: 'Nahom Backend API',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      checks: {
+        database: dbReady ? 'connected' : 'disconnected',
+        realtimeAdapter: redisReady ? 'redis_cluster' : 'local_memory',
+      },
+    };
+
+    // Liveness reports process state without conflating dependency readiness.
+    // Liveness returns 200 (even if degraded) so the container is not killed during recoverable outages.
+    res.status(200).json({ success: true, message: 'API health status', data: payload });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Healthcheck error', error: err.message });
+  }
+});
+
+router.get('/readiness', async (req, res) => {
+  try {
+    const mongoose = (await import('mongoose')).default;
+    const { isRedisAdapterReady } = await import('../config/socket.js');
+    const dbReady = mongoose.connection?.readyState === 1;
+    const redisReady = isRedisAdapterReady();
+    const requireRedis = process.env.REQUIRE_REDIS_ADAPTER === 'true';
+
+    const isReady = dbReady && (!requireRedis || redisReady);
+
+    if (!isReady) {
+      return res.status(503).json({
+        success: false,
+        message: 'Service Not Ready',
+        checks: {
+          database: dbReady ? 'ready' : 'unavailable',
+          realtimeAdapter: (!requireRedis || redisReady) ? 'ready' : 'redis_unavailable',
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Service is ready to handle traffic',
+      data: {
+        status: 'READY',
+        checks: {
+          database: 'ready',
+          realtimeAdapter: redisReady ? 'redis_cluster' : 'local_memory',
+        },
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Readiness check error', error: err.message });
+  }
 });
 
 router.post('/register-lead', publicLeadLimiter, validate(validatePublicLead), crmInquiryController.registerPublicLead);

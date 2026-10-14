@@ -109,6 +109,8 @@ services:
       - WEB_CLIENT_URL=${WEB_CLIENT_URL:-https://nahom.e3esg.com}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://nahom.e3esg.com}
       - REDIS_URL=${REDIS_URL:-redis://nahom-redis:6379}
+      - REQUIRE_REDIS_ADAPTER=${REQUIRE_REDIS_ADAPTER:-false}
+      - REQUIRE_REDIS_LOCK=${REQUIRE_REDIS_LOCK:-false}
       - NODE_ENV=${NODE_ENV:-production}
       - TZ=${TZ:-Asia/Kolkata}
     depends_on:

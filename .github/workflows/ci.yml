@@ -16,6 +16,15 @@ jobs:
         image: mongo:6.0
         ports:
           - 27017:27017
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -43,6 +52,25 @@ jobs:
           HOST: 127.0.0.1
         run: |
           node backend/tests/verify_invitation_flow.js
+
+      - name: Run WebSocket & Multi-Instance Redis Security Verification Suite
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017/manage_my_gate_ci
+          REDIS_URL: redis://127.0.0.1:6379
+          REQUIRE_REDIS_ADAPTER: "true"
+          REQUIRE_REDIS_LOCK: "true"
+          JWT_SECRET: ci_secret_key_12345
+          SESSION_SECRET: ci_session_secret_key_12345
+          ENCRYPTION_KEY: ci_encryption_key_12345
+          PORT: 5002
+          HOST: 127.0.0.1
+        run: |
+          set -e
+          node --test backend/tests/websocket_multi_instance_redis_verification.test.mjs
+          node --test backend/tests/websocket_tenant_isolation_remediation.test.mjs
+          node --test backend/tests/sec03_1_websocket_tenant_isolation.test.mjs
+          node --test backend/tests/organizationSwitching.api.test.mjs
+          node --test backend/tests/google.provider.test.mjs
 
   mobile-checks:
     name: Mobile TypeScript & Jest Test Suite

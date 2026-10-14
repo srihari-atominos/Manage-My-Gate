@@ -14,26 +14,50 @@ import config from './config.js';
 
 const readSocketToken = (socket) => {
   const fromAuth = socket.handshake?.auth?.token;
-  if (fromAuth) return String(fromAuth).replace(/^Bearer\s+/i, '');
+  if (fromAuth) return String(fromAuth).replace(/^Bearer\s+/i, '').trim();
+  const authHeader = socket.handshake?.headers?.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1].trim();
+  }
+  const queryToken = socket.handshake?.query?.token;
+  if (queryToken && typeof queryToken === 'string') {
+    return queryToken.trim();
+  }
   const cookie = socket.handshake?.headers?.cookie || '';
   const match = cookie.match(/(?:^|;\s*)token=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  return match ? decodeURIComponent(match[1]).trim() : null;
 };
 
 /** The authenticated user behind a socket (cached per connection), or null. */
-export const resolveSocketIdentity = (socket) => {
+export const resolveSocketIdentity = async (socket) => {
   if (socket.data.identity !== undefined) return socket.data.identity;
   let identity = null;
   try {
     const token = readSocketToken(socket);
     if (token) {
       const decoded = jwt.verify(token, config.jwt.secret, { algorithms: ['HS256'] });
-      identity = { id: String(decoded.id || decoded._id), isPlatform: decoded.isPlatform === true };
-    } else {
-      console.log(`[socketRoomPolicy] No token found in socket handshake for socket ${socket.id}`);
+      const userId = String(decoded.id || decoded._id || '');
+      if (userId && mongoose.isValidObjectId(userId)) {
+        // Verify active user in database if DB connected
+        if (mongoose.connection?.readyState === 1) {
+          const User = (await import('../features/user/user.model.js')).default;
+          const { isUserEmailVerified } = await import('../features/user/user.model.js');
+          const userDoc = await User.findById(userId).select('status email emailVerified isEmailVerified roles').lean();
+          if (userDoc && userDoc.status === 'Active' && isUserEmailVerified(userDoc)) {
+            identity = {
+              id: userId,
+              isPlatform: decoded.isPlatform === true,
+              role: decoded.role || '',
+              roles: Array.isArray(decoded.roles) ? decoded.roles : [],
+            };
+          }
+        } else {
+          // Fail-closed: do not synthesize identities when DB is unavailable
+          identity = null;
+        }
+      }
     }
   } catch (err) {
-    console.error(`[socketRoomPolicy] jwt.verify failed for socket ${socket.id}:`, err.message);
     identity = null;
   }
   socket.data.identity = identity;
@@ -43,60 +67,181 @@ export const resolveSocketIdentity = (socket) => {
 const GATE_PERMISSIONS = new Set(['*', 'visitor:guard', 'visitor:admin']);
 
 export const canJoinRoom = async (socket, room) => {
+  if (!room || typeof room !== 'string') return false;
+
+  const me = await resolveSocketIdentity(socket);
+  if (!me || !me.id) return false;
+
+  // 1. Personal user room: user:<userId>
   if (room.startsWith('user:')) {
-    const me = resolveSocketIdentity(socket);
-    return Boolean(me) && room === `user:${me.id}`;
+    return room === `user:${me.id}`;
   }
 
+  // 2. Organization-scoped rooms: org:<orgId>...
   if (room.startsWith('org:')) {
-    const me = resolveSocketIdentity(socket);
-    if (!me) return false;
+    const parts = room.split(':');
+    const orgId = parts[1];
+    if (!orgId || !mongoose.isValidObjectId(orgId)) return false;
+
+    // Platform super admins can inspect any org room
     if (me.isPlatform) return true;
 
-    const orgId = room.split(':')[1];
-    if (!mongoose.isValidObjectId(orgId)) return false;
+    // Fail-closed if database is unavailable
+    if (mongoose.connection?.readyState !== 1) return false;
 
-    const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
-    const membership = await OrgMembership.findOne({ userId: me.id, orgId, status: 'Active' })
-      .populate('roleIds', 'name')
-      .lean();
-      
-    if (!membership) return false;
+    try {
+      const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+      const membership = await OrgMembership.findOne({ userId: me.id, orgId, status: 'Active' })
+        .populate('roleIds', 'name')
+        .populate('roleId', 'name')
+        .lean();
 
-    if (room === `org:${orgId}:guards`) {
-      const { getPermissionsForUser } = await import('../middlewares/rbac.middleware.js');
-      const permissions = await getPermissionsForUser({ id: me.id }, orgId);
-      return permissions.some((p) => GATE_PERMISSIONS.has(p));
-    }
-    
-    // Check if they are trying to join a specific role room for this org (e.g., org:ID:role:Admin)
-    const roleMatch = room.match(/^org:[a-f\d]{24}:role:(.+)$/i);
-    if (roleMatch) {
-      const requestedRole = roleMatch[1].toLowerCase();
-      if (membership.roleIds && Array.isArray(membership.roleIds)) {
-        return membership.roleIds.some(r => String(r.name || '').toLowerCase() === requestedRole);
+      if (!membership) return false;
+
+      // Gate / Guard room: org:<orgId>:guards
+      if (room === `org:${orgId}:guards`) {
+        const memberRoles = [
+          ...(Array.isArray(membership.roleIds) ? membership.roleIds : []),
+          ...(membership.roleId ? [membership.roleId] : []),
+        ];
+        const isGuardOrAdminRole = memberRoles.some((r) => {
+          const rName = String(r?.name || r || '').toLowerCase().replace(/[\s_-]+/g, '');
+          return rName === 'securityguard' || rName === 'guard' || rName === 'admin' || rName === 'superadmin';
+        });
+        if (isGuardOrAdminRole) return true;
+
+        const { getPermissionsForUser } = await import('../middlewares/rbac.middleware.js');
+        const permissions = await getPermissionsForUser({ id: me.id }, orgId);
+        return permissions.some((p) => GATE_PERMISSIONS.has(p));
       }
+
+      // Role-specific org room: org:<orgId>:role:<roleName>
+      // SEC-WS-07: Support both roleIds and roleId, plus assignments, with normalized matching
+      const roleMatch = room.match(/^org:[a-f\d]{24}:role:(.+)$/i);
+      if (roleMatch) {
+        const requestedRoleNorm = roleMatch[1].toLowerCase().replace(/[\s_-]+/g, '');
+        const memberRoles = [];
+        if (membership.roleIds && Array.isArray(membership.roleIds)) {
+          memberRoles.push(...membership.roleIds);
+        }
+        if (membership.roleId) {
+          memberRoles.push(membership.roleId);
+        }
+        if (Array.isArray(membership.assignments)) {
+          membership.assignments.forEach((a) => {
+            if (a?.roleName) memberRoles.push({ name: a.roleName });
+          });
+        }
+        return memberRoles.some((r) => {
+          const roleName = String(r?.name || r || '').toLowerCase().replace(/[\s_-]+/g, '');
+          return roleName === requestedRoleNorm;
+        });
+      }
+
+      // Root org room: org:<orgId>
+      if (room === `org:${orgId}`) {
+        return true;
+      }
+
+      // Sub-domain org room pattern (e.g. org:<orgId>:billing) - default-deny unrecognized sub-rooms
+      return false;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  // 3. Global platform role rooms: role:<roleName> (Admin, Super Admin, Sales Executive)
+  // SEC-WS-02: Strictly restrict global role rooms to verified platform users
+  if (room.startsWith('role:')) {
+    if (!me.isPlatform) return false;
+
+    const requestedRole = room.substring(5).toLowerCase().replace(/[\s_-]+/g, '');
+    const allowedPlatformRoles = ['superadmin', 'admin', 'salesexecutive'];
+    if (!allowedPlatformRoles.includes(requestedRole)) return false;
+
+    if (mongoose.connection?.readyState !== 1) return false;
+
+    try {
+      const User = (await import('../features/user/user.model.js')).default;
+      const user = await User.findById(me.id).populate('roles', 'name orgId isTenantRole').lean();
+      if (!user) return false;
+
+      if (user.roles && Array.isArray(user.roles)) {
+        return user.roles.some((r) => {
+          if (!r || r.orgId || r.isTenantRole) return false;
+          const rName = String(r.name || '').toLowerCase().replace(/[\s_-]+/g, '');
+          return rName === requestedRole || (rName === 'superadmin' && requestedRole === 'admin');
+        });
+      }
+      return false;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  // 4. Villa / Unit rooms: villa:<villaId>
+  if (room.startsWith('villa:')) {
+    const villaId = room.substring(6);
+    if (!villaId || !mongoose.isValidObjectId(villaId)) return false;
+
+    if (me.isPlatform) return true;
+    if (mongoose.connection?.readyState !== 1) return false;
+
+    try {
+      const Villa = (await import('../features/villa/villa.model.js')).default;
+      const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+
+      // Find villa and ensure user is resident or unit owner
+      const villa = await Villa.findById(villaId).lean();
+      if (!villa) return false;
+
+      // Check if user has active membership in this villa's organization
+      const membership = await OrgMembership.findOne({
+        userId: me.id,
+        orgId: villa.orgId,
+        status: 'Active',
+      }).lean();
+      if (!membership) return false;
+
+      // Resident or Owner of this specific unit, or admin/guard in this org
+      const isDirectResident =
+        String(villa.primaryResidentId || '') === me.id ||
+        String(villa.ownerId || '') === me.id ||
+        (Array.isArray(villa.residents) && villa.residents.some((r) => String(r.userId || '') === me.id)) ||
+        String(membership.villaId || membership.unitId || '') === villaId;
+
+      if (isDirectResident) return true;
+
+      // Check if user has staff/admin permissions in this organization
+      const { getPermissionsForUser } = await import('../middlewares/rbac.middleware.js');
+      const perms = await getPermissionsForUser({ id: me.id }, villa.orgId);
+      return perms.some((p) => p === '*' || p === 'villa:read' || p === 'visitor:guard' || p === 'visitor:admin');
+    } catch (err) {
+      return false;
+    }
+  }
+
+  // 5. Amenity rooms: amenity:<orgId>:<amenityId>
+  if (room.startsWith('amenity:')) {
+    const parts = room.split(':');
+    const orgId = parts[1];
+    const amenityId = parts[2];
+    if (!orgId || !amenityId || !mongoose.isValidObjectId(orgId) || !mongoose.isValidObjectId(amenityId)) {
       return false;
     }
 
-    return true;
-  }
-
-  if (room.startsWith('role:')) {
-    const me = resolveSocketIdentity(socket);
-    if (!me) return false;
     if (me.isPlatform) return true;
+    if (mongoose.connection?.readyState !== 1) return false;
 
-    const requestedRole = room.substring(5).toLowerCase();
-    const User = (await import('../features/user/user.model.js')).default;
-    const user = await User.findById(me.id).populate('roles', 'name').lean();
-    if (!user) return false;
-    
-    if (user.roles && Array.isArray(user.roles)) {
-      return user.roles.some((r) => String(r.name || '').toLowerCase() === requestedRole);
+    try {
+      const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+      const membership = await OrgMembership.findOne({ userId: me.id, orgId, status: 'Active' }).lean();
+      return Boolean(membership);
+    } catch (err) {
+      return false;
     }
-    return false;
   }
 
-  return true;
+  // Default-deny all unrecognised room patterns
+  return false;
 };
