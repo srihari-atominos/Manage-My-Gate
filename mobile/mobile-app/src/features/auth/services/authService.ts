@@ -1,16 +1,8 @@
 import { Platform } from 'react-native';
 import apiClient from '../../../services/apiClient';
 
-export const login = async (credentials: any) => {
-  return await apiClient.post('/auth/login', credentials);
-};
-
 export const register = async (userData: any) => {
   return await apiClient.post('/auth/register', userData);
-};
-
-export const acceptInvite = async ({ token, email, password }: any) => {
-  return await apiClient.post('/auth/accept-invite', { token, email, password });
 };
 
 export const acceptSsoInvite = async (payload: {
@@ -25,6 +17,22 @@ export const acceptSsoInvite = async (payload: {
   provider: 'google' | 'microsoft' | 'apple';
 }) => {
   return await apiClient.post('/auth/accept-invite/sso', payload);
+};
+
+export const acceptInvitation = async (inviteToken: string) => {
+  return await apiClient.post('/auth/invitations/accept', { inviteToken });
+};
+
+export const respondToInvitation = async (
+  action: 'accept' | 'decline',
+  ref: { invitationId?: string; inviteToken?: string; ticket?: string }
+) => {
+  const path = action === 'accept' ? '/auth/invitations/accept' : '/auth/invitations/decline';
+  return await apiClient.post(path, ref);
+};
+
+export const getPendingInvitations = async () => {
+  return await apiClient.get('/auth/invitations/pending');
 };
 
 export const rejectInvite = async ({ token, email }: { token: string; email?: string }) => {
@@ -42,13 +50,17 @@ export const verifyRegistration = async (email: string, code: string) => {
   return await apiClient.post('/auth/register/verify', { email, code });
 };
 
-export const loginWithGoogle = async (payload: any) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
+export const loginWithGoogle = async (payload: any, inviteToken?: string) => {
+  const body = typeof payload === 'object' && payload !== null
+    ? { ...payload, ...(inviteToken ? { inviteToken } : {}) }
+    : { token: payload, ...(inviteToken ? { inviteToken } : {}) };
   return await apiClient.post('/auth/google', body);
 };
 
-export const loginWithMicrosoft = async (payload: any) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
+export const loginWithMicrosoft = async (payload: any, inviteToken?: string) => {
+  const body = typeof payload === 'object' && payload !== null
+    ? { ...payload, ...(inviteToken ? { inviteToken } : {}) }
+    : { token: payload, ...(inviteToken ? { inviteToken } : {}) };
   return await apiClient.post('/auth/microsoft', body);
 };
 
@@ -64,16 +76,16 @@ export const initiatePhoneLogin = async (phone: string) => {
   return await apiClient.post('/auth/login/phone', { phone });
 };
 
-export const verifyPhoneLogin = async (phone: string, code: string) => {
-  return await apiClient.post('/auth/login/phone/verify', { phone, code });
+export const verifyPhoneLogin = async (phone: string, code: string, inviteToken?: string) => {
+  return await apiClient.post('/auth/login/phone/verify', { phone, code, inviteToken });
 };
 
 export const initiateEmailOtpLogin = async (email: string) => {
   return await apiClient.post('/auth/login/email-otp', { email });
 };
 
-export const verifyEmailOtpLogin = async (email: string, code: string) => {
-  return await apiClient.post('/auth/login/email-otp/verify', { email, code });
+export const verifyEmailOtpLogin = async (email: string, code: string, inviteToken?: string) => {
+  return await apiClient.post('/auth/login/email-otp/verify', { email, code, inviteToken });
 };
 
 export const forgotPassword = async (identifier: string) => {
@@ -198,6 +210,19 @@ export const updateProfile = async (data: any) => {
   return await apiClient.put('/users/profile', payload);
 };
 
+
+export const requestCurrentContactOtp = async () => {
+  return await apiClient.post('/users/request-current-contact-otp');
+};
+
+export const verifyCurrentContactOtp = async (otp: string) => {
+  return await apiClient.post('/users/verify-current-contact-otp', { otp });
+};
+
+export const requestPhoneChangeOtp = async (newPhone: string) => {
+  return await apiClient.post('/users/request-phone-otp', { newPhone });
+};
+
 export const requestEmailChangeOtp = async (newEmail: string) => {
   return await apiClient.post('/users/request-email-otp', { newEmail });
 };
@@ -206,12 +231,9 @@ export const exchangeHandoff = async (handoffId: string, deviceInfo?: any) => {
   return await apiClient.post('/auth/invite/handoff/exchange', { handoffId, deviceInfo });
 };
 
-export const initiateInvitationOtp = async (token: string) => {
-  return await apiClient.post('/auth/invite/otp', { token });
-};
-
-export const verifyInvitationOtp = async (token: string, code: string) => {
-  return await apiClient.post('/auth/invite/otp/verify', { token, code });
+/** Public mobile bootstrap configuration (minimum supported version and store URLs). */
+export const getAppConfig = async () => {
+  return await apiClient.get('/public/app/config');
 };
 
 export const getCurrentContext = async (orgId?: string) => {
@@ -219,12 +241,21 @@ export const getCurrentContext = async (orgId?: string) => {
   return await apiClient.get(`/auth/current-context${query}`);
 };
 
+export const initiateInvitationOtp = async (token: string) => {
+  return await apiClient.post('/auth/invite/otp', { token });
+};
+
+export const verifyInvitationOtp = async (token: string, otp: string) => {
+  return await apiClient.post('/auth/invite/otp/verify', { token, otp });
+};
+
 export default {
-  login,
   register,
   verifyRegistration,
-  acceptInvite,
   acceptSsoInvite,
+  acceptInvitation,
+  respondToInvitation,
+  getPendingInvitations,
   rejectInvite,
   validateInvite,
   loginWithGoogle,
@@ -241,6 +272,9 @@ export default {
   deleteAccount,
   updateProfile,
   requestEmailChangeOtp,
+  requestCurrentContactOtp,
+  verifyCurrentContactOtp,
+  requestPhoneChangeOtp,
   fetchSessions,
   revokeSession,
   revokeAllSessions,
@@ -248,8 +282,7 @@ export default {
   checkOrganizationName,
   createWorkspace,
   updateOrganizationFeatures,
-  exchangeHandoff,
-  initiateInvitationOtp,
-  verifyInvitationOtp,
-  getCurrentContext,
+  getAppConfig,
+  exchangeHandoff,getCurrentContext,
 };
+

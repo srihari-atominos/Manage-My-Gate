@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import config from '../../../config/config.js';
 import { useComplaints } from '../hooks/useComplaints';
 import ComplaintTopNav from '../components/ComplaintTopNav';
+import { complaintService } from '../services/complaint.service';
 import '../styles/_complaints.scss';
 import { useComplaintAnalyticsSocket } from '../hooks/useComplaintAnalyticsSocket';
 
@@ -36,8 +37,20 @@ const PerformanceAnalytics = () => {
               <h2 style={{ margin: 0 }} className="fs-2">Performance Analytics</h2>
               <p style={{ color: 'var(--text-muted)', margin: 0 }} className="fw-medium">Helpdesk efficiency metrics and feedback</p>
             </div>
-            <button className="btn btn-secondary" onClick={() => {
-                window.open(`${config.apiUrl}/complaints/export?auth_token=${token}`, '_blank');
+            <button className="btn btn-secondary" onClick={async () => {
+                try {
+                  const blob = await complaintService.exportComplaints();
+                  const url = window.URL.createObjectURL(new Blob([blob]));
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.setAttribute('download', `complaints-report-${Date.now()}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  window.URL.revokeObjectURL(url);
+                } catch (err) {
+                  console.error('Failed to export complaints:', err);
+                }
               }}>
               <i className="fa-solid fa-file-export" style={{ marginRight: '8px' }}></i> Export Report
             </button>

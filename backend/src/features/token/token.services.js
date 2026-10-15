@@ -2,6 +2,9 @@ import crypto from 'crypto';
 import tokenRepository from './token.repository.js';
 import HttpError from '../../utils/httpError.utils.js';
 
+/** How long an invitation link stays valid. */
+export const INVITATION_VALID_DAYS = 7;
+
 export class TokenService {
   /**
    * Generates a random secure token, hashes it using SHA-256, and saves it in the database.
@@ -35,7 +38,7 @@ export class TokenService {
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24-hour standard lifecycle
+    const expiresAt = new Date(Date.now() + INVITATION_VALID_DAYS * 24 * 60 * 60 * 1000);
 
     const tokenDoc = await tokenRepository.create(
       {
@@ -108,7 +111,7 @@ export class TokenService {
     const tokenDoc = await this.getInvitationToken(unhashedToken, 'INVITATION', session);
 
     if (!tokenDoc || !tokenDoc.userId) {
-      throw new HttpError(400, 'Invalid or expired invitation token.');
+      throw new HttpError(400, 'Invalid or expired invitation token.', { code: 'INVITATION_INVALID' });
     }
 
     // Check expiration timestamp
@@ -121,20 +124,20 @@ export class TokenService {
         ).catch(() => null);
         tokenDoc.status = 'EXPIRED';
       }
-      throw new HttpError(400, 'Invitation has expired. Please ask your administrator to resend the invitation.');
+      throw new HttpError(400, 'Invitation has expired. Please ask your administrator to resend the invitation.', { code: 'INVITATION_EXPIRED' });
     }
 
     // Check lifecycle status
     if (tokenDoc.status === 'REVOKED') {
-      throw new HttpError(400, 'Invitation has been revoked by the administrator.');
+      throw new HttpError(400, 'Invitation has been revoked by the administrator.', { code: 'INVITATION_REVOKED' });
     }
 
     if (tokenDoc.status === 'REJECTED') {
-      throw new HttpError(400, 'Invitation has already been rejected.');
+      throw new HttpError(400, 'Invitation has already been rejected.', { code: 'INVITATION_REJECTED' });
     }
 
     if (tokenDoc.status === 'ACCEPTED' || tokenDoc.used === true) {
-      throw new HttpError(400, 'Invitation has already been accepted.');
+      throw new HttpError(400, 'Invitation has already been accepted.', { code: 'INVITATION_USED' });
     }
 
     if (tokenDoc.status !== 'PENDING') {

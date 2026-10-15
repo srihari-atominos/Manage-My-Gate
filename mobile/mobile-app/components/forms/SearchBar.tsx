@@ -59,7 +59,7 @@ export const SearchBar = ({
       <View
         className={cn(
           'min-h-[44px] flex-row items-center rounded-xl border border-border/80 bg-background/70 px-3.5 py-0 shadow-2xs',
-          isFocused && 'border-primary ring-2 ring-primary/20',
+          isFocused && 'border-border/80 bg-background/70',
           containerClassName
         )}
       >

@@ -1,0 +1,912 @@
+From fe264d25fcaf8df67dfb5f2d74491f1bb6d85748 Mon Sep 17 00:00:00 2001
+From: Naveen1758 <naveen@atominosconsulting.com>
+Date: Mon, 5 Oct 2026 14:56:19 +0530
+Subject: [PATCH 2/8] fix relative paths and install expo-location
+
+---
+ mobile/mobile-app/app.json                    |  10 +-
+ .../mobile-app/app/(auth)/accept-invite.tsx   |  12 +-
+ .../mobile-app/app/(auth)/forgot-password.tsx |   2 +-
+ mobile/mobile-app/app/(auth)/login.tsx        |   6 +-
+ mobile/mobile-app/app/(auth)/otp.tsx          |   2 +-
+ mobile/mobile-app/app/(auth)/register-otp.tsx |   2 +-
+ mobile/mobile-app/app/(auth)/register.tsx     |   6 +-
+ .../mobile-app/app/(auth)/select-features.tsx |   2 +-
+ .../app/(auth)/setup-organization.tsx         |   2 +-
+ mobile/mobile-app/app/(auth)/signup.tsx       |   6 +-
+ .../app/(resident)/amenities/_layout.tsx      |   2 +-
+ .../(resident)/amenities/admin-calendar.tsx   |  16 +-
+ .../app/(resident)/amenities/booking/[id].tsx |   8 +-
+ .../app/(resident)/amenities/calendar.tsx     |   6 +-
+ .../app/(resident)/amenities/detail/[id].tsx  |   6 +-
+ .../app/(resident)/amenities/discover.tsx     |  12 +-
+ .../app/(resident)/amenities/maintenance.tsx  |  12 +-
+ mobile/mobile-app/app/_layout.tsx             |  24 +-
+ mobile/mobile-app/app/index.tsx               |   2 +-
+ .../app/invite/handoff/[handoffId].tsx        |   6 +-
+ mobile/mobile-app/package-lock.json           | 384 ++----------------
+ mobile/mobile-app/package.json                |   1 +
+ 22 files changed, 111 insertions(+), 418 deletions(-)
+
+diff --git a/mobile/mobile-app/app.json b/mobile/mobile-app/app.json
+index 7c1c57a7..6c46b1bd 100644
+--- a/mobile/mobile-app/app.json
++++ b/mobile/mobile-app/app.json
+@@ -145,11 +145,11 @@
+           "defaultChannel": "general"
+         }
+       ],
+-      "expo-font",
+-      "expo-sharing",
+-      "expo-status-bar",
+-      "expo-web-browser",
+-      "expo-localization",
++      
++      
++      
++      
++      
+       "expo-apple-authentication",
+       [
+         "expo-contacts",
+diff --git a/mobile/mobile-app/app/(auth)/accept-invite.tsx b/mobile/mobile-app/app/(auth)/accept-invite.tsx
+index 5e17310e..83b7ff18 100644
+--- a/mobile/mobile-app/app/(auth)/accept-invite.tsx
++++ b/mobile/mobile-app/app/(auth)/accept-invite.tsx
+@@ -15,16 +15,16 @@ import { Input } from '@/components/ui/input';
+ import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
+ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+ import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
+-import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
+-import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
++import { GoogleSignInButton } from '@/src/features/auth/components/GoogleSignInButton';
++import { AppleSignInButton } from '@/src/features/auth/components/AppleSignInButton';
+ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+ import { useForm, Controller } from 'react-hook-form';
+ import * as yup from 'yup';
+ import { yupResolver } from '@hookform/resolvers/yup';
+-import { useAuth } from '../../src/features/auth/hooks/useAuth';
+-import { acceptInviteThunk } from '../../src/features/auth/store/authSlice';
+-import authService from '../../src/features/auth/services/authService';
+-import apiClient from '../../src/services/apiClient';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
++import { acceptInviteThunk } from '@/src/features/auth/store/authSlice';
++import authService from '@/src/features/auth/services/authService';
++import apiClient from '@/src/services/apiClient';
+ import { AppLoader } from '@/components/ui/AppLoader';
+ 
+ // Accept Invite Password Validation Schema - token is managed silently, not by user input
+diff --git a/mobile/mobile-app/app/(auth)/forgot-password.tsx b/mobile/mobile-app/app/(auth)/forgot-password.tsx
+index a1fcc60c..abe15070 100644
+--- a/mobile/mobile-app/app/(auth)/forgot-password.tsx
++++ b/mobile/mobile-app/app/(auth)/forgot-password.tsx
+@@ -28,7 +28,7 @@ import {
+ import { useForm, Controller } from 'react-hook-form';
+ import * as yup from 'yup';
+ import { yupResolver } from '@hookform/resolvers/yup';
+-import { useAuth } from '../../src/features/auth/hooks/useAuth';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
+ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
+ import { NahomEmblem, NahomWordmark } from '@/components/auth/NahomBrandLogo';
+ import { PhoneInput } from '@/components/forms/PhoneInput';
+diff --git a/mobile/mobile-app/app/(auth)/login.tsx b/mobile/mobile-app/app/(auth)/login.tsx
+index d549c129..9b204133 100644
+--- a/mobile/mobile-app/app/(auth)/login.tsx
++++ b/mobile/mobile-app/app/(auth)/login.tsx
+@@ -32,9 +32,9 @@ import {
+ import { useForm, Controller } from 'react-hook-form';
+ import * as yup from 'yup';
+ import { yupResolver } from '@hookform/resolvers/yup';
+-import { useAuth } from '../../src/features/auth/hooks/useAuth';
+-import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
+-import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
++import { useGoogleAuthSession } from '@/src/features/auth/hooks/useGoogleAuthSession';
++import { AppleSignInButton } from '@/src/features/auth/components/AppleSignInButton';
+ import {
+   NahomEmblem,
+   NahomWordmark,
+diff --git a/mobile/mobile-app/app/(auth)/otp.tsx b/mobile/mobile-app/app/(auth)/otp.tsx
+index 01081741..d050a995 100644
+--- a/mobile/mobile-app/app/(auth)/otp.tsx
++++ b/mobile/mobile-app/app/(auth)/otp.tsx
+@@ -7,7 +7,7 @@ import { View, ScrollView, ActivityIndicator, TextInput, ImageBackground, Platfo
+ import { useForm, Controller } from 'react-hook-form';
+ import * as yup from 'yup';
+ import { yupResolver } from '@hookform/resolvers/yup';
+-import { useAuth } from '../../src/features/auth/hooks/useAuth';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
+ import { useTranslation } from '@/src/utils/i18n';
+ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
+ 
+diff --git a/mobile/mobile-app/app/(auth)/register-otp.tsx b/mobile/mobile-app/app/(auth)/register-otp.tsx
+index bd3b104c..43661b06 100644
+--- a/mobile/mobile-app/app/(auth)/register-otp.tsx
++++ b/mobile/mobile-app/app/(auth)/register-otp.tsx
+@@ -7,7 +7,7 @@ import { View, ScrollView, Alert, ImageBackground, Platform } from 'react-native
+ import { useForm, Controller } from 'react-hook-form';
+ import * as yup from 'yup';
+ import { yupResolver } from '@hookform/resolvers/yup';
+-import { useAuth } from '../../src/features/auth/hooks/useAuth';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
+ import { OtpInputField } from '@/components/auth/OtpInputField';
+ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
+ import { useTranslation } from '@/src/utils/i18n';
+diff --git a/mobile/mobile-app/app/(auth)/register.tsx b/mobile/mobile-app/app/(auth)/register.tsx
+index f0b87190..aeac10d8 100644
+--- a/mobile/mobile-app/app/(auth)/register.tsx
++++ b/mobile/mobile-app/app/(auth)/register.tsx
+@@ -12,9 +12,9 @@ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+ import { useForm, Controller } from 'react-hook-form';
+ import * as yup from 'yup';
+ import { yupResolver } from '@hookform/resolvers/yup';
+-import { useAuth } from '../../src/features/auth/hooks/useAuth';
+-import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
+-import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
++import { GoogleSignInButton } from '@/src/features/auth/components/GoogleSignInButton';
++import { AppleSignInButton } from '@/src/features/auth/components/AppleSignInButton';
+ import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
+ import { sessionStore } from '@/src/utils/storage';
+ 
+diff --git a/mobile/mobile-app/app/(auth)/select-features.tsx b/mobile/mobile-app/app/(auth)/select-features.tsx
+index c6f11bc3..b11db146 100644
+--- a/mobile/mobile-app/app/(auth)/select-features.tsx
++++ b/mobile/mobile-app/app/(auth)/select-features.tsx
+@@ -18,7 +18,7 @@ import * as React from 'react';
+ import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+ import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
+-import { useAuth } from '../../src/features/auth/hooks/useAuth';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
+ import { sessionStore } from '@/src/utils/storage';
+ import { useTranslation } from '@/src/utils/i18n';
+ 
+diff --git a/mobile/mobile-app/app/(auth)/setup-organization.tsx b/mobile/mobile-app/app/(auth)/setup-organization.tsx
+index 25e2a913..f9e51477 100644
+--- a/mobile/mobile-app/app/(auth)/setup-organization.tsx
++++ b/mobile/mobile-app/app/(auth)/setup-organization.tsx
+@@ -1,6 +1,6 @@
+ import React from 'react';
+ import { useLocalSearchParams } from 'expo-router';
+-import { CreateOrganizationScreen } from '../../src/features/organization';
++import { CreateOrganizationScreen } from '@/src/features/organization';
+ 
+ export default function SetupOrganizationRoute() {
+   const params = useLocalSearchParams<{ intent?: string; canGoBack?: string }>();
+diff --git a/mobile/mobile-app/app/(auth)/signup.tsx b/mobile/mobile-app/app/(auth)/signup.tsx
+index 069a554f..d9d5b890 100644
+--- a/mobile/mobile-app/app/(auth)/signup.tsx
++++ b/mobile/mobile-app/app/(auth)/signup.tsx
+@@ -27,10 +27,10 @@ import {
+ import { useForm, Controller } from 'react-hook-form';
+ import * as yup from 'yup';
+ import { yupResolver } from '@hookform/resolvers/yup';
+-import { useAuth } from '../../src/features/auth/hooks/useAuth';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
+ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
+-import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
+-import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
++import { useGoogleAuthSession } from '@/src/features/auth/hooks/useGoogleAuthSession';
++import { AppleSignInButton } from '@/src/features/auth/components/AppleSignInButton';
+ import {
+   NahomEmblem,
+   NahomWordmark,
+diff --git a/mobile/mobile-app/app/(resident)/amenities/_layout.tsx b/mobile/mobile-app/app/(resident)/amenities/_layout.tsx
+index 042bf766..52a25a6d 100644
+--- a/mobile/mobile-app/app/(resident)/amenities/_layout.tsx
++++ b/mobile/mobile-app/app/(resident)/amenities/_layout.tsx
+@@ -1,5 +1,5 @@
+ import { Stack } from 'expo-router';
+-import { useAmenitySocket } from '../../../src/features/amenities/hooks/useAmenitySocket';
++import { useAmenitySocket } from '@/src/features/amenities/hooks/useAmenitySocket';
+ import { premiumScreenTransition } from '@/src/utils/screenTransitions';
+ 
+ export default function AmenitiesLayout() {
+diff --git a/mobile/mobile-app/app/(resident)/amenities/admin-calendar.tsx b/mobile/mobile-app/app/(resident)/amenities/admin-calendar.tsx
+index f899e5d0..bcce0863 100644
+--- a/mobile/mobile-app/app/(resident)/amenities/admin-calendar.tsx
++++ b/mobile/mobile-app/app/(resident)/amenities/admin-calendar.tsx
+@@ -9,14 +9,14 @@ import { Icon } from '@/components/ui/icon';
+ import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+ import { Calendar as CalendarIcon, Wrench } from 'lucide-react-native';
+ 
+-import { useAdminCalendar, formatDateString } from '../../../src/features/amenities/hooks/useAdminCalendar';
+-import { AdminCalendarView } from '../../../src/features/amenities/components/AdminCalendarView';
+-import { AdminReservationCard } from '../../../src/features/amenities/components/AdminReservationCard';
+-import { AdminCalendarFilterDrawer } from '../../../src/features/amenities/components/AdminCalendarFilterDrawer';
+-import { AdminActiveFilterChips } from '../../../src/features/amenities/components/AdminActiveFilterChips';
+-import { AdminAvailabilitySummary } from '../../../src/features/amenities/components/AdminAvailabilitySummary';
+-import { BookingDetailModal } from '../../../src/features/amenities/components/BookingDetailModal';
+-import { AmenityBooking } from '../../../src/features/amenities/store/amenityBookingSlice';
++import { useAdminCalendar, formatDateString } from '@/src/features/amenities/hooks/useAdminCalendar';
++import { AdminCalendarView } from '@/src/features/amenities/components/AdminCalendarView';
++import { AdminReservationCard } from '@/src/features/amenities/components/AdminReservationCard';
++import { AdminCalendarFilterDrawer } from '@/src/features/amenities/components/AdminCalendarFilterDrawer';
++import { AdminActiveFilterChips } from '@/src/features/amenities/components/AdminActiveFilterChips';
++import { AdminAvailabilitySummary } from '@/src/features/amenities/components/AdminAvailabilitySummary';
++import { BookingDetailModal } from '@/src/features/amenities/components/BookingDetailModal';
++import { AmenityBooking } from '@/src/features/amenities/store/amenityBookingSlice';
+ import { useAuth } from '@/src/features/auth/hooks/useAuth';
+ import { isFeatureAllowedForUser } from '@/src/utils/rbac';
+ 
+diff --git a/mobile/mobile-app/app/(resident)/amenities/booking/[id].tsx b/mobile/mobile-app/app/(resident)/amenities/booking/[id].tsx
+index 33897031..65bf53c4 100644
+--- a/mobile/mobile-app/app/(resident)/amenities/booking/[id].tsx
++++ b/mobile/mobile-app/app/(resident)/amenities/booking/[id].tsx
+@@ -11,10 +11,10 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
+ import { Button } from '@/components/ui/button';
+ import { Text } from '@/components/ui/text';
+ import { StatusBadge } from '@/components/ui/StatusBadge';
+-import { AmenityFacility } from '../../../../src/features/amenities/types/amenityDomain.types';
+-import amenityManagementService from '../../../../src/features/amenities/services/amenityManagementService';
+-import { normalizeFacilityFromApi } from '../../../../src/features/amenities/utils/amenityPayloadMappers';
+-import { AmenityBookingWizard } from '../../../../src/features/amenities/components/wizard/AmenityBookingWizard';
++import { AmenityFacility } from '@/src/features/amenities/types/amenityDomain.types';
++import amenityManagementService from '@/src/features/amenities/services/amenityManagementService';
++import { normalizeFacilityFromApi } from '@/src/features/amenities/utils/amenityPayloadMappers';
++import { AmenityBookingWizard } from '@/src/features/amenities/components/wizard/AmenityBookingWizard';
+ import { AlertTriangle, ArrowLeft } from 'lucide-react-native';
+ import { AppLoader } from '@/components/ui/AppLoader';
+ 
+diff --git a/mobile/mobile-app/app/(resident)/amenities/calendar.tsx b/mobile/mobile-app/app/(resident)/amenities/calendar.tsx
+index f1b39b6a..db653db3 100644
+--- a/mobile/mobile-app/app/(resident)/amenities/calendar.tsx
++++ b/mobile/mobile-app/app/(resident)/amenities/calendar.tsx
+@@ -22,9 +22,9 @@ import { DropdownSelect } from '@/components/forms/DropdownSelect';
+ import { EmptyState } from '@/components/feedback/EmptyState';
+ import { StatusBadge } from '@/components/ui/StatusBadge';
+ import { SkeletonLoader } from '@/components/feedback/SkeletonLoader';
+-import { ScheduleDateNavigator } from '../../../src/features/amenities/components/ScheduleDateNavigator';
+-import { useResidentCalendar } from '../../../src/features/amenities/hooks/useResidentCalendar';
+-import { AmenitySlot } from '../../../src/features/amenities/store/amenitySlice';
++import { ScheduleDateNavigator } from '@/src/features/amenities/components/ScheduleDateNavigator';
++import { useResidentCalendar } from '@/src/features/amenities/hooks/useResidentCalendar';
++import { AmenitySlot } from '@/src/features/amenities/store/amenitySlice';
+ import { Clock, CalendarDays, ChevronRight } from 'lucide-react-native';
+ 
+ export default function ResidentAmenityCalendarScreen() {
+diff --git a/mobile/mobile-app/app/(resident)/amenities/detail/[id].tsx b/mobile/mobile-app/app/(resident)/amenities/detail/[id].tsx
+index 88d52e34..6225784b 100644
+--- a/mobile/mobile-app/app/(resident)/amenities/detail/[id].tsx
++++ b/mobile/mobile-app/app/(resident)/amenities/detail/[id].tsx
+@@ -7,9 +7,9 @@
+ import React, { useEffect } from 'react';
+ import { useLocalSearchParams, useRouter } from 'expo-router';
+ import { ScreenShell } from '@/components/ui/ScreenShell';
+-import { useResidentAmenities } from '../../../../src/features/amenities/hooks/useResidentAmenities';
+-import { ResidentAmenityDetailView } from '../../../../src/features/amenities/components/ResidentAmenityDetailView';
+-import { getArchetypeMeta } from '../../../../src/features/amenities/utils/amenityPresentation';
++import { useResidentAmenities } from '@/src/features/amenities/hooks/useResidentAmenities';
++import { ResidentAmenityDetailView } from '@/src/features/amenities/components/ResidentAmenityDetailView';
++import { getArchetypeMeta } from '@/src/features/amenities/utils/amenityPresentation';
+ 
+ export default function AmenityDetailScreen() {
+   const router = useRouter();
+diff --git a/mobile/mobile-app/app/(resident)/amenities/discover.tsx b/mobile/mobile-app/app/(resident)/amenities/discover.tsx
+index 7e1b6e34..41800ed1 100644
+--- a/mobile/mobile-app/app/(resident)/amenities/discover.tsx
++++ b/mobile/mobile-app/app/(resident)/amenities/discover.tsx
+@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/button';
+ import { Text } from '@/components/ui/text';
+ import { CalendarCheck } from 'lucide-react-native';
+ 
+-import { useResidentAmenities } from '../../../src/features/amenities/hooks/useResidentAmenities';
+-import { ResidentAmenityDetailSheet } from '../../../src/features/amenities/components/ResidentAmenityDetailSheet';
+-import { AmenityCatalogCard } from '../../../src/features/amenities/components/AmenityCatalogCard';
+-import { AmenityFacility, AmenityArchetype } from '../../../src/features/amenities/types/amenityDomain.types';
+-import { useAuth } from '../../../src/features/auth/hooks/useAuth';
+-import { isFeatureAllowedForUser } from '../../../src/utils/rbac';
++import { useResidentAmenities } from '@/src/features/amenities/hooks/useResidentAmenities';
++import { ResidentAmenityDetailSheet } from '@/src/features/amenities/components/ResidentAmenityDetailSheet';
++import { AmenityCatalogCard } from '@/src/features/amenities/components/AmenityCatalogCard';
++import { AmenityFacility, AmenityArchetype } from '@/src/features/amenities/types/amenityDomain.types';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
++import { isFeatureAllowedForUser } from '@/src/utils/rbac';
+ 
+ const ARCHETYPE_FILTER_OPTIONS: SortOption[] = [
+   { label: 'All Facilities', value: 'All' },
+diff --git a/mobile/mobile-app/app/(resident)/amenities/maintenance.tsx b/mobile/mobile-app/app/(resident)/amenities/maintenance.tsx
+index 93b9e8e1..fe967973 100644
+--- a/mobile/mobile-app/app/(resident)/amenities/maintenance.tsx
++++ b/mobile/mobile-app/app/(resident)/amenities/maintenance.tsx
+@@ -8,12 +8,12 @@ import { Text } from '@/components/ui/text';
+ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+ import { Plus, RotateCcw } from 'lucide-react-native';
+ 
+-import { useAdminMaintenance } from '../../../src/features/amenities/hooks/useAdminMaintenance';
+-import { AmenityMaintenanceCard } from '../../../src/features/amenities/components/AmenityMaintenanceCard';
+-import { MaintenanceWizard } from '../../../src/features/amenities/components/maintenance-wizard';
+-import { FacilityMaintenanceDetailSheet } from '../../../src/features/amenities/components/FacilityMaintenanceDetailSheet';
+-import amenityManagementService from '../../../src/features/amenities/services/amenityManagementService';
+-import { Amenity, MaintenanceTask } from '../../../src/features/amenities/store/amenitySlice';
++import { useAdminMaintenance } from '@/src/features/amenities/hooks/useAdminMaintenance';
++import { AmenityMaintenanceCard } from '@/src/features/amenities/components/AmenityMaintenanceCard';
++import { MaintenanceWizard } from '@/src/features/amenities/components/maintenance-wizard';
++import { FacilityMaintenanceDetailSheet } from '@/src/features/amenities/components/FacilityMaintenanceDetailSheet';
++import amenityManagementService from '@/src/features/amenities/services/amenityManagementService';
++import { Amenity, MaintenanceTask } from '@/src/features/amenities/store/amenitySlice';
+ 
+ type StatusFilterType = 'ALL' | 'MAINTENANCE' | 'OPERATIONAL';
+ 
+diff --git a/mobile/mobile-app/app/_layout.tsx b/mobile/mobile-app/app/_layout.tsx
+index 530b6bf4..8cad7a77 100644
+--- a/mobile/mobile-app/app/_layout.tsx
++++ b/mobile/mobile-app/app/_layout.tsx
+@@ -1,5 +1,5 @@
+-import '../src/utils/consoleFilter';
+-import '../src/utils/cryptoPolyfill';
++import '@/src/utils/consoleFilter';
++import '@/src/utils/cryptoPolyfill';
+ import '@/global.css';
+ import React, { useEffect, useMemo, useRef } from 'react';
+ 
+@@ -15,7 +15,7 @@ import { Stack, useSegments, useRouter, useGlobalSearchParams, useRootNavigation
+ import { StatusBar } from 'expo-status-bar';
+ import { useColorScheme } from 'nativewind';
+ import { Provider, useDispatch, useSelector } from 'react-redux';
+-import { store } from '../src/store/store';
++import { store } from '@/src/store/store';
+ import { View, I18nManager, TouchableOpacity, Linking, Platform, LogBox } from 'react-native';
+ import { AlertTriangle, Mail } from 'lucide-react-native';
+ import { Text } from '@/components/ui/text';
+@@ -78,8 +78,8 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
+ }
+ 
+ import { SafeAreaProvider } from 'react-native-safe-area-context';
+-import { useAuth } from '../src/features/auth/hooks/useAuth';
+-import { setDefaultPhoneCountry } from '../src/utils/phone';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
++import { setDefaultPhoneCountry } from '@/src/utils/phone';
+ import { GestureHandlerRootView } from 'react-native-gesture-handler';
+ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+ import {
+@@ -90,14 +90,14 @@ import {
+   HankenGrotesk_700Bold,
+   HankenGrotesk_800ExtraBold,
+ } from '@expo-google-fonts/hanken-grotesk';
+-import storage from '../src/utils/storage';
+-import i18n, { I18nProvider } from '../src/utils/i18n';
++import storage from '@/src/utils/storage';
++import i18n, { I18nProvider } from '@/src/utils/i18n';
+ import * as SplashScreen from 'expo-splash-screen';
+-import useAutoUpdate from '../src/hooks/useAutoUpdate';
+-import usePushNotifications from '../src/features/notification/hooks/usePushNotifications';
+-import { clearPendingRoute, setPendingRoute } from '../src/features/notification/store/notificationSlice';
+-import { useGlobalAppSocket } from '../src/hooks/useGlobalAppSocket';
+-import { getDeferredHandoffContext } from '../src/features/auth/services/deferredDeepLinkService';
++import useAutoUpdate from '@/src/hooks/useAutoUpdate';
++import usePushNotifications from '@/src/features/notification/hooks/usePushNotifications';
++import { clearPendingRoute, setPendingRoute } from '@/src/features/notification/store/notificationSlice';
++import { useGlobalAppSocket } from '@/src/hooks/useGlobalAppSocket';
++import { getDeferredHandoffContext } from '@/src/features/auth/services/deferredDeepLinkService';
+ import { GlobalNotificationPresenter } from '@/components/feedback/GlobalNotificationPresenter';
+ import { AnimatedSplash } from '@/components/feedback/AnimatedSplash';
+ import { AppLoader } from '@/components/ui/AppLoader';
+diff --git a/mobile/mobile-app/app/index.tsx b/mobile/mobile-app/app/index.tsx
+index eeda60ff..b1e311bf 100644
+--- a/mobile/mobile-app/app/index.tsx
++++ b/mobile/mobile-app/app/index.tsx
+@@ -1,7 +1,7 @@
+ import React from 'react';
+ import { AppLoader } from '@/components/ui/AppLoader';
+ import { Redirect } from 'expo-router';
+-import { useAuth } from '../src/features/auth/hooks/useAuth';
++import { useAuth } from '@/src/features/auth/hooks/useAuth';
+ 
+ export default function IndexScreen() {
+   const { isAuthenticated, isInitialized, user } = useAuth();
+diff --git a/mobile/mobile-app/app/invite/handoff/[handoffId].tsx b/mobile/mobile-app/app/invite/handoff/[handoffId].tsx
+index 750f34e2..0c23e80b 100644
+--- a/mobile/mobile-app/app/invite/handoff/[handoffId].tsx
++++ b/mobile/mobile-app/app/invite/handoff/[handoffId].tsx
+@@ -6,9 +6,9 @@ import { AlertCircle, CheckCircle2, Smartphone } from 'lucide-react-native';
+ import { ScreenShell } from '@/components/ui/ScreenShell';
+ import { EmptyState } from '@/components/feedback/EmptyState';
+ import { Text } from '@/components/ui/text';
+-import authService from '../../../src/features/auth/services/authService';
+-import { updateTokenAndUser } from '../../../src/features/auth/store/authSlice';
+-import storage from '../../../src/utils/storage';
++import authService from '@/src/features/auth/services/authService';
++import { updateTokenAndUser } from '@/src/features/auth/store/authSlice';
++import storage from '@/src/utils/storage';
+ import { AppLoader } from '@/components/ui/AppLoader';
+ 
+ export default function MobileHandoffScreen() {
+diff --git a/mobile/mobile-app/package-lock.json b/mobile/mobile-app/package-lock.json
+index 98202f88..f1c357ed 100644
+--- a/mobile/mobile-app/package-lock.json
++++ b/mobile/mobile-app/package-lock.json
+@@ -1,16 +1,17 @@
+ {
+   "name": "mobile-app",
+-  "version": "1.0.4",
++  "version": "1.0.5",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "mobile-app",
+-      "version": "1.0.4",
++      "version": "1.0.5",
+       "hasInstallScript": true,
+       "dependencies": {
+         "@expo-google-fonts/hanken-grotesk": "^0.4.3",
+         "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
++        "@expo/config-plugins": "^57.0.9",
+         "@gorhom/bottom-sheet": "^5.2.14",
+         "@hookform/resolvers": "^5.4.0",
+         "@react-navigation/bottom-tabs": "^7.4.0",
+@@ -1409,54 +1410,6 @@
+         "slugify": "^1.3.4"
+       }
+     },
+-    "node_modules/@expo/cli/node_modules/@expo/config-plugins": {
+-      "version": "57.0.9",
+-      "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-57.0.9.tgz",
+-      "integrity": "sha512-hHgfL1avkCdEvDSw7IwlKwRYYNgcxzbNNMIk6W6lTkJpY0MajinAfeJUS0J+wPCsjUfGbVqOJM+XhPaO5ulUxg==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@expo/config-types": "^57.0.2",
+-        "@expo/json-file": "~11.0.1",
+-        "@expo/plist": "^0.8.1",
+-        "@expo/require-utils": "^57.0.5",
+-        "@expo/sdk-runtime-versions": "^1.0.0",
+-        "chalk": "^4.1.2",
+-        "debug": "^4.3.5",
+-        "getenv": "^2.0.0",
+-        "glob": "^13.0.0",
+-        "semver": "^7.5.4",
+-        "slugify": "^1.6.6",
+-        "xcode": "^3.0.1",
+-        "xml2js": "0.6.0"
+-      }
+-    },
+-    "node_modules/@expo/cli/node_modules/@expo/config-types": {
+-      "version": "57.0.2",
+-      "resolved": "https://registry.npmjs.org/@expo/config-types/-/config-types-57.0.2.tgz",
+-      "integrity": "sha512-ewW08OonrcRIsRKIlFvvcmmafE5zemb1ocu3HkNwtVPyRtj2w42pZCAkMIROYpcVBaPnc3mDT9UZDzwXWC3i6g==",
+-      "license": "MIT"
+-    },
+-    "node_modules/@expo/cli/node_modules/@expo/json-file": {
+-      "version": "11.0.1",
+-      "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+-      "integrity": "sha512-zxHWj4MKKMAL29ZQSY/Fssx4Thluk40JmuGNaeS078wy/NhlFhnVi+rHHunulE3xJAJ0CM73m8VK2+GkF9eRwQ==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@babel/code-frame": "^7.20.0",
+-        "json5": "^2.2.3"
+-      }
+-    },
+-    "node_modules/@expo/cli/node_modules/@expo/plist": {
+-      "version": "0.8.1",
+-      "resolved": "https://registry.npmjs.org/@expo/plist/-/plist-0.8.1.tgz",
+-      "integrity": "sha512-3gTReGIUm0oRaMClsAJYxBnVPCl6fVpsl8HS+DTVxDhW4GyVyxg9E/Znm3BvcHtUJ51RJJI14pC1wvrNilCRHw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@xmldom/xmldom": "^0.8.8",
+-        "base64-js": "^1.5.1",
+-        "xmlbuilder": "^15.1.1"
+-      }
+-    },
+     "node_modules/@expo/cli/node_modules/@expo/prebuild-config": {
+       "version": "57.0.16",
+       "resolved": "https://registry.npmjs.org/@expo/prebuild-config/-/prebuild-config-57.0.16.tgz",
+@@ -1514,6 +1467,33 @@
+         "node-forge": "^1.3.3"
+       }
+     },
++    "node_modules/@expo/config-plugins": {
++      "version": "57.0.9",
++      "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-57.0.9.tgz",
++      "integrity": "sha512-hHgfL1avkCdEvDSw7IwlKwRYYNgcxzbNNMIk6W6lTkJpY0MajinAfeJUS0J+wPCsjUfGbVqOJM+XhPaO5ulUxg==",
++      "license": "MIT",
++      "dependencies": {
++        "@expo/config-types": "^57.0.2",
++        "@expo/json-file": "~11.0.1",
++        "@expo/plist": "^0.8.1",
++        "@expo/require-utils": "^57.0.5",
++        "@expo/sdk-runtime-versions": "^1.0.0",
++        "chalk": "^4.1.2",
++        "debug": "^4.3.5",
++        "getenv": "^2.0.0",
++        "glob": "^13.0.0",
++        "semver": "^7.5.4",
++        "slugify": "^1.6.6",
++        "xcode": "^3.0.1",
++        "xml2js": "0.6.0"
++      }
++    },
++    "node_modules/@expo/config-types": {
++      "version": "57.0.2",
++      "resolved": "https://registry.npmjs.org/@expo/config-types/-/config-types-57.0.2.tgz",
++      "integrity": "sha512-ewW08OonrcRIsRKIlFvvcmmafE5zemb1ocu3HkNwtVPyRtj2w42pZCAkMIROYpcVBaPnc3mDT9UZDzwXWC3i6g==",
++      "license": "MIT"
++    },
+     "node_modules/@expo/devcert": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/@expo/devcert/-/devcert-1.2.1.tgz",
+@@ -1631,34 +1611,7 @@
+         "@expo/config-plugins": "~57.0.9"
+       }
+     },
+-    "node_modules/@expo/inline-modules/node_modules/@expo/config-plugins": {
+-      "version": "57.0.9",
+-      "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-57.0.9.tgz",
+-      "integrity": "sha512-hHgfL1avkCdEvDSw7IwlKwRYYNgcxzbNNMIk6W6lTkJpY0MajinAfeJUS0J+wPCsjUfGbVqOJM+XhPaO5ulUxg==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@expo/config-types": "^57.0.2",
+-        "@expo/json-file": "~11.0.1",
+-        "@expo/plist": "^0.8.1",
+-        "@expo/require-utils": "^57.0.5",
+-        "@expo/sdk-runtime-versions": "^1.0.0",
+-        "chalk": "^4.1.2",
+-        "debug": "^4.3.5",
+-        "getenv": "^2.0.0",
+-        "glob": "^13.0.0",
+-        "semver": "^7.5.4",
+-        "slugify": "^1.6.6",
+-        "xcode": "^3.0.1",
+-        "xml2js": "0.6.0"
+-      }
+-    },
+-    "node_modules/@expo/inline-modules/node_modules/@expo/config-types": {
+-      "version": "57.0.2",
+-      "resolved": "https://registry.npmjs.org/@expo/config-types/-/config-types-57.0.2.tgz",
+-      "integrity": "sha512-ewW08OonrcRIsRKIlFvvcmmafE5zemb1ocu3HkNwtVPyRtj2w42pZCAkMIROYpcVBaPnc3mDT9UZDzwXWC3i6g==",
+-      "license": "MIT"
+-    },
+-    "node_modules/@expo/inline-modules/node_modules/@expo/json-file": {
++    "node_modules/@expo/json-file": {
+       "version": "11.0.1",
+       "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+       "integrity": "sha512-zxHWj4MKKMAL29ZQSY/Fssx4Thluk40JmuGNaeS078wy/NhlFhnVi+rHHunulE3xJAJ0CM73m8VK2+GkF9eRwQ==",
+@@ -1668,17 +1621,6 @@
+         "json5": "^2.2.3"
+       }
+     },
+-    "node_modules/@expo/inline-modules/node_modules/@expo/plist": {
+-      "version": "0.8.1",
+-      "resolved": "https://registry.npmjs.org/@expo/plist/-/plist-0.8.1.tgz",
+-      "integrity": "sha512-3gTReGIUm0oRaMClsAJYxBnVPCl6fVpsl8HS+DTVxDhW4GyVyxg9E/Znm3BvcHtUJ51RJJI14pC1wvrNilCRHw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@xmldom/xmldom": "^0.8.8",
+-        "base64-js": "^1.5.1",
+-        "xmlbuilder": "^15.1.1"
+-      }
+-    },
+     "node_modules/@expo/local-build-cache-provider": {
+       "version": "57.0.8",
+       "resolved": "https://registry.npmjs.org/@expo/local-build-cache-provider/-/local-build-cache-provider-57.0.8.tgz",
+@@ -1707,54 +1649,6 @@
+         "slugify": "^1.3.4"
+       }
+     },
+-    "node_modules/@expo/local-build-cache-provider/node_modules/@expo/config-plugins": {
+-      "version": "57.0.9",
+-      "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-57.0.9.tgz",
+-      "integrity": "sha512-hHgfL1avkCdEvDSw7IwlKwRYYNgcxzbNNMIk6W6lTkJpY0MajinAfeJUS0J+wPCsjUfGbVqOJM+XhPaO5ulUxg==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@expo/config-types": "^57.0.2",
+-        "@expo/json-file": "~11.0.1",
+-        "@expo/plist": "^0.8.1",
+-        "@expo/require-utils": "^57.0.5",
+-        "@expo/sdk-runtime-versions": "^1.0.0",
+-        "chalk": "^4.1.2",
+-        "debug": "^4.3.5",
+-        "getenv": "^2.0.0",
+-        "glob": "^13.0.0",
+-        "semver": "^7.5.4",
+-        "slugify": "^1.6.6",
+-        "xcode": "^3.0.1",
+-        "xml2js": "0.6.0"
+-      }
+-    },
+-    "node_modules/@expo/local-build-cache-provider/node_modules/@expo/config-types": {
+-      "version": "57.0.2",
+-      "resolved": "https://registry.npmjs.org/@expo/config-types/-/config-types-57.0.2.tgz",
+-      "integrity": "sha512-ewW08OonrcRIsRKIlFvvcmmafE5zemb1ocu3HkNwtVPyRtj2w42pZCAkMIROYpcVBaPnc3mDT9UZDzwXWC3i6g==",
+-      "license": "MIT"
+-    },
+-    "node_modules/@expo/local-build-cache-provider/node_modules/@expo/json-file": {
+-      "version": "11.0.1",
+-      "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+-      "integrity": "sha512-zxHWj4MKKMAL29ZQSY/Fssx4Thluk40JmuGNaeS078wy/NhlFhnVi+rHHunulE3xJAJ0CM73m8VK2+GkF9eRwQ==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@babel/code-frame": "^7.20.0",
+-        "json5": "^2.2.3"
+-      }
+-    },
+-    "node_modules/@expo/local-build-cache-provider/node_modules/@expo/plist": {
+-      "version": "0.8.1",
+-      "resolved": "https://registry.npmjs.org/@expo/plist/-/plist-0.8.1.tgz",
+-      "integrity": "sha512-3gTReGIUm0oRaMClsAJYxBnVPCl6fVpsl8HS+DTVxDhW4GyVyxg9E/Znm3BvcHtUJ51RJJI14pC1wvrNilCRHw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@xmldom/xmldom": "^0.8.8",
+-        "base64-js": "^1.5.1",
+-        "xmlbuilder": "^15.1.1"
+-      }
+-    },
+     "node_modules/@expo/log-box": {
+       "version": "57.0.4",
+       "resolved": "https://registry.npmjs.org/@expo/log-box/-/log-box-57.0.4.tgz",
+@@ -1851,54 +1745,6 @@
+         "slugify": "^1.3.4"
+       }
+     },
+-    "node_modules/@expo/metro-config/node_modules/@expo/config-plugins": {
+-      "version": "57.0.9",
+-      "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-57.0.9.tgz",
+-      "integrity": "sha512-hHgfL1avkCdEvDSw7IwlKwRYYNgcxzbNNMIk6W6lTkJpY0MajinAfeJUS0J+wPCsjUfGbVqOJM+XhPaO5ulUxg==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@expo/config-types": "^57.0.2",
+-        "@expo/json-file": "~11.0.1",
+-        "@expo/plist": "^0.8.1",
+-        "@expo/require-utils": "^57.0.5",
+-        "@expo/sdk-runtime-versions": "^1.0.0",
+-        "chalk": "^4.1.2",
+-        "debug": "^4.3.5",
+-        "getenv": "^2.0.0",
+-        "glob": "^13.0.0",
+-        "semver": "^7.5.4",
+-        "slugify": "^1.6.6",
+-        "xcode": "^3.0.1",
+-        "xml2js": "0.6.0"
+-      }
+-    },
+-    "node_modules/@expo/metro-config/node_modules/@expo/config-types": {
+-      "version": "57.0.2",
+-      "resolved": "https://registry.npmjs.org/@expo/config-types/-/config-types-57.0.2.tgz",
+-      "integrity": "sha512-ewW08OonrcRIsRKIlFvvcmmafE5zemb1ocu3HkNwtVPyRtj2w42pZCAkMIROYpcVBaPnc3mDT9UZDzwXWC3i6g==",
+-      "license": "MIT"
+-    },
+-    "node_modules/@expo/metro-config/node_modules/@expo/json-file": {
+-      "version": "11.0.1",
+-      "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+-      "integrity": "sha512-zxHWj4MKKMAL29ZQSY/Fssx4Thluk40JmuGNaeS078wy/NhlFhnVi+rHHunulE3xJAJ0CM73m8VK2+GkF9eRwQ==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@babel/code-frame": "^7.20.0",
+-        "json5": "^2.2.3"
+-      }
+-    },
+-    "node_modules/@expo/metro-config/node_modules/@expo/plist": {
+-      "version": "0.8.1",
+-      "resolved": "https://registry.npmjs.org/@expo/plist/-/plist-0.8.1.tgz",
+-      "integrity": "sha512-3gTReGIUm0oRaMClsAJYxBnVPCl6fVpsl8HS+DTVxDhW4GyVyxg9E/Znm3BvcHtUJ51RJJI14pC1wvrNilCRHw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@xmldom/xmldom": "^0.8.8",
+-        "base64-js": "^1.5.1",
+-        "xmlbuilder": "^15.1.1"
+-      }
+-    },
+     "node_modules/@expo/metro-config/node_modules/hermes-estree": {
+       "version": "0.36.1",
+       "resolved": "https://registry.npmjs.org/hermes-estree/-/hermes-estree-0.36.1.tgz",
+@@ -2599,14 +2445,15 @@
+         "resolve-workspace-root": "^2.0.0"
+       }
+     },
+-    "node_modules/@expo/package-manager/node_modules/@expo/json-file": {
+-      "version": "11.0.1",
+-      "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+-      "integrity": "sha512-zxHWj4MKKMAL29ZQSY/Fssx4Thluk40JmuGNaeS078wy/NhlFhnVi+rHHunulE3xJAJ0CM73m8VK2+GkF9eRwQ==",
++    "node_modules/@expo/plist": {
++      "version": "0.8.1",
++      "resolved": "https://registry.npmjs.org/@expo/plist/-/plist-0.8.1.tgz",
++      "integrity": "sha512-3gTReGIUm0oRaMClsAJYxBnVPCl6fVpsl8HS+DTVxDhW4GyVyxg9E/Znm3BvcHtUJ51RJJI14pC1wvrNilCRHw==",
+       "license": "MIT",
+       "dependencies": {
+-        "@babel/code-frame": "^7.20.0",
+-        "json5": "^2.2.3"
++        "@xmldom/xmldom": "^0.8.8",
++        "base64-js": "^1.5.1",
++        "xmlbuilder": "^15.1.1"
+       }
+     },
+     "node_modules/@expo/require-utils": {
+@@ -7773,54 +7620,6 @@
+         "react-native": "*"
+       }
+     },
+-    "node_modules/expo-sharing/node_modules/@expo/config-plugins": {
+-      "version": "57.0.9",
+-      "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-57.0.9.tgz",
+-      "integrity": "sha512-hHgfL1avkCdEvDSw7IwlKwRYYNgcxzbNNMIk6W6lTkJpY0MajinAfeJUS0J+wPCsjUfGbVqOJM+XhPaO5ulUxg==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@expo/config-types": "^57.0.2",
+-        "@expo/json-file": "~11.0.1",
+-        "@expo/plist": "^0.8.1",
+-        "@expo/require-utils": "^57.0.5",
+-        "@expo/sdk-runtime-versions": "^1.0.0",
+-        "chalk": "^4.1.2",
+-        "debug": "^4.3.5",
+-        "getenv": "^2.0.0",
+-        "glob": "^13.0.0",
+-        "semver": "^7.5.4",
+-        "slugify": "^1.6.6",
+-        "xcode": "^3.0.1",
+-        "xml2js": "0.6.0"
+-      }
+-    },
+-    "node_modules/expo-sharing/node_modules/@expo/config-types": {
+-      "version": "57.0.2",
+-      "resolved": "https://registry.npmjs.org/@expo/config-types/-/config-types-57.0.2.tgz",
+-      "integrity": "sha512-ewW08OonrcRIsRKIlFvvcmmafE5zemb1ocu3HkNwtVPyRtj2w42pZCAkMIROYpcVBaPnc3mDT9UZDzwXWC3i6g==",
+-      "license": "MIT"
+-    },
+-    "node_modules/expo-sharing/node_modules/@expo/json-file": {
+-      "version": "11.0.1",
+-      "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+-      "integrity": "sha512-zxHWj4MKKMAL29ZQSY/Fssx4Thluk40JmuGNaeS078wy/NhlFhnVi+rHHunulE3xJAJ0CM73m8VK2+GkF9eRwQ==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@babel/code-frame": "^7.20.0",
+-        "json5": "^2.2.3"
+-      }
+-    },
+-    "node_modules/expo-sharing/node_modules/@expo/plist": {
+-      "version": "0.8.1",
+-      "resolved": "https://registry.npmjs.org/@expo/plist/-/plist-0.8.1.tgz",
+-      "integrity": "sha512-3gTReGIUm0oRaMClsAJYxBnVPCl6fVpsl8HS+DTVxDhW4GyVyxg9E/Znm3BvcHtUJ51RJJI14pC1wvrNilCRHw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@xmldom/xmldom": "^0.8.8",
+-        "base64-js": "^1.5.1",
+-        "xmlbuilder": "^15.1.1"
+-      }
+-    },
+     "node_modules/expo-splash-screen": {
+       "version": "57.0.9",
+       "resolved": "https://registry.npmjs.org/expo-splash-screen/-/expo-splash-screen-57.0.9.tgz",
+@@ -7835,54 +7634,6 @@
+         "expo": "*"
+       }
+     },
+-    "node_modules/expo-splash-screen/node_modules/@expo/config-plugins": {
+-      "version": "57.0.9",
+-      "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-57.0.9.tgz",
+-      "integrity": "sha512-hHgfL1avkCdEvDSw7IwlKwRYYNgcxzbNNMIk6W6lTkJpY0MajinAfeJUS0J+wPCsjUfGbVqOJM+XhPaO5ulUxg==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@expo/config-types": "^57.0.2",
+-        "@expo/json-file": "~11.0.1",
+-        "@expo/plist": "^0.8.1",
+-        "@expo/require-utils": "^57.0.5",
+-        "@expo/sdk-runtime-versions": "^1.0.0",
+-        "chalk": "^4.1.2",
+-        "debug": "^4.3.5",
+-        "getenv": "^2.0.0",
+-        "glob": "^13.0.0",
+-        "semver": "^7.5.4",
+-        "slugify": "^1.6.6",
+-        "xcode": "^3.0.1",
+-        "xml2js": "0.6.0"
+-      }
+-    },
+-    "node_modules/expo-splash-screen/node_modules/@expo/config-types": {
+-      "version": "57.0.2",
+-      "resolved": "https://registry.npmjs.org/@expo/config-types/-/config-types-57.0.2.tgz",
+-      "integrity": "sha512-ewW08OonrcRIsRKIlFvvcmmafE5zemb1ocu3HkNwtVPyRtj2w42pZCAkMIROYpcVBaPnc3mDT9UZDzwXWC3i6g==",
+-      "license": "MIT"
+-    },
+-    "node_modules/expo-splash-screen/node_modules/@expo/json-file": {
+-      "version": "11.0.1",
+-      "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+-      "integrity": "sha512-zxHWj4MKKMAL29ZQSY/Fssx4Thluk40JmuGNaeS078wy/NhlFhnVi+rHHunulE3xJAJ0CM73m8VK2+GkF9eRwQ==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@babel/code-frame": "^7.20.0",
+-        "json5": "^2.2.3"
+-      }
+-    },
+-    "node_modules/expo-splash-screen/node_modules/@expo/plist": {
+-      "version": "0.8.1",
+-      "resolved": "https://registry.npmjs.org/@expo/plist/-/plist-0.8.1.tgz",
+-      "integrity": "sha512-3gTReGIUm0oRaMClsAJYxBnVPCl6fVpsl8HS+DTVxDhW4GyVyxg9E/Znm3BvcHtUJ51RJJI14pC1wvrNilCRHw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@xmldom/xmldom": "^0.8.8",
+-        "base64-js": "^1.5.1",
+-        "xmlbuilder": "^15.1.1"
+-      }
+-    },
+     "node_modules/expo-status-bar": {
+       "version": "57.0.1",
+       "resolved": "https://registry.npmjs.org/expo-status-bar/-/expo-status-bar-57.0.1.tgz",
+@@ -7991,17 +7742,6 @@
+         "expo": "*"
+       }
+     },
+-    "node_modules/expo-updates/node_modules/@expo/plist": {
+-      "version": "0.8.1",
+-      "resolved": "https://registry.npmjs.org/@expo/plist/-/plist-0.8.1.tgz",
+-      "integrity": "sha512-3gTReGIUm0oRaMClsAJYxBnVPCl6fVpsl8HS+DTVxDhW4GyVyxg9E/Znm3BvcHtUJ51RJJI14pC1wvrNilCRHw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@xmldom/xmldom": "^0.8.8",
+-        "base64-js": "^1.5.1",
+-        "xmlbuilder": "^15.1.1"
+-      }
+-    },
+     "node_modules/expo-updates/node_modules/arg": {
+       "version": "4.1.0",
+       "resolved": "https://registry.npmjs.org/arg/-/arg-4.1.0.tgz",
+@@ -8036,54 +7776,6 @@
+         "slugify": "^1.3.4"
+       }
+     },
+-    "node_modules/expo/node_modules/@expo/config-plugins": {
+-      "version": "57.0.9",
+-      "resolved": "https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-57.0.9.tgz",
+-      "integrity": "sha512-hHgfL1avkCdEvDSw7IwlKwRYYNgcxzbNNMIk6W6lTkJpY0MajinAfeJUS0J+wPCsjUfGbVqOJM+XhPaO5ulUxg==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@expo/config-types": "^57.0.2",
+-        "@expo/json-file": "~11.0.1",
+-        "@expo/plist": "^0.8.1",
+-        "@expo/require-utils": "^57.0.5",
+-        "@expo/sdk-runtime-versions": "^1.0.0",
+-        "chalk": "^4.1.2",
+-        "debug": "^4.3.5",
+-        "getenv": "^2.0.0",
+-        "glob": "^13.0.0",
+-        "semver": "^7.5.4",
+-        "slugify": "^1.6.6",
+-        "xcode": "^3.0.1",
+-        "xml2js": "0.6.0"
+-      }
+-    },
+-    "node_modules/expo/node_modules/@expo/config-types": {
+-      "version": "57.0.2",
+-      "resolved": "https://registry.npmjs.org/@expo/config-types/-/config-types-57.0.2.tgz",
+-      "integrity": "sha512-ewW08OonrcRIsRKIlFvvcmmafE5zemb1ocu3HkNwtVPyRtj2w42pZCAkMIROYpcVBaPnc3mDT9UZDzwXWC3i6g==",
+-      "license": "MIT"
+-    },
+-    "node_modules/expo/node_modules/@expo/json-file": {
+-      "version": "11.0.1",
+-      "resolved": "https://registry.npmjs.org/@expo/json-file/-/json-file-11.0.1.tgz",
+-      "integrity": "sha512-zxHWj4MKKMAL29ZQSY/Fssx4Thluk40JmuGNaeS078wy/NhlFhnVi+rHHunulE3xJAJ0CM73m8VK2+GkF9eRwQ==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@babel/code-frame": "^7.20.0",
+-        "json5": "^2.2.3"
+-      }
+-    },
+-    "node_modules/expo/node_modules/@expo/plist": {
+-      "version": "0.8.1",
+-      "resolved": "https://registry.npmjs.org/@expo/plist/-/plist-0.8.1.tgz",
+-      "integrity": "sha512-3gTReGIUm0oRaMClsAJYxBnVPCl6fVpsl8HS+DTVxDhW4GyVyxg9E/Znm3BvcHtUJ51RJJI14pC1wvrNilCRHw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@xmldom/xmldom": "^0.8.8",
+-        "base64-js": "^1.5.1",
+-        "xmlbuilder": "^15.1.1"
+-      }
+-    },
+     "node_modules/expo/node_modules/ansi-styles": {
+       "version": "5.2.0",
+       "license": "MIT",
+diff --git a/mobile/mobile-app/package.json b/mobile/mobile-app/package.json
+index 61e5b2f6..cbb1cd72 100644
+--- a/mobile/mobile-app/package.json
++++ b/mobile/mobile-app/package.json
+@@ -23,6 +23,7 @@
+   "dependencies": {
+     "@expo-google-fonts/hanken-grotesk": "^0.4.3",
+     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
++    "@expo/config-plugins": "^57.0.9",
+     "@gorhom/bottom-sheet": "^5.2.14",
+     "@hookform/resolvers": "^5.4.0",
+     "@react-navigation/bottom-tabs": "^7.4.0",
+-- 
+2.51.0.windows.1
+

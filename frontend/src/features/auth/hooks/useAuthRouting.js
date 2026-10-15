@@ -1,5 +1,6 @@
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { acceptPendingInvitation, clearStatus } from '../store/authSlice.js'
 
 /**
  * useAuthRouting Custom Hook
@@ -11,6 +12,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 export const useAuthRouting = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useDispatch()
 
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
   const token = useSelector((state) => state.auth.token)
@@ -51,24 +53,23 @@ export const useAuthRouting = () => {
     // Clear stored temporary auth intent once evaluated
     sessionStorage.removeItem('auth_intent')
 
-    // 1. Invite Sign-up/Login Flow:
-    // If we have an invite token and we aren't explicitly skipping it, route to accept-invite
+    // If an invitation token is present and not explicitly skipped, accept it and refresh context
     if (inviteToken && !options.skipInviteToken) {
-      navigate(`/accept-invite/${inviteToken}`)
+      dispatch(acceptPendingInvitation(inviteToken))
+        .unwrap()
+        .then(() => {
+          dispatch(clearStatus())
+          navigate('/dashboard', { replace: true })
+        })
+        .catch((err) => {
+          console.warn('[useAuthRouting] Could not auto-accept invite token:', err)
+          dispatch(clearStatus())
+          navigate('/dashboard', { replace: true })
+        })
       return
     }
 
-    // Check if the user already has an active organization
-    const hasOrg = !!(
-      user &&
-      (user.orgId ||
-        user.activeOrgId ||
-        user.organizationId ||
-        authWorkspaces.length > 0 ||
-        availableWorkspaces.length > 0)
-    )
-
-    // 2. Existing Organization Users / Fallback:
+    // Existing Organization Users / Fallback:
     navigate('/dashboard')
   }
 

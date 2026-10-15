@@ -87,12 +87,12 @@ export function AdminBookingQueueScreen() {
         <Button
           size="sm"
           onPress={launcher.start}
-          className="flex-row items-center gap-1.5 px-3 rounded-full"
+          className="flex-row items-center gap-1.5 px-3 rounded-full bg-primary"
           accessibilityLabel={t('amenity_staff_new_booking', 'New booking')}
           testID="admin-new-booking"
         >
-          <Plus size={15} className="text-primary-foreground" />
-          <Text className="text-xs font-bold text-primary-foreground">{t('amenity_staff_new_booking', 'New booking')}</Text>
+          <Plus size={15} color="#FFFFFF" />
+          <Text className="text-xs font-bold text-white font-sans">{t('amenity_staff_new_booking', 'New Booking')}</Text>
         </Button>
       }
     >

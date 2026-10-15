@@ -12,6 +12,13 @@ export const complaintService = {
     return await apiClient.get(`${BASE_URL}/calendar/events`, { params });
   },
 
+  exportComplaints: async (params) => {
+    return await apiClient.get(`${BASE_URL}/export`, {
+      params,
+      responseType: 'blob',
+    });
+  },
+
   getAll: async (params) => {
     return await apiClient.get(BASE_URL, { params });
   },

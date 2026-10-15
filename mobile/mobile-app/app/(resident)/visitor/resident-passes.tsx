@@ -3,6 +3,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
+import { HeaderActionButton } from '@/components/ui/HeaderActionButton';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Text } from '@/components/ui/text';
@@ -17,7 +18,7 @@ import { VisitorPassDetailsModal } from '@/src/features/visitor/components/Visit
 import { VisitorInvitationTypeSheet } from '@/src/features/visitor/components/shared/VisitorInvitationTypeSheet';
 import { AdminVillaFilterSheet } from '@/src/features/visitor/components/admin/AdminVillaFilterSheet';
 import { PassTypeKey } from '@/src/features/visitor/mocks/visitorMocks';
-import { ShieldAlert, Home, Building2, ChevronDown } from 'lucide-react-native';
+import { ShieldAlert, Home, Building2, ChevronDown, Plus } from 'lucide-react-native';
 
 export default function ResidentPassesScreen() {
   const router = useRouter();
@@ -264,6 +265,16 @@ export default function ResidentPassesScreen() {
           : 'Manage guest invitations & QR passes'
       }
       iconName="TicketCheck"
+      headerRight={
+        <HeaderActionButton
+          onPress={() => setInviteSheetOpen(true)}
+          icon={Plus}
+          label="Create Pass"
+          accessibilityRole="button"
+          accessibilityLabel="Create Pass"
+          testID="create-pass-button"
+        />
+      }
     >
       {/* Paginated List of Passes with ListHeaderComponent */}
       <PaginatedList<VisitorPass>

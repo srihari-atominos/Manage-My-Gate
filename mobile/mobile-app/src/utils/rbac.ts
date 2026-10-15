@@ -143,6 +143,11 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'workspaces:read': ['workspaces:read', 'workspaces.read', 'workspaces:view', 'workspaces', 'admin_workspaces', 'admin_workspace_settings'],
   'settings:read': ['settings:read', 'settings.read', 'settings:view', 'settings', 'admin_app_settings'],
   'integrations:read': ['integrations:read', 'integrations.read', 'integrations:view', 'integrations', 'admin_integrations'],
+  'staff:view': ['staff:view', 'staff.view', 'staff:manage', 'staff.manage', 'staff', 'admin_staff'],
+  'staff:manage': ['staff:manage', 'staff.manage', 'staff'],
+  'staff:attendance': ['staff:attendance', 'staff.attendance', 'staff:manage', 'staff.manage', 'staff'],
+  'staff:assign_unit': ['staff:assign_unit', 'staff.assign_unit', 'staff:manage', 'staff.manage', 'staff', 'resident_staff_associations'],
+  'staff:view_own': ['staff:view_own', 'staff.view_own', 'staff_dashboard'],
 };
 
 /**
@@ -292,6 +297,11 @@ export const isFeatureAllowedForUser = (
 
   // Super Admin / Platform bypass (full system visibility)
   if (effectiveUser.isPlatform === true || permissions.includes('platform:super_admin') || permissions.includes('*')) {
+    return true;
+  }
+
+  // Community Admin always has access to Administration & Security features
+  if (checkIsAdmin(effectiveUser) && item.categoryKey === 'administration_security') {
     return true;
   }
 

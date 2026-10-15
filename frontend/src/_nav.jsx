@@ -8,12 +8,10 @@ import {
   cilList,
   cilHome,
   cilBuilding,
-  cilCalendar,
+  cilEnvelopeClosed,
   cilQrCode,
   cilSpeedometer,
   cilSettings,
-  cilWallet,
-  cilSearch,
   cilWarning,
 } from '@coreui/icons'
 import { CNavItem, CNavTitle, CNavGroup } from '@coreui/react'
@@ -31,6 +29,24 @@ const _nav = [
   },
   {
     component: CNavItem,
+    name: 'Community Manager',
+    to: '/super-admin/organizations',
+    icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Audit Logs',
+    to: '/super-admin/audit-logs',
+    icon: <CIcon icon={cilList} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Issue Reports',
+    to: '/super-admin/issue-reports',
+    icon: <CIcon icon={cilWarning} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
     name: 'Workspace Settings',
     to: '/workspace/settings',
     icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
@@ -39,6 +55,7 @@ const _nav = [
   {
     component: CNavTitle,
     name: 'Features',
+    sidebarTitle: 'Manage',
   },
   {
     component: CNavItem,
@@ -70,6 +87,7 @@ const _nav = [
         component: CNavItem,
         name: 'Invitations',
         to: '/users/invitations',
+        icon: <CIcon icon={cilEnvelopeClosed} customClassName="nav-icon" />,
         requiredPermission: 'users:read',
       },
       {
@@ -132,24 +150,6 @@ const _nav = [
       'complaints:staff',
       'complaints:assignee',
     ],
-  },
-  {
-    component: CNavItem,
-    name: 'Community Manager',
-    to: '/super-admin/organizations',
-    icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
-  },
-  {
-    component: CNavItem,
-    name: 'Audit Logs',
-    to: '/super-admin/audit-logs',
-    icon: <CIcon icon={cilList} customClassName="nav-icon" />,
-  },
-  {
-    component: CNavItem,
-    name: 'Issue Reports',
-    to: '/super-admin/issue-reports',
-    icon: <CIcon icon={cilWarning} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,

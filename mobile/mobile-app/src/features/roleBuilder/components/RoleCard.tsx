@@ -29,12 +29,37 @@ export const RoleCard: React.FC<RoleCardProps> = ({
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
 
   const permissionsCount = Array.isArray(role?.permissions) ? role.permissions.length : 0;
-  const isTenant = !!role?.isTenantRole;
   const mappingsCount = role?.integrationMappings ? Object.keys(role.integrationMappings).length : 0;
   const usersCount = (role as any)?.usersCount ?? (role as any)?.userCount;
 
-  const getStatusVariant = (): StatusVariant => {
-    return isTenant ? 'info' : 'success';
+  // Determine scope archetype:
+  // 1. If role.roleScope is explicitly set ('GLOBAL' | 'UNIT' | 'STAFF'), respect it strictly!
+  // 2. Only if roleScope is unset, fall back to isTenantRole or legacy keyword heuristic.
+  const hasExplicitScope = Boolean(role?.roleScope);
+  const isStaff = hasExplicitScope
+    ? role?.roleScope === 'STAFF'
+    : /staff|guard|technician|vendor|maintenance|maid|driver|cook|gardener|electrician|plumber|carpenter|cleaner|housekeeping/i.test(role?.name || '');
+  const isUnit = hasExplicitScope
+    ? role?.roleScope === 'UNIT'
+    : !isStaff && !!role?.isTenantRole;
+
+  const getScopeBadge = () => {
+    if (isStaff) {
+      return {
+        label: t('staff_dual_scope', 'STAFF (DUAL)'),
+        variant: 'warning' as StatusVariant,
+      };
+    }
+    if (isUnit) {
+      return {
+        label: t('unit_scope', 'UNIT SCOPE'),
+        variant: 'info' as StatusVariant,
+      };
+    }
+    return {
+      label: t('global_role', 'GLOBAL ROLE'),
+      variant: 'success' as StatusVariant,
+    };
   };
 
   const getInitials = (name: string) => {
@@ -90,11 +115,16 @@ export const RoleCard: React.FC<RoleCardProps> = ({
 
           {/* Right: Scope Badge & Single ⋯ Overflow Menu */}
           <View className="flex-row items-center gap-2 shrink-0">
-            <StatusBadge
-              label={isTenant ? t('unit_scope', 'UNIT SCOPE') : t('global_role', 'GLOBAL ROLE')}
-              variant={getStatusVariant()}
-              className="py-0.5 px-2"
-            />
+            {(() => {
+              const scopeInfo = getScopeBadge();
+              return (
+                <StatusBadge
+                  label={scopeInfo.label}
+                  variant={scopeInfo.variant}
+                  className="py-0.5 px-2"
+                />
+              );
+            })()}
 
             <TouchableOpacity
               onPress={handleMenuPress}
@@ -119,6 +149,15 @@ export const RoleCard: React.FC<RoleCardProps> = ({
                 {permissionsCount} {permissionsCount === 1 ? t('permission_singular', 'Permission') : t('permissions_plural', 'Permissions')}
               </Text>
             </View>
+
+            {/* Staff Role Badge (only if role is actually staff scoped) */}
+            {isStaff ? (
+              <View className="flex-row items-center gap-1 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400 font-sans">
+                  {t('staff_role_badge', 'Staff Member')}
+                </Text>
+              </View>
+            ) : null}
 
             {/* Integrations Badge */}
             {mappingsCount > 0 ? (

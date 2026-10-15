@@ -3,6 +3,23 @@ import config from '../../config/config.js';
 import { setAuthCookie, setRefreshTokenCookie, clearAuthCookie } from '../../utils/cookie.utils.js';
 import * as sessionController from '../session/session.controller.js';
 
+const requestDeviceInfo = (req) => ({
+  deviceName: req.headers['user-agent'],
+  browser: 'Browser',
+  os: 'OS',
+  ipAddress: req.ip,
+});
+
+/**
+ * Sends a login result. A verified-but-not-yet-activated invitee receives a
+ * ticket and their pending invitations instead of a session, so no cookies.
+ */
+const sendLoginResult = (res, data, message = 'Login successful') => {
+  if (data?.token) setAuthCookie(res, data.token);
+  if (data?.refreshToken) setRefreshTokenCookie(res, data.refreshToken);
+  res.success(data, data?.requiresInvitationSelection ? 'Choose the invitation to accept' : message);
+};
+
 export class AuthController {
   async register(req, res, next) {
     try {
@@ -16,7 +33,7 @@ export class AuthController {
 
   async verifyRegistrationOtp(req, res, next) {
     try {
-      const { email, code } = req.body;
+      const { email, code, inviteToken } = req.body;
       const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
       const data = await authService.verifyRegistrationOtp(email, code, deviceInfo);
       setAuthCookie(res, data.token);
@@ -212,14 +229,14 @@ export class AuthController {
 
   async verifyPhoneLogin(req, res, next) {
     try {
-      const { phone, code } = req.body;
+      const { phone, code, inviteToken } = req.body;
       const deviceInfo = {
         deviceName: req.headers['user-agent'],
         browser: 'Browser',
         os: 'OS',
         ipAddress: req.ip,
       };
-      const data = await authService.verifyPhoneLogin(phone, code, deviceInfo);
+      const data = await authService.verifyPhoneLogin(phone, code, deviceInfo, inviteToken);
       setAuthCookie(res, data.token);
       setRefreshTokenCookie(res, data.refreshToken);
       res.success(data, 'Login successful');
@@ -271,14 +288,14 @@ export class AuthController {
 
   async verifyEmailOtpLogin(req, res, next) {
     try {
-      const { email, code } = req.body;
+      const { email, code, inviteToken } = req.body;
       const deviceInfo = {
         deviceName: req.headers['user-agent'],
         browser: 'Browser',
         os: 'OS',
         ipAddress: req.ip,
       };
-      const data = await authService.verifyEmailOtpLogin(email, code, deviceInfo);
+      const data = await authService.verifyEmailOtpLogin(email, code, deviceInfo, inviteToken);
       setAuthCookie(res, data.token);
       setRefreshTokenCookie(res, data.refreshToken);
       res.success(data, 'Login successful');
@@ -324,7 +341,16 @@ export class AuthController {
   async logout(req, res, next) {
     try {
       const token = req.cookies?.refreshToken || req.body?.refreshToken;
-      const userId = req.user?._id || req.user?.id;
+      let userId = req.user?._id || req.user?.id;
+      // The access token may already have expired; the refresh token still identifies the session
+      if (!userId && token) {
+        try {
+          const { verifyRefreshToken } = await import('../../utils/jwt.utils.js');
+          userId = verifyRefreshToken(token)?.id || null;
+        } catch (_) {
+          userId = null;
+        }
+      }
       if (userId) {
         await authService.logout(userId, token);
       }
@@ -337,15 +363,57 @@ export class AuthController {
 
   async setupAccountPassword(req, res, next) {
     try {
-      const { email, password, orgName } = req.body;
+      const { email, password, setupToken } = req.body;
       const deviceInfo = {
         deviceName: req.headers['user-agent'],
         browser: 'Browser',
         os: 'OS',
         ipAddress: req.ip,
       };
-      const data = await authService.setupAccountPassword(email, password, deviceInfo, orgName);
+      const data = await authService.setupAccountPassword(email, password, deviceInfo, null, setupToken);
       res.success(data, 'Password configured successfully. Account activated.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPendingInvitations(req, res, next) {
+    try {
+      const userId = req.user?.id || req.user?._id;
+      const data = await authService.getPendingInvitations(userId);
+      res.success(data, 'Pending invitations fetched successfully.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /** Accept one invitation from the pending list (signed in, or with an identity ticket). */
+  async acceptPendingInvitation(req, res, next) {
+    try {
+      const data = await authService.respondToInvitation({
+        action: 'accept',
+        invitationId: req.body.invitationId || null,
+        inviteToken: req.body.inviteToken || req.body.token || null,
+        authUserId: req.user?.id || req.user?._id || null,
+        ticket: req.body.ticket || null,
+        deviceInfo: requestDeviceInfo(req),
+      });
+      sendLoginResult(res, data, 'Invitation accepted');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async declinePendingInvitation(req, res, next) {
+    try {
+      const data = await authService.respondToInvitation({
+        action: 'decline',
+        invitationId: req.body.invitationId || null,
+        inviteToken: req.body.inviteToken || req.body.token || null,
+        authUserId: req.user?.id || req.user?._id || null,
+        ticket: req.body.ticket || null,
+      });
+      res.success(data, 'Invitation declined');
     } catch (error) {
       next(error);
     }

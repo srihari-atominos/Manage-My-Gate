@@ -3,6 +3,18 @@ import HttpError from '../../utils/httpError.utils.js';
 import mongoose from 'mongoose';
 import orgEventEmitter from './organization.events.js';
 import { DEFAULT_ROLE_PERMISSIONS } from './defaultRolePermissions.js';
+import { normalizePhone } from '../../utils/phone.utils.js';
+import logger from '../../utils/logger.utils.js';
+
+/** Feature keys shown as one group in the apps, mapped to permission features. */
+const FEATURE_GROUPS = Object.freeze({
+  administration_security: ['users', 'roles', 'villas', 'integrations', 'workspaces'],
+});
+/** Always granted to the community admin role, whatever features are selected. */
+const CORE_ADMIN_FEATURES = Object.freeze(['users', 'roles', 'villas', 'workspaces']);
+
+export const expandFeatureKeys = (keys = []) =>
+  new Set([...CORE_ADMIN_FEATURES, ...keys.flatMap((k) => FEATURE_GROUPS[k] || [k])]);
 
 
 export class OrganizationService {
@@ -62,17 +74,20 @@ export class OrganizationService {
       if (!adminRole) {
         const rolesResult = await roleService.getAllRoles(orgId, 1, 50);
         const roles = rolesResult?.data || [];
-        adminRole = roles.find((r) => r.name && r.name.toLowerCase().includes('admin'));
+        const canonicalAdminRoleNames = ['community admin', 'admin', 'super admin', 'facility manager'];
+        adminRole = roles.find((r) => r.name && canonicalAdminRoleNames.includes(r.name.toLowerCase().trim()));
       }
       if (!adminRole) {
         throw new HttpError(404, 'Admin role not found for this organization.');
       }
 
-      // 5. Get all system permissions and filter them by features in the featuresArray
+      // 5. Get all system permissions and filter them by the selected features.
+      // Grouped UI keys expand to real permission features, and the admin's core
+      // management features are always kept so changing features can never lock
+      // the admin out of users, roles, units or workspace settings.
       const allPermissions = await permissionService.getAllPermissions();
-      const targetPermissions = allPermissions.filter((perm) =>
-        featuresArray.includes(perm.feature)
-      );
+      const grantedFeatures = expandFeatureKeys(featuresArray);
+      const targetPermissions = allPermissions.filter((perm) => grantedFeatures.has(perm.feature));
       const granularPermissionIds = targetPermissions.map((perm) => perm._id.toString());
 
       // Ensure base UI permissions: ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'] are always included for Workspace Admin
@@ -330,35 +345,56 @@ export class OrganizationService {
       const guardPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Security Guard']);
       await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
 
+      // Create Community Staff Role (Global)
+      const communityStaffRole = await roleService.createRole(
+        { name: 'Community Staff', description: 'Community-wide facility and maintenance staff.', orgId: newOrg._id, isTenantRole: false },
+        session
+      );
+      const communityStaffPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Community Staff'] || []);
+      await rolePermissionService.updateRolePermissions(communityStaffRole._id.toString(), communityStaffPerms, session);
+
+      // Create Household Staff Role (Unit-Scoped)
+      const householdStaffRole = await roleService.createRole(
+        { name: 'Household Staff', description: 'Dedicated household staff configured for residential units.', orgId: newOrg._id, isTenantRole: true },
+        session
+      );
+      const householdStaffPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Household Staff'] || []);
+      await rolePermissionService.updateRolePermissions(householdStaffRole._id.toString(), householdStaffPerms, session);
+
       // 3. Handle Community Admin User
       const userService = (await import('../user/user.services.js')).default;
-      const { hashPassword } = await import('../../utils/crypto.utils.js');
-
+      const normalizedAdminPhone = communityAdmin.phone ? normalizePhone(communityAdmin.phone) : null;
+      if (communityAdmin.phone && !normalizedAdminPhone) {
+        throw new HttpError(400, 'Phone number must be a valid international number.');
+      }
       let communityAdminUser = await userService.resolveUserIdentity({
         email: communityAdmin.email,
-        phone: communityAdmin.phone,
+        phone: normalizedAdminPhone,
       }, session);
 
       if (!communityAdminUser) {
-        if (!communityAdmin.password) {
-          throw new HttpError(400, 'Password is required for new community admins.');
-        }
-        if (!communityAdmin.phone) {
-          throw new HttpError(400, 'Phone number is required for new community admins.');
-        }
-        const hashedPassword = await hashPassword(communityAdmin.password);
-        
-        const User = (await import('../user/user.model.js')).default;
-        const newCommunityAdmin = new User({
-          name: communityAdmin.fullName,
-          username: communityAdmin.username,
-          email: communityAdmin.email.toLowerCase(),
-          phone: communityAdmin.phone,
-          password: hashedPassword,
-          status: 'Active',
-          emailVerified: true,
-          phoneVerified: true
-        });
+          if (!normalizedAdminPhone) {
+            throw new HttpError(400, 'Phone number is required for new community admins.');
+          }
+          const User = (await import('../user/user.model.js')).default;
+
+          let finalUsername = communityAdmin.username;
+          let usernameExists = await User.exists({ username: finalUsername }).session(session);
+          while (usernameExists) {
+            finalUsername = communityAdmin.username + '_' + Math.random().toString(36).substring(2, 6);
+            usernameExists = await User.exists({ username: finalUsername }).session(session);
+          }
+
+          const newCommunityAdmin = new User({
+            name: communityAdmin.fullName,
+            username: finalUsername,
+            email: communityAdmin.email.toLowerCase(),
+            phone: normalizedAdminPhone,
+            status: 'Active',
+            credentialStatus: 'NOT_INITIALIZED',
+            emailVerified: true,
+            phoneVerified: true
+          });
 
         communityAdminUser = await newCommunityAdmin.save({ session });
       }
@@ -377,6 +413,9 @@ export class OrganizationService {
         organizationId: newOrg._id.toString(),
         organizationName: newOrg.name,
         creatorUserId: creatorUserId.toString(),
+        adminEmail: communityAdminUser.email,
+        adminName: communityAdminUser.name,
+        adminPhone: communityAdminUser.phone
       });
 
       // Return clean response payload without sensitive tokens or passwords
@@ -453,11 +492,9 @@ export class OrganizationService {
     const otpService = (await import('../otp/otp.services.js')).default;
     const plainCode = await otpService.createOTP(normalizedEmail, 'COMMUNITY_ADMIN_EMAIL_VERIFICATION', 15);
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      console.log(`\n=========================================`);
-      console.log(`[COMMUNITY ADMIN EMAIL OTP] Code for ${normalizedEmail}: ${plainCode}`);
-      console.log(`=========================================\n`);
+    const { isOtpDebugEnabled } = await import('../otp/otp.services.js');
+    if (isOtpDebugEnabled()) {
+      logger.info(`[COMMUNITY ADMIN EMAIL OTP] Code for ${normalizedEmail}: ${plainCode}`);
     }
 
     orgEventEmitter.emit('COMMUNITY_ADMIN_EMAIL_OTP_SENT', { email: normalizedEmail, code: plainCode });
@@ -465,7 +502,7 @@ export class OrganizationService {
     return {
       message: `Verification code sent to ${normalizedEmail}`,
       email: normalizedEmail,
-      ...(isDev && { devCode: plainCode }),
+      ...(isOtpDebugEnabled() && { devCode: plainCode }),
     };
   }
 

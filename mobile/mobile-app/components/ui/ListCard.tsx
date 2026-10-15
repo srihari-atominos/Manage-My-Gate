@@ -76,7 +76,7 @@ export function formatRelativeTime(date: string | Date, tFunc?: (key: string, fb
 
 const listCardVariants = cva(
   cn(
-    'bg-card rounded-2xl border border-border/70 mb-3 p-3.5 active:bg-secondary/70 shadow-2xs',
+    'bg-card rounded-[18px] border border-border/70 mb-3 p-3.5 active:bg-secondary/70 shadow-sm',
     Platform.select({
       web: 'transition-all cursor-pointer select-none hover:border-border',
     })
@@ -235,6 +235,32 @@ const ListCard = React.forwardRef<View, ListCardProps>(
     };
 
     if (children || rightContent !== undefined) {
+      if (onPress) {
+        return (
+          <Pressable
+            ref={ref as any}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            unstable_pressDelay={40}
+            delayLongPress={300}
+            className={cn("bg-card rounded-2xl border border-border/70 mb-3 p-3.5 overflow-hidden shadow-2xs active:bg-secondary/70", className)}
+            style={[{ touchAction: 'pan-y' } as any, style as any]}
+            testID={(props as any).testID}
+            accessibilityRole="button"
+            accessibilityLabel={(props as any).accessibilityLabel || title}
+            accessibilityHint={(props as any).accessibilityHint}
+          >
+            <View className="flex-row items-center w-full">
+              {renderHeaderMainContent()}
+              <View className="items-end justify-center ms-2 shrink-0">
+                {rightContent}
+              </View>
+            </View>
+            {typeof children === 'function' ? (children as any)({ pressed: false }) : children}
+          </Pressable>
+        );
+      }
+
       return (
         <View
           ref={ref}
@@ -257,8 +283,9 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         ref={ref}
         onPress={onPress}
         onLongPress={onLongPress}
+        {...(onPress ? { unstable_pressDelay: 40, delayLongPress: 300 } : {})}
         className={cn(listCardVariants(), children ? 'flex-col items-stretch' : 'flex-row items-center', 'overflow-hidden', onPress ? 'active:opacity-80' : '', className)}
-        style={style as any}
+        style={[{ touchAction: 'pan-y' } as any, style as any]}
         accessibilityRole={onPress ? 'button' : undefined}
         {...props}
       >

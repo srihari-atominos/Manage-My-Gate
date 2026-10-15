@@ -121,7 +121,9 @@ const UserList = () => {
 
   const handleResendInvite = (user) => {
     handleSendInvite({
+      name: user.name || '',
       email: user.email,
+      phone: user.phone || '',
       villaId: user.villaId || null,
       residentType: user.residentType || 'None',
       roleName: user.role || null,
@@ -430,7 +432,7 @@ const UserList = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-4" style={{ maxWidth: '1100px', margin: '0 auto' }}>
+    <div className="app-page-container">
       {/* Page Header */}
       <PageHeader
         title={t('userManagement.title', 'User Management')}

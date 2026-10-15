@@ -73,15 +73,15 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           onPress={onOpenCustomise}
           activeOpacity={0.75}
           style={{
-            backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
-            borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
+            backgroundColor: '#FFFFFF',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(31, 41, 55, 0.12)',
           }}
           className="flex-row min-h-11 items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs"
           accessibilityRole="button"
           accessibilityLabel={t('customise', 'Customise')}
         >
-          <SlidersHorizontal size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
-          <Text className="text-[13px] font-bold text-[#172B70] dark:text-[#93C5FD]">{t('customise', 'Customise')}</Text>
+          <SlidersHorizontal size={14} color="#111827" strokeWidth={2.6} />
+          <Text className="text-[13px] font-extrabold text-black">{t('customise', 'Customise')}</Text>
         </TouchableOpacity>
       </View>
 

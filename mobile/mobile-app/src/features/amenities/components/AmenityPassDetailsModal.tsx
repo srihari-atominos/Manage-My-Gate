@@ -228,7 +228,14 @@ export const AmenityPassDetailsModal: React.FC<AmenityPassDetailsModalProps> = (
       const shared = await shareQrImage(
         qrString,
         passCode,
-        `Amenity Pass - ${facilityName} (${passCode})`
+        `Amenity Pass - ${facilityName} (${passCode})`,
+        [
+          'NAHOM AMENITY ACCESS PASS',
+          `FACILITY: ${facilityName}`,
+          `PASS CODE: ${passCode}`,
+          `VALID UNTIL: ${accessPass?.validUntil ? new Date(accessPass.validUntil).toLocaleString() : formattedDate || 'TODAY'}`,
+          'PRESENT CODE OR SCAN AT COMMUNITY GATE',
+        ],
       );
       if (!shared) {
         await handleSendWhatsAppMessage();

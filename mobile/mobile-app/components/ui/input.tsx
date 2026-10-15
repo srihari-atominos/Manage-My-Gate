@@ -30,7 +30,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
         )}
 
         <View className={cn(
-          "relative flex-row items-center border border-border/80 bg-card rounded-2xl px-3.5 shadow-2xs focus:border-primary",
+          "relative flex-row items-center border border-border/80 bg-card rounded-2xl px-3.5 shadow-2xs",
           error ? "border-destructive bg-destructive/5" : ""
         )}>
           {leftIcon && <View className="me-2" pointerEvents="none">{leftIcon}</View>}

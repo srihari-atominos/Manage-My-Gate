@@ -72,7 +72,7 @@ const deviceRegion = (): CountryCode | null => {
 };
 
 export const getDefaultPhoneCountry = (): CountryCode =>
-  communityCountry || deviceRegion() || FALLBACK_COUNTRY;
+  communityCountry || FALLBACK_COUNTRY;
 
 // ── Parsing ──
 

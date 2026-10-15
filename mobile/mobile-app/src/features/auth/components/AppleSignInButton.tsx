@@ -43,7 +43,7 @@ export function AppleSignInButton(props: AppleSignInButtonProps = {}) {
           style={{ color: '#000000', flexShrink: 1, lineHeight: 20, includeFontPadding: false, textAlignVertical: 'center' }}
           className="text-sm font-semibold text-center"
         >
-          Sign in with Apple
+          {variant === 'full' ? 'Sign in with Apple' : 'Apple'}
         </Text>
       </TouchableOpacity>
     );

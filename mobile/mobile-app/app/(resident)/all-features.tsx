@@ -169,6 +169,7 @@ export default function AllFeaturesScreen() {
       iconName="LayoutGrid"
       scrollable={false}
       showBackButton={true}
+      showGlobalNavButton={true}
       onBackPress={handleBackPress}
       loading={!isReady}
       disableInteractionDeferral

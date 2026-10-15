@@ -12,6 +12,7 @@ import { initAmenityBookingSockets } from '../features/amenityBooking/amenityBoo
 import { initCommunityNoteSockets } from '../features/communityNote/communityNote.socket.js';
 import { initDirectoryMessageSockets } from '../features/directoryMessage/directoryMessage.socket.js';
 import { initOrganizationSocket } from '../features/organization/organization.socket.js';
+import { initStaffUnitAssociationSocket } from '../features/staffUnitAssociation/staffUnitAssociation.socket.js';
 
 let io = null;
 let redisAdapterActive = false;
@@ -32,10 +33,11 @@ export const initSocket = async (httpServer) => {
     return io;
   }
 
-  // Parse ALLOWED_ORIGINS or CLIENT_URL for CORS. Defaults to frontend/mobile default ports.
+  const isProd = process.env.NODE_ENV === 'production';
   const envOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || '';
+  const parsedEnvOrigins = envOrigins.split(',').map((url) => url.trim().replace(/\/+$/, '')).filter(Boolean);
   const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3004', 'http://localhost:8081', 'http://localhost:8082', 'http://127.0.0.1:8081'];
-  const allowedOrigins = [...new Set([...envOrigins.split(',').map((url) => url.trim()).filter(Boolean), ...defaultOrigins])];
+  const allowedOrigins = [...new Set(isProd ? parsedEnvOrigins : [...parsedEnvOrigins, ...defaultOrigins])];
 
   logger.info(`Initializing Socket.io with allowed origins: ${allowedOrigins.join(', ')}`);
 
@@ -43,9 +45,8 @@ export const initSocket = async (httpServer) => {
     cors: {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        const isAllowed = allowedOrigins.includes(origin) || 
-                          /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin);
-        if (isAllowed || process.env.NODE_ENV !== 'production') {
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (!isProd && /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin)) {
           return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
@@ -208,6 +209,7 @@ export const initSocket = async (httpServer) => {
   initAmenityBookingSockets();
   initCommunityNoteSockets();
   initDirectoryMessageSockets();
+  initStaffUnitAssociationSocket();
   setupPaymentSocketListeners().catch((err) => logger.error('Failed to init payment socket listeners', err));
   setupWalletSocketListeners().catch((err) => logger.error('Failed to init wallet socket listeners', err));
 

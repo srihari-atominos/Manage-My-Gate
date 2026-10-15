@@ -9,7 +9,7 @@ export default function AcceptInviteRedirectScreen() {
 
   useEffect(() => {
     router.replace({
-      pathname: '/(auth)/accept-invite',
+      pathname: '/(auth)/login',
       params: params,
     });
   }, [params, router]);

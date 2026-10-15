@@ -91,9 +91,20 @@ app.use(cors((req, callback) => {
   });
 }));
 
-// Set up Helmet with CSP disabled for frontend integrations, cross-origin resource policy for images/assets, and allow popups for Google OAuth
+// Set up Helmet with least-privilege Content Security Policy, cross-origin resource policy for images/assets, and allow popups for Google OAuth
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      fontSrc: ["'self'", 'https:', 'data:'],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+      baseUri: ["'self'"],
+    },
+  },
   crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));

@@ -56,9 +56,13 @@ export const ResidentDashboard = () => {
   }
 
   useEffect(() => {
-    fetchAnnouncements()
+    const initialFetchId = window.setTimeout(fetchAnnouncements, 0)
     const intervalId = setInterval(fetchAnnouncements, 30000)
-    return () => clearInterval(intervalId)
+
+    return () => {
+      window.clearTimeout(initialFetchId)
+      clearInterval(intervalId)
+    }
   }, [])
 
   const formatRelativeTime = (isoDate, timeString = '') => {
@@ -86,18 +90,22 @@ export const ResidentDashboard = () => {
 
   useEffect(() => {
     if (user?.villaId) {
-      setLoading(true)
-      apiClient
-        .get(`/villas/${user.villaId}`)
-        .then((res) => {
-          setVillaDetails(res.data || null)
-        })
-        .catch((err) => {
-          console.error('Failed to load resident villa details:', err)
-        })
-        .finally(() => {
-          setLoading(false)
-        })
+      const loadVillaId = window.setTimeout(() => {
+        setLoading(true)
+        apiClient
+          .get(`/villas/${user.villaId}`)
+          .then((res) => {
+            setVillaDetails(res.data || null)
+          })
+          .catch((err) => {
+            console.error('Failed to load resident villa details:', err)
+          })
+          .finally(() => {
+            setLoading(false)
+          })
+      }, 0)
+
+      return () => window.clearTimeout(loadVillaId)
     }
   }, [user])
 
@@ -162,13 +170,7 @@ export const ResidentDashboard = () => {
           ) : (
             <>
               {/* Unit Card */}
-              <CCard
-                className="border-0 shadow-sm rounded-4 mb-4"
-                style={{
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
-                  color: 'white',
-                }}
-              >
+              <CCard className="resident-villa-card border-0 shadow-sm rounded-4 mb-4">
                 <CCardBody className="p-4">
                   <div className="d-flex justify-content-between align-items-start mb-3">
                     <div>
@@ -179,8 +181,7 @@ export const ResidentDashboard = () => {
                     </div>
                     <CBadge
                       color="success"
-                      className="px-2 py-1 text-uppercase fw-bold"
-                      style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid white' }}
+                      className="resident-villa-status px-2 py-1 text-uppercase fw-bold"
                     >
                       {user.residentType} Status
                     </CBadge>

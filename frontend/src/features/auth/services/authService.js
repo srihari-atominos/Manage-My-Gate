@@ -1,12 +1,17 @@
+const legacyAuthRemoved = () => Promise.reject(new Error('This legacy authentication flow has been removed. Use unified OTP or SSO.'));
+export const login = legacyAuthRemoved;
+export const initiateInvitationOtp = legacyAuthRemoved;
+export const verifyInvitationOtp = legacyAuthRemoved;
+export const forgotPassword = legacyAuthRemoved;
+export const verifyResetPasswordOtp = legacyAuthRemoved;
+export const resetPassword = legacyAuthRemoved;
+export const acceptSsoInvite = legacyAuthRemoved;
+
 import apiClient from '../../../services/apiClient.js'
 
 /**
  * Authentication and Workspace API Client Service
  */
-export const login = async (credentials) => {
-  return await apiClient.post('/auth/login', credentials)
-}
-
 export const register = async (userData) => {
   return await apiClient.post('/auth/register', userData)
 }
@@ -15,21 +20,23 @@ export const verifyRegistration = async (email, code) => {
   return await apiClient.post('/auth/register/verify', { email, code })
 }
 
-export const initiateInvitationOtp = async (token) => {
-  return await apiClient.post('/auth/invite/otp', { token })
-}
-
-export const verifyInvitationOtp = async (token, code) => {
-  return await apiClient.post('/auth/invite/otp/verify', { token, code })
-}
-
 export const validateInvite = async (token) => {
   return await apiClient.get('/auth/validate-invite', { params: { token } })
 }
 
-export const acceptInvite = async (payload) => {
-  const body = typeof payload === 'string' ? { token: payload } : payload || {}
-  return await apiClient.post('/auth/accept-invite', body)
+export const acceptInvitation = async (inviteToken) => {
+  const body = typeof inviteToken === 'object' && inviteToken !== null ? inviteToken : { inviteToken }
+  return await apiClient.post('/auth/invitations/accept', body)
+}
+export const acceptInvite = acceptInvitation
+
+export const getPendingInvitations = async () => {
+  return await apiClient.get('/auth/invitations/pending')
+}
+
+export const declineInvitation = async (inviteToken) => {
+  const body = typeof inviteToken === 'object' && inviteToken !== null ? inviteToken : { inviteToken }
+  return await apiClient.post('/auth/invitations/decline', body)
 }
 
 export const rejectInvite = async (payload) => {
@@ -41,13 +48,17 @@ export const createWorkspace = async (workspaceData) => {
   return await apiClient.post('/organizations/setup', workspaceData)
 }
 
-export const loginWithGoogle = async (payload) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload }
+export const loginWithGoogle = async (payload, inviteToken = null) => {
+  const body = typeof payload === 'object' && payload !== null
+    ? { ...payload, ...(inviteToken ? { inviteToken } : {}) }
+    : { token: payload, ...(inviteToken ? { inviteToken } : {}) }
   return await apiClient.post('/auth/google', body)
 }
 
-export const loginWithMicrosoft = async (payload) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload }
+export const loginWithMicrosoft = async (payload, inviteToken = null) => {
+  const body = typeof payload === 'object' && payload !== null
+    ? { ...payload, ...(inviteToken ? { inviteToken } : {}) }
+    : { token: payload, ...(inviteToken ? { inviteToken } : {}) }
   return await apiClient.post('/auth/microsoft', body)
 }
 
@@ -55,28 +66,16 @@ export const initiatePhoneLogin = async (phone) => {
   return await apiClient.post('/auth/login/phone', { phone })
 }
 
-export const verifyPhoneLogin = async (phone, code) => {
-  return await apiClient.post('/auth/login/phone/verify', { phone, code })
+export const verifyPhoneLogin = async (phone, code, inviteToken) => {
+  return await apiClient.post('/auth/login/phone/verify', { phone, code, inviteToken })
 }
 
 export const initiateEmailOtpLogin = async (email) => {
   return await apiClient.post('/auth/login/email-otp', { email })
 }
 
-export const verifyEmailOtpLogin = async (email, code) => {
-  return await apiClient.post('/auth/login/email-otp/verify', { email, code })
-}
-
-export const forgotPassword = async (identifier) => {
-  return await apiClient.post('/auth/forgot-password', { identifier })
-}
-
-export const verifyResetPasswordOtp = async (identifier, code) => {
-  return await apiClient.post('/auth/forgot-password/verify-otp', { identifier, code })
-}
-
-export const resetPassword = async (identifier, code, newPassword) => {
-  return await apiClient.post('/auth/reset-password', { identifier, code, newPassword })
+export const verifyEmailOtpLogin = async (email, code, inviteToken) => {
+  return await apiClient.post('/auth/login/email-otp/verify', { email, code, inviteToken })
 }
 
 export const logoutApi = async () => {
@@ -97,10 +96,6 @@ export const revokeAllSessions = async () => {
 
 export const emailOtpLogin = async (payload) => {
   return await apiClient.post('/auth/login/email-otp', payload)
-}
-
-export const acceptSsoInvite = async (payload) => {
-  return await apiClient.post('/auth/accept-invite/sso', payload)
 }
 
 export const switchContext = async (payload) => {
@@ -131,6 +126,9 @@ export default {
   verifyInvitationOtp,
   validateInvite,
   acceptInvite,
+  acceptInvitation,
+  getPendingInvitations,
+  declineInvitation,
   rejectInvite,
   createWorkspace,
   loginWithGoogle,

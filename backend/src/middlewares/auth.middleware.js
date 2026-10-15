@@ -59,11 +59,6 @@ export const isAuthenticated = async (req, res, next) => {
       assertTrustedOriginForCookieAuth(req);
       token = req.cookies.token;
     }
-    // Check query params (for file downloads like export, pdf)
-    else if (req.method === 'GET' && typeof req.query?.auth_token === 'string') {
-      // Legacy file-download links only; tokens in URLs leak via logs, so never accept them for writes.
-      token = req.query.auth_token;
-    }
 
     if (!token) {
       throw new HttpError(401, 'Access denied. No authentication token provided.');
@@ -111,8 +106,6 @@ export const optionalAuth = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
     } else if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
-    } else if (req.query && req.query.auth_token) {
-      token = req.query.auth_token;
     }
 
     if (token) {

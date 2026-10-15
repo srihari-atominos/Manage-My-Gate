@@ -12,6 +12,9 @@ export class IntegrationHubController {
       const userId = req.user.id;
       const orgId = req.tenant.orgId;
       const { provider, accountLabel, credentials } = req.body;
+      if (String(provider).toLowerCase() === 'msg91' && req.user.isPlatform !== true) {
+        return res.status(403).json({ success: false, message: 'Only platform administrators can configure MSG91.' });
+      }
 
       const data = await integrationHubService.connect(userId, orgId, provider, accountLabel, credentials);
       res.success(data, 'Integration connected successfully', 200);
@@ -128,6 +131,15 @@ export class IntegrationHubController {
             { name: 'senderId', label: 'Sender ID', type: 'text', required: false },
             { name: 'flowId', label: 'Flow ID', type: 'text', required: false },
             { name: 'environment', label: 'Environment', type: 'text', required: false },
+          ],
+        },
+        {
+          id: 'msg91',
+          name: 'MSG91 SMS OTP',
+          fields: [
+            { name: 'authKey', label: 'Auth Key', type: 'password' },
+            { name: 'templateId', label: 'OTP Template ID (Optional)', type: 'text', required: false },
+            { name: 'senderId', label: 'Sender ID (Optional)', type: 'text', required: false },
           ],
         },
         {

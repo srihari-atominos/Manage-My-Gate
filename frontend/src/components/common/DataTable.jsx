@@ -37,61 +37,23 @@ const DataTable = ({
   loading = false,
 }) => {
   return (
-    <CCard className="mb-4 border-0 shadow-sm">
-      <CCardBody className="p-3">
+    <CCard className="data-table border-0">
+      <CCardBody>
         {/* Responsive Toolbar */}
-        {toolbar && <div className="d-flex flex-wrap gap-3 align-items-center mb-3">{toolbar}</div>}
+        {toolbar && <div className="data-table__toolbar">{toolbar}</div>}
 
         {/* Scrollable Container with sticky header support */}
-        <div
-          style={{
-            maxHeight: '50vh',
-            overflowY: 'auto',
-            border: '1px solid var(--cui-border-color, #dee2e6)',
-            borderRadius: '6px',
-          }}
-        >
+        <div className="data-table__scroll">
           <CTable className="um-table m-0" hover responsive bordered={false} align="middle">
             <CTableHead>
               <CTableRow align="middle">
                 {columns.map((col) => (
-                  <CTableHeaderCell
-                    key={col.key}
-                    className="text-body-secondary bg-body-tertiary border-bottom"
-                    style={{
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.07em',
-                      whiteSpace: 'nowrap',
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 2,
-                      paddingTop: '12px',
-                      paddingBottom: '12px',
-                    }}
-                  >
+                  <CTableHeaderCell key={col.key} className="data-table__header-cell">
                     {col.label}
                   </CTableHeaderCell>
                 ))}
                 {renderRowActions && (
-                  <CTableHeaderCell
-                    className="text-body-secondary bg-body-tertiary border-bottom"
-                    style={{
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.07em',
-                      whiteSpace: 'nowrap',
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 2,
-                      paddingTop: '12px',
-                      paddingBottom: '12px',
-                    }}
-                  >
-                    Actions
-                  </CTableHeaderCell>
+                  <CTableHeaderCell className="data-table__header-cell">Actions</CTableHeaderCell>
                 )}
               </CTableRow>
             </CTableHead>
@@ -103,17 +65,14 @@ const DataTable = ({
                     className="text-center py-5"
                   >
                     <CSpinner color="primary" size="sm" className="me-2" />
-                    <span className="text-body-secondary" style={{ fontSize: '0.9rem' }}>
-                      Loading users...
-                    </span>
+                    <span className="data-table__message">Loading users...</span>
                   </CTableDataCell>
                 </CTableRow>
               ) : data.length === 0 ? (
                 <CTableRow align="middle">
                   <CTableDataCell
                     colSpan={columns.length + (renderRowActions ? 1 : 0)}
-                    className="text-center text-muted py-5"
-                    style={{ fontSize: '0.9rem' }}
+                    className="data-table__message text-center text-muted py-5"
                   >
                     No records found.
                   </CTableDataCell>
@@ -122,25 +81,12 @@ const DataTable = ({
                 data.map((row, index) => (
                   <CTableRow key={row.id || index} align="middle">
                     {columns.map((col) => (
-                      <CTableDataCell
-                        key={col.key}
-                        style={{
-                          fontSize: '0.9rem',
-                          paddingTop: '12px',
-                          paddingBottom: '12px',
-                        }}
-                      >
+                      <CTableDataCell key={col.key} className="data-table__cell">
                         {col.render ? col.render(row[col.key], row) : row[col.key]}
                       </CTableDataCell>
                     ))}
                     {renderRowActions && (
-                      <CTableDataCell
-                        style={{
-                          fontSize: '0.9rem',
-                          paddingTop: '12px',
-                          paddingBottom: '12px',
-                        }}
-                      >
+                      <CTableDataCell className="data-table__cell">
                         {renderRowActions(row)}
                       </CTableDataCell>
                     )}
@@ -152,7 +98,7 @@ const DataTable = ({
         </div>
 
         {/* Pagination & Sizer Footer */}
-        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 mt-3 pt-2 border-top">
+        <div className="data-table__footer">
           {/* Left: Rows Per Page Sizer */}
           <div className="d-flex align-items-center gap-2">
             <span className="datatable-sizer-text">Rows per page:</span>

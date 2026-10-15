@@ -29,10 +29,7 @@ export const WorkspaceSwitcher = () => {
   // If user belongs to only 1 workspace and is not platform admin, render static badge
   if (!hasMultipleWorkspaces && !activeWorkspace.isPlatform) {
     return (
-      <div
-        className="py-0 nav-link d-flex align-items-center text-body"
-        id="workspace-current-badge"
-      >
+      <div className="app-workspace-switcher__static" id="workspace-current-badge">
         <CIcon icon={cilBuilding} className="me-2" size="lg" />
         <span className="d-none d-md-inline text-truncate" style={{ maxWidth: '160px' }}>
           {activeWorkspace.name || t('workspace.defaultName', { defaultValue: 'Workspace' })}
@@ -42,10 +39,10 @@ export const WorkspaceSwitcher = () => {
   }
 
   return (
-    <CDropdown variant="nav-item">
+    <CDropdown variant="nav-item" className="app-workspace-switcher">
       <CDropdownToggle
         caret={true}
-        className="py-0 nav-link d-flex align-items-center"
+        className="app-workspace-switcher__toggle"
         style={{ cursor: 'pointer' }}
         id="workspace-switcher-toggle"
       >
@@ -63,7 +60,7 @@ export const WorkspaceSwitcher = () => {
             : t('workspace.defaultName', { defaultValue: 'Select Workspace' })}
         </span>
       </CDropdownToggle>
-      <CDropdownMenu className="pt-0 pb-0" placement="bottom-end">
+      <CDropdownMenu className="app-workspace-switcher__menu" placement="bottom-end">
         {availableWorkspaces.map((ws, idx) => {
           const isActive =
             ws.orgId === activeWorkspace.orgId &&
@@ -77,19 +74,19 @@ export const WorkspaceSwitcher = () => {
               key={`${ws.orgId}-${ws.villaId || 'admin'}-${idx}`}
               as="button"
               type="button"
-              className="d-flex align-items-center justify-content-between py-2 px-3 text-start w-100"
+              className="app-workspace-switcher__item"
               active={isActive}
               onClick={() => handleSwitchWorkspace(ws.orgId, ws.villaId)}
               id={`workspace-switch-item-${ws.orgId}-${ws.villaId || 'admin'}`}
             >
-              <div>
-                <div className="fw-semibold text-truncate" style={{ maxWidth: '220px' }}>
+              <div className="app-workspace-switcher__item-content">
+                <div className="app-workspace-switcher__name" style={{ maxWidth: '220px' }}>
                   {displayName}
                 </div>
-                <div className="small text-body-secondary">{ws.roleName}</div>
+                <div className="app-workspace-switcher__role">{ws.roleName}</div>
               </div>
               {ws.isPlatform && (
-                <span className="badge bg-primary ms-3 small">
+                <span className="app-workspace-switcher__badge">
                   {t('workspace.platformBadge', { defaultValue: 'Platform' })}
                 </span>
               )}

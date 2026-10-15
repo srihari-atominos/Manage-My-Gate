@@ -27,7 +27,7 @@ const tokenSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['INVITATION', 'RESET', 'MOBILE_HANDOFF'],
+      enum: ['INVITATION', 'RESET', 'MOBILE_HANDOFF', 'ACCOUNT_SETUP'],
       required: [true, 'Token type is required'],
       index: true,
     },

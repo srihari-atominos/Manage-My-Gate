@@ -42,8 +42,30 @@
 }
 
 .btn-wizard-submit {
-  background-color: #321fdb !important;
-  border-color: #321fdb !important;
+  background-color: #FA6400 !important;
+  border-color: #FA6400 !important;
+}
+
+.workspace-details-view {
+  .visitor-top-nav-bar {
+    background: var(--cui-card-bg, #ffffff);
+    border: 1px solid var(--cui-border-color, #e2e8f0);
+    border-radius: 12px;
+    padding: 8px 16px;
+    margin-bottom: 20px;
+  }
+
+  .visitor-top-nav-link {
+    color: var(--cui-body-color, #14213d);
+    opacity: 0.75;
+    font-weight: 600;
+
+    &.active {
+      color: #FA6400 !important;
+      opacity: 1;
+      border-bottom-color: #FA6400 !important;
+    }
+  }
 }
 
 

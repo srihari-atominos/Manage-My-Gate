@@ -9,7 +9,16 @@
     border-radius: 16px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     overflow: hidden;
-    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease, width 0.3s ease, height 0.3s ease, max-height 0.3s ease;
+    transition:
+      color 0.3s ease,
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease,
+      transform 0.3s ease,
+      opacity 0.3s ease,
+      width 0.3s ease,
+      height 0.3s ease,
+      max-height 0.3s ease;
 
     .card-header {
       background: #f8f9fa;
@@ -113,5 +122,69 @@
       border: 1px solid rgba(255, 255, 255, 0.12);
       color: #e4e4e7;
     }
+  }
+}
+
+/* Token-based overrides keep audit content readable in both app themes. */
+.audit-log-container {
+  box-sizing: border-box;
+  width: min(100%, 90rem);
+  margin: 0 auto;
+  padding: var(--nahom-space-8);
+
+  .audit-log-card {
+    border-color: var(--nahom-border);
+    border-radius: var(--nahom-radius-md);
+    background: var(--nahom-surface);
+    box-shadow: var(--nahom-shadow-sm);
+    color: var(--nahom-text);
+
+    .card-header {
+      border-bottom-color: var(--nahom-border);
+      background: var(--nahom-surface-muted);
+
+      h3 {
+        color: var(--nahom-text);
+      }
+
+      p {
+        color: var(--nahom-text-muted);
+      }
+    }
+
+    .table {
+      --cui-table-color: var(--nahom-text);
+      --cui-table-bg: var(--nahom-surface);
+      --cui-table-border-color: var(--nahom-border);
+      color: var(--nahom-text);
+
+      th {
+        border-bottom-color: var(--nahom-border);
+        background: var(--nahom-surface-muted);
+        color: var(--nahom-text-muted);
+      }
+
+      td {
+        border-bottom-color: var(--nahom-border);
+        color: var(--nahom-text);
+      }
+
+      tr:hover > * {
+        background: color-mix(in srgb, var(--nahom-primary) 6%, var(--nahom-surface));
+        color: var(--nahom-text);
+      }
+    }
+  }
+
+  .meta-badge {
+    border-color: var(--nahom-border);
+    background: var(--nahom-surface-muted);
+    color: var(--nahom-text);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .audit-log-container {
+    padding: var(--nahom-space-5) var(--nahom-space-4) var(--nahom-space-8);
   }
 }

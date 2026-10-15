@@ -363,12 +363,15 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
         {/* Left: Salutation & Subtitle */}
         <View className="flex-1 pr-2">
           <View className="flex-row items-center flex-wrap gap-1.5">
-            <Text className="text-[21px] font-bold font-sans text-foreground tracking-tight leading-snug">
+            <Text
+              className="text-[22px] sm:text-[23px] font-black font-sans text-foreground tracking-tight leading-snug"
+              style={{ fontWeight: '900' }}
+            >
               {t(timeGreeting.key, timeGreeting.defaultText)}, {displayName}
             </Text>
             <WavingHand />
           </View>
-          <Text className="text-[13px] font-medium font-sans text-muted-foreground mt-0.5 tracking-tight">
+          <Text className="text-[13.5px] font-semibold font-sans text-muted-foreground mt-0.5 tracking-tight">
             {t('welcome_back_sub', 'Welcome back to your community hub')}
           </Text>
         </View>

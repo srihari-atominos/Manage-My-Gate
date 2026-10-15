@@ -25,4 +25,14 @@ export const colors = {
   },
 } as const;
 
+/** Semantic icon accents from the premium mobile reference. */
+export const semanticColors = {
+  primary: '#FF7A3D',
+  security: '#2563EB',
+  amenities: '#16A34A',
+  scanning: '#0D9488',
+  community: '#7C3AED',
+  warning: '#DC2626',
+} as const;
+
 export type ColorTheme = typeof colors.light;

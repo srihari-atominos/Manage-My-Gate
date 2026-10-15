@@ -5,6 +5,7 @@ import { validate } from '../../middlewares/validator.middleware.js';
 import { validateImportRules, executeImportRules } from './onboardingWizard.validator.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
+import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 import correlationIdMiddleware from '../../middlewares/correlationId.middleware.js';
 import HttpError from '../../utils/httpError.utils.js';
 import path from 'path';
@@ -34,6 +35,9 @@ const upload = multer({
   },
 });
 
+// Imports create units and user accounts, so they need both permissions
+const onboardingImportPermission = [authorizePermission('villas', 'create'), authorizePermission('users', 'create')];
+
 /**
  * @swagger
  * /onboarding/validate-import:
@@ -45,6 +49,7 @@ router.post(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
+  onboardingImportPermission,
   upload.single('file'),
   validate(validateImportRules),
   onboardingWizardController.validateImport
@@ -55,6 +60,7 @@ router.post(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
+  onboardingImportPermission,
   upload.single('file'),
   validate(validateImportRules),
   onboardingWizardController.validateImport
@@ -71,6 +77,7 @@ router.post(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
+  onboardingImportPermission,
   validate(executeImportRules),
   onboardingWizardController.executeImport
 );

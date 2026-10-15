@@ -165,8 +165,9 @@ export const syncPermissions = async () => {
       'notices:active_board', 'notices:polls', 'notices:manage_notices',
       'polls:read', 'polls:create', 'polls:update', 'polls:delete', 'polls:publish',
       'polls:vote', 'polls:view_voters', 'polls:close', 'polls:export',
-      'billing:billing_hub', 'billing:my_dues', 'billing:assessments', 'billing:ledger', 'billing:my_invoices',
+      'billing:assessments', 'billing:ledger', 'billing:my_invoices',
       'workspaces:read', 'workspaces:update',
+      'staff:view', 'staff:manage', 'staff:assign_unit', 'staff:attendance',
     ];
 
     const RoleModel = (await import('../features/role/role.model.js')).default;
@@ -186,6 +187,21 @@ export const syncPermissions = async () => {
         logger.info(`Initialized role "${role.name}" (${role._id}) with baseline permissions.`);
       } else {
         logger.info(`Role "${role.name}" (${role._id}) already has custom permissions (${existingMappingsCount}). Skipping auto-sync to preserve edits.`);
+      }
+    }
+
+    // 6.5b Ensure all Community Admin roles possess the baseline staff permissions
+    const staffBaselinePerms = await PermissionModel.find({
+      name: { $in: ['staff:view', 'staff:manage', 'staff:assign_unit', 'staff:attendance'] },
+    });
+    for (const role of communityAdminRoles) {
+      for (const sp of staffBaselinePerms) {
+        const hasPerm = await RolePermissionModel.findOne({ roleId: role._id, permissionId: sp._id });
+        if (!hasPerm) {
+          await RolePermissionModel.create({ roleId: role._id, permissionId: sp._id });
+          rolePermissionService.cache.delete(role._id.toString());
+          logger.info(`Backfilled "${sp.name}" to Community Admin role (${role._id}).`);
+        }
       }
     }
 
@@ -246,7 +262,7 @@ export const syncPermissions = async () => {
     const defaultFeatureKeys = DEFAULT_MODULES.map(m => m.moduleKey);
     
     for (const org of orgsList) {
-      org.allowedFeatures = Array.from(new Set([...(org.allowedFeatures || []), ...defaultFeatureKeys]));
+      org.allowedFeatures = Array.from(new Set([...(org.allowedFeatures || []), ...defaultFeatureKeys, 'staff']));
       await org.save({ validateBeforeSave: false });
       logger.info(`Self-healed organization "${org.name}" (${org._id}) allowedFeatures.`);
     }

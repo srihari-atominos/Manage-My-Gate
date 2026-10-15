@@ -30,7 +30,7 @@ export const getApiBaseUrl = () => {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
     const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
     if (isLocalHostName) {
-      return `${window.location.protocol}//${window.location.hostname}:5002/api/v1`;
+      return `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
     }
   }
 
@@ -39,19 +39,19 @@ export const getApiBaseUrl = () => {
   if (hostUri) {
     const ip = hostUri.split(':')[0];
     if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-      return `http://${ip}:5002/api/v1`;
+      return `http://${ip}:5006/api/v1`;
     }
   }
 
   // 3. Android Emulator fallback
   if (Platform.OS === 'android') {
     if (!url || url.includes('localhost') || url.includes('127.0.0.1')) {
-      return 'http://10.0.2.2:5002/api/v1';
+      return 'http://10.0.2.2:5006/api/v1';
     }
   }
 
   // 4. Default fallback
-  return url || 'http://localhost:5002/api/v1';
+  return url || 'http://localhost:5006/api/v1';
 };
 
 export const getDefaultBaseUrl = getApiBaseUrl;
@@ -71,7 +71,7 @@ export const getSocketBaseUrl = () => {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
     const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
     if (isLocalHostName) {
-      return `${window.location.protocol}//${window.location.hostname}:5002`;
+      return `${window.location.protocol}//${window.location.hostname}:5006`;
     }
   }
 
@@ -80,19 +80,19 @@ export const getSocketBaseUrl = () => {
   if (hostUri) {
     const ip = hostUri.split(':')[0];
     if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-      return `http://${ip}:5002`;
+      return `http://${ip}:5006`;
     }
   }
 
   // 3. Android Emulator fallback
   if (Platform.OS === 'android') {
     if (!socketUrl || socketUrl.includes('localhost') || socketUrl.includes('127.0.0.1')) {
-      return 'http://10.0.2.2:5002';
+      return 'http://10.0.2.2:5006';
     }
   }
 
   // 4. Default fallback
-  return socketUrl || 'http://localhost:5002';
+  return socketUrl || 'http://localhost:5006';
 };
 
 const apiClient = axios.create({
@@ -326,7 +326,13 @@ apiClient.interceptors.response.use(
       originalRequest.url.includes('/auth/forgot-password') ||
       originalRequest.url.includes('/auth/reset-password') ||
       originalRequest.url.includes('/auth/google') ||
-      originalRequest.url.includes('/auth/microsoft')
+      originalRequest.url.includes('/auth/microsoft') ||
+      originalRequest.url.includes('/auth/apple') ||
+      originalRequest.url.includes('/auth/logout') ||
+      // An expired invitation ticket is a sign-in problem, not an expired session
+      originalRequest.url.includes('/auth/invitations/accept') ||
+      originalRequest.url.includes('/auth/invitations/decline') ||
+      originalRequest.url.includes('/auth/accept-invite')
     );
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
@@ -364,9 +370,16 @@ apiClient.interceptors.response.use(
           return Promise.reject(new Error('Session expired. Please log in again.'));
         }
 
+        // Keep the community/role/unit the app is using; the server re-checks membership
+        const activeUser: any = store?.getState?.()?.auth?.user || null;
         const res = await axios.post(
           `${getApiBaseUrl()}/auth/refresh-token`,
-          { refreshToken },
+          {
+            refreshToken,
+            ...(activeUser?.orgId ? { targetOrgId: activeUser.orgId } : {}),
+            ...(activeUser?.role ? { targetRole: activeUser.role } : {}),
+            ...(activeUser?.villaId ? { targetVillaId: activeUser.villaId } : {}),
+          },
           { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
         );
 

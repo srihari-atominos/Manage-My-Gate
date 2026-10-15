@@ -55,8 +55,14 @@ export const setupAccountPasswordRules = [
   body('password')
     .notEmpty()
     .withMessage('Password is required')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(passwordRegex)
+    .withMessage('Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character'),
+  body('setupToken')
+    .trim()
+    .notEmpty()
+    .withMessage('Account setup link is missing or incomplete. Please use the link from your email.'),
   body('orgName')
     .optional()
     .trim(),
@@ -87,8 +93,9 @@ export const loginRules = [
  */
 export const acceptInviteRules = [
   body('token')
-    .optional({ nullable: true, checkFalsy: true })
-    .trim(),
+    .trim()
+    .notEmpty()
+    .withMessage('Invitation token is required'),
   body('email')
     .optional({ nullable: true, checkFalsy: true })
     .isEmail()
@@ -106,6 +113,44 @@ export const acceptInviteRules = [
   body('phone')
     .optional({ nullable: true, checkFalsy: true })
     .isString()
+    .trim(),
+];
+
+/**
+ * Accept / decline one invitation chosen from the pending list
+ */
+export const respondInvitationRules = [
+  // Either the id from the pending list, or the raw token from an invitation link
+  body('invitationId')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isMongoId()
+    .withMessage('Invitation is not valid'),
+  body('inviteToken')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body().custom((value) => {
+    if (!value?.invitationId && !value?.inviteToken) throw new Error('Invitation is required');
+    return true;
+  }),
+  body('ticket')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+];
+
+/**
+ * Validation rules for declining an invitation
+ */
+export const rejectInviteRules = [
+  body('token')
+    .trim()
+    .notEmpty()
+    .withMessage('Invitation token is required'),
+  body('email')
+    .optional({ nullable: true, checkFalsy: true })
+    .isEmail()
     .trim(),
 ];
 
@@ -230,10 +275,11 @@ export const phoneVerifyRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
+  body('inviteToken').optional({ nullable: true }).isString().trim(),
 ];
 
 /**
@@ -264,10 +310,11 @@ export const emailOtpVerifyRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
+  body('inviteToken').optional({ nullable: true }).isString().trim(),
 ];
 
 /**
@@ -322,8 +369,8 @@ export const verifyResetPasswordOtpRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
 ];
@@ -356,8 +403,8 @@ export const resetPasswordRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
   body('newPassword')
@@ -463,8 +510,8 @@ export const completeFirstTimeSetupRules = [
     .withMessage('OTP code is required')
     .isString()
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('OTP code must be 6 digits'),
+    
+    ,
   body('password')
     .notEmpty()
     .withMessage('Password is required')
@@ -505,8 +552,8 @@ export const inviteOtpVerifyRules = [
     .isString()
     .withMessage('Verification code must be a string')
     .trim()
-    .isLength({ min: 6, max: 6 })
-    .withMessage('Verification code must be exactly 6 digits')
+    
+    
     .isNumeric()
     .withMessage('Verification code must contain only numbers'),
 ];

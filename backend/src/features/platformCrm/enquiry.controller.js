@@ -78,7 +78,7 @@ class EnquiryController {
     try {
       const xRequestId = req.headers['x-request-id'] || req.id;
       const { id } = req.params;
-      const result = await enquiryService.convertToCustomer(id, xRequestId);
+      const result = await enquiryService.convertToCustomer(id, xRequestId, req.user?.id || req.user?._id || null);
       res.success(result, 'Enquiry converted to customer successfully');
     } catch (error) {
       next(error);

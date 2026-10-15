@@ -16,7 +16,7 @@ import {
   CAlert,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilLockLocked, cilLockUnlocked, cilCheckCircle } from '@coreui/icons'
+import { cilCheckCircle } from '@coreui/icons'
 import { sendAdminEmailOtp, verifyAdminEmailOtp } from '../../services/organizationApi.js'
 import { checkAccountStatus } from '../../../auth/services/authService.js'
 
@@ -27,8 +27,6 @@ const adminSchema = yup.object().shape({
     .required('Username is required')
     .matches(/^[a-zA-Z0-9_.-]+$/, 'Only letters, numbers, underscores, dots, and hyphens'),
   email: yup.string().required('Email is required').email('Invalid email format'),
-  password: yup.string(),
-  confirmPassword: yup.string().oneOf([yup.ref('password'), null], 'Passwords must match'),
 })
 
 const COUNTRY_CODES = [
@@ -66,7 +64,6 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
   const [selectedCountryCode, setSelectedCountryCode] = useState(initialPhoneParts.code)
   const [phoneNumber, setPhoneNumber] = useState(initialPhoneParts.number)
   const [phoneError, setPhoneError] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
 
   // OTP Verification state
   const [isEmailVerified, setIsEmailVerified] = useState(data?.emailVerified || false)
@@ -91,8 +88,6 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
       fullName: data?.fullName || '',
       username: data?.username || '',
       email: data?.email || '',
-      password: data?.password || '',
-      confirmPassword: data?.confirmPassword || '',
     },
   })
 
@@ -208,16 +203,6 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
       const err = validatePhone(selectedCountryCode, phoneNumber)
       if (err) {
         setPhoneError(err)
-        setIsSubmitting(false)
-        return
-      }
-      if (!formDataValues.password) {
-        setOtpError('Password is required for new users.')
-        setIsSubmitting(false)
-        return
-      }
-      if (formDataValues.password !== formDataValues.confirmPassword) {
-        setOtpError('Passwords must match.')
         setIsSubmitting(false)
         return
       }
@@ -396,45 +381,11 @@ const Step2AdminDetails = ({ data, onNext, onBack }) => {
         <CAlert color="success" className="mb-4">
           <CIcon icon={cilCheckCircle} className="me-2" />
           An existing account was found for this email address. They will be added to the
-          organization with their current credentials. Phone number and password setup are not
+          organization with their current credentials. No additional credential setup is
           required.
         </CAlert>
       )}
 
-      {isEmailVerified && !isExistingUser && (
-        <CRow className="mb-4">
-          <CCol md={6}>
-            <label className="form-label">
-              {t('organization.wizard.password', { defaultValue: 'Password' })}
-            </label>
-            <CInputGroup className="has-validation">
-              <CFormInput
-                type={showPassword ? 'text' : 'password'}
-                {...register('password')}
-                invalid={!!errors.password}
-              />
-              <CButton
-                type="button"
-                color="secondary"
-                variant="outline"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                <CIcon icon={showPassword ? cilLockUnlocked : cilLockLocked} />
-              </CButton>
-              {errors.password && <div className="invalid-feedback">{errors.password.message}</div>}
-            </CInputGroup>
-          </CCol>
-          <CCol md={6}>
-            <CFormInput
-              type={showPassword ? 'text' : 'password'}
-              label={t('organization.wizard.confirmPassword', { defaultValue: 'Confirm Password' })}
-              {...register('confirmPassword')}
-              invalid={!!errors.confirmPassword}
-              feedbackInvalid={errors.confirmPassword?.message}
-            />
-          </CCol>
-        </CRow>
-      )}
 
       <div className="d-flex justify-content-between mt-4">
         <CButton color="secondary" variant="ghost" onClick={onBack}>

@@ -127,25 +127,25 @@ export const resolveNotificationRoute = (payload?: StructuredNotificationPayload
 
     if (cleanUrl.includes('/invite/app/')) {
       const token = cleanUrl.split('/invite/app/')[1]?.split(/[?#]/)[0]?.replace(/\/$/, '');
-      if (token) return `/(auth)/accept-invite?token=${token}`;
-      return '/(auth)/accept-invite';
+      if (token) return `/(auth)/login?inviteToken=${token}`;
+      return '/(auth)/login';
     }
 
     if (cleanUrl.includes('/invite/web/')) {
       const token = cleanUrl.split('/invite/web/')[1]?.split(/[?#]/)[0]?.replace(/\/$/, '');
-      if (token) return `/(auth)/accept-invite?token=${token}`;
-      return '/(auth)/accept-invite';
+      if (token) return `/(auth)/login?inviteToken=${token}`;
+      return '/(auth)/login';
     }
 
     if (cleanUrl.includes('/invite/')) {
       const token = cleanUrl.split('/invite/')[1]?.split(/[?#]/)[0]?.replace(/\/$/, '');
-      if (token) return `/(auth)/accept-invite?token=${token}`;
-      return '/(auth)/accept-invite';
+      if (token) return `/(auth)/login?inviteToken=${token}`;
+      return '/(auth)/login';
     }
 
     if (cleanUrl.includes('accept-invite')) {
       const tokenMatch = cleanUrl.match(/[?&]token=([^&#]+)/);
-      return tokenMatch ? `/(auth)/accept-invite?token=${tokenMatch[1]}` : '/(auth)/accept-invite';
+      return tokenMatch ? `/(auth)/login?inviteToken=${tokenMatch[1]}` : '/(auth)/login';
     }
 
     if (cleanUrl.includes('billing/invoice/')) {
@@ -313,8 +313,8 @@ export const resolveNotificationRoute = (payload?: StructuredNotificationPayload
     case 'INVITATION': {
       const invId = payload.invitationId || entityId || payload.token;
       return invId
-        ? `/(auth)/accept-invite?invitationId=${encodeURIComponent(invId)}`
-        : '/(auth)/accept-invite';
+        ? `/(auth)/login?inviteToken=${encodeURIComponent(invId)}`
+        : '/(auth)/login';
     }
 
     default:

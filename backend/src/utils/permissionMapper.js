@@ -95,6 +95,12 @@ export const expandUserPermissions = (permissions) => {
     permSet.add('polls:vote');
   }
 
+  if (permSet.has('staff:manage')) {
+    permSet.add('staff:view');
+    permSet.add('staff:attendance');
+    permSet.add('staff:assign_unit');
+  }
+
   return Array.from(permSet);
 };
 

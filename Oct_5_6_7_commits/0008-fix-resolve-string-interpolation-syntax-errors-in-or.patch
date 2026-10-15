@@ -1,0 +1,40 @@
+From e2ce08c1096269f691d49d4b9767ea42d01150c2 Mon Sep 17 00:00:00 2001
+From: Naveen1758 <naveen@atominosconsulting.com>
+Date: Wed, 7 Oct 2026 17:09:32 +0800
+Subject: [PATCH 8/8] fix: resolve string interpolation syntax errors in
+ organization features
+
+---
+ backend/src/features/organization/organization.services.js     | 2 +-
+ frontend/src/features/organization/services/organizationApi.js | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/backend/src/features/organization/organization.services.js b/backend/src/features/organization/organization.services.js
+index 40737613..86654186 100644
+--- a/backend/src/features/organization/organization.services.js
++++ b/backend/src/features/organization/organization.services.js
+@@ -138,7 +138,7 @@ export class OrganizationService {
+   async updateOnboardingMode(orgId, onboardingMode, session = null) {
+     const validModes = ['INVITATION', 'ADMIN_ANNOUNCEMENT'];
+     if (!validModes.includes(onboardingMode)) {
+-      throw new HttpError(400, "Invalid onboarding mode. Must be one of: ");
++      throw new HttpError(400, `Invalid onboarding mode. Must be one of: ${validModes.join(', ')}`);
+     }
+     
+     await this.getOrganizationById(orgId, session);
+diff --git a/frontend/src/features/organization/services/organizationApi.js b/frontend/src/features/organization/services/organizationApi.js
+index 199d03fc..6cafec89 100644
+--- a/frontend/src/features/organization/services/organizationApi.js
++++ b/frontend/src/features/organization/services/organizationApi.js
+@@ -52,7 +52,7 @@ export const setupWorkspace = async (workspaceData) => {
+ 
+ export const updateOrganizationOnboardingMode = async (orgId, onboardingMode) => {
+   return await apiClient.patch(
+-    /organizations/${orgId}/onboarding-mode,
++    `/organizations/${orgId}/onboarding-mode`,
+     { onboardingMode },
+     { headers: { 'x-organization-id': orgId } }
+   )
+-- 
+2.51.0.windows.1
+

@@ -75,6 +75,32 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
     }
     return originalAddEventListener.call(this, type, listener, options);
   } as any;
+
+  window.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      (e.target as HTMLElement)?.isContentEditable
+    ) {
+      return;
+    }
+    if (e.key === 'PageDown' || e.key === 'PageUp') {
+      const scrollable = Array.from(document.querySelectorAll('div')).filter((el) => {
+        const style = window.getComputedStyle(el);
+        const oy = style.overflowY;
+        return (oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight;
+      });
+      const target = scrollable[scrollable.length - 1] || document.documentElement || document.body;
+      if (target) {
+        e.preventDefault();
+        const delta = Math.round(window.innerHeight * 0.75);
+        target.scrollBy({
+          top: e.key === 'PageDown' ? delta : -delta,
+          behavior: 'smooth',
+        });
+      }
+    }
+  });
 }
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -100,8 +126,10 @@ import { useGlobalAppSocket } from '@/src/hooks/useGlobalAppSocket';
 import { getDeferredHandoffContext } from '@/src/features/auth/services/deferredDeepLinkService';
 import { GlobalNotificationPresenter } from '@/components/feedback/GlobalNotificationPresenter';
 import { AnimatedSplash } from '@/components/feedback/AnimatedSplash';
+import { ForceUpdateGate } from '@/components/feedback/ForceUpdateGate';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { installLocalizedAlertTranslation } from '@/src/utils/alertUtils';
+import { hasActiveCommunity, resolveHomeRoute, SIGNED_IN_AUTH_ROUTES } from '@/src/features/auth/utils/landing';
 
 installLocalizedAlertTranslation();
 
@@ -177,7 +205,6 @@ function AuthRouteGuard() {
     setDefaultPhoneCountry(user?.orgCountryCode);
   }, [user?.orgCountryCode]);
 
-  const isCreateOrgIntent = searchParams.intent === 'create-org' || searchParams.intent === 'create';
   const stableSearchParams = useMemo(() => ({ ...searchParams }), [JSON.stringify(searchParams || {})]);
   const stableSegmentsKey = JSON.stringify(segments || []);
 
@@ -222,7 +249,7 @@ function AuthRouteGuard() {
     const isRoot = !firstSegment || firstSegment === 'index';
     const u = user as any;
 
-    const isExplicitNonInviteAuthRoute = inAuthGroup && currentRoute && currentRoute !== 'accept-invite';
+    const isExplicitNonInviteAuthRoute = inAuthGroup && currentRoute && currentRoute !== 'login';
 
     const hasTokenParam = !!(searchParams?.token || searchParams?.code);
     const isWebInviteUrl =
@@ -230,21 +257,21 @@ function AuthRouteGuard() {
       typeof window.location !== 'undefined' &&
       window.location?.pathname &&
       (window.location.pathname.startsWith('/invite/') ||
-       window.location.pathname === '/accept-invite' ||
-       window.location.pathname.startsWith('/(auth)/accept-invite'));
+       window.location.pathname === '/login' ||
+       window.location.pathname.startsWith('/(auth)/login'));
 
     const isInviteRoute =
       !isExplicitNonInviteAuthRoute &&
       (firstSegment === 'invite' ||
-        firstSegment === 'accept-invite' ||
-        (inAuthGroup && currentRoute === 'accept-invite') ||
+        firstSegment === 'login' ||
+        (inAuthGroup && currentRoute === 'login') ||
         (isRoot && (hasTokenParam || isWebInviteUrl)));
 
     if (isInviteRoute) {
       if (firstSegment === 'invite') {
         return;
       }
-      if (firstSegment !== '(auth)' || currentRoute !== 'accept-invite') {
+      if (firstSegment !== '(auth)' || currentRoute !== 'login') {
         let tokenToPass = stableSearchParams?.token || stableSearchParams?.code;
         if (!tokenToPass && typeof window !== 'undefined' && window.location?.href) {
           const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app\/|web\/)?([a-f0-9]{32,64}|[^/?&#]+)/i);
@@ -253,22 +280,16 @@ function AuthRouteGuard() {
           }
         }
         replaceOnce({
-          pathname: '/(auth)/accept-invite',
+          pathname: '/(auth)/login',
           params: { ...stableSearchParams, ...(tokenToPass ? { token: tokenToPass } : {}) },
         });
       }
       return;
     }
 
-    const hasOrg = !!(
-      u && (
-        u.orgId ||
-        u.activeOrgId ||
-        u.organizationId ||
-        (Array.isArray(u.availableWorkspaces) && u.availableWorkspaces.length > 0)
-      )
-    );
-    const isOnboardingRoute = currentRoute === 'setup-organization' || currentRoute === 'select-features';
+    const hasOrg = hasActiveCommunity(u);
+    // Auth screens a signed-in user may legitimately be on (no community yet, choosing an invitation)
+    const isSignedInAuthRoute = inAuthGroup && !!currentRoute && SIGNED_IN_AUTH_ROUTES.has(currentRoute);
 
     // On root route (/ or index), app/index.tsx handles initial redirect cleanly. Avoid racing.
     if (isRoot) {
@@ -288,7 +309,7 @@ function AuthRouteGuard() {
               replaceOnce(`/invite/handoff/${context.value}` as any);
             } else {
               replaceOnce({
-                pathname: '/(auth)/accept-invite',
+                pathname: '/(auth)/login',
                 params: { token: context.value },
               });
             }
@@ -301,10 +322,10 @@ function AuthRouteGuard() {
         });
     } else if (isAuthenticated) {
       if (!hasOrg) {
-        if (!isOnboardingRoute) {
-          replaceOnce('/(auth)/setup-organization');
+        if (!isSignedInAuthRoute) {
+          replaceOnce(resolveHomeRoute(u) as any);
         }
-      } else if (inAuthGroup) {
+      } else if (inAuthGroup && !isSignedInAuthRoute) {
           if (pendingRoute) dispatch(clearPendingRoute());
           replaceOnce('/(resident)');
         } else if (pendingRoute) {
@@ -313,7 +334,7 @@ function AuthRouteGuard() {
           replaceOnce(pendingRoute as any);
         }
     }
-  }, [isAuthenticated, isInitialized, rootNavigationState?.key, stableSegmentsKey, pathname, user, isCreateOrgIntent, pendingRoute, dispatch, stableSearchParams]);
+  }, [isAuthenticated, isInitialized, rootNavigationState?.key, stableSegmentsKey, pathname, user, pendingRoute, dispatch, stableSearchParams]);
 
   return null;
 }
@@ -441,6 +462,7 @@ export default function RootLayout() {
                 />
                 <Stack screenOptions={{ headerShown: false, freezeOnBlur: true }} />
                 <AuthRouteGuard />
+                <ForceUpdateGate />
                 <GlobalNotificationPresenter />
                 <PortalHost />
                 <AnimatedSplash />

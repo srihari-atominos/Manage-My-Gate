@@ -153,6 +153,40 @@ export const setupWorkspaceRules = [
     .customSanitizer(() => undefined),
 ];
 
+// `when` (if given) must start each chain: express-validator conditions only gate what follows them
+const adminContactRules = (prefix, when = null) => {
+  const field = (name) => (when ? body(`${prefix}${name}`).if(when) : body(`${prefix}${name}`));
+  return [
+  field('email')
+    .notEmpty()
+    .withMessage('Community Admin email is required')
+    .isEmail()
+    .withMessage('Community Admin email must be valid')
+    .trim(),
+  field('phone')
+    .notEmpty()
+    .withMessage('Community Admin phone number is required')
+    .isString()
+    .trim(),
+  field('name')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  ];
+};
+
+/** Platform Admin creates a community; the admin invite is optional here. */
+export const provisionCommunityRules = [
+  ...setupWorkspaceRules.slice(0, -2), // same community fields, minus password and the sanitizer
+  body('admin').optional({ nullable: true }).isObject().withMessage('admin must be an object'),
+  ...adminContactRules('admin.', body('admin').exists({ checkNull: true })),
+  body(['userId', 'creatorId', 'orgId', 'status', 'isPlatform', 'role', 'roleIds', 'permissions'])
+    .customSanitizer(() => undefined),
+];
+
+/** Platform Admin invites a community's Community Admin. */
+export const assignAdminRules = adminContactRules('');
+
 export const updateFeaturesRules = [
   body('features')
     .isArray()
@@ -161,6 +195,11 @@ export const updateFeaturesRules = [
     .custom((features) => {
       if (!features.every((item) => typeof item === 'string' && ALLOWED_FEATURES.includes(item))) {
         throw new Error(`Invalid feature in list. Allowed features are: ${ALLOWED_FEATURES.join(', ')}`);
+      }
+      // Unknown keys used to be accepted silently and grant nothing
+      const unknown = features.filter((item) => !ALLOWED_FEATURES.includes(item));
+      if (unknown.length > 0) {
+        throw new Error(`Unknown feature(s): ${unknown.join(', ')}. Allowed: ${ALLOWED_FEATURES.join(', ')}`);
       }
       return true;
     }),

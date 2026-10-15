@@ -40,6 +40,15 @@ const outboxEventSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    leaseToken: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    lockedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

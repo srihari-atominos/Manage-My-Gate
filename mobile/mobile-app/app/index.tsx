@@ -8,12 +8,9 @@ export default function IndexScreen() {
 
   // Show a neutral themed loading spinner until auth state bootstrapping finishes
   if (!isInitialized) {
-    return (
-      <AppLoader variant="fullscreen" />
-    );
+    return <AppLoader variant="fullscreen" />;
   }
 
-  // If already authenticated, redirect to workspace or dashboard
   if (isAuthenticated) {
     return <Redirect href="/(resident)" />;
   }
@@ -21,4 +18,3 @@ export default function IndexScreen() {
   // Unauthenticated users land directly on the Nahom Login screen
   return <Redirect href="/(auth)/login" />;
 }
-

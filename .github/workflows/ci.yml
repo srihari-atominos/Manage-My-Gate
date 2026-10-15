@@ -42,8 +42,9 @@ jobs:
           cd backend
           npm ci
 
-      - name: Run Backend Invitation & Security Verification Harness
+      - name: Run Backend Security & Regression Test Suites
         env:
+          NODE_ENV: test
           MONGODB_URI: mongodb://127.0.0.1:27017/manage_my_gate_ci
           JWT_SECRET: ci_secret_key_12345
           SESSION_SECRET: ci_session_secret_key_12345
@@ -51,7 +52,14 @@ jobs:
           PORT: 5002
           HOST: 127.0.0.1
         run: |
-          node backend/tests/verify_invitation_flow.js
+          cd backend
+          npm test
+          node tests/verify_invitation_flow.js
+
+      - name: Audit Backend Production Dependencies
+        run: |
+          cd backend
+          npm audit --omit=dev --audit-level=critical
 
       - name: Run WebSocket & Multi-Instance Redis Security Verification Suite
         env:

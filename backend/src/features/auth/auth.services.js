@@ -1,3 +1,4 @@
+import { sendOtpNotification } from './auth.listeners.js';
 import userService from '../user/user.services.js';
 import roleService from '../role/role.services.js';
 import rolePermissionService from '../rolePermission/rolePermission.services.js';
@@ -6,7 +7,7 @@ import { signToken, verifyToken } from '../../utils/jwt.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
 import tokenService from '../token/token.services.js';
-import otpService from '../otp/otp.services.js';
+import otpService, { isOtpDebugEnabled } from '../otp/otp.services.js';
 import sessionService from '../session/session.services.js';
 import userIdentityService from '../userIdentity/userIdentity.services.js';
 import integrationHubService from '../integrationHub/integrationHub.service.js';
@@ -16,7 +17,682 @@ import userEvents from '../user/user.events.js';
 import { normalizePhone } from '../../utils/phone.utils.js';
 import { sendOtpNotification } from './auth.listeners.js';
 
+// Same wording whether or not an account exists, so code requests can't reveal accounts
+const OTP_SENT_PHONE_MESSAGE = 'If an account exists for this phone number, a verification code has been sent.';
+const OTP_SENT_EMAIL_MESSAGE = 'If an account exists for this email, a verification code has been sent.';
+
+/** Plain codes are only echoed back when OTP_DEBUG=true outside production. */
+const devCodeField = (identifier, plainCode) => {
+  if (!isOtpDebugEnabled()) return {};
+  logger.info(`[OTP_DEBUG] Code for ${identifier}: ${plainCode}`);
+  return { devCode: plainCode };
+};
+
 export class AuthService {
+async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetVillaId = null, targetAssignment = null) {
+    // If targetVillaId was passed as an assignment object, normalize arguments
+    if (typeof targetVillaId === 'object' && targetVillaId !== null && !targetVillaId._bsontype && (targetVillaId.id || targetVillaId.targetAssignmentId || targetVillaId.name)) {
+      targetAssignment = targetVillaId;
+      targetVillaId = targetVillaId.villaId || null;
+    }
+    const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+    const memberships = await orgMembershipService.getUserMemberships(user._id);
+
+    // Active memberships strictly (organization status is Active and membership status is Active, or missing for legacy documents)
+    const activeMemberships = memberships.filter((m) => 
+      m.orgId && 
+      (!m.orgId.status || m.orgId.status.toLowerCase() === 'active') && 
+      (!m.status || m.status.toLowerCase() === 'active')
+    );
+
+    let selectedMembership = null;
+    const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
+
+    if (targetOrgIdStr) {
+      if (targetVillaId) {
+        const targetVillaIdStr = targetVillaId.toString();
+        selectedMembership = activeMemberships.find((m) => 
+          m.orgId._id.toString() === targetOrgIdStr && 
+          ((m.units && m.units.some(u => u.villaId && (u.villaId._id ? u.villaId._id.toString() === targetVillaIdStr : u.villaId.toString() === targetVillaIdStr))) ||
+           (m.villaId && (m.villaId._id ? m.villaId._id.toString() === targetVillaIdStr : m.villaId.toString() === targetVillaIdStr)))
+        );
+      }
+      // Fallback to first membership in org if no specific villa requested or found
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
+      }
+      if (!selectedMembership) {
+        if (user.isPlatform === true) {
+          selectedMembership = activeMemberships.find((m) => m.orgId && m.orgId.isPlatform === true) || activeMemberships[0];
+        } else {
+          throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+        }
+      }
+    } else {
+      // Primary context selection:
+      // 1. Prefer the user's last active organization (remembered from their last session)
+      if (user.lastActiveOrgId) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === user.lastActiveOrgId.toString());
+      }
+      
+      // 2. Prefer a non-platform community workspace that has a villa assigned
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
+      }
+      // 2b. Fallback to any non-platform community workspace
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform);
+      }
+      // 3. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
+      if (!selectedMembership && activeMemberships.length > 0) {
+        selectedMembership = activeMemberships[0];
+      }
+    }
+
+    let roleName = null;
+    let permissions = [];
+    let orgId = null;
+    let isPlatform = false;
+    let activeRoleObj = null;
+    let roleNames = [];
+
+    if (selectedMembership) {
+      orgId = selectedMembership.orgId._id.toString();
+      isPlatform = selectedMembership.orgId.isPlatform || false;
+
+      // Consolidate all roles assigned to this user within the selected organization
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === orgId);
+      const roles = [];
+      for (const m of sameOrgMemberships) {
+        if (m.roleIds && m.roleIds.length > 0) {
+          roles.push(...m.roleIds.filter(Boolean));
+        } else if (m.roleId) {
+          roles.push(m.roleId);
+        }
+      }
+
+      // Deduplicate roles by name
+      const uniqueRoles = [];
+      const seenRoleNames = new Set();
+      for (const r of roles) {
+        if (r && r.name && !seenRoleNames.has(r.name)) {
+          seenRoleNames.add(r.name);
+          uniqueRoles.push(r);
+        }
+      }
+
+      roleNames = uniqueRoles.map(r => r?.name).filter(Boolean);
+
+      if (targetRole) {
+        if (!roleNames.includes(targetRole)) {
+          throw new HttpError(400, `User does not have role '${targetRole}' in this organization.`);
+        }
+        roleName = targetRole;
+        activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
+        if (activeRoleObj) {
+          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+          permissions = permissionsList.map((permission) => permission.name);
+        }
+      } else {
+        roleName = roleNames.length > 0 ? roleNames[0] : null;
+        if (roleName) {
+          activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
+          if (activeRoleObj) {
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+            permissions = permissionsList.map((permission) => permission.name);
+          }
+        }
+      }
+    }
+
+    // Consolidate active memberships by organization for availableWorkspaces
+    const orgWorkspaceMap = new Map();
+    for (const m of activeMemberships) {
+      if (!m.orgId || !m.orgId._id) continue;
+      const oId = m.orgId._id.toString();
+      const mRoles = [];
+      if (m.roleIds && m.roleIds.length > 0) {
+        mRoles.push(...m.roleIds.filter(Boolean));
+      } else if (m.roleId) {
+        mRoles.push(m.roleId);
+      }
+      const validRoles = mRoles.filter(Boolean);
+      const hasResidentInWs = validRoles.some(r => /resident|tenant|owner|family/i.test(r.name || ''));
+      const firstUnit = m.units && m.units.length > 0 ? m.units[0] : null;
+      const primaryVillaDoc = hasResidentInWs ? (m.villaId || firstUnit?.villaId || null) : null;
+      const primaryVillaId = primaryVillaDoc
+        ? (primaryVillaDoc._id ? primaryVillaDoc._id.toString() : primaryVillaDoc.toString())
+        : null;
+      const primaryVillaNumber = primaryVillaDoc?.unitNumber || null;
+      const residentType = hasResidentInWs ? (m.residentType || firstUnit?.residentType || 'None') : 'None';
+
+      if (!orgWorkspaceMap.has(oId)) {
+        orgWorkspaceMap.set(oId, {
+          orgId: oId,
+          name: m.orgId.name,
+          isPlatform: m.orgId.isPlatform || false,
+          roleNames: validRoles.map(r => r.name),
+          villaId: primaryVillaId,
+          villaNumber: primaryVillaNumber,
+          residentType,
+        });
+      } else {
+        const existing = orgWorkspaceMap.get(oId);
+        for (const r of validRoles) {
+          if (!existing.roleNames.includes(r.name)) {
+            existing.roleNames.push(r.name);
+          }
+        }
+        if (hasResidentInWs && !existing.villaId && primaryVillaId) {
+          existing.villaId = primaryVillaId;
+          existing.villaNumber = primaryVillaNumber;
+          existing.residentType = residentType;
+        }
+      }
+    }
+
+    const availableWorkspaces = Array.from(orgWorkspaceMap.values()).map((ws) => ({
+      orgId: ws.orgId,
+      name: ws.name,
+      isPlatform: ws.isPlatform,
+      roleName: ws.roleNames.join(', ') || null,
+      roles: ws.roleNames,
+      villaId: ws.villaId,
+      villaNumber: ws.villaNumber,
+      residentType: ws.residentType,
+    }));
+
+    // Role type flags
+    const isResidentRole = /resident|tenant|owner|family/i.test(roleName || '');
+    if (!isResidentRole) {
+      targetVillaId = null;
+    }
+
+    // Discover accessible units for this user in the active organization ONLY if active role is a Resident role
+    const accessibleUnits = [];
+    if (selectedMembership && isResidentRole) {
+      const selectedOrgIdStr = selectedMembership.orgId._id.toString();
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === selectedOrgIdStr);
+      for (const m of sameOrgMemberships) {
+        if (m.units && m.units.length > 0) {
+          for (const unit of m.units) {
+            if (unit.villaId) {
+              const vId = unit.villaId._id ? unit.villaId._id.toString() : unit.villaId.toString();
+              if (!accessibleUnits.some(u => u.villaId === vId)) {
+                accessibleUnits.push({
+                  villaId: vId,
+                  villaNumber: unit.villaId.unitNumber || '',
+                  block: unit.villaId.blockOrBuilding || '',
+                  residentType: unit.residentType || m.residentType || 'None'
+                });
+              }
+            }
+          }
+        }
+        if (m.villaId) {
+          const vId = m.villaId._id ? m.villaId._id.toString() : m.villaId.toString();
+          if (!accessibleUnits.some(u => u.villaId === vId)) {
+            accessibleUnits.push({
+              villaId: vId,
+              villaNumber: m.villaId.unitNumber || '',
+              block: m.villaId.blockOrBuilding || '',
+              residentType: m.residentType || 'None'
+            });
+          }
+        }
+      }
+
+      // Also discover any units in this organization where the user is an assigned resident or owner in the Villa collection
+      try {
+        const Villa = (await import('../villa/villa.model.js')).default;
+        const assignedVillas = await Villa.find({
+          orgId: selectedMembership.orgId._id,
+          $or: [
+            { 'residents.userId': user._id },
+            { primaryResidentId: user._id },
+            { ownerId: user._id }
+          ]
+        }).lean();
+
+        for (const v of assignedVillas) {
+          const vId = v._id.toString();
+          if (!accessibleUnits.some(u => u.villaId === vId)) {
+            const residentEntry = v.residents?.find(r => r.userId?.toString() === user._id.toString());
+            const resType = residentEntry?.residencyType || (v.ownerId?.toString() === user._id.toString() ? 'Resident Owner' : 'Resident');
+            accessibleUnits.push({
+              villaId: vId,
+              villaNumber: v.unitNumber || '',
+              block: v.blockOrBuilding || '',
+              residentType: resType
+            });
+          }
+        }
+      } catch (villaErr) {
+        // Non-blocking fallback
+      }
+    }
+
+    // --- ASSIGNMENT & SCOPE RESOLUTION ---
+    const allAssignmentsByRole = {};
+    for (const rName of roleNames) {
+      allAssignmentsByRole[rName] = [];
+    }
+
+    if (selectedMembership) {
+      const selectedOrgIdStr = selectedMembership.orgId._id.toString();
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === selectedOrgIdStr);
+
+      // 1. Explicit assignments configured directly in OrgMembership.assignments
+      for (const m of sameOrgMemberships) {
+        if (m.assignments && Array.isArray(m.assignments) && m.assignments.length > 0) {
+          for (const asg of m.assignments) {
+            const asgRole = asg.roleName || (asg.roleId?.name) || roleName;
+            const item = {
+              id: asg._id ? asg._id.toString() : (asg.entityId ? asg.entityId.toString() : asg.name),
+              name: asg.name,
+              type: asg.assignmentType || 'general',
+              role: asgRole,
+              metadata: asg.metadata || {}
+            };
+            if (!allAssignmentsByRole[asgRole]) {
+              allAssignmentsByRole[asgRole] = [];
+            }
+            if (!allAssignmentsByRole[asgRole].some(x => x.name.toLowerCase() === item.name.toLowerCase())) {
+              allAssignmentsByRole[asgRole].push(item);
+            }
+          }
+        }
+      }
+
+      // 2. Resident / Unit Assignments (ONLY for resident roles)
+      const residentRoles = roleNames.filter(r => /resident|tenant|owner|family/i.test(r));
+      for (const rRole of residentRoles) {
+        if (allAssignmentsByRole[rRole].length === 0) {
+          for (const u of accessibleUnits) {
+            const uName = u.villaNumber ? `Villa ${u.villaNumber}` : (u.block ? `${u.block} Unit` : 'Villa Unit');
+            if (!allAssignmentsByRole[rRole].some(x => x.id === u.villaId)) {
+              allAssignmentsByRole[rRole].push({
+                id: u.villaId,
+                name: uName,
+                type: 'villa',
+                role: rRole,
+                metadata: {
+                  villaId: u.villaId,
+                  villaNumber: u.villaNumber,
+                  block: u.block,
+                  residentType: u.residentType
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Available assignments for the active role persona
+    const availableAssignments = (roleName && allAssignmentsByRole[roleName]) ? allAssignmentsByRole[roleName] : [];
+
+    // Resolve Active Assignment
+    let activeAssignment = null;
+    let targetAssignmentId = null;
+    let targetAssignmentName = null;
+
+    if (targetAssignment) {
+      if (typeof targetAssignment === 'string') {
+        targetAssignmentId = targetAssignment;
+      } else if (typeof targetAssignment === 'object') {
+        targetAssignmentId = targetAssignment.id || targetAssignment.targetAssignmentId || null;
+        targetAssignmentName = targetAssignment.name || targetAssignment.targetAssignmentName || null;
+      }
+    }
+
+    if (targetAssignmentId || targetAssignmentName) {
+      // STRICT AUTHORIZATION: Validate target assignment belongs to this user, role, and organization
+      const matched = availableAssignments.find(a => 
+        (targetAssignmentId && a.id.toString() === targetAssignmentId.toString()) ||
+        (targetAssignmentName && a.name.toLowerCase() === targetAssignmentName.toLowerCase())
+      );
+      if (!matched) {
+        throw new HttpError(400, `Access denied: Invalid assignment for role '${roleName}' in this organisation.`);
+      }
+      activeAssignment = matched;
+    } else if (targetVillaId) {
+      const targetVillaIdStr = targetVillaId.toString();
+      const matchedVilla = availableAssignments.find(a => a.id.toString() === targetVillaIdStr || a.metadata?.villaId?.toString() === targetVillaIdStr);
+      if (matchedVilla) {
+        activeAssignment = matchedVilla;
+      }
+    }
+
+    if (!activeAssignment && availableAssignments.length > 0) {
+      activeAssignment = availableAssignments[0];
+    }
+
+    // If active assignment is a villa, ensure targetVillaId matches it
+    if (activeAssignment && activeAssignment.type === 'villa') {
+      targetVillaId = activeAssignment.id;
+    }
+
+    // Resolve primary unit (validating permission if a specific targetVillaId is requested)
+    let primaryUnit = null;
+    if (selectedMembership && isResidentRole) {
+      if (targetVillaId) {
+        const targetVillaIdStr = targetVillaId.toString();
+        const isTargetVillaAccessible = accessibleUnits.some(u => u.villaId === targetVillaIdStr);
+        if (!isTargetVillaAccessible) {
+          targetVillaId = null;
+        }
+
+        if (selectedMembership.units && selectedMembership.units.length > 0) {
+          primaryUnit = selectedMembership.units.find(u => u.villaId && (u.villaId._id ? u.villaId._id.toString() === targetVillaIdStr : u.villaId.toString() === targetVillaIdStr));
+        }
+        if (!primaryUnit && selectedMembership.villaId) {
+          const rootVId = selectedMembership.villaId._id ? selectedMembership.villaId._id.toString() : selectedMembership.villaId.toString();
+          if (rootVId === targetVillaIdStr) {
+            primaryUnit = {
+              villaId: selectedMembership.villaId,
+              residentType: selectedMembership.residentType || 'None'
+            };
+          }
+        }
+        if (!primaryUnit) {
+          const matchedAccessible = accessibleUnits.find(u => u.villaId === targetVillaIdStr);
+          if (matchedAccessible) {
+            const Villa = (await import('../villa/villa.model.js')).default;
+            const villaDoc = await Villa.findById(targetVillaIdStr).lean();
+            if (villaDoc) {
+              primaryUnit = {
+                villaId: villaDoc,
+                residentType: matchedAccessible.residentType || 'Resident'
+              };
+            }
+          }
+        }
+      }
+
+      if (!primaryUnit && selectedMembership.units && selectedMembership.units.length > 0) {
+        primaryUnit = selectedMembership.units[0];
+      }
+      if (!primaryUnit && selectedMembership.villaId) {
+        primaryUnit = {
+          villaId: selectedMembership.villaId,
+          residentType: selectedMembership.residentType || 'None'
+        };
+      }
+      if (!primaryUnit && accessibleUnits.length > 0) {
+        const firstAccessible = accessibleUnits[0];
+        const Villa = (await import('../villa/villa.model.js')).default;
+        const villaDoc = await Villa.findById(firstAccessible.villaId).lean();
+        if (villaDoc) {
+          primaryUnit = {
+            villaId: villaDoc,
+            residentType: firstAccessible.residentType || 'Resident'
+          };
+        }
+      }
+    }
+
+    const villaInfo = (isResidentRole && primaryUnit?.villaId) ? {
+      id: primaryUnit.villaId._id ? primaryUnit.villaId._id.toString() : primaryUnit.villaId.toString(),
+      villaNumber: primaryUnit.villaId.unitNumber || '',
+      block: primaryUnit.villaId.blockOrBuilding || '',
+      intercom: primaryUnit.villaId.intercom || '',
+      occupancyStatus: primaryUnit.villaId.status || '',
+      residentType: primaryUnit.residentType || 'None',
+    } : null;
+
+    let visitorContext = 'None';
+    if (permissions && permissions.length > 0) {
+      if (permissions.includes('visitor:admin')) {
+        visitorContext = 'Admin';
+      } else if (permissions.includes('visitor:guard')) {
+        visitorContext = 'Guard';
+      } else if (permissions.includes('visitor:resident')) {
+        visitorContext = 'Resident';
+      }
+    }
+
+    const activeOrgName = selectedMembership?.orgId?.name || null;
+    const activeOrgCountryCode = selectedMembership?.orgId?.countryCode || 'IN';
+
+    // Fire-and-forget: Remember the newly resolved community as the user's last active organization
+    if (orgId && (!user.lastActiveOrgId || user.lastActiveOrgId.toString() !== orgId)) {
+      import('../user/user.model.js').then((m) => {
+        m.default.updateOne({ _id: user._id }, { $set: { lastActiveOrgId: orgId } }).catch(() => {});
+      });
+    }
+
+    return {
+      tokenPayload: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: roleName,
+        roleId: activeRoleObj ? activeRoleObj._id.toString() : null,
+        roles: roleNames || [],
+        orgId,
+        orgName: activeOrgName,
+        organizationName: activeOrgName,
+        activeOrganizationName: activeOrgName,
+        orgCountryCode: activeOrgCountryCode,
+        isPlatform,
+        visitorContext,
+        activeAssignment: activeAssignment ? {
+          id: activeAssignment.id,
+          name: activeAssignment.name,
+          type: activeAssignment.type,
+          role: activeAssignment.role,
+          metadata: activeAssignment.metadata || {},
+        } : null,
+        availableAssignments,
+        accessibleAssignments: allAssignmentsByRole,
+        assignedGate: activeAssignment?.type === 'gate' ? activeAssignment.name : (user.gate || ''),
+        assignedFacility: activeAssignment?.type === 'facility' ? activeAssignment.name : '',
+        villaId: isResidentRole && villaInfo ? villaInfo.id : null,
+        villaNumber: isResidentRole && villaInfo ? villaInfo.villaNumber : '',
+        villaBlock: isResidentRole && villaInfo ? villaInfo.block : '',
+        residentType: isResidentRole && villaInfo ? villaInfo.residentType : 'None',
+        accessibleUnits: isResidentRole ? accessibleUnits : [],
+      },
+      permissions,
+      availableWorkspaces,
+    };
+  }
+
+  /**
+   * Which first screen the app should open. Derived from server-side permissions,
+   * never from role names (custom roles exist). It only picks a screen; every
+   * request is still authorised server-side.
+   * @returns {'platform'|'community_admin'|'member'|'pending_invitations'|'no_community'}
+   */
+  _computeLanding(tokenPayload, permissions = [], pendingInvitations = []) {
+    if (tokenPayload.isPlatform) return 'platform';
+    if (!tokenPayload.orgId) return pendingInvitations.length > 0 ? 'pending_invitations' : 'no_community';
+    const granted = new Set(permissions.map((p) => (typeof p === 'string' ? p : p?.name)).filter(Boolean));
+    const adminPermissions = ['*', 'users:create', 'roles:create', 'roles:update'];
+    return adminPermissions.some((p) => granted.has(p)) ? 'community_admin' : 'member';
+  }
+
+  /**
+   * The single login result returned by every sign-in method (password, email
+   * code, phone code, SSO, invitation acceptance). Creates the session.
+   */
+  async _buildLoginResult(user, { targetOrgId = null, deviceInfo = {}, method = 'unknown' } = {}) {
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgId);
+    if (tokenPayload.isPlatform && tokenPayload.role === 'Super Admin' && !permissions.includes('*')) {
+      permissions.push('*');
+    }
+    const token = signToken(tokenPayload);
+    const refreshToken = await sessionService.createSession(user._id, deviceInfo || {});
+    const { listPendingInvitationsForUser } = await import('./invitationAcceptance.js');
+    const pendingInvitations = await listPendingInvitationsForUser(user._id);
+
+    authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method });
+
+    return {
+      token,
+      refreshToken,
+      user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
+      availableWorkspaces,
+      pendingInvitations,
+      landing: this._computeLanding(tokenPayload, permissions, pendingInvitations),
+    };
+  }
+
+  /**
+   * After identity is verified (OTP or SSO): accept the exact invitation if a
+   * token was supplied, otherwise sign in normally. An invited placeholder
+   * without a token gets a short-lived ticket and its pending invitations to
+   * choose from instead of a session.
+   * Runs inside the caller's transaction; returns a function that completes the
+   * login after commit.
+   */
+  async _completeVerifiedLogin(user, { inviteToken = null, verifiedVia, session }) {
+    if (['Suspended', 'Blocked', 'Deleted'].includes(user.status)) {
+      throw new HttpError(403, `Your account has been ${user.status.toLowerCase()}. Please contact support.`);
+    }
+    const isPlaceholder = user.status === 'Pending Verification' || user.status === 'Pending';
+    const { acceptInvitationForUser, emitInvitationAccepted, listPendingInvitationsForUser, issueIdentityTicket } =
+      await import('./invitationAcceptance.js');
+
+    if (inviteToken) {
+      const { orgId } = await acceptInvitationForUser(user, { rawToken: inviteToken }, verifiedVia, session);
+      return async (deviceInfo, method) => {
+        emitInvitationAccepted(user._id, orgId);
+        return this._buildLoginResult(user, { targetOrgId: orgId, deviceInfo, method });
+      };
+    }
+
+    if (isPlaceholder) {
+      const pendingInvitations = await listPendingInvitationsForUser(user._id);
+      if (pendingInvitations.length === 0) {
+        throw new HttpError(403, 'You don\'t have an active invitation. Please ask your community admin to invite you.', {
+          code: 'INVITATION_REQUIRED',
+        });
+      }
+      
+      const firstInvite = pendingInvitations[0];
+      const { orgId } = await acceptInvitationForUser(user, { invitationId: firstInvite.id }, verifiedVia, session);
+      
+      return async (deviceInfo, method) => {
+        emitInvitationAccepted(user._id, orgId);
+        return this._buildLoginResult(user, { targetOrgId: orgId, deviceInfo, method });
+      };
+    }
+
+    if (user.status !== 'Active') {
+      throw new HttpError(403, `Account is ${user.status}`);
+    }
+    return async (deviceInfo, method) => this._buildLoginResult(user, { deviceInfo, method });
+  }
+
+  /** Pending invitations for a signed-in user. */
+  async getPendingInvitations(userId) {
+    const { listPendingInvitationsForUser } = await import('./invitationAcceptance.js');
+    return listPendingInvitationsForUser(userId);
+  }
+
+  /**
+   * Accept or decline one invitation chosen from the pending list. The caller is
+   * either signed in, or holds a fresh identity ticket from OTP/SSO verification.
+   */
+  async respondToInvitation({ action, invitationId = null, inviteToken = null, authUserId = null, ticket = null, deviceInfo = {} }) {
+    const ref = inviteToken ? { rawToken: inviteToken } : { invitationId };
+    const { verifyIdentityTicket, acceptInvitationForUser, declineInvitationForUser, emitInvitationAccepted } =
+      await import('./invitationAcceptance.js');
+    let userId = authUserId;
+    let verifiedVia = 'session';
+    if (!userId) {
+      const claims = verifyIdentityTicket(ticket);
+      userId = claims.userId;
+      verifiedVia = claims.verifiedVia;
+    }
+
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    let orgId;
+    let user;
+    try {
+      user = await userService.getUserById(userId, session);
+      if (['Suspended', 'Blocked', 'Deleted'].includes(user.status)) {
+        throw new HttpError(403, 'Account is inactive or suspended.');
+      }
+      if (action === 'decline') {
+        ({ orgId } = await declineInvitationForUser(user, ref, session));
+      } else {
+        ({ orgId } = await acceptInvitationForUser(user, ref, verifiedVia, session));
+      }
+      await session.commitTransaction();
+    } catch (error) {
+      try { await session.abortTransaction(); } catch (_) {}
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+
+    if (action === 'decline') {
+      authEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
+      userEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
+      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'rejected' });
+      const { listPendingInvitationsForUser } = await import('./invitationAcceptance.js');
+      return { declined: true, orgId, pendingInvitations: await listPendingInvitationsForUser(user._id) };
+    }
+
+    emitInvitationAccepted(user._id, orgId);
+    return this._buildLoginResult(user, { targetOrgId: orgId, deviceInfo, method: 'invitation' });
+  }
+
+  /**
+   * Helper to format consistent auth user payload containing unit and organization context.
+   */
+  _formatAuthUser(user, tokenPayload, permissions = [], availableWorkspaces = []) {
+    return {
+      id: user._id,
+      email: user.email,
+      status: user.status,
+      username: user.username,
+      name: user.name || user.username || user.email,
+      phone: user.phone || '',
+      avatar: user.avatar || '',
+      bio: user.bio || '',
+      work: user.work || '',
+      hometown: user.hometown || '',
+      allowIntercomCalls: Boolean(user.allowIntercomCalls),
+      interests: Array.isArray(user.interests) ? user.interests : [],
+      role: tokenPayload.role,
+      roleId: tokenPayload.roleId,
+      roles: tokenPayload.roles,
+      permissions: permissions,
+      orgId: tokenPayload.orgId,
+      activeOrgId: tokenPayload.orgId,
+      orgName: tokenPayload.orgName,
+      organizationName: tokenPayload.organizationName,
+      activeOrganizationName: tokenPayload.activeOrganizationName,
+      orgCountryCode: tokenPayload.orgCountryCode || 'IN',
+      isPlatform: tokenPayload.isPlatform,
+      visitorContext: tokenPayload.visitorContext,
+      activeAssignment: tokenPayload.activeAssignment || null,
+      availableAssignments: tokenPayload.availableAssignments || [],
+      accessibleAssignments: tokenPayload.accessibleAssignments || {},
+      assignedGate: tokenPayload.assignedGate || '',
+      assignedFacility: tokenPayload.assignedFacility || '',
+      villaId: tokenPayload.villaId,
+      villaNumber: tokenPayload.villaNumber,
+      activeVillaNumber: tokenPayload.villaNumber,
+      unitNumber: tokenPayload.villaNumber,
+      villaBlock: tokenPayload.villaBlock,
+      residentType: tokenPayload.residentType,
+      accessibleUnits: tokenPayload.accessibleUnits || [],
+      availableWorkspaces,
+    };
+  }
+
+  /**
+   * Authenticates user and generates a token with flattened permission scopes.
+   * @param {object} loginData - Payload containing login (email/username) and password
+   */
+  
   /**
 
    * Registers a new user with standard credentials.
@@ -174,6 +850,17 @@ export class AuthService {
       await userService.updateUser(user._id, { status: 'Active', emailVerified: true }, session);
 
       const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+      if (inviteToken) {
+        const tokenRes = await tokenService.validateInvitationToken(inviteToken, session);
+        if (tokenRes.userId && tokenRes.userId.toString() !== user._id.toString()) throw new HttpError(403, 'Identity mismatch');
+        if (!tokenRes.orgId) throw new HttpError(400, 'Invitation is missing community context.');
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); user.status = 'Active'; }
+        await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, tokenRes.orgId, 'Active', session);
+        const membership = await (await import('../orgMembership/orgMembership.services.js')).default.getMembershipWithVilla(user._id, tokenRes.orgId, session);
+        if (membership && membership.units) { const villaService = (await import('../villa/villa.services.js')).default; for (const unit of membership.units) { if (unit.villaId) { await villaService.assignResidentToVilla(unit.villaId._id || unit.villaId, user._id, unit.residentType || 'Resident', session, tokenRes.orgId); } } }
+        await tokenService.consumeInvitationToken(inviteToken, session);
+      }
+
 
       await session.commitTransaction();
 
@@ -257,17 +944,6 @@ export class AuthService {
       // Fallback to first membership in org if no specific villa requested or found
       if (!selectedMembership) {
         selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
-      }
-      // Auto-heal fallback: If user was invited and has a membership in this org that is still in 'Pending' status,
-      // and the organization is active, auto-promote it to 'Active' so valid authenticated users are never denied entry.
-      if (!selectedMembership) {
-        const pendingMatch = memberships.find((m) => m.orgId && m.orgId._id && m.orgId._id.toString() === targetOrgIdStr);
-        if (pendingMatch && (!pendingMatch.orgId.status || pendingMatch.orgId.status.toLowerCase() === 'active')) {
-          await orgMembershipService.updateStatus(user._id, targetOrgIdStr, 'Active');
-          pendingMatch.status = 'Active';
-          selectedMembership = pendingMatch;
-          activeMemberships.push(pendingMatch);
-        }
       }
       if (!selectedMembership) {
         if (user.isPlatform === true) {
@@ -799,9 +1475,13 @@ export class AuthService {
       throw new HttpError(401, 'Invalid credentials. Incorrect password.');
     }
 
-    // 2b. Process invitation token if provided during login
+    // 2b. Identity proven by password: accept the exact invitation if one was supplied
     let targetOrgIdFromInvite = null;
     if (inviteToken) {
+      const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
+      const mongoose = (await import('mongoose')).default;
+      const session = await mongoose.startSession();
+      session.startTransaction();
       try {
         const inviteDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION');
         if (!inviteDoc?.userId || inviteDoc.userId.toString() !== user._id.toString()) {
@@ -822,6 +1502,7 @@ export class AuthService {
         }
 
         if (targetOrgIdFromInvite) {
+          if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
           const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
           await orgMembershipService.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
 
@@ -862,33 +1543,15 @@ export class AuthService {
       } catch (tokenError) {
         throw tokenError;
       }
+      emitInvitationAccepted(user._id, targetOrgIdFromInvite);
     }
 
-    // 3. Resolve context and generate permissions
-    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
-
-    // Super Admin Bypass for Platform Org
-    if (tokenPayload.isPlatform && tokenPayload.role === 'Super Admin') {
-      permissions.push('*');
-    }
-
-    // 4. Generate JWT token
-    const token = signToken(tokenPayload);
-
-    // 5. Create session & Refresh Token
-    const deviceInfo = loginData.deviceInfo || {};
-    const refreshToken = await sessionService.createSession(user._id, deviceInfo);
-
-    // Emit event for successful login write operation
-    authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'credentials' });
-
-    // 6. Return response payload matching new structure
-    return {
-      token,
-      refreshToken,
-      user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
-      availableWorkspaces,
-    };
+    // 3. Scoped token, session and the shared login result
+    return this._buildLoginResult(user, {
+      targetOrgId: targetOrgIdFromInvite,
+      deviceInfo: loginData.deviceInfo || {},
+      method: 'credentials',
+    });
   }
 
   /**
@@ -1078,16 +1741,18 @@ export class AuthService {
     // Encapsulate invitation validation, deletion, and activation in a single database transaction.
     session.startTransaction();
     try {
-      let userId = null;
-      let orgId = null;
-
+      // The invitation token is the only thing that identifies which invitation
+      // (and therefore which membership) is being accepted. Email alone never is.
       if (!rawToken) {
         throw new HttpError(400, 'Invitation token is required.');
       }
 
       const tokenRes = await tokenService.validateInvitationToken(rawToken, session);
-      userId = tokenRes.userId;
-      orgId = tokenRes.orgId;
+      const userId = tokenRes.userId;
+      const orgId = tokenRes.orgId;
+      if (!orgId) {
+        throw new HttpError(400, 'This invitation is not linked to a community. Please ask for a new invitation.');
+      }
 
       let user = null;
       if (userId) {
@@ -1098,39 +1763,45 @@ export class AuthService {
         user = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
       }
 
+      const user = await userService.getUserById(userId, session).catch(() => null);
       if (!user) {
         throw new HttpError(404, 'No pending user account found to activate.');
       }
 
-      // Server-side identity verification: authenticated user check
       if (authenticatedUserId && user._id.toString() !== authenticatedUserId.toString()) {
-        console.log(`[DEBUG acceptInvitation] user._id=${user._id.toString()}, authenticatedUserId=${authenticatedUserId.toString()}`);
         const authUser = await userService.getUserById(authenticatedUserId).catch(() => null);
         if (authUser && authUser.email && user.email && authUser.email.trim().toLowerCase() === user.email.trim().toLowerCase()) {
           const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
           await OrgMembership.updateMany({ userId: user._id }, { $set: { userId: authUser._id } }).session(session).catch(() => null);
           user = authUser;
         } else {
-          throw new HttpError(403, `The authenticated account does not match the invitation identity. user._id=${user._id.toString()}, auth._id=${authenticatedUserId.toString()}, userEmail=${user?.email}, authEmail=${authUser?.email}`);
+          throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
         }
       }
 
-      // Server-side identity verification: email match check
       if (email && user.email && user.email.toLowerCase() !== email.trim().toLowerCase()) {
         throw new HttpError(403, 'The provided email does not match the invitation identity.');
       }
 
-      // Transition invitation token to ACCEPTED only after identity verification succeeds
-      if (rawToken) {
-        await tokenService.consumeInvitationToken(rawToken, session);
+      // An account that is already set up can only accept while signed in as itself,
+      // and accepting never changes its credentials. Otherwise anyone holding the
+      // invite link could reset an existing user's password.
+      const isEstablishedAccount = user.status === 'Active' && !!user.password;
+      if (isEstablishedAccount && !authenticatedUserId) {
+        throw new HttpError(401, 'You already have an account. Please sign in to accept this invitation.');
       }
 
-      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-      if (!orgId) {
-        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
-        const pendingMembership = await OrgMembership.findOne({ userId: user._id, status: 'Pending' }).session(session).catch(() => null);
-        if (pendingMembership) {
-          orgId = pendingMembership.orgId;
+      if (!isEstablishedAccount && !password && !(user.password && authenticatedUserId)) {
+        throw new HttpError(400, 'Password is required to activate a new account.');
+      }
+
+      // Accept exactly this invitation (the emailed link proves the email address)
+      const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
+      await acceptInvitationForUser(user, { rawToken }, 'email', session);
+
+      if (isEstablishedAccount) {
+        if (profileData.name || profileData.phone) {
+          await userService.activateUser(user._id, user.password, session, profileData);
         }
       }
 
@@ -1151,6 +1822,8 @@ export class AuthService {
       }
 
       // Update OrgMembership status to Active for this organization or user
+      if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.updateStatus(user._id, orgId || null, 'Active', session);
 
       // Assign resident to villa upon accepting invitation
@@ -1183,24 +1856,9 @@ export class AuthService {
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      // Auto-login logic (read scopes are done outside transaction block)
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, orgId);
-      const token = signToken(tokenPayload);
-
-      // Emit event for successful activation and login write operations
       authEvents.emit('USER_ACTIVATED', { userId: user._id });
-      authEvents.emit('INVITATION_ACCEPTED', { userId: user._id, orgId });
-      userEvents.emit('INVITATION_ACCEPTED', { userId: user._id, orgId });
-      userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
-      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'invitation' });
-
-      return {
-        token,
-        refreshToken,
-        user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
-        availableWorkspaces,
-      };
+      emitInvitationAccepted(user._id, orgId);
+      return await this._buildLoginResult(user, { targetOrgId: orgId, method: 'invitation' });
     } catch (error) {
       if (session) {
         try { await session.abortTransaction(); } catch (e) {}
@@ -1224,69 +1882,56 @@ export class AuthService {
     
     session.startTransaction();
     try {
+      // Only the invitation token identifies what is being declined. An email
+      // alone must never touch anyone's memberships.
+      if (!rawToken) {
+        throw new HttpError(400, 'Invitation token is required.');
+      }
+
       let userId = null;
       let orgId = null;
-
-      if (rawToken) {
-        try {
-          const tokenRes = await tokenService.rejectInvitationToken(rawToken, session);
-          userId = tokenRes.userId;
-          orgId = tokenRes.orgId;
-        } catch (tokenErr) {
-          const msg = tokenErr.message ? tokenErr.message.toLowerCase() : '';
-          if (msg.includes('already been rejected') || msg.includes('already been accepted')) {
-            const tokenDoc = await tokenService.getInvitationToken(rawToken, 'INVITATION');
-            userId = tokenDoc?.userId;
-            orgId = tokenDoc?.orgId;
-            if (msg.includes('already been accepted')) {
-              await session.commitTransaction();
-              return {
-                message: 'Invitation has already been accepted',
-                userId,
-                orgId,
-                status: 'ACCEPTED',
-              };
-            }
-          } else {
-            throw tokenErr;
-          }
+      try {
+        const tokenRes = await tokenService.rejectInvitationToken(rawToken, session);
+        userId = tokenRes.userId;
+        orgId = tokenRes.orgId;
+      } catch (tokenErr) {
+        const msg = tokenErr.message ? tokenErr.message.toLowerCase() : '';
+        if (msg.includes('already been rejected') || msg.includes('already been accepted')) {
+          const tokenDoc = await tokenService.getInvitationToken(rawToken, 'INVITATION');
+          await session.commitTransaction();
+          return {
+            message: msg.includes('already been accepted')
+              ? 'Invitation has already been accepted'
+              : 'Invitation has already been rejected',
+            userId: tokenDoc?.userId,
+            orgId: tokenDoc?.orgId,
+            status: msg.includes('already been accepted') ? 'ACCEPTED' : 'REJECTED',
+          };
         }
-      } else if (email) {
-        const userByEmail = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
-        if (userByEmail) {
-          userId = userByEmail._id;
-        }
+        throw tokenErr;
       }
 
-      let user = null;
-      if (userId) {
-        user = await userService.getUserById(userId, session).catch(() => null);
-      }
-
-      if (!user && email) {
-        user = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
-      }
-
+      const user = await userService.getUserById(userId, session).catch(() => null);
       if (!user) {
         throw new HttpError(404, 'No pending user account found to reject invitation.');
       }
-
-      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-      if (!orgId) {
-        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
-        const pendingMembership = await OrgMembership.findOne({ userId: user._id, status: 'Pending' }).session(session).catch(() => null);
-        if (pendingMembership) {
-          orgId = pendingMembership.orgId;
-        }
+      if (email && user.email && user.email.toLowerCase() !== email.trim().toLowerCase()) {
+        throw new HttpError(403, 'The provided email does not match the invitation identity.');
       }
 
       // Update OrgMembership status to Rejected for this organization
-      await orgMembershipService.updateStatus(user._id, orgId || null, 'Rejected', session).catch(() => null);
+      if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
+          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId || null, 'Rejected', session).catch(() => null);
 
       // Ensure user is removed from any villa in this organization
       if (orgId) {
-        const villaService = (await import('../villa/villa.services.js')).default;
-        await villaService.removeUserFromAllVillasInOrg(user._id, orgId, session).catch(() => null);
+        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+        const membership = await orgMembershipService.getMembership(user._id, orgId, session);
+        if (membership && membership.status === 'Pending') {
+          await orgMembershipService.updateStatus(user._id, orgId, 'Rejected', session);
+          const villaService = (await import('../villa/villa.services.js')).default;
+          await villaService.removeUserFromAllVillasInOrg(user._id, orgId, session).catch(() => null);
+        }
       }
 
       await session.commitTransaction();
@@ -1443,7 +2088,8 @@ export class AuthService {
         }
       } 
       
-      if (!user) {
+      if (!user && identityData.emailVerified === true) {
+        // Link by email only when Google has verified it
         user = await userService.getUserByEmail(email, session);
       }
 
@@ -1457,41 +2103,28 @@ export class AuthService {
       }
 
       // Existing User Flow
+      await this._assertSsoAccountAndInvite(user, inviteToken, session);
       user = await this._updateExistingSsoUser(user, identityData, session);
 
+      const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
       let targetOrgIdFromInvite = null;
       if (inviteToken) {
         try {
-          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
-          targetOrgIdFromInvite = orgId;
-          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-          await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
-          userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
-          userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
+          const res = await acceptInvitationForUser(user, { rawToken: inviteToken }, 'google', session);
+          targetOrgIdFromInvite = res.orgId;
         } catch (tokenError) {
-          if (user.status === 'Pending Verification') {
+          if (user.status === 'Pending Verification' || user.status === 'Pending') {
             throw tokenError;
           }
           console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
         }
       }
-
-      const refreshToken = await sessionService.createSession(user._id, {}, session);
       await session.commitTransaction();
 
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
-      const token = signToken(tokenPayload);
-      
+      if (targetOrgIdFromInvite) emitInvitationAccepted(user._id, targetOrgIdFromInvite);
       authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: provider });
-
-      return {
-        isNewUser: false,
-        token,
-        refreshToken,
-        user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
-        availableWorkspaces,
-      };
+      const result = await this._buildLoginResult(user, { targetOrgId: targetOrgIdFromInvite, method: provider });
+      return { isNewUser: false, ...result };
     } catch (error) {
       authEvents.emit('LOGIN_FAILED', { email: email, reason: error.message, method: provider });
       if (session) {
@@ -1549,6 +2182,20 @@ export class AuthService {
    * Handles activating pending invitation users and linking SSO provider.
    * @private
    */
+  async _assertSsoAccountAndInvite(user, inviteToken, session) {
+    if (['Suspended', 'Blocked', 'Deleted'].includes(user.status)) {
+      throw new HttpError(403, 'Account is inactive or suspended.');
+    }
+    // An invited-but-unaccepted placeholder only becomes usable by accepting its own invitation
+    const isPlaceholder = user.status === 'Pending Verification' || user.status === 'Pending';
+    if (!inviteToken) { return; }
+    // Never consume (and so burn) an invitation that belongs to someone else
+    const tokenDoc = await tokenService.getInvitationToken(inviteToken, 'INVITATION', session);
+    if (!tokenDoc || !tokenDoc.userId || String(tokenDoc.userId) !== String(user._id)) {
+      throw new HttpError(403, 'This invitation was sent to a different account.', { code: 'INVITATION_MISMATCH' });
+    }
+  }
+
   async _updateExistingSsoUser(user, identityData, session) {
     const { provider, providerId, providerEmail } = identityData;
     const updateData = {};
@@ -1569,7 +2216,15 @@ export class AuthService {
 
     const existingIdentity = await userIdentityService.getIdentityByProviderId(provider, providerId, session);
     if (existingIdentity && existingIdentity.userId?.toString() !== user._id?.toString()) {
-      throw new HttpError(409, `This ${provider} account is already linked to another user.`);
+      const User = (await import('../user/user.model.js')).default;
+      const oldUser = await User.findById(existingIdentity.userId).session(session);
+      if (!oldUser) {
+        await userIdentityService.unlinkIdentity(existingIdentity.userId, provider, session);
+        await userIdentityService.linkIdentity(user._id, identityData, session);
+        authEvents.emit('USER_LINKED_PROVIDER', { userId: user._id, provider });
+      } else {
+        throw new HttpError(409, `This ${provider} account is already linked to another user.`);
+      }
     }
     if (!existingIdentity) {
       await userIdentityService.linkIdentity(user._id, identityData, session);
@@ -1615,65 +2270,39 @@ export class AuthService {
         }
       } 
       
-      if (!user && email) {
-        // Fallback: Check if user exists by email to link them
+      if (!user && email && identityData.emailVerified === true) {
+        // Fallback: link by email, but only when the provider has verified it
         user = await userService.getUserByEmail(email, session);
       }
 
       if (!user) {
         throw new HttpError(401, 'User account not found. You must be invited to a community to log in.');
       } else {
+        await this._assertSsoAccountAndInvite(user, inviteToken, session);
         user = await this._updateExistingSsoUser(user, identityData, session);
       }
 
-      // Process invitation token if provided during SSO login
+      // Accept the exact invitation, if one was supplied
+      const { acceptInvitationForUser, emitInvitationAccepted } = await import('./invitationAcceptance.js');
       let targetOrgIdFromInvite = null;
       if (inviteToken) {
         try {
-          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
-          targetOrgIdFromInvite = orgId;
-          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-          await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
+          const res = await acceptInvitationForUser(user, { rawToken: inviteToken }, provider, session);
+          targetOrgIdFromInvite = res.orgId;
         } catch (tokenError) {
-          if (user.status === 'Pending Verification') {
+          if (user.status === 'Pending Verification' || user.status === 'Pending') {
             throw tokenError;
           }
           console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
         }
       }
-
-      const refreshToken = await sessionService.createSession(user._id, {}, session);
       await session.commitTransaction();
 
-      // Resolve scoped token and workspaces
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
-      
-      // Enforce organization check
-      if (!availableWorkspaces || availableWorkspaces.length === 0) {
-        throw new HttpError(403, 'Your account does not have access to any active organization.');
-      }
-
-      const token = signToken(tokenPayload);
-      
+      if (targetOrgIdFromInvite) emitInvitationAccepted(user._id, targetOrgIdFromInvite);
       authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: provider });
-
-      return {
-        token,
-        refreshToken,
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          role: tokenPayload.role,
-          roles: tokenPayload.roles,
-          permissions: permissions,
-          orgId: tokenPayload.orgId,
-          isPlatform: tokenPayload.isPlatform,
-          visitorContext: tokenPayload.visitorContext,
-        },
-        availableWorkspaces,
-      };
+      // A user with no community gets landing 'no_community' / 'pending_invitations'
+      // instead of an error after a session was already created
+      return await this._buildLoginResult(user, { targetOrgId: targetOrgIdFromInvite, method: provider });
     } catch (error) {
       authEvents.emit('LOGIN_FAILED', { email: email, reason: error.message, method: provider });
       if (session) {
@@ -1694,9 +2323,16 @@ export class AuthService {
   async initiatePhoneLogin(phone) {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
+    await otpService.assertCanSend(normalizedPhone);
     const user = await userService.getUserByPhone(normalizedPhone);
     if (!user) {
-      throw new HttpError(404, 'This phone number is not registered. Please sign up first.');
+      await otpService.recordSend(normalizedPhone);
+      return { message: OTP_SENT_PHONE_MESSAGE };
+    }
+
+    if (otpService.isReviewAccount(normalizedPhone)) {
+      const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
+      return { message: 'OTP sent successfully', ...devCodeField(normalizedPhone, plainCode) };
     }
 
     // Check for Firebase Integration globally
@@ -1726,33 +2362,61 @@ export class AuthService {
         
         // Save the sessionInfo in OTP service to verify later
         await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, sessionInfo);
-        
-        return { message: 'OTP sent via Firebase successfully' };
+
+        return { message: OTP_SENT_PHONE_MESSAGE };
       }
     }
 
-    if (process.env.NODE_ENV === 'production') {
-      const [twilio, messageCentral] = await Promise.all([
+    // MSG91 is a global provider-managed OTP path. Firebase remains preferred
+    // when configured; MSG91 is used before the legacy SMS fallback.
+    const msg91Integration = await integrationHubService.getGlobalConnectionByProvider('msg91');
+    const msg91EnvConfigured = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+    if (msg91Integration || msg91EnvConfigured) {
+      const { decryptCredential } = await import('../integrationHub/utils/crypto.util.js');
+      const authKeyCred = msg91Integration?.credentials.find(c => c.key === 'authKey');
+      const templateIdCred = msg91Integration?.credentials.find(c => c.key === 'templateId');
+      const authKey = process.env.MSG91_AUTH_KEY || (authKeyCred && decryptCredential(authKeyCred));
+      const templateId = process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID || (templateIdCred && decryptCredential(templateIdCred));
+      const senderIdCred = msg91Integration?.credentials.find(c => c.key === 'senderId');
+      const senderId = process.env.MSG91_SENDER_ID || (senderIdCred && decryptCredential(senderIdCred));
+      if (!authKey || !templateId) throw new HttpError(503, 'MSG91 OTP is not configured correctly.');
+      const sendUrl = new URL('https://control.msg91.com/api/v5/otp');
+      sendUrl.searchParams.set('template_id', templateId);
+      sendUrl.searchParams.set('mobile', normalizedPhone.replace(/^\+/, ''));
+      if (senderId) {
+        sendUrl.searchParams.set('sender', senderId);
+      }
+      logger.info('MSG91 OTP send request', { mobile: normalizedPhone.replace(/^\+/, ''), templateId, senderId });
+      const response = await fetch(sendUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', accept: 'application/json', authkey: authKey } });
+      let responseData = null;
+      try { responseData = await response.json(); } catch (_) { /* provider may return an empty body */ }
+      logger.info('MSG91 OTP send response', { status: response.status, type: responseData?.type, message: responseData?.message, request_id: responseData?.request_id });
+      if (!response.ok || String(responseData?.type || '').toLowerCase() !== 'success') {
+        logger.error('MSG91 OTP send FAILED', { status: response.status, responseData, mobile: normalizedPhone.replace(/^\+/, ''), templateId });
+        throw new HttpError(502, `MSG91 could not send the OTP: ${responseData?.message || 'Unknown error'}. Verify the MSG91 OTP template and account configuration.`);
+      }
+      await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, 'MSG91');
+      return { message: 'OTP sent via MSG91 successfully' };
+    }
+    if (process.env.NODE_ENV === 'production' && process.env.STRICT_SMS_PROVIDER === 'true') {
+      const [twilio, messageCentral, msg91] = await Promise.all([
         integrationHubService.getGlobalConnectionByProvider('twilio'),
-        integrationHubService.getGlobalConnectionByProvider('messagecentral')
+        integrationHubService.getGlobalConnectionByProvider('messagecentral'),
+        integrationHubService.getGlobalConnectionByProvider('msg91')
       ]);
-      if (!twilio && !messageCentral) {
+      const msg91Env = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+      if (!twilio && !messageCentral && !msg91 && !msg91Env) {
         throw new HttpError(503, 'SMS login is temporarily unavailable. Please use email login or contact support.');
       }
     }
 
     // Fallback: Generate local OTP
-    const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
+    const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, null, 4);
 
     // Emit event for SMS delivery
     sendOtpNotification({ identifier: normalizedPhone, code: plainCode, type: 'SMS' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      
-    }
-
-    return { message: 'OTP sent successfully' };
+    return { message: 'OTP sent successfully', ...devCodeField(normalizedPhone, plainCode) };
   }
 
   /**
@@ -1761,7 +2425,7 @@ export class AuthService {
    * @param {string} code - OTP verification code
    * @param {object} deviceInfo - Client device meta
    */
-  async verifyPhoneLogin(phone, code, deviceInfo) {
+  async verifyPhoneLogin(phone, code, deviceInfo, inviteToken) {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
     const mongoose = (await import('mongoose')).default;
@@ -1775,7 +2439,26 @@ export class AuthService {
       // 1. Verify OTP
       const otpResult = await otpService.verifyOTP(normalizedPhone, code, 'LOGIN', session, false);
 
-      if (otpResult && otpResult.sessionInfo) {
+      if (otpResult && otpResult.sessionInfo === 'MSG91') {
+        const msg91Integration = await integrationHubService.getGlobalConnectionByProvider('msg91', session);
+        const { decryptCredential } = await import('../integrationHub/utils/crypto.util.js');
+        const authKeyCred = msg91Integration?.credentials.find(c => c.key === 'authKey');
+        const authKey = process.env.MSG91_AUTH_KEY || (authKeyCred && decryptCredential(authKeyCred));
+        if (!authKey) throw new HttpError(400, 'MSG91 configuration missing.');
+        const verifyUrl = new URL('https://control.msg91.com/api/v5/otp/verify');
+        verifyUrl.searchParams.set('otp', String(code).trim());
+        verifyUrl.searchParams.set('mobile', normalizedPhone.replace(/^\+/, ''));
+        const response = await fetch(verifyUrl, { method: 'GET', headers: { authkey: authKey, accept: 'application/json' } });
+        let responseData = null;
+        try { responseData = await response.json(); } catch (_) { /* provider may return an empty body */ }
+        const providerMessage = String(responseData?.message || '').toLowerCase();
+        if (responseData?.code === '418' || providerMessage.includes('ip is not whitelisted')) {
+          logger.error('[CRITICAL MSG91] Request rejected by MSG91: IP is not whitelisted in MSG91 dashboard. Whitelist the server public IP or disable IP restrictions on the AuthKey.', { responseData });
+          throw new HttpError(502, 'MSG91 service error: Server IP is not whitelisted in your MSG91 dashboard.');
+        }
+        const verified = response.ok && (String(responseData?.type || '').toLowerCase() === 'success' || providerMessage.includes('otp verified') || providerMessage.includes('number_verified'));
+        if (!verified) throw new HttpError(400, 'Invalid or expired OTP.');
+      } else if (otpResult && otpResult.sessionInfo) {
         // This was a Firebase managed OTP
         const firebaseIntegration = await integrationHubService.getGlobalConnectionByProvider('firebase', session);
         if (!firebaseIntegration) throw new HttpError(400, 'Firebase configuration missing.');
@@ -1792,18 +2475,22 @@ export class AuthService {
         });
 
         if (!response.ok) {
-          const responseData = await response.json();
-          throw new HttpError(400, `Firebase Verification Failed: ${responseData.error?.message || response.statusText}`);
+          // Count the failure against the code (throws OTP_INVALID / OTP_EXHAUSTED)
+          await otpService.recordFailedAttempt(normalizedPhone, 'LOGIN');
         }
       }
 
-      // 2. Fetch user
-      const user = await userService.getUserByPhone(normalizedPhone, session);
+      let user = await userService.getUserByPhone(normalizedPhone, session);
       if (!user) {
-        throw new HttpError(404, 'User not found.');
+        throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
       }
 
-      if (user.status !== 'Active') {
+      if (otpService.isReviewAccount(normalizedPhone) && ['Pending Verification', 'Pending'].includes(user.status)) {
+        user.status = 'Active';
+        await userService.updateUser(user._id, { status: 'Active', phoneVerified: true }, session);
+      }
+
+      if (user.status !== 'Active' && !['Pending Verification', 'Pending'].includes(user.status)) {
         throw new HttpError(403, `Account is ${user.status}`);
       }
 
@@ -1815,34 +2502,12 @@ export class AuthService {
       await otpService.clearOTP(normalizedPhone, 'LOGIN', session);
 
       // 3. Generate session refresh token
-      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+      const finish = await this._completeVerifiedLogin(user, { inviteToken, verifiedVia: 'phone', session });
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      // Scoped token and available workspaces resolved outside the transaction context
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
-      const token = signToken(tokenPayload);
-
-      // Emit event on successful login
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'phone' });
-
-      return {
-        token,
-        refreshToken,
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          role: tokenPayload.role,
-          roles: tokenPayload.roles,
-          permissions: permissions,
-          orgId: tokenPayload.orgId,
-          isPlatform: tokenPayload.isPlatform,
-          visitorContext: tokenPayload.visitorContext,
-        },
-        availableWorkspaces,
-      };
+      return await finish(deviceInfo, 'phone');
     } catch (error) {
       if (session) {
         try { await session.abortTransaction(); } catch (e) {}
@@ -1860,10 +2525,13 @@ export class AuthService {
    * @param {string} email - User email address
    */
   async initiateEmailOtpLogin(email) {
+    await otpService.assertCanSend(email);
     const user = await userService.getUserByEmail(email);
-    
+
     if (!user) {
-      throw new HttpError(404, 'No account found with this email.');
+      // Identical response for unknown emails; nothing is sent
+      await otpService.recordSend(email);
+      return { message: OTP_SENT_EMAIL_MESSAGE };
     }
 
     if (user.status === 'Pending Verification' || user.emailVerified === false) {
@@ -1877,12 +2545,7 @@ export class AuthService {
     const plainCode = await otpService.createOTP(email, 'LOGIN');
     sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      
-    }
-
-    return { message: 'OTP sent to email' };
+    return { message: OTP_SENT_EMAIL_MESSAGE, ...devCodeField(email, plainCode) };
   }
 
   /**
@@ -1923,7 +2586,7 @@ export class AuthService {
       logger.error(`Failed to send INVITATION_LOGIN OTP to ${finalIdentifier}: ${err.message}`);
     });
 
-    return { message: 'OTP sent' };
+    return { message: 'OTP sent', ...devCodeField(finalIdentifier, plainCode) };
   }
 
   
@@ -1990,7 +2653,7 @@ export class AuthService {
     }
   }
 
-  async verifyEmailOtpLogin(email, code, deviceInfo) {
+  async verifyEmailOtpLogin(email, code, deviceInfo, inviteToken) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -1998,52 +2661,32 @@ export class AuthService {
     // Encapsulate email OTP validation, user activation verification, and session setup.
     session.startTransaction();
     try {
+      await otpService.verifyOTP(email, code, 'LOGIN', session);
+
       const user = await userService.getUserByEmail(email, session);
       if (!user) {
-        throw new HttpError(404, 'User not found.');
+        throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
       }
 
-      if (user.status === 'Pending Verification' || user.emailVerified === false) {
-        throw new HttpError(403, 'Email verification required. Please verify your email before logging in.');
+      if (otpService.isReviewAccount(email) && ['Pending Verification', 'Pending'].includes(user.status)) {
+        user.status = 'Active';
+        await userService.updateUser(user._id, { status: 'Active', emailVerified: true }, session);
       }
 
-      if (user.status !== 'Active') {
+      if (user.status !== 'Active' && !['Pending Verification', 'Pending'].includes(user.status)) {
         throw new HttpError(403, `Account is ${user.status}`);
       }
-
-      await otpService.verifyOTP(email, code, 'LOGIN', session);
 
       if (!user.emailVerified) {
         await userService.updateUser(user._id, { emailVerified: true }, session);
       }
 
-      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+      const finish = await this._completeVerifiedLogin(user, { inviteToken, verifiedVia: 'email', session });
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
-      const token = signToken(tokenPayload);
-
-      // Emit event on successful login
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'email_otp' });
-
-      return {
-        token,
-        refreshToken,
-        user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          role: tokenPayload.role,
-          roles: tokenPayload.roles,
-          permissions: permissions,
-          orgId: tokenPayload.orgId,
-          isPlatform: tokenPayload.isPlatform,
-          visitorContext: tokenPayload.visitorContext,
-        },
-        availableWorkspaces,
-      };
+      return await finish(deviceInfo, 'email_otp');
     } catch (error) {
       if (session) {
         try { await session.abortTransaction(); } catch (e) {}
@@ -2064,14 +2707,18 @@ export class AuthService {
     const cleanId = typeof identifier === 'string'
       ? (identifier.includes('@') ? identifier.trim().toLowerCase() : identifier.replace(/\s+/g, ''))
       : identifier;
+    await otpService.assertCanSend(cleanId);
     const user = await userService.getUserByEmailOrPhone(cleanId);
 
     if (!user) {
-      throw new HttpError(404, 'No account found with this identifier.');
+      // Identical response for unknown identifiers; nothing is sent
+      await otpService.recordSend(cleanId);
+      return { message: 'Password reset instructions sent' };
     }
 
     const type = cleanId.includes('@') ? 'EMAIL' : 'SMS';
-    const plainCode = await otpService.createOTP(cleanId, 'RESET');
+    const length = type === 'SMS' ? 4 : 6;
+    const plainCode = await otpService.createOTP(cleanId, 'RESET', 5, null, null, length);
     
     sendOtpNotification({ identifier: cleanId, code: plainCode, type }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
@@ -2082,6 +2729,7 @@ export class AuthService {
 
     return {
       message: 'Password reset instructions sent',
+      ...devCodeField(cleanId, plainCode),
     };
   }
 
@@ -2094,11 +2742,7 @@ export class AuthService {
     const cleanId = typeof identifier === 'string'
       ? (identifier.includes('@') ? identifier.trim().toLowerCase() : identifier.replace(/\s+/g, ''))
       : identifier;
-    const user = await userService.getUserByEmailOrPhone(cleanId);
-    if (!user) {
-      throw new HttpError(404, 'No account found with this identifier.');
-    }
-
+    // No account means no code was ever issued, so verifyOTP fails the same way
     await otpService.verifyOTP(cleanId, code, 'RESET', null, false);
     return true;
   }
@@ -2242,7 +2886,14 @@ export class AuthService {
       // Never allow an SSO account already linked to one person to activate a
       // different invitation. This protects every provider, not just Apple.
       if (existingIdentity && existingIdentity.userId?.toString() !== user._id?.toString()) {
-        throw new HttpError(409, `This ${provider} account is already linked to another user.`);
+        const User = (await import('../user/user.model.js')).default;
+        const oldUser = await User.findById(existingIdentity.userId).session(session);
+        if (!oldUser) {
+          await userIdentityService.unlinkIdentity(existingIdentity.userId, provider, session);
+          await userIdentityService.linkIdentity(user._id, identityData, session);
+        } else {
+          throw new HttpError(409, `This ${provider} account is already linked to another user.`);
+        }
       }
 
       // Transition invitation token to ACCEPTED only after identity verification succeeds
@@ -2262,6 +2913,7 @@ export class AuthService {
 
       // Update OrgMembership status to Active for this organization
       if (orgId) {
+        if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
         await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
 
@@ -2342,6 +2994,18 @@ export class AuthService {
     const tokenDoc = await tokenService.getInvitationToken(queryToken, 'INVITATION');
     if (!tokenDoc) {
       throw new HttpError(400, 'Invalid or expired invitation token.');
+    }
+
+    if (tokenDoc.status === 'EXPIRED' || (tokenDoc.expiresAt && new Date() > new Date(tokenDoc.expiresAt))) {
+      throw new HttpError(400, 'Invitation has expired. Please ask your administrator to resend the invitation.', { code: 'INVITATION_EXPIRED' });
+    }
+
+    if (tokenDoc.status === 'REVOKED') {
+      throw new HttpError(400, 'Invitation has been revoked by the administrator.', { code: 'INVITATION_REVOKED' });
+    }
+
+    if (tokenDoc.status === 'REJECTED') {
+      throw new HttpError(400, 'Invitation has already been rejected.', { code: 'INVITATION_REJECTED' });
     }
 
     let user = null;
@@ -2583,13 +3247,15 @@ export class AuthService {
     };
   }
 
-  async verifyResetPasswordOtp(identifier, code) {
-    return await otpService.verifyOTP(identifier, code, 'RESET', null, false);
-  }
-
-  async setupAccountPassword(email, newPassword, deviceInfo = {}, orgNameFromReq = null) {
+  async setupAccountPassword(email, newPassword, deviceInfo = {}, orgNameFromReq = null, setupToken = null) {
     if (!email || !newPassword) {
       throw new HttpError(400, 'Email and password are required.');
+    }
+    // Only the holder of the emailed, single-use setup link may set this password
+    const { verifyAccountSetupToken, markAccountSetupTokenUsed } = await import('./accountSetupToken.js');
+    const setupClaims = await verifyAccountSetupToken(setupToken);
+    if (setupClaims.email !== String(email).trim().toLowerCase()) {
+      throw new HttpError(403, 'This account setup link was issued for a different email address.');
     }
     if (newPassword.length < 6) {
       throw new HttpError(400, 'Password must be at least 6 characters long.');
@@ -2600,10 +3266,11 @@ export class AuthService {
     const passHash = await hashPassword(newPassword);
 
     if (!user) {
+      // createUser hashes the password itself; passing passHash here double-hashed it
       user = await userService.createUser({
         email,
         username: email.split('@')[0],
-        password: passHash,
+        password: newPassword,
         status: 'Active',
         emailVerified: true
       });
@@ -2614,6 +3281,7 @@ export class AuthService {
         emailVerified: true
       });
     }
+    await markAccountSetupTokenUsed(setupClaims, user._id);
 
     // Auto-link user to their provisioned Organization & Membership
     try {
@@ -2629,7 +3297,9 @@ export class AuthService {
 
       const quote = inquiry ? await PlatformQuote.findOne({ inquiryId: inquiry._id }).sort({ createdAt: -1 }).catch(() => null) : null;
 
-      const orgName = orgNameFromReq || inquiry?.organizationName || quote?.communitySnapshot?.organizationName || 'Your Community';
+      // The community comes from the signed setup link, never from the request body
+      const linkedOrg = setupClaims.orgId ? await Organization.findById(setupClaims.orgId).catch(() => null) : null;
+      const orgName = linkedOrg?.name || inquiry?.organizationName || quote?.communitySnapshot?.organizationName || 'Your Community';
       const selectedPlan = quote?.pricingSnapshot?.planName || quote?.pricingSnapshot?.tier || quote?.planName || inquiry?.planName || 'COMMUNITY_STARTER';
 
       let basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'notices'];
@@ -2644,13 +3314,9 @@ export class AuthService {
       const customAddonKeys = Array.isArray(addOns) ? addOns.map(a => (typeof a === 'string' ? a : a.code || a.key || a.name)) : [];
       const finalAllowedFeatures = Array.from(new Set([...basePlanFeatures, ...customAddonKeys]));
 
-      const escapedOrgName = orgName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      let org = await Organization.findOne({
-        $or: [
-          { name: new RegExp('^' + escapedOrgName.trim() + '$', 'i') },
-          { contactEmail: email }
-        ]
-      }).catch(() => null);
+      // Never attach the caller to a community found only by name: an unrelated
+      // community could share it. Use the linked community, or one this email owns.
+      let org = linkedOrg || await Organization.findOne({ contactEmail: email }).catch(() => null);
 
       if (!org) {
         org = await Organization.create({
@@ -2798,11 +3464,8 @@ export class AuthService {
     const targetIdentifier = identifier.trim().includes('@') ? user.email : (user.phone || user.email);
     const plainCode = await otpService.createOTP(targetIdentifier, 'FIRST_TIME_ACCOUNT_SETUP', 15);
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      console.log(`\n=========================================`);
-      console.log(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
-      console.log(`=========================================\n`);
+    if (isOtpDebugEnabled()) {
+      logger.info(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
     }
 
     sendOtpNotification({ identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' }).catch(err => logger.error('Failed to send OTP:' + err.message));
@@ -2890,7 +3553,7 @@ export class AuthService {
       throw new HttpError(404, 'User account not found.');
     }
 
-    if (user.status !== 'Active') {
+    if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
       throw new HttpError(403, 'Account is not active. Complete invitation acceptance before mobile handoff.');
     }
 
@@ -2933,7 +3596,7 @@ export class AuthService {
       throw new HttpError(404, 'User account not found.');
     }
 
-    if (user.status !== 'Active') {
+    if (user.status !== 'Active' && !(user.status === 'Pending Verification' && inviteToken)) {
       throw new HttpError(403, 'User account is not active or has been suspended.');
     }
 
@@ -2963,3 +3626,7 @@ export class AuthService {
 }
 
 export default new AuthService();
+
+
+
+

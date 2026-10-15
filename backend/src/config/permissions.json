@@ -37,10 +37,14 @@
   },
   {
     "feature": "billing",
-    "actions": ["billing_hub", "my_dues", "assessments", "ledger", "my_invoices"]
+    "actions": ["assessments", "ledger", "my_invoices"]
   },
   {
     "feature": "workspaces",
     "actions": ["read", "update"]
+  },
+  {
+    "feature": "staff",
+    "actions": ["view", "manage", "assign_unit", "attendance", "view_own"]
   }
 ]

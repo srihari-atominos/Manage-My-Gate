@@ -74,7 +74,7 @@ const parseXLSX = (arrayBuffer) => {
       row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
       row.isValidResidentType =
         !row.residentType ||
-        ['owner', 'tenant', 'family', 'resident owner', 'resident tenant', 'family member'].some(
+        ['owner', 'tenant', 'family', 'resident owner', 'resident tenant', 'family member', 'staff', 'household staff', 'maid', 'driver', 'cook', 'gardener'].some(
           (t) => (row.residentType || '').toLowerCase().includes(t),
         )
 
@@ -82,9 +82,11 @@ const parseXLSX = (arrayBuffer) => {
       if (!row.roleName && row.residentType) {
         const lowerRes = row.residentType.toLowerCase()
         if (lowerRes.includes('owner')) row.roleName = 'Resident Owner'
+        else if (lowerRes.includes('staff') || lowerRes.includes('maid') || lowerRes.includes('driver') || lowerRes.includes('cook') || lowerRes.includes('gardener'))
+          row.roleName = 'Household Staff'
+        else if (lowerRes.includes('family')) row.roleName = 'Family Member'
         else if (lowerRes.includes('tenant') || lowerRes.includes('resident'))
           row.roleName = 'Resident Tenant'
-        else if (lowerRes.includes('family')) row.roleName = 'Family Member'
         else row.roleName = 'Resident Tenant'
       }
       row.isValidRole = !!row.roleName
@@ -200,7 +202,7 @@ const parseCSV = (csvText) => {
   return parsed
 }
 
-export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
+export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload, targetOrgId }) => {
   const { t } = useTranslation()
   const [parsedRows, setParsedRows] = useState([])
   const [fileName, setFileName] = useState('')
@@ -211,11 +213,11 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
 
   const handleDownloadTemplate = async () => {
     try {
-      const blob = await downloadBulkUploadTemplate()
+      const blob = await downloadBulkUploadTemplate(targetOrgId)
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.setAttribute('href', url)
-      link.setAttribute('download', 'bulk_upload_units_template.csv')
+      link.setAttribute('download', 'bulk_upload_units_template.xlsx')
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
@@ -603,6 +605,7 @@ BulkUploadVillasModal.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onBulkUpload: PropTypes.func.isRequired,
+  targetOrgId: PropTypes.string,
 }
 
 export default BulkUploadVillasModal

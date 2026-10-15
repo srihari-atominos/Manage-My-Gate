@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Image, Platform } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, Home, Building2, ChevronDown, Sun, Moon } from 'lucide-react-native';
+import { Bell, Home, Building2, ChevronDown, Sun, Moon, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import storage from '../../src/utils/storage';
@@ -70,16 +70,20 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     // 2. Fall back to availableWorkspaces list matching active workspace orgId
     const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
     const workspaces = (user as any)?.availableWorkspaces || reduxWorkspaces || [];
+    if ((user as any)?.isPlatform === true || (Array.isArray(workspaces) && workspaces.some((workspace: any) => workspace?.isPlatform === true))) {
+      return 'System Platform';
+    }
     if (Array.isArray(workspaces) && workspaces.length > 0) {
       if (activeOrgId) {
         const activeWs = workspaces.find(
           (w: any) => w.orgId === activeOrgId || w._id === activeOrgId || w.id === activeOrgId,
         );
-        if (activeWs?.name) return activeWs.name;
+        const wsName = activeWs?.name || activeWs?.organizationName || activeWs?.orgName || activeWs?.communityOrg;
+        if (wsName) return wsName;
       }
-      if (workspaces[0]?.name) {
-        return workspaces[0].name;
-      }
+      const firstWs = workspaces[0];
+      const firstWsName = firstWs?.name || firstWs?.organizationName || firstWs?.orgName || firstWs?.communityOrg;
+      if (firstWsName) return firstWsName;
     }
 
     return t('community_workspace', 'Community Workspace');
@@ -210,7 +214,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     const defaultComm = t('green_meadows', 'Green Meadows');
     const comm = activeCommunity ? translateText(activeCommunity) : defaultComm;
     if (isResidentRole && hasUnit && activeVilla) {
-      return `${activeVilla} • ${comm}`;
+      return `${activeVilla} â€¢ ${comm}`;
     }
     return comm;
   }, [isResidentRole, hasUnit, activeVilla, activeCommunity, language, t, translateText]);
@@ -296,14 +300,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={toggleTheme}
             activeOpacity={0.7}
-            className="size-11 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center active:bg-secondary shadow-2xs"
+            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center active:bg-neutral-100 dark:active:bg-muted shadow-xs"
             accessibilityRole="button"
             accessibilityLabel="Toggle Light and Dark Theme"
           >
             {colorScheme === 'dark' ? (
-              <Sun size={17} color="#F59E0B" strokeWidth={2.2} />
+              <Sun size={18} color="#F59E0B" strokeWidth={2.6} />
             ) : (
-              <Moon size={17} color="#334155" strokeWidth={2.2} />
+              <Moon size={18} color="#000000" strokeWidth={2.6} />
             )}
           </TouchableOpacity>
 
@@ -311,11 +315,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-11 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center relative active:bg-secondary shadow-2xs"
+            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center relative active:bg-neutral-100 dark:active:bg-muted shadow-xs"
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
-            <Bell size={17} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
+            <Bell size={18} color={colorScheme === 'dark' ? '#FFFFFF' : '#000000'} strokeWidth={2.6} />
             {liveUnreadCount > 0 ? (
               <View className="absolute -top-0.5 -right-0.5 bg-primary rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card shadow-2xs">
                 <Text className="text-[8.5px] font-bold font-sans text-primary-foreground leading-tight">
@@ -325,29 +329,18 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             ) : null}
           </TouchableOpacity>
 
-          {/* Profile Avatar / Icon Button */}
+          {/* Settings Icon Button */}
           <TouchableOpacity
             onPress={() => {
               blurActiveElement();
-              router.navigate('/(resident)/profile' as any);
+              router.navigate('/(resident)/settings' as any);
             }}
             activeOpacity={0.7}
-            className="size-11 rounded-full bg-secondary/80 dark:bg-secondary/60 border border-border/70 items-center justify-center overflow-hidden active:bg-secondary shadow-2xs"
+            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center active:bg-neutral-100 dark:active:bg-muted shadow-xs"
             accessibilityRole="button"
-            accessibilityLabel={t('profile', 'Profile')}
+            accessibilityLabel={t('settings', 'Settings')}
           >
-            {resolvedAvatarUrl && !imageError ? (
-              <Image
-                source={{ uri: resolvedAvatarUrl }}
-                className="w-full h-full rounded-full"
-                resizeMode="cover"
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <Text className="text-base font-extrabold text-primary dark:text-primary-foreground">
-                {avatarLetter}
-              </Text>
-            )}
+            <Settings size={18} color={colorScheme === 'dark' ? '#FFFFFF' : '#000000'} strokeWidth={2.6} />
           </TouchableOpacity>
         </View>
       </View>

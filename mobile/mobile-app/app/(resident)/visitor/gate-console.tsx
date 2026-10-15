@@ -23,6 +23,7 @@ import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
 import { useSelector } from 'react-redux';
 import visitorService from '@/src/features/visitor/services/visitorService';
+import staffService from '@/src/features/staff/services/staffService';
 import {
   QrCode,
   ScanLine,
@@ -147,6 +148,71 @@ export default function GateConsoleScreen() {
     }
     const cleanCode = extractCodeFromRaw(code);
     if (!cleanCode) return;
+
+    // Detect Staff Pass / Service barcode
+    const isStaffBarcode =
+      barcodeMeta?.type === 'SERVICE' ||
+      /^MMG[:\-_]SERVICE/i.test(raw) ||
+      /^STF:/i.test(raw) ||
+      (raw.startsWith('{') && (raw.includes('"SERVICE"') || raw.includes('"staffCode"')));
+
+    if (isStaffBarcode) {
+      setLoading(true);
+      setStatusMessage(null);
+      try {
+        const staffRes = await staffService.scanAttendance({
+          scannedPayload: raw,
+          gateId: 'Main Gate',
+          action: 'AUTO',
+        });
+
+        const isEntry = staffRes.action === 'ENTRY';
+        const tech = staffRes.technician;
+        const assignedUnitsStr =
+          staffRes.associatedUnits && staffRes.associatedUnits.length > 0
+            ? staffRes.associatedUnits.map((u) => u.unitNumber).join(', ')
+            : 'Community-Wide / General';
+
+        const result: ScanResultData = {
+          success: true,
+          status: 'VERIFIED',
+          statusLabel: isEntry ? 'CHECKED IN' : 'CHECKED OUT',
+          title: isEntry ? 'Staff Check-In Recorded' : 'Staff Check-Out Recorded',
+          message: staffRes.message || (isEntry ? 'Staff member entry recorded.' : 'Staff member exit recorded.'),
+          visitorName: tech?.name || 'Staff Member',
+          visitorPhone: tech?.phone,
+          passType: 'STAFF',
+          unitOrVilla: assignedUnitsStr,
+          hostName: tech?.department ? `Department: ${tech.department}` : 'Staff',
+          bookingReference: tech?.staffCode || staffRes.session?._id,
+          validityWindow: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          details: [
+            { label: 'Action', value: isEntry ? 'Gate Entry (Check-In)' : 'Gate Exit (Check-Out)' },
+            { label: 'Department', value: tech?.department || '-' },
+            { label: 'Staff Code', value: tech?.staffCode || '-' },
+            { label: 'Authorized Units', value: assignedUnitsStr },
+          ],
+        };
+        setScanResult(result);
+        setScanResultSheetOpen(true);
+        setLoading(false);
+        return;
+      } catch (staffErr: any) {
+        setLoading(false);
+        const errMsg = staffErr?.response?.data?.message || staffErr?.message || 'Staff attendance check failed.';
+        const result: ScanResultData = {
+          success: false,
+          status: 'REJECTED',
+          title: 'Staff Verification Denied',
+          message: errMsg,
+          passType: 'STAFF',
+          bookingReference: cleanCode,
+        };
+        setScanResult(result);
+        setScanResultSheetOpen(true);
+        return;
+      }
+    }
 
     setLoading(true);
     setStatusMessage(null);

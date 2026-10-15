@@ -17,10 +17,10 @@ services:
     environment:
       - GLIBC_TUNABLES=glibc.pthread.rseq=0
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER:-manageadmin}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-ManageAdminPwd@123}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD required}
       - TZ=${TZ:-Asia/Kolkata}
     ports:
-      - "${DB_PORT_EXTERNAL:-27020}:27017"
+      - "127.0.0.1:${DB_PORT_EXTERNAL:-27020}:27017"
     volumes:
       - nahom_mongodb_data:/data/db
     entrypoint:
@@ -69,7 +69,7 @@ services:
     container_name: nahom-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT_EXTERNAL:-6380}:6379"
+      - "127.0.0.1:${REDIS_PORT_EXTERNAL:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -86,11 +86,11 @@ services:
     container_name: ${BACKEND_CONTAINER_NAME:-nahom-backend}
     restart: unless-stopped
     ports:
-      - "${SERVER_PORT:-5007}:5000"
+      - "127.0.0.1:${SERVER_PORT:-5007}:5000"
     environment:
       - PORT=5000
       - HOST=0.0.0.0
-      - MONGODB_URI=${MONGODB_URI:-mongodb://manageadmin:ManageAdminPwd%40123@nahom-mongodb:27017/manage_my_gate_prod?replicaSet=rs0&authSource=admin}
+      - MONGODB_URI=${MONGODB_URI:?MONGODB_URI required}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - SESSION_SECRET=${SESSION_SECRET}
@@ -139,16 +139,16 @@ services:
     container_name: ${MONGO_EXPRESS_CONTAINER_NAME:-nahom-mongo-express}
     restart: unless-stopped
     ports:
-      - "${MONGO_EXPRESS_PORT:-8082}:8081"
+      - "127.0.0.1:${MONGO_EXPRESS_PORT:-8082}:8081"
     environment:
       - ME_CONFIG_MONGODB_SERVER=nahom-mongodb
       - ME_CONFIG_MONGODB_PORT=27017
       - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
       - ME_CONFIG_MONGODB_AUTH_DATABASE=admin
       - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_ROOT_USER:-manageadmin}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_ROOT_PASSWORD:-ManageAdminPwd@123}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD required}
       - ME_CONFIG_BASICAUTH_USERNAME=${ME_BASICAUTH_USER:-admin}
-      - ME_CONFIG_BASICAUTH_PASSWORD=${ME_BASICAUTH_PASS:-admin123}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${ME_BASICAUTH_PASS:?ME_BASICAUTH_PASS required}
       - ME_CONFIG_SITE_BASEURL=${ME_CONFIG_SITE_BASEURL:-}
       - TZ=${TZ:-Asia/Kolkata}
     depends_on:

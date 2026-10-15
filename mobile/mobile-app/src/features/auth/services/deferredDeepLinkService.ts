@@ -139,7 +139,7 @@ export async function getDeferredHandoffContext(): Promise<{ type: 'handoff' | '
     const token = parseTokenFromReferrer(rawReferrer);
     if (token) {
       if (__DEV__) {
-        console.log('[DeferredDeepLink] Recovered deferred invitation token:', token);
+        console.log('[DeferredDeepLink] Recovered deferred invitation token. (Token hidden for security)');
       }
       return { type: 'token', value: token };
     }

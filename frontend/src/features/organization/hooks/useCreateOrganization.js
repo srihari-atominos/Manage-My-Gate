@@ -9,7 +9,7 @@ import { checkOrganizationName } from '../services/organizationApi.js'
 import useAuth from '../../auth/hooks/useAuth.js'
 
 /**
- * Controller hook for the Create Organization flow.
+ * Controller hook for the Create Community flow.
  * Bridges visual components with Redux and performs debounced name availability checks.
  *
  * @returns {object} Form methods, state flags, and event handlers.

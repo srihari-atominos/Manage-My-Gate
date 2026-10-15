@@ -190,44 +190,7 @@ const CreateComplaint = () => {
     if (!formData.category) return []
     const selectedCategoryData = settings?.categories?.find((c) => c.name === formData.category)
 
-    let issues = selectedCategoryData?.suggestedIssues
-    if (!issues || issues.length === 0) {
-      const mockData = {
-        Plumbing: [
-          { name: 'Kitchen Tap Leakage', isActive: true, usageCount: 45, isArchived: false, order: 0 },
-          { name: 'Bathroom Tap Leakage', isActive: true, usageCount: 30, isArchived: false, order: 1 },
-          { name: 'Flush Tank Not Working', isActive: true, usageCount: 25, isArchived: false, order: 2 },
-          { name: 'Washbasin Pipe Blocked', isActive: true, usageCount: 20, isArchived: false, order: 3 },
-          { name: 'Kitchen Sink Blocked', isActive: true, usageCount: 18, isArchived: false, order: 4 },
-          { name: 'No Water Supply in Bathroom', isActive: true, usageCount: 15, isArchived: false, order: 5 },
-        ],
-        Electrical: [
-          { name: 'Power Outage in Flat', isActive: true, usageCount: 50, isArchived: false, order: 0 },
-          { name: 'MCB Tripping Frequently', isActive: true, usageCount: 35, isArchived: false, order: 1 },
-          { name: 'Tube Light Replacement', isActive: true, usageCount: 25, isArchived: false, order: 2 },
-          { name: 'Fan Regulator Not Working', isActive: true, usageCount: 20, isArchived: false, order: 3 },
-          { name: 'Switch Board Sparking', isActive: true, usageCount: 15, isArchived: false, order: 4 },
-        ],
-        Parking: [
-          { name: 'Someone Parked in My Slot', isActive: true, usageCount: 30, isArchived: false, order: 0 },
-          { name: 'Unknown Vehicle in Visitor Parking', isActive: true, usageCount: 20, isArchived: false, order: 1 },
-        ],
-        Security: [
-          { name: 'Guard Not Present at Gate', isActive: true, usageCount: 15, isArchived: false, order: 0 },
-          { name: 'Unattended Delivery Package', isActive: true, usageCount: 20, isArchived: false, order: 1 },
-        ],
-        Housekeeping: [
-          { name: 'Corridor Not Swept', isActive: true, usageCount: 35, isArchived: false, order: 0 },
-          { name: 'Garbage Not Collected', isActive: true, usageCount: 50, isArchived: false, order: 1 },
-        ],
-        Elevators: [
-          { name: 'Lift Stuck', isActive: true, usageCount: 15, isArchived: false, order: 0 },
-          { name: 'Lift Making Noise', isActive: true, usageCount: 25, isArchived: false, order: 1 },
-        ],
-      }
-      issues = mockData[formData.category] || []
-    }
-
+    let issues = selectedCategoryData?.suggestedIssues || []
     const recent = userPreferencesService.getRecentlyUsedIssues(user?._id, formData.category) || []
 
     return issues

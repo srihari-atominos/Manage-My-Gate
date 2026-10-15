@@ -5,27 +5,54 @@ import logger from '../../utils/logger.utils.js';
 import { maskEmail, maskPhone } from '../../utils/phone.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from './utils/invite.utils.js';
+import { getEmailLogoHtml } from '../../utils/email.utils.js';
+
+// Admin-entered values (community, unit, role names) are inserted into email HTML
+const escapeHtml = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const INVITATION_VALID_DAYS = 7;
 
 const DEFAULT_INVITE_BODY = `
-<div style="font-family: sans-serif; padding: 20px; color: #333;">
-  <h2>Workspace Invitation</h2>
+<div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px;">
+  <h2 style="color: #F45A0A;">Workspace Invitation</h2>
   <p>You have been invited to join our secure workspace.</p>
   <p>Please click the button below to complete your profile registration and activate your account:</p>
   <p style="margin: 30px 0;">
-    <a href="{{invite_link}}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+    <a href="{{invite_link}}" style="background-color: #F45A0A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 18px; font-weight: bold; display: inline-block;">
       Accept Invitation
     </a>
   </p>
-  <p style="color: #666; font-size: 0.85rem; margin-top: 40px;">
+  <p style="color: #6F6A64; font-size: 0.85rem; margin-top: 40px;">
     If the button above does not work, copy and paste this link in your browser:<br/>
-    <a href="{{invite_link}}">{{invite_link}}</a>
+    <a href="{{invite_link}}" style="color: #F45A0A;">{{invite_link}}</a>
   </p>
 </div>
 `;
 
 // Register user domain events
-userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting, isBulk, rawPassword }) => {
+userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting, isBulk, rawPassword }) => {
   try {
+    // An invite can be replaced while this asynchronous listener is preparing
+    // the email (for example, when an admin corrects and re-sends an invite).
+    // Never let a stale USER_INVITED event send an old action link.
+    const tokenService = (await import('../token/token.services.js')).default;
+    const isCurrentPendingInvitation = async () => {
+      const tokenDoc = await tokenService.getInvitationToken(invitationToken, 'INVITATION').catch(() => null);
+      return Boolean(
+        tokenDoc &&
+        tokenDoc.status === 'PENDING' &&
+        tokenDoc.used !== true &&
+        (!orgId || tokenDoc.orgId?.toString() === orgId.toString()) &&
+        (!userId || tokenDoc.userId?.toString() === userId.toString())
+      );
+    };
+
+    if (!(await isCurrentPendingInvitation())) {
+      logger.info(`[INVITATION EMAIL SKIPPED] Stale or replaced invitation event for ${maskEmail(email || '')}.`);
+      return;
+    }
+
     const baseInviteLink = generateInviteLink(invitationToken, invitationSource);
 
     // 1. Fetch organization name for branded invite presentation
@@ -80,7 +107,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
           senderId: inviterId || null,
           orgId,
           title: `Invitation to ${communityName}`,
-          body: `You have been invited to join ${communityName}${descStr}. Tap to Accept or Reject this invitation.`,
+          body: `You have been invited to join ${communityName}${descStr}. Tap to access your invitation.`,
           actionUrl: baseInviteLink,
           type: 'INVITATION',
           metadata: {
@@ -110,33 +137,11 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
     }
 
     const inviteMode = hasPassword ? 'signin' : 'signup';
-    const inviteLink = `${baseInviteLink}${baseInviteLink.includes('?') ? '&' : '?'}mode=${inviteMode}`;
-    const rejectInviteLink = `${baseInviteLink}${baseInviteLink.includes('?') ? '&' : '?'}action=reject`;
-    const ctaButtonText = hasPassword ? 'Sign In & Accept Invitation' : 'Create Account & Accept Invitation';
-
-    const unitRoleDetails = (villaLabel || roleName) ? `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin: 18px 0 22px 0;">
-        <tr>
-          <td style="padding: 16px 18px;">
-            ${communityName ? `
-            <div style="font-size: 14px; color: #334155; margin-bottom: 6px;">
-              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 100px;">Organization:</span>
-              <strong style="color: #0f172a;">${communityName}</strong>
-            </div>` : ''}
-            ${villaLabel ? `
-            <div style="font-size: 14px; color: #334155; margin-bottom: 6px;">
-              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 100px;">Villa / Unit:</span>
-              <strong style="color: #0f172a;">${villaLabel}</strong>
-            </div>` : ''}
-            ${roleName ? `
-            <div style="font-size: 14px; color: #334155;">
-              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 100px;">Role:</span>
-              <strong style="color: #0f172a;">${roleName}</strong>
-            </div>` : ''}
-          </td>
-        </tr>
-      </table>
-    ` : '';
+    const inviteLink = baseInviteLink;
+    const ctaButtonText = 'Step into your Community';
+    const safeCommunityName = escapeHtml(communityName);
+    const targetUserName = targetUser?.name || 'User';
+    const registeredPhone = phone || targetUser?.phone || '';
 
     const introSectionHtml = (rawTemplateBody && typeof rawTemplateBody === 'string' && rawTemplateBody.trim().length > 0 && !rawTemplateBody.includes('<html') && !rawTemplateBody.includes('<!DOCTYPE'))
       ? `<div style="font-size: 15px; line-height: 1.65; color: #334155; margin: 0 0 16px 0;">${rawTemplateBody.replace(/{{invite_link}}/g, inviteLink).replace(/{{community_name}}/g, communityName).replace(/\r?\n/g, '<br/>')}</div>`
@@ -307,23 +312,28 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
 
     const bodyTemplate = (rawTemplateBody && rawTemplateBody.includes('<html')) ? rawTemplateBody : customInviteBody;
 
-    // Compile variables — also rewrite any legacy URL formats that may be
+    // Compile variables – also rewrite any legacy URL formats that may be
     // stored in custom MongoDB email templates (hash-router, /invite/app/, /invite/web/)
     const compiledSubject = subject
-      .replace(/{{invite_link}}/g, inviteLink)
-      .replace(/{{reject_link}}/g, rejectInviteLink);
+      .replace(/{{invite_link}}/g, inviteLink);
     const compiledBody = bodyTemplate
       // Rewrite ONLY legacy sub-path style: /invite/app/<token> or /invite/web/<token>
-      // Do NOT rewrite /#/invite?token=<token> — that is the correct format for this HashRouter app
+      // Do NOT rewrite /#/invite?token=<token> – that is the correct format for this HashRouter app
       .replace(/https?:\/\/[^\s"'>]+\/invite\/(?:app|web)\/[^\s"'>]*/gi, inviteLink)
       .replace(/https?:\/\/[^\s"']+\/(?:#\/)?invite(?:\/(?:web|app))?(?:\?token=|\/)[^\s"']*/gi, inviteLink)
       .replace(/{{invite_link}}/g, inviteLink)
-      .replace(/{{reject_link}}/g, rejectInviteLink)
-      .replace(/{{community_name}}/g, communityName);
+      .replace(/{{community_name}}/g, safeCommunityName);
 
     // Mask raw token in logs to comply with security directive
     const maskedToken = invitationToken ? `${invitationToken.slice(0, 6)}...` : '[MASKED]';
     logger.info(`[INVITATION CREATED] Email: ${email} | Token: ${maskedToken} | Universal URL: /invite/${maskedToken}`);
+
+    // Check again immediately before dispatch. This closes the race where a
+    // newer invite supersedes this one while its branded email is rendering.
+    if (!(await isCurrentPendingInvitation())) {
+      logger.info(`[INVITATION EMAIL SKIPPED] Invitation was replaced before delivery for ${maskEmail(email || '')}.`);
+      return;
+    }
 
     const { sendEmail } = await import('../../utils/email.utils.js');
     const path = await import('path');
@@ -355,10 +365,17 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
 });
 
 const DEFAULT_ADDED_BODY = `
-<div style="font-family: sans-serif; padding: 20px; color: #333;">
-  <h2>Workspace Update</h2>
+<div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px;">
+${getEmailLogoHtml()}
+  <h2 style="color: #F45A0A; margin-top: 0;">Workspace Update</h2>
   <p>You have been added to a new workspace/community.</p>
   <p>Please log in to your account to access it.</p>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #EFE6DC;">
+    <p style="margin: 0; font-size: 14px; color: #6F6A64;">
+      Thank you,<br/>
+      <strong style="color: #F45A0A;">Nahom Team</strong>
+    </p>
+  </div>
 </div>
 `;
 
@@ -415,14 +432,21 @@ userEvents.on('EMAIL_OTP_SENT', async ({ email, code }) => {
     const { sendEmail } = await import('../../utils/email.utils.js');
     const emailSubject = 'Your Email Verification Code';
     const emailBody = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px;">
-        <h2 style="color: #4f46e5; margin-top: 0;">Email Verification</h2>
+      <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 500px; margin: 0 auto; border: 1px solid #EFE6DC; border-radius: 18px;">
+${getEmailLogoHtml()}
+        <h2 style="color: #F45A0A; margin-top: 0;">Email Verification</h2>
         <p>You requested to update your account email to <strong>${email}</strong>.</p>
         <p>Please enter the following 6-digit verification code in the app to verify this change:</p>
-        <div style="background-color: #f3f4f6; border-radius: 6px; padding: 16px; text-align: center; margin: 24px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #111827;">${code}</span>
+        <div style="background-color: #FFF0E5; border-radius: 12px; padding: 24px; text-align: center; margin: 30px 0; border: 1px solid #F45A0A;">
+          <span style="font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #F45A0A;">${code}</span>
         </div>
-        <p style="font-size: 13px; color: #6b7280;">This code is valid for 15 minutes. If you did not request this change, please ignore this email or contact support.</p>
+        <p style="font-size: 13px; color: #6F6A64; line-height: 1.5;">This code is valid for 15 minutes. If you did not request this change, please ignore this email or contact support.</p>
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #EFE6DC;">
+          <p style="margin: 0; font-size: 14px; color: #6F6A64;">
+            Thank you,<br/>
+            <strong style="color: #F45A0A;">Nahom Team</strong>
+          </p>
+        </div>
       </div>
     `;
     const sent = await sendEmail(null, email, emailSubject, emailBody);

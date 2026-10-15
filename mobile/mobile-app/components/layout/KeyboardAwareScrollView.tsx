@@ -4,7 +4,7 @@ import {
   ScrollViewProps,
   Keyboard,
   Platform,
-  TextInput,
+  TextInput as RNTextInput,
   findNodeHandle,
   UIManager,
   NativeModules,
@@ -39,12 +39,40 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
 
     useImperativeHandle(ref, () => scrollViewRef.current as ScrollView);
 
-    // Native scroll behaviors are relied upon instead of manual scrolling.
+    // Keep the keyboard fixed and scroll only the focused field into view.
+    // This avoids the whole page jumping when a lower form field receives focus.
+    useEffect(() => {
+      if (Platform.OS === 'web') return;
 
-    // Manual scrolling is disabled on iOS and Android.
-    // - iOS: Natively handled by automaticallyAdjustKeyboardInsets={true}.
-    // - Android: Natively handled by softwareKeyboardLayoutMode="resize" in app.json.
-    // - Web: Handled by the browser.
+      const subscription = Keyboard.addListener('keyboardDidShow', (event) => {
+        const focusedInput = RNTextInput.State.currentlyFocusedInput?.();
+        const focusedHandle = focusedInput ? findNodeHandle(focusedInput as any) : null;
+        const scrollHandle = findNodeHandle(scrollViewRef.current);
+        if (!focusedHandle || !scrollHandle) return;
+        const visibleKeyboardHeight = event.endCoordinates?.height || keyboardHeight;
+
+        setTimeout(() => {
+          UIManager.measureLayout(
+            focusedHandle,
+            scrollHandle,
+            () => undefined,
+            (_x, y, _width, height) => {
+              const desiredTop = Math.max(0, y + height - visibleKeyboardHeight - extraScrollHeight);
+              scrollViewRef.current?.scrollTo({ y: desiredTop, animated: true });
+            },
+          );
+        }, 80);
+      });
+
+      return () => subscription.remove();
+    }, [extraScrollHeight, keyboardHeight]);
+
+    const dismissAnyKeyboard = () => {
+      Keyboard.dismiss();
+      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    };
 
     const scrollView = (
       <ScrollView
@@ -53,25 +81,25 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
         keyboardDismissMode={keyboardDismissMode}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
         automaticallyAdjustKeyboardInsets={false}
+        decelerationRate="normal"
+        scrollEventThrottle={16}
+        alwaysBounceVertical={true}
+        overScrollMode="always"
+        directionalLockEnabled={true}
         contentContainerStyle={[
           { flexGrow: 1 },
           contentContainerStyle,
         ]}
         {...props}
       >
-        <View ref={containerRef} style={{ flexGrow: 1 }}>
+        <View
+          ref={containerRef}
+          style={{ flexGrow: 1 }}
+        >
           {children}
         </View>
       </ScrollView>
     );
-
-    if (Platform.OS === 'ios') {
-      return (
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          {scrollView}
-        </KeyboardAvoidingView>
-      );
-    }
 
     return scrollView;
   }

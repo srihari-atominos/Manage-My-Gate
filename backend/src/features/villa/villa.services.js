@@ -370,15 +370,23 @@ export class VillaService {
     return await villaRepository.update(id, orgId, { status }, session);
   }
 
-  async getVillaByNumber(unitNumber, orgId, session = null) {
+  async getVillaByNumber(unitNumber, orgId, blockOrBuilding = null, session = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info(`getVillaByNumber request received`, { unitNumber, orgId, correlationId });
+    logger.info(`getVillaByNumber request received`, { unitNumber, orgId, blockOrBuilding, correlationId });
 
     if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
-    return await villaRepository.findByUnitNumber(unitNumber, orgId, session);
+
+    let block = blockOrBuilding;
+    let actualSession = session;
+    if (blockOrBuilding && typeof blockOrBuilding === 'object' && ('id' in blockOrBuilding || 'client' in blockOrBuilding)) {
+      actualSession = blockOrBuilding;
+      block = null;
+    }
+
+    return await villaRepository.findByUnitNumber(unitNumber, orgId, block, actualSession);
   }
 
-  async bulkUploadVillasAndResidents(villasArray, orgId, invitationSource = 'WEB') {
+  async bulkUploadVillasAndResidents(villasArray, orgId, invitationSource = 'WEB', { assertRoleAssignable = null } = {}) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info(`bulkUploadVillasAndResidents request received`, { orgId, count: villasArray?.length, correlationId });
 
@@ -445,17 +453,52 @@ export class VillaService {
         if (trimmedEmail) {
           try {
             let normalizedResidentType = residentType ? residentType.trim() : 'Resident Tenant';
-            if (normalizedResidentType.toLowerCase().includes('owner')) normalizedResidentType = 'Resident Owner';
-            else if (normalizedResidentType.toLowerCase().includes('tenant') || normalizedResidentType.toLowerCase().includes('resident')) normalizedResidentType = 'Resident Tenant';
-            else if (normalizedResidentType.toLowerCase().includes('family')) normalizedResidentType = 'Family Member';
-            else normalizedResidentType = 'Resident Tenant';
-
-            let finalRoleName = roleName ? roleName.trim() : null;
-            if (!finalRoleName) {
-              finalRoleName = normalizedResidentType;
+            let isStaffMember = false;
+            const lowerRes = normalizedResidentType.toLowerCase();
+            if (lowerRes.includes('owner')) normalizedResidentType = 'Resident Owner';
+            else if (lowerRes.includes('tenant') || lowerRes.includes('resident')) normalizedResidentType = 'Resident Tenant';
+            else if (lowerRes.includes('family')) normalizedResidentType = 'Family Member';
+            else if (
+              lowerRes.includes('staff') ||
+              lowerRes.includes('maid') ||
+              lowerRes.includes('driver') ||
+              lowerRes.includes('cook') ||
+              lowerRes.includes('gardener')
+            ) {
+              normalizedResidentType = 'Household Staff';
+              isStaffMember = true;
+            } else {
+              normalizedResidentType = 'Resident Tenant';
             }
 
-            await userService.inviteUser(trimmedEmail, orgId, villa._id, normalizedResidentType, finalRoleName, phone, name, invitationSource, null, true, rawPassword);
+            let finalRoleName = roleName ? roleName.trim() : normalizedResidentType;
+
+            if (!phone) {
+              throw new HttpError(400, 'Phone number is required to invite this resident.');
+            }
+            if (assertRoleAssignable) {
+              await assertRoleAssignable(finalRoleName);
+            }
+
+            const staffData = {
+              ...(isStaffMember ? { isStaff: true, designation: residentType || 'Household Staff', department: 'Others' } : {}),
+              isBulk: true,
+              rawPassword,
+            };
+
+            await userService.inviteUser(
+              trimmedEmail,
+              orgId,
+              villa._id,
+              normalizedResidentType,
+              finalRoleName,
+              phone,
+              name,
+              invitationSource,
+              null,
+              'INVITATION',
+              staffData
+            );
             userInvited = true;
           } catch (err) {
             inviteError = err.message || 'User invitation failed';

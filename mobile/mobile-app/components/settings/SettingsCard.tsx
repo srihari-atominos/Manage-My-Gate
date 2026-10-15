@@ -25,7 +25,7 @@ export const SettingsCard: React.FC<SettingsCardProps> = ({
       ) : null}
       <View
         className={cn(
-          'bg-card rounded-2xl border border-border overflow-hidden shadow-xs',
+          'bg-card rounded-[18px] border border-border/80 overflow-hidden shadow-sm',
           className
         )}
       >

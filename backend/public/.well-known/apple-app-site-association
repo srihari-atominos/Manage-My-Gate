@@ -15,10 +15,6 @@
             "comment": "Invoice links from billing emails open the app"
           },
           {
-            "/": "/invite/handoff/*",
-            "comment": "Mobile invitation handoff redirect"
-          },
-          {
             "/": "/invite/*",
             "comment": "Directly opens mobile app for invitation processing"
           }

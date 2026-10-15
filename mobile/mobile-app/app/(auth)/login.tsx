@@ -43,11 +43,14 @@ import { AuthMethodSelector } from '@/components/auth/AuthMethodSelector';
 import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
 import { TextInput } from '@/components/forms/TextInput';
 import { PasswordInput } from '@/components/forms/PasswordInput';
+import { OtpInputField } from '@/components/auth/OtpInputField';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Checkbox } from '@/components/forms/Checkbox';
 import { parseBackendError } from '@/src/utils/validation';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import { storage, sessionStore } from '@/src/utils/storage';
+import { storage } from '@/src/utils/storage';
+import { setPendingInviteToken, getPendingInviteToken, clearPendingInviteToken } from '@/src/features/auth/utils/inviteContext';
+import { hasActiveCommunity } from '@/src/features/auth/utils/landing';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearPendingRoute } from '@/src/features/notification/store/notificationSlice';
 import { useTranslation } from '@/src/utils/i18n';
@@ -56,15 +59,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 
 // 1. Basic Auth Validation Schema
-const basicAuthSchema = yup.object().shape({
-  login: yup
-    .string()
-    .required('Email or Username is required')
-    .min(3, 'Must be at least 3 characters'),
-  password: yup
-    .string()
-    .required('Password is required')
-    .min(4, 'Password must be at least 4 characters'),
+const emailAuthSchema = yup.object().shape({
+  login: yup.string().required('Email is required').email('Must be a valid email'),
 });
 
 // 2. Phone OTP Validation Schema
@@ -78,9 +74,8 @@ const phoneSchema = yup.object().shape({
     }),
 });
 
-interface BasicAuthFormValues {
+interface EmailFormValues {
   login: string;
-  password: string;
 }
 
 interface PhoneFormValues {
@@ -92,7 +87,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   
-  const { user, login: performLogin, requestOtp, error, isAuthenticated, otpSent, clearStatus } = useAuth();
+  const { user, requestOtp, verifyOtp, error, isAuthenticated, otpSent, clearStatus, acceptInvitation } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{
     intent?: string;
@@ -104,30 +99,39 @@ export default function LoginScreen() {
     targetCommunity?: string;
     targetRole?: string;
   }>();
-  const isCreateOrgIntent =
-    params.intent === 'create-org' ||
-    params.intent === 'create' ||
-    (typeof window !== 'undefined' && typeof window.location !== 'undefined' && window.location?.href && (
-      window.location.href.includes('intent=create-org') ||
-      window.location.href.includes('intent=create')
-    )) ||
-    sessionStore.getItem('mobile_auth_intent') === 'create-org';
-
+  // An invitation link brought the person here: remember exactly which invitation
+  // they are answering, so it can be accepted after OTP/SSO verification
   React.useEffect(() => {
-    if (params.intent === 'create-org' || params.intent === 'create') {
-      sessionStore.setItem('mobile_auth_intent', params.intent);
-    }
-  }, [params.intent]);
+    setPendingInviteToken(params.inviteToken || params.token);
+  }, [params.inviteToken, params.token]);
+  const hasPendingInvite = !!(params.inviteToken || params.token || getPendingInviteToken());
 
   const [authMode, setAuthMode] = React.useState<'basic' | 'phone'>('basic');
-  const [submittedPhone, setSubmittedPhone] = React.useState('');
-  const [showPassword, setShowPassword] = React.useState(false);
   const [keepSignedIn, setKeepSignedIn] = React.useState(true);
+  const handleKeepSignedInChange = React.useCallback((checked: boolean) => {
+    setKeepSignedIn(checked);
+    storage.setItem('keep_signed_in', checked ? 'true' : 'false').catch(() => {});
+  }, []);
+  const [submitted, setSubmitted] = React.useState<{value: string, isEmail: boolean} | null>(null);
+  const [submittedPhone, setSubmittedPhone] = React.useState('');
+  const [phoneOtpCode, setPhoneOtpCode] = React.useState('');
+  const [emailOtpCode, setEmailOtpCode] = React.useState('');
+  const [resendCooldown, setResendCooldown] = React.useState(0);
+  const [showPassword, setShowPassword] = React.useState(false);
   const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
   const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
   const hasNavigatedRef = React.useRef(false);
   const [switchDismissed, setSwitchDismissed] = React.useState(false);
   const passwordInputRef = React.useRef<RNTextInput>(null);
+
+  // Resend cooldown timer
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   React.useEffect(() => {
     const loadSavedPreferences = async () => {
@@ -447,12 +451,11 @@ export default function LoginScreen() {
   };
 
   // Basic Auth Form Hook
-  const basicForm = useForm<BasicAuthFormValues>({
-    resolver: yupResolver(basicAuthSchema),
+  const basicForm = useForm<EmailFormValues>({
+    resolver: yupResolver(emailAuthSchema),
     mode: 'onTouched',
     defaultValues: {
       login: params.email ? decodeURIComponent(params.email) : '',
-      password: '',
     },
   });
 
@@ -473,6 +476,9 @@ export default function LoginScreen() {
 
   React.useEffect(() => {
     clearStatus();
+    setEmailOtpCode('');
+    setPhoneOtpCode('');
+    setResendCooldown(0);
     return () => {
       clearStatus();
       if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
@@ -483,104 +489,161 @@ export default function LoginScreen() {
   }, [authMode]);
 
   React.useEffect(() => {
-    if (isAuthenticated && !hasNavigatedRef.current) {
-      hasNavigatedRef.current = true;
-      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
-      Keyboard.dismiss();
+    let isCancelled = false;
+    const handleRedirect = async () => {
+      if (isAuthenticated && !hasNavigatedRef.current) {
+        hasNavigatedRef.current = true;
+        if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        Keyboard.dismiss();
 
-      const uAny = user as any;
-      const hasOrg = !!(
-        user && (
-          uAny.orgId ||
-          uAny.activeOrgId ||
-          uAny.organizationId ||
-          (Array.isArray(uAny.availableWorkspaces) && uAny.availableWorkspaces.length > 0)
-        )
-      );
-
-      dispatch(clearPendingRoute());
-      sessionStore.removeItem('mobile_auth_intent');
-      router.replace('/(resident)');
-    } else if (!isAuthenticated) {
-      hasNavigatedRef.current = false;
-    }
-  }, [isAuthenticated, user, isCreateOrgIntent, dispatch]);
-
-  // Reactively route to OTP screen if Phone OTP sent
-  React.useEffect(() => {
-    if (otpSent && submittedPhone) {
-      router.push({
-        pathname: '/(auth)/otp',
-        params: { phone: submittedPhone },
-      });
-    }
-  }, [otpSent, submittedPhone]);
-
-  const handleKeepSignedInChange = (checked: boolean) => {
-    setKeepSignedIn(checked);
-    // Persist immediately so social sign-in uses the same preference.
-    void storage.setItem('keep_signed_in', checked ? 'true' : 'false');
-  };
-
-  const savePreferences = async () => {
-    try {
-      await storage.setItem('keep_signed_in', keepSignedIn ? 'true' : 'false');
-    } catch (e) {
-      console.warn('Failed to save login preferences', e);
-    }
-  };
-
-  // Handle Basic Auth Submit
-  const onBasicSubmit = async (data: BasicAuthFormValues) => {
-    const activeInviteToken = params.inviteToken || params.token || (
-      typeof window !== 'undefined' && window.location?.href
-        ? (window.location.href.match(/[\/?&](?:inviteToken|token|code)=([^&#]+)/i)?.[1] || undefined)
-        : undefined
-    );
-
-    setIsSubmittingBasic(true);
-    try {
-      await savePreferences();
-      const resultAction: any = await performLogin({
-        login: data.login.trim(),
-        password: data.password,
-        ...(activeInviteToken ? { inviteToken: activeInviteToken } : {}),
-      });
-
-      // Invoke Google / Browser Credential Management API only upon successful login on Web
-      if (resultAction && (resultAction.meta?.requestStatus === 'fulfilled' || (!resultAction.error && !resultAction.payload?.error))) {
-        if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials?.store) {
+        const activeInviteToken = (params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken()) as string | undefined;
+        clearPendingInviteToken();
+        if (activeInviteToken && !hasActiveCommunity(user)) {
           try {
-            // @ts-ignore
-            const cred = new window.PasswordCredential({
-              id: data.login.trim(),
-              password: data.password,
-              name: data.login.trim(),
-            });
-            await (navigator as any).credentials.store(cred);
+            await acceptInvitation(activeInviteToken);
           } catch (e) {
-            // Safe fallback if dismissed or unsupported
+            console.warn('Failed to accept invitation during login redirect:', e);
           }
         }
+
+        if (!isCancelled) {
+          dispatch(clearPendingRoute());
+          storage.removeItem('mobile_auth_intent');
+          router.replace('/(resident)');
+        }
+      } else if (!isAuthenticated) {
+        hasNavigatedRef.current = false;
       }
+    };
+
+    handleRedirect();
+    return () => {
+      isCancelled = true;
+    };
+  }, [isAuthenticated, dispatch, params.inviteToken, params.token, (params as any).invite_token, acceptInvitation]);
+
+  // Handle Changing Email or Phone (Reset OTP state to allow re-entering)
+  const handleChangeEmailOrPhone = () => {
+    clearStatus();
+    setEmailOtpCode('');
+    setPhoneOtpCode('');
+    setResendCooldown(0);
+  };
+
+  // Handle Resending OTP for either Email or Phone
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    if (authMode === 'basic') {
+      const emailVal = basicForm.getValues('login')?.trim();
+      if (!emailVal) return;
+      setIsSubmittingBasic(true);
+      try {
+        await requestOtp(emailVal, true);
+        setEmailOtpCode('');
+        setResendCooldown(25);
+      } finally {
+        setIsSubmittingBasic(false);
+      }
+    } else {
+      const phoneVal = phoneForm.getValues('phone');
+      if (!phoneVal) return;
+      setIsSubmittingPhone(true);
+      try {
+        await requestOtp(phoneVal, false);
+        setPhoneOtpCode('');
+        setResendCooldown(25);
+      } finally {
+        setIsSubmittingPhone(false);
+      }
+    }
+  };
+
+  // Universal Keyboard Dismiss Helper (React Native + Web)
+  const dismissKeyboard = React.useCallback(() => {
+    Keyboard.dismiss();
+    if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, []);
+
+  // Handle Basic (Email) Auth Submit: request code or verify code inline
+  const onBasicSubmit = async (data: EmailFormValues) => {
+    const trimmedEmail = data.login.trim();
+    setSubmitted({ value: trimmedEmail, isEmail: true });
+    setIsSubmittingBasic(true);
+    try {
+      if (otpSent) {
+        dismissKeyboard();
+        const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
+        await verifyOtp(trimmedEmail, emailOtpCode, true, tokenToPass);
+        clearPendingInviteToken();
+        return;
+      }
+      await requestOtp(trimmedEmail, true);
+      setResendCooldown(25);
     } finally {
       setIsSubmittingBasic(false);
     }
   };
 
-  // Handle Phone OTP Submit
+  // Phone + OTP: send a code by SMS or verify code inline
   const onPhoneSubmit = async (data: PhoneFormValues) => {
-    setSubmittedPhone(data.phone);
+    setSubmitted({ value: data.phone, isEmail: false });
     setIsSubmittingPhone(true);
     try {
-      await savePreferences();
+      if (otpSent) {
+        dismissKeyboard();
+        const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
+        await verifyOtp(data.phone, phoneOtpCode, false, tokenToPass);
+        clearPendingInviteToken();
+        return;
+      }
       await requestOtp(data.phone, false);
+      setResendCooldown(25);
     } finally {
       setIsSubmittingPhone(false);
     }
   };
+
+  // Auto-Submit OTP when 6 digits are fully typed
+  const lastAttemptedCodeRef = React.useRef<string>('');
+
+  React.useEffect(() => {
+    if (!otpSent) {
+      lastAttemptedCodeRef.current = '';
+      return;
+    }
+
+    if (authMode === 'basic') {
+      const trimmed = emailOtpCode.trim();
+      if (trimmed.length === 4 && trimmed !== lastAttemptedCodeRef.current && !isSubmittingBasic) {
+        lastAttemptedCodeRef.current = trimmed;
+        dismissKeyboard();
+        const emailVal = basicForm.getValues('login')?.trim() || submitted?.value?.trim();
+        if (emailVal) {
+          const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
+          setIsSubmittingBasic(true);
+          verifyOtp(emailVal, trimmed, true, tokenToPass)
+            .finally(() => setIsSubmittingBasic(false));
+        }
+      }
+    } else {
+      const trimmed = phoneOtpCode.trim();
+      if (trimmed.length === 4 && trimmed !== lastAttemptedCodeRef.current && !isSubmittingPhone) {
+        lastAttemptedCodeRef.current = trimmed;
+        dismissKeyboard();
+        const phoneVal = phoneForm.getValues('phone')?.trim() || submitted?.value?.trim();
+        if (phoneVal) {
+          const tokenToPass = String(params.inviteToken || params.token || (params as any).invite_token || getPendingInviteToken() || '');
+          setIsSubmittingPhone(true);
+          verifyOtp(phoneVal, trimmed, false, tokenToPass)
+            .finally(() => setIsSubmittingPhone(false));
+        }
+      }
+    }
+  }, [emailOtpCode, phoneOtpCode, otpSent, authMode, isSubmittingBasic, isSubmittingPhone, basicForm, phoneForm, submitted, params, verifyOtp, dismissKeyboard]);
 
   return (
     <>
@@ -607,7 +670,7 @@ export default function LoginScreen() {
             resizeMode="cover"
           />
         </Animated.View>
-        <View className="absolute inset-0 bg-black/40 dark:bg-black/60" pointerEvents="none" />
+        <View className="absolute inset-0 bg-black/25 dark:bg-black/55" pointerEvents="none" />
 
         {/* Fixed Brand Identity Section (Stays put when keyboard opens) */}
         <View 
@@ -662,8 +725,8 @@ export default function LoginScreen() {
             <AuthMethodSelector
               value={authMode}
               onChange={(mode) => { Keyboard.dismiss(); setAuthMode(mode); }}
-              emailLabel={t('email_password', 'Email / Password')}
-              otpLabel={t('sign_in_with_otp', 'Sign in with OTP')}
+              emailLabel={t('email_id', 'Email ID')}
+              otpLabel={t('phone_no', 'Phone No')}
               reduceMotion={reduceMotion}
               disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
             />
@@ -698,14 +761,15 @@ export default function LoginScreen() {
               className="gap-3.5 w-full"
             >
               {/* Form Container */}
-              <View className="w-full gap-3.5 mt-2">
+              <View
+                className="w-full gap-3.5 mt-2 rounded-[28px] border border-white/80 bg-white/85 p-4 shadow-xl"
+                style={{ shadowColor: '#172B4D', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 7 }}
+              >
                 {/* Welcome Back Header Section */}
-                <Text className="text-[26px] font-bold text-white text-center font-sans tracking-tight"
-                      style={{ textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6 }}>
+                <Text className="text-[26px] font-bold text-[#172B4D] text-center font-sans tracking-tight">
                   {t('welcome_back', 'Welcome Back')}
                 </Text>
-                <Text className="text-[14px] font-bold text-white text-center mb-1 -mt-2"
-                      style={{ textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+                <Text className="text-[14px] font-semibold text-[#64748B] text-center mb-1 -mt-2">
                   {t('sign_in_to_continue', 'Sign in to continue to NAHOM')}
                 </Text>
 
@@ -753,14 +817,37 @@ export default function LoginScreen() {
                   </View>
                 )}
 
+                {/* Invitation context: the link only identifies the invitation; signing in is still required */}
+                {hasPendingInvite && (
+                  <View className="bg-white/20 dark:bg-black/35 border border-white/35 rounded-2xl p-3 flex-row items-center gap-2.5">
+                    <Sparkles size={16} color="#FF7A00" />
+                    <Text className="text-[12.5px] font-semibold text-white flex-1">
+                      {t('invite_sign_in_hint', 'Sign in with the email or phone your invitation was sent to, to join your community.')}
+                    </Text>
+                  </View>
+                )}
+
                 {authMode === 'basic' ? (
-                  /* Email / Password Form */
+                  /* Email + OTP Form */
                   <View className="gap-3.5">
-                    {/* Step 5: Email or Username Input */}
                     <View>
-                      <Text className="text-xs font-semibold text-white mb-1.5 font-sans">
-                        {t('email_or_username', 'Email or Username')} <Text className="text-[#EA580C] font-bold">*</Text>
-                      </Text>
+                      <View className="flex-row items-center justify-between mb-1.5">
+                        <Text className="text-xs font-bold text-[#172B4D] font-sans">
+                          {t('email_id', 'Email ID')} <Text className="text-[#EA580C] font-bold">*</Text>
+                        </Text>
+                        {otpSent && (
+                          <TouchableOpacity
+                            onPress={handleChangeEmailOrPhone}
+                            disabled={isSubmittingBasic}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text className="text-xs font-semibold text-[#FF7A00]">
+                              {t('change', 'Change')}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                       <Controller
                         control={basicForm.control}
                         name="login"
@@ -774,14 +861,15 @@ export default function LoginScreen() {
                               setIsLoginFocused(false);
                               onBlur();
                             }}
-                            placeholder={t('enter_email_or_username', 'Enter your email or username')}
+                            placeholder={t('enter_email', 'Enter your email')}
                             placeholderTextColor="#9CA3AF"
                             autoCapitalize="none"
                             autoCorrect={false}
                             keyboardType="email-address"
+                            editable={!otpSent}
                             className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
                             inputClassName="text-slate-900 text-[15px] font-medium"
-                            style={{ fontSize: 15, fontWeight: '500', color: '#0F172A' }}
+                            style={{ fontSize: 15, fontWeight: '500', color: '#0F172A', backgroundColor: 'transparent' }}
                             selectionColor="#EA580C"
                             cursorColor="#EA580C"
                             leftIcon={
@@ -792,65 +880,45 @@ export default function LoginScreen() {
                             error={basicForm.formState.errors.login?.message}
                             feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
                             errorClassName="text-[11.5px] font-bold text-red-400"
-                            returnKeyType="next"
-                            onSubmitEditing={() => passwordInputRef.current?.focus()}
+                            returnKeyType={otpSent ? 'done' : 'next'}
                             blurOnSubmit={false}
                           />
                         )}
                       />
                     </View>
 
-                    {/* Step 6: Password Input */}
-                    <View>
-                      <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-xs font-semibold text-white font-sans">
-                          {t('password', 'Password')} <Text className="text-[#EA580C] font-bold">*</Text>
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => router.push('/(auth)/forgot-password')}
-                          activeOpacity={0.8}
-                          hitSlop={8}
-                        >
-                          <Text className="text-[13px] font-bold text-white" style={{ textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
-                            {t('forgot_password', 'Forgot?')}
+                    {otpSent && (
+                      <View className="gap-2.5 mt-0.5">
+                        <View className="flex-row items-center justify-between">
+                          <Text className="text-xs font-bold text-[#172B4D] mb-1.5 font-sans">
+                            {t('enter_verification_code', 'Enter verification code')}
                           </Text>
-                        </TouchableOpacity>
+                          {resendCooldown > 0 ? (
+                            <Text className="text-xs font-semibold text-[#64748B]">
+                              {t('resend_in', 'Resend in')} {resendCooldown}s
+                            </Text>
+                          ) : (
+                            <TouchableOpacity
+                              onPress={handleResendOtp}
+                              disabled={isSubmittingBasic}
+                              activeOpacity={0.7}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text className="text-xs font-bold text-[#FF7A00]">
+                                {t('resend_code', 'Resend Code')}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <OtpInputField
+                          length={4}
+                          value={emailOtpCode}
+                          onValueChange={setEmailOtpCode}
+                          variant="light"
+                          error={Boolean(error)}
+                        />
                       </View>
-                      <Controller
-                        control={basicForm.control}
-                        name="password"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                          <PasswordInput
-                            ref={passwordInputRef}
-                            value={value}
-                            onChangeText={onChange}
-                            onFocus={handlePasswordFieldFocus}
-                            onBlur={() => {
-                              setIsPasswordFocused(false);
-                              onBlur();
-                            }}
-                            placeholder={t('enter_password', 'Enter your password')}
-                            placeholderTextColor="#9CA3AF"
-                            className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
-                            inputClassName="text-slate-900 text-[15px] font-medium"
-                            style={{ fontSize: 15, fontWeight: '500', color: '#0F172A' }}
-                            selectionColor="#EA580C"
-                            cursorColor="#EA580C"
-                            leftIcon={
-                              <Animated.View style={{ transform: [{ scale: passwordIconScale }] }}>
-                                <Lock size={18} color="#64748B" />
-                              </Animated.View>
-                            }
-                            rightIconColor="#64748B"
-                            error={basicForm.formState.errors.password?.message}
-                            feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
-                            errorClassName="text-[11.5px] font-bold text-red-400"
-                            returnKeyType="go"
-                            onSubmitEditing={handleBasicSignIn}
-                          />
-                        )}
-                      />
-                    </View>
+                    )}
 
                     {/* Stay signed in Checkbox */}
                     <View className="flex-row items-center pt-0.5">
@@ -858,37 +926,17 @@ export default function LoginScreen() {
                         checked={keepSignedIn}
                         onCheckedChange={handleKeepSignedInChange}
                         label={t('stay_signed_in', 'Stay signed in')}
-                        labelClassName="text-[13px] text-white font-medium shadow-sm"
+                        labelClassName="text-[13px] text-[#172B4D] font-semibold"
                         className="items-center"
                       />
                     </View>
 
                     {/* Global Error Banner */}
                     {error ? (
-                      <View className="bg-rose-500/20 border border-rose-500/40 rounded-xl p-2.5 gap-2 backdrop-blur-md">
-                        <Text className="text-rose-200 text-xs text-center font-medium">
+                      <View className="bg-[#FFF1F2] border border-[#FDA4AF] rounded-xl p-2.5 shadow-sm">
+                        <Text className="text-[#9F1239] text-xs text-center font-bold">
                           {error}
                         </Text>
-                        {(error.toLowerCase().includes('pending verification') ||
-                          error.toLowerCase().includes('invitation') ||
-                          error.toLowerCase().includes('password is not set') ||
-                          error.toLowerCase().includes('active membership')) && (
-                          <TouchableOpacity
-                            onPress={() => {
-                              const currentLogin = basicForm.getValues('login');
-                              router.push({
-                                pathname: '/(auth)/accept-invite',
-                                params: currentLogin ? { email: currentLogin } : {},
-                              });
-                            }}
-                            className="bg-primary/25 border border-primary/40 rounded-lg py-1.5 px-3 self-center flex-row items-center gap-1.5"
-                          >
-                            <Sparkles size={13} color="#FF7A00" />
-                            <Text className="text-xs font-bold text-white">
-                              {t('accept_invitation_cta', 'Accept Workspace Invitation')}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
                       </View>
                     ) : null}
 
@@ -896,7 +944,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handleBasicSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && emailOtpCode.length < 4)}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -938,13 +986,13 @@ export default function LoginScreen() {
                           <View className="flex-row items-center gap-2 z-10">
                             <ActivityIndicator color="#FFFFFF" size="small" />
                             <Text className="font-bold text-white text-sm font-sans">
-                              {t('signing_in', 'Signing In...')}
+                              {otpSent ? t('verifying_code', 'Verifying...') : t('sending_otp', 'Sending OTP Code...')}
                             </Text>
                           </View>
                         ) : (
                           <View className="flex-row items-center justify-center gap-2 z-10">
                             <Text className="font-bold text-white text-base font-sans">
-                              {t('sign_in', 'Sign In')}
+                              {otpSent ? t('verify_and_sign_in', 'Verify & Sign In') : t('send_otp', 'Send OTP')}
                             </Text>
                             <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
                               <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
@@ -957,33 +1005,86 @@ export default function LoginScreen() {
                 ) : (
                   /* Phone OTP Form */
                   <View className="gap-3.5">
-                    <Controller
-                      control={phoneForm.control}
-                      name="phone"
-                      render={({ field: { onChange, value } }) => (
-                        <PhoneInput
-                          variant="glass"
-                          label={t('phone_number', 'Mobile Number')}
-                          placeholder="98765 43210"
-                          placeholderTextColor="#9CA3AF"
-                          labelClassName="text-xs font-semibold text-white mb-1.5"
-                          className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
-                          inputClassName="text-slate-900 text-[15px] font-medium"
-                          codeClassName="text-slate-900 font-bold"
-                          dividerClassName="border-slate-300"
-                          chevronColor="#64748B"
-                          showCount={false}
-                          helperContainerClassName="bg-black/40 border border-white/25 px-2.5 py-1 rounded-lg self-start mt-1.5 backdrop-blur-md"
-                          helperClassName="text-xs font-bold text-white"
-                          style={{ fontSize: 15, fontWeight: '500', color: '#0F172A' }}
-                          value={value}
-                          onChangeText={onChange}
-                          error={phoneForm.formState.errors.phone?.message}
-                          feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
-                          errorClassName="text-[11.5px] font-bold text-red-400"
+                    <View>
+                      <View className="flex-row items-center justify-between mb-1.5">
+                        <Text className="text-xs font-bold text-[#172B4D]">
+                          {t('phone_number', 'Mobile Number')} <Text className="text-[#FF7A3D] font-bold">*</Text>
+                        </Text>
+                        {otpSent && (
+                          <TouchableOpacity
+                            onPress={handleChangeEmailOrPhone}
+                            disabled={isSubmittingPhone}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text className="text-xs font-semibold text-[#FF7A00]">
+                              {t('change', 'Change')}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <Controller
+                        control={phoneForm.control}
+                        name="phone"
+                        render={({ field: { onChange, value } }) => (
+                          <PhoneInput
+                            variant="glass"
+                            defaultCountry="IN"
+                            label=""
+                            placeholder="Enter your phone number"
+                            placeholderTextColor="#9CA3AF"
+                            className="bg-white rounded-full h-[48px] py-0 shadow-sm border-0"
+                            inputClassName="text-slate-900 text-[15px] font-medium"
+                            codeClassName="text-slate-900 font-bold"
+                            dividerClassName="border-slate-300"
+                            chevronColor="#64748B"
+                            showCount={false}
+                            helperContainerClassName="bg-black/40 border border-white/25 px-2.5 py-1 rounded-lg self-start mt-1.5 backdrop-blur-md"
+                            helperClassName="text-xs font-bold text-white"
+                            style={{ fontSize: 15, fontWeight: '500', color: '#0F172A', backgroundColor: 'transparent' }}
+                            value={value}
+                            onChangeText={onChange}
+                            editable={!otpSent}
+                            error={phoneForm.formState.errors.phone?.message}
+                            feedbackContainerClassName="bg-black/60 border border-red-500/30 px-2 py-0.5 rounded-md self-start mt-1.5 backdrop-blur-md"
+                            errorClassName="text-[11.5px] font-bold text-red-400"
+                          />
+                        )}
+                      />
+                    </View>
+
+                    {otpSent && (
+                      <View className="gap-2.5 mt-0.5">
+                        <View className="flex-row items-center justify-between">
+                          <Text className="text-xs font-bold text-[#172B4D] mb-1.5">
+                            {t('enter_verification_code', 'Enter verification code')}
+                          </Text>
+                          {resendCooldown > 0 ? (
+                            <Text className="text-xs font-semibold text-[#64748B]">
+                              {t('resend_in', 'Resend in')} {resendCooldown}s
+                            </Text>
+                          ) : (
+                            <TouchableOpacity
+                              onPress={handleResendOtp}
+                              disabled={isSubmittingPhone}
+                              activeOpacity={0.7}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text className="text-xs font-bold text-[#FF7A00]">
+                                {t('resend_code', 'Resend Code')}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <OtpInputField
+                          length={4}
+                          value={phoneOtpCode}
+                          onValueChange={setPhoneOtpCode}
+                          variant="light"
+                          error={Boolean(error)}
                         />
-                      )}
-                    />
+                      </View>
+                    )}
 
                     {/* Stay signed in Checkbox */}
                     <View className="flex-row items-center pt-0.5">
@@ -991,15 +1092,15 @@ export default function LoginScreen() {
                         checked={keepSignedIn}
                         onCheckedChange={handleKeepSignedInChange}
                         label={t('stay_signed_in', 'Stay signed in')}
-                        labelClassName="text-[13px] text-white font-medium shadow-sm"
+                        labelClassName="text-[13px] text-[#172B4D] font-semibold"
                         className="items-center"
                       />
                     </View>
 
                     {/* Global Error Banner */}
                     {error ? (
-                      <View className="bg-rose-500/20 border border-rose-500/40 rounded-xl p-2.5 backdrop-blur-md">
-                        <Text className="text-rose-200 text-xs text-center font-medium">
+                      <View className="bg-[#FFF1F2] border border-[#FDA4AF] rounded-xl p-2.5 shadow-sm">
+                        <Text className="text-[#9F1239] text-xs text-center font-bold">
                           {error}
                         </Text>
                       </View>
@@ -1009,7 +1110,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handlePhoneSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && phoneOtpCode.length < 4)}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -1051,13 +1152,13 @@ export default function LoginScreen() {
                           <View className="flex-row items-center gap-2 z-10">
                             <ActivityIndicator color="#FFFFFF" size="small" />
                             <Text className="font-bold text-white text-sm font-sans">
-                              {t('sending_otp', 'Sending OTP Code...')}
+                              {otpSent ? t('verifying_code', 'Verifying...') : t('sending_otp', 'Sending OTP Code...')}
                             </Text>
                           </View>
                         ) : (
                           <View className="flex-row items-center justify-center gap-2 z-10">
                             <Text className="font-bold text-white text-base font-sans">
-                              {t('sign_in_with_otp', 'Sign in with OTP')}
+                              {otpSent ? t('verify_and_sign_in', 'Verify & Sign In') : t('send_otp', 'Send OTP')}
                             </Text>
                             <Animated.View style={{ transform: [{ translateX: arrowShiftX }] }}>
                               <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
@@ -1094,10 +1195,23 @@ export default function LoginScreen() {
                 />
               </View>
 
+              {/* Brand footer: kept inside the scroll content so it is reachable on short screens and with the keyboard open. */}
+              <View
+                className="mt-5 w-full items-center px-5 py-5"
+              >
+                <Text className="text-[11px] font-bold tracking-[4px] text-white">
+                  NEXUS AROUND HOME
+                </Text>
+                <View className="mt-2 flex-row items-center">
+                  <Text className="text-[14px] font-bold text-[#FF7A3D]">Connect</Text>
+                  <Text className="text-[14px] font-bold text-white"> Harmony</Text>
+                </View>
+              </View>
+
             </Animated.View>
           </View>
           </KeyboardAwareScrollView>
-    </View>
+      </View>
     </>
   );
 }
@@ -1106,4 +1220,3 @@ export default function LoginScreen() {
 function cnText(...classes: (string | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
-

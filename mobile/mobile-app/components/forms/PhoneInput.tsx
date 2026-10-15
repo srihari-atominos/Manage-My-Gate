@@ -58,6 +58,8 @@ export interface PhoneInputProps {
   testID?: string;
   /** 'form' matches the standard Input card field; 'glass' is the translucent auth-screen look. */
   variant?: 'form' | 'glass';
+  /** Whether the input is editable. Defaults to true. */
+  editable?: boolean;
 }
 
 const buildFullNumber = (digits: string, country: PhoneCountry): string => {
@@ -94,6 +96,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   rightElement,
   testID,
   variant = 'form',
+  editable = true,
 }) => {
   const { translateText } = useTranslation();
   const isGlass = variant === 'glass';
@@ -203,9 +206,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           isGlass
             ? 'bg-white/75 dark:bg-[#292524]/75 border-white/80 dark:border-white/20 py-2.5 backdrop-blur-sm'
             : 'bg-card border-border/80',
-          isFocused && !error && 'border-primary shadow-sm bg-primary/5',
-          (isIncomplete || isInvalid) && !error && 'border-amber-500/80 bg-amber-500/5',
-          isComplete && !error && 'border-emerald-500/80 bg-emerald-500/5',
+          isFocused && !error && 'border-border/80 bg-card',
+          (isIncomplete || isInvalid) && !error && !isGlass && 'border-amber-500/80 bg-amber-500/5',
+          isComplete && !error && !isGlass && 'border-emerald-500/80 bg-emerald-500/5',
           Boolean(error) && 'border-destructive bg-destructive/5 shadow-sm',
           className
         )}
@@ -213,7 +216,8 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         {/* Country Picker Trigger */}
         <TouchableOpacity
           onPress={() => setIsPickerVisible(true)}
-          className={cn("flex-row items-center me-2.5 pe-2.5 border-e border-border/80", dividerClassName)}
+          disabled={!editable}
+          className={cn("flex-row items-center me-2.5 pe-2.5 border-e border-border/80", dividerClassName, !editable && "opacity-80")}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={`Selected country ${selectedCountry.name}, dial code ${selectedCountry.dialCode}. Tap to change.`}
@@ -242,10 +246,12 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           );
           return (
             <RNTextInput
+              editable={editable}
               className={cn(
                 'flex-1 text-foreground self-stretch min-h-[44px] py-3 outline-none focus:outline-none focus-visible:outline-none',
                 isGlass ? 'text-sm' : 'text-[16px]',
                 !hasFontFamily && 'font-sans',
+                !editable && 'opacity-80',
                 inputClassName
               )}
               style={[
@@ -271,6 +277,13 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
                 onBlur?.();
               }}
               onChangeText={handleNumberChange}
+              onKeyPress={(event) => {
+                // Keep deletion reliable for controlled phone inputs, especially
+                // React Native Web and Android soft keyboards.
+                if (event.nativeEvent.key === 'Backspace' && nationalNumber.length > 0) {
+                  handleNumberChange(nationalNumber.slice(0, -1));
+                }
+              }}
               maxLength={maxDigits + 1}
               accessibilityLabel={translateText(label)}
               testID={testID}
@@ -286,7 +299,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
 
       {Boolean(error) && (
         <View className={cn('flex-row items-center mt-1 ms-1 gap-1', feedbackContainerClassName)}>
-          <AlertCircle size={12} className="text-destructive shrink-0" />
+          {!isGlass && <AlertCircle size={12} className="text-destructive shrink-0" />}
           <Text className={cn('text-xs text-destructive font-semibold', errorClassName)}>{error}</Text>
         </View>
       )}

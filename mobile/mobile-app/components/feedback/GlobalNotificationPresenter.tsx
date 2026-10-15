@@ -13,9 +13,7 @@ import {
 import { resolveNotificationRoute } from '@/src/features/notification/utils/notificationNavigation';
 import { NotificationItemData } from '@/src/features/notification/services/notificationService';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import {
-  acceptInviteThunk,
-  rejectInviteThunk,
+import {  rejectInviteThunk,
   switchWorkspaceContextThunk,
 } from '@/src/features/auth/store/authSlice';
 import { useTranslation } from '@/src/utils/i18n';
@@ -92,41 +90,11 @@ export const GlobalNotificationPresenter: React.FC = () => {
   }, [isInvitation, markAsRead, router]);
 
   const handleAcceptInvitation = useCallback(
-    async (token: string, orgId?: string, orgName?: string) => {
-      try {
-        const actionResult: any = await dispatch(
-          acceptInviteThunk({ token, email: user?.email })
-        ).unwrap();
-
-        const targetOrg = orgId || actionResult?.orgId || actionResult?.user?.orgId;
-        if (targetOrg) {
-          try {
-            await dispatch(switchWorkspaceContextThunk({ targetOrgId: targetOrg })).unwrap();
-          } catch (_) {}
-        }
-
-        const notifId = selectedInviteNotification?.id || selectedInviteNotification?._id;
-        if (notifId) {
-          markAsRead(notifId);
-        }
-
-        setIsInviteModalVisible(false);
-        setSelectedInviteNotification(null);
-        await fetchNotifications(1, 10);
-
-        Alert.alert(
-          t('invitation_accepted', 'Welcome!'),
-          `${t('invitation_accepted_desc', 'You are now a member of')} ${orgName || 'the community'}.`
-        );
-
-        router.replace('/(resident)/dashboard' as any);
-      } catch (err: any) {
-        const msg = err?.message || err || 'Failed to accept invitation';
-        Alert.alert(t('invitation_error', 'Invitation Error'), msg);
-        throw err;
-      }
+    async (token: string) => {
+      // Notifications carry invitation context only; they never activate access.
+      router.push({ pathname: '/(auth)/login', params: { inviteToken: token } });
     },
-    [dispatch, user?.email, selectedInviteNotification, markAsRead, fetchNotifications, router, t]
+    [router]
   );
 
   const handleRejectInvitation = useCallback(

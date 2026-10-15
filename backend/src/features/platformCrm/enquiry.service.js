@@ -197,116 +197,60 @@ class EnquiryService {
     return updatedEnquiry;
   }
 
-  async convertToCustomer(id, xRequestId) {
+  /**
+   * Converts a won enquiry into a community through the shared platform provisioning:
+   * the community gets its default roles, and the contact is invited as Community Admin.
+   * Nobody is activated here; the admin joins by accepting the invitation (OTP/SSO).
+   */
+  async convertToCustomer(id, xRequestId, platformUserId = null) {
     if (xRequestId) console.log(`[${xRequestId}] EnquiryService.convertToCustomer: ${id}`);
-    
+
     const enquiry = await enquiryRepository.findById(id);
     if (!enquiry) {
       throw new HttpError(404, `Enquiry with ID ${id} not found.`);
     }
-
     if (enquiry.status === 'Won') {
       throw new HttpError(400, `Enquiry ${id} is already converted.`);
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const rawPhone = enquiry.phone ? String(enquiry.phone).trim() : '';
+    const normalizedPhone = rawPhone ? normalizePhone(rawPhone) || '' : '';
+    const { ALLOWED_FEATURES } = await import('../organization/organization.validator.js');
+    const features = (enquiry.selectedFeatures || []).filter((f) => ALLOWED_FEATURES.includes(f));
 
-    try {
-      const rawPhone = enquiry.phone ? String(enquiry.phone).trim() : '';
-      const normalizedPhone = rawPhone ? (normalizePhone(rawPhone) || rawPhone) : '';
-
-      // 1. Create Organization
-      const Organization = mongoose.model('Organization');
-      const [organization] = await Organization.create([{
+    const organizationService = (await import('../organization/organization.services.js')).default;
+    const { organization, invitation } = await organizationService.provisionCommunity(
+      {
         name: enquiry.organizationName,
-        totalUnits: enquiry.totalUnits,
         contactEmail: enquiry.email,
-        contactPhone: normalizedPhone || enquiry.phone,
-        status: 'ACTIVE',
-      }], { session });
+        contactPhone: normalizedPhone || undefined,
+        expectedMemberCount: enquiry.totalUnits || undefined,
+        features: features.length > 0 ? features : undefined,
+        admin: enquiry.email && normalizedPhone
+          ? { email: enquiry.email, phone: normalizedPhone, name: enquiry.username || '' }
+          : null,
+      },
+      platformUserId
+    );
 
-      // 2. Find and Update User (Community Admin)
-      const User = mongoose.model('User');
-      let user = await User.findOne({ email: enquiry.email }).session(session);
-      
-      const crypto = await import('crypto');
-      const cryptoUtils = await import('../../utils/crypto.utils.js');
-      
-      const generatedPassword = crypto.randomBytes(8).toString('hex'); // 16 char secure password
-      const hashedPassword = await cryptoUtils.hashPassword(generatedPassword);
+    const inviteNote = invitation?.error
+      ? `Community Admin invite failed: ${invitation.error}`
+      : invitation
+      ? `Community Admin invited: ${invitation.email}`
+      : 'No Community Admin invited (email and phone are both required).';
+    const updatedEnquiry = await enquiryRepository.updateById(id, {
+      status: 'Won',
+      notes: `${enquiry.notes ? enquiry.notes + '\n' : ''}Converted to community ${organization._id}. ${inviteNote}`,
+    });
 
-      if (user) {
-        // Never overwrite an existing account's password: that would let anyone who submits an
-        // enquiry with a victim's email take over the account.
-        user.status = 'Active';
-        if (normalizedPhone && !user.phone) {
-          user.phone = normalizedPhone;
-        }
-        await user.save({ session });
-      } else {
-        [user] = await User.create([{
-          username: enquiry.username,
-          email: enquiry.email,
-          phone: normalizedPhone,
-          status: 'Active',
-          password: hashedPassword
-        }], { session });
-      }
-      
-      // Simulate Email (In real system, send email via service)
-      if (xRequestId) console.log(`[${xRequestId}] ✉️ SIMULATED EMAIL to ${enquiry.email}: Your account is activated.`);
+    enquiryEvents.emit('enquiry_converted', {
+      enquiry: updatedEnquiry,
+      organizationId: organization._id,
+      userId: invitation?.userId || null,
+    });
 
-      // 3. Create Default Role (if not statically defined, or assign to membership)
-      const Role = mongoose.model('Role');
-      let adminRole = await Role.findOne({ name: 'COMMUNITY_ADMIN' }).session(session);
-      if (!adminRole) {
-        [adminRole] = await Role.create([{ name: 'COMMUNITY_ADMIN', description: 'Admin' }], { session });
-      }
-
-      // 4. Create Organization Membership
-      const OrgMembership = mongoose.model('OrgMembership');
-      await OrgMembership.create([{
-        user: user._id,
-        organization: organization._id,
-        role: adminRole._id,
-        status: 'ACTIVE',
-      }], { session });
-
-      // 5. Create Default Subscription (PlatformSubscription)
-      const PlatformSubscription = mongoose.model('PlatformSubscription');
-      await PlatformSubscription.create([{
-        organization: organization._id,
-        planCode: 'DEFAULT_TRIAL',
-        features: enquiry.selectedFeatures,
-        status: 'TRIAL',
-      }], { session });
-
-      // 6. Update Enquiry Status
-      const updatedEnquiry = await enquiryRepository.updateById(id, { 
-        status: 'Won', 
-        notes: `${enquiry.notes ? enquiry.notes + '\n' : ''}Converted to Organization: ${organization._id}` 
-      }, session);
-
-      await session.commitTransaction();
-      session.endSession();
-
-      // Emit CRM Conversion Event
-      enquiryEvents.emit('enquiry_converted', { 
-        enquiry: updatedEnquiry, 
-        organizationId: organization._id,
-        userId: user._id 
-      });
-
-      if (xRequestId) console.log(`[${xRequestId}] EnquiryService.convertToCustomer: Successfully converted ${id}`);
-      return updatedEnquiry;
-
-    } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
-      if (xRequestId) console.error(`[${xRequestId}] EnquiryService.convertToCustomer: Transaction aborted`, error);
-      throw new HttpError(500, `Conversion failed: ${error.message}`);
-    }
+    if (xRequestId) console.log(`[${xRequestId}] EnquiryService.convertToCustomer: Successfully converted ${id}`);
+    return updatedEnquiry;
   }
 
   async getActivities(id, xRequestId) {

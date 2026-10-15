@@ -1,10 +1,179 @@
 import userService from './user.services.js'
 import HttpError from '../../utils/httpError.utils.js'
 import { generateInviteLink, resolveInvitationSource } from './utils/invite.utils.js'
+import { assertRolesAssignable, listAssignableRoles } from './utils/roleAssignment.js'
 import fs from 'fs'
+import ExcelJS from 'exceljs'
+import villaService from '../villa/villa.services.js'
 
 
 export class UserController {
+  /**
+   * Generates and downloads the Excel template for bulk inviting users,
+   * with a dropdown for Villa Number.
+   */
+  async downloadBulkInviteTemplate(req, res, next) {
+    try {
+      const orgId = req.query.orgId || req.headers['x-organization-id'] || req.tenant?.orgId;
+      
+      let villas = [];
+      if (orgId) {
+        const result = await villaService.getUnitsPaginated({ orgId, page: 1, limit: 10000 });
+        villas = result?.data || [];
+      }
+      
+      const RESERVED_PLATFORM_ROLES = [
+        'super admin',
+        'superadmin',
+        'platform admin',
+        'platform super admin',
+        'super_admin',
+        'platform_admin',
+      ];
+
+      const defaultCommunityRoles = [
+        'Community Admin',
+        'Resident Owner',
+        'Resident Tenant',
+        'Family Member',
+        'Security Guard',
+        'Community Staff',
+        'Household Staff',
+      ];
+
+      let communityCustomRoles = [];
+      if (orgId) {
+        try {
+          const assignableRoles = await listAssignableRoles(req, orgId);
+          communityCustomRoles = (assignableRoles || [])
+            .map((r) => r.name)
+            .filter((name) => !RESERVED_PLATFORM_ROLES.includes((name || '').toLowerCase().trim()));
+        } catch (_) {
+          communityCustomRoles = [];
+        }
+      }
+
+      // Merge default community roles and community custom roles, strictly filtering out platform roles
+      const roleNames = [...new Set([...defaultCommunityRoles, ...communityCustomRoles])].filter(
+        (name) => !RESERVED_PLATFORM_ROLES.includes((name || '').toLowerCase().trim())
+      );
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Bulk Invite Users');
+      const dataSheet = workbook.addWorksheet('DropdownData');
+      dataSheet.state = 'hidden';
+      
+      const roleSheet = workbook.addWorksheet('RoleData');
+      roleSheet.state = 'hidden';
+      
+      roleNames.forEach((r, idx) => {
+        roleSheet.getCell(`A${idx + 1}`).value = r;
+      });
+
+      const unitNames = (villas || [])
+        .map((v) => {
+          const block = v.blockOrBuilding ? ` (${v.blockOrBuilding.trim()})` : '';
+          return `${v.unitNumber || ''}${block}`.trim();
+        })
+        .filter(Boolean);
+      
+      // Always include 'None' as the very first option for Global Roles or unassigned units
+      const unitDropdownOptions = ['None', ...unitNames];
+      unitDropdownOptions.forEach((name, idx) => {
+        dataSheet.getCell(`A${idx + 1}`).value = name;
+      });
+
+      sheet.columns = [
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Phone Number', key: 'phone', width: 20 },
+        { header: 'Role', key: 'role', width: 25 },
+        { header: 'Unit Number (Optional for Global Roles)', key: 'unit', width: 38 }
+      ];
+
+      sheet.getCell('E1').note = 'Unit Number is required for resident roles (Owner, Tenant, Family) and Household Staff. Select "None" or leave blank for Global Roles (Community Admin, Security Guard, Community Staff).';
+
+      sheet.addRow({
+        name: 'John Doe',
+        email: 'resident.owner@example.com',
+        phone: '+919876543211',
+        role: 'Resident Owner',
+        unit: unitNames[0] || '',
+      });
+      sheet.addRow({
+        name: 'Jane Smith',
+        email: 'resident.tenant@example.com',
+        phone: '+919876543212',
+        role: 'Resident Tenant',
+        unit: unitNames[1] || '',
+      });
+      sheet.addRow({
+        name: 'Security Officer',
+        email: 'security.guard@example.com',
+        phone: '+919876543213',
+        role: 'Security Guard',
+        unit: 'None',
+      });
+      sheet.addRow({
+        name: 'Admin Coordinator',
+        email: 'community.admin@example.com',
+        phone: '+919876543214',
+        role: 'Community Admin',
+        unit: 'None',
+      });
+      sheet.addRow({
+        name: 'Community Electrician',
+        email: 'electrician@example.com',
+        phone: '+919876543215',
+        role: 'Community Staff',
+        unit: 'None',
+      });
+      sheet.addRow({
+        name: 'Private Driver',
+        email: 'driver@example.com',
+        phone: '+919876543216',
+        role: 'Household Staff',
+        unit: unitNames[0] || '101',
+      });
+
+      const unitEndRow = Math.max(unitDropdownOptions.length, 1);
+      const roleEndRow = Math.max(roleNames.length, 1);
+      
+      for (let i = 2; i <= 1000; i++) {
+        sheet.getCell(`D${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`RoleData!$A$1:$A$${roleEndRow}`],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Role',
+          error: 'Please select a valid Role from the dropdown list.'
+        };
+
+        sheet.getCell(`E${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`DropdownData!$A$1:$A$${unitEndRow}`],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Unit Number',
+          error: 'Please select a valid Unit Number or "None" from the dropdown list.'
+        };
+      }
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="bulk_invite_users_template.xlsx"');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Retrieves and formats all users.
    */
@@ -48,7 +217,20 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email, phone, villaId, residentType, roleName, name, onboardingMode = 'INVITATION' } = req.body;
+      const {
+        email,
+        phone,
+        roleName,
+        name,
+        villaId = null,
+        residentType = 'None',
+        onboardingMode = 'INVITATION',
+        staffData = null,
+        department,
+        staffType,
+        designation,
+        staffCode
+      } = req.body;
       const orgId = req.tenant.orgId;
 
       const inviterId = req.user?.id || req.user?._id || null;
@@ -57,6 +239,16 @@ export class UserController {
       // always point to the smart /invite/:token web landing page, never to a
       // mobile-specific path. Do NOT derive this from Referer/Origin headers.
       const invitationSource = 'WEB';
+
+      await assertRolesAssignable(req, orgId, roleName);
+
+      const effectiveStaffData = staffData || (department || staffType || designation || staffCode ? {
+        department,
+        staffType,
+        designation,
+        staffCode,
+        isStaff: true
+      } : {});
 
       const { user, invitationToken, membership } = await userService.inviteUser(
         email,
@@ -68,7 +260,8 @@ export class UserController {
         name || '',
         invitationSource,
         inviterId,
-        onboardingMode
+        onboardingMode,
+        effectiveStaffData
       );
 
       // Generate the canonical invite URL for the admin UI "Copy Link" feature
@@ -129,6 +322,28 @@ export class UserController {
   /**
    * Requests an OTP to verify a new email address during profile update.
    */
+  
+  async requestCurrentContactOtp(req, res, next) {
+    try {
+      const userId = req.user.id || req.user._id;
+      const result = await userService.requestCurrentContactOtp(userId);
+      res.success(result, 'Authorization OTP sent to current contact method');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyCurrentContactOtp(req, res, next) {
+    try {
+      const userId = req.user.id || req.user._id;
+      const { otp } = req.body;
+      const result = await userService.verifyCurrentContactOtp(userId, otp);
+      res.success(result, 'Authorization successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async requestEmailOtp(req, res, next) {
     try {
       const userId = req.user.id;
@@ -160,7 +375,7 @@ export class UserController {
   async updateProfile(req, res, next) {
     try {
       const userId = req.user.id || req.user._id;
-      const { name, phone, phoneOtp, email, emailOtp, removeAvatar, bio, work, hometown, allowIntercomCalls } = req.body;
+      const { name, phone, phoneOtp, email, emailOtp, updateAuthToken, removeAvatar, bio, work, hometown, allowIntercomCalls } = req.body;
       let interests = req.body.interests;
       if (typeof interests === 'string') {
         interests = JSON.parse(interests);
@@ -180,6 +395,7 @@ export class UserController {
         interests,
         avatarFilename,
         removeAvatar: removeAvatar === 'true' || removeAvatar === true || removeAvatar === '1',
+        updateAuthToken,
       });
       
       res.success({
@@ -223,6 +439,15 @@ export class UserController {
   /**
    * Bulk invites multiple users.
    */
+  async getAssignableRoles(req, res, next) {
+    try {
+      const roles = await listAssignableRoles(req, req.tenant.orgId)
+      res.success(roles, 'Assignable roles fetched successfully')
+    } catch (error) {
+      next(error)
+    }
+  }
+
   async bulkInviteUsers(req, res, next) {
     try {
       const { invitations, onboardingMode } = req.body;
@@ -233,6 +458,12 @@ export class UserController {
       const inviterId = req.user?.id || req.user?._id || null;
 
       const defaultSource = resolveInvitationSource(req);
+      
+      for (const invite of invitations) {
+        if (invite.roleName) {
+          await assertRolesAssignable(req, orgId, invite.roleName);
+        }
+      }
 
       const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId, effectiveOnboardingMode);
       res.success(result, 'Bulk user processing completed');

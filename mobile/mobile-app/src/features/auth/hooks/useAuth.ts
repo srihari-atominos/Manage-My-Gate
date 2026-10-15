@@ -1,31 +1,29 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
+import authService from '../services/authService';
 import {
-  loginUser,
-  loginWithGoogleThunk,
+    loginWithGoogleThunk,
   loginWithMicrosoftThunk,
   loginWithAppleThunk,
   registerUserThunk,
   verifyRegistrationThunk,
-  acceptInviteThunk,
   acceptSsoInviteThunk,
-  createWorkspaceThunk,
-  updateOrganizationFeaturesThunk,
+  acceptPendingInvitationThunk,
   requestOtp,
   verifyOtpLogin,
   performLogout,
   deleteAccountThunk,
-  requestPasswordReset,
-  verifyResetOtpAction,
-  resetPasswordAction,
   clearStatus,
   bootstrapAuth,
   updateProfileThunk,
   switchWorkspaceContextThunk,
 } from '../store/authSlice';
-import authService from '../services/authService';
 import { useCallback } from 'react';
 
+/**
+ * Sign-in is email code, phone code or SSO; joining a community is by invitation.
+ * (Password, self-registration and self-serve community creation were removed.)
+ */
 export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
   const storeState = useSelector((state: RootState) => state.auth);
@@ -38,13 +36,7 @@ export const useAuth = () => {
     otpSent: false,
   };
 
-  const handleLogin = useCallback(
-    (credentials: any) => {
-      return dispatch ? dispatch(loginUser(credentials)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
+  
   const handleLoginWithGoogle = useCallback(
     (tokenOrPayload: string | any) => {
       const payload = typeof tokenOrPayload === 'string' ? { token: tokenOrPayload } : tokenOrPayload;
@@ -81,13 +73,7 @@ export const useAuth = () => {
     [dispatch]
   );
 
-  const handleAcceptInvite = useCallback(
-    (token: string, password?: string, email?: string) => {
-      return dispatch ? dispatch(acceptInviteThunk({ token, password, email })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
+  
   const handleAcceptSsoInvite = useCallback(
     (payload: {
       inviteToken: string;
@@ -105,21 +91,7 @@ export const useAuth = () => {
     [dispatch]
   );
 
-  const handleCreateWorkspace = useCallback(
-    (workspaceData: any) => {
-      return dispatch ? dispatch(createWorkspaceThunk(workspaceData)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleUpdateOrganizationFeatures = useCallback(
-    (orgId: string, features: string[]) => {
-      return dispatch ? dispatch(updateOrganizationFeaturesThunk({ orgId, features })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleCheckOrganizationName = useCallback((name: string) => {
+    const handleCheckOrganizationName = useCallback((name: string) => {
     return authService.checkOrganizationName(name);
   }, []);
 
@@ -131,8 +103,8 @@ export const useAuth = () => {
   );
 
   const handleVerifyOtp = useCallback(
-    (identifier: string, code: string, isEmail: boolean = false) => {
-      return dispatch ? dispatch(verifyOtpLogin({ identifier, code, isEmail })) : Promise.resolve();
+    (identifier: string, code: string, isEmail: boolean = false, inviteToken?: string) => {
+      return dispatch ? dispatch(verifyOtpLogin({ identifier, code, isEmail, inviteToken })) : Promise.resolve();
     },
     [dispatch]
   );
@@ -144,27 +116,6 @@ export const useAuth = () => {
   const handleDeleteAccount = useCallback(() => {
     return dispatch ? dispatch(deleteAccountThunk()) : Promise.resolve();
   }, [dispatch]);
-
-  const handleForgotPassword = useCallback(
-    (identifier: string) => {
-      return dispatch ? dispatch(requestPasswordReset(identifier)) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleVerifyResetOtp = useCallback(
-    (identifier: string, code: string) => {
-      return dispatch ? dispatch(verifyResetOtpAction({ identifier, code })) : Promise.resolve();
-    },
-    [dispatch]
-  );
-
-  const handleResetPassword = useCallback(
-    (payload: { identifier: string; code: string; newPassword: string }) => {
-      return dispatch ? dispatch(resetPasswordAction(payload)) : Promise.resolve();
-    },
-    [dispatch]
-  );
 
   const handleClearStatus = useCallback(() => {
     if (dispatch) dispatch(clearStatus());
@@ -188,24 +139,26 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const handleAcceptInvitation = useCallback(
+    (inviteToken: string) => {
+      return dispatch(acceptPendingInvitationThunk(inviteToken));
+    },
+    [dispatch]
+  );
+
   return {
     ...authState,
-    login: handleLogin,
     register: handleRegister,
     verifyRegistration: handleVerifyRegistration,
-    acceptInvite: handleAcceptInvite,
     acceptSsoInvite: handleAcceptSsoInvite,
-    createWorkspace: handleCreateWorkspace,
-    updateOrganizationFeatures: handleUpdateOrganizationFeatures,
+    acceptInvitation: handleAcceptInvitation,
     checkOrganizationName: handleCheckOrganizationName,
     loginWithGoogle: handleLoginWithGoogle,
     loginWithMicrosoft: handleLoginWithMicrosoft,
     loginWithApple: handleLoginWithApple,
     requestOtp: handleRequestOtp,
     verifyOtp: handleVerifyOtp,
-    forgotPassword: handleForgotPassword,
-    verifyResetOtp: handleVerifyResetOtp,
-    resetPassword: handleResetPassword,
+    
     logout: handleLogout,
     deleteAccount: handleDeleteAccount,
     clearStatus: handleClearStatus,

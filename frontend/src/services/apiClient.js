@@ -145,9 +145,33 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
+        let refreshBody = {}
+        if (store) {
+          const state = store.getState()
+          const rawOrgId =
+            state.workspace?.activeWorkspace?.orgId ||
+            state.workspace?.activeWorkspace?.id ||
+            state.workspace?.activeWorkspace?._id ||
+            state.auth?.user?.orgId ||
+            state.auth?.user?.org?._id ||
+            state.auth?.user?.org
+            
+          const activeOrgId =
+            typeof rawOrgId === 'object' && rawOrgId !== null
+              ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
+              : rawOrgId
+              
+          if (activeOrgId && activeOrgId !== '[object Object]') {
+            refreshBody.targetOrgId = activeOrgId
+          }
+          if (state.auth?.user?.role) {
+            refreshBody.targetRole = state.auth.user.role
+          }
+        }
+
         const res = await axios.post(
           `${apiClient.defaults.baseURL}/auth/refresh-token`,
-          {},
+          refreshBody,
           { withCredentials: true },
         )
 

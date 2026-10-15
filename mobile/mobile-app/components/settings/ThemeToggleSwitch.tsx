@@ -78,7 +78,7 @@ export const ThemeToggleSwitch = ({
               <Icon
                 as={opt.icon}
                 size={14}
-                color={isSelected ? '#FF6A00' : '#94a3b8'}
+                color={isSelected ? '#FF7A3D' : '#94a3b8'}
               />
               <Text
                 className={cn(

@@ -57,7 +57,7 @@ export default defineConfig(() => {
       },
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:5002',
+          target: 'http://127.0.0.1:5006',
           changeOrigin: true,
           configure: (proxy) => {
             proxy.on('error', (err) => {
@@ -67,7 +67,7 @@ export default defineConfig(() => {
           },
         },
         '/socket.io': {
-          target: 'http://127.0.0.1:5002',
+          target: 'http://127.0.0.1:5006',
           ws: true,
           changeOrigin: true,
           configure: (proxy) => {
@@ -78,11 +78,11 @@ export default defineConfig(() => {
           },
         },
         '/public': {
-          target: 'http://127.0.0.1:5002',
+          target: 'http://127.0.0.1:5006',
           changeOrigin: true,
         },
         '/uploads': {
-          target: 'http://127.0.0.1:5002',
+          target: 'http://127.0.0.1:5006',
           changeOrigin: true,
         },
       },

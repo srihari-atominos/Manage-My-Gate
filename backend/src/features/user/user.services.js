@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
+import { signToken, verifyToken } from '../../utils/jwt.utils.js';
+
 import userRepository from './user.repository.js';
 import userEvents from './user.events.js';
-import otpService from '../otp/otp.services.js';
+import otpService, { isOtpDebugEnabled } from '../otp/otp.services.js';
 import { hashPassword } from '../../utils/crypto.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
@@ -328,9 +330,23 @@ export class UserService {
     invitationSource = 'WEB',
     inviterId = null,
     onboardingMode = 'INVITATION',
-    isBulk = false,
-    rawPassword = null
+    arg11 = {},
+    arg12 = null,
+    arg13 = {}
   ) {
+    let isBulk = false;
+    let rawPassword = null;
+    let staffData = {};
+
+    if (typeof arg11 === 'boolean') {
+      isBulk = arg11;
+      rawPassword = arg12;
+      staffData = arg13 || {};
+    } else if (arg11 && typeof arg11 === 'object') {
+      staffData = arg11;
+      isBulk = arg11.isBulk !== undefined ? !!arg11.isBulk : !!arg12;
+      rawPassword = arg11.rawPassword !== undefined ? arg11.rawPassword : arg13;
+    }
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -348,19 +364,24 @@ export class UserService {
 
       // Step 1: Resolve existing user identity safely across Email and Phone
       const existing = await this.resolveUserIdentity(
-        { email: trimmedEmail, phone: phoneToAssign },
-        session
-      );
-      const isExisting = !!existing;
+          { email: trimmedEmail, phone: phoneToAssign },
+          session
+        );
+        const isExisting = !!existing;
+        let isAlreadyActiveMemberAssigningUnit = false;
 
       // Check if membership already exists in this organization
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       const existingMembership = existing ? await orgMembershipService.getMembership(existing._id, orgId, session) : null;
 
       if (existing) {
-        if (existingMembership && existingMembership.status === 'Active' && existing.status === 'Active' && mode === 'INVITATION') {
-          throw new HttpError(409, `User '${trimmedEmail || phoneToAssign}' is already an active member of this community.`);
-        }
+          if (existingMembership && existingMembership.status === 'Active' && existing.status === 'Active' && mode === 'INVITATION') {
+            if (villaId) {
+              isAlreadyActiveMemberAssigningUnit = true;
+            } else {
+              throw new HttpError(409, `User '${trimmedEmail || phoneToAssign}' is already an active member of this community.`);
+            }
+          }
 
         if (phoneToAssign) {
           const existingPhoneUser = await userRepository.findByPhone(phoneToAssign, session);
@@ -380,7 +401,10 @@ export class UserService {
       let user = existing;
       if (!existing) {
         let emailToUse = trimmedEmail;
-        let baseUsername = trimmedEmail ? trimmedEmail.split('@')[0] : `user_${phoneToAssign.replace(/\D/g, '')}`;
+        const cleanedName = name ? name.trim() : '';
+        let baseUsername = cleanedName
+          ? cleanedName.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()
+          : (trimmedEmail ? trimmedEmail.split('@')[0] : `user_${phoneToAssign.replace(/\D/g, '')}`);
         if (!emailToUse && phoneToAssign) {
           emailToUse = `user_${phoneToAssign.replace(/\D/g, '')}@noemail.local`;
         }
@@ -395,7 +419,7 @@ export class UserService {
         const userData = {
           email: emailToUse,
           username: username,
-          name: name || username,
+          name: cleanedName || name || username,
           status: (rawPassword || mode === 'ADMIN_ANNOUNCEMENT') ? 'Active' : 'Pending Verification',
           credentialStatus: 'NOT_INITIALIZED',
           appAccessStatus: 'NOT_YET_ACCESSED',
@@ -412,7 +436,7 @@ export class UserService {
       } else {
         const updates = {};
         if (phoneToAssign && !user.phone) updates.phone = phoneToAssign;
-        if (name && !user.name) updates.name = name;
+        if (name && (!user.name || user.name === user.username)) updates.name = name.trim();
         if (rawPassword) {
           const { hashPassword } = await import('../../utils/crypto.utils.js');
           updates.password = await hashPassword(rawPassword);
@@ -485,7 +509,7 @@ export class UserService {
       }
 
       // Step 4: Membership status based on onboardingMode
-      const targetMembershipStatus = (rawPassword || mode === 'ADMIN_ANNOUNCEMENT') ? 'Active' : 'Pending';
+      const targetMembershipStatus = (rawPassword || mode === 'ADMIN_ANNOUNCEMENT' || isAlreadyActiveMemberAssigningUnit) ? 'Active' : 'Pending';
 
       let membership = null;
       if (existingMembership) {
@@ -522,13 +546,7 @@ export class UserService {
         await userRepository.update(user._id, { residencyType: userResidencyType }, session);
       }
 
-      // Step 5: Immediate Unit Assignment for ADMIN_ANNOUNCEMENT
-      if (mode === 'ADMIN_ANNOUNCEMENT' && rootVillaId) {
-        const villaService = (await import('../villa/villa.services.js')).default;
-        await villaService.assignExistingUser(rootVillaId, user._id, rootResidentType, orgId, false, session).catch((err) => {
-          logger.warn(`Immediate villa assignment during announcement warning: ${err.message}`);
-        });
-      }
+      
 
       // Step 6: Token Generation & Event Emissions
       const tokenService = (await import('../token/token.services.js')).default;
@@ -545,13 +563,32 @@ export class UserService {
       });
       await outboxEvent.save({ session });
 
-      if (roleName) {
-        await this.syncTechnicianForStaffUser(user._id, orgId, [roleName], session);
+      const isStaffDesignated = staffData?.isStaff || (roleName && this.isStaffRole(roleName));
+      if (isStaffDesignated || roleName) {
+        await this.syncTechnicianForStaffUser(user._id, orgId, [roleName].filter(Boolean), session, {
+          ...staffData,
+          name: user.name || name,
+          email: user.email,
+          phone: user.phone,
+          status: user.status === 'Active' ? 'Active' : 'Pending',
+          villaId: rootVillaId || villaId || null,
+          inviterId
+        });
       }
 
       await session.commitTransaction();
 
-      const domainEventName = mode === 'ADMIN_ANNOUNCEMENT' ? 'USER_ANNOUNCED' : 'USER_INVITED';
+        // Step 5: Immediate Unit Assignment for ADMIN_ANNOUNCEMENT or Existing Active Member (Moved after commit to avoid deadlock)
+        if (villaId || rootVillaId) {
+          const targetAssignVillaId = villaId || rootVillaId;
+          const targetAssignResidentType = villaId ? calculatedResidentType : rootResidentType;
+          const villaService = (await import('../villa/villa.services.js')).default;
+          await villaService.assignExistingUser(targetAssignVillaId, user._id, targetAssignResidentType, orgId, false).catch((err) => {
+            logger.warn(`Immediate villa assignment during announcement warning: ${err.message}`);
+          });
+        }
+
+      const domainEventName = mode === 'ADMIN_ANNOUNCEMENT' ? 'USER_ANNOUNCED' : (isAlreadyActiveMemberAssigningUnit ? 'UNIT_ASSIGNED' : 'USER_INVITED');
       userEvents.emit(domainEventName, {
         email: user.email,
         phone: user.phone,
@@ -586,55 +623,81 @@ export class UserService {
     }
   }
 
-  async syncTechnicianForStaffUser(userId, orgId, roleNames = [], session = null) {
+  isStaffRole(roleName) {
+    if (!roleName) return false;
+    const lower = String(roleName).toLowerCase().trim();
+    return (
+      lower.includes('staff') ||
+      lower.includes('vendor') ||
+      lower.includes('technician') ||
+      lower.includes('maintenance') ||
+      lower.includes('maid') ||
+      lower.includes('driver') ||
+      lower.includes('cook') ||
+      lower.includes('gardener') ||
+      lower.includes('electrician') ||
+      lower.includes('plumber') ||
+      lower.includes('carpenter') ||
+      lower.includes('cleaner') ||
+      lower.includes('housekeeping')
+    );
+  }
+
+  async syncTechnicianForStaffUser(userId, orgId, roleNames = [], session = null, staffExtra = {}) {
     try {
-      const isStaffRole = roleNames.some(r => {
-        if (!r) return false;
-        const lower = r.toLowerCase();
-        return lower.includes('staff') || lower.includes('vendor') || lower.includes('technician') || lower.includes('maintenance');
-      });
+      const isStaff = staffExtra.isStaff || roleNames.some(r => this.isStaffRole(r));
+      if (!isStaff) return;
 
-      if (!isStaffRole) return;
+      let name = staffExtra.name;
+      let email = staffExtra.email;
+      let phone = staffExtra.phone;
+      let status = staffExtra.status;
 
-      const User = (await import('./user.model.js')).default;
-      const user = await User.findById(userId).session(session || null);
-      if (!user) return;
+      if (!name || !email) {
+        const user = await userRepository.findById(userId, session);
+        if (user) {
+          name = name || user.name || user.username;
+          email = email || user.email;
+          phone = phone || user.phone;
+          status = status || (user.status === 'Active' ? 'Active' : 'Pending');
+        }
+      }
 
-      const Technician = (await import('../technician/technician.model.js')).default;
-
-      const existingTech = await Technician.findOne({
+      const technicianService = (await import('../technician/technician.service.js')).default;
+      const tech = await technicianService.syncOrUpsertTechnicianFromUser({
+        userId,
         orgId,
-        $or: [
-          { userId: user._id },
-          ...(user.email ? [{ email: user.email }] : []),
-          ...(user.phone && user.phone !== 'N/A' ? [{ phone: user.phone }] : [])
-        ]
-      }).session(session || null);
+        name: name || 'Staff Member',
+        email: email || '',
+        phone: phone || 'N/A',
+        department: staffExtra.department || 'Others',
+        type: staffExtra.staffType || staffExtra.type || 'In-House Staff',
+        designation: staffExtra.designation || (roleNames[0] || 'Staff'),
+        staffCode: staffExtra.staffCode || null,
+        status: status || 'Active'
+      }, session);
 
-      if (existingTech) {
-        existingTech.userId = user._id;
-        if (user.name && user.name !== user.username) {
-          existingTech.name = user.name;
-        }
-        if (user.phone && user.phone !== 'N/A') {
-          existingTech.phone = user.phone;
-        }
-        existingTech.isDeleted = false;
-        existingTech.status = user.status === 'Active' ? 'Active' : 'Pending';
-        await existingTech.save(session ? { session } : undefined);
-      } else {
-        await Technician.create([{
+      // If unit is configured, link staff to unit via StaffUnitAssociation
+      const targetVillaId = staffExtra.villaId;
+      if (tech && targetVillaId) {
+        const staffUnitAssociationService = (await import('../staffUnitAssociation/staffUnitAssociation.service.js')).default;
+        await staffUnitAssociationService.createAssociation(
+          staffExtra.inviterId || userId,
           orgId,
-          userId: user._id,
-          name: user.name || user.username || user.email.split('@')[0],
-          email: user.email,
-          phone: user.phone || 'N/A',
-          department: 'Others',
-          type: 'In-House Staff',
-          status: user.status === 'Active' ? 'Active' : 'Pending',
-          whatsappEnabled: true,
-          isDeleted: false
-        }], session ? { session } : undefined);
+          {
+            villaId: targetVillaId,
+            technicianId: tech._id,
+            technicianDoc: tech,
+            roleOrTrade: staffExtra.roleOrTrade || staffExtra.designation || staffExtra.department || roleNames[0] || 'Household Staff',
+            notes: staffExtra.notes || 'Associated via onboarding'
+          },
+          true,
+          session
+        ).catch(err => {
+          if (err && err.status !== 409 && err.statusCode !== 409) {
+            console.error('Failed to link technician to villa during staff user invite:', err);
+          }
+        });
       }
     } catch (err) {
       console.error('Failed to sync technician for staff user:', err);
@@ -746,6 +809,44 @@ export class UserService {
     return updatedUser;
   }
 
+  
+  async requestCurrentContactOtp(userId) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new HttpError(404, 'User not found.');
+
+    const contact = user.email || user.phone;
+    if (!contact) {
+      throw new HttpError(400, 'No email or phone number found on your profile to verify.');
+    }
+
+    const type = 'AUTHORIZE_UPDATE';
+    const length = user.email ? 6 : 4;
+    const plainCode = await otpService.createOTP(contact, type, 15, null, null, length);
+
+    if (user.email) {
+      const authEvents = (await import('../auth/auth.events.js')).default;
+      authEvents.emit('OTP_SENT', { identifier: user.email, code: plainCode, type: 'EMAIL' });
+      return { message: 'Authorization code sent to your current email.', type: 'email', ...(process.env.NODE_ENV !== 'production' && { devCode: plainCode }) };
+    } else {
+      const authEvents = (await import('../auth/auth.events.js')).default;
+      authEvents.emit('OTP_SENT', { identifier: user.phone, code: plainCode, type: 'SMS' });
+      return { message: 'Authorization code sent to your current phone.', type: 'phone', ...(process.env.NODE_ENV !== 'production' && { devCode: plainCode }) };
+    }
+  }
+
+  async verifyCurrentContactOtp(userId, code) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new HttpError(404, 'User not found.');
+
+    const contact = user.email || user.phone;
+    if (!contact) throw new HttpError(400, 'No contact information found to verify.');
+
+    await otpService.verifyOTP(contact, code, 'AUTHORIZE_UPDATE', null, true);
+
+    const updateAuthToken = signToken({ userId: user._id.toString(), authorizedAction: 'UPDATE_CONTACT' }, '15m');
+    return { verified: true, updateAuthToken };
+  }
+
   async requestEmailOtp(userId, newEmail) {
     if (!newEmail) {
       throw new HttpError(400, 'New email address is required.');
@@ -777,7 +878,7 @@ export class UserService {
     return {
       message: `Verification code sent to ${normalizedEmail}`,
       email: normalizedEmail,
-      ...(process.env.NODE_ENV !== 'production' && { devCode: plainCode }),
+      ...(isOtpDebugEnabled() && { devCode: plainCode }),
     };
   }
 
@@ -807,17 +908,19 @@ export class UserService {
     }
 
     if (process.env.NODE_ENV === 'production') {
-      const [twilio, messageCentral] = await Promise.all([
+      const [twilio, messageCentral, msg91] = await Promise.all([
         integrationHubService.getGlobalConnectionByProvider('twilio'),
-        integrationHubService.getGlobalConnectionByProvider('messagecentral')
+        integrationHubService.getGlobalConnectionByProvider('messagecentral'),
+        integrationHubService.getGlobalConnectionByProvider('msg91')
       ]);
-      if (!twilio && !messageCentral) {
+      const msg91Env = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
+      if (!twilio && !messageCentral && !msg91 && !msg91Env) {
         throw new HttpError(503, 'SMS verification is temporarily unavailable. Please contact support.');
       }
     }
 
     // 3. Generate OTP via otpService (valid for 15 minutes)
-    const plainCode = await otpService.createOTP(normalizedPhone, 'VERIFY', 15);
+    const plainCode = await otpService.createOTP(normalizedPhone, 'VERIFY', 15, null, null, 4);
 
     // 4. Emit event for logging and SMS dispatch
     const authEvents = (await import('../auth/auth.events.js')).default;
@@ -826,7 +929,7 @@ export class UserService {
     return {
       message: `Verification code sent to ${maskPhone(normalizedPhone)}`,
       phone: normalizedPhone,
-      ...(process.env.NODE_ENV !== 'production' && { devCode: plainCode }),
+      ...(isOtpDebugEnabled() && { devCode: plainCode }),
     };
   }
 
@@ -849,7 +952,26 @@ export class UserService {
     try {
       const user = await this.getUserById(id, session);
 
-      const payload = { $set: {}, $unset: {} };
+      
+        const isEmailChanged = email !== undefined && email.trim() !== '' && email.trim().toLowerCase() !== (user.email || '').toLowerCase();
+        const isPhoneChanged = phone !== undefined && phone.trim() !== '' && phone.trim() !== (user.phone || '');
+        
+        if (isEmailChanged || isPhoneChanged) {
+          const updateAuthToken = arguments[1].updateAuthToken;
+          if (!updateAuthToken) {
+            throw new HttpError(401, 'Contact update authorization token is missing. Please verify your current contact first.');
+          }
+          try {
+            const decoded = verifyToken(updateAuthToken);
+            if (decoded.userId !== id.toString() || decoded.authorizedAction !== 'UPDATE_CONTACT') {
+              throw new HttpError(401, 'Invalid or expired contact update authorization token.');
+            }
+          } catch (err) {
+            throw new HttpError(401, 'Invalid or expired contact update authorization token.');
+          }
+        }
+
+        const payload = { $set: {}, $unset: {} };
       if (name !== undefined) payload.$set.name = name;
       if (bio !== undefined) payload.$set.bio = String(bio).trim();
       if (work !== undefined) payload.$set.work = String(work).trim();
@@ -1041,22 +1163,66 @@ export class UserService {
       const mode = (itemMode || onboardingMode || 'INVITATION').toUpperCase();
 
       try {
-        if (!trimmedEmail && !trimmedPhone) {
-          throw new HttpError(400, 'Email address or phone number is required.');
+        if (!trimmedEmail) {
+          throw new HttpError(400, 'Email address is required.');
+        }
+        if (!trimmedPhone) {
+          throw new HttpError(400, 'Phone number is required.');
+        }
+        if (!roleName) {
+          throw new HttpError(400, 'Role is required.');
         }
 
         let villaId = payloadVillaId || null;
 
-        // If villa number is provided and villaId not explicit, resolve it
-        if (!villaId && villaNumber && String(villaNumber).trim()) {
-          const trimmedVillaNo = String(villaNumber).trim();
-          const villa = await villaService.getVillaByNumber(trimmedVillaNo, orgId);
+        // Check if role is a staff role or global community role
+        const isStaff = this.isStaffRole(roleName) || Boolean(invite.isStaff || invite.department || invite.designation);
+        const roleService = (await import('../role/role.services.js')).default;
+        const roleObj = roleName ? await roleService.getRoleByName(roleName.trim(), orgId) : null;
+        const isGlobalRole = roleObj
+          ? !roleObj.isTenantRole
+          : ['community admin', 'security guard', 'community staff'].includes((roleName || '').toLowerCase().trim());
+
+        // If not a global role (or if it's a unit-scoped staff role) and not 'None', resolve villa / unit number if provided
+        const isNoneUnit = !villaNumber || String(villaNumber).trim().toLowerCase() === 'none';
+        if (!isGlobalRole && !villaId && !isNoneUnit) {
+          const rawUnitStr = String(villaNumber).trim();
+          let villa = await villaService.getVillaByNumber(rawUnitStr, orgId);
+
+          if (!villa) {
+            // Match formats like "101 (Block A)", "Unit 101 (Block A)", "Unit 101", "101"
+            const match = rawUnitStr.match(/^(?:Unit\s+)?([^\s(]+)(?:\s*\((.*?)\))?$/i);
+            if (match) {
+              const unitNum = match[1]?.trim();
+              const blockName = match[2]?.trim();
+
+              if (blockName) {
+                villa = await villaService.getVillaByNumber(unitNum, orgId, blockName);
+              }
+              if (!villa && unitNum) {
+                villa = await villaService.getVillaByNumber(unitNum, orgId);
+              }
+            }
+          }
+
           if (villa) {
             villaId = villa._id;
           }
+        } else if (isGlobalRole || isNoneUnit) {
+          villaId = null;
         }
 
-        // Call the single inviteUser logic with full identity & onboarding parameters
+        const staffData = isStaff
+          ? {
+              isStaff: true,
+              department: invite.department || 'Others',
+              staffType: invite.staffType || invite.type || 'In-House Staff',
+              designation: invite.designation || (roleObj ? roleObj.name : roleName),
+              staffCode: invite.staffCode || null,
+            }
+          : {};
+
+        // Call the single inviteUser logic with full identity, staff & onboarding parameters
         await this.inviteUser(
           trimmedEmail,
           orgId,
@@ -1069,7 +1235,8 @@ export class UserService {
           inviterId,
           mode,
           true, // isBulk
-          rawPassword
+          rawPassword,
+          staffData
         );
 
         successes.push({
@@ -1088,6 +1255,7 @@ export class UserService {
           phone: trimmedPhone || undefined,
           name: name || undefined,
           error: error.message || 'Invitation failed',
+          code: error.details?.code || null,
           role: roleName || '',
           villaNumber: villaNumber || '',
           invitationSource: source,

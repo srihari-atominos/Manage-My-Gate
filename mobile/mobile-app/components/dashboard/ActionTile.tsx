@@ -88,9 +88,9 @@ export const ActionTile: React.FC<ActionTileProps> = ({
           style={{
             width: iconBoxSize,
             height: iconBoxSize,
-            borderRadius: 22,
+            borderRadius: 18,
             backgroundColor: isAccent
-              ? accentBg || (isDark ? '#FF6A00' : '#EA580C')
+              ? accentBg || (isDark ? '#FF7B3D' : '#FF7A3D')
               : isDark
               ? '#1C1C20'
               : '#FFFFFF',
@@ -139,7 +139,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
                   ? { fontSize: 13, lineHeight: 17 }
                   : undefined
             }
-            className="text-[14px] font-bold font-sans text-foreground text-center leading-[18px] tracking-tight"
+            className="text-[14px] font-extrabold font-sans text-foreground text-center leading-[18px] tracking-tight"
           >
             {translatedLabel}
           </Text>

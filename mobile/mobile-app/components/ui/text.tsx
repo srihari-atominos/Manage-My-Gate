@@ -7,7 +7,7 @@ import i18n, { I18nContext } from '../../src/utils/i18n';
 
 const textVariants = cva(
   cn(
-    'text-foreground text-sm font-normal text-left',
+    'text-foreground text-base font-medium text-left',
     Platform.select({
       web: 'select-text',
     })

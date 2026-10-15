@@ -58,6 +58,7 @@ export const config = {
 
   cors: {
     allowedOrigins: (() => {
+      const isProd = process.env.NODE_ENV === 'production';
       const defaultOrigins = [
         'http://localhost:3000',
         'http://localhost:3001',
@@ -78,21 +79,22 @@ export const config = {
         'http://[::1]:5173',
         'http://[::1]:8081'
       ];
-      let rawOrigins = process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim().replace(/\/+$/, ''))
-        : defaultOrigins;
-
-      rawOrigins = [...rawOrigins, ...defaultOrigins];
-
+      let rawOrigins = [];
+      if (process.env.ALLOWED_ORIGINS) {
+        rawOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim().replace(/\/+$/, '')));
+      }
       if (process.env.CLIENT_URL) {
         rawOrigins.push(process.env.CLIENT_URL.trim().replace(/\/+$/, ''));
       }
-      const host = process.env.HOST || 'localhost';
-      const port = parseInt(process.env.PORT || '5000', 10);
-      rawOrigins.push(`http://${host}:${port}`);
-      rawOrigins.push(`http://127.0.0.1:${port}`);
-      if (host !== 'localhost') {
-        rawOrigins.push(`http://localhost:${port}`);
+      if (!isProd) {
+        rawOrigins = [...rawOrigins, ...defaultOrigins];
+        const host = process.env.HOST || 'localhost';
+        const port = parseInt(process.env.PORT || '5000', 10);
+        rawOrigins.push(`http://${host}:${port}`);
+        rawOrigins.push(`http://127.0.0.1:${port}`);
+        if (host !== 'localhost') {
+          rawOrigins.push(`http://localhost:${port}`);
+        }
       }
       return [...new Set(rawOrigins.filter(Boolean))];
     })()

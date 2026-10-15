@@ -101,7 +101,7 @@ router.get(
 router.post(
   '/invite',
   tenantContext,
-  authorizeAnyPermission(['users:create', 'villas:read']),
+  authorizePermission('users', 'create'),
   validate(inviteUserRules),
   userController.inviteUser
 )
@@ -145,6 +145,13 @@ router.post(
  *       400:
  *         description: Validation error.
  */
+router.get(
+  '/bulk-invite/template',
+  tenantContext,
+  authorizePermission('users', 'create'),
+  userController.downloadBulkInviteTemplate
+)
+
 router.post(
   '/bulk-invite',
   tenantContext,
@@ -172,6 +179,14 @@ router.get(
   authorizePermission('users', 'read'),
   validate(listInvitationsRules),
   userController.getInvitations
+)
+
+// Roles the caller may assign when inviting (role ceiling), for invite forms
+router.get(
+  '/assignable-roles',
+  tenantContext,
+  authorizePermission('users', 'create'),
+  userController.getAssignableRoles
 )
 
 /**
@@ -262,6 +277,36 @@ router.post(
  *       400:
  *         description: Validation or upload error.
  */
+/**
+ * @swagger
+ * /users/request-current-contact-otp:
+ *   post:
+ *     summary: Request an OTP to the current email/phone to authorize a contact update
+ *     responses:
+ *       200:
+ *         description: OTP sent
+ */
+router.post(
+  '/request-current-contact-otp',
+  otpLimiter,
+  userController.requestCurrentContactOtp
+)
+
+/**
+ * @swagger
+ * /users/verify-current-contact-otp:
+ *   post:
+ *     summary: Verify the current contact OTP
+ *     responses:
+ *       200:
+ *         description: Verified, returns token
+ */
+router.post(
+  '/verify-current-contact-otp',
+  otpLimiter,
+  userController.verifyCurrentContactOtp
+)
+
 /**
  * @swagger
  * /users/request-email-otp:

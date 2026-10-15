@@ -81,7 +81,14 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
       const shared = await shareQrImage(
         barcodePayload,
         targetCode,
-        `Nahom Pass - ${targetCode}`
+        `Nahom Pass - ${targetCode}`,
+        [
+          'NAHOM VISITOR PASS',
+          `PASS CODE: ${targetCode}`,
+          `VISITOR: ${visitorName}`,
+          `VALID UNTIL: ${pass.validUntil ? new Date(pass.validUntil).toLocaleString() : 'TODAY'}`,
+          'PRESENT CODE OR SCAN AT COMMUNITY GATE',
+        ],
       );
       if (!shared) {
         await handleSendWhatsAppMessage();

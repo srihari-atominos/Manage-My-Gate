@@ -296,7 +296,7 @@ export const GlobalFilterPanel: React.FC<GlobalFilterPanelProps> = ({
                           <Switch
                             value={isChecked}
                             onValueChange={() => currentCategory.onOptionToggle?.(opt.id)}
-                            trackColor={{ false: '#e2e8f0', true: '#FF6A00' }}
+                            trackColor={{ false: '#e2e8f0', true: '#FF7A3D' }}
                             thumbColor={isChecked ? '#ffffff' : '#f8fafc'}
                           />
                         </TouchableOpacity>

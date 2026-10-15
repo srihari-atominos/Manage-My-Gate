@@ -8,6 +8,8 @@ export interface OtpInputFieldProps {
   onValueChange: (value: string) => void;
   error?: boolean;
   className?: string;
+  cellClassName?: string;
+  variant?: 'card' | 'light';
 }
 
 export const OtpInputField = ({
@@ -16,6 +18,8 @@ export const OtpInputField = ({
   onValueChange,
   error = false,
   className,
+  cellClassName,
+  variant = 'card',
 }: OtpInputFieldProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -23,6 +27,10 @@ export const OtpInputField = ({
   const handlePress = () => {
     inputRef.current?.focus();
   };
+
+  const isLight = variant === 'light';
+  const cellWidth = length >= 6 ? 46 : 56;
+  const cellHeight = length >= 6 ? 52 : 56;
 
   const renderCells = () => {
     const cells = [];
@@ -35,13 +43,44 @@ export const OtpInputField = ({
       cells.push(
         <View
           key={i}
+          style={{
+            width: cellWidth,
+            height: cellHeight,
+            minWidth: cellWidth,
+            minHeight: cellHeight,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 14,
+            backgroundColor: isLight ? '#FFFFFF' : undefined,
+            borderWidth: isCurrentFocus ? 2 : 1,
+            borderColor: error ? '#EF4444' : isCurrentFocus ? '#172B4D' : isLight ? '#E2E8F0' : undefined,
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: isLight ? 0.08 : 0.04,
+            shadowRadius: 3,
+            elevation: isLight ? 2 : 1,
+          }}
           className={cn(
-            'h-14 w-12 items-center justify-center rounded-xl border border-border bg-card shadow-xs',
-            isCurrentFocus && 'border-primary shadow-sm bg-primary/5',
-            error && 'border-destructive bg-destructive/10'
+            !isLight && 'border border-border bg-card shadow-xs',
+            !isLight && isCurrentFocus && 'border-[#172B4D] shadow-sm bg-primary/5',
+            !isLight && error && 'border-destructive bg-destructive/10',
+            cellClassName
           )}
         >
-          <Text className="text-2xl font-bold font-sans text-foreground text-center leading-none">
+          <Text
+            style={{
+              fontSize: length >= 6 ? 22 : 25,
+              fontWeight: '700',
+              color: isLight ? '#0F172A' : undefined,
+              textAlign: 'center',
+              lineHeight: length >= 6 ? 26 : 30,
+              includeFontPadding: false,
+            }}
+            className={cn(
+              'font-bold font-sans text-center',
+              !isLight && 'text-foreground'
+            )}
+          >
             {char}
           </Text>
         </View>
@@ -55,7 +94,9 @@ export const OtpInputField = ({
       className={cn('flex-row items-center justify-between relative w-full', className)}
       onPress={handlePress}
     >
-      {renderCells()}
+      <View pointerEvents="none" className="flex-row items-center justify-between w-full">
+        {renderCells()}
+      </View>
 
       <TextInput
         ref={inputRef}
@@ -71,8 +112,8 @@ export const OtpInputField = ({
           left: 0,
           right: 0,
           bottom: 0,
-          opacity: 0,
-          zIndex: 10,
+          opacity: 0.01,
+          zIndex: 20,
         }}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}

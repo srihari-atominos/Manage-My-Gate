@@ -217,7 +217,7 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
     const loading = loadingProp || isLoading || false;
     const isDisabled = disabled || loading;
     const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
-    const loadingColor = variant === 'continue' ? '#000000' : SOLID_LOADING_VARIANTS.has(variant || 'default') ? '#FFFFFF' : '#F45A0A';
+    const loadingColor = variant === 'continue' ? '#000000' : SOLID_LOADING_VARIANTS.has(variant || 'default') ? '#FFFFFF' : '#FF7A3D';
     const minimumTouchTarget = variant === 'link'
       ? ''
       : size === 'icon'

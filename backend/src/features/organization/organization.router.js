@@ -14,6 +14,8 @@ import {
   updateOnboardingModeRules,
   sendAdminEmailOtpRules,
   verifyAdminEmailOtpRules,
+  provisionCommunityRules,
+  assignAdminRules,
 } from './organization.validator.js';
 
 const router = Router();
@@ -50,6 +52,24 @@ router.post(
   tenantContext({ requirePlatformContext: true }),
   validate(setupWorkspaceRules),
   organizationController.setupWorkspace
+);
+
+// Platform Admin: create a community, optionally inviting its Community Admin
+router.post(
+  '/provision',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(provisionCommunityRules),
+  organizationController.provisionCommunity
+);
+
+// Platform Admin: invite (or re-invite) a community's Community Admin
+router.post(
+  '/:id/admins',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  validate(assignAdminRules),
+  organizationController.assignCommunityAdmin
 );
 
 

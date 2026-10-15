@@ -18,6 +18,22 @@ import { Checkbox } from '@/components/forms/Checkbox';
 
 const formatPermissionLabel = (permissionString: string) => {
   if (!permissionString) return '';
+  const str = String(permissionString).toLowerCase();
+  
+  // Custom exact labels for Staff Management 4 pages:
+  if (str === 'staff:directory' || str === 'staff:view' || str === 'staff:manage') {
+    return 'Directory';
+  }
+  if (str === 'staff:attendance') {
+    return 'Attendance Logs';
+  }
+  if (str === 'staff:assign_unit') {
+    return 'Unit Allocation';
+  }
+  if (str === 'staff:portal' || str === 'staff:view_own') {
+    return 'Staff Portal & Pass';
+  }
+
   let label = permissionString;
   if (label.includes(':')) {
     const parts = label.split(':');
@@ -58,6 +74,10 @@ export const isPermissionSelected = (perm: any, selectedIds: string[] = []) => {
         'polls:publish',
         'polls:close',
       ],
+      'staff:directory': ['staff:directory', 'staff:view', 'staff:manage'],
+      'staff:attendance': ['staff:attendance'],
+      'staff:assign_unit': ['staff:assign_unit'],
+      'staff:portal': ['staff:portal', 'staff:view_own'],
     };
     if (noticeAliases[normalizedPerm]?.some((alias) => normalizedSelected.has(alias))) {
       return true;
@@ -77,6 +97,7 @@ const getCategoryDisplayName = (category: string) => {
     complaints: 'Complaints & Maintenance',
     notices: 'Notice Board & Polls',
     billing: 'Billing & Invoicing',
+    staff: 'Staff Management',
     villas: 'Unit Management',
     users: 'User Management',
     integrations: 'Integration Hub',
@@ -93,6 +114,7 @@ const getCategoryIcon = (category: string) => {
     complaints: Settings,
     notices: MessageSquare,
     billing: CreditCard,
+    staff: Users,
     villas: Home,
     users: Briefcase,
     integrations: Link2,
@@ -107,7 +129,8 @@ const CATEGORY_ORDER: Record<string, number> = {
   amenities: 2,
   complaints: 3,
   notices: 4,
-  billing: 6,
+  billing: 5,
+  staff: 6,
   villas: 7,
   users: 8,
   roles: 9,
@@ -222,6 +245,31 @@ const PermissionMatrixGrid = ({
           if (!existingActions.includes('manage_notices')) {
             perms.push({ name: 'notices:manage_notices' });
           }
+        }
+
+        if (category === 'staff') {
+          perms = [
+            {
+              _id: 'staff:directory',
+              name: 'staff:directory',
+              description: 'Staff Directory',
+            },
+            {
+              _id: 'staff:attendance',
+              name: 'staff:attendance',
+              description: 'Attendance Logs',
+            },
+            {
+              _id: 'staff:assign_unit',
+              name: 'staff:assign_unit',
+              description: 'Unit Allocation',
+            },
+            {
+              _id: 'staff:portal',
+              name: 'staff:portal',
+              description: 'Staff Portal & Pass',
+            },
+          ];
         }
         
         const groupCodes = perms.map((p) => p.name || p.code || p._id || '');

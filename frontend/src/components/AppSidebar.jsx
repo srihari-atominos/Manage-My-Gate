@@ -38,6 +38,7 @@ import { AppSidebarNav } from './AppSidebarNav'
 
 import { logo } from '../assets/brand/logo'
 import { sygnet } from '../assets/brand/sygnet'
+import nahomEmblem from '../assets/images/nahom_emblem.png'
 
 import { useAuth } from '../features/auth/hooks/useAuth'
 
@@ -52,7 +53,6 @@ const SUPER_ADMIN_PATHS = new Set([
   '/super-admin/issue-reports',
 ])
 const portalNav = navigation.filter((item) => !SUPER_ADMIN_PATHS.has(item.to))
-const superAdminNav = navigation.filter((item) => SUPER_ADMIN_PATHS.has(item.to))
 
 /**
  * AppSidebar functional component
@@ -181,7 +181,7 @@ const AppSidebar = () => {
   // Filtering walks the whole nav tree and runs permission checks; only redo it
   // when the inputs change, and keep a stable reference so AppSidebarNav can skip renders.
   const filteredNavigationItems = useMemo(() => {
-    const baseItems = isPlatform ? [...superAdminNav, ...portalNav] : portalNav
+    const baseItems = isPlatform ? navigation : portalNav
     return filterItems(baseItems)
   }, [allowedFeatures, workspaceModules, workspaceEnabledModules, isPlatform, currentUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -192,14 +192,31 @@ const AppSidebar = () => {
       position="fixed"
       unfoldable={unfoldable}
       visible={sidebarShow}
-      onVisibleChange={(visible) => {
-        dispatch({ type: 'set', sidebarShow: visible })
-      }}
     >
       <CSidebarHeader className="border-bottom">
-        <CSidebarBrand as={Link} to="/dashboard">
-          <CIcon customClassName="sidebar-brand-full" icon={logo} height={32} />
-          <CIcon customClassName="sidebar-brand-narrow" icon={sygnet} height={32} />
+        <CSidebarBrand
+          as={Link}
+          to="/dashboard"
+          className="d-flex align-items-center gap-2 text-decoration-none"
+          aria-label="NAHOM dashboard"
+        >
+          <img
+            src={nahomEmblem}
+            className="sidebar-brand-full"
+            style={{ height: '32px', objectFit: 'contain' }}
+            alt=""
+            aria-hidden="true"
+          />
+          <span className="app-sidebar-brand__wordmark" aria-hidden="true">
+            NAH<span>O</span>M
+          </span>
+          <img
+            src={nahomEmblem}
+            className="sidebar-brand-narrow"
+            style={{ height: '32px', objectFit: 'contain' }}
+            alt=""
+            aria-hidden="true"
+          />
         </CSidebarBrand>
         <CCloseButton
           className="d-lg-none"

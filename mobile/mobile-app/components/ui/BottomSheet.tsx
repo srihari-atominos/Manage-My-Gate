@@ -74,12 +74,13 @@ function BottomSheet({
         {/* Backdrop */}
         <Pressable 
           className="absolute inset-0 bg-black/60" 
+          style={{ zIndex: 1 }}
           onPress={handleClose} 
         />
         
         {/* Content Box */}
         <View
-          style={{ height: sheetMaxHeight, maxWidth: '100%' }}
+          style={{ height: sheetMaxHeight, maxWidth: '100%', zIndex: 10, elevation: 10 }}
           className="bg-card border-t border-border/80 rounded-t-3xl sm:rounded-3xl sm:border sm:mb-4 shadow-2xl overflow-hidden flex-col w-full max-w-md mx-auto"
         >
           {/* Top grab handle */}

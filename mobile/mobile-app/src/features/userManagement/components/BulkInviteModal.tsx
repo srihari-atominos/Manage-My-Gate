@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform, Alert, KeyboardAvoidingView, Pressable, useWindowDimensions } from 'react-native';
 import { X, Users, Upload, Plus, Trash2, CheckCircle2, AlertTriangle, FileSpreadsheet, Download, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system';
 
 let LegacyFileSystem: any = null;
@@ -15,40 +16,47 @@ try {
   }
 }
 import { TextInput } from '@/components/forms/TextInput';
+import { PhoneInput } from '@/components/forms/PhoneInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/common/Button';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { downloadCSVFile } from '@/src/utils/downloadHelper';
-import { validateEmail, parseBackendError } from '@/src/utils/validation';
+import { downloadCSVFile, downloadExcelFile } from '@/src/utils/downloadHelper';
+import { validateEmail, validatePhone, parseBackendError } from '@/src/utils/validation';
 import apiClient from '../../../services/apiClient';
-import { InviteUserData } from '../services/userService';
+import { InviteUserData, downloadBulkInviteTemplate } from '../services/userService';
 
 interface BulkInviteModalProps {
   visible: boolean;
   onClose: () => void;
   onBulkInvite: (invitations: InviteUserData[]) => Promise<any>;
+  orgId?: string;
 }
 
 interface InviteRowItem {
   id: string;
+  name?: string;
   email: string;
+  phone: string;
   roleName: string;
-  villaId: string;
-  residentType: string;
+  villaId?: string;
+  villaName?: string;
+  residentType?: string;
+  department?: string;
+  staffType?: string;
+  designation?: string;
+  staffCode?: string;
+
   isValid: boolean;
   error?: string;
 }
 
-const SAMPLE_CSV_CONTENT = `Email,Role,Villa,ResidentType
-resident.owner@example.com,Resident Owner,Villa 01,Owner
-resident.tenant@example.com,Resident Tenant,Villa 02,Tenant
-security.guard@example.com,Security Guard,,None`;
 
 export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   visible,
   onClose,
   onBulkInvite,
+  orgId,
 }) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isNarrowPhone = windowWidth < 390;
@@ -63,7 +71,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [successResults, setSuccessResults] = useState<any | null>(null);
 
-  // Fetch roles and villas when modal becomes visible
+  // Fetch roles when the modal becomes visible
   useEffect(() => {
     if (visible) {
       setErrorMsg('');
@@ -73,35 +81,59 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
 
       setLoadingOptions(true);
       Promise.all([
-        apiClient.get('/roles?limit=100').catch(() => ({ data: [] })),
-        apiClient.get('/villas?limit=1000').catch(() => ({ data: [] })),
-      ])
-        .then(([rolesRes, villasRes]: any[]) => {
+          apiClient.get('/roles?limit=100').catch(() => ({ data: { data: [] } })),
+          apiClient.get('/villas?limit=1000').catch(() => ({ data: { data: [] } }))
+        ]).then(([rolesRes, villasRes]: any) => {
           const fetchedRoles = rolesRes.data?.data || rolesRes.data || [];
-          const fetchedVillas = villasRes.data?.data || villasRes.data || [];
           const loadedRoles = Array.isArray(fetchedRoles) ? fetchedRoles : [];
-          const loadedVillas = Array.isArray(fetchedVillas) ? fetchedVillas : [];
           setRoles(loadedRoles);
+
+          const fetchedVillas = villasRes.data?.data || villasRes.data || [];
+          const loadedVillas = Array.isArray(fetchedVillas) ? fetchedVillas : [];
           setVillas(loadedVillas);
 
           const defaultRole = loadedRoles[0]?.name || '';
-          setRows([
-            {
-              id: String(Date.now()),
-              email: '',
-              roleName: defaultRole,
-              villaId: '',
-              residentType: 'None',
-              isValid: false,
-            },
-          ]);
-        })
-        .finally(() => setLoadingOptions(false));
+          setRows([{
+            id: String(Date.now()),
+            email: '',
+            phone: '',
+            roleName: defaultRole,
+            isValid: false,
+          }]);
+        }).finally(() => setLoadingOptions(false));
     }
   }, [visible]);
 
+  const isStaffRole = (roleName?: string) => {
+    if (!roleName) return false;
+    const lower = roleName.toLowerCase();
+    return (
+      lower.includes('staff') ||
+      lower.includes('vendor') ||
+      lower.includes('technician') ||
+      lower.includes('maintenance') ||
+      lower.includes('maid') ||
+      lower.includes('driver') ||
+      lower.includes('cook') ||
+      lower.includes('gardener') ||
+      lower.includes('electrician') ||
+      lower.includes('plumber') ||
+      lower.includes('carpenter') ||
+      lower.includes('cleaner') ||
+      lower.includes('housekeeping')
+    );
+  };
+
   // Validate a row item
-  const validateRow = (row: InviteRowItem, currentRoles = roles, allRows: InviteRowItem[] = rows): InviteRowItem => {
+  const validateRow = (row: InviteRowItem, currentRoles = roles, allRows: InviteRowItem[] = rows, currentVillas = villas): InviteRowItem => {
+    const selectedRoleObj = currentRoles.find((r) => r.name === row.roleName);
+    const isTenantRole = selectedRoleObj ? !!selectedRoleObj.isTenantRole : false;
+    const isStaff = isStaffRole(row.roleName);
+    
+    // For staff roles (Household Staff or Community Staff), unit is optional (assigned = unit household staff; unassigned = community facility staff)
+    if (isTenantRole && !isStaff && !row.villaId) {
+      return { ...row, isValid: false, error: 'Select a Unit for this role' };
+    }
     if (!row.email.trim()) {
       return { ...row, isValid: false, error: 'Email is required' };
     }
@@ -114,6 +146,12 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     );
     if (hasDuplicate) {
       return { ...row, isValid: false, error: 'Duplicate email in this list' };
+    }
+    if (!row.phone.trim()) {
+      return { ...row, isValid: false, error: 'Phone number is required' };
+    }
+    if (row.phone.trim().replace(/\D/g, '').length < 8) {
+      return { ...row, isValid: false, error: 'Enter a valid phone number' };
     }
     if (!row.roleName) {
       return { ...row, isValid: false, error: 'Role is required' };
@@ -128,33 +166,58 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     if (lines.length === 0) return;
 
+    // Columns are read by header so older files (without Phone) still parse; their rows show as invalid
+    const firstLine = lines[0].toLowerCase();
+    const hasHeader = firstLine.includes('email') || firstLine.includes('role');
+    const header = hasHeader
+      ? lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/\s+/g, ''))
+      : ['email', 'phone', 'role', 'villanumber'];
+    const col = (parts: string[], ...names: string[]) => {
+      const idx = header.findIndex((h) => names.some((n) => h === n || h.startsWith(n)));
+      return idx >= 0 ? (parts[idx] || '').trim() : '';
+    };
+
     const parsed: InviteRowItem[] = [];
     lines.forEach((line, index) => {
-      // Skip header row if present
-      if (index === 0 && (line.toLowerCase().includes('email') || line.toLowerCase().includes('role'))) return;
+      if (index === 0 && hasHeader) return;
 
       const parts = line.split(',').map((p) => p.trim());
-      const email = parts[0] || '';
-      const roleName = parts[1] || (roles[0]?.name || '');
-      const villaName = parts[2] || '';
-      const residentType = parts[3] || 'None';
-
-      const matchingVilla = villas.find(
-        (v) =>
-          String(v.unitNumber || v.villaNumber).toLowerCase() === villaName.toLowerCase() ||
-          String(v.unitNumber || v.villaNumber) === villaName.replace(/villa/i, '').trim()
-      );
+      const name = col(parts, 'name', 'fullname', 'full name');
+      const email = col(parts, 'email');
+      const phone = col(parts, 'phone', 'phonenumber');
+      const roleName = col(parts, 'role', 'rolename') || (roles[0]?.name || '');
+      const rawVillaName = col(parts, 'villanumber', 'villa', 'unitnumber', 'unit');
+      const department = col(parts, 'department', 'dept');
+      const staffType = col(parts, 'stafftype', 'type');
+      const designation = col(parts, 'designation', 'title');
+      const staffCode = col(parts, 'staffcode', 'code');
+      
+      let matchedVillaId = undefined;
+      const isNone = rawVillaName.trim().toLowerCase() === 'none' || !rawVillaName.trim();
+      if (rawVillaName && !isNone) {
+        const found = villas.find((v: any) => {
+          const formattedName = `Unit ${v.villaNumber || ''} (${v.blockOrBuilding || ''})`.trim().toLowerCase();
+          return formattedName === rawVillaName.toLowerCase() || v.villaNumber?.toLowerCase() === rawVillaName.toLowerCase();
+        });
+        if (found) matchedVillaId = found._id || found.id;
+      }
 
       const row: InviteRowItem = {
         id: String(Date.now() + index),
+        name: name || undefined,
         email,
+        phone,
         roleName,
-        villaId: matchingVilla?._id || matchingVilla?.id || '',
-        residentType,
+        villaName: rawVillaName,
+        villaId: matchedVillaId,
+        department: department || undefined,
+        staffType: staffType || undefined,
+        designation: designation || undefined,
+        staffCode: staffCode || undefined,
         isValid: false,
       };
 
-      parsed.push(validateRow(row));
+      parsed.push(validateRow(row, roles, parsed, villas));
     });
 
     if (parsed.length > 0) {
@@ -179,21 +242,43 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
         const asset = result.assets[0];
         setSelectedFileName(asset.name);
 
-        let text = '';
-        if (Platform.OS === 'web' && (asset as any).file) {
-          text = await (asset as any).file.text();
-        } else if (asset.uri) {
+        
+        if (asset.name.toLowerCase().endsWith('.xlsx')) {
           const fs = LegacyFileSystem || FileSystem;
-          if (fs.readAsStringAsync) {
-            text = await fs.readAsStringAsync(asset.uri);
+          let b64 = '';
+          if (Platform.OS === 'web' && (asset as any).file) {
+            const buffer = await (asset as any).file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const csvText = XLSX.utils.sheet_to_csv(sheet);
+            parseCSVText(csvText);
+          } else if (asset.uri) {
+            if (fs.readAsStringAsync) {
+              b64 = await fs.readAsStringAsync(asset.uri, { encoding: fs.EncodingType?.Base64 || 'base64' });
+              const workbook = XLSX.read(b64, { type: 'base64' });
+              const sheet = workbook.Sheets[workbook.SheetNames[0]];
+              const csvText = XLSX.utils.sheet_to_csv(sheet);
+              parseCSVText(csvText);
+            }
+          }
+        } else {
+          let text = '';
+          if (Platform.OS === 'web' && (asset as any).file) {
+            text = await (asset as any).file.text();
+          } else if (asset.uri) {
+            const fs = LegacyFileSystem || FileSystem;
+            if (fs.readAsStringAsync) {
+              text = await fs.readAsStringAsync(asset.uri);
+            }
+          }
+  
+          if (text) {
+            parseCSVText(text);
+          } else {
+            setErrorMsg('Could not read text content from selected file.');
           }
         }
 
-        if (text) {
-          parseCSVText(text);
-        } else {
-          setErrorMsg('Could not read text content from selected file.');
-        }
       }
     } catch (err: any) {
       console.error('Document picker error:', err);
@@ -201,9 +286,16 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     }
   };
 
-  // Trigger Download / Share Sample CSV
+  // Trigger Download / Share Sample Excel Template
   const handleDownloadSample = async () => {
-    await downloadCSVFile(SAMPLE_CSV_CONTENT, 'bulk_invite_users_template.csv');
+    try {
+      const blob = await downloadBulkInviteTemplate(orgId);
+      await downloadExcelFile(blob, 'bulk_invite_users_template.xlsx');
+    } catch (err) {
+      console.error('Failed to download template:', err);
+      // Alert.alert is already imported from react-native
+      Alert.alert('Download Error', 'Could not download the Excel template.');
+    }
   };
 
   // Add new empty row for manual tab
@@ -211,10 +303,10 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     const defaultRole = roles[0]?.name || '';
     const newRow: InviteRowItem = {
       id: String(Date.now() + Math.random()),
+      name: '',
       email: '',
+      phone: '',
       roleName: defaultRole,
-      villaId: '',
-      residentType: 'None',
       isValid: false,
     };
     setRows((prev) => [...prev, newRow]);
@@ -232,19 +324,6 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       prev.map((item) => {
         if (item.id === id) {
           const updated = { ...item, [field]: value };
-          if (field === 'roleName') {
-            const roleObj = roles.find((r) => r.name === value);
-            if (roleObj?.isTenantRole) {
-              const lower = value.toLowerCase();
-              if (lower.includes('owner')) updated.residentType = 'Owner';
-              else if (lower.includes('tenant')) updated.residentType = 'Tenant';
-              else if (lower.includes('family')) updated.residentType = 'Family';
-              else updated.residentType = 'Owner';
-            } else {
-              updated.residentType = 'None';
-              updated.villaId = '';
-            }
-          }
           return validateRow(updated);
         }
         return item;
@@ -259,7 +338,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
 
     const validRows = validatedRows.filter((r) => r.isValid);
     if (validRows.length === 0) {
-      setErrorMsg('No valid invitation entries found. Please enter email and select role.');
+      setErrorMsg('No valid invitation entries found. Each row needs an email, a phone number and a role.');
       return;
     }
 
@@ -267,12 +346,26 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     setSubmitting(true);
 
     try {
-      const payload: InviteUserData[] = validRows.map((r) => ({
-        email: r.email.trim(),
-        roleName: r.roleName || null,
-        villaId: r.villaId || null,
-        residentType: r.residentType || 'None',
-      }));
+      const payload: InviteUserData[] = validRows.map((r) => {
+        const isStaff = isStaffRole(r.roleName);
+        return {
+          email: r.email.trim(),
+          name: r.name ? r.name.trim() : undefined,
+          phone: r.phone.trim(),
+          roleName: r.roleName || null,
+          villaId: r.villaId || null,
+          residentType: r.residentType || (r.roleName?.toLowerCase().includes('tenant') ? 'Tenant' : 'Primary'),
+          staffData: isStaff
+            ? {
+                isStaff: true,
+                department: r.department || 'Others',
+                staffType: r.staffType || 'In-House Staff',
+                designation: r.designation || r.roleName,
+                staffCode: r.staffCode || undefined,
+              }
+            : undefined,
+        };
+      });
 
       const res = await onBulkInvite(payload);
       setSuccessResults(res || { invitedCount: payload.length });
@@ -289,10 +382,6 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     value: r.name,
   }));
 
-  const villaOptions = villas.map((v) => ({
-    label: `Unit ${v.unitNumber || v.villaNumber} ${v.blockOrBuilding ? `(${v.blockOrBuilding})` : ''}`,
-    value: v._id || v.id,
-  }));
 
   const validCount = rows.filter((r) => r.isValid).length;
 
@@ -329,11 +418,29 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                 <CheckCircle2 size={32} color="#10b981" />
               </View>
               <Text className="text-base font-bold text-foreground mb-1 text-center">
-                Bulk Invitations Processed!
+                Bulk Invitations Processed
               </Text>
-              <Text className="text-xs text-muted-foreground text-center mb-4 px-4">
-                Successfully dispatched invitation tokens for {validCount} user(s).
-              </Text>
+              {(() => {
+                // Server reports each row: invited, or not invited with the reason
+                const result = successResults?.data || successResults || {};
+                const sent = result.successCount ?? result.successes?.length ?? validCount;
+                const failures: any[] = Array.isArray(result.failures) ? result.failures : [];
+                return (
+                  <View className="w-full px-2 mb-4 gap-2">
+                    <Text testID="bulk-invite-sent-count" className="text-xs text-muted-foreground text-center">
+                      {`${sent} invitation(s) sent${failures.length ? `, ${failures.length} not sent` : ''}.`}
+                    </Text>
+                    {failures.map((f, i) => (
+                      <View key={`${f.row ?? i}-${f.email}`} className="p-2.5 bg-destructive/5 border border-destructive/20 rounded-xl">
+                        <Text className="text-xs font-semibold text-foreground">
+                          {f.row ? `Row ${f.row}: ` : ''}{f.email}
+                        </Text>
+                        <Text className="text-[11px] text-destructive">{f.error}</Text>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
               <Button variant="default" size="sm" onPress={onClose}>
                 Done & Close
               </Button>
@@ -378,7 +485,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                 {loadingOptions ? (
                   <View className="py-8 items-center justify-center">
                     <ActivityIndicator size="small" color="#6366f1" />
-                    <Text className="text-xs text-muted-foreground mt-2">Loading roles & villa units...</Text>
+                    <Text className="text-xs text-muted-foreground mt-2">Loading roles...</Text>
                   </View>
                 ) : activeTab === 'upload' ? (
                   /* Upload CSV File Tab */
@@ -432,6 +539,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                     {rows.map((row, index) => {
                       const selectedRoleObj = roles.find((r) => r.name === row.roleName);
                       const isTenantRole = selectedRoleObj ? !!selectedRoleObj.isTenantRole : false;
+                      const isStaff = isStaffRole(row.roleName);
 
                       return (
                         <View
@@ -460,6 +568,17 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                             )}
                           </View>
 
+                          {/* Full Name Field */}
+                          <View className="mb-2.5">
+                            <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Full Name</Text>
+                            <TextInput
+                              placeholder="e.g. John Doe"
+                              value={row.name || ''}
+                              onChangeText={(val) => handleRowChange(row.id, 'name', val)}
+                              autoCapitalize="words"
+                            />
+                          </View>
+
                           {/* Email Field */}
                           <View className="mb-2.5">
                             <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Email Address *</Text>
@@ -472,30 +591,60 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                             />
                           </View>
 
+                          {/* Phone Field */}
+                          <View className="mb-2.5">
+                            <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Phone Number *</Text>
+                            <TextInput
+                              placeholder="+1234567890"
+                              value={row.phone}
+                              onChangeText={(val) => handleRowChange(row.id, 'phone', val)}
+                              keyboardType="phone-pad"
+                            />
+                          </View>
+
                           {/* Role Selection */}
                           <View className="mb-2.5">
                             <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Assigned Role *</Text>
                             <DropdownSelect
                               options={roleOptions}
-                              value={row.roleName}
+                              value={row.roleName || null}
                               onValueChange={(val) => handleRowChange(row.id, 'roleName', val)}
                               placeholder="-- Select Role --"
                             />
                           </View>
 
-                          {/* Unit Selection if Tenant/Unit role */}
-                          {isTenantRole && (
-                            <View className="mb-1">
-                              <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Villa Unit (Optional)</Text>
+                          {isTenantRole || isStaff ? (
+                            <View className="mb-2.5">
+                              <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">
+                                {isStaff ? 'Assigned Unit (Optional for Staff)' : 'Unit Number *'}
+                              </Text>
                               <DropdownSelect
-                                options={villaOptions}
-                                value={row.villaId}
+                                options={[
+                                  { label: 'None (Unassigned / Community)', value: '' },
+                                  ...villas.map((v) => ({
+                                    label: v.unitNumber ? `${v.unitNumber}${v.blockOrBuilding ? ` (${v.blockOrBuilding})` : ''}` : (v.villaNumber || 'Unit'),
+                                    value: v._id || v.id,
+                                  })),
+                                ]}
+                                value={row.villaId || null}
                                 onValueChange={(val) => handleRowChange(row.id, 'villaId', val)}
-                                placeholder="-- Choose Villa Unit (Optional) --"
+                                placeholder="-- Select Unit Number --"
                               />
+                              {isStaff && (
+                                <Text className="text-[10px] text-primary/80 mt-1 text-start">
+                                  Configures unit-specific household staff or community-wide access. Automatically synced to Staff Management.
+                                </Text>
+                              )}
+                            </View>
+                          ) : (
+                            <View className="mb-2.5 p-2.5 bg-muted/20 border border-border/60 rounded-xl">
+                              <Text className="text-[11px] text-muted-foreground text-start">
+                                Unit Number: <Text className="font-semibold text-foreground">Not Required (Global Role)</Text>
+                              </Text>
                             </View>
                           )}
-                        </View>
+
+                          </View>
                       );
                     })}
 

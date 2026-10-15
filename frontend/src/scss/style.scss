@@ -1,24 +1,141 @@
-@use "@coreui/coreui/scss/coreui" as * with ( 
-  $enable-deprecation-messages: false,
+@use '@coreui/coreui/scss/coreui' as * with (
+  $enable-deprecation-messages: false
 );
-@use "@coreui/chartjs/scss/coreui-chartjs";
-@use "vendors/simplebar";
-@use "loader";
-@use "../features/userManagement/styles/userManagement";
-@use "../features/integrationHub/styles/integrationHub";
-@use "../features/villa/styles/villa";
-@use "../features/billing/styles/billing";
-@use "../features/assessment/styles/assessment";
+@use '@coreui/chartjs/scss/coreui-chartjs';
+@use 'vendors/simplebar';
+@use 'loader';
+@use 'dashboard';
+@use 'app-shell';
+@use '../features/userManagement/styles/userManagement';
+@use '../features/integrationHub/styles/integrationHub';
+@use '../features/villa/styles/villa';
+@use '../features/billing/styles/billing';
+@use '../features/assessment/styles/assessment';
 
 body {
   background-color: var(--cui-tertiary-bg);
+}
+
+:root,
+[data-coreui-theme='light'] {
+  --nahom-font-sans:
+    'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  --nahom-primary: #c2410c;
+  --nahom-primary-hover: #a8370a;
+  --nahom-primary-tint: #fdeee6;
+  --nahom-primary-rgb: 194, 65, 12;
+  --nahom-on-primary: #ffffff;
+  --nahom-on-media: #ffffff;
+  --nahom-accent: #1e2a4a;
+  --nahom-accent-rgb: 30, 42, 74;
+  --nahom-on-accent: #ffffff;
+  --nahom-sidebar-bg: #1b2232;
+  --nahom-sidebar-foreground: #c5ccdb;
+  --nahom-sidebar-hover: #262f44;
+  --nahom-sidebar-label: #7c879f;
+  --nahom-focus: #1e2a4a;
+  --nahom-villa-gradient-start: #172b70;
+  --nahom-villa-gradient-end: #c2410c;
+  --nahom-surface: #ffffff;
+  --nahom-surface-muted: #f5f6fa;
+  --nahom-text: #1e2a4a;
+  --nahom-text-muted: #5b6680;
+  --nahom-border: #e4e8f0;
+  --nahom-success: #1d6b3a;
+  --nahom-success-rgb: 29, 107, 58;
+  --nahom-warning: #5c3d00;
+  --nahom-warning-rgb: 92, 61, 0;
+  --nahom-warning-bg: #fff6e5;
+  --nahom-warning-border: #f3d8a0;
+  --nahom-error: #b42318;
+  --nahom-error-rgb: 180, 35, 24;
+  --nahom-info: #1d4ed8;
+  --nahom-info-rgb: 29, 78, 216;
+  --nahom-space-1: 0.25rem;
+  --nahom-space-2: 0.5rem;
+  --nahom-space-3: 0.75rem;
+  --nahom-space-4: 1rem;
+  --nahom-space-5: 1.25rem;
+  --nahom-space-6: 1.5rem;
+  --nahom-space-8: 2rem;
+  --nahom-radius-sm: 0.5625rem;
+  --nahom-radius-md: 0.875rem;
+  --nahom-control-height: 2.5rem;
+  --nahom-control-height-sm: 2rem;
+  --nahom-control-height-lg: 3rem;
+  --nahom-section-header-height: 3.5rem;
+  --nahom-font-xs: 0.75rem;
+  --nahom-font-sm: 0.875rem;
+  --nahom-font-base: 1rem;
+  --nahom-font-lg: 1.25rem;
+  --nahom-font-xl: 1.5rem;
+  --nahom-font-2xl: 2rem;
+  --nahom-font-stat: 2.375rem;
+  --nahom-transition: 150ms;
+  --nahom-shadow-sm: 0 1px 2px rgba(23, 32, 51, 0.06), 0 1px 3px rgba(23, 32, 51, 0.04);
+  --nahom-shadow-md: 0 12px 28px rgba(23, 32, 51, 0.1);
+  --cui-font-sans-serif: var(--nahom-font-sans);
+  --cui-primary: var(--nahom-primary);
+  --cui-primary-rgb: var(--nahom-primary-rgb);
+  --cui-primary-hover: var(--nahom-primary-hover);
+  --cui-body-bg: var(--nahom-surface-muted);
+  --cui-tertiary-bg: var(--nahom-surface-muted);
+  --cui-card-bg: var(--nahom-surface);
+  --cui-body-color: var(--nahom-text);
+  --cui-header-bg: var(--nahom-surface);
+  --cui-border-color: var(--nahom-border);
+}
+
+[data-coreui-theme='dark'] {
+  --nahom-primary: #fb923c;
+  --nahom-primary-hover: #fdba74;
+  --nahom-primary-rgb: 251, 146, 60;
+  --nahom-on-primary: #0a1220;
+  --nahom-accent: #a5b4fc;
+  --nahom-accent-rgb: 165, 180, 252;
+  --nahom-on-accent: #0a1220;
+  --nahom-sidebar-bg: #111827;
+  --nahom-sidebar-foreground: #d6deeb;
+  --nahom-sidebar-hover: #263752;
+  --nahom-sidebar-label: #9ba9bf;
+  --nahom-focus: #a5b4fc;
+  --nahom-villa-gradient-start: #172b70;
+  --nahom-villa-gradient-end: #c2410c;
+  --nahom-surface: #111d35;
+  --nahom-surface-muted: #0a1220;
+  --nahom-text: #f8fafc;
+  --nahom-text-muted: #b8c4d6;
+  --nahom-border: #263752;
+  --nahom-success: #4ade80;
+  --nahom-success-rgb: 74, 222, 128;
+  --nahom-warning: #fcd34d;
+  --nahom-warning-rgb: 252, 211, 77;
+  --nahom-warning-bg: #3d2c05;
+  --nahom-warning-border: #7b5b16;
+  --nahom-error: #fda4af;
+  --nahom-error-rgb: 253, 164, 175;
+  --nahom-info: #93c5fd;
+  --nahom-info-rgb: 147, 197, 253;
+  --nahom-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.16);
+  --nahom-shadow-md: 0 12px 28px rgba(0, 0, 0, 0.28);
+  --cui-primary: var(--nahom-primary);
+  --cui-primary-rgb: var(--nahom-primary-rgb);
+  --cui-primary-hover: var(--nahom-primary-hover);
+  --cui-body-bg: var(--nahom-surface-muted);
+  --cui-dark-bg-subtle: var(--nahom-surface-muted);
+  --cui-tertiary-bg: var(--nahom-surface-muted);
+  --cui-card-bg: var(--nahom-surface);
+  --cui-body-color: var(--nahom-text);
+  --cui-header-bg: var(--nahom-surface-muted);
+  --cui-border-color: var(--nahom-border);
 }
 
 .wrapper {
   width: 100%;
   padding-inline: var(--cui-sidebar-occupy-start, 0) var(--cui-sidebar-occupy-end, 0);
   will-change: auto;
-  @include transition(padding .15s);
+  @include transition(padding 0.15s);
 }
 
 .header > .container-fluid,
@@ -99,7 +216,7 @@ body {
 
 .datatable-page-item {
   cursor: pointer;
-  
+
   &.disabled {
     cursor: not-allowed;
   }
@@ -139,5 +256,3 @@ body {
   color: var(--cui-text-muted, #768192);
   background: transparent;
 }
-
-

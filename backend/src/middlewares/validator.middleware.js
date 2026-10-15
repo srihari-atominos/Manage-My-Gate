@@ -3,6 +3,20 @@ import HttpError from '../utils/httpError.utils.js';
 import fs from 'fs';
 import logger from '../utils/logger.utils.js';
 
+// Never write credentials, codes or tokens to logs
+const SENSITIVE_KEYS = /pass(word)?|code|otp|token|ticket|secret|credential/i;
+const redact = (value) => {
+  if (Array.isArray(value)) return value.map(redact);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, SENSITIVE_KEYS.test(k) ? '[REDACTED]' : redact(v)])
+    );
+  }
+  return value;
+};
+const redactErrors = (errors) =>
+  errors.map((e) => (SENSITIVE_KEYS.test(String(e.field || '')) ? { ...e, value: '[REDACTED]' } : e));
+
 /**
  * Middleware wrapper to run validation rules and catch errors.
  * @param {Array} validationRules - Array of express-validator chains
@@ -32,19 +46,21 @@ export const validate = (validationRules) => {
       value: err.value,
     }));
 
+    const safeBody = redact(req.body);
+    const safeErrors = redactErrors(extractedErrors);
     console.error('*** EXPRESS VALIDATOR ERROR ***');
-    console.error('Req Body:', JSON.stringify(req.body, null, 2));
-    console.error('Errors:', JSON.stringify(extractedErrors, null, 2));
+    console.error('Req Body:', JSON.stringify(safeBody, null, 2));
+    console.error('Errors:', JSON.stringify(safeErrors, null, 2));
     console.error('*********************************');
 
     try {
-      fs.appendFileSync('validation_errors.log', new Date().toISOString() + '\\nReq Body: ' + JSON.stringify(req.body) + '\\nErrors: ' + JSON.stringify(extractedErrors, null, 2) + '\\n\\n');
+      fs.appendFileSync('validation_errors.log', new Date().toISOString() + '\\nReq Body: ' + JSON.stringify(safeBody) + '\\nErrors: ' + JSON.stringify(safeErrors, null, 2) + '\\n\\n');
     } catch(e) {}
-    
-    logger.error('Validation errors: ' + JSON.stringify(extractedErrors, null, 2));
+
+    logger.error('Validation errors: ' + JSON.stringify(safeErrors, null, 2));
 
     // 4. Pass error to global error handler
-    next(new HttpError(400, 'Validation failed. Please correct the invalid fields.', extractedErrors));
+    next(new HttpError(400, 'Validation failed. Please correct the invalid fields.', safeErrors));
   };
 };
 

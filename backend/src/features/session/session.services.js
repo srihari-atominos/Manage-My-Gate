@@ -6,6 +6,9 @@ import crypto from 'crypto';
 import config from '../../config/config.js';
 import authEvents from '../auth/auth.events.js';
 
+/** How long a just-rotated refresh token is still honoured (concurrent refresh requests). */
+export const ROTATION_GRACE_SECONDS = 30;
+
 export class SessionService {
   /**
    * Creates a new session and generates a refresh token.
@@ -54,8 +57,12 @@ export class SessionService {
 
     const { id: userId, jti: plainToken } = payload;
 
-    // Find active sessions for this user
-    const sessions = await Session.find({ userId, status: 'Active' });
+    // Active sessions, plus ones rotated moments ago (two refreshes racing with the same token)
+    const graceStart = new Date(Date.now() - ROTATION_GRACE_SECONDS * 1000);
+    const sessions = await Session.find({
+      userId,
+      $or: [{ status: 'Active' }, { status: 'Rotated', rotatedAt: { $gte: graceStart } }],
+    });
 
     let validSession = null;
     for (const sessionDoc of sessions) {
@@ -67,6 +74,23 @@ export class SessionService {
     }
 
     if (!validSession) {
+      // Check for token reuse / replay: if token matches a revoked or previously rotated session,
+      // revoke all sessions for this user as mandated by OWASP / OAuth 2.0 Security BCP.
+      const invalidSessions = await Session.find({
+        userId,
+        $or: [
+          { status: 'Revoked' },
+          { status: 'Rotated', rotatedAt: { $lt: graceStart } },
+        ],
+      });
+      for (const invDoc of invalidSessions) {
+        const isMatch = await comparePassword(plainToken, invDoc.refreshToken);
+        if (isMatch) {
+          await this.revokeAllUserSessions(userId);
+          authEvents.emit('REFRESH_TOKEN_REUSE_DETECTED', { userId, compromisedSessionId: invDoc._id });
+          throw new HttpError(401, 'Token reuse detected. All sessions revoked for security.');
+        }
+      }
       throw new HttpError(401, 'Session not found or revoked');
     }
 
@@ -78,12 +102,23 @@ export class SessionService {
   }
 
   /**
-   * Rotates the refresh token (revokes current, creates new).
+   * Rotates the refresh token: the current session is marked Rotated (still accepted
+   * for a few seconds so a concurrent refresh doesn't log the user out) and a new
+   * session with the same device details is created.
+   * @returns {Promise<string|null>} the new refresh token, or null if another request already rotated it
    */
-  async rotateToken(sessionId, userId, deviceInfo) {
-    await Session.updateOne({ _id: sessionId }, { status: 'Revoked' });
-    authEvents.emit('SESSION_REVOKED', { userId, sessionId });
-    return await this.createSession(userId, deviceInfo);
+  async rotateToken(sessionDoc) {
+    const marked = await Session.updateOne(
+      { _id: sessionDoc._id, status: 'Active' },
+      { status: 'Rotated', rotatedAt: new Date() }
+    );
+    if (marked.modifiedCount === 0) return null;
+    return await this.createSession(sessionDoc.userId, {
+      deviceName: sessionDoc.deviceName,
+      browser: sessionDoc.browser,
+      os: sessionDoc.os,
+      ipAddress: sessionDoc.ipAddress,
+    });
   }
 
   /**

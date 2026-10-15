@@ -131,7 +131,7 @@ export const VillaFormModal: React.FC<VillaFormModalProps> = ({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={isEditing ? 'Edit Unit Details' : 'Create New Unit'}>
-      <View className="space-y-3.5 py-2">
+      <View className="gap-3.5 py-2 pb-6">
         {generalError && (
           <View className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl mb-2">
             <Text className="text-xs font-semibold text-destructive">{generalError}</Text>
