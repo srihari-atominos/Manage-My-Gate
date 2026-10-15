@@ -10,6 +10,8 @@ yarn-error.log*
 !.env.example
 *.env
 .build
+*-firebase-adminsdk-*.json
+*service-account*.json
 
 
 # Build Outputs
