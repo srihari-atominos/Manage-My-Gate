@@ -1,5 +1,6 @@
 import logger from '../../utils/logger.utils.js';
 import deviceTokenService from '../deviceToken/deviceToken.services.js';
+import { buildPushCopy } from './notification.pushCopy.js';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const CHUNK_SIZE = 100;
@@ -109,6 +110,7 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
     const { title, body, actionUrl = null, type = 'INFO', sound = 'default', data = {} } = notificationPayload;
     const resolvedChannel = resolveAndroidChannel(notificationPayload);
     const resolvedType = resolveNotificationType(notificationPayload);
+    const pushCopy = buildPushCopy({ title, body, seed: data.notificationId }, resolvedType);
     const messages = [];
     const tokenRecordMap = new Map();
 
@@ -123,8 +125,10 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
       messages.push({
         to: token,
         sound,
-        title: title || 'Nahom Alert',
-        body: body || '',
+        title: pushCopy.title,
+        subtitle: pushCopy.subtitle,
+        body: pushCopy.body,
+        ...(pushCopy.ttl ? { ttl: pushCopy.ttl } : {}),
         data: {
           notificationId: data.notificationId || null,
           type: resolvedType,
@@ -134,6 +138,9 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
           actionUrl,
           orgId: data.orgId || null,
           createdAt: data.createdAt || new Date().toISOString(),
+          // Original in-app text, so client-side title matching keeps working
+          inboxTitle: title || null,
+          inboxBody: body || null,
           ...data,
         },
         channelId: resolvedChannel,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../features/auth/hooks/useAuth';
 import { getSocketBaseUrl } from '../services/apiClient';
@@ -7,6 +7,7 @@ import { getSocketBaseUrl } from '../services/apiClient';
 // Module-level singleton socket instance
 let sharedSocket: Socket | null = null;
 let lastLoggedErrorTime = 0;
+let appStateBound = false;
 
 export const useAppSocket = () => {
   const { isAuthenticated, user, token } = useAuth();
@@ -66,8 +67,11 @@ export const useAppSocket = () => {
       sharedSocket = io(socketUrl, {
         transports: ['websocket', 'polling'],
         timeout: 10000,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 5000,
+        // Keep trying for as long as the user is signed in; a phone that loses signal for a minute
+        // must still get live updates again afterwards instead of giving up after a few attempts.
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 30000,
         auth: {
           token: token,
         },
@@ -92,6 +96,16 @@ export const useAppSocket = () => {
           lastLoggedErrorTime = now;
         }
       });
+
+      // Mobile OSes suspend sockets in the background: reconnect as soon as the app is used again.
+      if (!appStateBound) {
+        appStateBound = true;
+        AppState.addEventListener('change', (state) => {
+          if (state === 'active' && sharedSocket && !sharedSocket.connected) {
+            sharedSocket.connect();
+          }
+        });
+      }
 
       sharedSocket.on('disconnect', (reason) => {
         if (reason !== 'io client disconnect') {

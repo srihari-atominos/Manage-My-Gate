@@ -15,6 +15,7 @@ import { createTechnician, updateTechnician } from '../store/complaintSlice';
 import { fetchUsersAsync } from '../../userManagement/store/userSlice';
 import toast from 'react-hot-toast';
 import '../styles/_complaints.scss';
+import { STAFF_CATEGORY_OPTIONS, staffCategoryOf } from '../staffCategories';
 
 const selectClassName =
   'w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-black outline-none focus:border-primary dark:border-strokedark dark:bg-form-input dark:text-white';
@@ -28,6 +29,8 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
     phone: '',
     department: 'Electrical',
     type: 'In-House Staff',
+    staffCategory: 'COMMUNITY',
+    communityOnly: false,
     status: 'Pending',
     whatsappEnabled: true,
   });
@@ -41,6 +44,8 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
           phone: technician.phone || '',
           department: technician.department || 'Electrical',
           type: technician.type || 'In-House Staff',
+          staffCategory: staffCategoryOf(technician),
+          communityOnly: !!technician.communityOnly,
           status: technician.status || 'Pending',
           whatsappEnabled:
             technician.whatsappEnabled !== undefined
@@ -54,6 +59,8 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
           phone: '',
           department: 'Electrical',
           type: 'In-House Staff',
+          staffCategory: 'COMMUNITY',
+          communityOnly: false,
           status: 'Pending',
           whatsappEnabled: true,
         });
@@ -186,6 +193,44 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
               <option value="In-House Staff">In-House Staff</option>
               <option value="External Vendor">External Vendor</option>
             </select>
+          </div>
+
+          {/* Staff Category */}
+          <div className="space-y-2">
+            <Label>Staff Category</Label>
+            {STAFF_CATEGORY_OPTIONS.map((option) => (
+              <label key={option.value} className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="staffCategory"
+                  value={option.value}
+                  checked={formData.staffCategory === option.value}
+                  onChange={handleChange}
+                  className="mt-1 cursor-pointer"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-black dark:text-white">{option.label}</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">{option.description}</span>
+                </span>
+              </label>
+            ))}
+            {formData.staffCategory === 'COMMUNITY' && (
+              <label className="flex items-center gap-2 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  role="switch"
+                  name="communityOnly"
+                  checked={formData.communityOnly}
+                  onChange={handleChange}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm text-black dark:text-white">
+                  {formData.communityOnly
+                    ? 'Community only: residents cannot assign this staff member to their units'
+                    : 'Community & residents: also available for residents to assign to their units'}
+                </span>
+              </label>
+            )}
           </div>
 
           {/* Status */}

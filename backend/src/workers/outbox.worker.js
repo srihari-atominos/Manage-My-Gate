@@ -144,6 +144,8 @@ async function processEvent(event) {
     await outboxService.processEvent(event);
   } else if (event.eventType === 'STAFF_GATE_ENTRY') {
     await staffNotificationService.processStaffEntryEvent(event.payload);
+  } else if (event.eventType === 'STAFF_GATE_EXIT') {
+    await staffNotificationService.processStaffExitEvent(event.payload);
   } else {
     throw new Error(`Unknown event type: ${event.eventType}`);
   }
@@ -230,7 +232,10 @@ export function init() {
   let isProcessing = false;
 
   // Run startup reconciliation of un-enqueued staff gate entries
-  staffNotificationService.reconcileMissingStaffEntryEvents().catch((err) => {
+  Promise.all([
+    staffNotificationService.reconcileMissingStaffEntryEvents(),
+    staffNotificationService.reconcileMissingStaffExitEvents(),
+  ]).catch((err) => {
     logger.warn(`[Outbox Worker] Startup reconciliation warning: ${err.message}`);
   });
 
@@ -243,6 +248,7 @@ export function init() {
     isReconciling = true;
     try {
       await staffNotificationService.reconcileMissingStaffEntryEvents();
+      await staffNotificationService.reconcileMissingStaffExitEvents();
     } catch (err) {
       logger.warn(`[Outbox Worker] Periodic reconciliation warning: ${err.message}`);
     } finally {

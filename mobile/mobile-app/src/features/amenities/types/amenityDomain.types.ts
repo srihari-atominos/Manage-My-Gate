@@ -279,6 +279,8 @@ export interface AmenityCancellationPreview {
   refund: { percentage: number; bookingRefund: number; depositRefund: number; total: number; reason?: string | null };
   refundTo: 'WALLET' | null;
   policy: { isAllowed?: boolean; refundCutoffHours?: number; refundPercentage?: number } | null;
+  /** Whether the resident may move this booking to another time (and why not). */
+  reschedule?: { allowed: boolean; blockReason: string | null };
 }
 
 /** Gate check-out: the closed pass, the completed booking and how the deposit was settled. */

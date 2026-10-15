@@ -348,7 +348,7 @@ export class OrganizationService {
 
       // Create Community Staff Role (Global)
       const communityStaffRole = await roleService.createRole(
-        { name: 'Community Staff', description: 'Community-wide facility and maintenance staff.', orgId: newOrg._id, isTenantRole: false, roleScope: 'STAFF' },
+        { name: 'Community Staff', description: 'Community Staff (Global Staff): community complaints, maintenance, gate pass and attendance.', orgId: newOrg._id, isTenantRole: false, roleScope: 'COMMUNITY_STAFF' },
         session
       );
       const communityStaffPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Community Staff'] || []);
@@ -356,7 +356,7 @@ export class OrganizationService {
 
       // Create Household Staff Role (Unit-Scoped)
       const householdStaffRole = await roleService.createRole(
-        { name: 'Household Staff', description: 'Dedicated household staff configured for residential units.', orgId: newOrg._id, isTenantRole: true, roleScope: 'STAFF' },
+        { name: 'Household Staff', description: 'Unit Staff (Internal Staff): works only on units allocated by residents.', orgId: newOrg._id, isTenantRole: true, roleScope: 'STAFF' },
         session
       );
       const householdStaffPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Household Staff'] || []);

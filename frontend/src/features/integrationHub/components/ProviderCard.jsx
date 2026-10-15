@@ -23,6 +23,7 @@ export const ProviderCard = ({ provider, onClick }) => {
       case 'firebase':
         return '#FFCA28'
       case 'messageCentral':
+      case 'messagecentral':
         return '#1565C0'
       default:
         return 'var(--cui-primary, #4f46e5)'
@@ -30,7 +31,7 @@ export const ProviderCard = ({ provider, onClick }) => {
   }
 
   const getDefaultDescription = (provider) => {
-    if (provider.id === 'messageCentral') {
+    if (String(provider.id).toLowerCase() === 'messagecentral') {
       return 'Configure Message Central for SMS OTP and Transactional SMS.'
     }
     return `Connect to ${provider.name} Integration`

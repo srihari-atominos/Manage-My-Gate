@@ -2,7 +2,8 @@ import React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { StaffAttendanceRecord } from '../services/staffService';
+import { StaffAttendanceRecord, getDepartmentLabel } from '../services/staffService';
+import { StaffAvatar } from './StaffAvatar';
 import { Clock, LogIn, LogOut, ShieldAlert, User } from 'lucide-react-native';
 
 export interface StaffAttendanceCardProps {
@@ -50,9 +51,11 @@ export const StaffAttendanceCard: React.FC<StaffAttendanceCardProps> = ({
   compact = false,
   hideStaffHeader = false,
 }) => {
-  const staffObj = typeof record.technicianId === 'object' && record.technicianId ? record.technicianId : null;
+  const staffObj =
+    (record as any).technician ||
+    (typeof record.technicianId === 'object' && record.technicianId ? record.technicianId : null);
   const staffName = staffObj?.name || record.staffCode || 'Staff Member';
-  const staffDepartment = staffObj?.department || 'General';
+  const staffDepartment = getDepartmentLabel(staffObj) || 'General';
   const staffCode = record.staffCode || staffObj?.staffCode || '';
 
   const isOpen = record.status === 'Open';
@@ -64,8 +67,8 @@ export const StaffAttendanceCard: React.FC<StaffAttendanceCardProps> = ({
       {!hideStaffHeader ? (
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center flex-1 me-2">
-            <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center me-3">
-              <User size={18} className="text-primary" />
+            <View className="me-3">
+              <StaffAvatar name={staffName} photoUrl={staffObj?.photoUrl} size={40} square />
             </View>
             <View className="flex-1">
               <Text className="text-sm font-bold text-foreground" numberOfLines={1}>

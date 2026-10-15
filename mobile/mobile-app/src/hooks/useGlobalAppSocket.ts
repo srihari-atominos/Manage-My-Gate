@@ -4,13 +4,31 @@ import { AppDispatch, RootState } from '../store/store';
 import useAppSocket from './useAppSocket';
 import { updateTokenAndUser, switchWorkspaceContextThunk } from '../features/auth/store/authSlice';
 import { fetchRolesAsync } from '../features/roleBuilder/store/roleSlice';
-import { fetchConnectionsAsync } from '../features/integrationHub/store/integrationHubSlice';
 import { fetchUsersThunk } from '../features/userManagement/store/userSlice';
-import { getPasses, fetchActiveVisitorsThunk } from '../features/visitor/store/visitorPassSlice';
+import { fetchConnectionsAsync } from '../features/integrationHub/store/integrationHubSlice';
+import {
+  getPasses,
+  fetchActiveVisitorsThunk,
+  walkInPendingReceived,
+  walkInResolvedReceived,
+  fetchPendingWalkIns,
+  fetchDashboardSummary,
+} from '../features/visitor/store/visitorPassSlice';
+import { mapBackendWalkInToApprovalItem } from '../features/visitor/utils/mapBackendWalkInToApprovalItem';
 import { fetchMyDues, fetchInvoicesGrid } from '../features/billing/store/billingSlice';
 import { fetchComplaints } from '../features/complaints/store/complaintSlice';
 import { fetchNotices } from '../features/noticeBoard/store/noticeBoardSlice';
 import { fetchActiveNotes } from '../features/directory/store/communityNoteSlice';
+import {
+  fetchStaffThunk,
+  fetchMyProfileThunk,
+  fetchAssociationsThunk,
+  fetchMyAllocationsThunk,
+  fetchEligibleStaffThunk,
+  fetchAttendanceStatsThunk,
+  fetchAttendanceHistoryThunk,
+  fetchMyAttendanceThunk,
+} from '../features/staff/store/staffSlice';
 import { getUserRoleName } from '../utils/rbac';
 
 /**
@@ -110,6 +128,40 @@ export const useGlobalAppSocket = () => {
       });
     };
 
+    const handleGateApprovalRequest = (log: any) => {
+      if (!log) return;
+      if (log.entryType && log.entryType !== 'WALK_IN') return;
+
+      console.log(`[useGlobalAppSocket] Received GATE_APPROVAL_REQUEST for log ${log._id}`);
+      const mappedItem = mapBackendWalkInToApprovalItem(log);
+      dispatch(walkInPendingReceived({ mappedItem, rawLog: log }));
+
+      // Also trigger a background refresh of dashboard summary and pending walk-ins
+      const u = currentUserRef.current;
+      const orgId = u?.orgId || u?.activeOrgId || log.orgId;
+      if (orgId) {
+        debounceDispatch('walkin_recovery', () => {
+          dispatch(fetchPendingWalkIns(orgId)).catch(() => {});
+          dispatch(fetchDashboardSummary(orgId)).catch(() => {});
+        }, 100);
+      }
+    };
+
+    const handleGateApprovalResolved = (log: any) => {
+      if (!log || !log._id) return;
+      console.log(`[useGlobalAppSocket] Received GATE_APPROVAL_RESOLVED for log ${log._id}`);
+      dispatch(walkInResolvedReceived({ id: log._id, rawLog: log }));
+
+      const u = currentUserRef.current;
+      const orgId = u?.orgId || u?.activeOrgId || log.orgId;
+      if (orgId) {
+        debounceDispatch('walkin_recovery', () => {
+          dispatch(fetchPendingWalkIns(orgId)).catch(() => {});
+          dispatch(fetchDashboardSummary(orgId)).catch(() => {});
+        }, 100);
+      }
+    };
+
     // 4. Billing & Dues Updates
     const handleBillingUpdate = () => {
       debounceDispatch('billing', () => {
@@ -152,6 +204,91 @@ export const useGlobalAppSocket = () => {
       });
     };
 
+    // 9. Staff Profile & Directory Updates
+    const handleStaffDirectoryUpdate = () => {
+      debounceDispatch('staff_directory', () => {
+        const u = currentUserRef.current;
+        const permissions: string[] = u?.permissions || [];
+        const userRole = getUserRoleName(u);
+        const isAdmin = userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'Community Admin';
+        const canViewStaff =
+          isAdmin ||
+          permissions.includes('*') ||
+          permissions.includes('staff:view') ||
+          permissions.includes('staff:manage') ||
+          permissions.includes('complaints:staff') ||
+          permissions.includes('complaints:assign') ||
+          permissions.includes('complaints:settings');
+        const canViewOwn =
+          isAdmin ||
+          permissions.includes('*') ||
+          permissions.includes('staff:view_own') ||
+          permissions.includes('staff:view') ||
+          permissions.includes('staff:manage');
+
+        if (canViewStaff) dispatch(fetchStaffThunk(undefined)).catch(() => {});
+        if (canViewOwn) dispatch(fetchMyProfileThunk()).catch(() => {});
+      });
+    };
+
+    // 10. Staff Household Allocations & Associations Updates
+    const handleStaffAssociationUpdate = () => {
+      debounceDispatch('staff_associations', () => {
+        const u = currentUserRef.current;
+        const permissions: string[] = u?.permissions || [];
+        const userRole = getUserRoleName(u);
+        const isAdmin = userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'Community Admin';
+        const canAssignOrManage =
+          isAdmin ||
+          permissions.includes('*') ||
+          permissions.includes('staff:assign_unit') ||
+          permissions.includes('staff:manage');
+        const canViewEligible =
+          canAssignOrManage ||
+          permissions.includes('staff:view');
+        const canViewAllocations =
+          isAdmin ||
+          permissions.includes('*') ||
+          permissions.includes('staff:view_own') ||
+          permissions.includes('staff:assign_unit') ||
+          permissions.includes('staff:manage');
+
+        if (canAssignOrManage) dispatch(fetchAssociationsThunk(undefined)).catch(() => {});
+        if (canViewAllocations) dispatch(fetchMyAllocationsThunk()).catch(() => {});
+        if (canViewEligible) dispatch(fetchEligibleStaffThunk()).catch(() => {});
+      });
+    };
+
+    // 11. Staff Attendance & Gate Logs Updates
+    const handleStaffAttendanceUpdate = () => {
+      debounceDispatch('staff_attendance', () => {
+        const u = currentUserRef.current;
+        const permissions: string[] = u?.permissions || [];
+        const userRole = getUserRoleName(u);
+        const isAdmin = userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'Community Admin';
+        const canViewAttendance =
+          isAdmin ||
+          permissions.includes('*') ||
+          permissions.includes('staff:attendance') ||
+          permissions.includes('staff:manage') ||
+          permissions.includes('staff:view');
+        const canViewMyAttendance =
+          isAdmin ||
+          permissions.includes('*') ||
+          permissions.includes('staff:view_own') ||
+          permissions.includes('staff:manage') ||
+          permissions.includes('staff:view');
+
+        if (canViewAttendance) {
+          dispatch(fetchAttendanceStatsThunk()).catch(() => {});
+          dispatch(fetchAttendanceHistoryThunk()).catch(() => {});
+        }
+        if (canViewMyAttendance) {
+          dispatch(fetchMyAttendanceThunk()).catch(() => {});
+        }
+      });
+    };
+
     // Attach Event Listeners
     socket.on('ROLE_UPDATED', handleRoleOrUserUpdate);
     socket.on('USER_UPDATED', handleRoleOrUserUpdate);
@@ -172,12 +309,36 @@ export const useGlobalAppSocket = () => {
     socket.on('VISITOR_PASS_UPDATED', handleVisitorUpdate);
     socket.on('VISITOR_CHECKED_IN', handleVisitorUpdate);
     socket.on('VISITOR_CHECKED_OUT', handleVisitorUpdate);
+    socket.on('GATE_APPROVAL_REQUEST', handleGateApprovalRequest);
+    socket.on('GATE_APPROVAL_RESOLVED', handleGateApprovalResolved);
 
     socket.on('BILLING_UPDATED', handleBillingUpdate);
     socket.on('INVOICE_CREATED', handleBillingUpdate);
 
+    // Complaint / Work Orders (both uppercase and backend lowercase canonical events)
     socket.on('COMPLAINT_UPDATED', handleComplaintUpdate);
     socket.on('COMPLAINT_CREATED', handleComplaintUpdate);
+    socket.on('complaint_created', handleComplaintUpdate);
+    socket.on('complaint_updated', handleComplaintUpdate);
+    socket.on('complaint_assigned', handleComplaintUpdate);
+    socket.on('complaint_started', handleComplaintUpdate);
+    socket.on('complaint_completed', handleComplaintUpdate);
+    socket.on('complaint_closed', handleComplaintUpdate);
+
+    // Staff Management, Allocations & Attendance
+    socket.on('staff:created', handleStaffDirectoryUpdate);
+    socket.on('staff:profile_updated', handleStaffDirectoryUpdate);
+    socket.on('staff:deleted', handleStaffDirectoryUpdate);
+
+    socket.on('staff:association_created', handleStaffAssociationUpdate);
+    socket.on('staff:association_accepted', handleStaffAssociationUpdate);
+    socket.on('staff:association_rejected', handleStaffAssociationUpdate);
+    socket.on('staff:association_removed', handleStaffAssociationUpdate);
+    socket.on('staff:unit_association_requested', handleStaffAssociationUpdate);
+
+    socket.on('staff:attendance_updated', handleStaffAttendanceUpdate);
+    socket.on('staff:entry', handleStaffAttendanceUpdate);
+    socket.on('staff:exit', handleStaffAttendanceUpdate);
 
     socket.on('NOTICE_CREATED', handleNoticeUpdate);
     socket.on('NOTICE_UPDATED', handleNoticeUpdate);
@@ -199,6 +360,12 @@ export const useGlobalAppSocket = () => {
         handleBillingUpdate();
       } else if (type === 'COMPLAINT') {
         handleComplaintUpdate();
+      } else if (type === 'STAFF' || type === 'STAFF_PROFILE') {
+        handleStaffDirectoryUpdate();
+      } else if (type === 'STAFF_ASSOCIATION' || type === 'STAFF_ALLOCATION') {
+        handleStaffAssociationUpdate();
+      } else if (type === 'STAFF_ATTENDANCE') {
+        handleStaffAttendanceUpdate();
       } else if (type === 'NOTICE') {
         handleNoticeUpdate();
       }
@@ -221,10 +388,29 @@ export const useGlobalAppSocket = () => {
       socket.off('VISITOR_PASS_UPDATED', handleVisitorUpdate);
       socket.off('VISITOR_CHECKED_IN', handleVisitorUpdate);
       socket.off('VISITOR_CHECKED_OUT', handleVisitorUpdate);
+      socket.off('GATE_APPROVAL_REQUEST', handleGateApprovalRequest);
+      socket.off('GATE_APPROVAL_RESOLVED', handleGateApprovalResolved);
       socket.off('BILLING_UPDATED', handleBillingUpdate);
       socket.off('INVOICE_CREATED', handleBillingUpdate);
       socket.off('COMPLAINT_UPDATED', handleComplaintUpdate);
       socket.off('COMPLAINT_CREATED', handleComplaintUpdate);
+      socket.off('complaint_created', handleComplaintUpdate);
+      socket.off('complaint_updated', handleComplaintUpdate);
+      socket.off('complaint_assigned', handleComplaintUpdate);
+      socket.off('complaint_started', handleComplaintUpdate);
+      socket.off('complaint_completed', handleComplaintUpdate);
+      socket.off('complaint_closed', handleComplaintUpdate);
+      socket.off('staff:created', handleStaffDirectoryUpdate);
+      socket.off('staff:profile_updated', handleStaffDirectoryUpdate);
+      socket.off('staff:deleted', handleStaffDirectoryUpdate);
+      socket.off('staff:association_created', handleStaffAssociationUpdate);
+      socket.off('staff:association_accepted', handleStaffAssociationUpdate);
+      socket.off('staff:association_rejected', handleStaffAssociationUpdate);
+      socket.off('staff:association_removed', handleStaffAssociationUpdate);
+      socket.off('staff:unit_association_requested', handleStaffAssociationUpdate);
+      socket.off('staff:attendance_updated', handleStaffAttendanceUpdate);
+      socket.off('staff:entry', handleStaffAttendanceUpdate);
+      socket.off('staff:exit', handleStaffAttendanceUpdate);
       socket.off('NOTICE_CREATED', handleNoticeUpdate);
       socket.off('NOTICE_UPDATED', handleNoticeUpdate);
       socket.off('COMMUNITY_NOTE_CREATED', handleCommunityNoteUpdate);

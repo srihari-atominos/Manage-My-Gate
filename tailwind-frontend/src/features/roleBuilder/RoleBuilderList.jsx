@@ -13,6 +13,7 @@ import ActionIconButton from 'src/components/common/ActionIconButton';
 import useRoles from './hooks/useRoles';
 import RoleFormModal from './components/RoleFormModal';
 import './styles/_roleBuilder.scss';
+import { getRoleScopeOption } from './roleScopes'
 
 const RoleBuilderList = () => {
   const {
@@ -44,30 +45,21 @@ const RoleBuilderList = () => {
         key: 'isTenantRole',
         label: 'Scope',
         render: (val, role) => {
-          const isStaff =
-            role?.roleScope === 'STAFF' ||
-            /staff|guard|technician|vendor|maintenance|maid|driver|cook|gardener|electrician|plumber|carpenter|cleaner|housekeeping/i.test(
+          const scope =
+            role?.roleScope ||
+            (/staff|guard|technician|vendor|maintenance|maid|driver|cook|gardener|electrician|plumber|carpenter|cleaner|housekeeping/i.test(
               role?.name || ''
-            );
-          if (isStaff) {
-            return (
-              <Badge
-                variant="lightWarning"
-                className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-              >
-                Staff (Dual Scope)
-              </Badge>
-            );
-          }
-          const isUnit = role?.roleScope === 'UNIT' || (!role?.roleScope && !!val);
+            )
+              ? 'STAFF'
+              : val
+                ? 'UNIT'
+                : 'GLOBAL')
+          const option = getRoleScopeOption(scope) || getRoleScopeOption('GLOBAL')
           return (
-            <Badge
-              variant={isUnit ? 'lightInfo' : 'lightPrimary'}
-              className="px-2.5 py-0.5 rounded-full text-xs font-medium"
-            >
-              {isUnit ? 'Unit Scope' : 'Global Scope'}
+            <Badge className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${option.badgeClass}`}>
+              {option.label}
             </Badge>
-          );
+          )
         },
       },
       {

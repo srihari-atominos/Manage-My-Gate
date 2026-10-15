@@ -120,6 +120,11 @@ const complaintSchema = new mongoose.Schema({
   workDone: { type: String },
   technicianRemarks: { type: String },
 
+  // Resident confirmation loop
+  reopenCount: { type: Number, default: 0 },
+  confirmationReminderSentAt: { type: Date, default: null },
+  autoClosed: { type: Boolean, default: false },
+
   // Metrics
   resolvedAt: { type: Date },
   completionDate: { type: Date },

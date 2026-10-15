@@ -533,7 +533,8 @@ export class UserService {
           phone: user.phone,
           status: user.status === 'Active' ? 'Active' : 'Pending',
           villaId: rootVillaId || villaId || null,
-          inviterId
+          inviterId,
+          allowReactivateDeleted: true,
         });
       }
 
@@ -605,15 +606,19 @@ export class UserService {
   async syncTechnicianForStaffUser(userId, orgId, roleNames = [], session = null, staffExtra = {}) {
     try {
       let isStaff = staffExtra.isStaff || roleNames.some(r => this.isStaffRole(r));
+      const { isStaffRoleScope, staffCategoryForRoleScope } = await import('../technician/staffCategory.utils.js');
+      // An explicit category from the caller wins; otherwise it follows the role's scope
+      // (Community Staff → COMMUNITY, Unit Staff → UNIT).
+      let staffCategory = staffExtra.staffCategory || null;
 
-      // Also check roleScope on role objects if not already marked as staff
-      if (!isStaff && roleNames.length > 0 && orgId) {
+      if (roleNames.length > 0 && orgId) {
         try {
           const roleService = (await import('../role/role.services.js')).default;
           for (const rName of roleNames) {
             const roleDoc = await roleService.getRoleByName(rName, orgId, session);
-            if (roleDoc && roleDoc.roleScope === 'STAFF') {
+            if (roleDoc && isStaffRoleScope(roleDoc.roleScope)) {
               isStaff = true;
+              staffCategory = staffCategory || staffCategoryForRoleScope(roleDoc.roleScope);
               break;
             }
           }
@@ -647,10 +652,13 @@ export class UserService {
         email: email || '',
         phone: phone || 'N/A',
         department: staffExtra.department || 'Others',
+        departmentOther: staffExtra.departmentOther || '',
         type: staffExtra.staffType || staffExtra.type || 'In-House Staff',
+        staffCategory,
         designation: staffExtra.designation || (roleNames[0] || 'Staff'),
         staffCode: staffExtra.staffCode || null,
-        status: status || 'Active'
+        status: status || 'Active',
+        allowReactivateDeleted: !!staffExtra.allowReactivateDeleted,
       }, session);
 
       // If unit is configured, link staff to unit via StaffUnitAssociation
@@ -721,9 +729,17 @@ export class UserService {
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       
       let newResidentType = null;
-      if (foundRoleNames.includes('Resident Owner')) newResidentType = 'Owner';
-      else if (foundRoleNames.includes('Resident Tenant')) newResidentType = 'Tenant';
-      else if (foundRoleNames.includes('Family Member')) newResidentType = 'Family';
+      if (foundRoleNames.includes('Resident Owner')) {
+        newResidentType = 'Owner';
+      } else if (foundRoleNames.includes('Resident Tenant')) {
+        newResidentType = 'Tenant';
+      } else if (foundRoleNames.includes('Family Member')) {
+        newResidentType = 'Family';
+      } else if (foundRoleNames.some(r => this.isStaffRole(r))) {
+        newResidentType = 'Household Staff';
+      } else if (foundRoleNames.length > 0) {
+        newResidentType = foundRoleNames[0];
+      }
 
       const updatedMembership = await orgMembershipService.updateMembershipRole(userId, orgId, roleIds, villaId, newResidentType, currentSession);
       if (!updatedMembership) {
@@ -1156,10 +1172,10 @@ export class UserService {
         // Check if role is a staff role or global community role
         const isStaff =
           this.isStaffRole(roleName) ||
-          (roleObj && roleObj.roleScope === 'STAFF') ||
+          (roleObj && (roleObj.roleScope === 'STAFF' || roleObj.roleScope === 'COMMUNITY_STAFF')) ||
           Boolean(invite.isStaff || invite.department || invite.designation);
         const isGlobalRole = roleObj
-          ? roleObj.roleScope === 'GLOBAL' || (!roleObj.isTenantRole && roleObj.roleScope !== 'STAFF')
+          ? roleObj.roleScope === 'GLOBAL' || roleObj.roleScope === 'COMMUNITY_STAFF' || (!roleObj.isTenantRole && roleObj.roleScope !== 'STAFF')
           : ['community admin', 'security guard', 'community staff'].includes((roleName || '').toLowerCase().trim());
 
         // If not a global role (or if it's a unit-scoped staff role) and not 'None', resolve villa / unit number if provided

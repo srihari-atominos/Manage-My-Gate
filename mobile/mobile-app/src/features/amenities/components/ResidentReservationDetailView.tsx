@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, ScrollView } from 'react-native';
-import { Calendar, Users, Clock, Building2, MapPin, AlertCircle, Ban } from 'lucide-react-native';
+import { Calendar, Users, Clock, Building2, MapPin, AlertCircle, Ban, CalendarClock } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -44,6 +44,8 @@ export interface ResidentReservationDetailViewProps {
   accessPasses: AmenityAccessPass[];
   onCancelPress?: () => void;
   isCancellable?: boolean;
+  /** Opens the "Change time" sheet. */
+  onReschedulePress?: () => void;
   /** Balance payment state/actions (from useReservationBalancePayment) */
   payment?: Omit<ReservationPaymentSectionProps, 'reservation'>;
   className?: string;
@@ -61,6 +63,7 @@ export function ResidentReservationDetailView({
   accessPasses,
   onCancelPress,
   isCancellable = false,
+  onReschedulePress,
   payment,
   className = '',
   testID = 'resident-reservation-detail-view',
@@ -305,7 +308,22 @@ export function ResidentReservationDetailView({
       </DetailSection>
 
 
-      {/* 6. Cancellation Action */}
+      {/* 6. Change time / Cancellation actions */}
+      {canCancel && onReschedulePress && ['CONFIRMED', 'PENDING_APPROVAL'].includes(reservation.bookingStatus) ? (
+        <View className="mt-2">
+          <Button
+            variant="outline"
+            onPress={onReschedulePress}
+            className="w-full flex-row items-center justify-center gap-2 py-3.5 rounded-2xl"
+            accessibilityRole="button"
+            accessibilityLabel="Change time"
+          >
+            <CalendarClock size={16} className="text-foreground" />
+            <Text className="font-bold text-sm text-foreground">Change time</Text>
+          </Button>
+        </View>
+      ) : null}
+
       {canCancel ? (
         <View className="mt-2">
           <Button

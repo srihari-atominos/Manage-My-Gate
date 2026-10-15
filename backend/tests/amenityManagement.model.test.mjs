@@ -465,12 +465,14 @@ describe('Amenity Management Phase 4A — Database Models Test Suite', () => {
       );
     });
 
-    it('AmenityReservationHold must have TTL index on expiresAt', () => {
+    it('AmenityReservationHold keeps expired holds for 30 days instead of deleting them the moment they expire', () => {
+      // Deleting at expiry (expireAfterSeconds: 0) would remove a hold before the sweep worker could
+      // release its quota and before a late gateway capture could be matched to it.
       const indexes = AmenityReservationHold.schema.indexes();
-      const ttlIndex = indexes.find(
-        ([fields, options]) => fields.expiresAt === 1 && options?.expireAfterSeconds === 0
-      );
-      assert.ok(ttlIndex, 'AmenityReservationHold must declare a TTL index on expiresAt');
+      const immediate = indexes.find(([fields, options]) => fields.expiresAt === 1 && options?.expireAfterSeconds === 0);
+      assert.equal(immediate, undefined, 'holds must not be deleted the instant they expire');
+      const retention = indexes.find(([fields, options]) => fields.expiresAt === 1 && options?.expireAfterSeconds === 30 * 24 * 3600);
+      assert.ok(retention, 'AmenityReservationHold must declare a 30-day retention index on expiresAt');
     });
 
     it('AmenityIdempotencyRecord must have TTL index on expireAt', () => {

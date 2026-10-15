@@ -10,8 +10,10 @@ import {
   EligibleStaff,
   CreateStaffAssociationPayload,
   staffService,
+  resolveStaffPhotoUrl,
 } from '../services/staffService';
 import { UsersRound, Home, FileText } from 'lucide-react-native';
+import { StaffAvatar } from './StaffAvatar';
 
 interface AssociateStaffModalProps {
   visible: boolean;
@@ -33,9 +35,6 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
   const [selectedUnitId, setSelectedUnitId] = useState<string>('');
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [roleOrTrade, setRoleOrTrade] = useState<string>('');
-  const [durationPreset, setDurationPreset] = useState<'1m' | '3m' | '6m' | '1y' | 'custom'>('6m');
-  const [passStartDate, setPassStartDate] = useState<string>('');
-  const [passExpireDate, setPassExpireDate] = useState<string>('');
   const [startTime, setStartTime] = useState<string>('08:00');
   const [endTime, setEndTime] = useState<string>('12:00');
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
@@ -55,16 +54,6 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
       }
       setSelectedStaffId('');
       setRoleOrTrade('');
-      setDurationPreset('6m');
-      
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      setPassStartDate(todayStr);
-
-      const defaultExp = new Date();
-      defaultExp.setMonth(today.getMonth() + 6);
-      setPassExpireDate(defaultExp.toISOString().split('T')[0]);
-
       setStartTime('08:00');
       setEndTime('12:00');
       setSelectedDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
@@ -75,39 +64,8 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
     }
   }, [visible, myUnits]);
 
-  const handlePresetSelect = (preset: '1m' | '3m' | '6m' | '1y' | 'custom') => {
-    setDurationPreset(preset);
-    const baseDate = passStartDate ? new Date(passStartDate) : new Date();
-    const exp = new Date(baseDate);
-    if (preset === '1m') exp.setMonth(baseDate.getMonth() + 1);
-    else if (preset === '3m') exp.setMonth(baseDate.getMonth() + 3);
-    else if (preset === '6m') exp.setMonth(baseDate.getMonth() + 6);
-    else if (preset === '1y') exp.setFullYear(baseDate.getFullYear() + 1);
-    if (preset !== 'custom') {
-      setPassExpireDate(exp.toISOString().split('T')[0]);
-    }
-  };
-
-  // When staff is selected, prefill suggested role and trigger conflict check
-  const handleStaffChange = async (staffId: string) => {
-    setSelectedStaffId(staffId);
-    setConflictWarning(null);
-    const chosen = eligibleStaff.find((s) => s._id === staffId);
-    if (chosen && !roleOrTrade) {
-      setRoleOrTrade(chosen.designation || chosen.department || '');
-    }
-    if (errors.staffId) {
-      setErrors((prev) => ({ ...prev, staffId: '' }));
-    }
-
-    // Trigger conflict check if time window is valid
-    if (staffId && startTime && endTime) {
-      triggerConflictCheck(staffId, startTime, endTime, selectedDays);
-    }
-  };
-
   const triggerConflictCheck = async (staffId: string, sTime: string, eTime: string, days: string[]) => {
-    if (!staffId) return;
+    if (!staffId || !sTime || !eTime) return;
     try {
       setIsCheckingConflict(true);
       const res = await staffService.checkConflict({
@@ -124,9 +82,36 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
         setConflictWarning(null);
       }
     } catch {
-      // Non-blocking
+      // Non-blocking failure
     } finally {
       setIsCheckingConflict(false);
+    }
+  };
+
+  // When staff is selected, prefill suggested role and trigger conflict check
+  const handleStaffChange = async (staffId: string) => {
+    setSelectedStaffId(staffId);
+    setConflictWarning(null);
+    const chosen = eligibleStaff.find((s) => s._id === staffId);
+    if (chosen && !roleOrTrade) {
+      setRoleOrTrade(chosen.designation || chosen.department || '');
+    }
+    if (errors.staffId) {
+      setErrors((prev) => ({ ...prev, staffId: '' }));
+    }
+
+    if (staffId && startTime && endTime) {
+      triggerConflictCheck(staffId, startTime, endTime, selectedDays);
+    }
+  };
+
+  const toggleDay = (day: string) => {
+    const updated = selectedDays.includes(day)
+      ? selectedDays.filter((d) => d !== day)
+      : [...selectedDays, day];
+    setSelectedDays(updated);
+    if (selectedStaffId && startTime && endTime) {
+      triggerConflictCheck(selectedStaffId, startTime, endTime, updated);
     }
   };
 
@@ -138,16 +123,23 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
     if (!selectedStaffId) {
       errs.staffId = 'Please select an eligible staff member';
     }
+    if (!startTime.trim()) {
+      errs.startTime = 'Start time is required (HH:MM)';
+    }
+    if (!endTime.trim()) {
+      errs.endTime = 'End time is required (HH:MM)';
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
+    if (conflictWarning) {
+      setServerError('Please select a non-overlapping time window to avoid scheduling conflicts.');
+      return;
+    }
     setServerError(null);
-
-    const validFromISO = passStartDate ? new Date(passStartDate).toISOString() : new Date().toISOString();
-    const validUntilISO = passExpireDate ? new Date(passExpireDate).toISOString() : undefined;
 
     const payload: CreateStaffAssociationPayload = {
       villaId: selectedUnitId,
@@ -157,9 +149,6 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
       accessSchedule: {
         days: selectedDays,
         timeWindow: { start: startTime, end: endTime },
-        validFrom: validFromISO,
-        validUntil: validUntilISO,
-        notes: `Contract: ${passStartDate} to ${passExpireDate} (${durationPreset.toUpperCase()})`,
       },
     };
 
@@ -175,7 +164,9 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
   }));
 
   const staffOptions = eligibleStaff.map((s) => ({
-    label: `${s.name} (${s.department}${s.designation ? ` - ${s.designation}` : ''})`,
+    label: s.name,
+    description: `${s.designation || s.department} · ${s.staffCategory === 'UNIT' ? 'Unit Staff' : 'Community Staff'}`,
+    imageUrl: resolveStaffPhotoUrl(s.photoUrl),
     value: s._id,
   }));
 
@@ -228,6 +219,20 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
             onValueChange={handleStaffChange}
             error={errors.staffId}
           />
+          {selectedStaffId ? (() => {
+            const selected = eligibleStaff.find((staff) => staff._id === selectedStaffId);
+            return selected ? (
+              <View className="mt-3 flex-row items-center rounded-xl border border-border bg-muted/35 px-3 py-2.5">
+                <StaffAvatar name={selected.name} photoUrl={selected.photoUrl} size={42} />
+                <View className="ms-3 flex-1">
+                  <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>{selected.name}</Text>
+                  <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
+                    {selected.designation || selected.department}
+                  </Text>
+                </View>
+              </View>
+            ) : null;
+          })() : null}
           {eligibleStaff.length === 0 && (
             <Text className="text-xs text-muted-foreground mt-1">
               No active staff currently registered in this community.
@@ -246,90 +251,15 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
           />
         </View>
 
-        {/* Conflict Alert Banner */}
-        {conflictWarning ? (
-          <View className="mb-4 rounded-xl bg-amber-500/10 border border-amber-500/30 p-3">
-            <Text className="text-xs font-bold text-amber-700 dark:text-amber-400">
-              ⚠️ Schedule Conflict Detected
-            </Text>
-            <Text className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-              {conflictWarning}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* Contract Duration Presets & Pass Dates */}
-        <View className="mb-4">
-          <Text className="text-xs font-bold text-foreground mb-2">
-            Contract Duration Period
+        {/* Daily Working Hours & Shift Window */}
+        <View className="mb-4 p-3.5 rounded-2xl bg-muted/40 border border-border">
+          <Text className="text-xs font-bold text-foreground mb-1.5">
+            Daily Working Hours (Start - End)
           </Text>
-          <View className="flex-row gap-1.5 mb-3">
-            {(
-              [
-                { label: '1 Mo', value: '1m' },
-                { label: '3 Mo', value: '3m' },
-                { label: '6 Mo', value: '6m' },
-                { label: '1 Yr', value: '1y' },
-                { label: 'Custom', value: 'custom' },
-              ] as const
-            ).map((p) => {
-              const isSelected = durationPreset === p.value;
-              return (
-                <Button
-                  key={p.value}
-                  variant={isSelected ? 'default' : 'outline'}
-                  size="sm"
-                  className="flex-1 py-1.5 px-1"
-                  onPress={() => handlePresetSelect(p.value)}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      isSelected ? 'text-white' : 'text-foreground'
-                    }`}
-                  >
-                    {p.label}
-                  </Text>
-                </Button>
-              );
-            })}
-          </View>
-
-          {/* Pass Start & Expire Dates */}
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <TextInput
-                label="Pass Start Date (YYYY-MM-DD)"
-                placeholder="e.g. 2026-01-01"
-                value={passStartDate}
-                onChangeText={(t) => {
-                  setPassStartDate(t);
-                  setDurationPreset('custom');
-                }}
-                editable={!isSubmitting}
-                helperText="Access active from"
-              />
-            </View>
-            <View className="flex-1">
-              <TextInput
-                label="Pass Expire Date (YYYY-MM-DD)"
-                placeholder="e.g. 2026-12-31"
-                value={passExpireDate}
-                onChangeText={(t) => {
-                  setPassExpireDate(t);
-                  setDurationPreset('custom');
-                }}
-                editable={!isSubmitting}
-                helperText="Access expires on"
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Shift Timings & Working Hours */}
-        <View className="mb-4 p-3 rounded-2xl bg-muted/40 border border-border">
-          <Text className="text-xs font-bold text-foreground mb-2">
-            Daily Working Hours & Shift Window
+          <Text className="text-[11px] text-muted-foreground mb-3">
+            Specify the allocated time window to prevent double-booking across households.
           </Text>
+
           <View className="flex-row gap-3">
             <View className="flex-1">
               <TextInput
@@ -342,6 +272,8 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
                     triggerConflictCheck(selectedStaffId, t, endTime, selectedDays);
                   }
                 }}
+                error={errors.startTime}
+                editable={!isSubmitting}
               />
             </View>
             <View className="flex-1">
@@ -355,10 +287,53 @@ export const AssociateStaffModal: React.FC<AssociateStaffModalProps> = ({
                     triggerConflictCheck(selectedStaffId, startTime, t, selectedDays);
                   }
                 }}
+                error={errors.endTime}
+                editable={!isSubmitting}
               />
             </View>
           </View>
+
+          {/* Working Days Selector */}
+          <Text className="text-xs font-semibold text-foreground mt-3 mb-2">
+            Active Days
+          </Text>
+          <View className="flex-row flex-wrap gap-1.5">
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+              const isSelected = selectedDays.includes(day);
+              return (
+                <Button
+                  key={day}
+                  variant={isSelected ? 'default' : 'outline'}
+                  size="sm"
+                  className="px-2.5 py-1 h-8 rounded-lg"
+                  onPress={() => toggleDay(day)}
+                  disabled={isSubmitting}
+                >
+                  <Text
+                    className={`text-xs font-medium ${
+                      isSelected ? 'text-primary-foreground font-bold' : 'text-foreground'
+                    }`}
+                  >
+                    {day}
+                  </Text>
+                </Button>
+              );
+            })}
+          </View>
         </View>
+
+        {/* Schedule Conflict Alert Banner */}
+        {conflictWarning ? (
+          <View className="mb-4 rounded-xl bg-amber-500/10 border border-amber-500/30 p-3">
+            <Text className="text-xs font-bold text-amber-700 dark:text-amber-400">
+              ⚠️ Schedule Conflict Detected
+            </Text>
+            <Text className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+              {conflictWarning}
+            </Text>
+          </View>
+        ) : null}
+
 
         {/* Notes */}
         <View className="mb-6">

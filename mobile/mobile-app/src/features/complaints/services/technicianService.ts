@@ -1,3 +1,4 @@
+import type { StaffCategory } from '@/src/features/staff/staffCategories';
 import apiClient from '../../../services/apiClient';
 
 export interface TechnicianData {
@@ -7,6 +8,8 @@ export interface TechnicianData {
   email?: string;
   department: string;
   type: 'In-House Staff' | 'External Vendor';
+  staffCategory?: StaffCategory;
+  communityOnly?: boolean;
   status: 'Active' | 'Pending' | 'Inactive';
   specialization?: string;
   whatsappEnabled?: boolean;

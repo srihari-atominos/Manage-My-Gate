@@ -6,6 +6,27 @@ const formatPermissionLabel = (permissionString) => {
   if (!permissionString) return ''
   const normalized = String(permissionString).toLowerCase().trim()
 
+  const customLabels = {
+    'staff:view': 'View Staff Directory',
+    'staff:manage': 'Manage Staff Members',
+    'staff:assign_unit': 'Assign & Allocate Units',
+    'staff:attendance': 'Gate Attendance & Reports',
+    'staff:view_own': 'Staff Portal & Digital Pass',
+    'complaints:dashboard': 'Complaints Dashboard',
+    'complaints:raise_ticket': 'Raise Maintenance Ticket',
+    'complaints:track_requests': 'Track Ticket Requests',
+    'complaints:complaint_management': 'Manage Complaints',
+    'complaints:staff': 'Staff Management',
+    'complaints:assignee': 'Assigned Work Orders (Assignee)',
+    'visitor:resident': 'Resident Guest Invites',
+    'visitor:guard': 'Security Guard Scanning',
+    'visitor:admin': 'Visitor Administration',
+  }
+
+  if (customLabels[normalized]) {
+    return customLabels[normalized]
+  }
+
   let label = permissionString
   if (label.includes(':')) {
     const parts = label.split(':')
@@ -38,6 +59,7 @@ export const isPermissionSelected = (perm, selectedIds = []) => {
 const getCategoryDisplayName = (category) => {
   const map = {
     visitor: 'Visitor Management',
+    staff: 'Staff Management',
     amenities: 'Amenities & Bookings',
     digital_wallet: 'Digital Wallet & Ledger',
     billing: 'Billing & Invoices',
@@ -55,9 +77,10 @@ const getCategoryDisplayName = (category) => {
 
 const CATEGORY_ORDER = {
   visitor: 1,
-  amenities: 2,
-  complaints: 3,
-  notices: 4,
+  staff: 2,
+  amenities: 3,
+  complaints: 4,
+  notices: 5,
   digital_wallet: 6,
   billing: 7,
   villas: 8,

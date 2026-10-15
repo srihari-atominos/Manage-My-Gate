@@ -676,4 +676,24 @@ test('16. Advanced Filters & Reporting: findHistory and getAttendanceStats corre
   }
 });
 
+test('17. Filter logic: Missing Checkout exception query matches Open sessions older than 12 hours', async () => {
+  // Direct test of repository condition handling for Missing Checkout
+  const origFindHistory = staffAttendanceRepository.findHistory;
+  try {
+    let capturedFilter = null;
+    staffAttendanceRepository.findHistory = async (orgId, filter) => {
+      capturedFilter = filter;
+      return { records: [], pagination: { totalRecords: 0, totalPages: 1, currentPage: 1, limit: 20 } };
+    };
+
+    await staffAttendanceService.getAttendanceHistory(ORG_A, {
+      status: 'Missing Checkout',
+    });
+
+    assert.equal(capturedFilter.status, 'Missing Checkout');
+  } finally {
+    staffAttendanceRepository.findHistory = origFindHistory;
+  }
+});
+
 

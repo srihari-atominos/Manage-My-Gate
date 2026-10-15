@@ -60,10 +60,20 @@ const staffAttendanceSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    exitIdempotencyKey: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     notes: {
       type: String,
       trim: true,
       default: '',
+    },
+    // True when the system closed a stale session (missing checkout) so the next scan could start a fresh one.
+    autoClosed: {
+      type: Boolean,
+      default: false,
     },
     isManualEntry: {
       type: Boolean,
@@ -82,6 +92,16 @@ staffAttendanceSchema.index(
     unique: true,
     partialFilterExpression: { status: 'Open' },
   }
+);
+
+// A client-supplied idempotency key may be used at most once per organization (entry and exit keys tracked separately).
+staffAttendanceSchema.index(
+  { orgId: 1, idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } }
+);
+staffAttendanceSchema.index(
+  { orgId: 1, exitIdempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { exitIdempotencyKey: { $type: 'string' } } }
 );
 
 staffAttendanceSchema.index({ orgId: 1, createdAt: -1 });

@@ -55,101 +55,11 @@ export const useResidentVisitorManagement = () => {
   }, [activeOrgId])
 
   // Local mock fallbacks if database is empty
-  const [localPasses, setLocalPasses] = useState([
-    {
-      id: 'G-10029',
-      method: 'guest',
-      visitorName: 'Alice Smith',
-      details: 'Aadhaar Card: 8872-9018-1234',
-      validity: '08 Jul 2026 - 10 Jul 2026',
-      uses: '0 / 2',
-      status: 'ACTIVE',
-    },
-    {
-      id: 'G-10030',
-      method: 'guest',
-      visitorName: 'Robert Johnson',
-      details: 'Default Guest Pass',
-      validity: '08 Jul 2026 - 08 Jul 2026',
-      uses: '1 / 1',
-      status: 'EXPIRED',
-    },
-  ])
+  const [localPasses, setLocalPasses] = useState([])
 
-  const [localWalkins, setLocalWalkins] = useState([
-    {
-      id: 'W-901',
-      visitorName: 'David Miller',
-      company: 'FedEx Courier',
-      purpose: 'Delivery of Parcel',
-      vehicle: 'DL-3C-AS-8812',
-      guardName: 'Officer Ramesh',
-      photoUrl:
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100',
-      timestamp: 'Just now',
-      status: 'PENDING',
-    },
-    {
-      id: 'W-902',
-      visitorName: 'Sarah Jenkins',
-      company: 'Urban Company',
-      purpose: 'Salon Service booking #882',
-      vehicle: 'None',
-      guardName: 'Officer Ramesh',
-      photoUrl:
-        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100',
-      timestamp: '10 mins ago',
-      status: 'PENDING',
-    },
-    {
-      id: 'W-903',
-      visitorName: 'Kumar Swamy',
-      company: 'Local Handyman',
-      purpose: 'Plumbing Repair work request',
-      vehicle: 'KA-51-EF-1022',
-      guardName: 'Officer Khan',
-      photoUrl:
-        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100',
-      timestamp: '1 hour ago',
-      status: 'APPROVED',
-    },
-  ])
+  const [localWalkins, setLocalWalkins] = useState([])
 
-  const [localLogs] = useState([
-    {
-      id: 'L-1',
-      visitorName: 'John Doe',
-      type: 'guest',
-      villa: 'Villa 102',
-      resident: 'David Lee',
-      checkIn: '09 Jul 2026, 09:12 AM',
-      checkOut: '09 Jul 2026, 11:30 AM',
-      status: 'COMPLETED',
-      guard: 'Officer Ramesh',
-    },
-    {
-      id: 'L-2',
-      visitorName: 'Zomato Delivery',
-      type: 'cab_delivery',
-      villa: 'Villa 54',
-      resident: 'Sarah Jenkins',
-      checkIn: '09 Jul 2026, 10:15 AM',
-      checkOut: '—',
-      status: 'INSIDE',
-      guard: 'Officer Khan',
-    },
-    {
-      id: 'L-3',
-      visitorName: 'Mike the Electrician',
-      type: 'service',
-      villa: 'Villa 12',
-      resident: 'Kumar Swamy',
-      checkIn: '09 Jul 2026, 08:30 AM',
-      checkOut: '—',
-      status: 'INSIDE',
-      guard: 'Officer Ramesh',
-    },
-  ])
+  const [localLogs] = useState([])
 
   useEffect(() => {
     if (activeOrgId) {

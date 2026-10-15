@@ -377,10 +377,13 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
     }
   };
 
-  const roleOptions = roles.map((r) => ({
-    label: `${r.name} ${r.isTenantRole ? '(Unit)' : '(Global)'}`,
-    value: r.name,
-  }));
+  const roleOptions = roles.map((r) => {
+    const scopeLabel = r.roleScope === 'COMMUNITY_STAFF' ? '(Community Staff · Global)'
+      : r.roleScope === 'STAFF' ? '(Unit Staff · Internal)'
+      : r.roleScope === 'UNIT' || r.isTenantRole ? '(Unit Scope · Residential)'
+      : '(Global Scope)';
+    return { label: `${r.name} ${scopeLabel}`, value: r.name };
+  });
 
 
   const validCount = rows.filter((r) => r.isValid).length;

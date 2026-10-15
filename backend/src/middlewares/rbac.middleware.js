@@ -234,7 +234,12 @@ export const getPermissionsForUser = async (user, targetOrgId = null) => {
         "polls:export",
       ];
     }
-    if (roleName === "Resident") {
+    if (
+      roleName === "Resident" ||
+      roleName === "Resident Owner" ||
+      roleName === "Resident Tenant" ||
+      roleName === "Family Member"
+    ) {
       return [
         "notices:active_board",
         "notices:read",
@@ -242,10 +247,18 @@ export const getPermissionsForUser = async (user, targetOrgId = null) => {
         "notices:polls",
         "polls:read",
         "polls:vote",
+        "staff:assign_unit",
+        "villas:read",
+        "amenities:discover",
+        "amenities:my_booking",
+        "amenities:wallet",
       ];
     }
+    if (roleName === "Community Staff" || roleName === "Household Staff") {
+      return ["staff:view_own", "workspaces:read", "notices:read", "complaints:assignee"];
+    }
     if (roleName === "Security Guard" || roleName === "Guard") {
-      return ["notices:active_board", "notices:read"];
+      return ["notices:active_board", "notices:read", "amenities:scanner", "amenities:security_logs", "villas:read"];
     }
     return [];
   }

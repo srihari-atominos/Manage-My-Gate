@@ -30,12 +30,13 @@ export const RoleCard: React.FC<RoleCardProps> = ({
 
   const permissionsCount = Array.isArray(role?.permissions) ? role.permissions.length : 0;
   const mappingsCount = role?.integrationMappings ? Object.keys(role.integrationMappings).length : 0;
-  const usersCount = (role as any)?.usersCount ?? (role as any)?.userCount;
+  const usersCount = role?.memberCount ?? (role as any)?.usersCount ?? (role as any)?.userCount;
 
   // Determine scope archetype:
-  // 1. If role.roleScope is explicitly set ('GLOBAL' | 'UNIT' | 'STAFF'), respect it strictly!
+  // 1. If role.roleScope is explicitly set ('GLOBAL' | 'UNIT' | 'COMMUNITY_STAFF' | 'STAFF'), respect it strictly!
   // 2. Only if roleScope is unset, fall back to isTenantRole or legacy keyword heuristic.
   const hasExplicitScope = Boolean(role?.roleScope);
+  const isCommunityStaff = role?.roleScope === 'COMMUNITY_STAFF';
   const isStaff = hasExplicitScope
     ? role?.roleScope === 'STAFF'
     : /staff|guard|technician|vendor|maintenance|maid|driver|cook|gardener|electrician|plumber|carpenter|cleaner|housekeeping/i.test(role?.name || '');
@@ -44,9 +45,15 @@ export const RoleCard: React.FC<RoleCardProps> = ({
     : !isStaff && !!role?.isTenantRole;
 
   const getScopeBadge = () => {
+    if (isCommunityStaff) {
+      return {
+        label: t('community_staff_scope', 'COMMUNITY STAFF'),
+        variant: 'gold' as StatusVariant,
+      };
+    }
     if (isStaff) {
       return {
-        label: t('staff_dual_scope', 'STAFF (DUAL)'),
+        label: t('unit_staff_scope', 'UNIT STAFF'),
         variant: 'warning' as StatusVariant,
       };
     }
@@ -155,6 +162,16 @@ export const RoleCard: React.FC<RoleCardProps> = ({
               <View className="flex-row items-center gap-1 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
                 <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400 font-sans">
                   {t('staff_role_badge', 'Staff Member')}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Shared roles belong to the platform and are read-only here */}
+            {role?.isShared ? (
+              <View className="flex-row items-center gap-1 bg-slate-500/10 border border-slate-500/20 px-2 py-0.5 rounded-full">
+                <Lock size={10} className="text-muted-foreground" />
+                <Text className="text-[10px] font-bold text-muted-foreground font-sans">
+                  {t('shared_role_badge', 'Shared')}
                 </Text>
               </View>
             ) : null}

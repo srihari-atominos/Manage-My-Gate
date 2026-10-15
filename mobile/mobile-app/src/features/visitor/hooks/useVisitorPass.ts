@@ -73,7 +73,6 @@ export const useVisitorPass = () => {
     (orgIdParam?: string) => {
       const orgId = orgIdParam || activeOrgId;
       if (!orgId) {
-        console.warn('Cannot fetch pending walk-ins: organization context is not loaded.');
         return;
       }
       return dispatch(fetchPendingWalkIns(orgId));

@@ -102,6 +102,8 @@ const ROLE_PERMISSIONS = {
     'notices:read',
     // Billing
     'billing:action_center',
+    // Staff Household Allocation
+    'staff:assign_unit',
   ],
 
   'Resident Tenant': [
@@ -118,6 +120,8 @@ const ROLE_PERMISSIONS = {
     'notices:read',
     // Billing
     'billing:action_center',
+    // Staff Household Allocation
+    'staff:assign_unit',
   ],
 
   'Family Member': [
@@ -131,6 +135,22 @@ const ROLE_PERMISSIONS = {
     'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
     // Billing
     'billing:action_center',
+    // Staff Household Allocation
+    'staff:assign_unit',
+  ],
+
+  'Community Staff': [
+    'workspaces:read',
+    'notices:read',
+    'staff:view_own',
+    'complaints:assignee',
+  ],
+
+  'Household Staff': [
+    'workspaces:read',
+    'notices:read',
+    'staff:view_own',
+    'complaints:assignee',
   ],
 };
 

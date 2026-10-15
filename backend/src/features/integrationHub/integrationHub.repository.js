@@ -6,21 +6,12 @@ import IntegrationHub from './integrationHub.model.js';
  */
 export class IntegrationHubRepository {
   /**
-   * Upsert an integration connection.
-   * Creates the connection if not existing, otherwise updates credentials and status.
-   * @param {string} userId - ID of the user configuring the connection
-   * @param {string} orgId - ID of the owning organization
-   * @param {string} provider - Provider key (openai, twilio, resend)
-   * @param {string} accountLabel - Distinct label for the account
-   * @param {Array<object>} credentials - Array of encrypted credential subdocuments
-   * @param {string} status - Connection status ('connected' or 'disconnected')
-   * @param {import('mongoose').ClientSession} [session] - Optional transaction session
-   * @returns {Promise<object>} The updated or created document
+   * Upsert an integration connection (single-document write, atomic without a transaction).
    */
   async upsertConnection(userId, orgId, provider, accountLabel, credentials, status, session) {
     return await IntegrationHub.findOneAndUpdate(
       { orgId, provider, accountLabel },
-      { userId, credentials, status },
+      { userId, credentials, status, lastCheck: { ok: true, at: new Date(), message: 'Verified when connected' } },
       {
         returnDocument: 'after',
         upsert: true,
@@ -31,13 +22,8 @@ export class IntegrationHubRepository {
   }
 
   /**
-   * Paginated fetch for integration connections with secret exclusion.
-   * @param {string} orgId - ID of the organization owning connections
-   * @param {string} [provider] - Optional provider key
-   * @param {number} skip - Number of documents to skip
-   * @param {number} limit - Max documents to return
-   * @param {import('mongoose').ClientSession} [session] - Optional transaction session
-   * @returns {Promise<{ data: Array, totalRecords: number }>}
+   * Paginated list. Secrets never leave the database: only the NAMES of the configured keys and the last
+   * health check are returned.
    */
   async getConnectionsPaginated(orgId, provider, skip, limit, session) {
     const match = { orgId: typeof orgId === 'string' ? new mongoose.Types.ObjectId(orgId) : orgId };
@@ -45,7 +31,6 @@ export class IntegrationHubRepository {
       match.provider = provider.toLowerCase();
     }
 
-    const opts = session ? { session } : {};
     const result = await IntegrationHub.aggregate([
       { $match: match },
       { $sort: { createdAt: -1 } },
@@ -54,17 +39,13 @@ export class IntegrationHubRepository {
           data: [
             { $skip: skip },
             { $limit: limit },
-            {
-              $project: {
-                credentials: 0,
-                __v: 0,
-              }
-            }
+            { $addFields: { configuredKeys: { $map: { input: '$credentials', as: 'c', in: '$$c.key' } } } },
+            { $project: { credentials: 0, __v: 0 } },
           ],
-          metadata: [{ $count: 'totalRecords' }]
-        }
-      }
-    ]).session(opts.session || null);
+          metadata: [{ $count: 'totalRecords' }],
+        },
+      },
+    ]).session(session || null);
 
     const data = result[0]?.data || [];
     const totalRecords = result[0]?.metadata[0]?.totalRecords || 0;
@@ -72,56 +53,35 @@ export class IntegrationHubRepository {
     return { data, totalRecords };
   }
 
-  /**
-   * Find a specific connection document by its ID.
-   * @param {string} connectionId - ID of the connection
-   * @param {import('mongoose').ClientSession} [session] - Optional transaction session
-   * @returns {Promise<object|null>} The integration connection document or null
-   */
-  async getConnectionById(connectionId, session) {
-    return await IntegrationHub.findById(connectionId).session(session || null);
+  /** Connection by id. Pass orgId to enforce tenant ownership. */
+  async getConnectionById(connectionId, orgId = null, session = null) {
+    const filter = { _id: connectionId };
+    if (orgId) filter.orgId = orgId;
+    return await IntegrationHub.findOne(filter).session(session || null);
   }
 
-  /**
-   * Update the connection's account label.
-   * @param {string} connectionId - ID of the connection
-   * @param {string} orgId - Owner Organization ID
-   * @param {string} newLabel - The new account label
-   * @param {import('mongoose').ClientSession} [session] - Optional session
-   * @returns {Promise<object|null>} The updated document
-   */
-  async updateConnectionLabel(connectionId, orgId, newLabel, session) {
+  async updateConnection(connectionId, orgId, patch, session) {
     return await IntegrationHub.findOneAndUpdate(
       { _id: connectionId, orgId },
-      { accountLabel: newLabel },
-      {
-        returnDocument: 'after',
-        runValidators: true,
-        session: session || null,
-      }
+      { $set: patch },
+      { returnDocument: 'after', runValidators: true, session: session || null }
     );
   }
 
-  /**
-   * Delete a connection by its ID and Organization ID.
-   * @param {string} connectionId - ID of the connection
-   * @param {string} orgId - Owner Organization ID
-   * @param {import('mongoose').ClientSession} [session] - Optional session
-   * @returns {Promise<object|null>} The deleted document
-   */
-  async deleteConnectionById(connectionId, orgId, session) {
-    return await IntegrationHub.findOneAndDelete(
+  async recordCheck(connectionId, orgId, check) {
+    return await IntegrationHub.findOneAndUpdate(
       { _id: connectionId, orgId },
-      { session: session || null }
+      { $set: { lastCheck: check } },
+      { returnDocument: 'after' }
     );
   }
 
+  async deleteConnectionById(connectionId, orgId, session) {
+    return await IntegrationHub.findOneAndDelete({ _id: connectionId, orgId }, { session: session || null });
+  }
+
   /**
-   * Find an active connection for an organization by provider key.
-   * @param {string} orgId - Organization ID
-   * @param {string} provider - Provider key (e.g. 'razorpay', 'smtp')
-   * @param {import('mongoose').ClientSession} [session] - Optional session
-   * @returns {Promise<object|null>}
+   * Active connection of one community for a provider.
    */
   async findConnectionByOrgAndProvider(orgId, provider, session = null) {
     return await IntegrationHub.findOne({
@@ -131,27 +91,38 @@ export class IntegrationHubRepository {
     }).session(session || null);
   }
 
-  /**
-   * Find an active SMTP connection for an organization.
-   * @param {string} orgId - Organization ID
-   * @param {import('mongoose').ClientSession} [session] - Optional session
-   * @returns {Promise<object|null>}
-   */
   async findSmtpConnection(orgId, session = null) {
     return await this.findConnectionByOrgAndProvider(orgId, 'smtp', session);
   }
 
-  /**
-   * Find a connection by provider and status globally (not scoped to an organization).
-   * @param {string} provider - Provider key
-   * @param {import('mongoose').ClientSession} [session] - Optional session
-   * @returns {Promise<object|null>}
-   */
+  // ------------------------------------------------------------------ platform-level lookups
+  // Credentials that serve EVERY community (login OTP e-mail/SMS, platform mail) must come from the
+  // platform organisation only. Reading "any community's connection" would let one community's admin
+  // receive other people's login codes by connecting a mailbox or SMS account they control.
+
+  async getPlatformOrgIds() {
+    const Organization = (await import('../organization/organization.model.js')).default;
+    const orgs = await Organization.find({ isPlatform: true }).select('_id').lean();
+    return orgs.map((o) => o._id);
+  }
+
+  /** Newest platform connection for a provider, or null. `anyStatus` also returns a disconnected one. */
+  async findPlatformConnection(provider, { anyStatus = false, session = null } = {}) {
+    const list = await this.findPlatformConnections(provider, { anyStatus, session });
+    return list[0] || null;
+  }
+
+  async findPlatformConnections(provider, { anyStatus = false, session = null } = {}) {
+    const platformIds = await this.getPlatformOrgIds();
+    if (platformIds.length === 0) return [];
+    const filter = { orgId: { $in: platformIds }, provider: String(provider).toLowerCase() };
+    if (!anyStatus) filter.status = 'connected';
+    return await IntegrationHub.find(filter).sort({ updatedAt: -1, createdAt: -1 }).session(session || null);
+  }
+
+  /** Kept for existing callers: now platform-scoped (see above). */
   async findGlobalConnectionByProvider(provider, session = null) {
-    return await IntegrationHub.findOne({
-      provider: provider.toLowerCase(),
-      status: 'connected',
-    }).session(session || null);
+    return await this.findPlatformConnection(provider, { session });
   }
 }
 

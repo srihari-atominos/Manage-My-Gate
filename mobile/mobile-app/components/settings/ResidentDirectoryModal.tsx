@@ -125,9 +125,11 @@ export const ResidentDirectoryModal = ({
   };
 
   const handleMakeCall = () => {
-    if (!connectNeighbor) return;
-    Linking.openURL(`tel:${connectNeighbor.phone}`).catch(() => {
-      Alert.alert('Phone Call', `Dialing ${connectNeighbor.name} at ${connectNeighbor.phone}`);
+    if (!connectNeighbor?.phone) return;
+    const cleanPhone = connectNeighbor.phone.replace(/[^0-9+]/g, '');
+    if (!cleanPhone) return;
+    Linking.openURL(`tel:${cleanPhone}`).catch(() => {
+      Alert.alert('Phone Call', `Dialing ${connectNeighbor.name} at ${cleanPhone}`);
     });
   };
 

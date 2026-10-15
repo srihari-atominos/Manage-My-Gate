@@ -2,6 +2,7 @@ import complaintRepository from './complaint.repository.js';
 import complaintSettingsService from '../complaintSettings/complaintSettings.service.js';
 import auditLogService from '../auditLog/auditLog.services.js';
 import technicianRepository from '../technician/technician.repository.js';
+import { isCommunityAssignable } from '../technician/staffCategory.utils.js';
 import { complaintEvents } from './complaint.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 import { escapeRegex } from '../../utils/regex.utils.js';
@@ -9,6 +10,17 @@ import mongoose from 'mongoose';
 import ComplaintSettings from '../complaintSettings/complaintSettings.model.js';
 import visitorPassService from '../visitorPass/visitorPass.service.js';
 import { messageBroker } from '../../utils/messageBroker.util.js';
+
+
+// Roles allowed to act on any complaint (matches the checks used across this service).
+const COMPLAINT_ADMIN_ROLES = ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager', 'Super Admin'];
+const isComplaintAdmin = (role) => COMPLAINT_ADMIN_ROLES.includes(role);
+
+// "The employee has finished; the resident still has to confirm."
+const WORK_DONE_STATUSES = ['Completed', 'Work Completed', 'Waiting For Resident Confirmation'];
+
+const idOf = (value) =>
+  value && typeof value === 'object' ? String(value._id || value.id || '') : String(value || '');
 
 class ComplaintService {
   async generateComplaintNumber(orgId) {
@@ -306,6 +318,11 @@ class ComplaintService {
 
       if (isBroadcast) {
         if (!technicianIds || technicianIds.length === 0) throw new HttpError(400, 'Must select at least one technician for broadcast');
+        const broadcastTargets = await technicianRepository.findAll(orgId, { _id: { $in: technicianIds } });
+        const unitOnly = broadcastTargets.filter((t) => !isCommunityAssignable(t));
+        if (unitOnly.length > 0) {
+          throw new HttpError(400, `Unit Staff (Internal Staff) cannot be assigned community complaints: ${unitOnly.map((t) => t.name).join(', ')}`);
+        }
       } else if (assignmentType === 'vendor') {
         if (!technicianName && !vendor) throw new HttpError(400, 'Vendor name is required');
       } else {
@@ -315,6 +332,9 @@ class ComplaintService {
           technician = await technicianRepository.findActiveByUserId(technicianId, orgId);
         }
         if (!technician) throw new HttpError(404, 'Technician not found');
+        if (!isCommunityAssignable(technician)) {
+          throw new HttpError(400, 'Unit Staff (Internal Staff) work only on units allocated by residents and cannot be assigned community complaints.');
+        }
         if (technician.status !== 'Active') {
           if (technician.status === 'Pending') {
             await technicianRepository.update(technician._id, orgId, { status: 'Active' });
@@ -490,8 +510,9 @@ class ComplaintService {
     const complaint = await this.getComplaintById(id, orgId);
     if (!complaint) throw new HttpError(404, 'Complaint not found');
 
-    if (['Closed', 'Completed', 'Resolved', 'Cancelled'].includes(complaint.status)) {
-      return complaint; // Already closed, cannot escalate
+    // Finished (or waiting for the resident) and dead tickets are never escalated.
+    if ([...WORK_DONE_STATUSES, 'Closed', 'Resolved', 'Cancelled', 'Rejected'].includes(complaint.status)) {
+      return complaint;
     }
 
     const newLevel = (complaint.escalationLevel || 0) + 1;
@@ -511,9 +532,13 @@ class ComplaintService {
 
     const updateFields = {
       escalationLevel: newLevel,
-      status: 'Escalated', // Status overrides if needed, or keeps current status but sets escalationLevel
       $push: { timeline: timelineEvent }
     };
+    // Only a ticket nobody has started is relabelled "Escalated". Work already underway keeps its real
+    // status (In Progress, On Hold, ...); the SLA badge is derived from escalationLevel.
+    if (['Submitted', 'Open', 'Waiting For Assignment', 'Waiting For Acceptance', 'Assigned'].includes(complaint.status)) {
+      updateFields.status = 'Escalated';
+    }
 
     const updated = await complaintRepository.update(id, orgId, updateFields);
 
@@ -735,25 +760,47 @@ class ComplaintService {
     return updated;
   }
 
+  /**
+   * Only the assigned employee (or an admin) may drive the work steps of a ticket. The route-level
+   * permission list is deliberately broad (it also lets residents open the ticket), so this is the check
+   * that stops anyone else from pausing, annotating or completing someone else's job.
+   */
+  assertAssigneeOrAdmin(complaint, userId, userRole) {
+    if (isComplaintAdmin(userRole)) return;
+    if (!userId || idOf(complaint.assignedTechnicianId) !== String(userId)) {
+      throw new HttpError(403, 'You are not assigned to this complaint');
+    }
+  }
+
   async pauseWork(id, orgId, userId, userName, userRole, reason, metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
+    this.assertAssigneeOrAdmin(complaint, userId, userRole);
+
+    if (complaint.status === 'On Hold') return complaint;
+    if (complaint.status !== 'In Progress') {
+      throw new HttpError(400, 'Only work that is in progress can be paused.');
+    }
+    const cleanReason = String(reason || '').trim();
+    if (!cleanReason) throw new HttpError(400, 'Please give a reason for pausing the work.');
+
     const timelineEvent = {
       status: 'On Hold',
       action: 'Work Paused',
       userId, userRole, userName,
-      remarks: `Work paused. Reason: ${reason}`,
+      remarks: `Work paused. Reason: ${cleanReason}`,
       date: new Date()
     };
+    // statusHistory drives the SLA "hold" clock (calculateActiveSLA), so the pause must be recorded there too.
     const updated = await complaintRepository.update(id, orgId, {
       status: 'On Hold',
-      $push: { timeline: timelineEvent }
+      $push: { timeline: timelineEvent, statusHistory: { status: 'On Hold', timestamp: new Date() } }
     });
 
     if (auditLogService && auditLogService.logAction) {
       await auditLogService.logAction({
         orgId, action: 'Pause Work', module: 'Complaints', targetId: id, targetName: complaint.complaintNumber,
         userId, userRole, ipAddress: metaData.ipAddress, browser: metaData.browser, device: metaData.device,
-        details: { reason, previousStatus: complaint.status, newStatus: 'On Hold' }
+        details: { reason: cleanReason, previousStatus: complaint.status, newStatus: 'On Hold' }
       }).catch(err => console.error('Audit Log failed:', err));
     }
     complaintEvents.emit('complaint.updated', { orgId, complaint: updated, action: 'Work Paused' });
@@ -762,6 +809,13 @@ class ComplaintService {
 
   async resumeWork(id, orgId, userId, userName, userRole, metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
+    this.assertAssigneeOrAdmin(complaint, userId, userRole);
+
+    if (complaint.status === 'In Progress') return complaint;
+    if (complaint.status !== 'On Hold') {
+      throw new HttpError(400, 'Only paused work can be resumed.');
+    }
+
     const timelineEvent = {
       status: 'In Progress',
       action: 'Work Resumed',
@@ -771,7 +825,7 @@ class ComplaintService {
     };
     const updated = await complaintRepository.update(id, orgId, {
       status: 'In Progress',
-      $push: { timeline: timelineEvent }
+      $push: { timeline: timelineEvent, statusHistory: { status: 'In Progress', timestamp: new Date() } }
     });
 
     if (auditLogService && auditLogService.logAction) {
@@ -788,49 +842,59 @@ class ComplaintService {
   async markWorkCompleted(id, orgId, userId, userName, userRole, notes, attachments = [], metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
     if (!complaint) throw new HttpError(404, 'Complaint not found');
+    this.assertAssigneeOrAdmin(complaint, userId, userRole);
 
-    const assignedTechIdStr = typeof complaint.assignedTechnicianId === 'object' && complaint.assignedTechnicianId !== null
-      ? String(complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id || '')
-      : String(complaint.assignedTechnicianId || '');
-
-    const isAdmin = ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager', 'Super Admin'].includes(userRole);
-    if (!isAdmin && assignedTechIdStr !== String(userId)) {
-      throw new HttpError(403, 'You are not assigned to this complaint');
-    }
-
-    // Idempotency: already marked completed or waiting confirmation
-    if (['Completed', 'Work Completed', 'Waiting For Resident Confirmation'].includes(complaint.status)) {
+    // Idempotency: already marked completed, waiting for the resident, or closed
+    if (WORK_DONE_STATUSES.includes(complaint.status) || complaint.status === 'Closed') {
       return complaint;
     }
 
-    if (complaint.status === 'Closed') {
-      return complaint;
+    // The job must actually have been taken up: accepted/started (or sent back by the resident), not on hold.
+    if (!['Accepted', 'In Progress', 'Reopened', 'Escalated'].includes(complaint.status)) {
+      const hint = complaint.status === 'On Hold'
+        ? 'Resume the work first.'
+        : ['Assigned', 'Waiting For Acceptance'].includes(complaint.status)
+        ? 'Accept the job and start the work first.'
+        : `A ${String(complaint.status).toLowerCase()} complaint cannot be completed.`;
+      throw new HttpError(400, hint);
     }
 
+    // Proof of work: the resident confirms based on this, so require a note or at least one photo.
+    const cleanNotes = String(notes || '').trim().slice(0, 2000);
+    const files = (Array.isArray(attachments) ? attachments : [])
+      .filter((a) => typeof a === 'string' && a.trim())
+      .slice(0, 10);
+    if (!cleanNotes && files.length === 0) {
+      throw new HttpError(400, 'Add a short note or a photo of the finished work before marking it completed.');
+    }
+
+    const now = new Date();
     const timelineEvent = {
       status: 'Completed',
       action: 'Work Completed',
       userId, userRole, userName,
-      remarks: notes || 'Work has been marked as completed by the assignee.',
-      attachments,
-      date: new Date()
+      remarks: cleanNotes || 'Work has been marked as completed by the assignee.',
+      attachments: files,
+      date: now
     };
 
     const updated = await complaintRepository.update(id, orgId, {
-      $set: { 
+      $set: {
         status: 'Completed',
         workflowStatus: 'Waiting For Resident Confirmation',
-        resolvedAt: new Date(), 
-        completionDate: new Date() 
+        resolvedAt: now,
+        completionDate: now,
+        confirmationReminderSentAt: null,
+        ...(cleanNotes ? { workDone: cleanNotes, technicianRemarks: cleanNotes } : {}),
       },
-      $push: { timeline: timelineEvent }
+      $push: { timeline: timelineEvent, statusHistory: { status: 'Completed', timestamp: now } }
     });
 
     if (auditLogService && auditLogService.logAction) {
       await auditLogService.logAction({
         orgId, action: 'Complete Work', module: 'Complaints', targetId: id, targetName: complaint.complaintNumber,
         userId, userRole, ipAddress: metaData.ipAddress, browser: metaData.browser, device: metaData.device,
-        details: { notes, attachments, previousStatus: complaint.status, newStatus: 'Completed' }
+        details: { notes: cleanNotes, attachments: files, previousStatus: complaint.status, newStatus: 'Completed' }
       }).catch(err => console.error('Audit Log failed:', err));
     }
 
@@ -840,12 +904,21 @@ class ComplaintService {
 
   async uploadWorkAttachments(id, orgId, userId, userName, userRole, attachments, metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
+    this.assertAssigneeOrAdmin(complaint, userId, userRole);
+    if (['Closed', 'Cancelled'].includes(complaint.status)) {
+      throw new HttpError(400, `Cannot add photos to a ${complaint.status.toLowerCase()} complaint.`);
+    }
+    const files = (Array.isArray(attachments) ? attachments : [])
+      .filter((a) => typeof a === 'string' && a.trim())
+      .slice(0, 10);
+    if (files.length === 0) throw new HttpError(400, 'Please attach at least one photo.');
+
     const timelineEvent = {
       status: complaint.status,
       action: 'Work Photos Uploaded',
       userId, userRole, userName,
       remarks: 'Assignee uploaded work photos/documents.',
-      attachments,
+      attachments: files,
       date: new Date()
     };
     const updated = await complaintRepository.update(id, orgId, {
@@ -856,7 +929,7 @@ class ComplaintService {
       await auditLogService.logAction({
         orgId, action: 'Upload Work Photos', module: 'Complaints', targetId: id, targetName: complaint.complaintNumber,
         userId, userRole, ipAddress: metaData.ipAddress, browser: metaData.browser, device: metaData.device,
-        details: { attachments }
+        details: { attachments: files }
       }).catch(err => console.error('Audit Log failed:', err));
     }
 
@@ -866,11 +939,15 @@ class ComplaintService {
 
   async addWorkNotes(id, orgId, userId, userName, userRole, notes, metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
+    this.assertAssigneeOrAdmin(complaint, userId, userRole);
+    const cleanNotes = String(notes || '').trim().slice(0, 2000);
+    if (!cleanNotes) throw new HttpError(400, 'Please write a note.');
+
     const timelineEvent = {
       status: complaint.status,
       action: 'Notes Added',
       userId, userRole, userName,
-      remarks: notes,
+      remarks: cleanNotes,
       date: new Date()
     };
     const updated = await complaintRepository.update(id, orgId, {
@@ -881,7 +958,7 @@ class ComplaintService {
       await auditLogService.logAction({
         orgId, action: 'Add Notes', module: 'Complaints', targetId: id, targetName: complaint.complaintNumber,
         userId, userRole, ipAddress: metaData.ipAddress, browser: metaData.browser, device: metaData.device,
-        details: { notes }
+        details: { notes: cleanNotes }
       }).catch(err => console.error('Audit Log failed:', err));
     }
 
@@ -889,67 +966,72 @@ class ComplaintService {
     return updated;
   }
 
+  /** Ratings are whole numbers 1-5; anything else is dropped, remarks are trimmed and capped. */
+  sanitizeFeedback(feedback) {
+    if (!feedback || typeof feedback !== 'object') return null;
+    const clean = {};
+    for (const key of ['overallRating', 'technicianRating', 'serviceRating', 'cleanlinessRating', 'communicationRating']) {
+      const n = Math.round(Number(feedback[key]));
+      if (Number.isFinite(n) && n >= 1 && n <= 5) clean[key] = n;
+    }
+    const remarks = String(feedback.remarks || '').trim().slice(0, 1000);
+    if (remarks) clean.remarks = remarks;
+    return Object.keys(clean).length ? clean : null;
+  }
+
   async confirmCompletion(id, orgId, userId, userName, userRole, metaData = {}, feedback = null) {
     const complaint = await this.getComplaintById(id, orgId);
     if (!complaint) throw new HttpError(404, 'Complaint not found');
 
-    const residentIdStr = typeof complaint.residentId === 'object' && complaint.residentId !== null
-      ? String(complaint.residentId._id || complaint.residentId.id || '')
-      : String(complaint.residentId || '');
-
-    const isAdmin = ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager', 'Super Admin'].includes(userRole);
-    const isOwner = residentIdStr && residentIdStr === String(userId);
+    const isAdmin = isComplaintAdmin(userRole);
+    const isOwner = idOf(complaint.residentId) && idOf(complaint.residentId) === String(userId);
 
     if (!isOwner && !isAdmin) {
       throw new HttpError(403, 'Only the resident who logged this ticket or an administrator can confirm completion.');
     }
 
-    // Strict rule: Resident cannot mark Done while ticket is Open, Assigned, Accepted, or In Progress
-    if (['Open', 'Assigned', 'Waiting For Acceptance', 'Accepted', 'In Progress', 'On Hold', 'Paused', 'Waiting For Vendor'].includes(complaint.status)) {
-      throw new HttpError(400, 'The ticket can only be marked as Done after the assigned employee has completed the work.');
-    }
+    const cleanFeedback = this.sanitizeFeedback(feedback);
 
-    // Idempotent: already closed
+    // Idempotent: already closed (a late rating is still accepted once)
     if (complaint.status === 'Closed') {
-      if (feedback && !complaint.feedback?.overallRating) {
-        const updated = await complaintRepository.update(id, orgId, {
-          feedback: { ...feedback, feedbackDate: new Date() }
+      if (cleanFeedback && !complaint.feedback?.overallRating) {
+        return await complaintRepository.update(id, orgId, {
+          feedback: { ...cleanFeedback, feedbackDate: new Date() }
         });
-        return updated;
       }
       return complaint;
     }
 
+    // Only finished work can be confirmed (never a new, cancelled, rejected or in-progress ticket).
+    if (![...WORK_DONE_STATUSES, 'Resolved'].includes(complaint.status)) {
+      throw new HttpError(400, 'The ticket can only be marked as Done after the assigned employee has completed the work.');
+    }
+
+    const now = new Date();
     const timelineEvents = [
       {
         status: 'Closed',
         action: 'Resident Confirmed',
         userId, userRole, userName,
-        remarks: feedback ? 'Resident confirmed the completion of work and submitted feedback.' : 'Resident confirmed the completion of work.',
-        date: new Date()
+        remarks: cleanFeedback ? 'Resident confirmed the completion of work and submitted feedback.' : 'Resident confirmed the completion of work.',
+        date: now
       },
       {
         status: 'Closed',
         action: 'Complaint Closed',
         userId, userRole, userName,
         remarks: 'Complaint has been closed following resident confirmation.',
-        date: new Date()
+        date: now
       }
     ];
 
     const updateData = {
       status: 'Closed',
       workflowStatus: 'Closed',
-      closedAt: new Date(),
-      $push: { timeline: { $each: timelineEvents } }
+      closedAt: now,
+      $push: { timeline: { $each: timelineEvents }, statusHistory: { status: 'Closed', timestamp: now } }
     };
-    
-    if (feedback) {
-      updateData.feedback = {
-        ...feedback,
-        feedbackDate: new Date()
-      };
-    }
+    if (cleanFeedback) updateData.feedback = { ...cleanFeedback, feedbackDate: now };
 
     const updated = await complaintRepository.update(id, orgId, updateData);
 
@@ -966,6 +1048,191 @@ class ComplaintService {
     return updated;
   }
 
+  /**
+   * Resident says the work is NOT done properly: the ticket goes back to the same employee.
+   * Allowed on finished work, or on a recently closed ticket (within the configured window).
+   * Admin settings `workflow.reopenLimit` / `workflow.autoCloseDays` are enforced here.
+   */
+  async reopenComplaint(id, orgId, userId, userName, userRole, reason, metaData = {}) {
+    const complaint = await this.getComplaintById(id, orgId);
+    if (!complaint) throw new HttpError(404, 'Complaint not found');
+
+    const isAdmin = isComplaintAdmin(userRole);
+    const isOwner = idOf(complaint.residentId) && idOf(complaint.residentId) === String(userId);
+    if (!isOwner && !isAdmin) {
+      throw new HttpError(403, 'Only the resident who logged this ticket or an administrator can reopen it.');
+    }
+
+    const cleanReason = String(reason || '').trim().slice(0, 1000);
+    if (cleanReason.length < 5) {
+      throw new HttpError(400, 'Please explain what is still not fixed (at least 5 characters).');
+    }
+
+    const settings = await complaintSettingsService.getSettings(orgId).catch(() => null);
+    const workflow = settings?.workflow || {};
+    const reopenLimit = Number.isFinite(workflow.reopenLimit) ? workflow.reopenLimit : 2;
+    const windowDays = Number.isFinite(workflow.autoCloseDays) && workflow.autoCloseDays > 0 ? workflow.autoCloseDays : 7;
+
+    if (complaint.status === 'Closed') {
+      const closedAt = complaint.closedAt ? new Date(complaint.closedAt).getTime() : 0;
+      if (!isAdmin && Date.now() - closedAt > windowDays * 24 * 60 * 60 * 1000) {
+        throw new HttpError(400, `This complaint was closed more than ${windowDays} days ago. Please raise a new complaint.`);
+      }
+    } else if (![...WORK_DONE_STATUSES, 'Resolved'].includes(complaint.status)) {
+      throw new HttpError(400, 'Only a complaint whose work has been completed can be reopened.');
+    }
+
+    if (!isAdmin && (complaint.reopenCount || 0) >= reopenLimit) {
+      throw new HttpError(400, `This complaint has already been reopened ${reopenLimit} time(s). Please contact the community admin.`);
+    }
+
+    const now = new Date();
+    const timelineEvent = {
+      status: 'Reopened',
+      action: 'Complaint Reopened',
+      userId, userRole, userName,
+      remarks: `Resident reopened the complaint. Reason: ${cleanReason}`,
+      date: now
+    };
+
+    const updated = await complaintRepository.update(id, orgId, {
+      $set: {
+        status: 'Reopened',
+        workflowStatus: 'Reopened',
+        resolvedAt: null,
+        completionDate: null,
+        closedAt: null,
+        confirmationReminderSentAt: null,
+        autoClosed: false,
+      },
+      $inc: { reopenCount: 1 },
+      $push: { timeline: timelineEvent, statusHistory: { status: 'Reopened', timestamp: now } }
+    });
+
+    if (auditLogService && auditLogService.logAction) {
+      await auditLogService.logAction({
+        orgId, action: 'Reopen Complaint', module: 'Complaints', targetId: id, targetName: complaint.complaintNumber,
+        userId, userRole, ipAddress: metaData.ipAddress, browser: metaData.browser, device: metaData.device,
+        details: { reason: cleanReason, previousStatus: complaint.status, newStatus: 'Reopened' }
+      }).catch(err => console.error('Audit Log failed:', err));
+    }
+
+    complaintEvents.emit('complaint.updated', { orgId, complaint: updated, action: 'Complaint Reopened' });
+    return updated;
+  }
+
+  /** Resident withdraws a ticket that nobody has picked up yet. */
+  async cancelComplaint(id, orgId, userId, userName, userRole, reason, metaData = {}) {
+    const complaint = await this.getComplaintById(id, orgId);
+    if (!complaint) throw new HttpError(404, 'Complaint not found');
+
+    const isAdmin = isComplaintAdmin(userRole);
+    const isOwner = idOf(complaint.residentId) && idOf(complaint.residentId) === String(userId);
+    if (!isOwner && !isAdmin) {
+      throw new HttpError(403, 'Only the resident who logged this ticket or an administrator can cancel it.');
+    }
+    if (complaint.status === 'Cancelled') return complaint;
+    if (!['Submitted', 'Open', 'Waiting For Assignment'].includes(complaint.status)) {
+      throw new HttpError(400, 'A complaint can only be cancelled before it is assigned. Please contact the admin.');
+    }
+
+    const now = new Date();
+    const updated = await complaintRepository.update(id, orgId, {
+      status: 'Cancelled',
+      workflowStatus: 'Cancelled',
+      $push: {
+        timeline: {
+          status: 'Cancelled',
+          action: 'Complaint Cancelled',
+          userId, userRole, userName,
+          remarks: String(reason || '').trim().slice(0, 500) || 'Cancelled by resident.',
+          date: now
+        },
+        statusHistory: { status: 'Cancelled', timestamp: now }
+      }
+    });
+
+    if (auditLogService && auditLogService.logAction) {
+      await auditLogService.logAction({
+        orgId, action: 'Cancel Complaint', module: 'Complaints', targetId: id, targetName: complaint.complaintNumber,
+        userId, userRole, ipAddress: metaData.ipAddress, browser: metaData.browser, device: metaData.device,
+        details: { previousStatus: complaint.status, newStatus: 'Cancelled' }
+      }).catch(err => console.error('Audit Log failed:', err));
+    }
+
+    complaintEvents.emit('complaint.updated', { orgId, complaint: updated, action: 'Complaint Cancelled' });
+    return updated;
+  }
+
+  /**
+   * Hourly housekeeping for tickets the employee finished but the resident has not answered:
+   * one friendly reminder after 24h, then auto-close after the admin-configured `workflow.autoCloseDays`
+   * (default 7, 0 turns auto-close off). Conditional updates make overlapping runs harmless.
+   */
+  async processAwaitingConfirmations(now = new Date()) {
+    const waiting = await complaintRepository.findAwaitingConfirmation(WORK_DONE_STATUSES);
+    const settingsByOrg = new Map();
+    let reminded = 0;
+    let autoClosed = 0;
+
+    for (const complaint of waiting) {
+      const orgId = String(complaint.orgId);
+      if (!settingsByOrg.has(orgId)) {
+        settingsByOrg.set(orgId, await complaintSettingsService.getSettings(orgId).catch(() => null));
+      }
+      const configured = settingsByOrg.get(orgId)?.workflow?.autoCloseDays;
+      const autoCloseDays = Number.isFinite(configured) ? configured : 7;
+
+      const since = new Date(complaint.completionDate || complaint.resolvedAt || complaint.updatedAt).getTime();
+      const ageMs = now.getTime() - since;
+
+      if (autoCloseDays > 0 && ageMs >= autoCloseDays * 24 * 60 * 60 * 1000) {
+        const updated = await complaintRepository.update(
+          complaint._id, complaint.orgId,
+          {
+            status: 'Closed',
+            workflowStatus: 'Closed',
+            closedAt: now,
+            autoClosed: true,
+            $push: {
+              timeline: {
+                status: 'Closed',
+                action: 'Complaint Auto-Closed',
+                userId: null, userRole: 'System', userName: 'System',
+                remarks: `Closed automatically: no response from the resident within ${autoCloseDays} day(s) of completion.`,
+                date: now
+              },
+              statusHistory: { status: 'Closed', timestamp: now }
+            }
+          },
+          null,
+          { status: { $in: WORK_DONE_STATUSES } }
+        );
+        if (updated) {
+          autoClosed++;
+          complaintEvents.emit('complaint.updated', { orgId: complaint.orgId, complaint: updated, action: 'Complaint Auto-Closed' });
+        }
+        continue;
+      }
+
+      if (!complaint.confirmationReminderSentAt && ageMs >= 24 * 60 * 60 * 1000 && autoCloseDays !== 1) {
+        const updated = await complaintRepository.update(
+          complaint._id, complaint.orgId,
+          { confirmationReminderSentAt: now },
+          null,
+          { status: { $in: WORK_DONE_STATUSES }, confirmationReminderSentAt: null }
+        );
+        if (updated) {
+          reminded++;
+          complaintEvents.emit('complaint.updated', {
+            orgId: complaint.orgId, complaint: updated, action: 'Confirmation Reminder', autoCloseDays
+          });
+        }
+      }
+    }
+    return { checked: waiting.length, reminded, autoClosed };
+  }
+
   async updateStatus(id, orgId, status, userId, userRole, userName, remarks, attachments = [], priority) {
     const complaint = await this.getComplaintById(id, orgId);
     if (!complaint) throw new HttpError(404, 'Complaint not found');
@@ -975,6 +1242,15 @@ class ComplaintService {
       : String(complaint.residentId || '');
 
     const isAdmin = ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager', 'Super Admin'].includes(userRole);
+
+    // Reopening has its own rules (limit, window, reason): always go through reopenComplaint.
+    if (status === 'Reopened') {
+      return await this.reopenComplaint(id, orgId, userId, userName, userRole, remarks);
+    }
+    // A closed or cancelled ticket is final unless it is reopened.
+    if (['Closed', 'Cancelled'].includes(complaint.status) && status !== complaint.status) {
+      throw new HttpError(400, `A ${complaint.status.toLowerCase()} complaint cannot be changed. Reopen it if more work is needed.`);
+    }
 
     if ((status === 'Closed' || status === 'Resolved') && !isAdmin) {
       const isWorkFinished = ['Completed', 'Work Completed', 'Resolved', 'Waiting For Resident Confirmation'].includes(complaint.status);
@@ -1062,18 +1338,35 @@ class ComplaintService {
     return await complaintRepository.getCalendarEvents(orgId, new Date(startDate), new Date(endDate));
   }
 
-  async addFeedback(id, orgId, rating, remarks) {
+  /**
+   * Resident rating. Only the resident who raised the ticket (or an admin) may rate it. Rating finished
+   * work confirms and closes it; a rating on a closed ticket is stored once and never reopens or alters it.
+   */
+  async addFeedback(id, orgId, userId, userName, userRole, rating, remarks, metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
-    if (complaint.status !== 'Resolved' && complaint.status !== 'Closed') {
-      throw new HttpError(400, 'Cannot rate an unresolved complaint');
+    const isAdmin = isComplaintAdmin(userRole);
+    const isOwner = idOf(complaint.residentId) && idOf(complaint.residentId) === String(userId);
+    if (!isOwner && !isAdmin) {
+      throw new HttpError(403, 'Only the resident who logged this ticket can rate it.');
     }
-    const updated = await complaintRepository.update(id, orgId, {
-      feedback: { overallRating: rating, remarks },
-      status: 'Closed',
-      closedAt: new Date()
-    });
-    complaintEvents.emit('complaint.updated', { orgId, complaint: updated, action: 'Feedback Added' });
-    return updated;
+
+    const feedback = this.sanitizeFeedback({ overallRating: rating, remarks });
+    if (!feedback?.overallRating) throw new HttpError(400, 'Please choose a rating from 1 to 5.');
+
+    if ([...WORK_DONE_STATUSES, 'Resolved'].includes(complaint.status)) {
+      return await this.confirmCompletion(id, orgId, userId, userName, userRole, metaData, feedback);
+    }
+    if (complaint.status === 'Closed') {
+      if (complaint.feedback?.overallRating) {
+        throw new HttpError(400, 'Feedback was already submitted for this complaint.');
+      }
+      const updated = await complaintRepository.update(id, orgId, {
+        feedback: { ...feedback, feedbackDate: new Date() }
+      });
+      complaintEvents.emit('complaint.updated', { orgId, complaint: updated, action: 'Feedback Added' });
+      return updated;
+    }
+    throw new HttpError(400, 'You can rate a complaint once the work has been completed.');
   }
 
   async deleteComplaint(id, orgId) {

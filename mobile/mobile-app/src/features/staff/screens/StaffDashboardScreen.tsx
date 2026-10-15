@@ -59,6 +59,10 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
     confirmLogout,
     cancelLogout,
     executeLogout,
+    isDualStaff,
+    canViewWorkOrders,
+    canViewAttendance,
+    canViewAllocations,
   } = useStaffDashboard();
 
   const activeSession = myAttendanceRecords?.find((s) => s.status === 'Open');
@@ -137,13 +141,66 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
             />
           </View>
         ) : (
-          /* 4. Compact & Clean Staff Self-Service View */
+          /* 4. Staff Experience (Portal & Pass vs Staff Dual) */
           <View className="gap-4">
             {/* Staff Profile Card */}
             <StaffProfileCard member={myProfile} activeOrgId={activeOrgId} />
 
-            {/* A. Pending Household Assignment Requests (Prominent & Actionable) */}
-            {pendingAllocations.length > 0 && (
+            {/* Quick Metrics Summary (Staff Dual & Configured Staff Roles) */}
+            {(isDualStaff || canViewAllocations || canViewAttendance) && (
+              <View className="flex-row gap-2">
+                <View className="flex-1 py-2.5 px-2 rounded-2xl bg-card border border-border items-center justify-center">
+                  <Text className="text-[11px] font-medium text-muted-foreground text-center" numberOfLines={1}>
+                    Allocated Units
+                  </Text>
+                  <Text className="text-sm font-bold text-foreground mt-0.5">
+                    {activeAllocations.length}
+                  </Text>
+                </View>
+                <View className="flex-1 py-2.5 px-2 rounded-2xl bg-card border border-border items-center justify-center">
+                  <Text className="text-[11px] font-medium text-muted-foreground text-center" numberOfLines={1}>
+                    Pending Invites
+                  </Text>
+                  <Text className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                    {pendingAllocations.length}
+                  </Text>
+                </View>
+                <View className="flex-1 py-2.5 px-2 rounded-2xl bg-card border border-border items-center justify-center">
+                  <Text className="text-[11px] font-medium text-muted-foreground text-center" numberOfLines={1}>
+                    Gate Status
+                  </Text>
+                  <Text className={`text-sm font-bold mt-0.5 ${activeSession ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                    {activeSession ? 'On-Site' : 'Off-Site'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Digital Gate QR Pass (Primary Destination for both Staff Portal & Staff Dual) */}
+            <TouchableOpacity
+              onPress={() => setShowQrModal(true)}
+              className="flex-row items-center justify-between p-4 rounded-2xl bg-card border border-primary/30 shadow-xs active:opacity-80"
+              accessibilityRole="button"
+              accessibilityLabel="View staff digital QR pass for gate attendance"
+            >
+              <View className="flex-row items-center flex-1 me-3">
+                <View className="h-11 w-11 rounded-xl bg-primary/10 items-center justify-center me-3">
+                  <QrCode size={22} className="text-primary" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-foreground">
+                    Digital Gate QR Pass
+                  </Text>
+                  <Text className="text-xs text-muted-foreground mt-0.5">
+                    Show at estate gates for entry & exit attendance
+                  </Text>
+                </View>
+              </View>
+              <ChevronRight size={18} className="text-primary" />
+            </TouchableOpacity>
+
+            {/* A. Pending Household Assignment Requests (Dual / Allocations permission only) */}
+            {canViewAllocations && pendingAllocations.length > 0 && (
               <View className="gap-2.5">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-base font-bold text-foreground">
@@ -189,10 +246,23 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
                         </View>
                       </View>
 
-                      <Text className="text-xs text-muted-foreground mb-3.5 leading-relaxed">
+                      <Text className="text-xs text-muted-foreground mb-2 leading-relaxed">
                         Resident <Text className="font-semibold text-foreground">{requestedBy}</Text> has invited you to assist their household.
                         {alloc.notes ? ` Note: "${alloc.notes}"` : ''}
                       </Text>
+
+                      {/* Schedule info if specified */}
+                      {alloc.accessSchedule?.timeWindow?.start && alloc.accessSchedule?.timeWindow?.end ? (
+                        <View className="flex-row items-center gap-1.5 mb-3 bg-muted/50 px-2.5 py-1.5 rounded-xl border border-border/60">
+                          <CalendarClock size={13} className="text-primary shrink-0" />
+                          <Text className="text-[11px] font-semibold text-foreground">
+                            {alloc.accessSchedule.timeWindow.start} - {alloc.accessSchedule.timeWindow.end}
+                            {alloc.accessSchedule.days && alloc.accessSchedule.days.length > 0
+                              ? ` • ${alloc.accessSchedule.days.join(', ')}`
+                              : ''}
+                          </Text>
+                        </View>
+                      ) : null}
 
                       {/* Visible Action Row */}
                       <View className="flex-row items-center gap-2 pt-1 border-t border-border/50">
@@ -229,134 +299,123 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
               </View>
             )}
 
-            {/* B. Allocated Units Section */}
-            <View className="gap-2.5">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base font-bold text-foreground">
-                  Allocated Units ({activeAllocations.length})
-                </Text>
-                {activeAllocations.length > 0 && (
-                  <Text className="text-xs text-muted-foreground">
-                    Active Household Access
+            {/* B. Allocated Units Section (Dual / Allocations permission only) */}
+            {canViewAllocations && (
+              <View className="gap-2.5">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-base font-bold text-foreground">
+                    Allocated Units ({activeAllocations.length})
                   </Text>
+                  {activeAllocations.length > 0 && (
+                    <Text className="text-xs text-muted-foreground">
+                      Active Household Access
+                    </Text>
+                  )}
+                </View>
+
+                {activeAllocations.length === 0 ? (
+                  <View className="p-4 rounded-2xl bg-card border border-border items-center justify-center">
+                    <Home size={22} className="text-muted-foreground/60 mb-1.5" />
+                    <Text className="text-xs text-muted-foreground text-center">
+                      No residential units currently allocated. Accepted household invitations will appear here.
+                    </Text>
+                  </View>
+                ) : (
+                  activeAllocations.map((alloc) => {
+                    const unitLabel = `${alloc.villaId?.unitNumber || 'Unit'}${
+                      alloc.villaId?.blockOrBuilding ? ` (${alloc.villaId.blockOrBuilding})` : ''
+                    }`;
+                    return (
+                      <View
+                        key={alloc._id}
+                        className="flex-row items-center justify-between p-3.5 rounded-2xl bg-card border border-border shadow-xs"
+                      >
+                        <View className="flex-row items-center flex-1 me-2">
+                          <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center me-3">
+                            <Home size={18} className="text-primary" />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
+                              {unitLabel}
+                            </Text>
+                            <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
+                              {alloc.roleOrTrade || 'Household Staff'} • {alloc.associatedBy?.name || 'Resident'}
+                            </Text>
+                            {alloc.accessSchedule?.timeWindow?.start && alloc.accessSchedule?.timeWindow?.end ? (
+                              <Text className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 mt-0.5">
+                                {alloc.accessSchedule.timeWindow.start} - {alloc.accessSchedule.timeWindow.end}
+                                {alloc.accessSchedule.days && alloc.accessSchedule.days.length > 0
+                                  ? ` (${alloc.accessSchedule.days.join(', ')})`
+                                  : ''}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+                        <View className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                          <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                            Active
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
                 )}
               </View>
+            )}
 
-              {activeAllocations.length === 0 ? (
-                <View className="p-4 rounded-2xl bg-card border border-border items-center justify-center">
-                  <Home size={22} className="text-muted-foreground/60 mb-1.5" />
-                  <Text className="text-xs text-muted-foreground text-center">
-                    No residential units currently allocated. Accepted household invitations will appear here.
+            {/* C. Assigned Work Orders (Dual / Work Orders permission only) */}
+            {canViewWorkOrders && (
+              <View className="gap-2.5">
+                <Text className="text-base font-bold text-foreground">
+                  Work Orders & Tickets
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => router.push('/(resident)/complaints/assignee' as any)}
+                  className="flex-row items-center justify-between p-4 rounded-2xl bg-card border border-border shadow-xs active:opacity-80"
+                  accessibilityRole="button"
+                  accessibilityLabel="View assigned work orders"
+                >
+                  <View className="flex-row items-center flex-1 me-3">
+                    <View className="h-11 w-11 rounded-xl bg-primary/10 items-center justify-center me-3">
+                      <ClipboardList size={22} className="text-primary" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-bold text-foreground">
+                        Assigned Work Orders
+                      </Text>
+                      <Text className="text-xs text-muted-foreground mt-0.5">
+                        Review, accept, and update assigned tickets
+                      </Text>
+                    </View>
+                  </View>
+                  <ChevronRight size={18} className="text-muted-foreground" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* D. Gate Attendance & History (Dual / Attendance permission only) */}
+            {canViewAttendance && (
+              <View className="gap-2.5">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-base font-bold text-foreground">
+                    Gate Attendance
                   </Text>
-                </View>
-              ) : (
-                activeAllocations.map((alloc) => {
-                  const unitLabel = `${alloc.villaId?.unitNumber || 'Unit'}${
-                    alloc.villaId?.blockOrBuilding ? ` (${alloc.villaId.blockOrBuilding})` : ''
-                  }`;
-                  return (
-                    <View
-                      key={alloc._id}
-                      className="flex-row items-center justify-between p-3.5 rounded-2xl bg-card border border-border shadow-xs"
-                    >
-                      <View className="flex-row items-center flex-1 me-2">
-                        <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center me-3">
-                          <Home size={18} className="text-primary" />
-                        </View>
-                        <View className="flex-1">
-                          <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
-                            {unitLabel}
-                          </Text>
-                          <Text className="text-xs text-muted-foreground mt-0.5">
-                            {alloc.roleOrTrade || 'Household Staff'} • {alloc.associatedBy?.name || 'Resident'}
-                          </Text>
-                        </View>
-                      </View>
-                      <View className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                        <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                          Active
+                  <View className="flex-row items-center gap-2">
+                    {activeSession ? (
+                      <View className="flex-row items-center px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                        <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 me-1" />
+                        <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          On-Site
                         </Text>
                       </View>
-                    </View>
-                  );
-                })
-              )}
-            </View>
-
-            {/* C. Assigned Work & Duties */}
-            <View className="gap-2.5">
-              <Text className="text-base font-bold text-foreground">
-                Assigned Work & Duties
-              </Text>
-
-              {/* Digital Gate QR Pass Card */}
-              <TouchableOpacity
-                onPress={() => setShowQrModal(true)}
-                className="flex-row items-center justify-between p-4 rounded-2xl bg-card border border-border shadow-xs active:opacity-80"
-                accessibilityRole="button"
-                accessibilityLabel="View staff digital QR pass for gate attendance"
-              >
-                <View className="flex-row items-center flex-1 me-3">
-                  <View className="h-11 w-11 rounded-xl bg-primary/10 items-center justify-center me-3">
-                    <QrCode size={22} className="text-primary" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-bold text-foreground">
-                      Digital Gate QR Pass
-                    </Text>
-                    <Text className="text-xs text-muted-foreground mt-0.5">
-                      Show at estate gates for entry & exit attendance
-                    </Text>
-                  </View>
-                </View>
-                <ChevronRight size={18} className="text-muted-foreground" />
-              </TouchableOpacity>
-
-              {/* Assignee Queue / Work Orders Card */}
-              <TouchableOpacity
-                onPress={() => router.push('/(resident)/complaints/assignee' as any)}
-                className="flex-row items-center justify-between p-4 rounded-2xl bg-card border border-border shadow-xs active:opacity-80"
-                accessibilityRole="button"
-                accessibilityLabel="View assigned work orders"
-              >
-                <View className="flex-row items-center flex-1 me-3">
-                  <View className="h-11 w-11 rounded-xl bg-primary/10 items-center justify-center me-3">
-                    <ClipboardList size={22} className="text-primary" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-bold text-foreground">
-                      Assigned Work Orders
-                    </Text>
-                    <Text className="text-xs text-muted-foreground mt-0.5">
-                      Review, accept, and update assigned tickets
-                    </Text>
-                  </View>
-                </View>
-                <ChevronRight size={18} className="text-muted-foreground" />
-              </TouchableOpacity>
-            </View>
-
-            {/* D. Gate Attendance & History */}
-            <View className="gap-2.5">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-base font-bold text-foreground">
-                  Gate Attendance
-                </Text>
-                <View className="flex-row items-center gap-2">
-                  {activeSession ? (
-                    <View className="flex-row items-center px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                      <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400 me-1" />
-                      <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                        On-Site
-                      </Text>
-                    </View>
-                  ) : (
-                    <View className="px-2.5 py-0.5 rounded-full bg-muted border border-border">
-                      <Text className="text-xs font-semibold text-muted-foreground">
-                        Off-Site
-                      </Text>
-                    </View>
-                  )}
+                    ) : (
+                      <View className="px-2.5 py-0.5 rounded-full bg-muted border border-border">
+                        <Text className="text-xs font-semibold text-muted-foreground">
+                          Off-Site
+                        </Text>
+                      </View>
+                    )}
 
                   {myAttendanceRecords && myAttendanceRecords.length > 0 && (
                     <TouchableOpacity
@@ -388,6 +447,7 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
                 ))
               )}
             </View>
+          )}
           </View>
         )}
       </ScrollView>

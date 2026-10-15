@@ -199,7 +199,7 @@ export function PaymentCheckoutSheet({
       const idempotencyKey = buildInvoiceOrderKey(invoice._id, amountToPay, operationIdRef.current);
       const orderData = await initiateRazorpayPayment(invoice._id, amountToPay, idempotencyKey, operationIdRef.current);
       
-      const keyId = orderData?.razorpayKeyId || process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TXAJ0OalVys0pH';
+      const keyId = orderData?.razorpayKeyId || process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || '';
       const orderId = orderData?.orderId || orderData?.id || '';
       const paymentId = orderData?.paymentId || '';
 

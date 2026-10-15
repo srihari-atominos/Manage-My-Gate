@@ -62,8 +62,10 @@ export const useWorkspaceDetails = () => {
         } else {
           const listResponse = await dispatch(loadWorkspaces()).unwrap()
           const list = listResponse?.data || listResponse || []
+          // Only fall back to "the only workspace" (a community admin's own). Never pick an arbitrary
+          // workspace from the platform-wide list, which could edit a different community.
           const activeWs = Array.isArray(list)
-            ? list.find((w) => w && w.organizationId === activeOrgId) || list[0]
+            ? list.find((w) => w && w.organizationId === activeOrgId) || (list.length === 1 ? list[0] : null)
             : null
           if (activeWs) {
             setWorkspaceId(activeWs._id)

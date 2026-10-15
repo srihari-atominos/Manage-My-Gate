@@ -18,6 +18,8 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import apiClient from '../../../services/apiClient';
 import { InviteUserData } from '../services/userService';
 import { useTranslation } from '@/src/utils/i18n';
+import { StaffInviteDetailsSection } from '@/src/features/staff/components/StaffInviteDetailsSection';
+import { staffService, type StaffPhotoFile } from '@/src/features/staff/services/staffService';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import {
   validateEmail,
@@ -48,8 +50,11 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   const [selectedRoleName, setSelectedRoleName] = useState('');
   const [selectedVillaId, setSelectedVillaId] = useState('');
   const [department, setDepartment] = useState('Others');
-  const [staffType, setStaffType] = useState('In-House Staff');
+  const [departmentOther, setDepartmentOther] = useState('');
+  const [departmentOtherError, setDepartmentOtherError] = useState<string | undefined>(undefined);
   const [designation, setDesignation] = useState('');
+  const [staffPhoto, setStaffPhoto] = useState<StaffPhotoFile | null>(null);
+  const [photoUploadFailed, setPhotoUploadFailed] = useState(false);
   const [staffCode, setStaffCode] = useState('');
 
   const isStaffRole = (roleName: string) => {
@@ -140,7 +145,8 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     setSelectedRoleName('');
     setSelectedVillaId('');
     setDepartment('Others');
-    setStaffType('In-House Staff');
+    setDepartmentOther('');
+    setDepartmentOtherError(undefined);
     setDesignation('');
     setStaffCode('');
     setEmailStatus('idle');
@@ -155,13 +161,18 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     setSubmitError(null);
     setSuccessResults(null);
     setCopiedLink(false);
+    setStaffPhoto(null);
+    setPhotoUploadFailed(false);
     if (emailCheckTimerRef.current) clearTimeout(emailCheckTimerRef.current);
     if (phoneCheckTimerRef.current) clearTimeout(phoneCheckTimerRef.current);
   };
 
   const selectedRoleObj = roles.find((r) => r.name === selectedRoleName);
   const isTenantRole = selectedRoleObj ? !!selectedRoleObj.isTenantRole : false;
-  const isStaff = isStaffRole(selectedRoleName) || selectedRoleObj?.roleScope === 'STAFF';
+  // Community Staff (Global Staff) work community-wide, so they are never tied to a unit at invite time.
+  const isCommunityStaffRole = selectedRoleObj?.roleScope === 'COMMUNITY_STAFF';
+  const isStaff =
+    isStaffRole(selectedRoleName) || selectedRoleObj?.roleScope === 'STAFF' || isCommunityStaffRole;
 
   // Real-time email validation and debounced backend verification
   const handleEmailChange = (text: string) => {
@@ -344,6 +355,12 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       return;
     }
 
+    // "Others" needs the trade typed in, otherwise nobody can tell what this staff member does
+    if (isStaff && department === 'Others' && !departmentOther.trim()) {
+      setDepartmentOtherError(t('department_other_required', 'Please type the department / trade'));
+      return;
+    }
+
     // Validate villa (mandatory for tenant resident roles, optional for staff)
     if (isTenantRole && !isStaff && !selectedVillaId) {
       setVillaError(t('select_villa_error', 'Please choose a villa or unit'));
@@ -362,7 +379,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     try {
       let residentType = 'None';
       if (isStaff) {
-        residentType = selectedVillaId ? 'Household Staff' : 'Community Staff';
+        residentType = selectedVillaId && !isCommunityStaffRole ? 'Household Staff' : 'Community Staff';
       } else if (isTenantRole && selectedRoleName) {
         const lower = selectedRoleName.toLowerCase();
         if (lower.includes('owner')) residentType = 'Owner';
@@ -376,7 +393,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
         email: email.trim(),
         phone: phone.trim(),
         roleName: selectedRoleName || null,
-        villaId: selectedVillaId || null,
+        villaId: (!isCommunityStaffRole && selectedVillaId) || null,
         residentType,
       };
 
@@ -384,13 +401,28 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
         invitePayload.staffData = {
           isStaff: true,
           department,
-          staffType,
+          // Typed trade, only meaningful (and only sent) for the "Others" department
+          departmentOther: department === 'Others' ? departmentOther.trim() : '',
           designation: designation.trim() || selectedRoleName,
           staffCode: staffCode.trim() || undefined,
         };
       }
 
       const res = await onSendInvite(invitePayload);
+
+      // The optional photo is attached after the invite created the staff profile. A photo problem must
+      // never undo a successful invitation, so it only produces a gentle note on the success screen.
+      let photoFailed = false;
+      const newUserId = res?.id || res?.data?.id || res?.user?._id || res?.data?.user?._id;
+      if (isStaff && staffPhoto) {
+        try {
+          if (!newUserId) throw new Error('missing user id');
+          await staffService.uploadStaffPhotoForUser(String(newUserId), staffPhoto);
+        } catch {
+          photoFailed = true;
+        }
+      }
+      setPhotoUploadFailed(photoFailed);
 
       // Show persistent success confirmation inside modal
       setSuccessResults({
@@ -422,27 +454,28 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     }
   };
 
+  // Role Builder scope is authoritative. Legacy roles fall back only when no scope was stored.
+  const getRoleScopeLabel = (r: any): string => {
+    switch (r?.roleScope) {
+      case 'GLOBAL': return t('global_scope_short', '(Global Scope)');
+      case 'COMMUNITY_STAFF': return t('community_staff_scope_short', '(Community Staff · Global)');
+      case 'STAFF': return t('unit_staff_scope_short', '(Unit Staff · Internal)');
+      case 'UNIT': return t('unit_scope_short', '(Unit Scope · Residential)');
+      default:
+        if (isStaffRole(r?.name)) return t('unit_staff_scope_short', '(Unit Staff · Internal)');
+        return r?.isTenantRole
+          ? t('unit_scope_short', '(Unit Scope · Residential)')
+          : t('global_scope_short', '(Global Scope)');
+    }
+  };
+
   const roleOptions = roles.map((r) => ({
-    label: `${r.name} ${r.isTenantRole ? '(Unit/Tenant)' : '(Global)'}`,
+    label: `${r.name} ${getRoleScopeLabel(r)}`,
     value: r.name,
   }));
 
-  const departmentOptions = [
-    { label: 'Electrical', value: 'Electrical' },
-    { label: 'Plumbing', value: 'Plumbing' },
-    { label: 'Housekeeping', value: 'Housekeeping' },
-    { label: 'Security', value: 'Security' },
-    { label: 'Carpentry', value: 'Carpentry' },
-    { label: 'Others', value: 'Others' },
-  ];
-
-  const staffTypeOptions = [
-    { label: 'In-House Staff', value: 'In-House Staff' },
-    { label: 'External Vendor', value: 'External Vendor' },
-  ];
-
   const villaOptions = [
-    ...(isStaff ? [{ label: '-- None (Community-wide Staff) --', value: '' }] : []),
+    ...(isStaff ? [{ label: 'None: works community-wide', value: '' }] : []),
     ...villas.map((v) => ({
       label: `Unit ${v.unitNumber || v.villaNumber} ${
         v.blockOrBuilding ? `(${v.blockOrBuilding})` : ''
@@ -472,6 +505,15 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                       <Text className="font-semibold text-foreground">{successData.email}</Text> {t('for_role', 'for the role')}{' '}
                       <Text className="font-semibold text-foreground">{successData.roleName}</Text>.
                     </Text>
+
+                    {photoUploadFailed ? (
+                      <Text className="text-[11px] text-amber-600 dark:text-amber-400 text-center mt-2">
+                        {t(
+                          'staff_photo_upload_failed',
+                          'The invitation was sent, but the photo could not be uploaded. You can add it later from the staff profile.'
+                        )}
+                      </Text>
+                    ) : null}
 
                     {Boolean(successData.inviteLink) && (
                       <View className="w-full mt-3.5 pt-3 border-t border-emerald-500/20">
@@ -620,37 +662,30 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                     )}
                   </View>
 
-                  {/* Staff Specifications Segment */}
+                  {/* Staff details: photo, trade and title */}
                   {isStaff && (
-                    <View className="p-3.5 bg-muted/40 border border-border rounded-2xl gap-3">
-                      <Text className="text-xs font-bold text-primary">
-                        {t('staff_specifications', 'Staff & Facility Specifications')}
-                      </Text>
-                      <DropdownSelect
-                        label={t('department_trade', 'Department / Trade')}
-                        required
-                        options={departmentOptions}
-                        value={department}
-                        onValueChange={(val) => setDepartment(val)}
-                      />
-                      <DropdownSelect
-                        label={t('employment_type', 'Employment Type')}
-                        required
-                        options={staffTypeOptions}
-                        value={staffType}
-                        onValueChange={(val) => setStaffType(val)}
-                      />
-                      <TextInput
-                        label={t('designation_title', 'Designation / Title')}
-                        placeholder={t('designation_placeholder', 'e.g. Senior Electrician, Private Maid')}
-                        value={designation}
-                        onChangeText={(val) => setDesignation(val)}
-                      />
-                    </View>
+                    <StaffInviteDetailsSection
+                      photo={staffPhoto}
+                      onPhotoChange={setStaffPhoto}
+                      department={department}
+                      onDepartmentChange={(val) => {
+                        setDepartment(val);
+                        setDepartmentOtherError(undefined);
+                      }}
+                      departmentOther={departmentOther}
+                      onDepartmentOtherChange={(val) => {
+                        setDepartmentOther(val);
+                        setDepartmentOtherError(undefined);
+                      }}
+                      departmentOtherError={departmentOtherError}
+                      designation={designation}
+                      onDesignationChange={setDesignation}
+                      disabled={submitting}
+                    />
                   )}
 
                   {/* Villa / Unit Dropdown (Rendered for Tenant roles and Staff) */}
-                  {(isTenantRole || isStaff) && (
+                  {(isTenantRole || isStaff) && !isCommunityStaffRole && (
                     <View className="mb-4">
                       {loadingVillas ? (
                         <View className="py-3 items-center justify-center">
@@ -660,17 +695,17 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                       ) : (
                         <View>
                           <DropdownSelect
-                            label={isStaff ? t('associated_unit_optional', 'Associated Villa / Unit (Optional for Community Staff)') : t('select_unit', 'Select Villa / Unit')}
+                            label={isStaff ? t('assigned_unit_optional', 'Assigned unit (optional)') : t('select_unit', 'Select Villa / Unit')}
                             required={!isStaff}
                             options={villaOptions}
                             value={selectedVillaId}
                             onValueChange={handleVillaChange}
-                            placeholder={isStaff ? t('select_unit_or_none', '-- None (Community-wide Staff) --') : t('select_unit_placeholder', '-- Choose a Villa --')}
+                            placeholder={isStaff ? t('select_unit_or_none', 'None: works community-wide') : t('select_unit_placeholder', '-- Choose a Villa --')}
                             error={!isStaff ? villaError : undefined}
                           />
                           {isStaff ? (
                             <Text className="text-[11px] text-muted-foreground mt-1 ms-1">
-                              {t('staff_unit_hint', 'Select a unit for dedicated household staff (e.g. Private Maid/Driver), or leave blank for community-wide facility staff.')}
+                              {t('staff_unit_hint', 'Pick a unit for household staff (maid, driver). Leave empty for community-wide staff.')}
                             </Text>
                           ) : null}
                         </View>

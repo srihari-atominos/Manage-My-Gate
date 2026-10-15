@@ -35,8 +35,8 @@ import {
 import ComplaintTopNav from '../components/ComplaintTopNav'
 import { staffAttendanceService } from '../services/staffAttendance.service'
 import { technicianService } from '../services/technician.service'
+import { useStaffAttendanceSocket } from '../hooks/useStaffAttendanceSocket'
 import { toast } from 'react-hot-toast'
-import * as XLSX from 'xlsx'
 import '../styles/_complaints.scss'
 
 const DEPARTMENTS = [
@@ -66,6 +66,7 @@ export const StaffAttendanceView = () => {
   // Filters
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [roleFilter, setRoleFilter] = useState('ALL')
   const [gateFilter, setGateFilter] = useState('ALL')
   const [departmentFilter, setDepartmentFilter] = useState('ALL')
   const [staffFilter, setStaffFilter] = useState('ALL')
@@ -91,7 +92,8 @@ export const StaffAttendanceView = () => {
     try {
       setLoading(true)
       const query = { page, limit: 20 }
-      if (statusFilter !== 'ALL' && statusFilter !== 'Missing Checkout') query.status = statusFilter
+      if (statusFilter !== 'ALL') query.status = statusFilter
+      if (roleFilter !== 'ALL') query.type = roleFilter
       if (gateFilter !== 'ALL') query.gateId = gateFilter
       if (departmentFilter !== 'ALL') query.department = departmentFilter
       if (staffFilter !== 'ALL') query.technicianId = staffFilter
@@ -123,7 +125,14 @@ export const StaffAttendanceView = () => {
     } finally {
       setLoading(false)
     }
-  }, [page, statusFilter, gateFilter, departmentFilter, staffFilter, startDate, endDate, search])
+  }, [page, statusFilter, roleFilter, gateFilter, departmentFilter, staffFilter, startDate, endDate, search])
+
+  // Real-time WebSocket synchronization
+  useStaffAttendanceSocket(
+    useCallback(() => {
+      loadData()
+    }, [loadData]),
+  )
 
   useEffect(() => {
     loadData()
@@ -139,17 +148,29 @@ export const StaffAttendanceView = () => {
       const today = toYMD(now)
       setStartDate(today)
       setEndDate(today)
+    } else if (preset === 'yesterday') {
+      const yest = new Date(now)
+      yest.setDate(now.getDate() - 1)
+      const yestStr = toYMD(yest)
+      setStartDate(yestStr)
+      setEndDate(yestStr)
     } else if (preset === 'week') {
       const day = now.getDay()
       const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1)
-      const monday = new Date(now.setDate(diffToMonday))
+      const monday = new Date(now)
+      monday.setDate(diffToMonday)
       const sunday = new Date(monday)
       sunday.setDate(monday.getDate() + 6)
       setStartDate(toYMD(monday))
       setEndDate(toYMD(sunday))
-    } else if (preset === 'month') {
+    } else if (preset === 'this_month' || preset === 'month') {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      setStartDate(toYMD(firstDay))
+      setEndDate(toYMD(lastDay))
+    } else if (preset === 'last_month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const lastDay = new Date(now.getFullYear(), now.getMonth(), 0)
       setStartDate(toYMD(firstDay))
       setEndDate(toYMD(lastDay))
     } else {
@@ -162,6 +183,7 @@ export const StaffAttendanceView = () => {
   const handleResetFilters = () => {
     setSearch('')
     setStatusFilter('ALL')
+    setRoleFilter('ALL')
     setGateFilter('ALL')
     setDepartmentFilter('ALL')
     setStaffFilter('ALL')
@@ -170,155 +192,43 @@ export const StaffAttendanceView = () => {
     setPage(1)
   }
 
-  // Formula injection sanitizer
-  const sanitizeField = (val) => {
-    if (val === null || val === undefined) return ''
-    const str = String(val).trim()
-    if (/^[=+@\-\t\r]/.test(str)) {
-      return `'${str}`
-    }
-    return str
+  // Export: the server builds a friendly report (readable dates/times, hours, absent days, summary
+  // sheets) from the same filters shown on screen, so the file always matches what the user sees.
+  const buildExportQuery = () => {
+    const query = {}
+    if (statusFilter !== 'ALL') query.status = statusFilter
+    if (roleFilter !== 'ALL') query.type = roleFilter
+    if (gateFilter !== 'ALL') query.gateId = gateFilter
+    if (departmentFilter !== 'ALL') query.department = departmentFilter
+    if (staffFilter !== 'ALL') query.technicianId = staffFilter
+    if (startDate) query.startDate = startDate
+    if (endDate) query.endDate = endDate
+    if (search.trim()) query.search = search.trim()
+    return query
   }
 
-  // Export handlers
-  const getFullExportDataset = async () => {
-    const fullQuery = { limit: 1000, page: 1 }
-    if (statusFilter !== 'ALL' && statusFilter !== 'Missing Checkout') fullQuery.status = statusFilter
-    if (gateFilter !== 'ALL') fullQuery.gateId = gateFilter
-    if (departmentFilter !== 'ALL') fullQuery.department = departmentFilter
-    if (staffFilter !== 'ALL') fullQuery.technicianId = staffFilter
-    if (startDate) fullQuery.startDate = startDate
-    if (endDate) fullQuery.endDate = endDate
-    if (search.trim()) fullQuery.search = search.trim()
-
-    const res = await staffAttendanceService.getHistory(fullQuery)
-    return res?.records?.length > 0 ? res.records : records
-  }
-
-  const handleExportCSV = async () => {
+  const downloadReport = async (format) => {
     try {
       setExporting(true)
-      const dataset = await getFullExportDataset()
-      if (dataset.length === 0) {
-        toast.error('No attendance records to export under current filters')
-        return
-      }
-
-      const headers = [
-        'Community ID',
-        'Staff Name',
-        'Department',
-        'Staff Code',
-        'Attendance Date',
-        'Status',
-        'Check-In Time',
-        'Entry Gate',
-        'Check-Out Time',
-        'Exit Gate',
-        'Duration (Mins)',
-        'Exception Flag',
-        'Notes',
-      ]
-
-      const rows = dataset.map((r) => {
-        const staffObj = r.technician || (typeof r.technicianId === 'object' ? r.technicianId : null)
-        const orgId = sanitizeField(r.orgId || '').replace(/"/g, '""')
-        const name = sanitizeField(staffObj?.name || r.staffCode || 'Staff Member').replace(/"/g, '""')
-        const dept = sanitizeField(staffObj?.department || 'General').replace(/"/g, '""')
-        const code = sanitizeField(r.staffCode || staffObj?.staffCode || '').replace(/"/g, '""')
-        const attDate = r.checkInTime ? new Date(r.checkInTime).toISOString().split('T')[0] : ''
-        const status = r.status || 'Open'
-        const inTime = r.checkInTime ? new Date(r.checkInTime).toLocaleString() : ''
-        const inGate = sanitizeField(r.checkInGate || 'Main Gate').replace(/"/g, '""')
-        const outTime = r.checkOutTime ? new Date(r.checkOutTime).toLocaleString() : 'In Progress'
-        const outGate = sanitizeField(r.exitGate || (r.status === 'Open' ? 'On-Site' : 'Main Gate')).replace(/"/g, '""')
-        const duration = r.durationMinutes !== undefined && r.durationMinutes !== null ? String(r.durationMinutes) : '0'
-        const exception = r.isMissingCheckout ? 'Missing Checkout' : 'Normal'
-        const notes = sanitizeField(r.notes || '').replace(/"/g, '""')
-
-        return `"${orgId}","${name}","${dept}","${code}","${attDate}","${status}","${inTime}","${inGate}","${outTime}","${outGate}","${duration}","${exception}","${notes}"`
-      })
-
-      const csvContent = [headers.join(','), ...rows].join('\n')
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const { blob, fileName, rows } = await staffAttendanceService.exportReport(buildExportQuery(), format)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      const timestamp = new Date().toISOString().split('T')[0]
       a.href = url
-      a.download = `Staff_Attendance_Report_${timestamp}.csv`
+      a.download = fileName
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      toast.success(`Exported ${dataset.length} attendance records to CSV`)
+      toast.success(`Downloaded ${rows} attendance ${rows === 1 ? 'row' : 'rows'} as ${format === 'csv' ? 'CSV' : 'Excel'}`)
     } catch (err) {
-      toast.error('Failed to export CSV: ' + err.message)
+      toast.error(err?.response?.data?.message || err?.message || 'Could not export attendance')
     } finally {
       setExporting(false)
     }
   }
 
-  const handleExportExcel = async () => {
-    try {
-      setExporting(true)
-      const dataset = await getFullExportDataset()
-      if (dataset.length === 0) {
-        toast.error('No attendance records to export under current filters')
-        return
-      }
-
-      const rows = dataset.map((r) => {
-        const staffObj = r.technician || (typeof r.technicianId === 'object' ? r.technicianId : null)
-        return {
-          'Community ID': sanitizeField(r.orgId || ''),
-          'Staff Name': sanitizeField(staffObj?.name || r.staffCode || 'Staff Member'),
-          'Department': sanitizeField(staffObj?.department || 'General'),
-          'Staff Code': sanitizeField(r.staffCode || staffObj?.staffCode || ''),
-          'Attendance Date': r.checkInTime ? new Date(r.checkInTime).toISOString().split('T')[0] : '',
-          'Status': r.status || 'Open',
-          'Check-In Time': r.checkInTime ? new Date(r.checkInTime).toLocaleString() : '',
-          'Entry Gate': sanitizeField(r.checkInGate || 'Main Gate'),
-          'Check-Out Time': r.checkOutTime ? new Date(r.checkOutTime).toLocaleString() : 'In Progress',
-          'Exit Gate': sanitizeField(r.exitGate || (r.status === 'Open' ? 'On-Site' : 'Main Gate')),
-          'Duration (Minutes)': r.durationMinutes ?? 0,
-          'Exception Flag': r.isMissingCheckout ? 'Missing Checkout' : 'Normal',
-          'Notes': sanitizeField(r.notes || ''),
-        }
-      })
-
-      const worksheet = XLSX.utils.json_to_sheet(rows)
-      worksheet['!cols'] = [
-        { wch: 24 },
-        { wch: 20 },
-        { wch: 16 },
-        { wch: 14 },
-        { wch: 16 },
-        { wch: 12 },
-        { wch: 22 },
-        { wch: 14 },
-        { wch: 22 },
-        { wch: 14 },
-        { wch: 18 },
-        { wch: 18 },
-        { wch: 24 },
-      ]
-
-      const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance Logs')
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
-      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      const timestamp = new Date().toISOString().split('T')[0]
-      a.href = url
-      a.download = `Staff_Attendance_Report_${timestamp}.xlsx`
-      a.click()
-      URL.revokeObjectURL(url)
-      toast.success(`Exported ${dataset.length} attendance records to Excel (.xlsx)`)
-    } catch (err) {
-      toast.error('Failed to export Excel: ' + err.message)
-    } finally {
-      setExporting(false)
-    }
-  }
+  const handleExportCSV = () => downloadReport('csv')
+  const handleExportExcel = () => downloadReport('xlsx')
 
   const handleOpenDetail = (record) => {
     setSelectedRecord(record)
@@ -343,7 +253,7 @@ export const StaffAttendanceView = () => {
                 color="secondary"
                 variant="outline"
                 onClick={handleExportCSV}
-                disabled={exporting || records.length === 0}
+                disabled={exporting}
               >
                 <CIcon icon={cilCloudDownload} className="me-1" /> Export CSV
               </CButton>
@@ -351,7 +261,7 @@ export const StaffAttendanceView = () => {
                 color="success"
                 variant="outline"
                 onClick={handleExportExcel}
-                disabled={exporting || records.length === 0}
+                disabled={exporting}
               >
                 <CIcon icon={cilCloudDownload} className="me-1" /> Export Excel
               </CButton>
@@ -413,16 +323,22 @@ export const StaffAttendanceView = () => {
                   <CIcon icon={cilFilter} className="text-primary" />
                   <span className="fw-bold">Advanced Filters</span>
                 </div>
-                <div className="d-flex gap-2 align-items-center">
+                <div className="d-flex gap-2 align-items-center flex-wrap">
                   <span className="fs-7 text-muted me-2">Presets:</span>
                   <CButton size="sm" variant="ghost" onClick={() => handleApplyPreset('today')}>
                     Today
                   </CButton>
+                  <CButton size="sm" variant="ghost" onClick={() => handleApplyPreset('yesterday')}>
+                    Yesterday
+                  </CButton>
                   <CButton size="sm" variant="ghost" onClick={() => handleApplyPreset('week')}>
                     This Week
                   </CButton>
-                  <CButton size="sm" variant="ghost" onClick={() => handleApplyPreset('month')}>
+                  <CButton size="sm" variant="ghost" onClick={() => handleApplyPreset('this_month')}>
                     This Month
+                  </CButton>
+                  <CButton size="sm" variant="ghost" onClick={() => handleApplyPreset('last_month')}>
+                    Last Month
                   </CButton>
                   <CButton size="sm" color="secondary" variant="outline" onClick={handleResetFilters}>
                     Clear Filters
@@ -441,11 +357,21 @@ export const StaffAttendanceView = () => {
                   />
                 </CCol>
                 <CCol xs={12} sm={6} md={2}>
+                  <label className="form-label fs-7 fw-semibold text-muted">Role / Classification</label>
+                  <CFormSelect value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+                    <option value="ALL">All Roles</option>
+                    <option value="In-House Staff">In-House Staff</option>
+                    <option value="External Vendor">External Vendor</option>
+                  </CFormSelect>
+                </CCol>
+                <CCol xs={12} sm={6} md={2}>
                   <label className="form-label fs-7 fw-semibold text-muted">Status</label>
                   <CFormSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="ALL">All Statuses</option>
                     <option value="Open">Currently On-Site</option>
                     <option value="Closed">Completed</option>
+                    <option value="Missing Checkout">Missing Checkout / Exception</option>
+                    <option value="Absent">Absent (No Check-In)</option>
                   </CFormSelect>
                 </CCol>
                 <CCol xs={12} sm={6} md={2}>
@@ -527,6 +453,7 @@ export const StaffAttendanceView = () => {
                     <CTableHead color="light">
                       <CTableRow>
                         <CTableHeaderCell>Staff Member</CTableHeaderCell>
+                        <CTableHeaderCell>Role / Type</CTableHeaderCell>
                         <CTableHeaderCell>Department / Trade</CTableHeaderCell>
                         <CTableHeaderCell>Date</CTableHeaderCell>
                         <CTableHeaderCell>Check-In</CTableHeaderCell>
@@ -550,6 +477,11 @@ export const StaffAttendanceView = () => {
                                 {staffObj?.name || r.staffCode || 'Staff Member'}
                               </div>
                               <div className="fs-8 text-muted">{r.staffCode || staffObj?.staffCode || 'N/A'}</div>
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              <CBadge color={staffObj?.type === 'External Vendor' ? 'warning' : 'secondary'}>
+                                {staffObj?.type || 'In-House Staff'}
+                              </CBadge>
                             </CTableDataCell>
                             <CTableDataCell>
                               <CBadge color="info" className="text-capitalize">

@@ -1,16 +1,100 @@
-import crypto from 'crypto';
 import QRCode from 'qrcode';
 import technicianRepository from './technician.repository.js';
 import HttpError from '../../utils/httpError.utils.js';
 import userService from '../user/user.services.js';
+import technicianEvents from './technician.events.js';
+import { signStaffQr } from '../../utils/staffQr.utils.js';
+import {
+  assertValidPhoto,
+  savePhoto,
+  removePhoto,
+  openPhotoStream,
+  verifyPhotoSignature,
+  mimeForKey,
+} from '../../utils/staffPhoto.utils.js';
+import { STAFF_CATEGORIES, STAFF_CATEGORY_VALUES, isResidentAssignable, isStaffRoleScope, staffCategoryForRoleScope } from './staffCategory.utils.js';
+
+// Fields an admin may set through the create/update API. Anything else (orgId, userId, isDeleted, ...)
+// is dropped so a request body can never move a record across tenants or re-link it to another user.
+const WRITABLE_FIELDS = [
+  'name',
+  'email',
+  'phone',
+  'department',
+  'departmentOther',
+  'type',
+  'roleId',
+  'staffCategory',
+  'communityOnly',
+  'status',
+  'whatsappEnabled',
+  'designation',
+  'staffCode',
+  'qrValidFrom',
+  'qrValidUntil',
+  'shiftWindow',
+];
+
+/** One line of plain text: no control characters, collapsed spaces, capped length. */
+export const cleanDepartmentOther = (value) =>
+  String(value ?? '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60);
+
+const pickWritable = (data = {}) => {
+  const out = {};
+  for (const key of WRITABLE_FIELDS) {
+    if (data[key] !== undefined) out[key] = data[key];
+  }
+  if (out.departmentOther !== undefined) out.departmentOther = cleanDepartmentOther(out.departmentOther);
+  // The custom trade only makes sense for the "Others" department; never keep a stale one.
+  if (out.department !== undefined && out.department !== 'Others') out.departmentOther = '';
+  if (out.staffCategory !== undefined && !STAFF_CATEGORY_VALUES.includes(out.staffCategory)) delete out.staffCategory;
+  if (out.communityOnly !== undefined) out.communityOnly = out.communityOnly === true || out.communityOnly === 'true';
+  // "Community only" is a community staff setting; unit staff exist to serve units.
+  if (out.staffCategory === STAFF_CATEGORIES.UNIT) out.communityOnly = false;
+  return out;
+};
 
 class TechnicianService {
-  async createTechnician(orgId, data) {
+  /**
+   * staffCode is what guards type in and what scans resolve by, so it must be unique per community.
+   */
+  async assertStaffCodeAvailable(orgId, staffCode, excludeId = null) {
+    const code = typeof staffCode === 'string' ? staffCode.trim() : '';
+    if (!code) return;
+    const clash = await technicianRepository.findAll(orgId, { staffCode: code });
+    if (clash.some((t) => !excludeId || String(t._id) !== String(excludeId))) {
+      throw new HttpError(409, `Staff code '${code}' is already assigned to another staff member.`);
+    }
+  }
+
+  async createTechnician(orgId, rawData) {
+    const data = pickWritable(rawData);
+    const roleService = (await import('../role/role.services.js')).default;
+    const selectedRole = await roleService.getRoleById(data.roleId);
+    if (selectedRole.orgId && String(selectedRole.orgId) !== String(orgId)) {
+      throw new HttpError(404, 'Selected role is not available in this community.');
+    }
+    if (!isStaffRoleScope(selectedRole.roleScope)) {
+      throw new HttpError(400, 'Select a Community Staff or Unit Staff role from Role Builder.');
+    }
+    // Role Builder owns the staff scope. Legacy fields are kept only for old records.
+    data.staffCategory = staffCategoryForRoleScope(selectedRole.roleScope);
+    data.communityOnly = selectedRole.roleScope === 'COMMUNITY_STAFF' && selectedRole.communityOnly === true;
+    data.type = data.type || 'In-House Staff';
+    if (data.qrValidFrom && data.qrValidUntil && new Date(data.qrValidFrom) >= new Date(data.qrValidUntil)) {
+      throw new HttpError(400, 'QR validity start must be earlier than its end.');
+    }
+    await this.assertStaffCodeAvailable(orgId, data.staffCode);
+
     let userId = null;
     
     // Automatically create a user account
     const emailToUse = data.email ? data.email.trim().toLowerCase() : `${data.phone.replace(/\D/g, '')}@staff.local`;
-    const roleName = data.type === 'External Vendor' ? 'Staff/Vendor' : 'Staff/Vendor';
+    const roleName = selectedRole.name;
     try {
       const roleService = (await import('../role/role.services.js')).default;
       let role = await roleService.getRoleByName(roleName, orgId);
@@ -31,26 +115,40 @@ class TechnicianService {
       }
     }
 
-    // Check if syncTechnicianForStaffUser or existing entry already exists for this user/email
-    const existingTech = await technicianRepository.findAll(orgId, {
-      $or: [
-        ...(userId ? [{ userId }] : []),
-        ...(emailToUse ? [{ email: emailToUse }] : []),
-        ...(data.phone && data.phone !== 'N/A' ? [{ phone: data.phone }] : [])
-      ]
-    });
+    // Check if an existing entry (active or soft-deleted) already exists for this user/email/phone
+    const existingTech = await technicianRepository.findAnyByContactOrUserId(
+      userId,
+      orgId,
+      { email: emailToUse, phone: data.phone }
+    );
 
-    if (existingTech && existingTech.length > 0) {
-      const targetTech = existingTech[0];
-      const updated = await technicianRepository.update(targetTech._id, orgId, {
+    if (existingTech) {
+      if (
+        data.phone &&
+        existingTech.phone === data.phone &&
+        existingTech.name &&
+        data.name &&
+        existingTech.name.trim().toLowerCase() !== data.name.trim().toLowerCase() &&
+        !existingTech.isDeleted
+      ) {
+        throw new HttpError(
+          409,
+          `Phone number is already registered to '${existingTech.name}'. Edit that staff record instead.`
+        );
+      }
+      await this.assertStaffCodeAvailable(orgId, data.staffCode, existingTech._id);
+      const updated = await technicianRepository.restoreOrUpdate(existingTech._id, orgId, {
         ...data,
-        userId: userId || targetTech.userId,
+        userId: userId || existingTech.userId,
         isDeleted: false,
+        status: data.status || 'Active',
       });
+      technicianEvents.emit('technician_created', { orgId, technician: updated });
       return updated;
     }
 
     const technician = await technicianRepository.create({ orgId, userId, ...data });
+    technicianEvents.emit('technician_created', { orgId, technician });
     return technician;
   }
 
@@ -62,14 +160,17 @@ class TechnicianService {
       email,
       phone,
       department = 'Others',
+      departmentOther = '',
       type = 'In-House Staff',
+      staffCategory = null,
       designation = '',
       staffCode = null,
       status = 'Active',
+      allowReactivateDeleted = false,
     },
     session = null
   ) {
-    const existing = await technicianRepository.findByContactOrUserId(
+    const existing = await technicianRepository.findAnyByContactOrUserId(
       userId,
       orgId,
       { email, phone },
@@ -77,6 +178,28 @@ class TechnicianService {
     );
 
     if (existing) {
+      if (existing.isDeleted) {
+        if (!allowReactivateDeleted) {
+          // Soft-deleted staff member remains deleted during automated background syncs
+          return null;
+        }
+        const updateData = {
+          userId: userId || existing.userId,
+          isDeleted: false,
+          status: status || 'Active',
+        };
+        if (name && name.trim()) updateData.name = name.trim();
+        if (phone && phone !== 'N/A') updateData.phone = phone;
+        if (department) updateData.department = department;
+        if (department) updateData.departmentOther = department === 'Others' ? cleanDepartmentOther(departmentOther) : '';
+        if (type) updateData.type = type;
+        if (STAFF_CATEGORY_VALUES.includes(staffCategory)) updateData.staffCategory = staffCategory;
+        if (staffCategory === STAFF_CATEGORIES.UNIT) updateData.communityOnly = false;
+        if (designation) updateData.designation = designation;
+        if (staffCode) updateData.staffCode = staffCode;
+        return await technicianRepository.restoreOrUpdate(existing._id, orgId, updateData, session);
+      }
+
       const updateData = {
         userId: userId || existing.userId,
         isDeleted: false,
@@ -85,10 +208,22 @@ class TechnicianService {
       if (name && name.trim()) updateData.name = name.trim();
       if (phone && phone !== 'N/A') updateData.phone = phone;
       if (department) updateData.department = department;
+      if (department) updateData.departmentOther = department === 'Others' ? cleanDepartmentOther(departmentOther) : '';
       if (type) updateData.type = type;
+      if (STAFF_CATEGORY_VALUES.includes(staffCategory)) updateData.staffCategory = staffCategory;
+      if (staffCategory === STAFF_CATEGORIES.UNIT) updateData.communityOnly = false;
       if (designation) updateData.designation = designation;
       if (staffCode) updateData.staffCode = staffCode;
       return await technicianRepository.update(existing._id, orgId, updateData, session);
+    }
+
+    const wasDeleted = await technicianRepository.existsDeletedByUserIdOrContact(
+      userId,
+      orgId,
+      { email, phone }
+    );
+    if (wasDeleted && !allowReactivateDeleted) {
+      return null;
     }
 
     const newDoc = {
@@ -98,7 +233,9 @@ class TechnicianService {
       email: email || '',
       phone: phone || 'N/A',
       department: department || 'Others',
+      departmentOther: (department || 'Others') === 'Others' ? cleanDepartmentOther(departmentOther) : '',
       type: type || 'In-House Staff',
+      staffCategory: STAFF_CATEGORY_VALUES.includes(staffCategory) ? staffCategory : STAFF_CATEGORIES.COMMUNITY,
       designation: designation || '',
       ...(staffCode ? { staffCode } : {}),
       status: status || 'Active',
@@ -132,8 +269,29 @@ class TechnicianService {
       }
     }
 
+    // An admin deleted this staff record on purpose: do not silently re-create it on the next profile
+    // fetch. Re-adding goes through explicit create / invite paths.
+    const hasDeletedProfile = await technicianRepository.existsDeletedByUserIdOrContact(
+      userId,
+      orgId,
+      { email: userDetails.email, phone: userDetails.phone }
+    );
+    if (!technician && hasDeletedProfile) {
+      throw new HttpError(404, 'No staff profile found for this user in the active community');
+    }
+
     if (!technician) {
       throw new HttpError(404, 'No staff profile found for this user in the active community');
+    }
+
+    // Staff Portal and digital passes are only for the two Staff Builder scopes.
+    // Legacy directory records without a roleId remain supported via their staff category.
+    if (technician.roleId) {
+      const roleService = (await import('../role/role.services.js')).default;
+      const role = await roleService.getRoleById(technician.roleId);
+      if (!isStaffRoleScope(role.roleScope)) {
+        throw new HttpError(403, 'Staff Portal is available only to Community Staff and Unit Staff roles.');
+      }
     }
 
     return technician;
@@ -144,27 +302,9 @@ class TechnicianService {
     const techId = String(technician._id);
     const safeName = (technician.name || 'Staff').trim().replace(/\s+/g, '_');
 
-    // Cryptographic signature using HMAC-SHA256 for tamper resistance
-    let activeSecret = process.env.QR_HMAC_SECRET;
-    if (!activeSecret && process.env.NODE_ENV === 'production') {
-      throw new HttpError(
-        500,
-        'Cryptographic configuration error: QR_HMAC_SECRET must be explicitly configured in production.'
-      );
-    }
-    activeSecret = activeSecret || process.env.JWT_SECRET || 'secret';
-    if (process.env.NODE_ENV === 'production') {
-      if (activeSecret === 'secret' || activeSecret.length < 32) {
-        throw new HttpError(500, 'Cryptographic secret does not meet security requirements.');
-      }
-    }
-
+    // Cryptographic signature using HMAC-SHA256 for tamper resistance (shared signer)
     const validUntilIso = technician.qrValidUntil ? new Date(technician.qrValidUntil).toISOString() : '';
-    const signature = crypto
-      .createHmac('sha256', activeSecret)
-      .update(`${orgId}:${techId}:${rawStaffCode}:${validUntilIso}`)
-      .digest('hex')
-      .slice(0, 16);
+    const signature = signStaffQr(orgId, technician);
 
     // Canonical Nahom barcode protocol: MMG:SERVICE:{CODE}:{TECHNICIAN_ID}:{STAFF_NAME}:{SIGNATURE}[:{VALID_UNTIL}]
     const barcodePayload = validUntilIso
@@ -178,9 +318,11 @@ class TechnicianService {
       department: technician.department,
       designation: technician.designation || '',
       type: technician.type,
+      staffCategory: technician.staffCategory || STAFF_CATEGORIES.COMMUNITY,
       status: technician.status,
       qrValidFrom: technician.qrValidFrom || null,
       qrValidUntil: technician.qrValidUntil || null,
+      qrVersion: Number(technician.qrVersion) || 0,
       shiftWindow: technician.shiftWindow || null,
       barcodePayload,
       signature,
@@ -221,15 +363,118 @@ class TechnicianService {
     return { ...qrData, qrDataUrl };
   }
 
+  /**
+   * Revokes every previously issued pass for a staff member (lost phone, shared QR, ...) by bumping
+   * the pass version. The signature binds the version, so older QR codes stop verifying immediately.
+   */
+  async rotateStaffQr(id, orgId) {
+    const rotated = await technicianRepository.incrementQrVersion(id, orgId);
+    if (!rotated) throw new HttpError(404, 'Technician not found');
+    technicianEvents.emit('technician_updated', { orgId, technician: rotated });
+    return await this.getStaffQrById(id, orgId);
+  }
+
+  /**
+   * Replaces (or sets) a staff member's photo. The old file is deleted only after the new one is saved
+   * and linked, so a failed upload never leaves a staff member without their previous photo.
+   */
+  async setStaffPhoto(id, orgId, file) {
+    const ext = assertValidPhoto(file);
+    const newKey = await savePhoto(file.buffer, ext);
+    let before;
+    try {
+      before = await technicianRepository.setPhotoKey(id, orgId, newKey);
+    } catch (err) {
+      await removePhoto(newKey);
+      throw err;
+    }
+    if (!before) {
+      await removePhoto(newKey);
+      throw new HttpError(404, 'Technician not found');
+    }
+    if (before.photoKey) await removePhoto(before.photoKey);
+
+    const updated = await technicianRepository.findById(id, orgId);
+    technicianEvents.emit('technician_updated', { orgId, technician: updated });
+    return updated;
+  }
+
+  async setStaffPhotoForUser(userId, orgId, file) {
+    const technician = await technicianRepository.findByUserId(userId, orgId);
+    if (!technician) throw new HttpError(404, 'No staff profile found for this user');
+    return await this.setStaffPhoto(technician._id, orgId, file);
+  }
+
+  async setMyPhoto(userId, orgId, file, userDetails = {}) {
+    const technician = await this.getMyProfile(userId, orgId, userDetails);
+    return await this.setStaffPhoto(technician._id, orgId, file);
+  }
+
+  async removeStaffPhoto(id, orgId) {
+    const before = await technicianRepository.setPhotoKey(id, orgId, null);
+    if (!before) throw new HttpError(404, 'Technician not found');
+    if (before.photoKey) await removePhoto(before.photoKey);
+    const updated = await technicianRepository.findById(id, orgId);
+    technicianEvents.emit('technician_updated', { orgId, technician: updated });
+    return updated;
+  }
+
+  /**
+   * Resolves a signed photo link to a readable stream. The signature binds staff id + current photo
+   * version, so stale links (after replace/remove) stop working.
+   */
+  async openSignedPhoto(id, version, signature) {
+    const record = await technicianRepository.findPhotoKeyById(id);
+    if (!record?.photoKey || record.photoKey !== version || !verifyPhotoSignature(id, version, signature)) {
+      throw new HttpError(404, 'Photo not found');
+    }
+    const stream = openPhotoStream(record.photoKey);
+    if (!stream) throw new HttpError(404, 'Photo not found');
+    return { stream, mime: mimeForKey(record.photoKey) };
+  }
+
   async getTechnicianById(id, orgId) {
     const technician = await technicianRepository.findById(id, orgId);
     if (!technician) throw new HttpError(404, 'Technician not found');
     return technician;
   }
 
-  async updateTechnician(id, orgId, data) {
+  async updateTechnician(id, orgId, rawData) {
+    const data = pickWritable(rawData);
+    if (data.roleId) {
+      const roleService = (await import('../role/role.services.js')).default;
+      const selectedRole = await roleService.getRoleById(data.roleId);
+      if (selectedRole.orgId && String(selectedRole.orgId) !== String(orgId)) {
+        throw new HttpError(404, 'Selected role is not available in this community.');
+      }
+      if (!isStaffRoleScope(selectedRole.roleScope)) {
+        throw new HttpError(400, 'Select a Community Staff or Unit Staff role from Role Builder.');
+      }
+      data.staffCategory = staffCategoryForRoleScope(selectedRole.roleScope);
+      data.communityOnly = selectedRole.roleScope === 'COMMUNITY_STAFF' && selectedRole.communityOnly === true;
+      data.type = data.type || 'In-House Staff';
+    }
+    if (data.staffCode !== undefined) {
+      await this.assertStaffCodeAvailable(orgId, data.staffCode, id);
+    }
+    const current = await technicianRepository.findById(id, orgId);
+    if (!current) throw new HttpError(404, 'Technician not found');
+    const from = data.qrValidFrom !== undefined ? data.qrValidFrom : current.qrValidFrom;
+    const until = data.qrValidUntil !== undefined ? data.qrValidUntil : current.qrValidUntil;
+    if (from && until && new Date(from) >= new Date(until)) {
+      throw new HttpError(400, 'QR validity start must be earlier than its end.');
+    }
+
     const updated = await technicianRepository.update(id, orgId, data);
     if (!updated) throw new HttpError(404, 'Technician not found');
+
+    if (data.status === 'Inactive') {
+      await this.cascadeOffboarding(updated, orgId, 'Staff member deactivated');
+    } else if (isResidentAssignable(current) && !isResidentAssignable(updated)) {
+      // Switched to "community only": residents can no longer hold this staff member on their units.
+      const { default: associationRepository } = await import('../staffUnitAssociation/staffUnitAssociation.repository.js');
+      await associationRepository.deactivateAllForTechnician(orgId, updated._id, 'Staff member set to community-only work');
+    }
 
     if (data.status && updated.userId) {
       if (data.status === 'Active') {
@@ -241,12 +486,34 @@ class TechnicianService {
       }
     }
 
+    technicianEvents.emit('technician_updated', { orgId, technician: updated });
     return updated;
+  }
+
+  /**
+   * A staff member who is deactivated or removed must not keep unit access, remain "inside" the gate,
+   * or keep triggering resident notifications. Association and attendance repositories are imported
+   * lazily to avoid a circular dependency with the services that depend on this one.
+   */
+  async cascadeOffboarding(technician, orgId, reason) {
+    const [{ default: associationRepository }, { default: attendanceRepository }] = await Promise.all([
+      import('../staffUnitAssociation/staffUnitAssociation.repository.js'),
+      import('../staffAttendance/staffAttendance.repository.js'),
+    ]);
+    await associationRepository.deactivateAllForTechnician(orgId, technician._id, reason);
+    await attendanceRepository.autoCloseOpenSessionsForTechnician(
+      orgId,
+      technician._id,
+      `Auto-closed: ${reason}.`
+    );
   }
 
   async deleteTechnician(id, orgId) {
     const deleted = await technicianRepository.softDelete(id, orgId);
     if (!deleted) throw new HttpError(404, 'Technician not found');
+    await this.cascadeOffboarding(deleted, orgId, 'Staff member removed');
+
+    technicianEvents.emit('technician_deleted', { orgId, technicianId: id, technician: deleted });
     return deleted;
   }
 
@@ -257,6 +524,8 @@ class TechnicianService {
     const summary = {
       totalStaff: 0,
       totalVendors: 0,
+      communityStaff: 0,
+      unitStaff: 0,
       activeStaff: 0,
       availableStaff: 0,
       busyStaff: 0,
@@ -268,8 +537,10 @@ class TechnicianService {
     };
 
     technicians.forEach(t => {
-      if (t.type === 'In-House Staff') {
+      if (t.type === 'In-House Staff' || t.type === 'Community Staff') {
         summary.totalStaff++;
+        if (t.staffCategory === STAFF_CATEGORIES.UNIT) summary.unitStaff++;
+        else summary.communityStaff++;
         if (t.status === 'Active') {
           summary.activeStaff++;
           if (t.activeComplaintsCount === 0) summary.availableStaff++;

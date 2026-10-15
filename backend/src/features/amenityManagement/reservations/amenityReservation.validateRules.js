@@ -12,6 +12,12 @@ export const cancelReservationRules = [
   body('reason').optional().isString().trim(),
 ];
 
+export const rescheduleReservationRules = [
+  param('reservationId').notEmpty().withMessage('reservationId parameter is required').isMongoId().withMessage('Invalid reservationId'),
+  body('newStartDateTime').notEmpty().withMessage('newStartDateTime is required').isISO8601().withMessage('newStartDateTime must be an ISO date'),
+  body('newEndDateTime').notEmpty().withMessage('newEndDateTime is required').isISO8601().withMessage('newEndDateTime must be an ISO date'),
+];
+
 export const reviewReservationRules = [
   param('reservationId').notEmpty().withMessage('reservationId parameter is required').isMongoId().withMessage('Invalid reservationId'),
   body('action')

@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/feedback/EmptyState';
 import { FileSpreadsheet, Zap, Plus, Building2, UserPlus, Filter } from 'lucide-react-native';
 import { useVilla } from '@/src/features/villa/hooks/useVilla';
 import { useVillaSocket } from '@/src/features/villa/hooks/useVillaSocket';
+import { useRefreshOnFocus } from '@/src/hooks/useRefreshOnFocus';
 import { VillaCard } from '@/src/features/villa/components/VillaCard';
 import { VillaDetailsModal } from '@/src/features/villa/components/VillaDetailsModal';
 import { VillaFormModal } from '@/src/features/villa/components/VillaFormModal';
@@ -94,6 +95,13 @@ export default function VillaManagementScreen() {
     fetchBlocks();
     fetchStats();
   }, []);
+
+  // Pick up changes made on other screens (residents assigned, invites accepted) when coming back here
+  useRefreshOnFocus(() => {
+    fetchVillas();
+    fetchBlocks();
+    fetchStats();
+  });
 
   const handleSearchChange = (text: string) => {
     setSearch(text);

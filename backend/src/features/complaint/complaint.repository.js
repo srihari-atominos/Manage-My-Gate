@@ -98,7 +98,11 @@ class ComplaintRepository {
     return { data, total };
   }
 
-  async update(id, orgId, updateData, session = null) {
+  /**
+   * `extraFilter` makes the write conditional (e.g. only while the status is still X), which keeps
+   * overlapping background runs and double taps from applying a transition twice.
+   */
+  async update(id, orgId, updateData, session = null, extraFilter = {}) {
     const hasOperators = Object.keys(updateData).some(key => key.startsWith('$'));
     let updateQuery;
     
@@ -120,10 +124,17 @@ class ComplaintRepository {
     }
 
     return await Complaint.findOneAndUpdate(
-      { _id: id, orgId },
+      { _id: id, orgId, ...extraFilter },
       updateQuery,
       { returnDocument: 'after', runValidators: true, session }
     );
+  }
+
+  /** Tickets the employee finished that the resident has not answered yet. */
+  async findAwaitingConfirmation(statuses) {
+    return await Complaint.find({ status: { $in: statuses } })
+      .select('orgId complaintNumber status completionDate resolvedAt updatedAt confirmationReminderSentAt')
+      .lean();
   }
 
   async updateStatus(id, orgId, status, additionalData = {}) {

@@ -33,11 +33,17 @@ export const useRoles = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Fetch roles when pagination or search changes
   useEffect(() => {
-    dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: searchQuery }));
-  }, [dispatch, currentPage, rowsPerPage, searchQuery]);
+    dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: debouncedSearch }));
+  }, [dispatch, currentPage, rowsPerPage, debouncedSearch]);
 
   const loadPermissions = useCallback(() => {
     dispatch(fetchPermissionsAsync());

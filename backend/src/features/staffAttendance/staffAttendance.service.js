@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import mongoose from 'mongoose';
 import staffAttendanceRepository from './staffAttendance.repository.js';
 import staffAttendanceEvents from './staffAttendance.events.js';
@@ -6,6 +5,14 @@ import technicianService from '../technician/technician.service.js';
 import staffUnitAssociationService from '../staffUnitAssociation/staffUnitAssociation.service.js';
 import staffNotificationService from '../staffNotification/staffNotification.service.js';
 import HttpError from '../../utils/httpError.utils.js';
+import logger from '../../utils/logger.utils.js';
+import { verifyStaffQrSignature } from '../../utils/staffQr.utils.js';
+import { buildStaffPhotoUrl } from '../../utils/staffPhoto.utils.js';
+
+// An open session older than this is treated as a forgotten checkout rather than a live visit.
+const STALE_SESSION_MS = 18 * 60 * 60 * 1000;
+// Re-scans inside this window are treated as an accidental double scan.
+const DUPLICATE_SCAN_WINDOW_SECONDS = 15;
 
 class StaffAttendanceService {
   /**
@@ -87,86 +94,87 @@ class StaffAttendanceService {
    * Validates HMAC cryptographic signature using constant-time comparison.
    */
   validateStaffSignature(technician, orgId, providedSignature) {
-    if (
-      !providedSignature ||
-      typeof providedSignature !== 'string' ||
-      !/^[0-9a-fA-F]{16}$/.test(providedSignature)
-    ) {
-      throw new HttpError(401, 'Invalid or tampered staff QR code signature.');
-    }
-    const rawStaffCode = technician.staffCode || String(technician._id);
-    const techId = String(technician._id);
+    return verifyStaffQrSignature(orgId, technician, providedSignature);
+  }
 
-    // Expiry check if configured on technician
-    const now = new Date();
-    if (technician.qrValidFrom && now < new Date(technician.qrValidFrom)) {
-      throw new HttpError(403, 'Staff QR pass is not yet active.');
-    }
-    if (technician.qrValidUntil && now > new Date(technician.qrValidUntil)) {
-      throw new HttpError(403, 'Staff QR pass has expired. Please contact Community Admin for renewal.');
-    }
+  /**
+   * Scanned QR payloads MUST carry a valid cryptographic signature. Unsigned payloads (raw IDs, codes,
+   * legacy barcodes) are rejected unless an authorized manual override or the dev-only legacy flag applies.
+   */
+  assertScanAuthenticity(parsed, technician, orgId, isManualEntry = false) {
+    const allowLegacyUnsigned =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ALLOW_LEGACY_UNSIGNED_STAFF_SCANS === 'true';
 
-    let activeSecret = process.env.QR_HMAC_SECRET;
-    if (!activeSecret && process.env.NODE_ENV === 'production') {
+    if (parsed.signature) {
+      this.validateStaffSignature(technician, orgId, parsed.signature);
+    } else if (!isManualEntry && !allowLegacyUnsigned) {
       throw new HttpError(
-        500,
-        'Cryptographic configuration error: QR_HMAC_SECRET must be explicitly configured in production.'
+        401,
+        'Unsigned staff QR payload is not authorized for gate attendance. Valid cryptographic signature is required.'
       );
     }
-    activeSecret = activeSecret || process.env.JWT_SECRET || 'secret';
-    if (process.env.NODE_ENV === 'production') {
-      if (activeSecret === 'secret' || activeSecret.length < 32) {
-        throw new HttpError(500, 'Cryptographic secret does not meet security requirements.');
-      }
+  }
+
+  async resolveAssociatedUnits(technicianId, orgId) {
+    const associations = await staffUnitAssociationService.getActiveAssociationsForStaff(technicianId, orgId);
+    return (associations || []).map((a) => {
+      const v = a.villaId;
+      return {
+        _id: v?._id || a.villaId,
+        unitNumber: v?.unitNumber || '',
+        blockOrBuilding: v?.blockOrBuilding || '',
+        status: v?.status || '',
+      };
+    });
+  }
+
+  /**
+   * Read-only gate preview: verifies the scanned pass exactly like a real scan and reports whether the
+   * staff member is currently inside, WITHOUT recording anything. The guard then explicitly chooses
+   * Check In or Check Out, which is submitted as an ENTRY / EXIT scan.
+   */
+  async lookupStaffForScan({ scannedPayload, orgId }) {
+    if (!orgId) {
+      throw new HttpError(400, 'Organization ID is required.');
     }
+    const parsed = this.parseScanPayload(scannedPayload);
+    const technician = await this.resolveTechnician(parsed, orgId, { allowInactive: true });
+    this.assertScanAuthenticity(parsed, technician, orgId, false);
 
-    const secretsToTry = [activeSecret];
-    if (process.env.QR_HMAC_SECRET_PREVIOUS) {
-      secretsToTry.push(process.env.QR_HMAC_SECRET_PREVIOUS);
-    }
+    const [associatedUnits, openSession] = await Promise.all([
+      this.resolveAssociatedUnits(technician._id, orgId),
+      staffAttendanceRepository.findActiveSession(orgId, technician._id),
+    ]);
 
-    const providedBuf = Buffer.from(providedSignature, 'hex');
-    const validUntilIso = technician.qrValidUntil ? new Date(technician.qrValidUntil).toISOString() : '';
-
-    for (const secret of secretsToTry) {
-      // 1. Try modern timestamped signature
-      const expectedSigWithTime = crypto
-        .createHmac('sha256', secret)
-        .update(`${orgId}:${techId}:${rawStaffCode}:${validUntilIso}`)
-        .digest('hex')
-        .slice(0, 16);
-
-      const expectedBufWithTime = Buffer.from(expectedSigWithTime, 'hex');
-      if (
-        providedBuf.length === expectedBufWithTime.length &&
-        crypto.timingSafeEqual(providedBuf, expectedBufWithTime)
-      ) {
-        return true;
-      }
-
-      // 2. Backward compatibility with un-timestamped signature
-      const expectedSigLegacy = crypto
-        .createHmac('sha256', secret)
-        .update(`${orgId}:${techId}:${rawStaffCode}`)
-        .digest('hex')
-        .slice(0, 16);
-
-      const expectedBufLegacy = Buffer.from(expectedSigLegacy, 'hex');
-      if (
-        providedBuf.length === expectedBufLegacy.length &&
-        crypto.timingSafeEqual(providedBuf, expectedBufLegacy)
-      ) {
-        return true;
-      }
-    }
-
-    throw new HttpError(401, 'Invalid or tampered staff QR token signature.');
+    const isActive = technician.status === 'Active';
+    return {
+      technician: {
+        _id: technician._id,
+        name: technician.name,
+        phone: technician.phone,
+        department: technician.department,
+        designation: technician.designation || '',
+        type: technician.type,
+        staffCode: technician.staffCode || '',
+        status: technician.status,
+        photoUrl: buildStaffPhotoUrl(technician),
+      },
+      associatedUnits,
+      isInside: Boolean(openSession),
+      openSession: openSession
+        ? { _id: openSession._id, checkInTime: openSession.checkInTime, checkInGate: openSession.checkInGate }
+        : null,
+      // Deactivated staff can only be checked out, never in.
+      canCheckIn: isActive && !openSession,
+      canCheckOut: Boolean(openSession),
+    };
   }
 
   /**
    * Resolves active Technician document strictly within the active organization.
    */
-  async resolveTechnician(parsed, orgId) {
+  async resolveTechnician(parsed, orgId, { allowInactive = false } = {}) {
     let technician = null;
 
     if (parsed.technicianId) {
@@ -185,7 +193,7 @@ class StaffAttendanceService {
       throw new HttpError(404, 'Staff member not found in this community.');
     }
 
-    if (technician.status !== 'Active') {
+    if (technician.status !== 'Active' && !allowInactive) {
       throw new HttpError(400, 'Staff member account is not active.');
     }
 
@@ -219,218 +227,208 @@ class StaffAttendanceService {
     if (idempotencyKey) {
       const existing = await staffAttendanceRepository.findByIdempotencyKey(orgId, idempotencyKey);
       if (existing) {
+        const replayedAction = existing.idempotencyKey === idempotencyKey ? 'ENTRY' : 'EXIT';
         return {
-          action: existing.status === 'Open' ? 'ENTRY' : 'EXIT',
+          action: replayedAction,
           session: existing,
           technician: existing.technicianId,
           isDuplicate: true,
-          message: `Attendance ${existing.status === 'Open' ? 'check-in' : 'check-out'} already processed.`,
+          message: `Attendance ${replayedAction === 'ENTRY' ? 'check-in' : 'check-out'} already processed.`,
         };
       }
     }
 
     // 2. Parse payload and resolve technician
     const parsed = this.parseScanPayload(scannedPayload);
-    const technician = await this.resolveTechnician(parsed, orgId);
+    const technician = await this.resolveTechnician(parsed, orgId, { allowInactive: true });
+
+    // Deactivated staff may only be checked OUT (so a session never gets stuck open); never in.
+    // Checked before signature verification so an inactive pass is rejected without further work.
+    if (technician.status !== 'Active') {
+      const requested = action ? String(action).toUpperCase().trim() : 'AUTO';
+      if (requested === 'ENTRY') {
+        throw new HttpError(400, 'Staff member account is not active.');
+      }
+      const stuckSession = await staffAttendanceRepository.findActiveSession(orgId, technician._id);
+      if (!stuckSession) {
+        throw new HttpError(400, 'Staff member account is not active.');
+      }
+    }
 
     // Cryptographic signature verification:
     // Scanned QR payloads MUST contain a valid cryptographic signature.
     // Unsigned payloads (raw IDs, codes, legacy 4-part barcodes) are strictly rejected
     // unless submitted via an explicitly authorized manual override.
-    const allowLegacyUnsigned =
-      process.env.NODE_ENV !== 'production' &&
-      process.env.ALLOW_LEGACY_UNSIGNED_STAFF_SCANS === 'true';
-
-    if (parsed.signature) {
-      this.validateStaffSignature(technician, orgId, parsed.signature);
-    } else if (!isManualEntry && !allowLegacyUnsigned) {
-      throw new HttpError(
-        401,
-        'Unsigned staff QR payload is not authorized for gate attendance. Valid cryptographic signature is required.'
-      );
-    }
+    this.assertScanAuthenticity(parsed, technician, orgId, isManualEntry);
 
     // 3. Resolve active unit associations (cross-feature call to staffUnitAssociationService)
-    const associations = await staffUnitAssociationService.getActiveAssociationsForStaff(
-      technician._id,
-      orgId
-    );
-    const associatedUnits = (associations || []).map((a) => {
-      const v = a.villaId;
-      return {
-        _id: v?._id || a.villaId,
-        unitNumber: v?.unitNumber || '',
-        blockOrBuilding: v?.blockOrBuilding || '',
-        status: v?.status || '',
-      };
-    });
+    const associatedUnits = await this.resolveAssociatedUnits(technician._id, orgId);
 
     // 4. Query current open session for this technician in this organization
-    const openSession = await staffAttendanceRepository.findActiveSession(orgId, technician._id);
+    let openSession = await staffAttendanceRepository.findActiveSession(orgId, technician._id);
 
     const now = new Date();
     const cleanAction = action ? action.toUpperCase().trim() : 'AUTO';
+    if (!['AUTO', 'ENTRY', 'EXIT'].includes(cleanAction)) {
+      throw new HttpError(400, `Unsupported attendance action '${action}'.`);
+    }
 
-    // 5. Execute state machine transitions
-    if (cleanAction === 'ENTRY') {
-      if (openSession) {
-        // Duplicate scan check: if checked in within the last 15 seconds, return idempotently
-        const diffSeconds = (now.getTime() - new Date(openSession.checkInTime).getTime()) / 1000;
-        if (diffSeconds < 15) {
+    // 5. A forgotten checkout must not invert every following scan (entry -> exit -> entry...).
+    // Close the stale session without inventing a checkout time, then treat this scan as a fresh ENTRY.
+    let staleClosed = null;
+    if (openSession && cleanAction !== 'EXIT') {
+      const ageMs = now.getTime() - new Date(openSession.checkInTime).getTime();
+      if (ageMs > STALE_SESSION_MS) {
+        const staleNote = `${openSession.notes ? `${openSession.notes} | ` : ''}Auto-closed: no checkout recorded before next scan.`;
+        staleClosed = await staffAttendanceRepository.autoCloseSession(openSession._id, orgId, staleNote);
+        openSession = null;
+      }
+    }
+
+    const context = { technician, associatedUnits, orgId, guardId, gateId, idempotencyKey, notes, isManualEntry, now };
+    const withStale = (result) => (staleClosed ? { ...result, staleSessionClosed: staleClosed } : result);
+
+    // 6. State machine: ENTRY, EXIT, or AUTO toggle
+    if (cleanAction === 'ENTRY' || (cleanAction === 'AUTO' && !openSession)) {
+      return withStale(await this._checkIn(context, openSession));
+    }
+
+    // EXIT or AUTO with an open session
+    if (!openSession) {
+      throw new HttpError(400, 'Staff member does not have an active open session to check out.');
+    }
+
+    if (cleanAction === 'AUTO') {
+      const diffSeconds = (now.getTime() - new Date(openSession.checkInTime).getTime()) / 1000;
+      if (diffSeconds < DUPLICATE_SCAN_WINDOW_SECONDS) {
+        // Guard double-tapped the same pass: do not immediately check the person back out.
+        return {
+          action: 'ENTRY',
+          session: openSession,
+          technician,
+          associatedUnits,
+          isDuplicate: true,
+          message: 'Staff member was just checked in.',
+        };
+      }
+    }
+    return await this._checkOut(context, openSession);
+  }
+
+  /**
+   * Opens a session (ENTRY). Handles the concurrent-scan race on the unique open-session index.
+   */
+  async _checkIn(ctx, existingOpenSession) {
+    const { technician, associatedUnits, orgId, guardId, gateId, idempotencyKey, notes, isManualEntry, now } = ctx;
+
+    if (existingOpenSession) {
+      const diffSeconds = (now.getTime() - new Date(existingOpenSession.checkInTime).getTime()) / 1000;
+      if (diffSeconds < DUPLICATE_SCAN_WINDOW_SECONDS) {
+        return {
+          action: 'ENTRY',
+          session: existingOpenSession,
+          technician,
+          associatedUnits,
+          isDuplicate: true,
+          message: 'Staff member was just checked in.',
+        };
+      }
+      throw new HttpError(409, 'Staff member already has an active open session. Please check out first.');
+    }
+
+    let newSession;
+    try {
+      newSession = await staffAttendanceRepository.createSession({
+        orgId,
+        technicianId: technician._id,
+        staffCode: technician.staffCode || '',
+        status: 'Open',
+        checkInTime: now,
+        checkInGate: gateId || 'Main Gate',
+        checkInGuardId: guardId,
+        idempotencyKey: idempotencyKey || null,
+        notes: notes || '',
+        isManualEntry: isManualEntry === true,
+      });
+    } catch (err) {
+      if (err?.statusCode === 409 || err?.status === 409) {
+        // A concurrent scan won the race. Resolve idempotently instead of surfacing a failure.
+        const winner = await staffAttendanceRepository.findActiveSession(orgId, technician._id);
+        if (winner) {
           return {
             action: 'ENTRY',
-            session: openSession,
+            session: winner,
             technician,
             associatedUnits,
             isDuplicate: true,
             message: 'Staff member was just checked in.',
           };
         }
-        throw new HttpError(409, 'Staff member already has an active open session. Please check out first.');
       }
-
-      // Create new open session
-      const newSession = await staffAttendanceRepository.createSession({
-        orgId,
-        technicianId: technician._id,
-        staffCode: technician.staffCode || '',
-        status: 'Open',
-        checkInTime: now,
-        checkInGate: gateId || 'Main Gate',
-        checkInGuardId: guardId,
-        idempotencyKey: idempotencyKey || null,
-        notes: notes || '',
-        isManualEntry: isManualEntry === true,
-      });
-
-      // Enqueue durable outbox event for crash-resilient notification delivery
-      try {
-        await staffNotificationService.enqueueStaffEntryNotification({
-          session: newSession,
-          technician,
-          orgId,
-          guardId,
-          gateId,
-        });
-      } catch (err) {
-        // Attendance persistence must remain successful even if notification enqueue fails
-      }
-
-      // Emit domain event for future consumers (notifications, socket events)
-      staffAttendanceEvents.emit('staff_entry', {
-        session: newSession,
-        technician,
-        associatedUnits,
-        orgId,
-        guardId,
-      });
-
-      return {
-        action: 'ENTRY',
-        session: newSession,
-        technician,
-        associatedUnits,
-        message: 'Staff check-in recorded successfully.',
-      };
+      throw err;
     }
 
-    if (cleanAction === 'EXIT') {
-      if (!openSession) {
-        throw new HttpError(400, 'Staff member does not have an active open session to check out.');
-      }
+    await this._notify('enqueueStaffEntryNotification', {
+      session: newSession,
+      technician,
+      orgId,
+      guardId,
+      gateId,
+    });
+    staffAttendanceEvents.emit('staff_entry', { session: newSession, technician, associatedUnits, orgId, guardId });
 
-      const closedSession = await staffAttendanceRepository.closeSession(openSession._id, orgId, {
-        checkOutTime: now,
-        exitGate: gateId || 'Main Gate',
-        exitGuardId: guardId,
-        notes: notes || openSession.notes,
-      });
+    return {
+      action: 'ENTRY',
+      session: newSession,
+      technician,
+      associatedUnits,
+      message: 'Staff check-in recorded successfully.',
+    };
+  }
 
-      staffAttendanceEvents.emit('staff_exit', {
-        session: closedSession,
-        technician,
-        associatedUnits,
-        orgId,
-        guardId,
-      });
+  /**
+   * Closes a session (EXIT). The close is atomic, so a concurrent second EXIT gets a clean 409.
+   */
+  async _checkOut(ctx, openSession) {
+    const { technician, associatedUnits, orgId, guardId, gateId, idempotencyKey, notes, now } = ctx;
 
-      return {
-        action: 'EXIT',
-        session: closedSession,
-        technician,
-        associatedUnits,
-        message: 'Staff check-out recorded successfully.',
-      };
+    const closedSession = await staffAttendanceRepository.closeSession(openSession._id, orgId, {
+      checkOutTime: now,
+      exitGate: gateId || 'Main Gate',
+      exitGuardId: guardId,
+      exitIdempotencyKey: idempotencyKey || null,
+      notes: notes || openSession.notes,
+    });
+    if (!closedSession) {
+      throw new HttpError(409, 'Attendance session was already checked out by another scan.');
     }
 
-    // Default 'AUTO' toggle: If open -> close (EXIT); If closed/none -> open (ENTRY)
-    if (openSession) {
-      // Toggle to EXIT
-      const closedSession = await staffAttendanceRepository.closeSession(openSession._id, orgId, {
-        checkOutTime: now,
-        exitGate: gateId || 'Main Gate',
-        exitGuardId: guardId,
-        notes: notes || openSession.notes,
-      });
+    await this._notify('enqueueStaffExitNotification', {
+      session: closedSession,
+      technician,
+      orgId,
+      guardId,
+      gateId,
+    });
+    staffAttendanceEvents.emit('staff_exit', { session: closedSession, technician, associatedUnits, orgId, guardId });
 
-      staffAttendanceEvents.emit('staff_exit', {
-        session: closedSession,
-        technician,
-        associatedUnits,
-        orgId,
-        guardId,
-      });
+    return {
+      action: 'EXIT',
+      session: closedSession,
+      technician,
+      associatedUnits,
+      message: 'Staff check-out recorded successfully.',
+    };
+  }
 
-      return {
-        action: 'EXIT',
-        session: closedSession,
-        technician,
-        associatedUnits,
-        message: 'Staff check-out recorded successfully.',
-      };
-    } else {
-      // Toggle to ENTRY
-      const newSession = await staffAttendanceRepository.createSession({
-        orgId,
-        technicianId: technician._id,
-        staffCode: technician.staffCode || '',
-        status: 'Open',
-        checkInTime: now,
-        checkInGate: gateId || 'Main Gate',
-        checkInGuardId: guardId,
-        idempotencyKey: idempotencyKey || null,
-        notes: notes || '',
-        isManualEntry: isManualEntry === true,
-      });
-
-      // Enqueue durable outbox event for crash-resilient notification delivery
-      try {
-        await staffNotificationService.enqueueStaffEntryNotification({
-          session: newSession,
-          technician,
-          orgId,
-          guardId,
-          gateId,
-        });
-      } catch (err) {
-        // Attendance persistence must remain successful even if notification enqueue fails
-      }
-
-      staffAttendanceEvents.emit('staff_entry', {
-        session: newSession,
-        technician,
-        associatedUnits,
-        orgId,
-        guardId,
-      });
-
-      return {
-        action: 'ENTRY',
-        session: newSession,
-        technician,
-        associatedUnits,
-        message: 'Staff check-in recorded successfully.',
-      };
+  /**
+   * Attendance persistence must remain successful even if notification enqueue fails.
+   */
+  async _notify(method, params) {
+    try {
+      await staffNotificationService[method](params);
+    } catch (err) {
+      logger.warn(`[StaffAttendance] ${method} failed for session ${params.session?._id}: ${err.message}`);
     }
   }
 
@@ -479,6 +477,46 @@ class StaffAttendanceService {
    */
   async getActiveSessions(orgId) {
     return await staffAttendanceRepository.getActiveSessions(orgId);
+  }
+
+  /**
+   * Staff currently inside the community who are allocated to the caller's units.
+   * Residents only ever see staff tied to units they are authorized for; admins see all units.
+   * Returns a privacy-trimmed view (no phone/email).
+   */
+  async getActiveStaffForMyUnits(userId, orgId, isAdmin = false) {
+    const { unitIds, units } = await staffUnitAssociationService.resolveUserAuthorizedUnitIds(userId, orgId, isAdmin);
+    if (unitIds.length === 0) return [];
+
+    const associations = await staffUnitAssociationService.getAssociations(
+      userId,
+      orgId,
+      { status: 'Active' },
+      isAdmin
+    );
+    const unitLabels = new Map(units.map((u) => [String(u._id), u.unitNumber]));
+    const unitsByTech = new Map();
+    for (const assoc of associations) {
+      const techId = String(assoc.technicianId?._id || assoc.technicianId);
+      const villaId = String(assoc.villaId?._id || assoc.villaId);
+      if (!unitIds.includes(villaId)) continue;
+      if (!unitsByTech.has(techId)) unitsByTech.set(techId, new Set());
+      unitsByTech.get(techId).add(unitLabels.get(villaId) || assoc.villaId?.unitNumber || 'Unit');
+    }
+    if (unitsByTech.size === 0) return [];
+
+    const sessions = await staffAttendanceRepository.getActiveSessionsForTechnicians(orgId, [...unitsByTech.keys()]);
+    return sessions.map((s) => ({
+      sessionId: s._id,
+      technicianId: s.technicianId?._id,
+      name: s.technicianId?.name,
+      department: s.technicianId?.department,
+      designation: s.technicianId?.designation || '',
+      photoUrl: buildStaffPhotoUrl(s.technicianId),
+      checkInTime: s.checkInTime,
+      checkInGate: s.checkInGate,
+      unitNumbers: [...(unitsByTech.get(String(s.technicianId?._id)) || [])],
+    }));
   }
 
   /**
@@ -549,6 +587,17 @@ class StaffAttendanceService {
     };
 
     const closedSession = await staffAttendanceRepository.closeSession(session._id, orgId, updateData);
+    if (!closedSession) {
+      throw new HttpError(409, 'Attendance session was already closed.');
+    }
+
+    await this._notify('enqueueStaffExitNotification', {
+      session: closedSession,
+      technician: closedSession.technicianId,
+      orgId,
+      guardId: adminUserId,
+      gateId: options.gateId || 'Admin Console',
+    });
 
     staffAttendanceEvents.emit('staff_exit', {
       session: closedSession,

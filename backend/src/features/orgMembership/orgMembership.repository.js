@@ -217,7 +217,7 @@ export class OrgMembershipRepository {
   async updateRoles(userId, orgId, roleIds, villaId = null, residentType = null, session = null) {
     const query = { userId, orgId };
     if (villaId) {
-      query.villaId = villaId;
+      query.$or = [{ villaId }, { 'units.villaId': villaId }];
     }
     
     const cleanRoleIds = (Array.isArray(roleIds) ? roleIds : [roleIds]).filter(Boolean);
@@ -226,11 +226,30 @@ export class OrgMembershipRepository {
       updatePayload.residentType = residentType;
     }
     
-    return await OrgMembership.findOneAndUpdate(
-      query,
-      updatePayload,
-      { returnDocument: 'after', runValidators: true, session: session || null }
-    );
+    const membership = await OrgMembership.findOne(query).session(session || null);
+    if (!membership) {
+      return null;
+    }
+
+    membership.roleIds = cleanRoleIds;
+    membership.roleId = cleanRoleIds.length > 0 ? cleanRoleIds[0] : null;
+    if (residentType) {
+      membership.residentType = residentType;
+      if (membership.units && membership.units.length > 0) {
+        if (villaId) {
+          const uIdx = membership.units.findIndex(u => (u.villaId?._id || u.villaId).toString() === villaId.toString());
+          if (uIdx > -1) {
+            membership.units[uIdx].residentType = residentType;
+          }
+        } else {
+          membership.units.forEach(u => {
+            u.residentType = residentType;
+          });
+        }
+      }
+    }
+
+    return await membership.save({ session: session || null });
   }
 
   async updateStatus(userId, orgId, status, session = null) {
@@ -263,6 +282,37 @@ export class OrgMembershipRepository {
       { userId, orgId },
       session ? { session } : undefined
     );
+  }
+
+  /** Number of active members holding the role (current roleIds or the legacy single roleId). */
+  async countActiveMembersWithRole(roleId, session = null) {
+    return await OrgMembership.countDocuments(
+      { status: 'Active', $or: [{ roleIds: roleId }, { roleId }] },
+      session ? { session } : undefined
+    );
+  }
+
+  /** Active member counts for several roles inside one community, as { [roleId]: count }. */
+  async countActiveMembersByRole(orgId, roleIds, session = null) {
+    if (!roleIds || roleIds.length === 0) return {};
+    const ids = roleIds.map((id) => new mongoose.Types.ObjectId(String(id)));
+    const rows = await OrgMembership.aggregate([
+      { $match: { orgId: new mongoose.Types.ObjectId(String(orgId)), status: 'Active' } },
+      {
+        $project: {
+          rids: {
+            $setUnion: [
+              { $cond: [{ $ifNull: ['$roleId', false] }, ['$roleId'], []] },
+              { $ifNull: ['$roleIds', []] },
+            ],
+          },
+        },
+      },
+      { $unwind: '$rids' },
+      { $match: { rids: { $in: ids } } },
+      { $group: { _id: '$rids', count: { $sum: 1 } } },
+    ]).session(session || null);
+    return Object.fromEntries(rows.map((r) => [String(r._id), r.count]));
   }
 
   async clearRoleFromMemberships(roleId, session) {

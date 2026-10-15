@@ -1,4 +1,5 @@
 import { body, param } from 'express-validator';
+import { ROLE_SCOPE_VALUES } from './roleScope.constants.js';
 
 /**
  * Validation rules for creating a role
@@ -25,8 +26,9 @@ export const createRoleRules = [
     .withMessage('isTenantRole must be a boolean'),
   body('roleScope')
     .optional()
-    .isIn(['GLOBAL', 'UNIT', 'STAFF'])
-    .withMessage('roleScope must be one of: GLOBAL, UNIT, STAFF'),
+    .isIn(ROLE_SCOPE_VALUES)
+    .withMessage(`roleScope must be one of: ${ROLE_SCOPE_VALUES.join(', ')}`),
+  body('communityOnly').optional().isBoolean().withMessage('communityOnly must be a boolean'),
   body('integrationMappings')
     .optional()
     .isObject()
@@ -82,12 +84,13 @@ export const updateRoleRules = [
     .withMessage('isTenantRole must be a boolean'),
   body('roleScope')
     .optional()
-    .isIn(['GLOBAL', 'UNIT', 'STAFF'])
-    .withMessage('roleScope must be one of: GLOBAL, UNIT, STAFF'),
+    .isIn(ROLE_SCOPE_VALUES)
+    .withMessage(`roleScope must be one of: ${ROLE_SCOPE_VALUES.join(', ')}`),
   body('permissions')
     .optional()
     .isArray()
     .withMessage('Permissions must be an array of strings'),
+  body('communityOnly').optional().isBoolean().withMessage('communityOnly must be a boolean'),
   body('integrationMappings')
     .optional()
     .isObject()

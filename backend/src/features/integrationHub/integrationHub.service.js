@@ -1,263 +1,275 @@
-import mongoose from 'mongoose';
 import integrationHubRepository from './integrationHub.repository.js';
 import { verifyProviderConnection } from './utils/providers/index.js';
-import { encrypt, decrypt, encryptGCM, decryptGCM } from './utils/crypto.util.js';
+import { encryptGCM, decrypt, decryptGCM } from './utils/crypto.util.js';
+import { getCatalogEntry, PLATFORM_ONLY_PROVIDERS } from './integrationHub.catalog.js';
+import auditLogService from '../auditLog/auditLog.services.js';
+import logger from '../../utils/logger.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
+
+const decryptCredentialDoc = (cred) =>
+  cred.authTag ? decryptGCM(cred.encryptedValue, cred.iv, cred.authTag) : decrypt(cred.encryptedValue, cred.iv, cred.authTag);
+
+/** Never put a credential value in a log or an audit entry: only names and outcomes. */
+const audit = async (action, { orgId, userId, connection, details = {} }) => {
+  try {
+    await auditLogService.logEvent({
+      actorId: userId || undefined,
+      action: `Integration Hub: ${action}`,
+      targetId: orgId,
+      metadata: {
+        connectionId: String(connection?._id || ''),
+        provider: connection?.provider || '',
+        accountLabel: connection?.accountLabel || '',
+        ...details,
+      },
+    });
+  } catch (err) {
+    logger.warn(`[IntegrationHub] audit log failed: ${err.message}`);
+  }
+};
+
+const sanitizeConnection = (connection) => ({
+  id: connection._id,
+  provider: connection.provider,
+  accountLabel: connection.accountLabel,
+  status: connection.status,
+  configuredKeys: (connection.credentials || []).map((c) => c.key),
+  lastCheck: connection.lastCheck || null,
+});
 
 /**
  * Service class for orchestrating the business logic of integrationHub.
  */
 export class IntegrationHubService {
-  /**
-   * Connect an integration by validating the connection and saving the credentials.
-   * @param {string} userId - User identifier (who configured the integration)
-   * @param {string} orgId - Organization identifier (which owns the integration)
-   * @param {string} provider - Provider key (openai, twilio, resend, banking, razorpay)
-   * @param {string} accountLabel - Human readable label
-   * @param {object} credentials - Key-value pair of raw credentials
-   * @returns {Promise<object>} Sanitized integration record details
-   */
-  async connect(userId, orgId, provider, accountLabel, credentials) {
-    if (!userId || !orgId || !provider || !accountLabel || !credentials) {
-      throw new HttpError(400, 'User ID, Organization ID, provider, accountLabel, and credentials are required.');
-    }
-
-    // 1. Verify connection against the provider API / validation rules
-    try {
-      await verifyProviderConnection(provider, credentials);
-    } catch (err) {
-      throw new HttpError(400, err.message);
-    }
-
-    // 2. Encrypt all credentials securely using AES-256-GCM for banking/razorpay and CBC for legacy
-    const providerLower = provider.toLowerCase();
-    // Authenticated encryption (AES-256-GCM) for every provider; legacy CBC records stay readable.
-    const useGCM = true;
-
-    const encryptedCredentials = Object.entries(credentials).map(([key, value]) => {
-      if (value === undefined || value === null || value === '') {
-        throw new HttpError(400, `Value for credential key "${key}" cannot be empty.`);
-      }
-      const strVal = String(value);
-
-      if (useGCM) {
-        const { encryptedValue, iv, authTag } = encryptGCM(strVal);
-        return {
-          key,
-          encryptedValue,
-          iv,
-          authTag,
-        };
-      } else {
-        const { encryptedValue, iv } = encrypt(strVal);
-        return {
-          key,
-          encryptedValue,
-          iv,
-        };
-      }
-    });
-
-    // 3. Database transaction for atomic persistence
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-      const connection = await integrationHubRepository.upsertConnection(
-        userId,
-        orgId,
-        providerLower,
-        accountLabel,
-        encryptedCredentials,
-        'connected',
-        session
-      );
-      await session.commitTransaction();
-
-      // Return sanitized output (never return encryptedValue, iv, or authTag to client)
-      return {
-        id: connection._id,
-        provider: connection.provider,
-        accountLabel: connection.accountLabel,
-        status: connection.status,
-        configuredKeys: connection.credentials.map((c) => c.key),
-      };
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      await session.endSession();
+  /** Platform-level providers (login OTP, platform mail, ...) may only be configured by platform admins. */
+  assertMayConfigure(provider, isPlatform) {
+    if (PLATFORM_ONLY_PROVIDERS.includes(String(provider).toLowerCase()) && !isPlatform) {
+      throw new HttpError(403, 'Only platform administrators can configure this integration.');
     }
   }
 
   /**
-   * Get paginated connections for an organization, omitting secrets.
-   * @param {string} orgId - Organization identifier
-   * @param {string} [provider] - Optional provider filter
-   * @param {number} [page=1] - Current page number
-   * @param {number} [limit=10] - Records per page
-   * @returns {Promise<object>} Paginated data payload
+   * Keep only the fields this provider defines and drop empty optional ones, so junk keys are never stored.
+   * Required fields are checked by the validator and the provider verifier.
+   */
+  pickKnownFields(provider, credentials = {}) {
+    const entry = getCatalogEntry(provider);
+    if (!entry) throw new HttpError(400, `Unsupported provider: ${provider}`);
+    const picked = {};
+    for (const field of entry.fields) {
+      const value = credentials[field.name];
+      if (value === undefined || value === null || String(value).trim() === '') continue;
+      picked[field.name] = String(value).trim();
+    }
+    return picked;
+  }
+
+  encryptAll(credentials) {
+    return Object.entries(credentials).map(([key, value]) => {
+      const { encryptedValue, iv, authTag } = encryptGCM(String(value));
+      return { key, encryptedValue, iv, authTag };
+    });
+  }
+
+  decryptAll(connection) {
+    const out = {};
+    for (const cred of connection.credentials || []) out[cred.key] = decryptCredentialDoc(cred);
+    return out;
+  }
+
+  /**
+   * Connect an integration by validating the connection and saving the credentials.
+   */
+  async connect(userId, orgId, provider, accountLabel, credentials, { isPlatform = false } = {}) {
+    if (!userId || !orgId || !provider || !accountLabel || !credentials) {
+      throw new HttpError(400, 'User ID, Organization ID, provider, accountLabel, and credentials are required.');
+    }
+    const providerLower = provider.toLowerCase();
+    this.assertMayConfigure(providerLower, isPlatform);
+
+    const clean = this.pickKnownFields(providerLower, credentials);
+    if (Object.keys(clean).length === 0) {
+      throw new HttpError(400, 'No credential values were provided.');
+    }
+
+    try {
+      await verifyProviderConnection(providerLower, clean);
+    } catch (err) {
+      throw new HttpError(400, err.message);
+    }
+
+    const connection = await integrationHubRepository.upsertConnection(
+      userId,
+      orgId,
+      providerLower,
+      accountLabel,
+      this.encryptAll(clean),
+      'connected'
+    );
+
+    await audit('Integration Connected', { orgId, userId, connection, details: { keys: Object.keys(clean) } });
+    return sanitizeConnection(connection);
+  }
+
+  /**
+   * Paginated connections for a community, without secrets.
    */
   async getList(orgId, provider, page = 1, limit = 10) {
     if (!orgId) {
       throw new HttpError(400, 'Organization ID is required.');
     }
+    const safeLimit = Math.min(Math.max(1, Number(limit) || 10), 100);
+    const safePage = Math.max(1, Number(page) || 1);
+    const { data, totalRecords } = await integrationHubRepository.getConnectionsPaginated(
+      orgId,
+      provider,
+      (safePage - 1) * safeLimit,
+      safeLimit
+    );
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-      const skip = (page - 1) * limit;
-      const { data, totalRecords } = await integrationHubRepository.getConnectionsPaginated(
-        orgId,
-        provider,
-        skip,
-        limit,
-        session
-      );
-      await session.commitTransaction();
-
-      const totalPages = Math.ceil(totalRecords / limit);
-
-      const formatted = data.map((conn) => ({
+    return {
+      data: data.map((conn) => ({
         id: conn._id,
         provider: conn.provider,
         accountLabel: conn.accountLabel,
         status: conn.status,
+        configuredKeys: conn.configuredKeys || [],
+        lastCheck: conn.lastCheck || null,
         createdAt: conn.createdAt,
         updatedAt: conn.updatedAt,
-      }));
-
-      return {
-        data: formatted,
-        pagination: {
-          totalRecords,
-          currentPage: page,
-          totalPages: totalPages || 1,
-          limit,
-        },
-      };
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      await session.endSession();
-    }
+      })),
+      pagination: {
+        totalRecords,
+        currentPage: safePage,
+        totalPages: Math.ceil(totalRecords / safeLimit) || 1,
+        limit: safeLimit,
+      },
+    };
   }
 
   /**
-   * Delete an integration connection after checking it is not in use by any role.
-   * @param {string} connectionId - ID of connection to delete
-   * @param {string} orgId - Organization identifier of owner
-   * @returns {Promise<object>} Deletion metadata
+   * Delete a connection after checking it is not in use by any role of THIS community.
    */
-  async deleteConnection(connectionId, orgId) {
+  async deleteConnection(connectionId, orgId, { userId = null, isPlatform = false } = {}) {
     if (!connectionId || !orgId) {
       throw new HttpError(400, 'Connection ID and Organization ID are required.');
     }
+    const existing = await integrationHubRepository.getConnectionById(connectionId, orgId);
+    if (!existing) throw new HttpError(404, `No connection found for ID: ${connectionId}`);
+    this.assertMayConfigure(existing.provider, isPlatform);
 
     // Dynamic import to prevent circular dependency
     const roleService = (await import('../role/role.services.js')).default;
-    
-    // Check if the connection is mapped to any role
-    const inUse = await roleService.isConnectionInUse(connectionId);
-    if (inUse) {
-      throw new HttpError(409, 'Cannot delete. This connection is currently mapped to an active role.');
+    if (await roleService.isConnectionInUse(connectionId)) {
+      throw new HttpError(409, 'Cannot delete. This connection is currently mapped to an active role. Update its credentials instead, or remove it from the role first.');
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-      const connection = await integrationHubRepository.deleteConnectionById(connectionId, orgId, session);
-      if (!connection) {
-        throw new HttpError(404, `No connection found for ID: ${connectionId}`);
-      }
-      await session.commitTransaction();
+    const connection = await integrationHubRepository.deleteConnectionById(connectionId, orgId);
+    if (!connection) throw new HttpError(404, `No connection found for ID: ${connectionId}`);
 
-      return {
-        id: connection._id,
-        provider: connection.provider,
-        status: 'disconnected',
-      };
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      await session.endSession();
-    }
+    await audit('Integration Disconnected', { orgId, userId, connection });
+    return { id: connection._id, provider: connection.provider, status: 'disconnected' };
   }
 
   /**
-   * Update the account label of a connection.
-   * @param {string} connectionId - ID of the connection
-   * @param {string} orgId - Owner Organization ID
-   * @param {string} newLabel - The new account label
-   * @returns {Promise<object>} Updated connection metadata
+   * Change the label and/or rotate credentials. Blank credential fields keep the stored value, so an admin can
+   * replace just the secret without re-typing everything; the result is verified before it is saved.
    */
-  async updateConnectionLabel(connectionId, orgId, newLabel) {
-    if (!connectionId || !orgId || !newLabel) {
-      throw new HttpError(400, 'Connection ID, Organization ID, and new label are required.');
+  async updateConnection(connectionId, orgId, { accountLabel, credentials } = {}, { userId = null, isPlatform = false } = {}) {
+    if (!connectionId || !orgId) {
+      throw new HttpError(400, 'Connection ID and Organization ID are required.');
     }
+    const existing = await integrationHubRepository.getConnectionById(connectionId, orgId);
+    if (!existing) throw new HttpError(404, `No connection found for ID: ${connectionId}`);
+    this.assertMayConfigure(existing.provider, isPlatform);
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-      const connection = await integrationHubRepository.updateConnectionLabel(
-        connectionId,
-        orgId,
-        newLabel,
-        session
-      );
-      if (!connection) {
-        throw new HttpError(404, `No connection found for ID: ${connectionId}`);
+    const patch = {};
+    if (accountLabel) patch.accountLabel = String(accountLabel).trim();
+
+    let changedKeys = [];
+    if (credentials && Object.keys(credentials).length > 0) {
+      const incoming = this.pickKnownFields(existing.provider, credentials);
+      changedKeys = Object.keys(incoming);
+      if (changedKeys.length > 0) {
+        const merged = { ...this.decryptAll(existing), ...incoming };
+        try {
+          await verifyProviderConnection(existing.provider, merged);
+        } catch (err) {
+          throw new HttpError(400, err.message);
+        }
+        patch.credentials = this.encryptAll(merged);
+        patch.lastCheck = { ok: true, at: new Date(), message: 'Verified when updated' };
       }
-      await session.commitTransaction();
-
-      return {
-        id: connection._id,
-        provider: connection.provider,
-        accountLabel: connection.accountLabel,
-        status: connection.status,
-      };
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      await session.endSession();
     }
+    if (Object.keys(patch).length === 0) {
+      throw new HttpError(400, 'Nothing to update.');
+    }
+
+    let connection;
+    try {
+      connection = await integrationHubRepository.updateConnection(connectionId, orgId, patch);
+    } catch (err) {
+      if (err?.code === 11000) {
+        throw new HttpError(409, 'Another connection of this provider already uses that label.');
+      }
+      throw err;
+    }
+    if (!connection) throw new HttpError(404, `No connection found for ID: ${connectionId}`);
+
+    await audit(changedKeys.length ? 'Integration Credentials Updated' : 'Integration Label Updated', {
+      orgId,
+      userId,
+      connection,
+      details: { keys: changedKeys, labelChanged: Boolean(accountLabel) },
+    });
+    return sanitizeConnection(connection);
+  }
+
+  /** Backwards-compatible alias: label-only update. */
+  async updateConnectionLabel(connectionId, orgId, newLabel, options = {}) {
+    if (!newLabel) throw new HttpError(400, 'Connection ID, Organization ID, and new label are required.');
+    return this.updateConnection(connectionId, orgId, { accountLabel: newLabel }, options);
   }
 
   /**
-   * Retrieve and decrypt credentials for a specific connection.
-   * Strictly for internal cross-feature use. Supports both GCM and CBC decryption.
-   * @param {string} connectionId - ID of the connection
-   * @returns {Promise<object>} Raw decrypted credentials key-value object
+   * "Test connection": re-verifies the STORED credentials with the provider and records the outcome.
+   * Does not change `status`, so a temporary network problem never switches a working integration off.
    */
-  async getDecryptedCredentialsById(connectionId) {
+  async testConnection(connectionId, orgId, { userId = null, isPlatform = false } = {}) {
+    const existing = await integrationHubRepository.getConnectionById(connectionId, orgId);
+    if (!existing) throw new HttpError(404, `No connection found for ID: ${connectionId}`);
+    this.assertMayConfigure(existing.provider, isPlatform);
+
+    let ok = true;
+    let message = 'Connection works.';
+    try {
+      await verifyProviderConnection(existing.provider, this.decryptAll(existing));
+    } catch (err) {
+      ok = false;
+      message = String(err.message || 'Verification failed').slice(0, 300);
+    }
+    const check = { ok, at: new Date(), message };
+    await integrationHubRepository.recordCheck(connectionId, orgId, check);
+    await audit('Integration Tested', { orgId, userId, connection: existing, details: { ok } });
+    return { id: existing._id, provider: existing.provider, ...check };
+  }
+
+  /**
+   * Decrypt credentials of a connection. Strictly for internal cross-feature use; pass orgId to enforce ownership.
+   */
+  async getDecryptedCredentialsById(connectionId, orgId = null) {
     if (!connectionId) {
       throw new HttpError(400, 'Connection ID is required.');
     }
-
-    const connection = await integrationHubRepository.getConnectionById(connectionId);
+    const connection = await integrationHubRepository.getConnectionById(connectionId, orgId);
     if (!connection) {
       throw new HttpError(404, `Connection with ID ${connectionId} not found.`);
     }
-
-    const decryptedCredentials = {};
-    for (const cred of connection.credentials) {
-      if (cred.authTag) {
-        decryptedCredentials[cred.key] = decryptGCM(cred.encryptedValue, cred.iv, cred.authTag);
-      } else {
-        decryptedCredentials[cred.key] = decrypt(cred.encryptedValue, cred.iv, cred.authTag);
-      }
-    }
-
-    return decryptedCredentials;
+    return this.decryptAll(connection);
   }
 
   /**
-   * Check whether a provider has been configured and connected by the community admin for this organization.
-   * @param {string} orgId - Organization ID
-   * @param {string} [provider='razorpay'] - Provider key
-   * @returns {Promise<boolean>}
+   * Whether a community has a usable Razorpay connection.
    */
   async isProviderConfigured(orgId, provider = 'razorpay') {
     if (!orgId) return false;
@@ -272,11 +284,7 @@ export class IntegrationHubService {
   }
 
   /**
-   * Retrieve and decrypt credentials for an organization by provider key.
-   * Strictly for internal cross-feature use by payment and other services.
-   * @param {string} orgId - Organization ID
-   * @param {string} [provider='razorpay'] - Provider key
-   * @returns {Promise<object>} Raw decrypted credentials key-value object with isConfigured flag
+   * Decrypted credentials for a community by provider key (payments and other internal services).
    */
   async getDecryptedCredentials(orgId, provider = 'razorpay') {
     if (!orgId) {
@@ -288,13 +296,7 @@ export class IntegrationHubService {
     let isConfigured = false;
 
     if (connection && connection.status === 'connected' && connection.credentials) {
-      for (const cred of connection.credentials) {
-        if (cred.authTag) {
-          decryptedCredentials[cred.key] = decryptGCM(cred.encryptedValue, cred.iv, cred.authTag);
-        } else {
-          decryptedCredentials[cred.key] = decrypt(cred.encryptedValue, cred.iv, cred.authTag);
-        }
-      }
+      decryptedCredentials = this.decryptAll(connection);
       const keyId = decryptedCredentials.keyId || decryptedCredentials.key_id;
       const keySecret = decryptedCredentials.keySecret || decryptedCredentials.key_secret;
       if (keyId && keySecret) {
@@ -315,12 +317,6 @@ export class IntegrationHubService {
     };
   }
 
-  /**
-   * Find SMTP connection for an organization.
-   * @param {string} orgId - Organization ID
-   * @param {import('mongoose').ClientSession} [session] - Optional session
-   * @returns {Promise<object|null>}
-   */
   async findSmtpConnection(orgId, session = null) {
     if (!orgId) {
       throw new HttpError(400, 'Organization ID is required.');
@@ -329,18 +325,14 @@ export class IntegrationHubService {
   }
 
   /**
-   * Get connection by provider and status globally (not scoped to an organization).
-   * @param {string} provider - Provider key
-   * @param {import('mongoose').ClientSession} [session] - Optional session
-   * @returns {Promise<object|null>}
+   * Platform-level connection by provider (read from the PLATFORM organisation only, never from a community).
    */
   async getGlobalConnectionByProvider(provider, session = null) {
     if (!provider) {
       throw new HttpError(400, 'Provider is required.');
     }
-    return await integrationHubRepository.findGlobalConnectionByProvider(provider, session);
+    return await integrationHubRepository.findPlatformConnection(provider, { session });
   }
 }
 
 export default new IntegrationHubService();
-

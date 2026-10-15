@@ -39,11 +39,14 @@ export interface ScanResultSheetProps {
   loading?: boolean;
   onPrimaryAction?: () => void;
   primaryActionLabel?: string;
+  /** Keeps the primary action visible but not pressable (e.g. Check In while the staff member is already inside). */
+  primaryActionDisabled?: boolean;
   onSecondaryAction?: () => void;
   secondaryActionLabel?: string;
   /** Optional second action shown under the primary one (e.g. group-pass check-out next to check-in). */
   onExtraAction?: () => void;
   extraActionLabel?: string;
+  extraActionDisabled?: boolean;
 }
 
 export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
@@ -53,10 +56,12 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
   loading = false,
   onPrimaryAction,
   primaryActionLabel = 'Confirm Entry',
+  primaryActionDisabled = false,
   onSecondaryAction,
   secondaryActionLabel = 'Scan Next Pass',
   onExtraAction,
   extraActionLabel,
+  extraActionDisabled = false,
 }) => {
   if (!result) return null;
 
@@ -193,7 +198,7 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
           {(isSuccess || requiresServerDecision) && onPrimaryAction ? (
             <Button
               onPress={onPrimaryAction}
-              disabled={loading}
+              disabled={loading || primaryActionDisabled}
               className="w-full h-12 bg-emerald-600 active:bg-emerald-700 flex-row items-center justify-center gap-2"
               accessibilityRole="button"
               accessibilityLabel={primaryActionLabel}
@@ -209,7 +214,7 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
             <Button
               variant="outline"
               onPress={onExtraAction}
-              disabled={loading}
+              disabled={loading || extraActionDisabled}
               className="w-full h-12 flex-row items-center justify-center gap-2 border-border active:bg-secondary/60"
               accessibilityRole="button"
               accessibilityLabel={extraActionLabel}

@@ -9,7 +9,7 @@ import { ALL_AVAILABLE_FEATURES } from '../../dashboard/dashboardCatalog';
 import { AppLoader } from '@/components/ui/AppLoader';
 
 export const WorkspaceModulesForm = () => {
-  const { loadWorkspaceModules, toggleModuleStatus, allModules, loading } = useWorkspace();
+  const { loadWorkspaceModules, toggleModuleStatus, allModules, loading, saving, error, clearError } = useWorkspace();
   const { isAuthenticated } = useAuth();
   
   useEffect(() => {
@@ -20,7 +20,7 @@ export const WorkspaceModulesForm = () => {
 
   const handleToggle = (module: WorkspaceModule, enabled: boolean) => {
     const targetId = module._id || module.moduleKey;
-    if (targetId) {
+    if (targetId && !saving) {
       toggleModuleStatus('current', targetId, enabled);
     }
   };
@@ -42,6 +42,19 @@ export const WorkspaceModulesForm = () => {
           Enable or disable high-level features for your community workspace.
         </Text>
       </View>
+
+      {error ? (
+        <TouchableOpacity
+          onPress={clearError}
+          activeOpacity={0.8}
+          className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 flex-row items-center justify-between"
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss error"
+        >
+          <Text className="text-xs font-medium text-destructive flex-1 me-2">{error}</Text>
+          <Text className="text-xs font-bold text-destructive">Dismiss</Text>
+        </TouchableOpacity>
+      ) : null}
 
       <View className="gap-3">
         {allModules.length === 0 && !loading && (

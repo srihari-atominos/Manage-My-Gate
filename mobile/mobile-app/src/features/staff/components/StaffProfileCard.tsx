@@ -5,6 +5,7 @@ import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { StaffMember } from '../services/staffService';
 import { ShieldCheck, UserCheck } from 'lucide-react-native';
+import { StaffAvatar } from './StaffAvatar';
 
 interface StaffProfileCardProps {
   member: StaffMember;
@@ -27,20 +28,12 @@ export const StaffProfileCard: React.FC<StaffProfileCardProps> = ({
   member,
   activeOrgId,
 }) => {
-  const initials = (member.name || 'ST')
-    .split(' ')
-    .map((n) => n[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
   return (
     <View className="mb-4 rounded-3xl bg-card border border-border p-5 shadow-sm">
       {/* Top Profile Summary */}
       <View className="items-center pb-5 border-b border-border">
-        <View className="h-20 w-20 rounded-full bg-primary/10 border-2 border-primary/20 items-center justify-center mb-3">
-          <Text className="text-2xl font-bold text-primary">{initials}</Text>
+        <View className="mb-3 rounded-full border-2 border-primary/20">
+          <StaffAvatar name={member.name} photoUrl={member.photoUrl} size={80} />
         </View>
 
         <Text className="text-xl font-bold text-foreground text-center">

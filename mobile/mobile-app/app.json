@@ -23,7 +23,7 @@
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "26",
+      "buildNumber": "27",
       "associatedDomains": [
         "applinks:nahom.e3esg.com",
         "applinks:app.managemygate.com",
@@ -47,7 +47,7 @@
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 26,
+      "versionCode": 27,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D1015"
@@ -182,7 +182,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/adaptive-icon.png",
+          "icon": "./assets/images/notification-icon.png",
           "color": "#FF6A00",
           "defaultChannel": "general"
         }

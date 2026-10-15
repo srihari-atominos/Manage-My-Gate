@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { View, ScrollView, RefreshControl, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
@@ -8,16 +8,14 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { SkeletonLoader } from '@/components/feedback/SkeletonLoader';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import {
-  useStaffManagement,
-  StaffAttendanceCard,
-  StaffMemberAttendanceModal,
-  StaffAttendanceFilterSheet,
-  StaffMember,
-  staffService,
-} from '@/src/features/staff';
+import { useStaffManagement } from '../hooks/useStaffManagement';
+import { StaffAttendanceCard } from '../components/StaffAttendanceCard';
+import { StaffMemberAttendanceModal } from '../components/StaffMemberAttendanceModal';
+import { StaffAttendanceFilterSheet } from '../components/StaffAttendanceFilterSheet';
+import { StaffMember, staffService } from '../services/staffService';
 import {
   ShieldAlert,
   RotateCw,
@@ -27,7 +25,6 @@ import {
   FileSpreadsheet,
 } from 'lucide-react-native';
 import { downloadCSVFile, downloadExcelFile } from '@/src/utils/downloadHelper';
-import * as XLSX from 'xlsx';
 
 export const StaffAttendanceScreen: React.FC = () => {
   const router = useRouter();
@@ -54,6 +51,9 @@ export const StaffAttendanceScreen: React.FC = () => {
     setAttendanceGateFilter,
     attendanceDepartmentFilter,
     setAttendanceDepartmentFilter,
+    attendanceRoleFilter,
+    setAttendanceRoleFilter,
+    attendanceDepartmentOptions,
     attendanceStaffFilter,
     setAttendanceStaffFilter,
     attendanceStartDate,
@@ -71,6 +71,7 @@ export const StaffAttendanceScreen: React.FC = () => {
   }, []);
 
   const [showAttendanceFilterSheet, setShowAttendanceFilterSheet] = useState(false);
+  const [showExportSheet, setShowExportSheet] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [attendanceReportMember, setAttendanceReportMember] = useState<{
     member: StaffMember | { name: string; department?: string; _id: string };
@@ -83,6 +84,7 @@ export const StaffAttendanceScreen: React.FC = () => {
     if (attendanceStatusFilter !== 'ALL') count++;
     if (attendanceGateFilter !== 'ALL') count++;
     if (attendanceDepartmentFilter !== 'ALL') count++;
+    if (attendanceRoleFilter !== 'ALL') count++;
     if (attendanceStaffFilter !== 'ALL') count++;
     if (attendanceStartDate) count++;
     if (attendanceEndDate) count++;
@@ -91,6 +93,7 @@ export const StaffAttendanceScreen: React.FC = () => {
     attendanceStatusFilter,
     attendanceGateFilter,
     attendanceDepartmentFilter,
+    attendanceRoleFilter,
     attendanceStaffFilter,
     attendanceStartDate,
     attendanceEndDate,
@@ -100,86 +103,67 @@ export const StaffAttendanceScreen: React.FC = () => {
     setAttendanceStatusFilter('ALL');
     setAttendanceGateFilter('ALL');
     setAttendanceDepartmentFilter('ALL');
+    setAttendanceRoleFilter('ALL');
     setAttendanceStaffFilter('ALL');
     setAttendanceStartDate('');
     setAttendanceEndDate('');
+    loadAttendance({
+      status: 'ALL',
+      department: 'ALL',
+      staffCategory: 'ALL',
+      startDate: '',
+      endDate: '',
+      search: attendanceSearch,
+    });
   };
 
-  const sanitizeField = (val: any): string => {
-    if (val === null || val === undefined) return '';
-    const str = String(val).trim();
-    if (/^[=+@\-\t\r]/.test(str)) {
-      return `'${str}`;
+  const handleApplyAttendanceFilters = () => {
+    loadAttendance({
+      status: attendanceStatusFilter,
+      department: attendanceDepartmentFilter,
+      staffCategory: attendanceRoleFilter,
+      startDate: attendanceStartDate,
+      endDate: attendanceEndDate,
+      search: attendanceSearch,
+    });
+  };
+
+  // The server builds the file (readable dates/times, hours worked, absent days, summary sheets) from
+  // the same filters shown on this screen, so the export always matches what the guard/admin sees.
+  const buildExportQuery = () => {
+    const query: Record<string, string> = {};
+    if (attendanceStatusFilter !== 'ALL') query.status = attendanceStatusFilter;
+    if (attendanceGateFilter !== 'ALL') query.gateId = attendanceGateFilter;
+    if (attendanceDepartmentFilter !== 'ALL') {
+      if (attendanceDepartmentFilter.startsWith('trade:')) query.departmentOther = attendanceDepartmentFilter.slice(6);
+      else query.department = attendanceDepartmentFilter;
     }
-    return str;
+    if (attendanceRoleFilter !== 'ALL') query.staffCategory = attendanceRoleFilter;
+    if (attendanceStaffFilter !== 'ALL') query.technicianId = attendanceStaffFilter;
+    if (attendanceStartDate) query.startDate = attendanceStartDate;
+    if (attendanceEndDate) query.endDate = attendanceEndDate;
+    if (attendanceSearch.trim()) query.search = attendanceSearch.trim();
+    return query;
+  };
+
+  const exportFileName = (ext: 'csv' | 'xlsx') => {
+    const today = new Date().toISOString().split('T')[0];
+    const period =
+      attendanceStartDate && attendanceEndDate && attendanceStartDate !== attendanceEndDate
+        ? `${attendanceStartDate}_to_${attendanceEndDate}`
+        : attendanceStartDate || today;
+    return `staff_attendance_${period}.${ext}`;
   };
 
   const handleExportCSV = async () => {
     try {
       setIsExporting(true);
-
-      const headers = [
-        'Community ID',
-        'Staff Name',
-        'Department',
-        'Staff Code',
-        'Attendance Date',
-        'Status',
-        'Check-In Time',
-        'Entry Gate',
-        'Check-Out Time',
-        'Exit Gate',
-        'Duration (Mins)',
-        'Exception Flag',
-        'Notes',
-      ];
-
-      let exportDataset = attendanceRecords;
-      try {
-        const fullQuery: any = { limit: 1000, page: 1 };
-        if (attendanceStartDate) fullQuery.startDate = attendanceStartDate;
-        if (attendanceEndDate) fullQuery.endDate = attendanceEndDate;
-        if (attendanceStatusFilter !== 'ALL' && attendanceStatusFilter !== 'Missing Checkout') {
-          fullQuery.status = attendanceStatusFilter;
-        }
-        if (attendanceGateFilter !== 'ALL') fullQuery.gateId = attendanceGateFilter;
-        if (attendanceDepartmentFilter !== 'ALL') fullQuery.department = attendanceDepartmentFilter;
-        if (attendanceStaffFilter !== 'ALL') fullQuery.technicianId = attendanceStaffFilter;
-        if (attendanceSearch.trim()) fullQuery.search = attendanceSearch.trim();
-
-        const fullRes = await staffService.getAttendanceHistory(fullQuery);
-        if (fullRes?.records && fullRes.records.length > 0) {
-          exportDataset = fullRes.records;
-        }
-      } catch {
-        exportDataset = attendanceRecords;
-      }
-
-      const rows = exportDataset.map((r) => {
-        const staffObj = typeof r.technicianId === 'object' && r.technicianId ? (r.technicianId as any) : null;
-        const orgStr = sanitizeField(r.orgId || activeOrgId || 'N/A').replace(/"/g, '""');
-        const name = sanitizeField(staffObj?.name || r.staffCode || 'Staff Member').replace(/"/g, '""');
-        const dept = sanitizeField(staffObj?.department || 'General').replace(/"/g, '""');
-        const code = sanitizeField(r.staffCode || staffObj?.staffCode || '').replace(/"/g, '""');
-        const attDate = r.checkInTime ? new Date(r.checkInTime).toISOString().split('T')[0] : '';
-        const status = r.status || 'Open';
-        const inTime = r.checkInTime ? new Date(r.checkInTime).toLocaleString() : '';
-        const inGate = sanitizeField(r.checkInGate || 'Main Gate').replace(/"/g, '""');
-        const outTime = r.checkOutTime ? new Date(r.checkOutTime).toLocaleString() : 'In Progress';
-        const outGate = sanitizeField(r.exitGate || (r.status === 'Open' ? 'On-Site' : 'Main Gate')).replace(/"/g, '""');
-        const duration = r.durationMinutes !== undefined && r.durationMinutes !== null ? String(r.durationMinutes) : '0';
-        const exceptionFlag = r.isMissingCheckout ? 'Missing Checkout' : 'Normal';
-        const notes = sanitizeField(r.notes || '').replace(/"/g, '""');
-
-        return `"${orgStr}","${name}","${dept}","${code}","${attDate}","${status}","${inTime}","${inGate}","${outTime}","${outGate}","${duration}","${exceptionFlag}","${notes}"`;
-      });
-
-      const csvContent = [headers.join(','), ...rows].join('\n');
-      const timestamp = new Date().toISOString().split('T')[0];
-      await downloadCSVFile(csvContent, `Staff_Attendance_Report_${timestamp}.csv`);
-      Alert.alert('Export Successful', `Exported ${exportDataset.length} staff attendance record(s) to CSV.`);
+      const blob = await staffService.exportAttendanceReport(buildExportQuery(), 'csv');
+      const text = typeof (blob as any)?.text === 'function' ? await blob.text() : String(blob || '');
+      // Blob.text() drops the UTF-8 BOM; put it back so Excel shows non-English names correctly.
+      await downloadCSVFile(text.startsWith('\uFEFF') ? text : `\uFEFF${text}`, exportFileName('csv'));
     } catch (err: any) {
-      Alert.alert('Export Failed', err?.message || 'Could not export attendance records.');
+      Alert.alert('Export Failed', err?.response?.data?.message || err?.message || 'Could not export attendance records.');
     } finally {
       setIsExporting(false);
     }
@@ -188,87 +172,10 @@ export const StaffAttendanceScreen: React.FC = () => {
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
-      let exportDataset = attendanceRecords;
-      try {
-        const fullQuery: any = { limit: 1000, page: 1 };
-        if (attendanceStartDate) fullQuery.startDate = attendanceStartDate;
-        if (attendanceEndDate) fullQuery.endDate = attendanceEndDate;
-        if (attendanceStatusFilter !== 'ALL' && attendanceStatusFilter !== 'Missing Checkout') {
-          fullQuery.status = attendanceStatusFilter;
-        }
-        if (attendanceGateFilter !== 'ALL') fullQuery.gateId = attendanceGateFilter;
-        if (attendanceDepartmentFilter !== 'ALL') fullQuery.department = attendanceDepartmentFilter;
-        if (attendanceStaffFilter !== 'ALL') fullQuery.technicianId = attendanceStaffFilter;
-        if (attendanceSearch.trim()) fullQuery.search = attendanceSearch.trim();
-
-        const fullRes = await staffService.getAttendanceHistory(fullQuery);
-        if (fullRes?.records && fullRes.records.length > 0) {
-          exportDataset = fullRes.records;
-        }
-      } catch {
-        exportDataset = attendanceRecords;
-      }
-
-      const rows = exportDataset.length > 0 ? exportDataset.map((r) => {
-        const staffObj = typeof r.technicianId === 'object' && r.technicianId ? (r.technicianId as any) : null;
-        return {
-          'Community ID': sanitizeField(r.orgId || activeOrgId || 'N/A'),
-          'Staff Name': sanitizeField(staffObj?.name || r.staffCode || 'Staff Member'),
-          'Department': sanitizeField(staffObj?.department || 'General'),
-          'Staff Code': sanitizeField(r.staffCode || staffObj?.staffCode || ''),
-          'Attendance Date': r.checkInTime ? new Date(r.checkInTime).toISOString().split('T')[0] : '',
-          'Status': r.status || 'Open',
-          'Check-In Time': r.checkInTime ? new Date(r.checkInTime).toLocaleString() : '',
-          'Entry Gate': sanitizeField(r.checkInGate || 'Main Gate'),
-          'Check-Out Time': r.checkOutTime ? new Date(r.checkOutTime).toLocaleString() : 'In Progress',
-          'Exit Gate': sanitizeField(r.exitGate || (r.status === 'Open' ? 'On-Site' : 'Main Gate')),
-          'Duration (Minutes)': r.durationMinutes ?? 0,
-          'Exception Flag': r.isMissingCheckout ? 'Missing Checkout' : 'Normal',
-          'Notes': sanitizeField(r.notes || ''),
-        };
-      }) : [
-        {
-          'Community ID': activeOrgId || 'N/A',
-          'Staff Name': 'No records found',
-          'Department': '-',
-          'Staff Code': '-',
-          'Attendance Date': new Date().toISOString().split('T')[0],
-          'Status': '-',
-          'Check-In Time': '-',
-          'Entry Gate': '-',
-          'Check-Out Time': '-',
-          'Exit Gate': '-',
-          'Duration (Minutes)': 0,
-          'Exception Flag': '-',
-          'Notes': 'Template exported with current active filters.',
-        }
-      ];
-
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      worksheet['!cols'] = [
-        { wch: 24 },
-        { wch: 20 },
-        { wch: 16 },
-        { wch: 14 },
-        { wch: 16 },
-        { wch: 12 },
-        { wch: 20 },
-        { wch: 16 },
-        { wch: 20 },
-        { wch: 16 },
-        { wch: 16 },
-        { wch: 16 },
-        { wch: 30 },
-      ];
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
-      const b64Data = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-      const timestamp = new Date().toISOString().split('T')[0];
-      await downloadExcelFile(b64Data, `Staff_Attendance_Report_${timestamp}.xlsx`);
-      Alert.alert('Export Successful', `Exported ${exportDataset.length} staff attendance record(s) to Excel.`);
+      const blob = await staffService.exportAttendanceReport(buildExportQuery(), 'xlsx');
+      await downloadExcelFile(blob, exportFileName('xlsx'));
     } catch (err: any) {
-      Alert.alert('Export Failed', err?.message || 'Could not export attendance records.');
+      Alert.alert('Export Failed', err?.response?.data?.message || err?.message || 'Could not export attendance records.');
     } finally {
       setIsExporting(false);
     }
@@ -378,35 +285,30 @@ export const StaffAttendanceScreen: React.FC = () => {
 
       {/* Export Toolbar & Quick Actions */}
       <View className="flex-row items-center justify-between px-4 mb-2">
-        <Text className="text-xs text-muted-foreground font-medium">
-          {attendanceRecords.length} record{attendanceRecords.length === 1 ? '' : 's'} displayed
-        </Text>
-
-        <View className="flex-row items-center gap-2">
-          {/* CSV Export Button */}
-          <TouchableOpacity
-            onPress={handleExportCSV}
-            disabled={isExporting}
-            className="h-9 px-3 rounded-xl border border-border bg-card flex-row items-center justify-center gap-1.5 active:opacity-80"
-            accessibilityRole="button"
-            accessibilityLabel="Export Attendance CSV"
-          >
-            <FileDown size={14} className="text-muted-foreground" />
-            <Text className="text-xs font-semibold text-foreground">CSV</Text>
-          </TouchableOpacity>
-
-          {/* Excel Export Button */}
-          <TouchableOpacity
-            onPress={handleExportExcel}
-            disabled={isExporting}
-            className="h-9 px-3 rounded-xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 flex-row items-center justify-center gap-1.5 active:opacity-80"
-            accessibilityRole="button"
-            accessibilityLabel="Export Attendance Excel"
-          >
-            <FileSpreadsheet size={14} className="text-emerald-600 dark:text-emerald-400" />
-            <Text className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Excel</Text>
-          </TouchableOpacity>
+        <View className="flex-row items-center gap-1.5">
+          <Text className="text-xs text-muted-foreground font-medium">
+            {attendanceRecords.length} record{attendanceRecords.length === 1 ? '' : 's'} displayed
+          </Text>
+          {activeAttendanceFilterCount > 0 ? (
+            <View className="px-2 py-0.5 rounded-full bg-primary/10">
+              <Text className="text-[10px] font-bold text-primary">
+                {activeAttendanceFilterCount} filter{activeAttendanceFilterCount === 1 ? '' : 's'} active
+              </Text>
+            </View>
+          ) : null}
         </View>
+
+        {/* Single Export Button with CSV & Excel Options */}
+        <TouchableOpacity
+          onPress={() => setShowExportSheet(true)}
+          disabled={isExporting}
+          className="h-9 px-3 rounded-xl border border-border bg-card flex-row items-center justify-center gap-1.5 active:opacity-80"
+          accessibilityRole="button"
+          accessibilityLabel="Export Attendance Records"
+        >
+          <FileDown size={15} className="text-primary" />
+          <Text className="text-xs font-semibold text-foreground">Export</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Main Attendance Record List */}
@@ -436,13 +338,13 @@ export const StaffAttendanceScreen: React.FC = () => {
           <EmptyState
             title="No Attendance Records"
             description={
-              attendanceStatusFilter !== 'ALL'
-                ? `No attendance records match status "${attendanceStatusFilter}".`
+              activeAttendanceFilterCount > 0
+                ? 'No attendance records match your active filter criteria.'
                 : 'No staff gate attendance records have been registered for this community yet.'
             }
             icon={CalendarClock}
-            actionLabel={attendanceStatusFilter !== 'ALL' ? 'Clear Filter' : undefined}
-            onAction={attendanceStatusFilter !== 'ALL' ? () => setAttendanceStatusFilter('ALL') : undefined}
+            actionLabel={activeAttendanceFilterCount > 0 ? 'Clear All Filters' : undefined}
+            onAction={activeAttendanceFilterCount > 0 ? handleResetAttendanceFilters : undefined}
           />
         ) : (
           attendanceRecords.map((record) => {
@@ -480,15 +382,84 @@ export const StaffAttendanceScreen: React.FC = () => {
         visible={showAttendanceFilterSheet}
         selectedStatus={attendanceStatusFilter}
         selectedDepartment={attendanceDepartmentFilter}
+        selectedRole={attendanceRoleFilter}
+        departmentOptions={attendanceDepartmentOptions}
         startDate={attendanceStartDate}
         endDate={attendanceEndDate}
         onSelectStatus={setAttendanceStatusFilter}
         onSelectDepartment={setAttendanceDepartmentFilter}
+        onSelectRole={setAttendanceRoleFilter}
         onChangeStartDate={setAttendanceStartDate}
         onChangeEndDate={setAttendanceEndDate}
+        onApplyFilters={handleApplyAttendanceFilters}
         onReset={handleResetAttendanceFilters}
         onClose={() => setShowAttendanceFilterSheet(false)}
       />
+
+      {/* Export Options Sheet */}
+      <BottomSheet
+        visible={showExportSheet}
+        onClose={() => setShowExportSheet(false)}
+        title="Export Attendance Records"
+      >
+        <View className="p-4 gap-3">
+          <Text className="text-xs text-muted-foreground mb-1">
+            Choose your preferred format to download the filtered staff gate attendance records:
+          </Text>
+
+          {/* CSV Option Card */}
+          <TouchableOpacity
+            onPress={() => {
+              setShowExportSheet(false);
+              handleExportCSV();
+            }}
+            disabled={isExporting}
+            className="p-3.5 rounded-2xl border border-border bg-card flex-row items-center gap-3 active:opacity-80"
+            accessibilityRole="button"
+            accessibilityLabel="Download CSV report"
+          >
+            <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center">
+              <FileDown size={20} className="text-primary" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-foreground">CSV Spreadsheet (.csv)</Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">
+                Comma-separated file suitable for imports, text editors, and data pipelines.
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Excel Option Card */}
+          <TouchableOpacity
+            onPress={() => {
+              setShowExportSheet(false);
+              handleExportExcel();
+            }}
+            disabled={isExporting}
+            className="p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 flex-row items-center gap-3 active:opacity-80"
+            accessibilityRole="button"
+            accessibilityLabel="Download Excel workbook"
+          >
+            <View className="h-10 w-10 rounded-xl bg-emerald-500/10 items-center justify-center">
+              <FileSpreadsheet size={20} className="text-emerald-600 dark:text-emerald-400" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-foreground">Microsoft Excel (.xlsx)</Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">
+                Formatted workbook with styled columns for Excel, Numbers, and Google Sheets.
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <Button
+            variant="outline"
+            className="mt-2 w-full"
+            onPress={() => setShowExportSheet(false)}
+          >
+            Cancel
+          </Button>
+        </View>
+      </BottomSheet>
 
       <StaffMemberAttendanceModal
         visible={Boolean(attendanceReportMember)}
@@ -502,3 +473,5 @@ export const StaffAttendanceScreen: React.FC = () => {
 };
 
 export default StaffAttendanceScreen;
+
+

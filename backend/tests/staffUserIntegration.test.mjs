@@ -30,12 +30,14 @@ test('1. Role classification: isStaffRole correctly detects staff roles', () => 
 });
 
 test('2. Technician synchronization: syncOrUpsertTechnicianFromUser creates new technician profile', async () => {
-  const origFindByContact = technicianRepository.findByContactOrUserId;
+  const origFindByContact = technicianRepository.findAnyByContactOrUserId;
   const origCreate = technicianRepository.create;
+  const origExistsDeleted = technicianRepository.existsDeletedByUserIdOrContact;
   let createdData = null;
 
   try {
-    technicianRepository.findByContactOrUserId = async () => null;
+    technicianRepository.findAnyByContactOrUserId = async () => null;
+    technicianRepository.existsDeletedByUserIdOrContact = async () => false;
     technicianRepository.create = async (doc) => {
       createdData = doc;
       return { _id: 'tech_new_1', ...doc };
@@ -61,7 +63,8 @@ test('2. Technician synchronization: syncOrUpsertTechnicianFromUser creates new 
     assert.equal(createdData.type, 'In-House Staff');
     assert.equal(createdData.designation, 'Community Electrician');
   } finally {
-    technicianRepository.findByContactOrUserId = origFindByContact;
+    technicianRepository.findAnyByContactOrUserId = origFindByContact;
+    technicianRepository.existsDeletedByUserIdOrContact = origExistsDeleted;
     technicianRepository.create = origCreate;
   }
 });

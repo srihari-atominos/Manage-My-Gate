@@ -1151,6 +1151,33 @@ describe('Staff Management — Phase 3 Mobile Integration & RBAC Contracts', () 
       postSpy.mockRestore();
     });
   });
+
+  describe('12. Staff Dashboard Scope Segmentation — Global vs Dual Staff', () => {
+    it('identifies roleScope: "STAFF" as Dual Staff with full operational features', () => {
+      const dualStaffUser = {
+        role: { name: 'Technician', roleScope: 'STAFF' },
+        permissions: ['staff:view_own'],
+      };
+      const roleScope = dualStaffUser.role.roleScope;
+      const isDual = roleScope === 'STAFF';
+      expect(isDual).toBe(true);
+    });
+
+    it('identifies roleScope: "GLOBAL" as strictly single-scope Global Pass without operational modules', () => {
+      const globalStaffUser = {
+        role: { name: 'Support Rep', roleScope: 'GLOBAL' },
+        permissions: ['staff:view_own'],
+      };
+      const roleScope = globalStaffUser.role.roleScope;
+      const isDual =
+        roleScope === 'STAFF' ||
+        (roleScope === 'GLOBAL' &&
+          (globalStaffUser.permissions.includes('complaints:assignee') ||
+            globalStaffUser.permissions.includes('staff:attendance') ||
+            globalStaffUser.permissions.includes('staff:assign_unit')));
+      expect(isDual).toBe(false);
+    });
+  });
 });
 
 

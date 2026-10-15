@@ -5,11 +5,15 @@ import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { StaffAvatar } from './StaffAvatar';
+import { StaffPhotoPicker } from './StaffPhotoPicker';
 import {
   StaffMember,
   StaffAttendanceRecord,
   StaffUnitAssociation,
   staffService,
+  getDepartmentLabel,
 } from '../services/staffService';
 import {
   User,
@@ -25,6 +29,7 @@ import {
   Briefcase,
   ShieldCheck,
   History,
+  QrCode,
 } from 'lucide-react-native';
 
 interface StaffDetailModalProps {
@@ -115,6 +120,73 @@ export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
   const [loadingAssociations, setLoadingAssociations] = useState(false);
   const [associationsLoaded, setAssociationsLoaded] = useState(false);
 
+  // Photo state (managers can add / replace / remove)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [showPhotoEditor, setShowPhotoEditor] = useState(false);
+
+  useEffect(() => {
+    setPhotoUrl((member as any)?.photoUrl || null);
+    setPhotoError(null);
+    setShowPhotoEditor(false);
+  }, [member?._id, visible]);
+
+  const handlePhotoChosen = async (photo: any) => {
+    if (!member || !photo) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const updated: any = await staffService.uploadStaffPhoto(member._id, photo);
+      setPhotoUrl(updated?.photoUrl || null);
+      setShowPhotoEditor(false);
+    } catch (err: any) {
+      setPhotoError(err?.response?.data?.message || err?.message || 'Could not upload the photo. Please try again.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const handlePhotoRemove = async () => {
+    if (!member) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      await staffService.removeStaffPhoto(member._id);
+      setPhotoUrl(null);
+      setShowPhotoEditor(false);
+    } catch (err: any) {
+      setPhotoError(err?.response?.data?.message || err?.message || 'Could not remove the photo.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  // QR pass revocation state
+  const [isRotateConfirmOpen, setIsRotateConfirmOpen] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
+  const [rotateResult, setRotateResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const handleRotateQr = async () => {
+    if (!member) return;
+    setIsRotating(true);
+    try {
+      await staffService.rotateStaffQr(member._id);
+      setRotateResult({
+        ok: true,
+        message: `${member.name}'s previous QR passes no longer work. They can open their staff pass to get the new one.`,
+      });
+    } catch (err: any) {
+      setRotateResult({
+        ok: false,
+        message: err?.response?.data?.message || err?.message || 'Could not revoke the QR pass. Please try again.',
+      });
+    } finally {
+      setIsRotating(false);
+      setIsRotateConfirmOpen(false);
+    }
+  };
+
   // Reset tab and data state on member/visibility change
   useEffect(() => {
     if (visible && member) {
@@ -123,6 +195,7 @@ export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
       setAssociationsLoaded(false);
       setAttendanceRecords([]);
       setAssociations([]);
+      setRotateResult(null);
     }
   }, [visible, member?._id]);
 
@@ -236,11 +309,36 @@ export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
       <ScrollView className="px-4 py-2" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         {/* Header Summary */}
         <View className="mb-3 p-4 rounded-2xl bg-card border border-border items-center">
-          <View className="h-14 w-14 rounded-full bg-primary/10 items-center justify-center mb-2">
-            <Text className="text-lg font-bold text-primary">
-              {(member.name || 'S').slice(0, 2).toUpperCase()}
-            </Text>
+          <View className="mb-2">
+            <StaffAvatar name={member.name} photoUrl={photoUrl} size={72} />
           </View>
+          {canManage ? (
+            <View className="items-center mb-1.5">
+              {showPhotoEditor ? (
+                <View className="w-full mt-1">
+                  <StaffPhotoPicker
+                    photo={null}
+                    existingUrl={null}
+                    onChange={handlePhotoChosen}
+                    disabled={photoBusy}
+                    label={photoUrl ? 'Replace photo' : 'Add photo'}
+                  />
+                  {photoUrl ? (
+                    <TouchableOpacity onPress={handlePhotoRemove} disabled={photoBusy} className="mt-1.5">
+                      <Text className="text-xs font-bold text-destructive">Remove current photo</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setShowPhotoEditor(true)} disabled={photoBusy}>
+                  <Text className="text-xs font-bold text-primary">
+                    {photoBusy ? 'Saving...' : photoUrl ? 'Change photo' : 'Add photo'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {photoError ? <Text className="text-[11px] text-destructive mt-1 text-center">{photoError}</Text> : null}
+            </View>
+          ) : null}
           <Text className="text-lg font-bold text-foreground text-center">
             {member.name}
           </Text>
@@ -337,7 +435,7 @@ export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
                 Employment Specifications
               </Text>
               <View className="rounded-2xl bg-card border border-border px-3.5 py-1">
-                <DetailRow label="Department" value={member.department} />
+                <DetailRow label="Department" value={getDepartmentLabel(member)} />
                 <DetailRow label="Role / Designation" value={member.designation || 'Staff Member'} />
                 {member.staffCode ? (
                   <DetailRow label="Staff Code" value={member.staffCode} copyable />
@@ -346,6 +444,30 @@ export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
                 <DetailRow label="Status" value={member.status} isLast />
               </View>
             </View>
+
+            {/* Gate pass security */}
+            {canManage && member.status === 'Active' ? (
+              <View className="mb-3">
+                <Button
+                  variant="outline"
+                  onPress={() => setIsRotateConfirmOpen(true)}
+                  disabled={isRotating}
+                  accessibilityLabel="Revoke and reissue gate QR pass"
+                >
+                  <QrCode size={15} className="text-destructive me-1.5" />
+                  <Text className="text-sm font-semibold text-destructive">Revoke & Reissue Gate Pass</Text>
+                </Button>
+                {rotateResult ? (
+                  <Text
+                    className={`text-xs mt-1.5 px-1 ${
+                      rotateResult.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
+                    }`}
+                  >
+                    {rotateResult.message}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
 
             {/* Contact & Account Specifications */}
             <View className="mb-4">
@@ -544,7 +666,7 @@ export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
 
                     <View className="flex-row items-center justify-between mt-1 pt-1.5 border-t border-border/50">
                       <Text className="text-[11px] text-muted-foreground">
-                        {assoc.roleOrTrade || member.department || 'General Service'}
+                        {assoc.roleOrTrade || getDepartmentLabel(member) || 'General Service'}
                       </Text>
                       {assoc.accessSchedule?.days && assoc.accessSchedule.days.length > 0 ? (
                         <Text className="text-[11px] text-muted-foreground">
@@ -645,6 +767,18 @@ export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
           ) : null}
         </View>
       </ScrollView>
+
+      <ConfirmationModal
+        visible={isRotateConfirmOpen}
+        title="Revoke Gate Pass"
+        message={`This immediately invalidates every QR pass issued to ${member.name}. Use it if their phone was lost or the pass was shared. A new pass is generated automatically.`}
+        confirmLabel="Revoke & Reissue"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={isRotating}
+        onConfirm={handleRotateQr}
+        onCancel={() => setIsRotateConfirmOpen(false)}
+      />
     </BottomSheet>
   );
 };

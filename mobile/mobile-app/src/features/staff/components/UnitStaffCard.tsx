@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { StaffUnitAssociation } from '../services/staffService';
 import { Home, Phone, Mail, UserMinus, ShieldCheck } from 'lucide-react-native';
+import { getDepartmentLabel } from '../services/staffService';
+import { StaffAvatar } from './StaffAvatar';
 
 interface UnitStaffCardProps {
   association: StaffUnitAssociation;
@@ -41,7 +43,10 @@ export const UnitStaffCard: React.FC<UnitStaffCardProps> = ({
 
   const handleCall = () => {
     if (staff?.phone) {
-      Linking.openURL(`tel:${staff.phone}`);
+      const cleanPhone = staff.phone.replace(/[^0-9+]/g, '');
+      if (cleanPhone) {
+        Linking.openURL(`tel:${cleanPhone}`).catch(() => {});
+      }
     }
   };
 
@@ -50,10 +55,8 @@ export const UnitStaffCard: React.FC<UnitStaffCardProps> = ({
       {/* Top Header Row */}
       <View className="flex-row items-start justify-between">
         <View className="flex-row items-center flex-1 me-2">
-          <View className="h-11 w-11 rounded-full bg-primary/10 items-center justify-center me-3">
-            <Text className="text-sm font-bold text-primary">
-              {getInitials(staffName)}
-            </Text>
+          <View className="me-3">
+            <StaffAvatar name={staffName} photoUrl={staff?.photoUrl} size={44} />
           </View>
           <View className="flex-1">
             <Text className="text-base font-bold text-foreground" numberOfLines={1}>
@@ -88,11 +91,20 @@ export const UnitStaffCard: React.FC<UnitStaffCardProps> = ({
         {staff?.department && (
           <View className="ms-2 px-2 py-0.5 rounded-md bg-secondary/20">
             <Text className="text-[10px] font-medium text-secondary-foreground">
-              {staff.department}
+              {getDepartmentLabel(staff)}
             </Text>
           </View>
         )}
       </View>
+
+      {/* Pending status callout */}
+      {association.status === 'Pending' && (
+        <View className="mt-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 p-2.5">
+          <Text className="text-xs text-amber-800 dark:text-amber-400 font-medium leading-relaxed">
+            Staff invitation sent. This staff member must accept the assignment from their Staff Portal before unit privileges become active.
+          </Text>
+        </View>
+      )}
 
       {/* Schedule / Notes if present */}
       {association.notes ? (

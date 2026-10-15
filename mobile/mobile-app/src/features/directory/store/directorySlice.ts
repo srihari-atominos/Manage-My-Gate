@@ -10,8 +10,8 @@ export interface DirectoryState {
   loading: boolean;
   refreshing: boolean;
   error: string | null;
+  latestRequestId: string | null;
 }
-export const DUMMY_MEMBERS: DirectoryMember[] = [];
 
 const initialState: DirectoryState = {
   members: [],
@@ -26,6 +26,7 @@ const initialState: DirectoryState = {
   loading: false,
   refreshing: false,
   error: null,
+  latestRequestId: null,
 };
 
 export const fetchDirectory = createAsyncThunk(
@@ -73,6 +74,7 @@ const directorySlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchDirectory.pending, (state, action) => {
+        state.latestRequestId = action.meta.requestId;
         if (action.meta.arg?.refreshing) {
           state.refreshing = true;
         } else {
@@ -81,6 +83,8 @@ const directorySlice = createSlice({
         state.error = null;
       })
       .addCase(fetchDirectory.fulfilled, (state, action) => {
+        // A newer search/tab request is in flight: drop this stale response
+        if (state.latestRequestId !== action.meta.requestId) return;
         state.loading = false;
         state.refreshing = false;
 
@@ -106,6 +110,7 @@ const directorySlice = createSlice({
         };
       })
       .addCase(fetchDirectory.rejected, (state, action) => {
+        if (state.latestRequestId !== action.meta.requestId) return;
         state.loading = false;
         state.refreshing = false;
         state.error = action.payload as string;

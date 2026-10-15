@@ -13,6 +13,7 @@ export interface User {
   phone?: string;
   avatar?: string;
   role?: string;
+  roleScope?: 'GLOBAL' | 'UNIT' | 'STAFF' | string;
   orgId?: string;
   activeOrgId?: string;
   organizationId?: string;
@@ -104,11 +105,19 @@ export const normalizeUser = (user: any): User | null => {
     }
   }
 
+  const canonicalRoleScope =
+    user.roleScope ||
+    (typeof user.role === 'object' && user.role?.roleScope) ||
+    user.activeRoleObj?.roleScope ||
+    currentWorkspace?.roleScope ||
+    'GLOBAL';
+
   return {
     ...user,
     id: canonicalId,
     isPlatform,
     _id: canonicalId || user._id,
+    roleScope: canonicalRoleScope,
     orgId: canonicalOrgId,
     activeOrgId: canonicalOrgId,
     orgName,
@@ -682,6 +691,14 @@ export const performLogout = createAsyncThunk(
     const state: any = getState();
     const userId = state?.auth?.user?.id || state?.auth?.user?._id;
 
+    // Read the refresh token before local storage is cleared: the server needs it to revoke this session.
+    let refreshToken: string | null = null;
+    try {
+      refreshToken = await storage.getItem('refreshToken');
+    } catch (_) {
+      refreshToken = null;
+    }
+
     // Immediately clear local storage and state for instant logout
     const clearStoragePromise = Promise.all([
       storage.removeItem('token'),
@@ -703,7 +720,7 @@ export const performLogout = createAsyncThunk(
         }
       }
       try {
-        await authService.logoutApi();
+        await authService.logoutApi(refreshToken);
       } catch (error) {
         // best effort background logout
       }

@@ -308,8 +308,12 @@ test('15. Staff profile getMyProfile requires valid IDs and safely handles unlin
   // Stub repository methods for offline unit testing
   const origFindByUserId = technicianRepository.findByUserId;
   const origFindByContact = technicianRepository.findByContactOrUserId;
+  const origExistsDeleted = technicianRepository.existsDeletedByUserId;
+  const origExistsDeletedContact = technicianRepository.existsDeletedByUserIdOrContact;
   technicianRepository.findByUserId = async () => null;
   technicianRepository.findByContactOrUserId = async () => null;
+  technicianRepository.existsDeletedByUserId = async () => true;
+  technicianRepository.existsDeletedByUserIdOrContact = async () => true;
 
   try {
     // Missing technician record produces 404
@@ -338,6 +342,8 @@ test('15. Staff profile getMyProfile requires valid IDs and safely handles unlin
   } finally {
     technicianRepository.findByUserId = origFindByUserId;
     technicianRepository.findByContactOrUserId = origFindByContact;
+    technicianRepository.existsDeletedByUserId = origExistsDeleted;
+    technicianRepository.existsDeletedByUserIdOrContact = origExistsDeletedContact;
   }
 });
 

@@ -92,6 +92,16 @@ staffUnitAssociationSchema.index(
   }
 );
 
+// Likewise only ONE pending invitation per (org, villa, technician): closes the find-then-create race.
+staffUnitAssociationSchema.index(
+  { orgId: 1, villaId: 1, technicianId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: 'Pending' },
+    name: 'unique_pending_unit_staff_association',
+  }
+);
+
 staffUnitAssociationSchema.index({ orgId: 1, technicianId: 1, status: 1 });
 staffUnitAssociationSchema.index({ orgId: 1, villaId: 1, status: 1 });
 staffUnitAssociationSchema.index({ orgId: 1, status: 1 });

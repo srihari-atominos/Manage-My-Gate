@@ -15,22 +15,41 @@ export interface ProviderCatalogItem {
   description: string;
   icon: string;
   category: string;
+  /** 'platform' providers are only offered to platform administrators (the server hides them from communities). */
+  scope?: 'platform' | 'community';
   fields: ProviderCatalogField[];
+}
+
+export interface ConnectionCheck {
+  ok: boolean | null;
+  at?: string | null;
+  message?: string;
 }
 
 export interface IntegrationConnection {
   id: string;
   provider: string;
   accountLabel: string;
-  status: 'connected' | 'error' | 'disconnected';
+  status: 'connected' | 'disconnected';
+  /** Names (never values) of the credentials that are stored. */
+  configuredKeys?: string[];
+  /** Result of the last verification with the provider. */
+  lastCheck?: ConnectionCheck | null;
   createdAt?: string;
   updatedAt?: string;
 }
 
+export interface UpdateConnectionPayload {
+  accountLabel?: string;
+  /** Only fields that should change; blank/missing ones keep the stored value. */
+  credentials?: Record<string, string>;
+}
+
 export const integrationHubApi = {
   fetchCatalog: async (): Promise<ProviderCatalogItem[]> => {
-    const response = await apiClient.get('/integrations/catalog');
-    return response.data?.data || response.data;
+    const response: any = await apiClient.get('/integrations/catalog');
+    const payload = response?.data ?? response;
+    return Array.isArray(payload) ? payload : payload?.data || [];
   },
 
   fetchConnections: async (
@@ -42,16 +61,19 @@ export const integrationHubApi = {
     if (provider && provider !== 'all') {
       params.provider = provider;
     }
-    const response = await apiClient.get('/integrations', { params });
-    const payload = response.data;
+    const response: any = await apiClient.get('/integrations', { params });
+    const payload = response?.data ?? response;
     if (Array.isArray(payload)) {
       return { data: payload, total: payload.length, page: 1, pages: 1 };
     }
+    // The server answers { data: [...], pagination: { totalRecords, currentPage, totalPages } }
+    const pagination = payload?.pagination || payload || {};
+    const data = payload?.data || payload?.connections || [];
     return {
-      data: payload.data || payload.connections || [],
-      total: payload.totalRecords || payload.total || 0,
-      page: payload.currentPage || payload.page || page,
-      pages: payload.totalPages || payload.pages || 1,
+      data,
+      total: pagination.totalRecords ?? pagination.total ?? data.length,
+      page: pagination.currentPage ?? pagination.page ?? page,
+      pages: pagination.totalPages ?? pagination.pages ?? 1,
     };
   },
 
@@ -60,13 +82,19 @@ export const integrationHubApi = {
     accountLabel: string;
     credentials: Record<string, any>;
   }): Promise<IntegrationConnection> => {
-    const response = await apiClient.post('/integrations/connect', payload);
-    return response.data?.data || response.data;
+    const response: any = await apiClient.post('/integrations/connect', payload);
+    return response?.data ?? response;
   },
 
-  updateConnectionLabel: async (id: string, accountLabel: string): Promise<IntegrationConnection> => {
-    const response = await apiClient.put(`/integrations/${id}`, { accountLabel });
-    return response.data?.data || response.data;
+  updateConnection: async (id: string, payload: UpdateConnectionPayload): Promise<IntegrationConnection> => {
+    const response: any = await apiClient.put(`/integrations/${id}`, payload);
+    return response?.data ?? response;
+  },
+
+  /** Re-verifies the stored credentials with the provider. */
+  testConnection: async (id: string): Promise<ConnectionCheck & { id: string; provider: string }> => {
+    const response: any = await apiClient.post(`/integrations/${id}/test`);
+    return response?.data ?? response;
   },
 
   deleteConnection: async (id: string): Promise<void> => {

@@ -109,56 +109,8 @@ export const saveBankDetails = createAsyncThunk(
 
 const initialState = {
   catalog: [],
-  connections: [
-    {
-      id: '1',
-      _id: '1',
-      provider: 'twilio',
-      accountLabel: 'Twilio US Prod',
-      status: 'connected',
-      createdAt: '2026-06-17T10:00:00.000Z',
-    },
-    {
-      id: '2',
-      _id: '2',
-      provider: 'twilio',
-      accountLabel: 'Twilio EU Dev',
-      status: 'connected',
-      createdAt: '2026-06-17T10:05:00.000Z',
-    },
-    {
-      id: '3',
-      _id: '3',
-      provider: 'openai',
-      accountLabel: 'GPT-4 Marketing',
-      status: 'connected',
-      createdAt: '2026-06-17T10:10:00.000Z',
-    },
-    {
-      id: '4',
-      _id: '4',
-      provider: 'openai',
-      accountLabel: 'DALL-E Core API',
-      status: 'connected',
-      createdAt: '2026-06-17T10:15:00.000Z',
-    },
-    {
-      id: '5',
-      _id: '5',
-      provider: 'sendgrid',
-      accountLabel: 'SendGrid Transactional',
-      status: 'connected',
-      createdAt: '2026-06-17T10:20:00.000Z',
-    },
-    {
-      id: '6',
-      _id: '6',
-      provider: 'stripe',
-      accountLabel: 'Stripe Live Payments',
-      status: 'connected',
-      createdAt: '2026-06-17T10:25:00.000Z',
-    },
-  ],
+  // Real connections come from the server; never seed placeholder integrations here.
+  connections: [],
   bankDetails: {
     accountHolderName: '',
     bankName: '',
@@ -170,7 +122,7 @@ const initialState = {
     isConfigured: false,
   },
   pagination: {
-    totalRecords: 6,
+    totalRecords: 0,
     currentPage: 1,
     totalPages: 1,
     limit: 10,

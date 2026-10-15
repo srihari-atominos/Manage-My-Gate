@@ -4,7 +4,7 @@
  * Uses server-authoritative state via useResidentReservationDetail and v2 thunks.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -13,6 +13,7 @@ import { CalendarX } from 'lucide-react-native';
 import { useResidentReservationDetail } from '@/src/features/amenities/hooks/useResidentReservationDetail';
 import { ResidentReservationDetailView } from '@/src/features/amenities/components/ResidentReservationDetailView';
 import { ResidentCancelModal } from '@/src/features/amenities/components/ResidentCancelModal';
+import { RescheduleReservationSheet } from '@/src/features/amenities/components/RescheduleReservationSheet';
 import { useCancellationPreview } from '@/src/features/amenities/hooks/useCancellationPreview';
 import { useReservationBalancePayment } from '@/src/features/amenities/hooks/useReservationBalancePayment';
 import { RazorpayCheckoutModal } from '@/src/features/billing/components/RazorpayCheckoutModal';
@@ -39,6 +40,7 @@ export default function ReservationDetailScreen() {
     clearError,
   } = useResidentReservationDetail(id);
 
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const cancelPreview = useCancellationPreview(cancelModalOpen ? reservation?._id : null);
   const balancePayment = useReservationBalancePayment(reservation);
 
@@ -85,6 +87,7 @@ export default function ReservationDetailScreen() {
             accessPasses={accessPasses}
             isCancellable={isCancellable}
             onCancelPress={() => setCancelModalOpen(true)}
+            onReschedulePress={() => setRescheduleOpen(true)}
             payment={{
               canPayBalance: balancePayment.canPay,
               walletBalance: balancePayment.walletBalance,
@@ -95,6 +98,13 @@ export default function ReservationDetailScreen() {
               onPayOnline: balancePayment.payOnline,
             }}
             testID="reservation-detail-view"
+          />
+
+          <RescheduleReservationSheet
+            visible={rescheduleOpen}
+            reservation={reservation}
+            onClose={() => setRescheduleOpen(false)}
+            onRescheduled={refresh}
           />
 
           <ResidentCancelModal

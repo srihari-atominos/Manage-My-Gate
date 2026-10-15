@@ -7,7 +7,7 @@ import {
   setSearchQuery,
   setActiveTab,
 } from '../store/directorySlice';
-import { Alert, Linking } from 'react-native';
+import { Linking } from 'react-native';
 
 export const useDirectory = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -103,16 +103,7 @@ export const useDirectory = () => {
 
   const handleCall = useCallback((phone: string) => {
     if (!phone) return;
-    Linking.openURL(`tel:${phone}`);
-  }, []);
-
-  const handleIntercom = useCallback((intercom: string) => {
-    if (!intercom) return;
-    Alert.alert(
-      'Calling Community Intercom',
-      `Initiating direct voice intercom call to Unit #${intercom}...`,
-      [{ text: 'End Call', style: 'cancel' }]
-    );
+    Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`).catch(() => {});
   }, []);
 
   return {
@@ -129,7 +120,6 @@ export const useDirectory = () => {
     onRefresh: handleRefresh,
     onLoadMore: handleLoadMore,
     onCall: handleCall,
-    onIntercom: handleIntercom,
   };
 };
 

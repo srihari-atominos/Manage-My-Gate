@@ -121,8 +121,8 @@ export function usePushNotifications() {
         const formattedNotification: any = {
           id: notifId,
           _id: notifId,
-          title: content?.title || 'Nahom Alert',
-          body: content?.body || '',
+          title: data?.inboxTitle || content?.title || 'Nahom Alert',
+          body: data?.inboxBody || content?.body || '',
           type: data?.type || 'INFO',
           actionUrl: data?.actionUrl || null,
           metadata: data,

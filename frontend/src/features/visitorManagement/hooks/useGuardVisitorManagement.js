@@ -32,56 +32,9 @@ export const useGuardVisitorManagement = () => {
   const [loadingDirectory, setLoadingDirectory] = useState(false)
 
   // Local fallback mock catalog if database/org is offline
-  const [localPasses, setLocalPasses] = useState([
-    {
-      id: 'G-10029',
-      method: 'guest',
-      visitorName: 'Alice Smith',
-      details: 'Aadhaar Card: 8872-9018-1234',
-      validity: '08 Jul 2026 - 10 Jul 2026',
-      uses: '0 / 2',
-      status: 'ACTIVE',
-    },
-    {
-      id: 'G-10030',
-      method: 'guest',
-      visitorName: 'Robert Johnson',
-      details: 'Default Guest Pass',
-      validity: '08 Jul 2026 - 08 Jul 2026',
-      uses: '1 / 1',
-      status: 'EXPIRED',
-    },
-    {
-      id: 'G-10031',
-      method: 'service',
-      visitorName: 'Mike Electrician',
-      details: 'Work ID: ELEC-901',
-      validity: '09 Jul 2026 - 15 Jul 2026',
-      uses: '0 / 5',
-      status: 'ACTIVE',
-    },
-  ])
+  const [localPasses, setLocalPasses] = useState([])
 
-  const [localLiveEntries, setLocalLiveEntries] = useState([
-    {
-      id: 'L-1',
-      visitorName: 'John Doe',
-      type: 'guest',
-      villa: 'Villa 102',
-      resident: 'David Lee',
-      checkIn: '09:12 AM',
-      guard: 'Officer Ramesh',
-    },
-    {
-      id: 'L-2',
-      visitorName: 'Amazon Courier',
-      type: 'cab_delivery',
-      villa: 'Villa 54',
-      resident: 'Sarah Jenkins',
-      checkIn: '10:15 AM',
-      guard: 'Officer Khan',
-    },
-  ])
+  const [localLiveEntries, setLocalLiveEntries] = useState([])
 
   // Villa intercom listing (used for Tab 4)
   const villas =

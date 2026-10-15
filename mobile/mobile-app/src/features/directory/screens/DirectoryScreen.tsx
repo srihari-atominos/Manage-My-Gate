@@ -1,6 +1,5 @@
 import React from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { DirectorySearch } from '../components/DirectorySearch';
@@ -8,19 +7,14 @@ import { DirectoryCategoryTabs } from '../components/DirectoryCategoryTabs';
 import { DirectoryContactCard } from '../components/DirectoryContactCard';
 import { useDirectory } from '../hooks/useDirectory';
 import { useDirectorySocket } from '../hooks/useDirectorySocket';
-import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
 import { DirectoryMember } from '../types/directoryTypes';
 
 export function DirectoryScreen() {
-  const router = useRouter();
   const { t } = useTranslation();
 
   // Real-time Socket Event Listener for messaging
   useDirectorySocket();
-
-  const { user } = useAuth();
-  const currentUserId = (user as any)?.id || (user as any)?._id || (user as any)?.userId;
 
   const {
     members,
@@ -31,14 +25,11 @@ export function DirectoryScreen() {
     setActiveTab,
     loading,
     refreshing,
+    error,
     onRefresh,
     onLoadMore,
     onCall,
   } = useDirectory();
-
-  const handleBack = () => {
-    router.replace({ pathname: '/(resident)/dashboard', params: { openProfile: 'true' } } as any);
-  };
 
   const renderHeader = (
     <View className="gap-3 pb-3">
@@ -60,7 +51,9 @@ export function DirectoryScreen() {
       subtitle={t('nav_community_directory_sub', 'Find and contact residents, security & community staff')}
       iconName="Users"
       showBackButton={true}
->
+      error={error && members.length === 0 ? error : null}
+      onRetry={onRefresh}
+    >
       <View className="flex-1 bg-background">
         <PaginatedList<DirectoryMember>
           data={members}
@@ -68,7 +61,6 @@ export function DirectoryScreen() {
             <DirectoryContactCard
               key={member.id || member.userId}
               member={member}
-              currentUserId={currentUserId}
               onCall={onCall}
             />
           )}

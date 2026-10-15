@@ -182,6 +182,18 @@ describe('Notification Deep-Linking & Route Resolution', () => {
       expect(
         resolveNotificationRoute({ title: 'Important Bill due', body: 'Please check your dues' })
       ).toBe('/(resident)/billing');
+
+      expect(
+        resolveNotificationRoute({ title: 'Gate Approval Required', body: 'Visitor Rahul is waiting at the gate' })
+      ).toBe('/(resident)/visitor/walk-ins');
+
+      expect(
+        resolveNotificationRoute({ title: 'Walk-In Request', body: 'New walkin guest' })
+      ).toBe('/(resident)/visitor/walk-ins');
+
+      expect(
+        resolveNotificationRoute({ title: 'Visitor Arrived', body: 'Visitor pass checked in' })
+      ).toBe('/(resident)/visitor');
     });
   });
 });

@@ -175,7 +175,7 @@ export function StaffAssigneeQueueScreen() {
 
     const pendingAllocations = allUserTasks.filter(
       (c: Complaint) =>
-        c.status === 'Assigned' || c.status === 'Waiting For Acceptance' || c.status === 'Accepted',
+        c.status === 'Assigned' || c.status === 'Waiting For Acceptance' || c.status === 'Accepted' || c.status === 'Reopened',
     );
     const inProgress = allUserTasks.filter((c: Complaint) => c.status === 'In Progress');
     const onHold = allUserTasks.filter((c: Complaint) => c.status === 'On Hold' || c.status === 'Paused');
@@ -211,7 +211,8 @@ export function StaffAssigneeQueueScreen() {
         if (
           ticket.status !== 'Assigned' &&
           ticket.status !== 'Waiting For Acceptance' &&
-          ticket.status !== 'Accepted'
+          ticket.status !== 'Accepted' &&
+          ticket.status !== 'Reopened'
         )
           return false;
       } else if (selectedStatusTab === 'IN_PROGRESS') {
@@ -390,7 +391,7 @@ export function StaffAssigneeQueueScreen() {
                     )}
 
                     {/* ASSIGNED READY TO START */}
-                    {ticket.status === 'Accepted' && (
+                    {(ticket.status === 'Accepted' || ticket.status === 'Reopened') && (
                       <TouchableOpacity
                         activeOpacity={0.8}
                         onPress={(e) => {

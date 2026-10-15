@@ -4,6 +4,7 @@ import platformQuoteRepository from './platformQuote.repository.js';
 import platformQuoteEvents from './platformQuote.events.js';
 import crmInquiryService from '../crmInquiry/crmInquiry.service.js';
 import HttpError from '../../utils/httpError.utils.js';
+import integrationHubRepository from '../integrationHub/integrationHub.repository.js';
 
 export const QUOTE_ALLOWED_TRANSITIONS = {
   DRAFT: ['PENDING_APPROVAL', 'APPROVED'],
@@ -793,9 +794,9 @@ export class PlatformQuoteService {
       let sent = false;
 
       // 1. Check connected or available SMTP integration in Integration Hub
-      let smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' });
+      let smtpIntegration = await integrationHubRepository.findPlatformConnection('smtp');
       if (!smtpIntegration) {
-        smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp' });
+        smtpIntegration = await integrationHubRepository.findPlatformConnection('smtp', { anyStatus: true });
       }
 
       const envHost = process.env.SYSTEM_SMTP_HOST || process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -865,9 +866,9 @@ export class PlatformQuoteService {
 
       if (!sent) {
         try {
-          let resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
+          let resendIntegration = await integrationHubRepository.findPlatformConnection('resend');
           if (!resendIntegration) {
-            resendIntegration = await IntegrationHub.findOne({ provider: 'resend' });
+            resendIntegration = await integrationHubRepository.findPlatformConnection('resend', { anyStatus: true });
           }
 
           const resendApiKey = process.env.RESEND_API_KEY || (resendIntegration && resendIntegration.credentials ? decrypt(resendIntegration.credentials.find((c) => c.key === 'apiKey')?.encryptedValue, resendIntegration.credentials.find((c) => c.key === 'apiKey')?.iv, resendIntegration.credentials.find((c) => c.key === 'apiKey')?.authTag) : null);

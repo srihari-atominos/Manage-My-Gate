@@ -1,4 +1,4 @@
-import { body, param, query } from 'express-validator';
+﻿import { body, param, query } from 'express-validator';
 import validate from '../../middlewares/validator.middleware.js';
 
 export const validateGateScan = validate([
@@ -57,10 +57,36 @@ export const validateHistoryQuery = validate([
     .optional()
     .isString().withMessage('Type must be a string')
     .trim(),
+  query('staffCategory').optional().isIn(['COMMUNITY', 'UNIT']).withMessage('Staff category must be COMMUNITY or UNIT'),
+  query('departmentOther').optional().isString().trim(),
   query('search')
     .optional()
     .isString().withMessage('Search query must be a string')
     .trim(),
+]);
+
+export const validateExportQuery = validate([
+  query('format')
+    .optional()
+    .isIn(['csv', 'xlsx']).withMessage('Format must be csv or xlsx'),
+  query('technicianId')
+    .optional()
+    .isMongoId().withMessage('Invalid technician ID format'),
+  query('status')
+    .optional()
+    .isIn(['Open', 'Closed', 'Missing Checkout', 'Absent']).withMessage('Invalid status filter'),
+  query('startDate')
+    .optional()
+    .matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('Start date must be YYYY-MM-DD'),
+  query('endDate')
+    .optional()
+    .matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('End date must be YYYY-MM-DD'),
+  query('gateId').optional().isString().trim(),
+  query('department').optional().isString().trim(),
+  query('type').optional().isString().trim(),
+  query('staffCategory').optional().isIn(['COMMUNITY', 'UNIT']).withMessage('Staff category must be COMMUNITY or UNIT'),
+  query('departmentOther').optional().isString().trim(),
+  query('search').optional().isString().trim(),
 ]);
 
 export const validateSessionId = validate([
@@ -85,3 +111,4 @@ export const validateManualCheckout = validate([
     .isString().withMessage('Gate ID must be a string')
     .trim(),
 ]);
+

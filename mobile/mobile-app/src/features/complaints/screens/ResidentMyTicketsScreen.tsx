@@ -25,7 +25,8 @@ export function ResidentMyTicketsScreen() {
     fetchComplaints,
     addComment,
     confirmCompletion,
-    updateStatus,
+    reopenTicket,
+    cancelTicket,
     deleteComplaint,
     clearErrors
   } = useComplaints();
@@ -106,10 +107,7 @@ export function ResidentMyTicketsScreen() {
   const handleConfirmCancelTicket = async () => {
     if (!cancelTicketId) return;
     try {
-      await updateStatus(cancelTicketId, {
-        status: 'Cancelled',
-        remarks: 'Cancelled by resident',
-      });
+      await cancelTicket(cancelTicketId, 'Cancelled by resident');
       setCancelTicketId(null);
       loadData();
     } catch (err: any) {
@@ -119,16 +117,9 @@ export function ResidentMyTicketsScreen() {
   };
 
   const handleReopenTicket = async (id: string, remarks: string) => {
-    try {
-      await updateStatus(id, {
-        status: 'Reopened',
-        remarks: remarks || 'Reopened by resident due to persistent issue',
-      });
-      loadData();
-    } catch (err: any) {
-      console.error('Failed to reopen ticket:', err);
-      Alert.alert('Error', err?.message || 'Failed to reopen ticket');
-    }
+    // Errors are shown inside the detail sheet (it awaits this), so let them propagate.
+    await reopenTicket(id, remarks);
+    loadData();
   };
 
   const handleConfirmDeleteTicket = async (id: string) => {
@@ -215,7 +206,7 @@ export function ResidentMyTicketsScreen() {
             loadData();
           }}
           onCancelTicket={async (id) => {
-            await updateStatus(id, { status: 'Cancelled', remarks: 'Cancelled by resident' });
+            await cancelTicket(id, 'Cancelled by resident');
             loadData();
           }}
           onReopenTicket={async (id, remarks) => {

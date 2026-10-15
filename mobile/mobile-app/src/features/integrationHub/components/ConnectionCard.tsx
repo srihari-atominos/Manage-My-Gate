@@ -40,7 +40,9 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
     }
   };
 
-  const isConnected = connection.status !== 'error' && connection.status !== 'disconnected';
+  // "Needs attention" when the last verification with the provider failed.
+  const checkFailed = connection.lastCheck?.ok === false;
+  const isConnected = connection.status !== 'disconnected' && !checkFailed;
 
   const mapStatusVariant = (): StatusVariant => {
     return isConnected ? 'success' : 'danger';
@@ -52,7 +54,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
       subtitle={`Provider: ${connection.provider.toUpperCase()} • ID: ${connection.id.slice(-6)}`}
       leftAvatarFallback={getProviderIcon(connection.provider)}
       status={{
-        label: isConnected ? 'CONNECTED' : 'DISCONNECTED',
+        label: connection.status === 'disconnected' ? 'DISCONNECTED' : checkFailed ? 'NEEDS ATTENTION' : 'CONNECTED',
         variant: mapStatusVariant(),
       }}
       rightContent={onPress ? <ChevronRight size={16} color="#9ca3af" /> : undefined}

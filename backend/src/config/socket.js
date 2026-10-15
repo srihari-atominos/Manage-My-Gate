@@ -12,6 +12,8 @@ import { initCommunityNoteSockets } from '../features/communityNote/communityNot
 import { initDirectoryMessageSockets } from '../features/directoryMessage/directoryMessage.socket.js';
 import { initOrganizationSocket } from '../features/organization/organization.socket.js';
 import { initStaffUnitAssociationSocket } from '../features/staffUnitAssociation/staffUnitAssociation.socket.js';
+import { initTechnicianSocket } from '../features/technician/technician.socket.js';
+import { initStaffAttendanceSocket } from '../features/staffAttendance/staffAttendance.socket.js';
 
 let io = null;
 
@@ -107,6 +109,8 @@ export const initSocket = async (httpServer) => {
   initCommunityNoteSockets();
   initDirectoryMessageSockets();
   initStaffUnitAssociationSocket();
+  initTechnicianSocket();
+  initStaffAttendanceSocket();
   setupPaymentSocketListeners().catch((err) => logger.error('Failed to init payment socket listeners', err));
   setupWalletSocketListeners().catch((err) => logger.error('Failed to init wallet socket listeners', err));
 

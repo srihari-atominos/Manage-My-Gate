@@ -17,6 +17,7 @@ import {
 import { createTechnician, updateTechnician } from '../store/complaintSlice'
 import { fetchUsersAsync } from '../../userManagement/store/userSlice'
 import toast from 'react-hot-toast'
+import { STAFF_CATEGORY_OPTIONS, staffCategoryOf } from '../staffCategories'
 
 const TechnicianModal = ({ visible, technician, onClose }) => {
   const dispatch = useDispatch()
@@ -27,6 +28,8 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
     phone: '',
     department: 'Electrical',
     type: 'In-House Staff',
+    staffCategory: 'COMMUNITY',
+    communityOnly: false,
     status: 'Pending',
     whatsappEnabled: true,
   })
@@ -40,6 +43,8 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
           phone: technician.phone || '',
           department: technician.department || 'Electrical',
           type: technician.type || 'In-House Staff',
+          staffCategory: staffCategoryOf(technician),
+          communityOnly: !!technician.communityOnly,
           status: technician.status || 'Pending',
           whatsappEnabled:
             technician.whatsappEnabled !== undefined ? technician.whatsappEnabled : true,
@@ -51,6 +56,8 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
           phone: '',
           department: 'Electrical',
           type: 'In-House Staff',
+          staffCategory: 'COMMUNITY',
+          communityOnly: false,
           status: 'Pending',
           whatsappEnabled: true,
         })
@@ -148,6 +155,41 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
               <option value="In-House Staff">In-House Staff</option>
               <option value="External Vendor">External Vendor</option>
             </CFormSelect>
+          </div>
+          <div className="mb-3">
+            <CFormLabel>Staff Category</CFormLabel>
+            {STAFF_CATEGORY_OPTIONS.map((option) => (
+              <CFormCheck
+                key={option.value}
+                type="radio"
+                id={`staffCategory-${option.value}`}
+                name="staffCategory"
+                value={option.value}
+                checked={formData.staffCategory === option.value}
+                onChange={handleChange}
+                label={
+                  <>
+                    <span className="fw-semibold">{option.label}</span>
+                    <span className="d-block small text-body-secondary">{option.description}</span>
+                  </>
+                }
+                className="mb-2"
+              />
+            ))}
+            {formData.staffCategory === 'COMMUNITY' && (
+              <CFormCheck
+                switch
+                id="communityOnly"
+                name="communityOnly"
+                checked={formData.communityOnly}
+                onChange={handleChange}
+                label={
+                  formData.communityOnly
+                    ? 'Community only: residents cannot assign this staff member to their units'
+                    : 'Community & residents: also available for residents to assign to their units'
+                }
+              />
+            )}
           </div>
           <div className="mb-3">
             <CFormLabel>Status</CFormLabel>

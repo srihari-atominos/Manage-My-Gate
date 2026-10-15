@@ -19,7 +19,9 @@ export const connectRules = [
     .notEmpty()
     .withMessage('Account label is required')
     .isString()
-    .withMessage('Account label must be a valid string'),
+    .withMessage('Account label must be a valid string')
+    .isLength({ max: 80 })
+    .withMessage('Account label must be at most 80 characters'),
 
   body('credentials')
     .notEmpty()
@@ -243,19 +245,45 @@ export const deleteConnectionRules = [
  */
 export const updateLabelRules = [
   param('id')
+    .notEmpty()
+    .withMessage('Connection ID is required')
     .isMongoId()
-    .withMessage('Invalid connection ID format'),
+    .withMessage('Invalid Connection ID format'),
+
   body('accountLabel')
+    .optional()
+    .isString()
+    .withMessage('Account label must be a valid string')
     .trim()
     .notEmpty()
-    .withMessage('Account label is required')
-    .isString()
-    .withMessage('Account label must be a string'),
+    .withMessage('Account label cannot be empty')
+    .isLength({ max: 80 })
+    .withMessage('Account label must be at most 80 characters'),
+
+  // New credential values (rotating a key). Blank values keep the stored one.
+  body('credentials')
+    .optional()
+    .isObject()
+    .withMessage('Credentials must be a structured key-value object'),
+
+  body().custom((value, { req }) => {
+    const hasLabel = typeof req.body?.accountLabel === 'string' && req.body.accountLabel.trim();
+    const hasCreds = req.body?.credentials && Object.keys(req.body.credentials).length > 0;
+    if (!hasLabel && !hasCreds) {
+      throw new Error('Provide a new account label and/or new credentials');
+    }
+    return true;
+  }),
 ];
 
-/**
- * Validation rules for listing connections with query filters.
- */
+export const testConnectionRules = [
+  param('id')
+    .notEmpty()
+    .withMessage('Connection ID is required')
+    .isMongoId()
+    .withMessage('Invalid Connection ID format'),
+];
+
 export const listRules = [
   query('page')
     .optional()

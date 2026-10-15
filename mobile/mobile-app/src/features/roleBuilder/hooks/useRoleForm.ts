@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { ROLE_SCOPE_VALUES, RoleScope, getRoleScopeOption, isTenantScope } from '../roleScopes';
 
 const schema = yup.object().shape({
-  name: yup.string().trim().required('Role name is required'),
-  description: yup.string().trim().optional(),
+  name: yup.string().trim().required('Role name is required').max(50, 'Role name cannot exceed 50 characters'),
+  description: yup.string().trim().max(200, 'Description cannot exceed 200 characters').optional(),
   isTenantRole: yup.boolean().optional().default(false),
-  roleScope: yup.string().oneOf(['GLOBAL', 'UNIT', 'STAFF']).optional().default('GLOBAL'),
+  roleScope: yup.string().oneOf(ROLE_SCOPE_VALUES).optional().default('GLOBAL'),
+  communityOnly: yup.boolean().optional().default(false),
   permissions: yup.array().of(yup.string().required()).required('Permissions array is required'),
   integrationMappings: yup.object().optional().default({}),
 });
@@ -16,7 +18,8 @@ interface RoleData {
   name: string;
   description?: string;
   isTenantRole?: boolean;
-  roleScope?: 'GLOBAL' | 'UNIT' | 'STAFF';
+  roleScope?: RoleScope;
+  communityOnly?: boolean;
   permissions?: string[];
   integrationMappings?: Record<string, string>;
 }
@@ -29,7 +32,7 @@ interface UseRoleFormProps {
 
 export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
   const [isIntegrationDrawerOpen, setIsIntegrationDrawerOpen] = useState(false);
-  const [activeRoleScope, setActiveRoleScope] = useState<'GLOBAL' | 'UNIT' | 'STAFF'>('GLOBAL');
+  const [activeRoleScope, setActiveRoleScope] = useState<RoleScope>('GLOBAL');
 
   const {
     register,
@@ -47,6 +50,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
       description: '',
       isTenantRole: false,
       roleScope: 'GLOBAL',
+      communityOnly: false,
       permissions: [],
       integrationMappings: {},
     },
@@ -61,15 +65,17 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     register('integrationMappings');
     register('roleScope');
     register('isTenantRole');
+    register('communityOnly');
 
     if (visible && role) {
-      const derivedScope = (role.roleScope || (role.isTenantRole ? 'UNIT' : 'GLOBAL')) as 'GLOBAL' | 'UNIT' | 'STAFF';
+      const derivedScope = (role.roleScope || (role.isTenantRole ? 'UNIT' : 'GLOBAL')) as RoleScope;
       setActiveRoleScope(derivedScope);
       reset({
         name: role.name || '',
         description: role.description || '',
-        isTenantRole: derivedScope === 'UNIT' || derivedScope === 'STAFF',
+        isTenantRole: isTenantScope(derivedScope),
         roleScope: derivedScope,
+        communityOnly: derivedScope === 'COMMUNITY_STAFF' && role.communityOnly === true,
         permissions: role.permissions || [],
         integrationMappings: role.integrationMappings || {},
       });
@@ -80,6 +86,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
         description: '',
         isTenantRole: false,
         roleScope: 'GLOBAL',
+        communityOnly: false,
         permissions: [],
         integrationMappings: {},
       });
@@ -90,6 +97,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
         description: '',
         isTenantRole: false,
         roleScope: 'GLOBAL',
+        communityOnly: false,
         permissions: [],
         integrationMappings: {},
       });
@@ -97,15 +105,21 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     }
   }, [role, visible, reset, register]);
 
-  const handleSelectScope = (scope: 'GLOBAL' | 'UNIT' | 'STAFF') => {
+  const handleSelectScope = (scope: RoleScope) => {
     setActiveRoleScope(scope);
     setValue('roleScope', scope, { shouldValidate: true, shouldDirty: true });
-    setValue('isTenantRole', scope === 'UNIT' || scope === 'STAFF', { shouldValidate: true, shouldDirty: true });
+    setValue('isTenantRole', isTenantScope(scope), { shouldValidate: true, shouldDirty: true });
+    if (scope !== 'COMMUNITY_STAFF') setValue('communityOnly', false, { shouldValidate: true, shouldDirty: true });
+    const defaultPerms = getRoleScopeOption(scope)?.defaultPermissions;
+    if (defaultPerms) {
+      const merged = Array.from(new Set([...(getValues('permissions') || []), ...defaultPerms]));
+      setValue('permissions', merged, { shouldValidate: true, shouldDirty: true });
+    }
   };
 
   const handleSelectAllGroup = (groupCodes: string[], checked: boolean) => {
     const currentPermissions = getValues('permissions') || [];
-    
+
     // Expand any virtual full_access or staff codes into their real backend permissions
     const expandedGroupCodes = groupCodes.flatMap(code => {
       if (String(code).endsWith(':full_access')) {
@@ -141,7 +155,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
       const category = permValue.split(':')[0];
       const adminActions = ['create', 'read', 'update', 'delete', 'manage', 'super_admin'];
       const permsToToggle = adminActions.map(a => `${category}:${a}`);
-      
+
       if (checked) {
         newValue = Array.from(new Set([...currentPermissions, ...permsToToggle]));
       } else {
@@ -185,7 +199,8 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     const finalData = {
       ...data,
       roleScope: activeRoleScope,
-      isTenantRole: activeRoleScope === 'UNIT' || activeRoleScope === 'STAFF',
+      communityOnly: activeRoleScope === 'COMMUNITY_STAFF' && getValues('communityOnly') === true,
+      isTenantRole: isTenantScope(activeRoleScope),
       permissions: getValues('permissions') || [],
       integrationMappings: getValues('integrationMappings') || {},
     };
@@ -201,6 +216,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     selectedPermissions,
     isTenantRole,
     roleScope: activeRoleScope,
+    communityOnly: watch('communityOnly') || false,
     handleSelectScope,
     integrationMappings,
     isIntegrationDrawerOpen,

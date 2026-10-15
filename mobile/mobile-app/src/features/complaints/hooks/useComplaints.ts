@@ -13,6 +13,8 @@ import {
   resumeWork as resumeWorkThunk,
   markWorkCompleted as markWorkCompletedThunk,
   confirmCompletion as confirmCompletionThunk,
+  reopenComplaint as reopenComplaintThunk,
+  cancelComplaint as cancelComplaintThunk,
   addComplaintComment as addComplaintCommentThunk,
   addFeedback as addFeedbackThunk,
   fetchDashboardAnalytics as fetchDashboardAnalyticsThunk,
@@ -141,6 +143,20 @@ export const useComplaints = () => {
     [dispatch]
   );
 
+  const reopenTicket = useCallback(
+    (id: string, reason: string) => {
+      return dispatch(reopenComplaintThunk({ id, reason })).unwrap();
+    },
+    [dispatch]
+  );
+
+  const cancelTicket = useCallback(
+    (id: string, reason?: string) => {
+      return dispatch(cancelComplaintThunk({ id, reason })).unwrap();
+    },
+    [dispatch]
+  );
+
   const clearErrors = useCallback(() => {
     dispatch(clearComplaintErrorsAction());
   }, [dispatch]);
@@ -173,6 +189,8 @@ export const useComplaints = () => {
     resumeWork: resumeTask,
     markWorkCompleted: completeTask,
     confirmCompletion: confirmTaskDone,
+    reopenTicket,
+    cancelTicket,
     addComment: commentOnComplaint,
     addFeedback: submitFeedback,
     fetchDashboardAnalytics: getAnalytics,

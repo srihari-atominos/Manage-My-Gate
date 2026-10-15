@@ -3,6 +3,7 @@ import amenityReservationController from './amenityReservation.controller.js';
 import {
   confirmReservationRules,
   cancelReservationRules,
+  rescheduleReservationRules,
   reviewReservationRules,
   reservationIdParamRules,
   reservationNumberParamRules,
@@ -35,6 +36,14 @@ router.post(
   authorizePermission('amenities', ['amenities', 'my_booking', 'admin_calander']),
   validate(cancelReservationRules),
   amenityReservationController.cancel
+);
+
+// POST /:reservationId/reschedule - Resident moves their booking to another time
+router.post(
+  '/:reservationId/reschedule',
+  authorizePermission('amenities', ['amenities', 'my_booking']),
+  validate(rescheduleReservationRules),
+  amenityReservationController.reschedule
 );
 
 // GET /:reservationId/cancellation-preview - What cancelling now would refund

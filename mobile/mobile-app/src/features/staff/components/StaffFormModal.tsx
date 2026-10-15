@@ -5,8 +5,10 @@ import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { StaffMember, CreateStaffPayload, UpdateStaffPayload, StaffDepartment, StaffType, StaffStatus } from '../services/staffService';
-import { DEPARTMENTS, STAFF_TYPES, STAFF_STATUSES } from '../hooks/useStaffManagement';
+import { StaffMember, CreateStaffPayload, UpdateStaffPayload, StaffDepartment, StaffStatus, StaffPhotoFile, staffService } from '../services/staffService';
+import { DEPARTMENTS, STAFF_STATUSES } from '../hooks/useStaffManagement';
+import { fetchRoles, RoleData } from '../../roleBuilder/services/roleService';
+import { StaffPhotoPicker } from './StaffPhotoPicker';
 
 interface StaffFormModalProps {
   visible: boolean;
@@ -14,6 +16,7 @@ interface StaffFormModalProps {
   isSubmitting: boolean;
   onClose: () => void;
   onSubmit: (data: CreateStaffPayload | UpdateStaffPayload) => Promise<any>;
+  onSaved?: () => void;
 }
 
 export const StaffFormModal: React.FC<StaffFormModalProps> = ({
@@ -22,6 +25,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
   isSubmitting,
   onClose,
   onSubmit,
+  onSaved,
 }) => {
   const isEditing = Boolean(member?._id);
 
@@ -29,14 +33,13 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [department, setDepartment] = useState<StaffDepartment>('Electrical');
-  const [type, setType] = useState<StaffType>('In-House Staff');
+  const [customDepartment, setCustomDepartment] = useState('');
+  const [roleId, setRoleId] = useState('');
+  const [photo, setPhoto] = useState<StaffPhotoFile | null>(null);
+  const [roleOptions, setRoleOptions] = useState<{ label: string; value: string }[]>([]);
   const [status, setStatus] = useState<StaffStatus>('Active');
   const [designation, setDesignation] = useState('');
   const [staffCode, setStaffCode] = useState('');
-  const [qrValidFrom, setQrValidFrom] = useState('');
-  const [qrValidUntil, setQrValidUntil] = useState('');
-  const [shiftStartTime, setShiftStartTime] = useState('08:00');
-  const [shiftEndTime, setShiftEndTime] = useState('18:00');
 
   // Form error state
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -49,36 +52,41 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
         setPhone(member.phone || '');
         setEmail(member.email || '');
         setDepartment(member.department || 'Electrical');
-        setType(member.type || 'In-House Staff');
+        setCustomDepartment(member.department === 'Others' ? (member.departmentOther || member.designation || '') : '');
+        setPhoto(null);
+        setRoleId(typeof member.roleId === 'object' ? member.roleId?._id || '' : member.roleId || '');
         setStatus(member.status || 'Active');
         setDesignation(member.designation || '');
         setStaffCode(member.staffCode || '');
-        setQrValidFrom((member as any).qrValidFrom ? new Date((member as any).qrValidFrom).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
-        setQrValidUntil((member as any).qrValidUntil ? new Date((member as any).qrValidUntil).toISOString().split('T')[0] : '');
-        setShiftStartTime((member as any).shiftWindow?.startTime || '08:00');
-        setShiftEndTime((member as any).shiftWindow?.endTime || '18:00');
       } else {
         setName('');
         setPhone('');
         setEmail('');
         setDepartment('Electrical');
-        setType('In-House Staff');
+        setCustomDepartment('');
+        setPhoto(null);
+        setRoleId('');
         setStatus('Active');
         setDesignation('');
         setStaffCode('');
-        // Default pass validity: Start today, expire 1 year from today
-        const today = new Date();
-        setQrValidFrom(today.toISOString().split('T')[0]);
-        const oneYear = new Date();
-        oneYear.setFullYear(oneYear.getFullYear() + 1);
-        setQrValidUntil(oneYear.toISOString().split('T')[0]);
-        setShiftStartTime('08:00');
-        setShiftEndTime('18:00');
       }
       setErrors({});
       setServerError(null);
     }
   }, [visible, member]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let mounted = true;
+    fetchRoles({ page: 1, limit: 100 })
+      .then((response: any) => {
+        const roles = (response?.data?.data || response?.data || response || []) as RoleData[];
+        const staffRoles = roles.filter((role) => role.roleScope === 'COMMUNITY_STAFF' || role.roleScope === 'STAFF');
+        if (mounted) setRoleOptions(staffRoles.map((role) => ({ label: role.name, value: role._id || role.id || '' })).filter((role) => role.value));
+      })
+      .catch(() => { if (mounted) setRoleOptions([]); });
+    return () => { mounted = false; };
+  }, [visible]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -90,9 +98,15 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
     } else if (phone.trim().length < 8) {
       newErrors.phone = 'Please enter a valid phone number';
     }
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!email.trim()) {
+      newErrors.email = 'Email address is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       newErrors.email = 'Please enter a valid email format';
     }
+    if (department === 'Others' && !customDepartment.trim()) {
+      newErrors.customDepartment = 'Please specify the department name';
+    }
+    if (!roleId) newErrors.roleId = 'Please select a staff role';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -107,22 +121,18 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
       const payload = {
         name: name.trim(),
         phone: phone.trim(),
-        email: email.trim() || undefined,
+        email: email.trim(),
         department,
-        type,
+        departmentOther: department === 'Others' ? customDepartment.trim() : '',
+        roleId,
         status,
         designation: designation.trim() || undefined,
         staffCode: staffCode.trim() || undefined,
-        qrValidFrom: qrValidFrom ? new Date(qrValidFrom).toISOString() : undefined,
-        qrValidUntil: qrValidUntil ? new Date(qrValidUntil).toISOString() : undefined,
-        shiftWindow: {
-          startTime: shiftStartTime || '08:00',
-          endTime: shiftEndTime || '18:00',
-          daysOfWeek: [1, 2, 3, 4, 5, 6],
-        },
       };
 
-      await onSubmit(payload);
+      const saved = await onSubmit(payload);
+      if (photo && saved?._id) await staffService.uploadStaffPhoto(saved._id, photo);
+      onSaved?.();
       onClose();
     } catch (err: any) {
       setServerError(err?.message || 'Failed to save staff member');
@@ -130,7 +140,6 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
   };
 
   const deptOptions = DEPARTMENTS.map((d) => ({ label: d, value: d }));
-  const typeOptions = STAFF_TYPES.map((t) => ({ label: t, value: t }));
   const statusOptions = STAFF_STATUSES.map((s) => ({ label: s, value: s }));
 
   return (
@@ -147,6 +156,12 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
         ) : null}
 
         <View className="gap-3.5">
+          <StaffPhotoPicker
+            photo={photo}
+            existingUrl={member?.photoUrl}
+            onChange={setPhoto}
+            disabled={isSubmitting}
+          />
           <TextInput
             label="Full Name"
             placeholder="e.g. Ahmed Al-Mansoor"
@@ -175,7 +190,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
           />
 
           <TextInput
-            label="Email Address (Optional)"
+            label="Email Address"
             placeholder="e.g. staff@community.com"
             value={email}
             onChangeText={(text) => {
@@ -185,6 +200,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
             keyboardType="email-address"
             autoCapitalize="none"
             error={errors.email}
+            required
             editable={!isSubmitting}
           />
 
@@ -214,17 +230,44 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
             required
             options={deptOptions}
             value={department}
-            onValueChange={(val) => setDepartment(val as StaffDepartment)}
+            onValueChange={(val) => {
+              setDepartment(val as StaffDepartment);
+              if (val !== 'Others') {
+                setCustomDepartment('');
+                if (errors.customDepartment) {
+                  setErrors((prev) => ({ ...prev, customDepartment: '' }));
+                }
+              }
+            }}
           />
+
+          {department === 'Others' ? (
+            <TextInput
+              label="Specify Department Name"
+              placeholder="e.g. Landscape / Pool Maintenance / HVAC"
+              value={customDepartment}
+              onChangeText={(text) => {
+                setCustomDepartment(text);
+                if (errors.customDepartment) setErrors((prev) => ({ ...prev, customDepartment: '' }));
+              }}
+              error={errors.customDepartment}
+              required
+              editable={!isSubmitting}
+            />
+          ) : null}
 
           <DropdownSelect
-            label="Staff Type"
+            label="Role"
             required
-            options={typeOptions}
-            value={type}
-            onValueChange={(val) => setType(val as StaffType)}
+            options={roleOptions}
+            value={roleId}
+            placeholder="Choose a role from Role Builder"
+            error={errors.roleId}
+            onValueChange={(value) => {
+              setRoleId(value);
+              if (errors.roleId) setErrors((prev) => ({ ...prev, roleId: '' }));
+            }}
           />
-
           {isEditing ? (
             <DropdownSelect
               label="Account Status"
@@ -234,57 +277,6 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
               onValueChange={(val) => setStatus(val as StaffStatus)}
             />
           ) : null}
-
-          {/* QR Pass Expiry & Shift Timings */}
-          <View className="mt-1 p-3.5 rounded-2xl bg-muted/40 border border-border gap-3">
-            <Text className="text-xs font-bold text-foreground">
-              Pass Validity & Daily Shift Schedule
-            </Text>
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <TextInput
-                  label="Pass Start Date (YYYY-MM-DD)"
-                  placeholder="e.g. 2026-01-01"
-                  value={qrValidFrom}
-                  onChangeText={setQrValidFrom}
-                  helperText="Access active from"
-                  editable={!isSubmitting}
-                />
-              </View>
-              <View className="flex-1">
-                <TextInput
-                  label="Pass Expire Date (YYYY-MM-DD)"
-                  placeholder="e.g. 2026-12-31"
-                  value={qrValidUntil}
-                  onChangeText={setQrValidUntil}
-                  helperText="Access expires on"
-                  editable={!isSubmitting}
-                />
-              </View>
-            </View>
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <TextInput
-                  label="Shift Start"
-                  placeholder="08:00"
-                  value={shiftStartTime}
-                  onChangeText={setShiftStartTime}
-                  editable={!isSubmitting}
-                />
-              </View>
-              <View className="flex-1">
-                <TextInput
-                  label="Shift End"
-                  placeholder="18:00"
-                  value={shiftEndTime}
-                  onChangeText={setShiftEndTime}
-                  editable={!isSubmitting}
-                />
-              </View>
-            </View>
-          </View>
 
           <View className="mt-4 flex-row gap-3">
             <Button

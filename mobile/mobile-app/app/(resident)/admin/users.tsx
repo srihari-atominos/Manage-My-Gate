@@ -125,6 +125,8 @@ export default function UserManagementScreen() {
           ? `Invitation issued successfully.\nToken: ${result.invitationToken}`
           : 'User invited successfully!'
       );
+      // The invite modal needs the created user (id, invite link), e.g. to attach an optional staff photo.
+      return result;
     } catch (err: any) {
       Alert.alert('Invite Error', err?.message || 'Failed to invite user');
       throw err;

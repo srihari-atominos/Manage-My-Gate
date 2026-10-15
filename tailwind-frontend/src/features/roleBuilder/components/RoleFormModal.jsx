@@ -21,6 +21,7 @@ import useRoleForm from '../hooks/useRoleForm';
 import RoleIntegrationConfigurator from './RoleIntegrationConfigurator';
 import PermissionMatrix from './PermissionMatrix';
 import '../styles/_roleBuilder.scss';
+import { ROLE_SCOPE_OPTIONS } from '../roleScopes'
 
 const RoleFormModal = ({ visible, role, onClose, onSave }) => {
   const { permissionsList, isPermissionsLoading, loadPermissions } = useRoles();
@@ -106,84 +107,35 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
             <p className="text-gray-400 dark:text-gray-500 text-xs mb-2.5">
               Choose how this role behaves across community facilities and residential units:
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-              {/* Option 1: Global */}
-              <div
-                onClick={() => handleSelectScope('GLOBAL')}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  roleScope === 'GLOBAL'
-                    ? 'border-primary bg-primary/10 shadow-xs'
-                    : 'border-stroke dark:border-strokedark bg-transparent hover:bg-gray-50 dark:hover:bg-meta-4/20'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-bold ${roleScope === 'GLOBAL' ? 'text-primary' : 'text-black dark:text-white'}`}>
-                    Global Scope
-                  </span>
-                  <input
-                    type="radio"
-                    name="roleScopeOption"
-                    checked={roleScope === 'GLOBAL'}
-                    onChange={() => handleSelectScope('GLOBAL')}
-                    className="cursor-pointer"
-                  />
-                </div>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
-                  Community-wide facility & management access. Unrestricted to a single unit.
-                </p>
-              </div>
-
-              {/* Option 2: Unit */}
-              <div
-                onClick={() => handleSelectScope('UNIT')}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  roleScope === 'UNIT'
-                    ? 'border-emerald-500 bg-emerald-500/10 shadow-xs'
-                    : 'border-stroke dark:border-strokedark bg-transparent hover:bg-gray-50 dark:hover:bg-meta-4/20'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-bold ${roleScope === 'UNIT' ? 'text-emerald-600 dark:text-emerald-400' : 'text-black dark:text-white'}`}>
-                    Unit Scope
-                  </span>
-                  <input
-                    type="radio"
-                    name="roleScopeOption"
-                    checked={roleScope === 'UNIT'}
-                    onChange={() => handleSelectScope('UNIT')}
-                    className="cursor-pointer"
-                  />
-                </div>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
-                  Bound to specific villas/apartments when onboarding residents.
-                </p>
-              </div>
-
-              {/* Option 3: Staff */}
-              <div
-                onClick={() => handleSelectScope('STAFF')}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  roleScope === 'STAFF'
-                    ? 'border-amber-500 bg-amber-500/10 shadow-xs'
-                    : 'border-stroke dark:border-strokedark bg-transparent hover:bg-gray-50 dark:hover:bg-meta-4/20'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-bold ${roleScope === 'STAFF' ? 'text-amber-600 dark:text-amber-400' : 'text-black dark:text-white'}`}>
-                    Staff Member
-                  </span>
-                  <input
-                    type="radio"
-                    name="roleScopeOption"
-                    checked={roleScope === 'STAFF'}
-                    onChange={() => handleSelectScope('STAFF')}
-                    className="cursor-pointer"
-                  />
-                </div>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
-                  Dual scope: acts across facilities and links to units. Auto-syncs to Staff Management.
-                </p>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {ROLE_SCOPE_OPTIONS.map((option) => {
+                const isSelected = roleScope === option.value
+                return (
+                  <div
+                    key={option.value}
+                    onClick={() => handleSelectScope(option.value)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      isSelected
+                        ? option.selectedClass
+                        : 'border-stroke dark:border-strokedark bg-transparent hover:bg-gray-50 dark:hover:bg-meta-4/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-bold ${isSelected ? option.titleClass : 'text-black dark:text-white'}`}>
+                        {option.label}
+                      </span>
+                      <input
+                        type="radio"
+                        name="roleScopeOption"
+                        checked={isSelected}
+                        onChange={() => handleSelectScope(option.value)}
+                        className="cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">{option.description}</p>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

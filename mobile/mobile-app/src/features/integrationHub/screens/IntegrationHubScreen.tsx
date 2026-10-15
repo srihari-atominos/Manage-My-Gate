@@ -48,7 +48,9 @@ export const IntegrationHubScreen: React.FC = () => {
     handleBankDetailsSubmit,
     openEditModal,
     closeEditModal,
-    handleUpdateLabelSubmit,
+    handleUpdateSubmit,
+    handleTestConnection,
+    testingId,
     openDetailsModal,
     closeDetailsModal,
     promptDelete,
@@ -57,18 +59,16 @@ export const IntegrationHubScreen: React.FC = () => {
   } = useIntegrationHub();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [showPageJumpModal, setShowPageJumpModal] = useState(false);
-  const [targetPageInput, setTargetPageInput] = useState('');
 
   // Dynamic filter chips
   const filterChips = useMemo(() => {
     const base = [{ id: 'all', label: 'All Connections', count: connections.length }];
     catalog.forEach((cat) => {
       const count = connections.filter((c) => c.provider === cat.id).length;
-      base.push({ id: cat.id, label: cat.name, count });
+      if (count > 0 || selectedProvider === cat.id) base.push({ id: cat.id, label: cat.name, count });
     });
     return base;
-  }, [catalog, connections]);
+  }, [catalog, connections, selectedProvider]);
 
   // Filter connections
   const filteredConnections = useMemo(() => {
@@ -91,17 +91,6 @@ export const IntegrationHubScreen: React.FC = () => {
   const currentPage = pagination.currentPage || 1;
   const totalPages = pagination.totalPages || 1;
   const totalRecords = filteredConnections.length;
-
-  const handleExecutePageJump = () => {
-    const pageNum = parseInt(targetPageInput.trim(), 10);
-    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
-      handlePageChange(pageNum);
-      setShowPageJumpModal(false);
-      setTargetPageInput('');
-    } else {
-      Alert.alert('Invalid Page', `Please enter a valid page number between 1 and ${totalPages}.`);
-    }
-  };
 
   // Pagination Footer
   const renderPaginationFooter = () => {
@@ -126,19 +115,11 @@ export const IntegrationHubScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => {
-              setTargetPageInput(String(currentPage));
-              setShowPageJumpModal(true);
-            }}
-            className="px-3.5 py-2 rounded-lg bg-muted/60 border border-border/60 flex-row items-center"
-            accessibilityRole="button"
-            accessibilityLabel="Current page"
-          >
+          <View className="px-3.5 py-2 rounded-lg bg-muted/60 border border-border/60 flex-row items-center">
             <Text className="text-xs font-bold text-foreground">
               Page {currentPage} of {totalPages}
             </Text>
-          </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             onPress={() => { if (currentPage < totalPages) handlePageChange(currentPage + 1); }}
@@ -335,12 +316,13 @@ export const IntegrationHubScreen: React.FC = () => {
         error={error}
       />
 
-      {/* Edit Connection Label Modal */}
+      {/* Edit Connection Modal (label and keys) */}
       <EditConnectionModal
         visible={editModalVisible}
         onClose={closeEditModal}
         connection={selectedConnection}
-        onSubmit={handleUpdateLabelSubmit}
+        catalog={catalog}
+        onSubmit={handleUpdateSubmit}
         isSubmitting={isSubmitting}
         error={error}
       />
@@ -352,9 +334,11 @@ export const IntegrationHubScreen: React.FC = () => {
         connection={selectedConnection}
         onEdit={openEditModal}
         onDisconnect={promptDelete}
+        onTest={handleTestConnection}
+        isTesting={testingId === selectedConnection?.id}
       />
 
-      {/* Disconnect Confirmation Modal */}
+      {/* Disconnect Confirmation Modal (stays open with the reason if the server refuses) */}
       <ConfirmationModal
         visible={deleteModalVisible}
         title="Disconnect Integration"
@@ -367,54 +351,6 @@ export const IntegrationHubScreen: React.FC = () => {
         onCancel={closeDeleteModal}
       />
 
-      {/* Quick Jump To Page Modal */}
-      <Modal visible={showPageJumpModal} transparent statusBarTranslucent={true} animationType="fade" onRequestClose={() => setShowPageJumpModal(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1 }}
-        >
-          <View className="flex-1 justify-center items-center bg-black/50 p-4">
-            <View className="bg-card rounded-2xl p-5 border border-border w-full max-w-xs shadow-lg">
-              <View className="flex-row items-center justify-between pb-2 border-b border-border mb-3">
-                <View className="flex-row items-center">
-                  <Hash size={18} color="#2563eb" className="me-2" />
-                  <Text className="text-base font-bold text-foreground">Jump to Page</Text>
-                </View>
-                <TouchableOpacity onPress={() => setShowPageJumpModal(false)}>
-                  <X size={16} color="#6b7280" />
-                </TouchableOpacity>
-              </View>
-
-              <Text className="text-xs text-muted-foreground mb-3 text-start">
-                Enter page number between <Text className="font-bold text-foreground">1</Text> and <Text className="font-bold text-foreground">{totalPages}</Text>:
-              </Text>
-
-              <TextInput
-                value={targetPageInput}
-                onChangeText={setTargetPageInput}
-                placeholder={`1 - ${totalPages}`}
-                keyboardType="number-pad"
-                autoFocus
-                className="mb-4"
-              />
-
-              <View className="flex-row items-center justify-end gap-2">
-                <Button variant="outline" size="sm" onPress={() => setShowPageJumpModal(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onPress={handleExecutePageJump}
-                  className="bg-blue-600 active:bg-blue-700"
-                >
-                  Go to Page
-                </Button>
-              </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </ScreenShell>
   );
 };

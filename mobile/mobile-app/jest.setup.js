@@ -14,6 +14,16 @@ jest.mock('expo-modules-core', () => {
   };
 });
 
+// expo-crypto's native AES classes cannot load under jest (it fails with "Super expression must either be
+// null or a function"). The app only uses randomUUID, so provide a unique-per-call stand-in.
+let mockUuidCounter = 0;
+jest.mock('expo-crypto', () => ({
+  randomUUID: jest.fn(() => {
+    mockUuidCounter += 1;
+    return `00000000-0000-4000-8000-${String(mockUuidCounter).padStart(12, '0')}`;
+  }),
+}));
+
 // Global Mocks for Jest environment
 jest.mock('react-native-worklets', () => ({
   isWorkletFunction: jest.fn(() => false),

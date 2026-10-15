@@ -17,6 +17,35 @@ export class AmenityBookingRepository {
     }).session(session);
   }
 
+  async deleteById(id, session = null) {
+    return await AmenityBooking.deleteOne({ _id: id }, session ? { session } : undefined);
+  }
+
+  /**
+   * Releases online bookings still waiting for payment after `cutoff`.
+   * Conditional on the status, so a payment that lands meanwhile is never overwritten.
+   */
+  async expireUnpaidOnline(cutoff, now, reason) {
+    const result = await AmenityBooking.updateMany(
+      {
+        status: 'pending',
+        paymentStatus: 'pending',
+        paymentMethod: { $regex: /^online$/i },
+        createdAt: { $lt: cutoff },
+      },
+      {
+        $set: {
+          status: 'cancelled',
+          paymentStatus: 'failed',
+          qrStatus: 'expired',
+          cancellationReason: reason,
+          cancelledAt: now,
+        },
+      }
+    );
+    return result.modifiedCount || 0;
+  }
+
   async findOverlappingBookingsForWindow({ orgId, amenityId, startDateTime, endDateTime }, session = null) {
     const moment = (await import('moment-timezone')).default;
     const TIMEZONE = 'Asia/Kolkata';

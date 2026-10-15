@@ -3,13 +3,14 @@ import { useDispatch } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
+import { ROLE_SCOPE_VALUES, getRoleScopeOption, isTenantScope } from '../roleScopes'
 import { syncRolePermissionsAsync } from '../store/roleSlice'
 
 const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required'),
   description: yup.string().trim().optional(),
   isTenantRole: yup.boolean().optional().default(false),
-  roleScope: yup.string().oneOf(['GLOBAL', 'UNIT', 'STAFF']).optional().default('GLOBAL'),
+  roleScope: yup.string().oneOf(ROLE_SCOPE_VALUES).optional().default('GLOBAL'),
   permissions: yup.array().of(yup.string().required()).required('Permissions array is required'),
   integrationMappings: yup.object().optional().default({}),
 })
@@ -69,6 +70,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     control,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
@@ -95,7 +97,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
       reset({
         name: role.name || '',
         description: role.description || '',
-        isTenantRole: derivedScope === 'UNIT' || derivedScope === 'STAFF',
+        isTenantRole: isTenantScope(derivedScope),
         roleScope: derivedScope,
         permissions: role.permissions || [],
         integrationMappings: role.integrationMappings || {},
@@ -184,7 +186,12 @@ export const useRoleForm = ({ role, visible, onSave }) => {
 
   const handleSelectScope = (scope) => {
     setValue('roleScope', scope, { shouldValidate: true, shouldDirty: true })
-    setValue('isTenantRole', scope === 'UNIT' || scope === 'STAFF', { shouldValidate: true, shouldDirty: true })
+    setValue('isTenantRole', isTenantScope(scope), { shouldValidate: true, shouldDirty: true })
+    const defaultPerms = getRoleScopeOption(scope)?.defaultPermissions
+    if (defaultPerms) {
+      const merged = Array.from(new Set([...(getValues('permissions') || []), ...defaultPerms]))
+      setValue('permissions', merged, { shouldValidate: true, shouldDirty: true })
+    }
   }
 
   return {

@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, ScrollView, RefreshControl, Alert, TouchableOpacity } from 'react-native';
+﻿import React, { useState, useMemo, useEffect } from 'react';
+import { View, ScrollView, FlatList, RefreshControl, Alert, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/src/store/store';
@@ -28,6 +28,9 @@ import {
   StaffDashboardScreen,
   staffService,
 } from '@/src/features/staff';
+import { useTranslation } from '@/src/utils/i18n';
+import { useStaffToast } from '@/src/features/staff/hooks/useStaffToast';
+import { useStaffDeleteImpact, buildStaffDeleteMessage } from '@/src/features/staff/hooks/useStaffDeleteImpact';
 import {
   Users,
   ShieldAlert,
@@ -41,10 +44,10 @@ import {
   FileSpreadsheet,
 } from 'lucide-react-native';
 import { downloadCSVFile, downloadExcelFile } from '@/src/utils/downloadHelper';
-import * as XLSX from 'xlsx';
 
 export default function StaffManagementScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ tab?: string }>();
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -129,12 +132,13 @@ export default function StaffManagementScreen() {
     setAttendanceDepartmentFilter,
     attendanceStaffFilter,
     setAttendanceStaffFilter,
+    attendanceRoleFilter,
+    setAttendanceRoleFilter,
+    attendanceDepartmentOptions,
     attendanceStartDate,
     setAttendanceStartDate,
     attendanceEndDate,
     setAttendanceEndDate,
-    attendancePeriodPreset,
-    setAttendancePeriodPreset,
     attendanceSearch,
     setAttendanceSearch,
     loadAttendance,
@@ -161,6 +165,8 @@ export default function StaffManagementScreen() {
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showAttendanceFilterSheet, setShowAttendanceFilterSheet] = useState(false);
   const [deletingStaff, setDeletingStaff] = useState<StaffMember | null>(null);
+  const { showToast, toastNode } = useStaffToast();
+  const deleteUnitCount = useStaffDeleteImpact(deletingStaff);
   const [isExporting, setIsExporting] = useState(false);
   const [attendanceReportMember, setAttendanceReportMember] = useState<{
     member: StaffMember | { name: string; department?: string; _id: string };
@@ -172,35 +178,25 @@ export default function StaffManagementScreen() {
     let count = 0;
     if (attendanceStatusFilter !== 'ALL') count++;
     if (attendanceDepartmentFilter !== 'ALL') count++;
-    if (attendancePeriodPreset !== 'all' || attendanceStartDate || attendanceEndDate) count++;
+    if (attendanceRoleFilter !== 'ALL') count++;
+    if (attendanceStartDate || attendanceEndDate) count++;
     return count;
   }, [
     attendanceStatusFilter,
     attendanceDepartmentFilter,
-    attendancePeriodPreset,
+    attendanceRoleFilter,
     attendanceStartDate,
     attendanceEndDate,
   ]);
 
-  const activePeriodLabel = useMemo(() => {
-    if (attendancePeriodPreset === 'today') return 'Today';
-    if (attendancePeriodPreset === 'yesterday') return 'Yesterday';
-    if (attendancePeriodPreset === 'week') return 'This Week';
-    if (attendancePeriodPreset === 'this_month') return 'This Month';
-    if (attendancePeriodPreset === 'last_month') return 'Last Month';
-    if (attendanceStartDate || attendanceEndDate) {
-      if (attendanceStartDate && attendanceEndDate) {
-        return `${attendanceStartDate} to ${attendanceEndDate}`;
-      }
-      return attendanceStartDate ? `From ${attendanceStartDate}` : `Up to ${attendanceEndDate}`;
-    }
-    return 'All Records';
-  }, [attendancePeriodPreset, attendanceStartDate, attendanceEndDate]);
+  const attendanceRangeLabel = attendanceStartDate || attendanceEndDate
+    ? `${attendanceStartDate || 'Start'} to ${attendanceEndDate || 'Today'}`
+    : 'All attendance';
 
   const handleResetAttendanceFilters = () => {
     setAttendanceStatusFilter('ALL');
     setAttendanceDepartmentFilter('ALL');
-    setAttendancePeriodPreset('all');
+    setAttendanceRoleFilter('ALL');
     setAttendanceStartDate('');
     setAttendanceEndDate('');
     setAttendanceGateFilter('ALL');
@@ -208,179 +204,48 @@ export default function StaffManagementScreen() {
     loadAttendance({
       status: undefined,
       department: undefined,
+      staffCategory: undefined,
       startDate: undefined,
       endDate: undefined,
       search: attendanceSearch.trim() || undefined,
     });
   };
 
-  // Formula injection defense for spreadsheet export
-  const sanitizeField = (val: any): string => {
-    if (val === null || val === undefined) return '';
-    const str = String(val).trim();
-    if (/^[=+@\-\t\r]/.test(str)) {
-      return `'${str}`;
+  const buildAttendanceExportQuery = () => {
+    const query: Record<string, string> = {};
+    if (attendanceStatusFilter !== 'ALL') query.status = attendanceStatusFilter;
+    if (attendanceDepartmentFilter !== 'ALL') {
+      if (attendanceDepartmentFilter.startsWith('trade:')) query.departmentOther = attendanceDepartmentFilter.slice(6);
+      else query.department = attendanceDepartmentFilter;
     }
-    return str;
+    if (attendanceRoleFilter !== 'ALL') query.staffCategory = attendanceRoleFilter;
+    if (attendanceStartDate) query.startDate = attendanceStartDate;
+    if (attendanceEndDate) query.endDate = attendanceEndDate;
+    if (attendanceSearch.trim()) query.search = attendanceSearch.trim();
+    return query;
   };
 
   const handleExportAttendanceCSV = async () => {
     try {
       setIsExporting(true);
-      if (attendanceRecords.length === 0) {
-        Alert.alert('No Data', 'There are no staff attendance records to export under the current filter.');
-        return;
-      }
-
-      // Fetch all matching records for the active filter set across pagination
-      let exportDataset = attendanceRecords;
-      try {
-        const fullQuery: any = { limit: 1000, page: 1 };
-        if (attendanceStartDate) fullQuery.startDate = attendanceStartDate;
-        if (attendanceEndDate) fullQuery.endDate = attendanceEndDate;
-        if (attendanceStatusFilter !== 'ALL' && attendanceStatusFilter !== 'Missing Checkout') {
-          fullQuery.status = attendanceStatusFilter;
-        }
-        if (attendanceDepartmentFilter !== 'ALL') fullQuery.department = attendanceDepartmentFilter;
-        if (attendanceSearch.trim()) fullQuery.search = attendanceSearch.trim();
-
-        const fullRes = await staffService.getAttendanceHistory(fullQuery);
-        if (fullRes?.records && fullRes.records.length > 0) {
-          exportDataset = fullRes.records;
-        }
-      } catch {
-        // Fallback to locally displayed records if bulk fetch encounters error
-        exportDataset = attendanceRecords;
-      }
-
-      const headers = [
-        'Community ID',
-        'Staff Name',
-        'Department',
-        'Staff Code',
-        'Attendance Date',
-        'Status',
-        'Check-In Time',
-        'Entry Gate',
-        'Check-Out Time',
-        'Exit Gate',
-        'Duration (Mins)',
-        'Exception Flag',
-        'Notes',
-      ];
-
-      const rows = exportDataset.map((r) => {
-        const staffObj = typeof r.technicianId === 'object' && r.technicianId ? r.technicianId : null;
-        const orgStr = sanitizeField(r.orgId || activeOrgId || 'N/A').replace(/"/g, '""');
-        const name = sanitizeField(staffObj?.name || r.staffCode || 'Staff Member').replace(/"/g, '""');
-        const dept = sanitizeField(staffObj?.department || 'General').replace(/"/g, '""');
-        const code = sanitizeField(r.staffCode || staffObj?.staffCode || '').replace(/"/g, '""');
-        const attDate = r.checkInTime ? new Date(r.checkInTime).toISOString().split('T')[0] : '';
-        const status = r.status || 'Open';
-        const inTime = r.checkInTime ? new Date(r.checkInTime).toLocaleString() : '';
-        const inGate = sanitizeField(r.checkInGate || 'Main Gate').replace(/"/g, '""');
-        const outTime = r.checkOutTime ? new Date(r.checkOutTime).toLocaleString() : 'In Progress';
-        const outGate = sanitizeField(r.exitGate || (r.status === 'Open' ? 'On-Site' : 'Main Gate')).replace(/"/g, '""');
-        const duration = r.durationMinutes !== undefined && r.durationMinutes !== null ? String(r.durationMinutes) : '0';
-        const exceptionFlag = r.isMissingCheckout ? 'Missing Checkout' : 'Normal';
-        const notes = sanitizeField(r.notes || '').replace(/"/g, '""');
-
-        return `"${orgStr}","${name}","${dept}","${code}","${attDate}","${status}","${inTime}","${inGate}","${outTime}","${outGate}","${duration}","${exceptionFlag}","${notes}"`;
-      });
-
-      const csvContent = [headers.join(','), ...rows].join('\n');
-      const timestamp = new Date().toISOString().split('T')[0];
-      const periodSuffix = attendancePeriodPreset !== 'all' ? `_${attendancePeriodPreset}` : '';
-      await downloadCSVFile(csvContent, `nahom_staff_attendance_${timestamp}${periodSuffix}.csv`);
-      Alert.alert('Export Successful', `Exported ${exportDataset.length} staff attendance records to CSV.`);
+      const blob = await staffService.exportAttendanceReport(buildAttendanceExportQuery(), 'csv');
+      await downloadCSVFile(typeof (blob as any)?.text === 'function' ? await (blob as any).text() : String(blob || ''), `staff_attendance_${new Date().toISOString().split('T')[0]}.csv`);
+      Alert.alert('Export Successful', 'Attendance report exported with the selected filters.');
     } catch (err: any) {
       Alert.alert('Export Failed', err?.message || 'Could not export attendance records.');
-    } finally {
-      setIsExporting(false);
-    }
+    } finally { setIsExporting(false); }
   };
 
   const handleExportAttendanceExcel = async () => {
     try {
       setIsExporting(true);
-      if (attendanceRecords.length === 0) {
-        Alert.alert('No Data', 'There are no staff attendance records to export under the current filter.');
-        return;
-      }
-
-      // Fetch all matching records for the active filter set across pagination
-      let exportDataset = attendanceRecords;
-      try {
-        const fullQuery: any = { limit: 1000, page: 1 };
-        if (attendanceStartDate) fullQuery.startDate = attendanceStartDate;
-        if (attendanceEndDate) fullQuery.endDate = attendanceEndDate;
-        if (attendanceStatusFilter !== 'ALL' && attendanceStatusFilter !== 'Missing Checkout') {
-          fullQuery.status = attendanceStatusFilter;
-        }
-        if (attendanceDepartmentFilter !== 'ALL') fullQuery.department = attendanceDepartmentFilter;
-        if (attendanceSearch.trim()) fullQuery.search = attendanceSearch.trim();
-
-        const fullRes = await staffService.getAttendanceHistory(fullQuery);
-        if (fullRes?.records && fullRes.records.length > 0) {
-          exportDataset = fullRes.records;
-        }
-      } catch {
-        exportDataset = attendanceRecords;
-      }
-
-      const rows = exportDataset.map((r) => {
-        const staffObj = typeof r.technicianId === 'object' && r.technicianId ? r.technicianId : null;
-        return {
-          'Community ID': sanitizeField(r.orgId || activeOrgId || 'N/A'),
-          'Staff Name': sanitizeField(staffObj?.name || r.staffCode || 'Staff Member'),
-          'Department': sanitizeField(staffObj?.department || 'General'),
-          'Staff Code': sanitizeField(r.staffCode || staffObj?.staffCode || ''),
-          'Attendance Date': r.checkInTime ? new Date(r.checkInTime).toISOString().split('T')[0] : '',
-          'Status': r.status || 'Open',
-          'Check-In Time': r.checkInTime ? new Date(r.checkInTime).toLocaleString() : '',
-          'Entry Gate': sanitizeField(r.checkInGate || 'Main Gate'),
-          'Check-Out Time': r.checkOutTime ? new Date(r.checkOutTime).toLocaleString() : 'In Progress',
-          'Exit Gate': sanitizeField(r.exitGate || (r.status === 'Open' ? 'On-Site' : 'Main Gate')),
-          'Duration (Minutes)': r.durationMinutes ?? 0,
-          'Exception Flag': r.isMissingCheckout ? 'Missing Checkout' : 'Normal',
-          'Notes': sanitizeField(r.notes || ''),
-        };
-      });
-
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      // Auto-fit column widths
-      worksheet['!cols'] = [
-        { wch: 24 }, // Community ID
-        { wch: 20 }, // Staff Name
-        { wch: 16 }, // Department
-        { wch: 14 }, // Staff Code
-        { wch: 16 }, // Attendance Date
-        { wch: 12 }, // Status
-        { wch: 22 }, // Check-In Time
-        { wch: 14 }, // Entry Gate
-        { wch: 22 }, // Check-Out Time
-        { wch: 14 }, // Exit Gate
-        { wch: 18 }, // Duration
-        { wch: 18 }, // Exception Flag
-        { wch: 24 }, // Notes
-      ];
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance Logs');
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-      const timestamp = new Date().toISOString().split('T')[0];
-      const periodSuffix = attendancePeriodPreset !== 'all' ? `_${attendancePeriodPreset}` : '';
-      await downloadExcelFile(blob, `nahom_staff_attendance_${timestamp}${periodSuffix}.xlsx`);
-      Alert.alert('Export Successful', `Exported ${exportDataset.length} staff attendance records to Excel (.xlsx).`);
+      const blob = await staffService.exportAttendanceReport(buildAttendanceExportQuery(), 'xlsx');
+      await downloadExcelFile(blob, `staff_attendance_${new Date().toISOString().split('T')[0]}.xlsx`);
+      Alert.alert('Export Successful', 'Attendance report exported with the selected filters.');
     } catch (err: any) {
       Alert.alert('Export Failed', err?.message || 'Could not export attendance records.');
-    } finally {
-      setIsExporting(false);
-    }
+    } finally { setIsExporting(false); }
   };
-
   // Active filter count for Staff Directory
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -413,9 +278,13 @@ export default function StaffManagementScreen() {
 
   const handleFormSubmit = async (payload: CreateStaffPayload | UpdateStaffPayload) => {
     if (editingStaff?._id) {
-      await updateStaff(editingStaff._id, payload as UpdateStaffPayload);
+      const updated = await updateStaff(editingStaff._id, payload as UpdateStaffPayload);
+      showToast(t('staff_dir_toast_saved', 'Staff details saved'));
+      return updated;
     } else {
-      await createStaff(payload as CreateStaffPayload);
+      const created = await createStaff(payload as CreateStaffPayload);
+      showToast(t('staff_dir_toast_added', 'Staff member added'));
+      return created;
     }
   };
 
@@ -423,9 +292,11 @@ export default function StaffManagementScreen() {
     if (!deletingStaff?._id) return;
     try {
       await deleteStaff(deletingStaff._id);
+      showToast(t('staff_dir_toast_removed', '{{name}} removed from the directory', { name: deletingStaff.name }));
       setDeletingStaff(null);
     } catch (err: any) {
-      Alert.alert('Deactivation Error', err?.message || 'Failed to deactivate staff member.');
+      setDeletingStaff(null);
+      Alert.alert('Could not delete', err?.message || 'Failed to delete staff member.');
     }
   };
 
@@ -587,6 +458,8 @@ export default function StaffManagementScreen() {
         </ScrollView>
       </View>
 
+      {toastNode}
+
       {/* TAB 1: STAFF DIRECTORY */}
       {activeTab === 'directory' ? (
         <>
@@ -636,63 +509,66 @@ export default function StaffManagementScreen() {
           </View>
 
           {/* Main Staff Registry List */}
-          <ScrollView
+          <FlatList
             className="flex-1 px-4 pt-2"
             contentContainerStyle={{ flexGrow: 1, paddingBottom: 140 }}
+            data={staffList}
+            keyExtractor={(item) => item._id}
+            initialNumToRender={8}
+            windowSize={7}
+            removeClippedSubviews
             refreshControl={
               <RefreshControl refreshing={isLoading} onRefresh={loadStaff} tintColor="#2563EB" />
             }
-          >
-            {/* Error Banner */}
-            {error ? (
-              <View className="mb-4 rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 flex-row items-center justify-between">
-                <Text className="text-xs text-destructive font-medium flex-1 me-2">{error}</Text>
-                <Button size="sm" variant="outline" className="h-7 px-2.5" onPress={loadStaff}>
-                  Retry
-                </Button>
-              </View>
-            ) : null}
-
-            {/* Loading Skeletons */}
-            {isLoading && staffList.length === 0 ? (
-              <SkeletonLoader count={4} />
-            ) : staffList.length === 0 ? (
-              <EmptyState
-                title={rawCount === 0 ? 'No Staff Registered' : 'No Results Found'}
-                description={
-                  rawCount === 0
-                    ? 'No staff members have been registered in this community yet.'
-                    : 'No staff members match the selected search or filter criteria.'
-                }
-                icon={Users}
-                actionLabel={
-                  rawCount === 0 && hasManagePermission
-                    ? '+ Add First Staff Member'
-                    : activeFilterCount > 0
-                    ? 'Clear Filters'
-                    : undefined
-                }
-                onAction={
-                  rawCount === 0 && hasManagePermission
-                    ? handleOpenCreate
-                    : activeFilterCount > 0
-                    ? handleResetFilters
-                    : undefined
-                }
-              />
-            ) : (
-              staffList.map((member) => (
-                <StaffCard
-                  key={member._id}
-                  member={member}
-                  canManage={hasManagePermission}
-                  onPress={() => handleOpenDetails(member)}
-                  onEdit={() => handleOpenEdit(member)}
-                  onDelete={() => setDeletingStaff(member)}
+            ListHeaderComponent={
+              error ? (
+                <View className="mb-4 rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 flex-row items-center justify-between">
+                  <Text className="text-xs text-destructive font-medium flex-1 me-2">{error}</Text>
+                  <Button size="sm" variant="outline" className="h-7 px-2.5" onPress={loadStaff}>
+                    Retry
+                  </Button>
+                </View>
+              ) : null
+            }
+            ListEmptyComponent={
+              isLoading ? (
+                <SkeletonLoader count={4} />
+              ) : (
+                <EmptyState
+                  title={rawCount === 0 ? 'No Staff Registered' : 'No Results Found'}
+                  description={
+                    rawCount === 0
+                      ? 'No staff members have been registered in this community yet.'
+                      : 'No staff members match the selected search or filter criteria.'
+                  }
+                  icon={Users}
+                  actionLabel={
+                    rawCount === 0 && hasManagePermission
+                      ? '+ Add First Staff Member'
+                      : activeFilterCount > 0
+                      ? 'Clear Filters'
+                      : undefined
+                  }
+                  onAction={
+                    rawCount === 0 && hasManagePermission
+                      ? handleOpenCreate
+                      : activeFilterCount > 0
+                      ? handleResetFilters
+                      : undefined
+                  }
                 />
-              ))
+              )
+            }
+            renderItem={({ item }) => (
+              <StaffCard
+                member={item}
+                canManage={hasManagePermission}
+                onPress={handleOpenDetails}
+                onEdit={handleOpenEdit}
+                onDelete={setDeletingStaff}
+              />
             )}
-          </ScrollView>
+          />
 
           {/* Floating Action Button for Adding Staff */}
           {hasManagePermission ? (
@@ -779,7 +655,7 @@ export default function StaffManagementScreen() {
                 <View className="mx-1.5 h-3 w-px bg-border" />
                 <View className="px-2 py-0.5 rounded-full bg-muted/60">
                   <Text className="text-[10px] font-semibold text-foreground/80">
-                    {activePeriodLabel}
+                    {attendanceRangeLabel}
                   </Text>
                 </View>
               </View>
@@ -789,7 +665,7 @@ export default function StaffManagementScreen() {
                   variant="outline"
                   className="h-8 px-2.5 flex-row items-center gap-1.5"
                   onPress={handleExportAttendanceCSV}
-                  disabled={isExporting || attendanceRecords.length === 0}
+                  disabled={isExporting}
                   accessibilityLabel="Export Attendance CSV"
                 >
                   <FileDown size={14} className="text-foreground" />
@@ -800,7 +676,7 @@ export default function StaffManagementScreen() {
                   variant="outline"
                   className="h-8 px-2.5 flex-row items-center gap-1.5 border-emerald-500/40 bg-emerald-500/5"
                   onPress={handleExportAttendanceExcel}
-                  disabled={isExporting || attendanceRecords.length === 0}
+                  disabled={isExporting}
                   accessibilityLabel="Export Attendance Excel (.xlsx)"
                 >
                   <FileSpreadsheet size={14} className="text-emerald-600 dark:text-emerald-400" />
@@ -928,6 +804,7 @@ export default function StaffManagementScreen() {
         isSubmitting={isSubmitting}
         onClose={() => setShowFormModal(false)}
         onSubmit={handleFormSubmit}
+        onSaved={loadStaff}
       />
 
       <StaffDetailModal
@@ -958,14 +835,15 @@ export default function StaffManagementScreen() {
         visible={showAttendanceFilterSheet}
         selectedStatus={attendanceStatusFilter}
         selectedDepartment={attendanceDepartmentFilter}
+        selectedRole={attendanceRoleFilter}
+        departmentOptions={attendanceDepartmentOptions}
         startDate={attendanceStartDate}
         endDate={attendanceEndDate}
-        activePeriod={attendancePeriodPreset}
         onSelectStatus={setAttendanceStatusFilter}
         onSelectDepartment={setAttendanceDepartmentFilter}
+        onSelectRole={setAttendanceRoleFilter}
         onChangeStartDate={setAttendanceStartDate}
         onChangeEndDate={setAttendanceEndDate}
-        onApplyPeriodPreset={setAttendancePeriodPreset}
         onApplyFilters={() => {
           loadAttendance();
         }}
@@ -984,7 +862,7 @@ export default function StaffManagementScreen() {
       <ConfirmationModal
         visible={Boolean(deletingStaff)}
         title="Deactivate Staff Member"
-        message={`Are you sure you want to deactivate ${deletingStaff?.name}? Their account will be marked inactive and access revoked.`}
+        message={buildStaffDeleteMessage(deletingStaff?.name, deleteUnitCount, t)}
         confirmLabel="Deactivate"
         cancelLabel="Cancel"
         variant="danger"
@@ -995,3 +873,8 @@ export default function StaffManagementScreen() {
     </ScreenShell>
   );
 }
+
+
+
+
+

@@ -5,6 +5,7 @@ import logger from '../../utils/logger.utils.js';
 import { maskPhone, maskEmail } from '../../utils/phone.utils.js';
 import nodemailer from 'nodemailer';
 import { isOtpDebugEnabled } from '../otp/otp.services.js';
+import integrationHubRepository from '../integrationHub/integrationHub.repository.js';
 
 export const sendOtpNotification = async ({ identifier, code, type }) => {
   const effectiveType = type === 'EMAIL' || (type !== 'SMS' && identifier?.includes('@')) ? 'EMAIL' : 'SMS';
@@ -18,8 +19,7 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
 
     try {
       // 1. Check IntegrationHub SMTP integrations (prefer latest updated connected SMTP)
-      const smtpIntegrations = await IntegrationHub.find({ provider: 'smtp', status: 'connected' })
-        .sort({ updatedAt: -1, createdAt: -1 });
+      const smtpIntegrations = await integrationHubRepository.findPlatformConnections('smtp');
 
       for (const smtpIntegration of smtpIntegrations) {
         try {
@@ -60,7 +60,7 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
       }
 
       // 2. Check Resend API integration
-      const resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
+      const resendIntegration = await integrationHubRepository.findPlatformConnection('resend');
       
       if (resendIntegration) {
         const apiKeyCred = resendIntegration.credentials.find((c) => c.key === 'apiKey');
@@ -125,7 +125,7 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
     }
     try {
       // 1. Check MSG91 (either via IntegrationHub or environment configuration)
-      const msg91Integration = await IntegrationHub.findOne({ provider: 'msg91', status: 'connected' });
+      const msg91Integration = await integrationHubRepository.findPlatformConnection('msg91');
       const msg91EnvConfigured = Boolean(process.env.MSG91_AUTH_KEY && (process.env.MSG91_TEMPLATE_ID || process.env.MSG91_OTP_TEMPLATE_ID));
       if (msg91Integration || msg91EnvConfigured) {
         try {
@@ -173,7 +173,7 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
       }
 
       // 2. Check Twilio
-      const twilioIntegration = await IntegrationHub.findOne({ provider: 'twilio', status: 'connected' });
+      const twilioIntegration = await integrationHubRepository.findPlatformConnection('twilio');
       if (twilioIntegration) {
         const getCred = (key) => {
           const cred = twilioIntegration.credentials.find((c) => c.key === key);
@@ -208,7 +208,7 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
       }
 
       // 2. Fallback to Message Central
-      const mcIntegration = await IntegrationHub.findOne({ provider: 'messagecentral', status: 'connected' });
+      const mcIntegration = await integrationHubRepository.findPlatformConnection('messagecentral');
       if (mcIntegration) {
         const getCred = (key) => {
           const cred = mcIntegration.credentials.find((c) => c.key === key);
