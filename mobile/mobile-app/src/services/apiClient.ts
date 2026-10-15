@@ -28,6 +28,7 @@ export const getApiBaseUrl = () => {
 
   // 1. Web browser development: align with the browser's hostname and local backend port.
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    if (url) return url;
     const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
     if (isLocalHostName) {
       return `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
@@ -69,6 +70,7 @@ export const getSocketBaseUrl = () => {
 
   // 1. Web browser development: align socket with browser's hostname
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    if (socketUrl) return socketUrl;
     const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
     if (isLocalHostName) {
       return `${window.location.protocol}//${window.location.hostname}:5006`;
