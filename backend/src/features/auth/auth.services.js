@@ -15,7 +15,6 @@ import config from '../../config/config.js';
 import authEvents from './auth.events.js';
 import userEvents from '../user/user.events.js';
 import { normalizePhone } from '../../utils/phone.utils.js';
-import { sendOtpNotification } from './auth.listeners.js';
 
 // Same wording whether or not an account exists, so code requests can't reveal accounts
 const OTP_SENT_PHONE_MESSAGE = 'If an account exists for this phone number, a verification code has been sent.';
@@ -1765,7 +1764,6 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         user = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
       }
 
-      const user = await userService.getUserById(userId, session).catch(() => null);
       if (!user) {
         throw new HttpError(404, 'No pending user account found to activate.');
       }
