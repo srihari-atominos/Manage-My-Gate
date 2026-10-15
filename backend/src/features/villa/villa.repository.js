@@ -160,10 +160,11 @@ export class VillaRepository {
     const total = result?.totalRecords?.[0]?.count || 0;
 
     if (data.length > 0) {
-      data = await Villa.populate(data, {
-        path: 'residents.userId',
-        select: 'name email phone login',
-      });
+      data = await Villa.populate(data, [
+        { path: 'residents.userId', select: 'name email phone login' },
+        { path: 'primaryResidentId', select: 'name email phone login' },
+        { path: 'ownerId', select: 'name email phone login' },
+      ]);
     }
 
     return { data, total };

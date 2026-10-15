@@ -5,6 +5,7 @@ import {
   validateHistoryQuery,
   validateSessionId,
   validateManualCheckout,
+  validateExportQuery,
 } from './staffAttendance.validators.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
@@ -23,11 +24,26 @@ router.post(
   staffAttendanceController.scan
 );
 
+// Verify a scanned staff pass and report current gate status WITHOUT recording anything
+router.post(
+  '/lookup',
+  authorizeAnyPermission(['staff:attendance', 'visitor:guard', 'staff:manage']),
+  validateGateScan,
+  staffAttendanceController.lookup
+);
+
 // Real-time active open sessions at the gates
 router.get(
   '/active',
   authorizeAnyPermission(['staff:attendance', 'visitor:guard', 'staff:manage', 'staff:view']),
   staffAttendanceController.getActive
+);
+
+// Resident view: which staff allocated to my units are inside the community right now
+router.get(
+  '/my-units/active',
+  authorizeAnyPermission(['staff:assign_unit', 'staff:manage']),
+  staffAttendanceController.getActiveForMyUnits
 );
 
 // Staff self-service: retrieve own attendance history
@@ -44,6 +60,14 @@ router.get(
   authorizeAnyPermission(['staff:attendance', 'staff:manage', 'staff:view']),
   validateHistoryQuery,
   staffAttendanceController.getHistory
+);
+
+// Friendly CSV / Excel download of the attendance report (same permissions as viewing history)
+router.get(
+  '/export',
+  authorizeAnyPermission(['staff:attendance', 'staff:manage', 'staff:view']),
+  validateExportQuery,
+  staffAttendanceController.exportAttendance
 );
 
 // Community attendance summary statistics: authorized for Staff Managers, Viewers, and Attendance Monitors

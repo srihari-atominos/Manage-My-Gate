@@ -6,6 +6,7 @@ import {
   Pressable,
   LayoutChangeEvent,
   Keyboard,
+  AppState,
   Dimensions,
   StyleSheet,
 } from 'react-native';
@@ -254,7 +255,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
-  const { isCompact } = useBottomNavScroll();
+  const { isCompact, setIsCompact } = useBottomNavScroll();
 
   // Breadth (width) transition dimensions — height remains constant
   const FULL_BREADTH = Math.min(SCREEN_WIDTH - 32, 252);
@@ -293,6 +294,13 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     setSelectedTabKey(activeTab);
   }, [activeTab]);
 
+  // The compact (hidden) flag is global and only changes when a ScrollView reports a scroll. A screen that is
+  // too short to scroll (like the dashboard) never reports one, so a bar hidden on the previous screen used to
+  // stay hidden for good. Every screen that shows the bar must therefore start with it visible.
+  useEffect(() => {
+    setIsCompact(false);
+  }, [pathname, setIsCompact]);
+
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useEffect(() => {
@@ -302,11 +310,29 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     const showSub = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
     const hideSub = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
 
+    // Some Android devices never deliver "keyboard hidden" (dismissed by the back gesture, from a modal, or
+    // when the app returns from the background), which left the bar hidden and untouchable. Re-sync from the
+    // real keyboard state whenever the app comes back or the screen changes.
+    const syncKeyboardState = () => {
+      const visible = typeof Keyboard.isVisible === 'function' ? Keyboard.isVisible() : false;
+      setIsKeyboardVisible(visible);
+    };
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') syncKeyboardState();
+    });
+
     return () => {
       showSub.remove();
       hideSub.remove();
+      appStateSub.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof Keyboard.isVisible === 'function' && !Keyboard.isVisible()) {
+      setIsKeyboardVisible(false);
+    }
+  }, [pathname]);
 
   const navTranslateY = useSharedValue(0);
 

@@ -1,4 +1,7 @@
 import integrationHubService from './integrationHub.service.js';
+import { catalogFor } from './integrationHub.catalog.js';
+
+const isPlatformCaller = (req) => req.user?.isPlatform === true || req.tenant?.isPlatform === true;
 
 /**
  * Controller class for managing integration hub requests.
@@ -9,14 +12,13 @@ export class IntegrationHubController {
    */
   async connectIntegration(req, res, next) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.id || req.user._id;
       const orgId = req.tenant.orgId;
       const { provider, accountLabel, credentials } = req.body;
-      if (String(provider).toLowerCase() === 'msg91' && req.user.isPlatform !== true) {
-        return res.status(403).json({ success: false, message: 'Only platform administrators can configure MSG91.' });
-      }
 
-      const data = await integrationHubService.connect(userId, orgId, provider, accountLabel, credentials);
+      const data = await integrationHubService.connect(userId, orgId, provider, accountLabel, credentials, {
+        isPlatform: isPlatformCaller(req),
+      });
       res.success(data, 'Integration connected successfully', 200);
     } catch (error) {
       next(error);
@@ -24,7 +26,7 @@ export class IntegrationHubController {
   }
 
   /**
-   * Fetch all connected integrations for the authenticated user (paginated).
+   * Fetch connected integrations of the community (paginated).
    */
   async getIntegrations(req, res, next) {
     try {
@@ -48,7 +50,10 @@ export class IntegrationHubController {
       const orgId = req.tenant.orgId;
       const { id } = req.params;
 
-      const data = await integrationHubService.deleteConnection(id, orgId);
+      const data = await integrationHubService.deleteConnection(id, orgId, {
+        userId: req.user.id || req.user._id,
+        isPlatform: isPlatformCaller(req),
+      });
       res.success(data, 'Integration disconnected successfully', 200);
     } catch (error) {
       next(error);
@@ -56,112 +61,47 @@ export class IntegrationHubController {
   }
 
   /**
-   * Update integration connection label by ID.
+   * Update the label and/or rotate the credentials of a connection.
    */
   async updateConnection(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
       const { id } = req.params;
-      const { accountLabel } = req.body;
+      const { accountLabel, credentials } = req.body;
 
-      const data = await integrationHubService.updateConnectionLabel(id, orgId, accountLabel);
-      res.success(data, 'Integration connection label updated successfully', 200);
+      const data = await integrationHubService.updateConnection(
+        id,
+        orgId,
+        { accountLabel, credentials },
+        { userId: req.user.id || req.user._id, isPlatform: isPlatformCaller(req) }
+      );
+      res.success(data, 'Integration updated successfully', 200);
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Returns a dynamic schema catalog of supported integrations.
+   * Re-verify the stored credentials with the provider.
+   */
+  async testConnection(req, res, next) {
+    try {
+      const data = await integrationHubService.testConnection(req.params.id, req.tenant.orgId, {
+        userId: req.user.id || req.user._id,
+        isPlatform: isPlatformCaller(req),
+      });
+      res.success(data, data.ok ? 'Connection works' : 'Connection check failed', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Catalog of integrations the caller may configure (platform-level providers are hidden from communities).
    */
   getCatalog(req, res, next) {
     try {
-      const catalog = [
-        {
-          id: 'twilio',
-          name: 'Twilio',
-          fields: [
-            { name: 'accountSid', label: 'Account SID', type: 'text' },
-            { name: 'authToken', label: 'Auth Token', type: 'password' },
-          ],
-        },
-        {
-          id: 'openai',
-          name: 'OpenAI',
-          fields: [
-            { name: 'apiKey', label: 'API Key', type: 'password' },
-          ],
-        },
-        {
-          id: 'resend',
-          name: 'Resend',
-          fields: [
-            { name: 'apiKey', label: 'API Key', type: 'password' },
-          ],
-        },
-        {
-          id: 'smtp',
-          name: 'SMTP Email Server',
-          fields: [
-            { name: 'host', label: 'SMTP Host', type: 'text' },
-            { name: 'port', label: 'Port (e.g., 587, 465)', type: 'text' },
-            { name: 'authUsername', label: 'Username / Email', type: 'text' },
-            { name: 'authPassword', label: 'Password', type: 'password' },
-          ],
-        },
-        {
-          id: 'firebase',
-          name: 'Firebase Authentication',
-          fields: [
-            { name: 'projectId', label: 'Project ID', type: 'text' },
-            { name: 'apiKey', label: 'API Key', type: 'password' },
-            { name: 'authDomain', label: 'Auth Domain', type: 'text' },
-            { name: 'appId', label: 'App ID', type: 'text' },
-            { name: 'messagingSenderId', label: 'Messaging Sender ID', type: 'text' },
-            { name: 'storageBucket', label: 'Storage Bucket (Optional)', type: 'text', required: false },
-          ],
-        },
-        {
-          id: 'messageCentral',
-          name: 'Message Central',
-          fields: [
-            { name: 'customerId', label: 'Customer ID', type: 'text' },
-            { name: 'authToken', label: 'Auth Token', type: 'password' },
-            { name: 'countryCode', label: 'Country Code', type: 'text' },
-            { name: 'senderId', label: 'Sender ID', type: 'text', required: false },
-            { name: 'flowId', label: 'Flow ID', type: 'text', required: false },
-            { name: 'environment', label: 'Environment', type: 'text', required: false },
-          ],
-        },
-        {
-          id: 'msg91',
-          name: 'MSG91 SMS OTP',
-          fields: [
-            { name: 'authKey', label: 'Auth Key', type: 'password' },
-            { name: 'templateId', label: 'OTP Template ID (Optional)', type: 'text', required: false },
-            { name: 'senderId', label: 'Sender ID (Optional)', type: 'text', required: false },
-          ],
-        },
-        {
-          id: 'banking',
-          name: 'Banking Vault',
-          fields: [
-            { name: 'accountName', label: 'Account Holder Name', type: 'text' },
-            { name: 'accountNumber', label: 'Account Number', type: 'text' },
-            { name: 'ifscCode', label: 'IFSC Code (e.g. SBIN0001234)', type: 'text' },
-          ],
-        },
-        {
-          id: 'razorpay',
-          name: 'Razorpay Gateway',
-          fields: [
-            { name: 'keyId', label: 'Key ID', type: 'text' },
-            { name: 'keySecret', label: 'Key Secret', type: 'password' },
-          ],
-        },
-      ];
-
-      res.success(catalog, 'Integration catalog retrieved successfully', 200);
+      res.success(catalogFor({ isPlatform: isPlatformCaller(req) }), 'Integration catalog retrieved successfully', 200);
     } catch (error) {
       next(error);
     }

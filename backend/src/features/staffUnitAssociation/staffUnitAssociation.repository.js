@@ -8,7 +8,13 @@ class StaffUnitAssociationRepository {
       return await doc.save({ session });
     } catch (err) {
       if (err && (err.code === 11000 || err.codeName === 'DuplicateKey' || (err.message && err.message.includes('E11000')))) {
-        throw new HttpError(409, 'Staff member is already actively associated with this unit.');
+        const isPending = err.message && err.message.includes('unique_pending_unit_staff_association');
+        throw new HttpError(
+          409,
+          isPending
+            ? 'An association request for this unit is already awaiting approval from this staff member.'
+            : 'Staff member is already actively associated with this unit.'
+        );
       }
       throw err;
     }
@@ -19,7 +25,7 @@ class StaffUnitAssociationRepository {
     if (orgId) query.orgId = orgId;
     return await StaffUnitAssociation.findOne(query)
       .populate('villaId', 'unitNumber blockOrBuilding type status floor')
-      .populate('technicianId', 'name department designation type staffCode phone email status')
+      .populate('technicianId', 'name department departmentOther designation type staffCode phone email status photoKey')
       .populate('associatedBy', 'name username email')
       .session(session);
   }
@@ -42,11 +48,30 @@ class StaffUnitAssociationRepository {
     }).session(session);
   }
 
+  /**
+   * Active associations whose optional validity window (accessSchedule.validFrom/validUntil)
+   * includes the current moment. Expired or not-yet-started allocations are excluded.
+   */
   async findActiveByTechnician(orgId, technicianId, session = null) {
+    const now = new Date();
     return await StaffUnitAssociation.find({
       orgId,
       technicianId,
       status: 'Active',
+      $and: [
+        { $or: [{ 'accessSchedule.validFrom': null }, { 'accessSchedule.validFrom': { $lte: now } }] },
+        { $or: [{ 'accessSchedule.validUntil': null }, { 'accessSchedule.validUntil': { $gte: now } }] },
+      ],
+    })
+      .populate('villaId', 'unitNumber blockOrBuilding type status floor')
+      .session(session);
+  }
+
+  async findActiveOrPendingByTechnician(orgId, technicianId, session = null) {
+    return await StaffUnitAssociation.find({
+      orgId,
+      technicianId,
+      status: { $in: ['Active', 'Pending'] },
     })
       .populate('villaId', 'unitNumber blockOrBuilding type status floor')
       .session(session);
@@ -68,7 +93,7 @@ class StaffUnitAssociationRepository {
     const query = { orgId, ...filter };
     return await StaffUnitAssociation.find(query)
       .populate('villaId', 'unitNumber blockOrBuilding type status floor')
-      .populate('technicianId', 'name department designation type staffCode phone email status')
+      .populate('technicianId', 'name department departmentOther designation type staffCode phone email status photoKey')
       .populate('associatedBy', 'name username email')
       .sort({ createdAt: -1 })
       .session(session);
@@ -83,7 +108,7 @@ class StaffUnitAssociationRepository {
       { new: true, runValidators: true, session }
     )
       .populate('villaId', 'unitNumber blockOrBuilding type status floor')
-      .populate('technicianId', 'name department designation type staffCode phone email status')
+      .populate('technicianId', 'name department departmentOther designation type staffCode phone email status photoKey')
       .populate('associatedBy', 'name username email');
   }
 
@@ -103,8 +128,18 @@ class StaffUnitAssociationRepository {
       { new: true, session }
     )
       .populate('villaId', 'unitNumber blockOrBuilding type status floor')
-      .populate('technicianId', 'name department designation type staffCode phone email status')
+      .populate('technicianId', 'name department departmentOther designation type staffCode phone email status photoKey')
       .populate('associatedBy', 'name username email');
+  }
+
+  /**
+   * Deactivates every live (Active/Pending/Suspended) allocation of a staff member.
+   */
+  async deactivateAllForTechnician(orgId, technicianId, reason = '') {
+    return await StaffUnitAssociation.updateMany(
+      { orgId, technicianId, status: { $in: ['Active', 'Pending', 'Suspended'] } },
+      { $set: { status: 'Inactive', deactivatedAt: new Date(), deactivationReason: reason } }
+    );
   }
 
   async countActive(orgId, filter = {}, session = null) {

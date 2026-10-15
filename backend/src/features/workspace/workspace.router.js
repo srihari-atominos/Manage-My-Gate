@@ -4,6 +4,7 @@ import validate from '../../middlewares/validator.middleware.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import { tenantContext } from '../../middlewares/tenant.middleware.js';
 import { authorizeRoles } from '../../middlewares/rbac.middleware.js';
+import HttpError from '../../utils/httpError.utils.js';
 import {
   createWorkspaceRules,
   updateWorkspaceRules,
@@ -27,12 +28,16 @@ router.get('/current/modules', workspaceController.getCurrentModules);
 // Restrict Workspace mutations to Platform Super Admin, Super Admin, and Community Admin roles
 const allowedManagers = authorizeRoles('Platform Super Admin', 'Super Admin', 'Community Admin');
 
+// Deleting a community's workspace removes its navigation and settings; only platform admins may do it.
+const platformOnly = (req, res, next) =>
+  req.user?.isPlatform === true ? next() : next(new HttpError(403, 'Forbidden. Platform administrator access required.'));
+
 // Workspace CRUD
 router.post('/', allowedManagers, validate(createWorkspaceRules), workspaceController.create);
 router.get('/', allowedManagers, workspaceController.getAll);
 router.get('/:id', allowedManagers, validate(idParamRules), workspaceController.getById);
 router.put('/:id', allowedManagers, validate(idParamRules.concat(updateWorkspaceRules)), workspaceController.update);
-router.delete('/:id', allowedManagers, validate(idParamRules), workspaceController.delete);
+router.delete('/:id', allowedManagers, platformOnly, validate(idParamRules), workspaceController.delete);
 
 // Modules Management
 router.get('/:workspaceId/modules', allowedManagers, validate(workspaceIdParamRules), workspaceController.getModules);

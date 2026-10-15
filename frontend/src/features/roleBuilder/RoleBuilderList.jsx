@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react'
+import { useSelector } from 'react-redux'
 import { CBadge, CAlert, CButton } from '@coreui/react'
 import PageHeader from '../../components/common/PageHeader'
 import DataTable from '../../components/common/DataTable'
 import ActionIconButton from '../../components/common/ActionIconButton'
 import useRoles from './hooks/useRoles'
 import RoleFormModal from './components/RoleFormModal'
+import { getRoleScopeOption } from './roleScopes'
 import './styles/_roleBuilder.scss'
 
 /**
@@ -32,6 +34,8 @@ const RoleBuilderList = () => {
     handleRowsPerPageChange,
   } = useRoles()
 
+  const isPlatform = useSelector((state) => state.workspace?.isPlatform === true)
+
   const columns = useMemo(
     () => [
       {
@@ -43,26 +47,23 @@ const RoleBuilderList = () => {
         key: 'isTenantRole',
         label: 'Scope',
         render: (val, role) => {
-          const isStaff =
-            role?.roleScope === 'STAFF' ||
-            /staff|guard|technician|vendor|maid|driver|cook|gardener/i.test(role?.name || '');
-          if (isStaff) {
-            return (
-              <CBadge color="warning" shape="rounded-pill" className="px-2 py-1 text-dark">
-                Staff (Dual Scope)
-              </CBadge>
-            );
-          }
-          const isUnit = role?.roleScope === 'UNIT' || !!val;
+          const scope =
+            role?.roleScope ||
+            (/staff|guard|technician|vendor|maid|driver|cook|gardener/i.test(role?.name || '')
+              ? 'STAFF'
+              : val
+                ? 'UNIT'
+                : 'GLOBAL')
+          const option = getRoleScopeOption(scope) || getRoleScopeOption('GLOBAL')
           return (
             <CBadge
-              color={isUnit ? 'info' : 'primary'}
+              color={option.color}
               shape="rounded-pill"
-              className="px-2 py-1 text-white"
+              className={`px-2 py-1 ${option.color === 'warning' ? 'text-dark' : 'text-white'}`}
             >
-              {isUnit ? 'Unit Scope' : 'Global'}
+              {option.badge}
             </CBadge>
-          );
+          )
         },
       },
       {
@@ -88,12 +89,43 @@ const RoleBuilderList = () => {
           )
         },
       },
+      {
+        key: 'memberCount',
+        label: 'Members',
+        render: (val, role) => (
+          <span className="d-inline-flex align-items-center gap-2">
+            <span className="text-body-secondary">
+              {val ?? 0} {(val ?? 0) === 1 ? 'member' : 'members'}
+            </span>
+            {role?.isShared ? (
+              <CBadge color="secondary" shape="rounded-pill" className="px-2 py-1">
+                Shared
+              </CBadge>
+            ) : null}
+          </span>
+        ),
+      },
     ],
     [],
   )
 
   const renderRowActions = (role) => {
     const isSuperAdmin = role.name === 'Super Admin' || role.name === 'Platform Super Admin'
+    const memberCount = role.memberCount ?? 0
+    // Shared roles belong to the platform; a community can only view them.
+    const readOnlyShared = Boolean(role.isShared) && !isPlatform
+    const editBlockedReason = isSuperAdmin
+      ? 'System roles cannot be modified.'
+      : readOnlyShared
+        ? 'Shared roles can only be changed by platform administrators.'
+        : null
+    const deleteBlockedReason =
+      editBlockedReason ||
+      (role.isLocked
+        ? `"${role.name}" is a built-in role the community needs, so it cannot be deleted.`
+        : memberCount > 0
+          ? `Assigned to ${memberCount} active ${memberCount === 1 ? 'member' : 'members'}. Assign them a different role first.`
+          : null)
     return (
       <div className="d-flex gap-2">
         {/* Edit button */}
@@ -101,8 +133,8 @@ const RoleBuilderList = () => {
           id={`edit-role-${role.id}`}
           color="info"
           onClick={() => openEditModal(role)}
-          title={isSuperAdmin ? 'System roles cannot be modified.' : `Edit ${role.name}`}
-          disabled={isSuperAdmin}
+          title={editBlockedReason || `Edit ${role.name}`}
+          disabled={Boolean(editBlockedReason)}
           icon={
             <svg
               viewBox="0 0 24 24"
@@ -127,8 +159,8 @@ const RoleBuilderList = () => {
               handleDeleteRole(role.id)
             }
           }}
-          title={isSuperAdmin ? 'System roles cannot be modified.' : `Delete ${role.name}`}
-          disabled={isSuperAdmin}
+          title={deleteBlockedReason || `Delete ${role.name}`}
+          disabled={Boolean(deleteBlockedReason)}
           icon={
             <svg
               viewBox="0 0 24 24"

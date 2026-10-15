@@ -6,6 +6,7 @@ import nodemailer from 'nodemailer';
 import User from '../user/user.model.js';
 import { NotificationService } from '../notification/notification.service.js';
 import crmInquiryService from '../crmInquiry/crmInquiry.service.js';
+import integrationHubRepository from '../integrationHub/integrationHub.repository.js';
 
 const notificationService = new NotificationService();
 
@@ -60,7 +61,7 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
 
   try {
     // 1. Prioritize Gmail SMTP if configured
-    const smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' });
+    const smtpIntegration = await integrationHubRepository.findPlatformConnection('smtp');
     
     if (smtpIntegration) {
       const getCred = (key) => {
@@ -97,7 +98,7 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
     }
 
     // 2. Fallback to Resend API
-    const resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
+    const resendIntegration = await integrationHubRepository.findPlatformConnection('resend');
     
     if (resendIntegration) {
       const apiKeyCred = resendIntegration.credentials.find((c) => c.key === 'apiKey');

@@ -24,7 +24,11 @@ import {
 import amenitySettingsService from '../settings/amenitySettings.service.js';
 import { computeAmountSchedule, paymentStatusFor } from '../domain/payments/amountSchedule.js';
 import amenityPaymentService from '../payments/amenityPayment.service.js';
+import resourceMutexService from '../domain/concurrency/resourceMutex.service.js';
 import AmenityReservationHold from '../holds/amenityReservationHold.model.js';
+
+// A resident may move a booking this many times (admins are not limited).
+export const MAX_RESIDENT_RESCHEDULES = 2;
 
 /** Id of a possibly-populated reference. */
 const idOf = (ref) => (ref && typeof ref === 'object' && ref._id ? ref._id : ref);
@@ -365,13 +369,129 @@ export class AmenityReservationService {
     const refund = wasPaid
       ? computeCancellationRefund(reservation, { isManagement, now })
       : { percentage: 0, bookingRefund: 0, depositRefund: 0, total: 0, reason: 'Nothing was paid' };
+    const rescheduleBlockReason = this.rescheduleBlockReason(reservation, { isManagement, now });
     return {
       allowed: !blockReason && ['CONFIRMED', 'PENDING_APPROVAL'].includes(reservation.bookingStatus),
       blockReason: blockReason || null,
       refund,
       refundTo: refund.total > 0 ? 'WALLET' : null,
       policy: reservation.policySnapshot?.cancellation || null,
+      reschedule: { allowed: !rescheduleBlockReason, blockReason: rescheduleBlockReason },
     };
+  }
+
+  /**
+   * Why a resident cannot move this booking to another time right now, or null when they can.
+   * Moving is allowed in the same window in which a free cancellation is: before the policy cutoff,
+   * not after it started or was used, and only a limited number of times.
+   */
+  rescheduleBlockReason(reservation, { isManagement = false, now = new Date() } = {}) {
+    if (!['CONFIRMED', 'PENDING_APPROVAL'].includes(reservation.bookingStatus)) {
+      return 'Only an active booking can be moved';
+    }
+    if (['CHECKED_IN', 'CHECKED_OUT'].includes(reservation.accessStatus) ||
+        (reservation.completionStatus && reservation.completionStatus !== 'PENDING')) {
+      return 'This booking has already been used';
+    }
+    const hoursToStart = (new Date(reservation.requestedStartDateTime).getTime() - now.getTime()) / 3600000;
+    if (hoursToStart <= 0) return 'This booking has already started';
+    if (isManagement) return null;
+
+    const policy = reservation.policySnapshot?.cancellation;
+    if (reservation.bookingStatus === 'CONFIRMED' && policy?.isAllowed === false) {
+      return 'This facility does not allow residents to change bookings';
+    }
+    const cutoff = Number.isFinite(Number(policy?.refundCutoffHours)) ? Number(policy.refundCutoffHours) : 24;
+    if (reservation.bookingStatus === 'CONFIRMED' && hoursToStart < cutoff) {
+      return `A booking can only be moved at least ${cutoff} hour(s) before it starts`;
+    }
+    const moves = (reservation.approvalHistory || []).filter((h) => h.action === 'RESCHEDULED').length;
+    if (moves >= MAX_RESIDENT_RESCHEDULES) {
+      return `This booking was already moved ${MAX_RESIDENT_RESCHEDULES} time(s). Cancel it and book again if you need a different time`;
+    }
+    return null;
+  }
+
+  /**
+   * Resident moves their own booking to another time on the same facility.
+   * The length and the price must stay the same (otherwise they would owe or be owed money),
+   * the household quota follows the booking, and availability is re-checked under the facility lock.
+   */
+  async residentReschedule({ reservationId, orgId, newStartDateTime, newEndDateTime, actorId }, session) {
+    if (session) return this._executeResidentReschedule({ reservationId, orgId, newStartDateTime, newEndDateTime, actorId }, session);
+    return withTransactionRetry(async (trx) =>
+      this._executeResidentReschedule({ reservationId, orgId, newStartDateTime, newEndDateTime, actorId }, trx)
+    );
+  }
+
+  async _executeResidentReschedule({ reservationId, orgId, newStartDateTime, newEndDateTime, actorId }, session) {
+    const reservation = await amenityReservationRepository.findById(reservationId, null, session);
+    if (!reservation || String(reservation.orgId) !== String(orgId)) {
+      throw new HttpError(404, 'Reservation not found');
+    }
+
+    const blockReason = this.rescheduleBlockReason(reservation);
+    if (blockReason) throw new HttpError(400, blockReason);
+
+    const start = new Date(newStartDateTime);
+    const end = new Date(newEndDateTime);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+      throw new HttpError(400, 'Please choose a valid new time');
+    }
+    const oldStart = new Date(reservation.requestedStartDateTime);
+    const oldEnd = new Date(reservation.requestedEndDateTime);
+    if (start.getTime() === oldStart.getTime() && end.getTime() === oldEnd.getTime()) {
+      throw new HttpError(400, 'That is the time you already have. Pick a different one');
+    }
+    if (end - start !== oldEnd - oldStart) {
+      throw new HttpError(400, 'Keep the same length of booking. To change the length, cancel and book again');
+    }
+
+    const facility = await amenityFacilityRepository.findById(idOf(reservation.facilityId), orgId, session);
+    if (!facility) throw new HttpError(404, 'Amenity facility not found');
+
+    // The new time must cost exactly what was already paid for.
+    const quote = pricingService.calculateForFacility(facility, {
+      startDateTime: start,
+      endDateTime: end,
+      headcount: reservation.headcount,
+      quantity: reservation.quantity,
+    });
+    const paidFor = Number(reservation.pricingSnapshot?.totalAmount ?? reservation.totalAmount ?? 0);
+    if (Math.abs(Number(quote.totalAmount || 0) - paidFor) > 0.01) {
+      throw new HttpError(
+        409,
+        `The price at that time is different (${Number(quote.totalAmount || 0)} instead of ${paidFor}). Cancel this booking and book the new time instead`
+      );
+    }
+
+    // Quota follows the booking: give back the old window, then take the new one.
+    const requestedUnits = Math.ceil((oldEnd.getTime() - oldStart.getTime()) / 60000);
+    const quotaScope = {
+      orgId,
+      unitId: idOf(reservation.unitId),
+      facilityId: idOf(reservation.facilityId),
+      requestedUnits,
+    };
+    await amenityQuotaAllocationService.refundQuota({ ...quotaScope, date: oldStart }, session);
+    const settings = await amenitySettingsService.getSettings(orgId, session);
+    await amenityQuotaAllocationService.reserveQuota(
+      { ...quotaScope, quotaLimit: amenitySettingsService.quotaLimitFor(settings, facility, requestedUnits), date: start },
+      session
+    );
+    await amenityQuotaAllocationService.promoteQuota({ ...quotaScope, date: start }, session);
+
+    return this._executeRescheduleReservation(
+      {
+        reservationId,
+        orgId,
+        newStartDateTime: start,
+        newEndDateTime: end,
+        rescheduledBy: actorId || idOf(reservation.residentId),
+        reason: 'Rescheduled by resident',
+      },
+      session
+    );
   }
 
   /**
@@ -502,7 +622,8 @@ export class AmenityReservationService {
       targetResourceId = resource._id;
     }
 
-    // Availability revalidation at execution time
+    // Serialize with hold creation and other moves on this facility, then revalidate at execution time
+    await resourceMutexService.acquireMutex({ orgId, facilityId: reservation.facilityId?._id || reservation.facilityId }, session);
     const { availabilityService } = await import('../domain/availability/availability.service.js');
     const availCheck = await availabilityService.checkAvailability(
       {

@@ -1,21 +1,31 @@
 import { Platform } from 'react-native';
-let Notifications: any = null;
-try { if (Constants.appOwnership !== 'expo') { Notifications = require('expo-notifications'); } } catch(e) {}
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import storage from '../../../utils/storage';
 
+export const isExpoGo =
+  Constants?.executionEnvironment === ExecutionEnvironment.StoreClient ||
+  Constants?.appOwnership === 'expo';
+
+// Importing expo-notifications throws in Expo Go on Android as of SDK 53.
+const Notifications: any = isExpoGo ? null : require('expo-notifications');
 // Configure how incoming notifications are handled when the app is in the foreground
-Notifications?.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    priority: Notifications?.AndroidNotificationPriority.MAX,
-  }),
-});
+if (Platform.OS !== 'web' && !(Platform.OS === 'android' && isExpoGo)) {
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+      }),
+    });
+  } catch (err) {
+    console.warn('[PushNotificationService] Failed to set notification handler:', err);
+  }
+}
 
 let channelsInitialized = false;
 
@@ -30,10 +40,10 @@ export async function setupAndroidNotificationChannels() {
 
   try {
     // 1. General & Community Announcements
-    await Notifications?.setNotificationChannelAsync('general', {
+    await Notifications.setNotificationChannelAsync('general', {
       name: 'General Community Alerts',
       description: 'Standard notices, announcements, and system alerts',
-      importance: Notifications?.AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF6A00',
       sound: 'default',
@@ -42,10 +52,10 @@ export async function setupAndroidNotificationChannels() {
     });
 
     // 2. Default alias for backwards compatibility
-    await Notifications?.setNotificationChannelAsync('default', {
+    await Notifications.setNotificationChannelAsync('default', {
       name: 'General Alerts',
       description: 'Default community and system alerts',
-      importance: Notifications?.AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       sound: 'default',
       enableLights: true,
@@ -53,10 +63,10 @@ export async function setupAndroidNotificationChannels() {
     });
 
     // 3. Visitor Management & Gate Approvals (MAX importance for urgent approvals)
-    await Notifications?.setNotificationChannelAsync('visitors', {
+    await Notifications.setNotificationChannelAsync('visitors', {
       name: 'Visitor & Gate Requests',
       description: 'Urgent gate approvals, visitor check-ins, and guest arrivals',
-      importance: Notifications?.AndroidImportance.MAX,
+      importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 300, 200, 300],
       lightColor: '#2563EB',
       sound: 'default',
@@ -65,10 +75,10 @@ export async function setupAndroidNotificationChannels() {
     });
 
     // 4. Billing, Invoices & Maintenance Payments
-    await Notifications?.setNotificationChannelAsync('billing', {
+    await Notifications.setNotificationChannelAsync('billing', {
       name: 'Billing & Payment Reminders',
       description: 'Alerts regarding invoices, maintenance dues, and payment confirmations',
-      importance: Notifications?.AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#16A34A',
       sound: 'default',
@@ -77,10 +87,10 @@ export async function setupAndroidNotificationChannels() {
     });
 
     // 5. Complaints & Maintenance Issues
-    await Notifications?.setNotificationChannelAsync('complaints', {
+    await Notifications.setNotificationChannelAsync('complaints', {
       name: 'Complaints & Maintenance',
       description: 'Maintenance tickets, technician assignments, and issue resolutions',
-      importance: Notifications?.AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#DC2626',
       sound: 'default',
@@ -89,10 +99,10 @@ export async function setupAndroidNotificationChannels() {
     });
 
     // 6. Resident & Community Messages
-    await Notifications?.setNotificationChannelAsync('messages', {
+    await Notifications.setNotificationChannelAsync('messages', {
       name: 'Community Messages',
       description: 'Direct communications between residents, guards, and community admins',
-      importance: Notifications?.AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#7C3AED',
       sound: 'default',
@@ -101,10 +111,10 @@ export async function setupAndroidNotificationChannels() {
     });
 
     // 7. Community & Workspace Invitations (MAX importance for urgent access decisions)
-    await Notifications?.setNotificationChannelAsync('invitations', {
+    await Notifications.setNotificationChannelAsync('invitations', {
       name: 'Invitations & Access Approvals',
       description: 'Community invitations requiring acceptance or decline',
-      importance: Notifications?.AndroidImportance.MAX,
+      importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 300, 200, 300],
       lightColor: '#2563EB',
       sound: 'default',
@@ -119,7 +129,7 @@ export async function setupAndroidNotificationChannels() {
   }
 }
 
-export type NotificationPermissionsStatus = Awaited<ReturnType<any>>;
+export type NotificationPermissionsStatus = Awaited<ReturnType<typeof Notifications.getPermissionsAsync>>;
 
 /**
  * Check current notification permissions without prompting user.
@@ -127,7 +137,7 @@ export type NotificationPermissionsStatus = Awaited<ReturnType<any>>;
 export async function checkNotificationPermissions(): Promise<NotificationPermissionsStatus | null> {
   try {
     if (Platform.OS === 'web') return null;
-    return await Notifications?.getPermissionsAsync();
+    return await Notifications.getPermissionsAsync();
   } catch (error) {
     console.warn('[PushNotificationService] Error checking permissions:', error);
     return null;
@@ -142,7 +152,7 @@ export async function requestNotificationPermissionsAsync(forcePrompt = false): 
   try {
     if (Platform.OS === 'web') return false;
 
-    const currentStatus = await Notifications?.getPermissionsAsync();
+    const currentStatus = await Notifications.getPermissionsAsync();
     if (currentStatus?.status === 'granted') {
       return true;
     }
@@ -154,7 +164,15 @@ export async function requestNotificationPermissionsAsync(forcePrompt = false): 
     }
 
     await storage.setItem('notification_permission_requested', 'true');
-    const result = await Notifications?.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: true, allowSound: true } }); const status = result?.status; console.log('[PushNotificationService] Permission request result:', status);
+    const result = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+      },
+    });
+    const status = result?.status;
+    console.log('[PushNotificationService] Permission request result:', status);
     return status === 'granted';
   } catch (error) {
     console.warn('[PushNotificationService] Error requesting notification permissions:', error);
@@ -169,7 +187,6 @@ export async function requestNotificationPermissionsAsync(forcePrompt = false): 
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   try {
     if (Platform.OS === 'web') {
-      // console.log('[PushNotificationService] Push notifications not supported on Web target');
       return null;
     }
 
@@ -180,23 +197,29 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return 'ExponentPushToken[SIMULATOR_DEV_TOKEN_MANAGE_MY_GATE]';
     }
 
+    if (Platform.OS === 'android' && isExpoGo) {
+      console.log('[PushNotificationService] Running in Expo Go on Android (SDK 53+ lacks native remote push in client); returning dev placeholder token.');
+      return 'ExponentPushToken[EXPO_GO_DEV_TOKEN_MANAGE_MY_GATE]';
+    }
+
     const isGranted = await requestNotificationPermissionsAsync(false);
     if (!isGranted) {
       console.log('[PushNotificationService] Notification permission not granted; push notifications inactive.');
       return null;
     }
 
-    // Resolve projectId from expo constants if available
+    // Resolve projectId from expo constants or explicit EAS project ID
     const projectId =
       Constants?.expoConfig?.extra?.eas?.projectId ||
-      Constants?.easConfig?.projectId;
+      Constants?.easConfig?.projectId ||
+      '94a573d9-5e93-4827-8fbd-605e0ef3a50a';
 
-    const tokenData = await Notifications?.getExpoPushTokenAsync(
+    const tokenData = await Notifications.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined
     );
 
     console.log('[PushNotificationService] Acquired Expo Push Token:', tokenData?.data);
-    return tokenData?.data;
+    return tokenData?.data || null;
   } catch (error) {
     console.warn('[PushNotificationService] Failed to get Expo push token:', error);
     return null;

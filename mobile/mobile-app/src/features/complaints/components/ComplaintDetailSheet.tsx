@@ -14,6 +14,7 @@ import { useComplaints } from '../hooks/useComplaints';
 import { Complaint } from '../types';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { getImageUrl } from '@/src/utils/imageUrl';
+import { getStatusDisplay, errorText } from '../utils/complaintStatus';
 
 interface ComplaintDetailSheetProps {
   visible: boolean;
@@ -62,10 +63,11 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
   const [commentText, setCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
-  const [overallRating, setOverallRating] = useState(5);
-  const [technicianRating, setTechnicianRating] = useState(5);
-  const [cleanlinessRating, setCleanlinessRating] = useState(5);
+  // The rating is optional and starts empty: nobody should submit 5 stars by accident.
+  const [overallRating, setOverallRating] = useState(0);
+  const [showRating, setShowRating] = useState(false);
   const [feedbackRemarks, setFeedbackRemarks] = useState('');
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   // Reopen/Delete State
@@ -106,15 +108,15 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
     if (!onConfirmCompletion) return;
     try {
       setIsSubmittingFeedback(true);
+      setConfirmError(null);
       await onConfirmCompletion(complaint._id, {
-        overallRating,
-        technicianRating,
-        cleanlinessRating,
-        remarks: feedbackRemarks,
+        // Only send what the resident actually filled in.
+        ...(overallRating > 0 ? { overallRating } : {}),
+        ...(feedbackRemarks.trim() ? { remarks: feedbackRemarks.trim() } : {}),
       });
       onClose();
     } catch (err) {
-      console.error('Failed to confirm completion:', err);
+      setConfirmError(errorText(err, 'Could not close the ticket. Please try again.'));
     } finally {
       setIsSubmittingFeedback(false);
     }
@@ -134,15 +136,16 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
   };
 
   const handleReopenTicketAction = async () => {
-    if (!onReopenTicket || !reopenRemarks.trim()) return;
+    if (!onReopenTicket || reopenRemarks.trim().length < 5) return;
     try {
       setIsSubmittingReopen(true);
-      await onReopenTicket(complaint._id, reopenRemarks);
+      setConfirmError(null);
+      await onReopenTicket(complaint._id, reopenRemarks.trim());
       setShowReopenInput(false);
       setReopenRemarks('');
       onClose();
     } catch (err) {
-      console.error('Failed to reopen ticket:', err);
+      setConfirmError(errorText(err, 'Could not reopen the ticket. Please try again.'));
     } finally {
       setIsSubmittingReopen(false);
     }
@@ -203,7 +206,9 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
 
   const handleCallResident = (mobile?: string) => {
     if (!mobile) return;
-    Linking.openURL(`tel:${mobile}`);
+    const cleanMobile = mobile.replace(/[^0-9+]/g, '');
+    if (!cleanMobile) return;
+    Linking.openURL(`tel:${cleanMobile}`).catch(() => {});
   };
 
   const isPendingResidentConfirmation =
@@ -211,6 +216,10 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
     complaint.status === 'Work Completed' ||
     complaint.status === 'Waiting For Resident Confirmation';
   const isClosed = complaint.status === 'Closed' || complaint.status === 'Cancelled';
+  const completionProof = [...(complaint.timeline || [])]
+    .reverse()
+    .find((item: any) => item?.action === 'Work Completed') as any;
+  const statusDisplay = getStatusDisplay(complaint.status, effectiveViewMode === 'resident' ? 'resident' : 'staff');
   const isOpenState = ['Submitted', 'Open', 'Waiting For Assignment'].includes(complaint.status as string);
   const isUnassigned = !complaint.assignedTechnicianName && !complaint.vendor;
 
@@ -237,7 +246,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
                 label={complaint.priority}
                 variant={complaint.priority === 'Critical' ? 'critical' : 'warning'}
               />
-              <StatusBadge label={complaint.status} variant={isClosed ? 'success' : 'info'} dot />
+              <StatusBadge label={statusDisplay.label} variant={statusDisplay.variant} dot />
             </View>
 
             {/* Title & Description */}
@@ -590,7 +599,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
           )}
 
           {/* RESIDENT RATING & FEEDBACK VERIFICATION SECTION */}
-          {complaint.feedback ? (
+          {complaint.feedback && (complaint.feedback.overallRating || complaint.feedback.remarks) ? (
             <View className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 my-3 shadow-xs gap-3">
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-bold text-emerald-900 dark:text-emerald-200 uppercase flex-row items-center text-start">
@@ -628,56 +637,134 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
             </View>
           ) : null}
 
-          {/* RESIDENT ACTION CARD */}
+          {/* RESIDENT: work finished, please confirm or reopen */}
           {effectiveViewMode === 'resident' && isPendingResidentConfirmation && (
             <View className="bg-amber-500/15 border border-amber-500/40 rounded-2xl p-4 my-3 shadow-xs gap-3">
               <View className="flex-row items-center gap-2">
                 <Icon as={Sparkles} size={18} className="text-amber-600 dark:text-amber-400 me-1" />
                 <View className="flex-1">
                   <Text className="text-sm font-extrabold text-amber-900 dark:text-amber-200 text-start">
-                    Work Completed by Technician
+                    Work finished. Is it fixed?
                   </Text>
                   <Text className="text-xs text-amber-800 dark:text-amber-300 mt-0.5 text-start">
-                    Please confirm satisfaction and rate the technician service.
+                    {(complaint.assignedTechnicianName || 'The assigned employee')} marked this complete.
+                    Please check and confirm.
                   </Text>
                 </View>
               </View>
 
-              <View className="bg-card border border-border/70 rounded-xl p-3 gap-3">
-                <View className="gap-1">
-                  <Text className="text-xs font-bold text-foreground text-start">Overall Satisfaction *</Text>
-                  <Rating rating={overallRating} onRatingChange={setOverallRating} size={22} />
+              {/* What the employee reported */}
+              {completionProof && (completionProof.remarks || (completionProof.attachments || []).length > 0) ? (
+                <View className="bg-card border border-border/70 rounded-xl p-3 gap-2">
+                  <Text className="text-[11px] font-bold text-muted-foreground uppercase text-start">Work report</Text>
+                  {completionProof.remarks ? (
+                    <Text className="text-xs text-foreground text-start">{completionProof.remarks}</Text>
+                  ) : null}
+                  {(completionProof.attachments || []).length > 0 ? (
+                    <View className="flex-row flex-wrap gap-2">
+                      {(completionProof.attachments || []).map((url: string, i: number) => (
+                        <TouchableOpacity key={`${url}-${i}`} activeOpacity={0.8} onPress={() => setPreviewImageUrl(url)}>
+                          <Image
+                            source={{ uri: getImageUrl(url) }}
+                            style={{ width: 72, height: 72, borderRadius: 10 }}
+                            resizeMode="cover"
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
+              ) : null}
 
-                <View className="gap-1">
-                  <Text className="text-xs font-semibold text-muted-foreground text-start">Technician Behavior & Punctuality</Text>
-                  <Rating rating={technicianRating} onRatingChange={setTechnicianRating} size={18} />
+              {confirmError ? (
+                <Text className="text-xs font-semibold text-destructive text-start">{confirmError}</Text>
+              ) : null}
+
+              {!showReopenInput ? (
+                <>
+                  {showRating ? (
+                    <View className="bg-card border border-border/70 rounded-xl p-3 gap-2">
+                      <Text className="text-xs font-bold text-foreground text-start">How was the service?</Text>
+                      <Rating rating={overallRating} onRatingChange={setOverallRating} size={24} />
+                      <TextInput
+                        placeholder="Add a comment (optional)"
+                        value={feedbackRemarks}
+                        onChangeText={setFeedbackRemarks}
+                        multiline
+                        numberOfLines={2}
+                      />
+                    </View>
+                  ) : (
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => setShowRating(true)}>
+                      <Text className="text-xs font-bold text-amber-800 dark:text-amber-300 text-center">
+                        ★ Rate the service (optional)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <Button
+                    variant="default"
+                    size="default"
+                    loading={isSubmittingFeedback}
+                    onPress={handleConfirmAndRate}
+                    className="bg-emerald-600 border-emerald-600"
+                  >
+                    Yes, it is fixed: close ticket
+                  </Button>
+                  {onReopenTicket ? (
+                    <Button
+                      variant="outline"
+                      size="default"
+                      onPress={() => {
+                        setConfirmError(null);
+                        setShowReopenInput(true);
+                      }}
+                      className="border-rose-500/40"
+                    >
+                      <Text className="text-rose-600 font-semibold">No, it is not fixed</Text>
+                    </Button>
+                  ) : null}
+                  <Text className="text-[11px] text-amber-800/80 dark:text-amber-300/80 text-center">
+                    No reply? The ticket closes automatically after a few days.
+                  </Text>
+                </>
+              ) : (
+                <View className="bg-card border border-rose-500/30 rounded-xl p-3 gap-2">
+                  <Text className="text-xs font-bold text-foreground text-start">What is still not fixed?</Text>
+                  <TextInput
+                    placeholder="e.g. The tap is still leaking under the sink"
+                    value={reopenRemarks}
+                    onChangeText={setReopenRemarks}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <View className="flex-row items-center justify-end gap-2">
+                    <Button variant="ghost" size="sm" onPress={() => setShowReopenInput(false)}>
+                      Back
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      loading={isSubmittingReopen}
+                      disabled={reopenRemarks.trim().length < 5}
+                      onPress={handleReopenTicketAction}
+                      className="bg-rose-600 border-rose-600"
+                    >
+                      Send back to employee
+                    </Button>
+                  </View>
                 </View>
+              )}
+            </View>
+          )}
 
-                <View className="gap-1">
-                  <Text className="text-xs font-semibold text-muted-foreground text-start">Work Cleanliness & Quality</Text>
-                  <Rating rating={cleanlinessRating} onRatingChange={setCleanlinessRating} size={18} />
-                </View>
-
-                <TextInput
-                  label="Resident Comments / Review (Optional)"
-                  placeholder="Share your experience with the technician..."
-                  value={feedbackRemarks}
-                  onChangeText={setFeedbackRemarks}
-                  multiline
-                  numberOfLines={2}
-                />
-
-                <Button
-                  variant="default"
-                  size="default"
-                  loading={isSubmittingFeedback}
-                  onPress={handleConfirmAndRate}
-                  className="bg-amber-600 border-amber-600 mt-2"
-                >
-                  Mark as Done & Rate Service ✓
-                </Button>
-              </View>
+          {/* STAFF / MANAGER: nothing to do, the resident has the next move */}
+          {effectiveViewMode !== 'resident' && isPendingResidentConfirmation && (
+            <View className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 my-3 flex-row items-center gap-2">
+              <Icon as={Clock} size={16} className="text-amber-600 dark:text-amber-400" />
+              <Text className="text-xs font-semibold text-amber-900 dark:text-amber-200 flex-1 text-start">
+                Work submitted. Waiting for the resident to confirm. It closes automatically if they do not reply.
+              </Text>
             </View>
           )}
 
@@ -794,18 +881,20 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
                 </Button>
               ) : null}
 
-              {['Closed', 'Completed', 'Resolved', 'Cancelled'].includes(complaint.status) ? (
+              {['Closed', 'Cancelled'].includes(complaint.status) ? (
                 <View className="gap-2">
                   {!showReopenInput ? (
                     <View className="flex-row items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="default"
-                        onPress={() => setShowReopenInput(true)}
-                        className="flex-1 border-amber-500/40 text-amber-600"
-                      >
-                        Reopen Ticket Issue
-                      </Button>
+                      {complaint.status === 'Closed' ? (
+                        <Button
+                          variant="outline"
+                          size="default"
+                          onPress={() => setShowReopenInput(true)}
+                          className="flex-1 border-amber-500/40 text-amber-600"
+                        >
+                          Reopen this complaint
+                        </Button>
+                      ) : null}
                       
                       {onDeleteTicket && (
                         <Button

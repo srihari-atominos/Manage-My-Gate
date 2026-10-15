@@ -320,7 +320,14 @@ export const resolveNotificationRoute = (payload?: StructuredNotificationPayload
     default:
       // Fall back based on title/body keyword inspection
       const contentLower = `${title} ${body}`.toLowerCase();
-      if (contentLower.includes('visitor') || contentLower.includes('gate approval')) {
+      if (
+        contentLower.includes('gate approval') ||
+        contentLower.includes('walk-in') ||
+        contentLower.includes('walkin')
+      ) {
+        return '/(resident)/visitor/walk-ins';
+      }
+      if (contentLower.includes('visitor')) {
         return '/(resident)/visitor';
       }
       if (contentLower.includes('bill') || contentLower.includes('invoice') || contentLower.includes('payment')) {

@@ -19,6 +19,7 @@ import useRoles from '../hooks/useRoles'
 import useRoleForm from '../hooks/useRoleForm'
 import RoleIntegrationConfigurator from './RoleIntegrationConfigurator'
 import PermissionMatrix from './PermissionMatrix'
+import { ROLE_SCOPE_OPTIONS, getRoleScopeOption, isTenantScope } from '../roleScopes'
 import '../styles/_roleBuilder.scss'
 
 /**
@@ -47,7 +48,12 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
 
   const handleSelectScope = (scope) => {
     setValue('roleScope', scope, { shouldValidate: true, shouldDirty: true })
-    setValue('isTenantRole', scope === 'UNIT' || scope === 'STAFF', { shouldValidate: true, shouldDirty: true })
+    setValue('isTenantRole', isTenantScope(scope), { shouldValidate: true, shouldDirty: true })
+    const defaultPerms = getRoleScopeOption(scope)?.defaultPermissions
+    if (defaultPerms) {
+      const merged = Array.from(new Set([...(selectedPermissions || []), ...defaultPerms]))
+      setValue('permissions', merged, { shouldValidate: true, shouldDirty: true })
+    }
   }
 
   // Load available permissions when modal opens
@@ -106,74 +112,33 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
           <div className="mb-3">
             <CFormLabel className="form-label-custom">Role Scope & Tenancy Archetype</CFormLabel>
             <div className="row g-2">
-              <div className="col-12 col-md-4">
-                <div
-                  className={`p-3 border rounded h-100 cursor-pointer ${
-                    roleScope === 'GLOBAL' ? 'border-primary bg-primary-subtle' : 'bg-body-tertiary'
-                  }`}
-                  onClick={() => handleSelectScope('GLOBAL')}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <span className="fw-bold small text-primary">Global Scope</span>
-                    <input
-                      type="radio"
-                      name="roleScopeOption"
-                      checked={roleScope === 'GLOBAL'}
-                      onChange={() => handleSelectScope('GLOBAL')}
-                    />
+              {ROLE_SCOPE_OPTIONS.map((option) => {
+                const isSelected = roleScope === option.value
+                return (
+                  <div className="col-12 col-md-6" key={option.value}>
+                    <div
+                      className={`p-3 border rounded h-100 ${
+                        isSelected ? `border-${option.color} bg-${option.color}-subtle` : 'bg-body-tertiary'
+                      }`}
+                      onClick={() => handleSelectScope(option.value)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="d-flex align-items-center justify-content-between mb-1">
+                        <span className={`fw-bold small text-${option.color}-emphasis`}>{option.label}</span>
+                        <input
+                          type="radio"
+                          name="roleScopeOption"
+                          checked={isSelected}
+                          onChange={() => handleSelectScope(option.value)}
+                        />
+                      </div>
+                      <div className="text-body-secondary small" style={{ fontSize: '0.75rem' }}>
+                        {option.description}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-body-secondary small" style={{ fontSize: '0.75rem' }}>
-                    Community-wide facility & management access. Unrestricted to a single unit.
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-12 col-md-4">
-                <div
-                  className={`p-3 border rounded h-100 cursor-pointer ${
-                    roleScope === 'UNIT' ? 'border-success bg-success-subtle' : 'bg-body-tertiary'
-                  }`}
-                  onClick={() => handleSelectScope('UNIT')}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <span className="fw-bold small text-success">Unit Scope</span>
-                    <input
-                      type="radio"
-                      name="roleScopeOption"
-                      checked={roleScope === 'UNIT'}
-                      onChange={() => handleSelectScope('UNIT')}
-                    />
-                  </div>
-                  <div className="text-body-secondary small" style={{ fontSize: '0.75rem' }}>
-                    Bound to specific villas/apartments when onboarding residents.
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-12 col-md-4">
-                <div
-                  className={`p-3 border rounded h-100 cursor-pointer ${
-                    roleScope === 'STAFF' ? 'border-warning bg-warning-subtle' : 'bg-body-tertiary'
-                  }`}
-                  onClick={() => handleSelectScope('STAFF')}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <span className="fw-bold small text-warning-emphasis">Staff Member</span>
-                    <input
-                      type="radio"
-                      name="roleScopeOption"
-                      checked={roleScope === 'STAFF'}
-                      onChange={() => handleSelectScope('STAFF')}
-                    />
-                  </div>
-                  <div className="text-body-secondary small" style={{ fontSize: '0.75rem' }}>
-                    Dual scope: acts in community & can link to units. Auto-syncs to Staff Management.
-                  </div>
-                </div>
-              </div>
+                )
+              })}
             </div>
           </div>
 

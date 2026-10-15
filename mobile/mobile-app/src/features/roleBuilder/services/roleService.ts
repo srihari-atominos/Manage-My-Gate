@@ -1,3 +1,4 @@
+import type { RoleScope } from '../roleScopes';
 import apiClient from '../../../services/apiClient';
 
 export interface RoleData {
@@ -6,9 +7,17 @@ export interface RoleData {
   name: string;
   description?: string;
   isTenantRole?: boolean;
-  roleScope?: 'GLOBAL' | 'UNIT' | 'STAFF';
+  roleScope?: RoleScope;
+  /** Community Staff only: restrict this role to community work. */
+  communityOnly?: boolean;
   permissions?: string[];
   integrationMappings?: Record<string, string>;
+  /** Active members holding this role. */
+  memberCount?: number;
+  /** Shared by every community (read-only for community admins). */
+  isShared?: boolean;
+  /** Built-in role the community relies on; it cannot be renamed or deleted. */
+  isLocked?: boolean;
 }
 
 export interface FetchRolesParams {

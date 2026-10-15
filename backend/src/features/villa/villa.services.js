@@ -136,8 +136,12 @@ export class VillaService {
       session
     );
     
-    // Populate residents so frontend can display names and emails
-    await Villa.populate(data, { path: 'residents.userId', select: 'name email phone username login' });
+    // Populate residents, primary resident, and owner so frontend can display names, emails, and phone numbers
+    await Villa.populate(data, [
+      { path: 'residents.userId', select: 'name email phone username login' },
+      { path: 'primaryResidentId', select: 'name email phone username login' },
+      { path: 'ownerId', select: 'name email phone username login' },
+    ]);
 
     const totalPages = Math.ceil(total / limit);
 
@@ -481,7 +485,7 @@ export class VillaService {
             }
 
             const staffData = {
-              ...(isStaffMember ? { isStaff: true, designation: residentType || 'Household Staff', department: 'Others' } : {}),
+              ...(isStaffMember ? { isStaff: true, staffCategory: 'UNIT', designation: residentType || 'Household Staff', department: 'Others' } : {}),
               isBulk: true,
               rawPassword,
             };

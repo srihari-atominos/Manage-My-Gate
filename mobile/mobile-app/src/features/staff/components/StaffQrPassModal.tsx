@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { QRCodeView } from '@/components/ui/QRCodeView';
 import { StaffMember, StaffQrData, staffService } from '../services/staffService';
 import { ShieldCheck, QrCode, AlertCircle, RefreshCw } from 'lucide-react-native';
+import { StaffAvatar } from './StaffAvatar';
 
 export interface StaffQrPassModalProps {
   visible: boolean;
@@ -99,10 +100,13 @@ export const StaffQrPassModal: React.FC<StaffQrPassModalProps> = ({
 
             {/* Staff Pass Details */}
             <View className="w-full rounded-2xl bg-muted/40 border border-border p-3.5 mb-4">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-sm font-bold text-foreground">
-                  {staffMember.name}
-                </Text>
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center flex-1 me-3">
+                  <StaffAvatar name={staffMember.name} photoUrl={staffMember.photoUrl} size={42} />
+                  <Text className="ms-2.5 text-sm font-bold text-foreground flex-1" numberOfLines={1}>
+                    {staffMember.name}
+                  </Text>
+                </View>
                 <StatusBadge
                   label={staffMember.status}
                   variant={staffMember.status === 'Active' ? 'success' : 'neutral'}

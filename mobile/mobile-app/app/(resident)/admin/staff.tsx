@@ -1,6 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { View, ScrollView, RefreshControl, Alert, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+﻿import React, { useState, useMemo, useEffect } from 'react';
+import { View, ScrollView, FlatList, RefreshControl, Alert, TouchableOpacity } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/src/store/store';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
@@ -17,21 +20,98 @@ import {
   StaffFormModal,
   StaffDetailModal,
   StaffFilterSheet,
+  StaffAttendanceFilterSheet,
   StaffMember,
   CreateStaffPayload,
   UpdateStaffPayload,
   ResidentStaffScreen,
   StaffDashboardScreen,
+  staffService,
 } from '@/src/features/staff';
-import { Users, ShieldAlert, Plus, RotateCw, CalendarClock, Home, UserCheck } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
+import { useStaffToast } from '@/src/features/staff/hooks/useStaffToast';
+import { useStaffDeleteImpact, buildStaffDeleteMessage } from '@/src/features/staff/hooks/useStaffDeleteImpact';
+import {
+  Users,
+  ShieldAlert,
+  Plus,
+  RotateCw,
+  CalendarClock,
+  Home,
+  UserCheck,
+  FileDown,
+  Filter,
+  FileSpreadsheet,
+} from 'lucide-react-native';
+import { downloadCSVFile, downloadExcelFile } from '@/src/utils/downloadHelper';
 
 export default function StaffManagementScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'directory' | 'attendance' | 'allocations' | 'portal'>('directory');
+  const { t } = useTranslation();
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const user = useSelector((state: RootState) => state.auth.user);
+
+  // Tab permissions
+  const canAccessDirectory = useMemo(() => {
+    return isFeatureAllowedForUser(
+      { id: 'admin_staff_directory', permission: 'staff:view', categoryKey: 'staff_management' },
+      user
+    );
+  }, [user]);
+
+  const canAccessAttendance = useMemo(() => {
+    return isFeatureAllowedForUser(
+      { id: 'admin_staff_attendance', permission: 'staff:attendance', categoryKey: 'staff_management' },
+      user
+    );
+  }, [user]);
+
+  const canAccessAllocations = useMemo(() => {
+    return isFeatureAllowedForUser(
+      { id: 'admin_staff_allocations', permission: 'staff:assign_unit', categoryKey: 'staff_management' },
+      user
+    );
+  }, [user]);
+
+  const canAccessPortal = useMemo(() => {
+    return isFeatureAllowedForUser(
+      { id: 'admin_staff_portal', permission: 'staff:view_own', categoryKey: 'staff_management' },
+      user
+    );
+  }, [user]);
+
+  // Determine initial valid tab
+  const getInitialTab = (): 'directory' | 'attendance' | 'allocations' | 'portal' => {
+    const requested = params?.tab as 'directory' | 'attendance' | 'allocations' | 'portal' | undefined;
+    if (requested === 'attendance' && canAccessAttendance) return 'attendance';
+    if (requested === 'allocations' && canAccessAllocations) return 'allocations';
+    if (requested === 'portal' && canAccessPortal) return 'portal';
+    if (requested === 'directory' && canAccessDirectory) return 'directory';
+
+    if (canAccessDirectory) return 'directory';
+    if (canAccessAttendance) return 'attendance';
+    if (canAccessAllocations) return 'allocations';
+    if (canAccessPortal) return 'portal';
+    return 'directory';
+  };
+
+  const [activeTab, setActiveTab] = useState<'directory' | 'attendance' | 'allocations' | 'portal'>(getInitialTab);
+
+  // Sync tab param if it changes dynamically
+  useEffect(() => {
+    if (params?.tab) {
+      const requested = params.tab as 'directory' | 'attendance' | 'allocations' | 'portal';
+      if (requested === 'attendance' && canAccessAttendance) setActiveTab('attendance');
+      else if (requested === 'allocations' && canAccessAllocations) setActiveTab('allocations');
+      else if (requested === 'portal' && canAccessPortal) setActiveTab('portal');
+      else if (requested === 'directory' && canAccessDirectory) setActiveTab('directory');
+    }
+  }, [params?.tab, canAccessDirectory, canAccessAttendance, canAccessAllocations, canAccessPortal]);
 
   const {
     hasViewPermission,
     hasManagePermission,
+    activeOrgId,
     staffList,
     rawCount,
     metrics,
@@ -46,6 +126,21 @@ export default function StaffManagementScreen() {
     attendanceError,
     attendanceStatusFilter,
     setAttendanceStatusFilter,
+    attendanceGateFilter,
+    setAttendanceGateFilter,
+    attendanceDepartmentFilter,
+    setAttendanceDepartmentFilter,
+    attendanceStaffFilter,
+    setAttendanceStaffFilter,
+    attendanceRoleFilter,
+    setAttendanceRoleFilter,
+    attendanceDepartmentOptions,
+    attendanceStartDate,
+    setAttendanceStartDate,
+    attendanceEndDate,
+    setAttendanceEndDate,
+    attendanceSearch,
+    setAttendanceSearch,
     loadAttendance,
     searchQuery,
     setSearchQuery,
@@ -68,12 +163,89 @@ export default function StaffManagementScreen() {
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [showAttendanceFilterSheet, setShowAttendanceFilterSheet] = useState(false);
   const [deletingStaff, setDeletingStaff] = useState<StaffMember | null>(null);
+  const { showToast, toastNode } = useStaffToast();
+  const deleteUnitCount = useStaffDeleteImpact(deletingStaff);
+  const [isExporting, setIsExporting] = useState(false);
   const [attendanceReportMember, setAttendanceReportMember] = useState<{
     member: StaffMember | { name: string; department?: string; _id: string };
     records: any[];
   } | null>(null);
 
+  // Active filter count for Attendance logs (strictly 4 criteria)
+  const activeAttendanceFilterCount = useMemo(() => {
+    let count = 0;
+    if (attendanceStatusFilter !== 'ALL') count++;
+    if (attendanceDepartmentFilter !== 'ALL') count++;
+    if (attendanceRoleFilter !== 'ALL') count++;
+    if (attendanceStartDate || attendanceEndDate) count++;
+    return count;
+  }, [
+    attendanceStatusFilter,
+    attendanceDepartmentFilter,
+    attendanceRoleFilter,
+    attendanceStartDate,
+    attendanceEndDate,
+  ]);
+
+  const attendanceRangeLabel = attendanceStartDate || attendanceEndDate
+    ? `${attendanceStartDate || 'Start'} to ${attendanceEndDate || 'Today'}`
+    : 'All attendance';
+
+  const handleResetAttendanceFilters = () => {
+    setAttendanceStatusFilter('ALL');
+    setAttendanceDepartmentFilter('ALL');
+    setAttendanceRoleFilter('ALL');
+    setAttendanceStartDate('');
+    setAttendanceEndDate('');
+    setAttendanceGateFilter('ALL');
+    setAttendanceStaffFilter('ALL');
+    loadAttendance({
+      status: undefined,
+      department: undefined,
+      staffCategory: undefined,
+      startDate: undefined,
+      endDate: undefined,
+      search: attendanceSearch.trim() || undefined,
+    });
+  };
+
+  const buildAttendanceExportQuery = () => {
+    const query: Record<string, string> = {};
+    if (attendanceStatusFilter !== 'ALL') query.status = attendanceStatusFilter;
+    if (attendanceDepartmentFilter !== 'ALL') {
+      if (attendanceDepartmentFilter.startsWith('trade:')) query.departmentOther = attendanceDepartmentFilter.slice(6);
+      else query.department = attendanceDepartmentFilter;
+    }
+    if (attendanceRoleFilter !== 'ALL') query.staffCategory = attendanceRoleFilter;
+    if (attendanceStartDate) query.startDate = attendanceStartDate;
+    if (attendanceEndDate) query.endDate = attendanceEndDate;
+    if (attendanceSearch.trim()) query.search = attendanceSearch.trim();
+    return query;
+  };
+
+  const handleExportAttendanceCSV = async () => {
+    try {
+      setIsExporting(true);
+      const blob = await staffService.exportAttendanceReport(buildAttendanceExportQuery(), 'csv');
+      await downloadCSVFile(typeof (blob as any)?.text === 'function' ? await (blob as any).text() : String(blob || ''), `staff_attendance_${new Date().toISOString().split('T')[0]}.csv`);
+      Alert.alert('Export Successful', 'Attendance report exported with the selected filters.');
+    } catch (err: any) {
+      Alert.alert('Export Failed', err?.message || 'Could not export attendance records.');
+    } finally { setIsExporting(false); }
+  };
+
+  const handleExportAttendanceExcel = async () => {
+    try {
+      setIsExporting(true);
+      const blob = await staffService.exportAttendanceReport(buildAttendanceExportQuery(), 'xlsx');
+      await downloadExcelFile(blob, `staff_attendance_${new Date().toISOString().split('T')[0]}.xlsx`);
+      Alert.alert('Export Successful', 'Attendance report exported with the selected filters.');
+    } catch (err: any) {
+      Alert.alert('Export Failed', err?.message || 'Could not export attendance records.');
+    } finally { setIsExporting(false); }
+  };
   // Active filter count for Staff Directory
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -106,9 +278,13 @@ export default function StaffManagementScreen() {
 
   const handleFormSubmit = async (payload: CreateStaffPayload | UpdateStaffPayload) => {
     if (editingStaff?._id) {
-      await updateStaff(editingStaff._id, payload as UpdateStaffPayload);
+      const updated = await updateStaff(editingStaff._id, payload as UpdateStaffPayload);
+      showToast(t('staff_dir_toast_saved', 'Staff details saved'));
+      return updated;
     } else {
-      await createStaff(payload as CreateStaffPayload);
+      const created = await createStaff(payload as CreateStaffPayload);
+      showToast(t('staff_dir_toast_added', 'Staff member added'));
+      return created;
     }
   };
 
@@ -116,9 +292,11 @@ export default function StaffManagementScreen() {
     if (!deletingStaff?._id) return;
     try {
       await deleteStaff(deletingStaff._id);
+      showToast(t('staff_dir_toast_removed', '{{name}} removed from the directory', { name: deletingStaff.name }));
       setDeletingStaff(null);
     } catch (err: any) {
-      Alert.alert('Deactivation Error', err?.message || 'Failed to deactivate staff member.');
+      setDeletingStaff(null);
+      Alert.alert('Could not delete', err?.message || 'Failed to delete staff member.');
     }
   };
 
@@ -132,14 +310,16 @@ export default function StaffManagementScreen() {
 
   const isCurrentLoading = activeTab === 'directory' ? isLoading : activeTab === 'attendance' ? isAttendanceLoading : false;
 
+  const hasAnyStaffAccess = canAccessDirectory || canAccessAttendance || canAccessAllocations || canAccessPortal || hasViewPermission;
+
   // 1. RBAC Guard: Permission Denied View
-  if (!hasViewPermission) {
+  if (!hasAnyStaffAccess) {
     return (
       <ScreenShell title="Staff Management" subtitle="Administration & Security">
         <View className="flex-1 items-center justify-center p-6">
           <EmptyState
             title="Access Restricted"
-            description="You do not have the required staff:view permissions to access the community staff registry."
+            description="You do not have permissions to access Staff Management."
             icon={ShieldAlert}
             actionLabel="Return to Administration"
             onAction={() => router.back()}
@@ -188,87 +368,97 @@ export default function StaffManagementScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerClassName="flex-row p-1 rounded-2xl bg-muted/60 border border-border gap-1"
         >
-          <TouchableOpacity
-            onPress={() => setActiveTab('directory')}
-            className={`px-3.5 py-2 rounded-xl items-center justify-center flex-row ${
-              activeTab === 'directory' ? 'bg-card shadow-xs' : ''
-            }`}
-            accessibilityRole="tab"
-            accessibilityLabel="Staff Directory Tab"
-          >
-            <Users size={14} className={`me-1.5 ${activeTab === 'directory' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <Text
-              className={`text-xs font-bold ${
-                activeTab === 'directory' ? 'text-foreground' : 'text-muted-foreground'
+          {canAccessDirectory && (
+            <TouchableOpacity
+              onPress={() => setActiveTab('directory')}
+              className={`px-3.5 py-2 rounded-xl items-center justify-center flex-row ${
+                activeTab === 'directory' ? 'bg-card shadow-xs' : ''
               }`}
+              accessibilityRole="tab"
+              accessibilityLabel="Staff Directory Tab"
             >
-              Directory
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              setActiveTab('attendance');
-              loadAttendance();
-            }}
-            className={`px-3.5 py-2 rounded-xl items-center justify-center flex-row ${
-              activeTab === 'attendance' ? 'bg-card shadow-xs' : ''
-            }`}
-            accessibilityRole="tab"
-            accessibilityLabel="Attendance Logs Tab"
-          >
-            <CalendarClock size={14} className={`me-1.5 ${activeTab === 'attendance' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <View className="flex-row items-center">
+              <Users size={14} className={`me-1.5 ${activeTab === 'directory' ? 'text-primary' : 'text-muted-foreground'}`} />
               <Text
                 className={`text-xs font-bold ${
-                  activeTab === 'attendance' ? 'text-foreground' : 'text-muted-foreground'
+                  activeTab === 'directory' ? 'text-foreground' : 'text-muted-foreground'
                 }`}
               >
-                Attendance Logs
+                Directory
               </Text>
-              {attendanceStats && attendanceStats.missingCheckoutSessions > 0 ? (
-                <View className="ms-1.5 h-2 w-2 rounded-full bg-destructive" />
-              ) : null}
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            onPress={() => setActiveTab('allocations')}
-            className={`px-3.5 py-2 rounded-xl items-center justify-center flex-row ${
-              activeTab === 'allocations' ? 'bg-card shadow-xs' : ''
-            }`}
-            accessibilityRole="tab"
-            accessibilityLabel="Unit Allocations Tab"
-          >
-            <Home size={14} className={`me-1.5 ${activeTab === 'allocations' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <Text
-              className={`text-xs font-bold ${
-                activeTab === 'allocations' ? 'text-foreground' : 'text-muted-foreground'
+          {canAccessAttendance && (
+            <TouchableOpacity
+              onPress={() => {
+                setActiveTab('attendance');
+                loadAttendance();
+              }}
+              className={`px-3.5 py-2 rounded-xl items-center justify-center flex-row ${
+                activeTab === 'attendance' ? 'bg-card shadow-xs' : ''
               }`}
+              accessibilityRole="tab"
+              accessibilityLabel="Attendance Logs Tab"
             >
-              Unit Allocations
-            </Text>
-          </TouchableOpacity>
+              <CalendarClock size={14} className={`me-1.5 ${activeTab === 'attendance' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <View className="flex-row items-center">
+                <Text
+                  className={`text-xs font-bold ${
+                    activeTab === 'attendance' ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  Attendance Logs
+                </Text>
+                {attendanceStats && attendanceStats.missingCheckoutSessions > 0 ? (
+                  <View className="ms-1.5 h-2 w-2 rounded-full bg-destructive" />
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            onPress={() => setActiveTab('portal')}
-            className={`px-3.5 py-2 rounded-xl items-center justify-center flex-row ${
-              activeTab === 'portal' ? 'bg-card shadow-xs' : ''
-            }`}
-            accessibilityRole="tab"
-            accessibilityLabel="Staff Member Portal Tab"
-          >
-            <UserCheck size={14} className={`me-1.5 ${activeTab === 'portal' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <Text
-              className={`text-xs font-bold ${
-                activeTab === 'portal' ? 'text-foreground' : 'text-muted-foreground'
+          {canAccessAllocations && (
+            <TouchableOpacity
+              onPress={() => setActiveTab('allocations')}
+              className={`px-3.5 py-2 rounded-xl items-center justify-center flex-row ${
+                activeTab === 'allocations' ? 'bg-card shadow-xs' : ''
               }`}
+              accessibilityRole="tab"
+              accessibilityLabel="Unit Allocations Tab"
             >
-              Staff Portal & Pass
-            </Text>
-          </TouchableOpacity>
+              <Home size={14} className={`me-1.5 ${activeTab === 'allocations' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <Text
+                className={`text-xs font-bold ${
+                  activeTab === 'allocations' ? 'text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                Unit Allocations
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {canAccessPortal && (
+            <TouchableOpacity
+              onPress={() => setActiveTab('portal')}
+              className={`px-3.5 py-2 rounded-xl items-center justify-center flex-row ${
+                activeTab === 'portal' ? 'bg-card shadow-xs' : ''
+              }`}
+              accessibilityRole="tab"
+              accessibilityLabel="Staff Member Portal Tab"
+            >
+              <UserCheck size={14} className={`me-1.5 ${activeTab === 'portal' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <Text
+                className={`text-xs font-bold ${
+                  activeTab === 'portal' ? 'text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                Staff Portal & Pass
+              </Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </View>
+
+      {toastNode}
 
       {/* TAB 1: STAFF DIRECTORY */}
       {activeTab === 'directory' ? (
@@ -319,63 +509,66 @@ export default function StaffManagementScreen() {
           </View>
 
           {/* Main Staff Registry List */}
-          <ScrollView
+          <FlatList
             className="flex-1 px-4 pt-2"
             contentContainerStyle={{ flexGrow: 1, paddingBottom: 140 }}
+            data={staffList}
+            keyExtractor={(item) => item._id}
+            initialNumToRender={8}
+            windowSize={7}
+            removeClippedSubviews
             refreshControl={
               <RefreshControl refreshing={isLoading} onRefresh={loadStaff} tintColor="#2563EB" />
             }
-          >
-            {/* Error Banner */}
-            {error ? (
-              <View className="mb-4 rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 flex-row items-center justify-between">
-                <Text className="text-xs text-destructive font-medium flex-1 me-2">{error}</Text>
-                <Button size="sm" variant="outline" className="h-7 px-2.5" onPress={loadStaff}>
-                  Retry
-                </Button>
-              </View>
-            ) : null}
-
-            {/* Loading Skeletons */}
-            {isLoading && staffList.length === 0 ? (
-              <SkeletonLoader count={4} />
-            ) : staffList.length === 0 ? (
-              <EmptyState
-                title={rawCount === 0 ? 'No Staff Registered' : 'No Results Found'}
-                description={
-                  rawCount === 0
-                    ? 'No staff members have been registered in this community yet.'
-                    : 'No staff members match the selected search or filter criteria.'
-                }
-                icon={Users}
-                actionLabel={
-                  rawCount === 0 && hasManagePermission
-                    ? '+ Add First Staff Member'
-                    : activeFilterCount > 0
-                    ? 'Clear Filters'
-                    : undefined
-                }
-                onAction={
-                  rawCount === 0 && hasManagePermission
-                    ? handleOpenCreate
-                    : activeFilterCount > 0
-                    ? handleResetFilters
-                    : undefined
-                }
-              />
-            ) : (
-              staffList.map((member) => (
-                <StaffCard
-                  key={member._id}
-                  member={member}
-                  canManage={hasManagePermission}
-                  onPress={() => handleOpenDetails(member)}
-                  onEdit={() => handleOpenEdit(member)}
-                  onDelete={() => setDeletingStaff(member)}
+            ListHeaderComponent={
+              error ? (
+                <View className="mb-4 rounded-xl bg-destructive/10 border border-destructive/20 p-3.5 flex-row items-center justify-between">
+                  <Text className="text-xs text-destructive font-medium flex-1 me-2">{error}</Text>
+                  <Button size="sm" variant="outline" className="h-7 px-2.5" onPress={loadStaff}>
+                    Retry
+                  </Button>
+                </View>
+              ) : null
+            }
+            ListEmptyComponent={
+              isLoading ? (
+                <SkeletonLoader count={4} />
+              ) : (
+                <EmptyState
+                  title={rawCount === 0 ? 'No Staff Registered' : 'No Results Found'}
+                  description={
+                    rawCount === 0
+                      ? 'No staff members have been registered in this community yet.'
+                      : 'No staff members match the selected search or filter criteria.'
+                  }
+                  icon={Users}
+                  actionLabel={
+                    rawCount === 0 && hasManagePermission
+                      ? '+ Add First Staff Member'
+                      : activeFilterCount > 0
+                      ? 'Clear Filters'
+                      : undefined
+                  }
+                  onAction={
+                    rawCount === 0 && hasManagePermission
+                      ? handleOpenCreate
+                      : activeFilterCount > 0
+                      ? handleResetFilters
+                      : undefined
+                  }
                 />
-              ))
+              )
+            }
+            renderItem={({ item }) => (
+              <StaffCard
+                member={item}
+                canManage={hasManagePermission}
+                onPress={handleOpenDetails}
+                onEdit={handleOpenEdit}
+                onDelete={setDeletingStaff}
+              />
             )}
-          </ScrollView>
+          />
 
           {/* Floating Action Button for Adding Staff */}
           {hasManagePermission ? (
@@ -441,6 +634,55 @@ export default function StaffManagementScreen() {
               >
                 {attendanceStats?.missingCheckoutSessions ?? 0}
               </Text>
+            </View>
+          </View>
+
+          {/* Search, Filter & Export Action Bar */}
+          <View className="px-4 py-2 border-b border-border/40 bg-card/40">
+            <SearchFilterBar
+              searchPlaceholder="Search staff name, code, gate..."
+              searchValue={attendanceSearch}
+              onSearchChange={setAttendanceSearch}
+              onFilterPress={() => setShowAttendanceFilterSheet(true)}
+              activeFilterCount={activeAttendanceFilterCount}
+            />
+            {/* Export Toolbar & Active Period Info */}
+            <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-border/30">
+              <View className="flex-row items-center flex-1 me-2">
+                <Text className="text-xs text-muted-foreground font-medium">
+                  {attendanceRecords.length} {attendanceRecords.length === 1 ? 'record' : 'records'}
+                </Text>
+                <View className="mx-1.5 h-3 w-px bg-border" />
+                <View className="px-2 py-0.5 rounded-full bg-muted/60">
+                  <Text className="text-[10px] font-semibold text-foreground/80">
+                    {attendanceRangeLabel}
+                  </Text>
+                </View>
+              </View>
+              <View className="flex-row gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-2.5 flex-row items-center gap-1.5"
+                  onPress={handleExportAttendanceCSV}
+                  disabled={isExporting}
+                  accessibilityLabel="Export Attendance CSV"
+                >
+                  <FileDown size={14} className="text-foreground" />
+                  <Text className="text-xs font-semibold">CSV</Text>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-2.5 flex-row items-center gap-1.5 border-emerald-500/40 bg-emerald-500/5"
+                  onPress={handleExportAttendanceExcel}
+                  disabled={isExporting}
+                  accessibilityLabel="Export Attendance Excel (.xlsx)"
+                >
+                  <FileSpreadsheet size={14} className="text-emerald-600 dark:text-emerald-400" />
+                  <Text className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Excel</Text>
+                </Button>
+              </View>
             </View>
           </View>
 
@@ -552,7 +794,7 @@ export default function StaffManagementScreen() {
         <ResidentStaffScreen embeddedMode={true} />
       ) : activeTab === 'portal' ? (
         /* TAB 4: STAFF PORTAL & DIGITAL PASS */
-        <StaffDashboardScreen embeddedMode={true} />
+        <StaffDashboardScreen embeddedMode={true} onSwitchToDirectory={() => setActiveTab('directory')} />
       ) : null}
 
       {/* Modals & Sheets */}
@@ -562,6 +804,7 @@ export default function StaffManagementScreen() {
         isSubmitting={isSubmitting}
         onClose={() => setShowFormModal(false)}
         onSubmit={handleFormSubmit}
+        onSaved={loadStaff}
       />
 
       <StaffDetailModal
@@ -588,6 +831,26 @@ export default function StaffManagementScreen() {
         onClose={() => setShowFilterSheet(false)}
       />
 
+      <StaffAttendanceFilterSheet
+        visible={showAttendanceFilterSheet}
+        selectedStatus={attendanceStatusFilter}
+        selectedDepartment={attendanceDepartmentFilter}
+        selectedRole={attendanceRoleFilter}
+        departmentOptions={attendanceDepartmentOptions}
+        startDate={attendanceStartDate}
+        endDate={attendanceEndDate}
+        onSelectStatus={setAttendanceStatusFilter}
+        onSelectDepartment={setAttendanceDepartmentFilter}
+        onSelectRole={setAttendanceRoleFilter}
+        onChangeStartDate={setAttendanceStartDate}
+        onChangeEndDate={setAttendanceEndDate}
+        onApplyFilters={() => {
+          loadAttendance();
+        }}
+        onReset={handleResetAttendanceFilters}
+        onClose={() => setShowAttendanceFilterSheet(false)}
+      />
+
       <StaffMemberAttendanceModal
         visible={Boolean(attendanceReportMember)}
         onClose={() => setAttendanceReportMember(null)}
@@ -599,7 +862,7 @@ export default function StaffManagementScreen() {
       <ConfirmationModal
         visible={Boolean(deletingStaff)}
         title="Deactivate Staff Member"
-        message={`Are you sure you want to deactivate ${deletingStaff?.name}? Their account will be marked inactive and access revoked.`}
+        message={buildStaffDeleteMessage(deletingStaff?.name, deleteUnitCount, t)}
         confirmLabel="Deactivate"
         cancelLabel="Cancel"
         variant="danger"
@@ -610,3 +873,8 @@ export default function StaffManagementScreen() {
     </ScreenShell>
   );
 }
+
+
+
+
+

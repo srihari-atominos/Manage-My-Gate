@@ -246,8 +246,12 @@ class ComplaintController {
       const { id } = req.params;
       const { rating, remarks } = req.body;
       const orgId = req.tenant.orgId;
-      
-      const updated = await complaintService.addFeedback(id, orgId, rating, remarks);
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
+
+      const updated = await complaintService.addFeedback(id, orgId, userId, userName, userRole, rating, remarks, metaData);
       res.success(updated, 'Feedback submitted successfully');
     } catch (error) {
       next(error);
@@ -362,9 +366,32 @@ class ComplaintController {
     } catch (error) { next(error); }
   }
 
+  async reopen(req, res, next) {
+    try {
+      const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const updated = await complaintService.reopenComplaint(req.params.id, req.tenant.orgId, userId, userName, userRole, req.body.reason, metaData);
+      res.success(updated, 'Complaint reopened. The assigned employee has been notified.');
+    } catch (error) { next(error); }
+  }
+
+  async cancel(req, res, next) {
+    try {
+      const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
+      const userId = req.user.id || req.user._id;
+      const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';
+      const userRole = req.user.roleName || req.user.role || 'User';
+      const updated = await complaintService.cancelComplaint(req.params.id, req.tenant.orgId, userId, userName, userRole, req.body?.reason, metaData);
+      res.success(updated, 'Complaint cancelled');
+    } catch (error) { next(error); }
+  }
+
   async confirmCompletion(req, res, next) {
     try {
-      const { feedback } = req.body;
+      // The mobile app posts the rating fields at the top level; accept both shapes (the service keeps only known fields).
+      const feedback = req.body?.feedback || req.body;
       const metaData = { ipAddress: req.ip, browser: req.headers['user-agent'], device: 'Web' };
       const userId = req.user.id || req.user._id;
       const userName = req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User';

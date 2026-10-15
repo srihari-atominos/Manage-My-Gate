@@ -4,6 +4,7 @@ import villaService from '../villa/villa.services.js';
 import technicianService from '../technician/technician.service.js';
 import orgMembershipService from '../orgMembership/orgMembership.services.js';
 import HttpError from '../../utils/httpError.utils.js';
+import { isResidentAssignable, residentAssignableFilter, staffCategoryOf } from '../technician/staffCategory.utils.js';
 
 class StaffUnitAssociationService {
   /**
@@ -89,20 +90,24 @@ class StaffUnitAssociationService {
   }
 
   /**
-   * Returns sanitized list of active staff in the community eligible for association.
+   * Returns sanitized list of active staff in the community eligible for association:
+   * Unit Staff, plus Community Staff that are not restricted to community-only work.
    */
   async getEligibleStaff(orgId) {
     const technicians = await technicianService.getTechnicians(orgId, {
       status: 'Active',
       isDeleted: false,
+      ...residentAssignableFilter(),
     });
 
     return (technicians || []).map((t) => ({
       _id: t._id,
       name: t.name,
+      photoUrl: t.photoUrl || null,
       department: t.department,
       designation: t.designation || '',
       type: t.type,
+      staffCategory: staffCategoryOf(t),
       staffCode: t.staffCode || '',
       phone: t.phone || '',
       email: t.email || '',
@@ -117,10 +122,17 @@ class StaffUnitAssociationService {
     const { unitIds } = await this.resolveUserAuthorizedUnitIds(userId, orgId, isAdmin);
 
     const filter = {};
-    if (query.status) {
+    if (query.status && query.status.toUpperCase() === 'ALL') {
+      filter.status = { $in: ['Active', 'Pending', 'Rejected'] };
+    } else if (query.status) {
       filter.status = query.status;
     } else {
-      filter.status = 'Active';
+      // Default: show both Active and Pending so residents see their invitations
+      filter.status = { $in: ['Active', 'Pending'] };
+    }
+
+    if (query.technicianId) {
+      filter.technicianId = query.technicianId;
     }
 
     if (isAdmin) {
@@ -181,6 +193,9 @@ class StaffUnitAssociationService {
     ) {
       throw new HttpError(400, 'Selected staff member is not active or does not belong to this community.');
     }
+    if (!isResidentAssignable(technician)) {
+      throw new HttpError(400, 'This staff member is assigned to community work only and cannot be allocated to a unit.');
+    }
 
     // 4. Ensure no duplicate active or pending association exists for this unit + technician
     const existingActive = await staffUnitAssociationRepository.findActive(
@@ -219,8 +234,9 @@ class StaffUnitAssociationService {
       }
     }
 
-    // Default status: If assigned by Admin -> Active immediately; If assigned by Resident -> Pending approval by Staff
-    const initialStatus = isAdmin ? 'Active' : 'Pending';
+    // Admin allocations are Active immediately. A resident's request waits for the staff member to accept,
+    // but staff without a linked login have nobody who could ever accept it, so it would stay Pending forever.
+    const initialStatus = isAdmin || !technician.userId ? 'Active' : 'Pending';
 
     // 5. Create association document
     const association = await staffUnitAssociationRepository.create(
@@ -276,7 +292,7 @@ class StaffUnitAssociationService {
       ? String(association.userId)
       : null;
 
-    if (!isAdmin && techUserId && techUserId !== String(userId)) {
+    if (!isAdmin && (!techUserId || techUserId !== String(userId))) {
       throw new HttpError(403, 'Forbidden. Only the invited staff member can accept this household allocation.');
     }
 
@@ -291,6 +307,8 @@ class StaffUnitAssociationService {
       orgId,
       villaId: association.villaId?._id || association.villaId,
       technicianId: association.technicianId?._id || association.technicianId,
+      technicianUserId: techUserId,
+      associatedBy: association.associatedBy ? String(association.associatedBy) : null,
       acceptedBy: userId,
     });
 
@@ -320,7 +338,7 @@ class StaffUnitAssociationService {
       ? String(association.userId)
       : null;
 
-    if (!isAdmin && techUserId && techUserId !== String(userId)) {
+    if (!isAdmin && (!techUserId || techUserId !== String(userId))) {
       throw new HttpError(403, 'Forbidden. Only the invited staff member can reject this household allocation.');
     }
 
@@ -340,6 +358,8 @@ class StaffUnitAssociationService {
       orgId,
       villaId: association.villaId?._id || association.villaId,
       technicianId: association.technicianId?._id || association.technicianId,
+      technicianUserId: techUserId,
+      associatedBy: association.associatedBy ? String(association.associatedBy) : null,
       rejectedBy: userId,
       reason,
     });
@@ -385,12 +405,20 @@ class StaffUnitAssociationService {
       reason || 'Removed by resident'
     );
 
+    const techUserId = association.technicianId?.userId
+      ? String(association.technicianId.userId)
+      : association.userId
+      ? String(association.userId)
+      : null;
+
     // Emit domain event
     staffUnitAssociationEvents.emit('staff_dissociated_from_unit', {
       associationId: id,
       orgId,
       villaId: assocVillaId,
       technicianId: association.technicianId?._id || association.technicianId,
+      technicianUserId: techUserId,
+      associatedBy: association.associatedBy ? String(association.associatedBy) : null,
       deactivatedBy: userId,
     });
 
@@ -412,7 +440,7 @@ class StaffUnitAssociationService {
 
     const propDays = Array.isArray(proposedSchedule.days) ? proposedSchedule.days.map((d) => d.toLowerCase().trim()) : [];
 
-    const activeAssocs = await staffUnitAssociationRepository.findActiveByTechnician(orgId, technicianId);
+    const activeAssocs = await staffUnitAssociationRepository.findActiveOrPendingByTechnician(orgId, technicianId);
     if (!activeAssocs || activeAssocs.length === 0) {
       return { hasConflict: false };
     }

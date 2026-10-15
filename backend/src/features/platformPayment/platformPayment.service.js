@@ -6,6 +6,7 @@ import OutboxEvent from './outboxEvent.model.js';
 import platformInvoiceService from '../platformInvoice/platformInvoice.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 import EventEmitter from 'events';
+import integrationHubRepository from '../integrationHub/integrationHub.repository.js';
 
 export const platformPaymentEvents = new EventEmitter();
 
@@ -224,7 +225,7 @@ export class PlatformPaymentService {
         console.error('User password setup fallback:', uErr.message);
       }
 
-      const smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' });
+      const smtpIntegration = await integrationHubRepository.findPlatformConnection('smtp');
       if (smtpIntegration) {
         const getCred = (key) => {
           const cred = smtpIntegration.credentials.find((c) => c.key === key);
@@ -311,9 +312,9 @@ export class PlatformPaymentService {
 
     let sent = false;
 
-    let smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' });
+    let smtpIntegration = await integrationHubRepository.findPlatformConnection('smtp');
     if (!smtpIntegration) {
-      smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp' });
+      smtpIntegration = await integrationHubRepository.findPlatformConnection('smtp', { anyStatus: true });
     }
 
     const envHost = process.env.SYSTEM_SMTP_HOST || process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -385,9 +386,9 @@ export class PlatformPaymentService {
 
     if (!sent) {
       try {
-        let resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
+        let resendIntegration = await integrationHubRepository.findPlatformConnection('resend');
         if (!resendIntegration) {
-          resendIntegration = await IntegrationHub.findOne({ provider: 'resend' });
+          resendIntegration = await integrationHubRepository.findPlatformConnection('resend', { anyStatus: true });
         }
 
         const resendApiKey = process.env.RESEND_API_KEY || (resendIntegration && resendIntegration.credentials ? decrypt(resendIntegration.credentials.find((c) => c.key === 'apiKey')?.encryptedValue, resendIntegration.credentials.find((c) => c.key === 'apiKey')?.iv, resendIntegration.credentials.find((c) => c.key === 'apiKey')?.authTag) : null);
@@ -809,12 +810,12 @@ export class PlatformPaymentService {
 
       const selectedPlan = quote?.pricingSnapshot?.planName || quote?.pricingSnapshot?.tier || quote?.planName || inquiry?.planName || 'COMMUNITY_STARTER';
       
-      let basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'notices'];
+      let basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'notices', 'staff'];
       const planUpper = String(selectedPlan).toUpperCase();
       if (planUpper.includes('STARTER')) {
-        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints'];
+        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'staff'];
       } else if (planUpper.includes('ENTERPRISE')) {
-        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'amenities', 'notices', 'integrations', 'billing'];
+        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'amenities', 'notices', 'integrations', 'billing', 'staff'];
       }
 
       const addOns = quote?.pricingSnapshot?.selectedAddOns || inquiry?.selectedFeatures || [];
@@ -870,8 +871,8 @@ export class PlatformPaymentService {
     const IntegrationHub = (await import('../integrationHub/integrationHub.model.js')).default;
     const { decrypt } = await import('../integrationHub/utils/crypto.util.js');
     const nodemailer = (await import('nodemailer')).default;
-    let smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' }).catch(() => null);
-    if (!smtpIntegration) smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp' }).catch(() => null);
+    let smtpIntegration = await integrationHubRepository.findPlatformConnection('smtp').catch(() => null);
+    if (!smtpIntegration) smtpIntegration = await integrationHubRepository.findPlatformConnection('smtp', { anyStatus: true }).catch(() => null);
 
     const envHost = process.env.SYSTEM_SMTP_HOST || process.env.SMTP_HOST || 'smtp.gmail.com';
     const envPort = parseInt(process.env.SYSTEM_SMTP_PORT || process.env.SMTP_PORT || '587', 10);

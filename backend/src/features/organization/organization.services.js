@@ -8,7 +8,8 @@ import logger from '../../utils/logger.utils.js';
 
 /** Feature keys shown as one group in the apps, mapped to permission features. */
 const FEATURE_GROUPS = Object.freeze({
-  administration_security: ['users', 'roles', 'villas', 'integrations', 'workspaces'],
+  administration_security: ['users', 'roles', 'villas', 'integrations', 'workspaces', 'staff'],
+  staff_management: ['staff'],
 });
 /** Always granted to the community admin role, whatever features are selected. */
 const CORE_ADMIN_FEATURES = Object.freeze(['users', 'roles', 'villas', 'workspaces']);
@@ -347,7 +348,7 @@ export class OrganizationService {
 
       // Create Community Staff Role (Global)
       const communityStaffRole = await roleService.createRole(
-        { name: 'Community Staff', description: 'Community-wide facility and maintenance staff.', orgId: newOrg._id, isTenantRole: false },
+        { name: 'Community Staff', description: 'Community Staff (Global Staff): community complaints, maintenance, gate pass and attendance.', orgId: newOrg._id, isTenantRole: false, roleScope: 'COMMUNITY_STAFF' },
         session
       );
       const communityStaffPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Community Staff'] || []);
@@ -355,7 +356,7 @@ export class OrganizationService {
 
       // Create Household Staff Role (Unit-Scoped)
       const householdStaffRole = await roleService.createRole(
-        { name: 'Household Staff', description: 'Dedicated household staff configured for residential units.', orgId: newOrg._id, isTenantRole: true },
+        { name: 'Household Staff', description: 'Unit Staff (Internal Staff): works only on units allocated by residents.', orgId: newOrg._id, isTenantRole: true, roleScope: 'STAFF' },
         session
       );
       const householdStaffPerms = getPermissionIds(DEFAULT_ROLE_PERMISSIONS['Household Staff'] || []);

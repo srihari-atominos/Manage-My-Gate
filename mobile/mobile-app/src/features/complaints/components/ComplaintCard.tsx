@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { MapPin, ChevronRight, UserCheck, AlertTriangle, Sparkles, UserPlus } from 'lucide-react-native';
 import { Complaint, ComplaintStatus, ComplaintPriority } from '../types';
 import { useTranslation } from '@/src/utils/i18n';
+import { getStatusDisplay } from '../utils/complaintStatus';
 
 interface ComplaintCardProps {
   complaint: Complaint;
@@ -91,7 +92,10 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
       })
     : '';
 
-  const statusVariant = getStatusBadgeVariant(complaint.status);
+  // Only the resident (who gets the confirm action) sees "Confirm it is fixed"; staff and managers see who has the next move.
+  const residentView = Boolean(onConfirmPress);
+  const statusDisplay = getStatusDisplay(complaint.status, residentView ? 'resident' : 'staff');
+  const statusVariant = statusDisplay.variant;
   const priorityVariant = getPriorityBadgeVariant(complaint.priority);
 
   const getSLAInfo = () => {
@@ -153,7 +157,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
           ) : null}
         </View>
 
-        <StatusBadge label={complaint.status} variant={statusVariant} size="sm" dot />
+        <StatusBadge label={statusDisplay.label} variant={statusVariant} size="sm" dot />
       </View>
 
       {/* 2. Main Title & Meta info */}
@@ -196,7 +200,9 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
           <View className="flex-row items-center flex-1 me-2">
             <Icon as={Sparkles} size={12} className="text-amber-600 dark:text-amber-400 me-1.5" />
             <Text className="text-xs font-semibold text-amber-900 dark:text-amber-200 flex-1 text-start">
-              {t('work_completed_rate_confirm', 'Work Completed • Rate & Confirm')}
+              {residentView
+                ? t('work_done_confirm', 'Work finished. Tap to confirm it is fixed')
+                : t('work_done_waiting_resident', 'Work submitted. Waiting for the resident to confirm')}
             </Text>
           </View>
           {onConfirmPress ? (
@@ -209,7 +215,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
                 onConfirmPress();
               }}
             >
-              {t('done_action', 'Done')} ✓
+              {t('review_action', 'Review')}
             </Button>
           ) : null}
         </View>

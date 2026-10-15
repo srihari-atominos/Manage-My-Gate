@@ -34,8 +34,8 @@ export const visitorService = {
     return await apiClient.patch(`/visitor-log/walk-in/${id}/resolve`, { action });
   },
 
-  checkoutVisitor: async (id: string) => {
-    return await apiClient.patch(`/visitor-log/${id}/checkout`);
+  checkoutVisitor: async (id: string, payload: { gateName?: string; reason?: string } = {}) => {
+    return await apiClient.patch(`/visitor-log/${id}/checkout`, payload);
   },
 
   getActiveVisitors: async (orgId: string) => {

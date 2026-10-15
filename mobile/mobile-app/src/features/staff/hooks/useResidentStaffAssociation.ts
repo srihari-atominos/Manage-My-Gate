@@ -28,9 +28,12 @@ export function useResidentStaffAssociation() {
   } = useSelector((state: RootState) => state.staff);
 
   const [selectedVillaId, setSelectedVillaId] = useState<string>('all');
+  const [selectedStatusTab, setSelectedStatusTab] = useState<'ALL' | 'Active' | 'Pending'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isAssociateModalOpen, setIsAssociateModalOpen] = useState<boolean>(false);
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState<boolean>(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
+  const [successModalMessage, setSuccessModalMessage] = useState<string>('');
   const [targetAssociationToRemove, setTargetAssociationToRemove] =
     useState<StaffUnitAssociation | null>(null);
 
@@ -52,21 +55,40 @@ export function useResidentStaffAssociation() {
     );
   }, [isAdmin, user?.permissions]);
 
-  // Load initial data
+  // Load initial data - fetch all statuses so Pending invitations are included
   const loadData = useCallback(() => {
-    if (!activeOrgId) return;
+    if (!activeOrgId || !hasAssignPermission) return;
     dispatch(fetchMyUnitsThunk());
     dispatch(fetchEligibleStaffThunk());
-    dispatch(fetchAssociationsThunk(selectedVillaId === 'all' ? undefined : selectedVillaId));
-  }, [dispatch, activeOrgId, selectedVillaId]);
+    dispatch(
+      fetchAssociationsThunk({
+        villaId: selectedVillaId === 'all' ? undefined : selectedVillaId,
+        status: 'ALL',
+      })
+    );
+  }, [dispatch, activeOrgId, hasAssignPermission, selectedVillaId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Filtered associations based on search and selected villa
+  // Counts for tabs
+  const activeCount = useMemo(() => {
+    return associations.filter((a) => a.status === 'Active').length;
+  }, [associations]);
+
+  const pendingCount = useMemo(() => {
+    return associations.filter((a) => a.status === 'Pending').length;
+  }, [associations]);
+
+  // Filtered associations based on search, selected villa, and status tab
   const filteredAssociations = useMemo(() => {
     return associations.filter((assoc) => {
+      // Status tab filter
+      if (selectedStatusTab !== 'ALL' && assoc.status !== selectedStatusTab) {
+        return false;
+      }
+
       // Villa filter
       if (selectedVillaId !== 'all') {
         const villaId = assoc.villaId?._id || (assoc.villaId as any);
@@ -91,7 +113,7 @@ export function useResidentStaffAssociation() {
 
       return true;
     });
-  }, [associations, selectedVillaId, searchQuery]);
+  }, [associations, selectedVillaId, selectedStatusTab, searchQuery]);
 
   // Handle association creation
   const handleCreateAssociation = useCallback(
@@ -99,6 +121,19 @@ export function useResidentStaffAssociation() {
       const resultAction = await dispatch(createAssociationThunk(payload));
       if (createAssociationThunk.fulfilled.match(resultAction)) {
         setIsAssociateModalOpen(false);
+        const invitedStaffName =
+          eligibleStaff.find((s) => s._id === payload.technicianId)?.name || 'the staff member';
+        setSuccessModalMessage(
+          `Staff association request has been sent for ${invitedStaffName}. They will receive a notification and can accept or decline this allocation on their staff portal.`
+        );
+        setIsSuccessModalOpen(true);
+        // Refresh associations list to ensure all details and relations are fully populated
+        dispatch(
+          fetchAssociationsThunk({
+            villaId: selectedVillaId === 'all' ? undefined : selectedVillaId,
+            status: 'ALL',
+          })
+        );
         return { success: true };
       } else {
         return {
@@ -107,7 +142,7 @@ export function useResidentStaffAssociation() {
         };
       }
     },
-    [dispatch]
+    [dispatch, eligibleStaff, selectedVillaId]
   );
 
   // Handle association removal
@@ -157,6 +192,13 @@ export function useResidentStaffAssociation() {
     isLoading: isAssociationsLoading,
     isSubmitting: isAssociationSubmitting,
     error: associationError,
+    selectedStatusTab,
+    setSelectedStatusTab,
+    activeCount,
+    pendingCount,
+    isSuccessModalOpen,
+    setIsSuccessModalOpen,
+    successModalMessage,
     isAssociateModalOpen,
     setIsAssociateModalOpen,
     isRemoveModalOpen,

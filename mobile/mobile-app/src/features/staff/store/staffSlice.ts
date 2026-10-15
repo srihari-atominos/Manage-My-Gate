@@ -157,9 +157,9 @@ export const fetchEligibleStaffThunk = createAsyncThunk(
 
 export const fetchAssociationsThunk = createAsyncThunk(
   'staff/fetchAssociations',
-  async (villaId: string | undefined, { rejectWithValue }) => {
+  async (params: { villaId?: string; status?: string } | string | undefined, { rejectWithValue }) => {
     try {
-      return await staffService.getUnitAssociations(villaId);
+      return await staffService.getUnitAssociations(params);
     } catch (err: any) {
       return rejectWithValue(err?.response?.data?.message || err?.message || 'Failed to fetch staff associations');
     }
@@ -434,8 +434,8 @@ export const staffSlice = createSlice({
       })
       .addCase(removeAssociationThunk.fulfilled, (state, action) => {
         state.isAssociationSubmitting = false;
-        state.associations = state.associations.filter((a) => a._id !== action.payload._id);
-        state.myAllocations = state.myAllocations.filter((a) => a._id !== action.payload._id);
+        state.associations = (state.associations || []).filter((a) => a._id !== action.payload._id);
+        state.myAllocations = (state.myAllocations || []).filter((a) => a._id !== action.payload._id);
       })
       .addCase(removeAssociationThunk.rejected, (state, action) => {
         state.isAssociationSubmitting = false;

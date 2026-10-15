@@ -10,6 +10,11 @@ import {
   InvitationDetailModal,
   extractInvitationToken,
 } from '@/src/features/notification/components/InvitationDetailModal';
+import {
+  WalkInQuickDecisionModal,
+  isWalkInNotification,
+} from '@/src/features/notification/components/WalkInQuickDecisionModal';
+import { resolveWalkInRequest } from '@/src/features/visitor/store/visitorPassSlice';
 import { resolveNotificationRoute } from '@/src/features/notification/utils/notificationNavigation';
 import { NotificationItemData } from '@/src/features/notification/services/notificationService';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
@@ -44,6 +49,9 @@ export const GlobalNotificationPresenter: React.FC = () => {
   const [selectedInviteNotification, setSelectedInviteNotification] = useState<NotificationItemData | null>(null);
   const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
 
+  const [selectedWalkInNotification, setSelectedWalkInNotification] = useState<NotificationItemData | null>(null);
+  const [isWalkInModalVisible, setIsWalkInModalVisible] = useState(false);
+
   // Helper to determine whether a notification represents an invitation
   const isInvitation = useCallback((notification?: NotificationItemData | null): boolean => {
     if (!notification) return false;
@@ -70,6 +78,9 @@ export const GlobalNotificationPresenter: React.FC = () => {
     if (isInvitation(notification)) {
       setSelectedInviteNotification(notification);
       setIsInviteModalVisible(true);
+    } else if (isWalkInNotification(notification)) {
+      setSelectedWalkInNotification(notification);
+      setIsWalkInModalVisible(true);
     } else {
       const targetRoute = resolveNotificationRoute({
         notificationId: notifId,
@@ -88,6 +99,48 @@ export const GlobalNotificationPresenter: React.FC = () => {
       }
     }
   }, [isInvitation, markAsRead, router]);
+
+  const handleApproveWalkIn = useCallback(
+    async (logId: string) => {
+      try {
+        await dispatch(resolveWalkInRequest({ id: logId, action: 'APPROVE' })).unwrap();
+        const notifId = selectedWalkInNotification?.id || selectedWalkInNotification?._id;
+        if (notifId) {
+          markAsRead(notifId);
+        }
+        setIsWalkInModalVisible(false);
+        setSelectedWalkInNotification(null);
+        await fetchNotifications(1, 10);
+        Alert.alert(t('approved', 'Entry Approved'), t('walkin_approved_msg', 'Visitor gate entry has been approved.'));
+      } catch (err: any) {
+        const msg = err?.message || err || 'Failed to approve walk-in request';
+        Alert.alert(t('error', 'Error'), msg);
+        throw err;
+      }
+    },
+    [dispatch, selectedWalkInNotification, markAsRead, fetchNotifications, t]
+  );
+
+  const handleRejectWalkIn = useCallback(
+    async (logId: string) => {
+      try {
+        await dispatch(resolveWalkInRequest({ id: logId, action: 'REJECT' })).unwrap();
+        const notifId = selectedWalkInNotification?.id || selectedWalkInNotification?._id;
+        if (notifId) {
+          markAsRead(notifId);
+        }
+        setIsWalkInModalVisible(false);
+        setSelectedWalkInNotification(null);
+        await fetchNotifications(1, 10);
+        Alert.alert(t('denied', 'Entry Denied'), t('walkin_denied_msg', 'Visitor gate entry has been denied.'));
+      } catch (err: any) {
+        const msg = err?.message || err || 'Failed to reject walk-in request';
+        Alert.alert(t('error', 'Error'), msg);
+        throw err;
+      }
+    },
+    [dispatch, selectedWalkInNotification, markAsRead, fetchNotifications, t]
+  );
 
   const handleAcceptInvitation = useCallback(
     async (token: string) => {
@@ -153,6 +206,19 @@ export const GlobalNotificationPresenter: React.FC = () => {
           }}
           onAccept={handleAcceptInvitation}
           onReject={handleRejectInvitation}
+        />
+      )}
+
+      {selectedWalkInNotification && (
+        <WalkInQuickDecisionModal
+          visible={isWalkInModalVisible}
+          notification={selectedWalkInNotification}
+          onClose={() => {
+            setIsWalkInModalVisible(false);
+            setSelectedWalkInNotification(null);
+          }}
+          onApprove={handleApproveWalkIn}
+          onReject={handleRejectWalkIn}
         />
       )}
     </>

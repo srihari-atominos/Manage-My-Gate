@@ -469,6 +469,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         username: user.username,
         role: roleName,
         roleId: activeRoleObj ? activeRoleObj._id.toString() : null,
+        roleScope: activeRoleObj?.roleScope || (isPlatform ? 'GLOBAL' : 'GLOBAL'),
         roles: roleNames || [],
         orgId,
         orgName: activeOrgName,
@@ -1417,6 +1418,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       interests: Array.isArray(user.interests) ? user.interests : [],
       role: tokenPayload.role,
       roleId: tokenPayload.roleId,
+      roleScope: tokenPayload.roleScope || 'GLOBAL',
       roles: tokenPayload.roles,
       permissions: permissions,
       orgId: tokenPayload.orgId,
@@ -3302,12 +3304,12 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       const orgName = linkedOrg?.name || inquiry?.organizationName || quote?.communitySnapshot?.organizationName || 'Your Community';
       const selectedPlan = quote?.pricingSnapshot?.planName || quote?.pricingSnapshot?.tier || quote?.planName || inquiry?.planName || 'COMMUNITY_STARTER';
 
-      let basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'notices'];
+      let basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'notices', 'staff'];
       const planUpper = String(selectedPlan).toUpperCase();
       if (planUpper.includes('STARTER')) {
-        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints'];
+        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'staff'];
       } else if (planUpper.includes('ENTERPRISE')) {
-        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'amenities', 'notices', 'integrations', 'billing'];
+        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'amenities', 'notices', 'integrations', 'billing', 'staff'];
       }
 
       const addOns = quote?.pricingSnapshot?.selectedAddOns || inquiry?.selectedFeatures || [];

@@ -9,11 +9,37 @@ import Workspace from './workspace.model.js';
 export const DEFAULT_MODULES = [
   { moduleName: 'Visitor Management', moduleKey: 'visitor', route: '/visitor', icon: 'QrCode', displayOrder: 1, enabled: true, sidebarVisible: true },
   { moduleName: 'Administration & Security', moduleKey: 'administration_security', route: '/admin', icon: 'ShieldCheck', displayOrder: 2, enabled: true, sidebarVisible: true },
+  { moduleName: 'Staff Management', moduleKey: 'staff', route: '/admin/staff', icon: 'Users', displayOrder: 3, enabled: true, sidebarVisible: true },
   { moduleName: 'Amenities & Bookings', moduleKey: 'amenities', route: '/amenities', icon: 'Building', displayOrder: 6, enabled: true, sidebarVisible: true },
   { moduleName: 'Notice Board', moduleKey: 'notices', route: '/notices', icon: 'List', displayOrder: 7, enabled: true, sidebarVisible: true },
   { moduleName: 'Complaints / Maintenance', moduleKey: 'complaints', route: '/complaints', icon: 'Warning', displayOrder: 8, enabled: true, sidebarVisible: true },
   { moduleName: 'Billing & Invoices', moduleKey: 'billing', route: '/billing', icon: 'Speedometer', displayOrder: 9, enabled: true, sidebarVisible: true }
 ];
+
+// Fields a manager may change through the update/settings APIs. Anything else in a request body
+// (organizationId, createdBy, modules, activityLogs, ...) is ignored instead of being written.
+const WORKSPACE_EDITABLE_FIELDS = [
+  'workspaceName',
+  'name',
+  'description',
+  'status',
+  'organizationName',
+  'timeZone',
+  'language',
+  'contactEmail',
+  'contactPhone',
+];
+
+const pickEditable = (data) =>
+  Object.fromEntries(
+    Object.entries(data && typeof data === 'object' ? data : {}).filter(
+      ([key, value]) =>
+        WORKSPACE_EDITABLE_FIELDS.includes(key) &&
+        value !== undefined &&
+        // a workspace can never end up without a name
+        !((key === 'workspaceName' || key === 'name') && !String(value ?? '').trim())
+    )
+  );
 
 export class WorkspaceService {
   async createWorkspace(workspaceData, actorId, session = null) {
@@ -69,8 +95,12 @@ export class WorkspaceService {
       throw new HttpError(404, `Workspace with ID ${id} not found.`);
     }
 
-    // Tenant check
-    if (!isPlatform && orgId && (!workspace.organizationId || workspace.organizationId.toString() !== orgId.toString())) {
+    // Tenant check: a non-platform caller must belong to the workspace's community. A missing
+    // community context is a denial, never a way to skip the check.
+    if (
+      !isPlatform &&
+      (!orgId || !workspace.organizationId || workspace.organizationId.toString() !== orgId.toString())
+    ) {
       throw new HttpError(403, 'Forbidden. You do not have access to this workspace.');
     }
 
@@ -118,17 +148,24 @@ export class WorkspaceService {
   }
 
   async getWorkspaces(orgId = null, isPlatform = false, session = null) {
-    const query = !isPlatform && orgId ? { organizationId: orgId } : {};
+    // Without a community context a non-platform caller must see nothing, not every community's workspace.
+    if (!isPlatform && !orgId) return [];
+    const query = isPlatform ? {} : { organizationId: orgId };
     return await workspaceRepository.find(query, session);
   }
 
   async updateWorkspace(id, updateData, orgId = null, isPlatform = false, actorId, session = null) {
     const workspace = await this.getWorkspaceById(id, orgId, isPlatform, session);
+    // The id may be the alias 'current'; always write using the real document id.
+    const workspaceDocId = workspace._id;
 
-    if (updateData.workspaceName && updateData.workspaceName !== workspace.workspaceName) {
+    const { authenticationMethod, ...rest } = updateData || {};
+    const editable = pickEditable(rest);
+
+    if (editable.workspaceName && editable.workspaceName !== workspace.workspaceName) {
       // Check name uniqueness
       const existing = await workspaceRepository.findOne({
-        workspaceName: updateData.workspaceName,
+        workspaceName: editable.workspaceName,
         organizationId: workspace.organizationId
       }, session);
       if (existing) {
@@ -137,27 +174,25 @@ export class WorkspaceService {
     }
 
     // Sync Organization Name
-    if (updateData.organizationName && workspace.organizationId) {
+    if (editable.organizationName && workspace.organizationId) {
       const organizationService = (await import('../organization/organization.services.js')).default;
-      await organizationService.updateOrganizationName(workspace.organizationId.toString(), updateData.organizationName, session);
+      await organizationService.updateOrganizationName(workspace.organizationId.toString(), editable.organizationName, session);
     }
-    
-    // Sync Authentication Method
-    if (updateData.authenticationMethod && workspace.organizationId) {
+
+    // Sync Authentication Method (lives on the Organization, not the Workspace model)
+    if (authenticationMethod && workspace.organizationId) {
       const organizationService = (await import('../organization/organization.services.js')).default;
-      await organizationService.updateLoginPolicy(workspace.organizationId.toString(), updateData.authenticationMethod, session);
-      // Remove from payload since it doesn't belong to Workspace model
-      delete updateData.authenticationMethod;
+      await organizationService.updateLoginPolicy(workspace.organizationId.toString(), authenticationMethod, session);
     }
 
     const payload = {
-      ...updateData,
+      ...editable,
       updatedBy: actorId,
     };
 
-    const updated = await workspaceRepository.update(id, payload, session);
+    const updated = await workspaceRepository.update(workspaceDocId, payload, session);
 
-    await workspaceRepository.addActivityLog(id, {
+    await workspaceRepository.addActivityLog(workspaceDocId, {
       action: 'Workspace Updated',
       performedBy: actorId,
       details: 'Workspace general details updated.',
@@ -165,8 +200,8 @@ export class WorkspaceService {
 
     workspaceEvents.emit('WORKSPACE_UPDATED', {
       actorId,
-      targetId: id,
-      updateData,
+      targetId: workspaceDocId,
+      updateData: editable,
     });
 
     return updated;
@@ -283,7 +318,7 @@ export class WorkspaceService {
     });
 
     // We must return the filtered modules so the frontend state doesn't suddenly show disabled modules
-    const result = await this.getCurrentWorkspaceModules(orgId || workspace.organizationId, actorId);
+    const result = await this.getCurrentWorkspaceModules(workspace.organizationId || orgId, actorId);
     return result; // Returns { modules, allModules }
   }
 
@@ -346,40 +381,91 @@ export class WorkspaceService {
 
   // --- Settings & Activity Logs ---
 
+  /**
+   * One consistent view of a workspace's settings for every client. The general details (name,
+   * contacts, time zone, language) live on the workspace itself and the default phone country on the
+   * organization, so the web admin and the mobile app always read and write the same real values.
+   * Free-form extras stay in `workspace.settings`.
+   */
+  async buildSettingsView(workspace, session = null) {
+    const org = workspace.organizationId
+      ? await Organization.findById(workspace.organizationId).select('countryCode name').lean().session(session)
+      : null;
+    const extras = workspace.settings && typeof workspace.settings === 'object' ? workspace.settings : {};
+    return {
+      ...extras,
+      workspaceName: workspace.workspaceName || workspace.name || '',
+      name: workspace.name || workspace.workspaceName || '',
+      description: workspace.description || '',
+      status: workspace.status || 'Active',
+      organizationName: workspace.organizationName || org?.name || '',
+      timeZone: workspace.timeZone || '',
+      language: workspace.language || '',
+      contactEmail: workspace.contactEmail || '',
+      contactPhone: workspace.contactPhone || '',
+      countryCode: org?.countryCode || extras.countryCode || '',
+    };
+  }
+
   async getSettings(workspaceId, orgId = null, isPlatform = false, session = null) {
     const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
-    return workspace.settings || {};
+    return await this.buildSettingsView(workspace, session);
   }
 
   async updateSettings(workspaceId, orgId = null, isPlatform = false, settingsData, actorId, session = null) {
     const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
-    
     const actualWorkspaceId = workspace._id;
-    const updated = await workspaceRepository.update(actualWorkspaceId, { settings: settingsData }, session);
 
-    // The community's phone default country lives on the organization so every role receives it at login.
+    const body = settingsData && typeof settingsData === 'object' && !Array.isArray(settingsData) ? settingsData : {};
+    const { countryCode, settings: _ignoredNested, ...rest } = body;
+
+    if (countryCode && !/^[A-Za-z]{2}$/.test(String(countryCode))) {
+      throw new HttpError(400, 'Country must be a valid two-letter country code.');
+    }
+    if (rest.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(rest.contactEmail))) {
+      throw new HttpError(400, 'Contact email must be a valid email address.');
+    }
+
+    // 1. General details go through the same path as the web admin (name checks, organization sync).
+    const general = pickEditable(rest);
+    if (Object.keys(general).length > 0) {
+      await this.updateWorkspace(actualWorkspaceId, general, orgId, isPlatform, actorId, session);
+    }
+
+    // 2. Anything else is merged key by key into the free-form settings, never replacing the whole object.
+    const extras = Object.entries(rest).filter(
+      ([key]) => !WORKSPACE_EDITABLE_FIELDS.includes(key) && !key.startsWith('$') && !key.includes('.')
+    );
+    if (extras.length > 0) {
+      const setOps = Object.fromEntries(extras.map(([key, value]) => [`settings.${key}`, value]));
+      await workspaceRepository.update(actualWorkspaceId, { $set: setOps }, session);
+    }
+
+    // 3. The community's phone default country lives on the organization so every role receives it at login.
     const orgIdForCountry = workspace.organizationId || orgId;
-    if (/^[A-Za-z]{2}$/.test(settingsData?.countryCode || '') && orgIdForCountry) {
-      const Organization = (await import('../organization/organization.model.js')).default;
+    if (countryCode && orgIdForCountry) {
       await Organization.updateOne(
         { _id: orgIdForCountry },
-        { $set: { countryCode: String(settingsData.countryCode).toUpperCase() } },
+        { $set: { countryCode: String(countryCode).toUpperCase() } },
         { session }
       );
     }
 
-    await workspaceRepository.addActivityLog(actualWorkspaceId, {
-      action: 'Settings Updated',
-      performedBy: actorId,
-      details: 'Workspace settings updated.',
-    }, session);
+    if (extras.length > 0 || countryCode) {
+      await workspaceRepository.addActivityLog(actualWorkspaceId, {
+        action: 'Settings Updated',
+        performedBy: actorId,
+        details: 'Workspace settings updated.',
+      }, session);
 
-    workspaceEvents.emit('SETTINGS_UPDATED', {
-      actorId,
-      targetId: workspaceId,
-    });
+      workspaceEvents.emit('SETTINGS_UPDATED', {
+        actorId,
+        targetId: actualWorkspaceId,
+      });
+    }
 
-    return updated.settings;
+    const fresh = await workspaceRepository.findById(actualWorkspaceId, session);
+    return await this.buildSettingsView(fresh, session);
   }
 
   async getActivityLogs(workspaceId, orgId = null, isPlatform = false, session = null) {

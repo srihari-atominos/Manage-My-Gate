@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Role from './role.model.js';
+import { escapeRegex } from '../../utils/regex.utils.js';
 
 export class RoleRepository {
   async findAll(session) {
@@ -8,6 +9,10 @@ export class RoleRepository {
 
   async findById(id, session) {
     return await Role.findById(id).session(session || null);
+  }
+
+  async findByIds(ids, session = null) {
+    return await Role.find({ _id: { $in: ids } }).session(session || null);
   }
 
   async findByName(name, orgId = null, session = null) {
@@ -42,11 +47,17 @@ export class RoleRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<{ data: Array, totalRecords: number }>}
    */
-  async findAllPaginated(orgId, skip, limit, session) {
+  async findAllPaginated(orgId, skip, limit, session, search = '') {
     const opts = session ? { session } : {};
-    const matchQuery = orgId 
+    const matchQuery = orgId
       ? { $or: [{ orgId: new mongoose.Types.ObjectId(orgId) }, { orgId: null }] }
       : { orgId: null };
+
+    const term = String(search || '').trim();
+    if (term) {
+      const regex = new RegExp(escapeRegex(term), 'i');
+      matchQuery.$and = [{ $or: [{ name: regex }, { description: regex }] }];
+    }
 
     const result = await Role.aggregate([
       { $match: matchQuery },
@@ -75,8 +86,11 @@ export class RoleRepository {
             {
               $project: {
                 name: 1,
+                orgId: 1,
                 description: 1,
                 isTenantRole: 1,
+                roleScope: 1,
+                communityOnly: 1,
                 createdAt: 1,
                 updatedAt: 1,
                 permissions: '$permissionsList.name',

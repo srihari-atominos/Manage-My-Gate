@@ -25,6 +25,20 @@ const formatPermissionLabel = (permissionString) => {
     return 'Manage Engagement';
   }
 
+  // Staff Management (4 Granular Sub-Features)
+  if (str === 'staff:directory' || str === 'staff:view' || str === 'staff:manage' || str === 'view' && permissionString?.includes('staff')) {
+    return 'Staff Directory';
+  }
+  if (str === 'staff:attendance' || str === 'attendance') {
+    return 'Attendance Logs';
+  }
+  if (str === 'staff:assign_unit' || str === 'assign_unit') {
+    return 'Unit Allocation';
+  }
+  if (str === 'staff:portal' || str === 'staff:view_own' || str === 'view_own') {
+    return 'Staff Portal & Pass';
+  }
+
   let label = permissionString;
   if (label.includes(':')) {
     const parts = label.split(':');

@@ -11,6 +11,9 @@ import { TechnicianData } from '../services/technicianService';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { ContactPickerButton } from '@/components/forms/ContactPickerButton';
 import { validatePhone } from '@/src/utils/validation';
+import { RadioGroup } from '@/components/forms/RadioGroup';
+import { ToggleSwitch } from '@/components/forms/ToggleSwitch';
+import { STAFF_CATEGORY_OPTIONS, StaffCategory, staffCategoryOf } from '@/src/features/staff/staffCategories';
 
 interface InviteStaffVendorSheetProps {
   visible: boolean;
@@ -31,6 +34,8 @@ export const InviteStaffVendorSheet: React.FC<InviteStaffVendorSheetProps> = ({
   const [department, setDepartment] = useState('Electrical');
   const [type, setType] = useState<'In-House Staff' | 'External Vendor'>('In-House Staff');
   const [status, setStatus] = useState<'Active' | 'Pending' | 'Inactive'>('Active');
+  const [staffCategory, setStaffCategory] = useState<StaffCategory>('COMMUNITY');
+  const [communityOnly, setCommunityOnly] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -42,6 +47,8 @@ export const InviteStaffVendorSheet: React.FC<InviteStaffVendorSheetProps> = ({
         setDepartment(technician.department || 'Electrical');
         setType(technician.type || 'In-House Staff');
         setStatus(technician.status || 'Active');
+        setStaffCategory(staffCategoryOf(technician));
+        setCommunityOnly(!!technician.communityOnly);
       } else {
         setName('');
         setPhone('');
@@ -49,6 +56,8 @@ export const InviteStaffVendorSheet: React.FC<InviteStaffVendorSheetProps> = ({
         setDepartment('Electrical');
         setType('In-House Staff');
         setStatus('Active');
+        setStaffCategory('COMMUNITY');
+        setCommunityOnly(false);
       }
     }
   }, [visible, technician]);
@@ -76,6 +85,8 @@ export const InviteStaffVendorSheet: React.FC<InviteStaffVendorSheetProps> = ({
         email: email.trim(),
         department,
         type,
+        staffCategory,
+        communityOnly: staffCategory === 'COMMUNITY' && communityOnly,
         status,
         specialization: department,
       };
@@ -159,6 +170,26 @@ export const InviteStaffVendorSheet: React.FC<InviteStaffVendorSheetProps> = ({
           ]}
           onValueChange={(val) => setType(val as any)}
         />
+
+        <Text className="text-sm font-medium text-foreground mt-3 mb-2">Staff Category</Text>
+        <RadioGroup
+          options={STAFF_CATEGORY_OPTIONS}
+          value={staffCategory}
+          onValueChange={(val) => setStaffCategory(val as StaffCategory)}
+        />
+        {staffCategory === 'COMMUNITY' ? (
+          <ToggleSwitch
+            label="Community only"
+            description={
+              communityOnly
+                ? 'Only community work. Residents cannot assign this staff member to their units.'
+                : 'Community work and resident work. Residents can also assign this staff member to their units.'
+            }
+            value={communityOnly}
+            onValueChange={setCommunityOnly}
+            className="mt-2"
+          />
+        ) : null}
 
         <DropdownSelect
           label="Account Active Status"

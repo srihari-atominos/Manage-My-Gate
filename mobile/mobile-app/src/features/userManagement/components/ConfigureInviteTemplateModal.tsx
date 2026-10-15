@@ -53,11 +53,13 @@ export const ConfigureInviteTemplateModal: React.FC<ConfigureInviteTemplateModal
       setLoading(true);
 
       Promise.all([
-        apiClient.get('/integrations/connections').catch(() => ({ data: [] })),
+        apiClient.get('/integrations', { params: { limit: 100 } }).catch(() => ({ data: [] })),
         apiClient.get('/templates?purpose=user_invitation').catch(() => ({ data: [] })),
       ])
         .then(([connRes, tmplRes]: any[]) => {
-          const fetchedConns = connRes.data?.data || connRes.data || [];
+          // The server answers { data: { data: [...connections], pagination } }
+          const connPayload = connRes?.data ?? connRes;
+          const fetchedConns = Array.isArray(connPayload) ? connPayload : connPayload?.data || [];
           const fetchedTmpls = tmplRes.data?.data || tmplRes.data || [];
           setConnections(Array.isArray(fetchedConns) ? fetchedConns : []);
           setTemplates(Array.isArray(fetchedTmpls) ? fetchedTmpls : []);

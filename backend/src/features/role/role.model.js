@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { ROLE_SCOPE_VALUES } from './roleScope.constants.js';
 
 const roleSchema = new mongoose.Schema(
   {
@@ -29,8 +30,13 @@ const roleSchema = new mongoose.Schema(
     },
     roleScope: {
       type: String,
-      enum: ['GLOBAL', 'UNIT', 'STAFF'],
+      enum: ROLE_SCOPE_VALUES,
       default: 'GLOBAL',
+    },
+    // Applies only to Community Staff roles: false lets the role support community and resident work.
+    communityOnly: {
+      type: Boolean,
+      default: false,
     },
   },
   {

@@ -101,6 +101,7 @@ export const config = {
   },
   nodeEnv: process.env.NODE_ENV || 'development',
   avatarUploadPath: process.env.AVATAR_UPLOAD_PATH || 'uploads/avatars',
+  staffPhotoUploadPath: process.env.STAFF_PHOTO_UPLOAD_PATH || 'uploads/staff-photos',
   sso: {
     // Public OAuth client IDs are safe fallbacks for the released mobile app;
     // deployment variables still override them for another environment.

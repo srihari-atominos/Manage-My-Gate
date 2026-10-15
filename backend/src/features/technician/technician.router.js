@@ -4,10 +4,15 @@ import { validateTechnicianCreate, validateTechnicianUpdate } from './technician
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
 import { authorizePermission, authorizeAnyPermission } from '../../middlewares/rbac.middleware.js';
+import staffPhotoUpload from './technician.photoUpload.middleware.js';
 
 const router = Router();
 
-// All technician routes require authentication and tenant context
+// Signed-link photo image: must stay BEFORE the auth middleware so a plain <Image> can load it.
+// Access is the unguessable HMAC signature bound to the staff id and current photo version.
+router.get('/:id/photo', technicianController.servePhoto);
+
+// All other technician routes require authentication and tenant context
 router.use(isAuthenticated, tenantContext);
 
 // Read staff / technicians workload analytics: requires staff management or complaint analytics permissions
@@ -38,11 +43,47 @@ router.get(
   technicianController.getAll
 );
 
+// Staff photo upload / removal
+router.post(
+  '/me/photo',
+  authorizeAnyPermission(['staff:view_own']),
+  staffPhotoUpload,
+  technicianController.uploadMyPhoto
+);
+
+// Used by the invite flow: the photo is attached right after the staff user is created
+router.post(
+  '/by-user/:userId/photo',
+  authorizeAnyPermission(['staff:manage', 'users:create']),
+  staffPhotoUpload,
+  technicianController.uploadPhotoForUser
+);
+
+router.post(
+  '/:id/photo',
+  authorizeAnyPermission(['staff:manage']),
+  staffPhotoUpload,
+  technicianController.uploadPhoto
+);
+
+router.delete(
+  '/:id/photo',
+  authorizeAnyPermission(['staff:manage']),
+  technicianController.deletePhoto
+);
+
 // Read specific technician QR pass: requires staff:manage
 router.get(
   '/:id/qr',
   authorizeAnyPermission(['staff:manage']),
   technicianController.getStaffQr
+);
+
+// Revoke all issued passes for a staff member and issue a fresh one: requires staff:manage
+router.post(
+  '/:id/qr/rotate',
+  authorizeAnyPermission(['staff:manage']),
+  technicianController.rotateStaffQr
 );
 
 // Read specific technician by ID: requires staff:view, staff:manage, or complaint assignment permissions

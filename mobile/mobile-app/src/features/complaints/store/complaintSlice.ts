@@ -185,6 +185,30 @@ export const confirmCompletion = createAsyncThunk(
   }
 );
 
+export const reopenComplaint = createAsyncThunk(
+  'complaints/reopen',
+  async ({ id, reason }: { id: string; reason: string }, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.reopen(id, reason);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reopen the complaint');
+    }
+  }
+);
+
+export const cancelComplaint = createAsyncThunk(
+  'complaints/cancel',
+  async ({ id, reason }: { id: string; reason?: string }, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.cancel(id, reason);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to cancel the complaint');
+    }
+  }
+);
+
 export const addComplaintComment = createAsyncThunk(
   'complaints/addComment',
   async ({ id, data }: { id: string; data: any }, { rejectWithValue }) => {
@@ -360,6 +384,14 @@ export const complaintSlice = createSlice({
         updateItemInState(state, item);
       })
       .addCase(confirmCompletion.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(reopenComplaint.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(cancelComplaint.fulfilled, (state, action) => {
         const item = action.payload?.complaint || action.payload;
         updateItemInState(state, item);
       })

@@ -39,8 +39,14 @@ export interface ScanResultSheetProps {
   loading?: boolean;
   onPrimaryAction?: () => void;
   primaryActionLabel?: string;
+  /** Keeps the primary action visible but not pressable (e.g. Check In while the staff member is already inside). */
+  primaryActionDisabled?: boolean;
   onSecondaryAction?: () => void;
   secondaryActionLabel?: string;
+  /** Optional second action shown under the primary one (e.g. group-pass check-out next to check-in). */
+  onExtraAction?: () => void;
+  extraActionLabel?: string;
+  extraActionDisabled?: boolean;
 }
 
 export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
@@ -50,8 +56,12 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
   loading = false,
   onPrimaryAction,
   primaryActionLabel = 'Confirm Entry',
+  primaryActionDisabled = false,
   onSecondaryAction,
   secondaryActionLabel = 'Scan Next Pass',
+  onExtraAction,
+  extraActionLabel,
+  extraActionDisabled = false,
 }) => {
   if (!result) return null;
 
@@ -67,7 +77,7 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
     statusLabel = result.statusLabel || 'VERIFIED ACCESS';
   } else if (requiresServerDecision) {
     statusVariant = 'warning';
-    statusLabel = result.statusLabel || 'SERVER CHECK REQUIRED';
+    statusLabel = result.statusLabel || 'READY FOR ENTRY';
   } else if (isExpired) {
     statusVariant = 'neutral';
     statusLabel = 'PASS EXPIRED';
@@ -88,17 +98,21 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
             className={`w-16 h-16 rounded-full items-center justify-center ${
               isSuccess
                 ? 'bg-emerald-500/20'
+                : requiresServerDecision
+                ? 'bg-amber-500/20'
                 : isExpired
                 ? 'bg-muted'
                 : 'bg-destructive/20'
             }`}
           >
             <Icon
-              as={isSuccess ? CircleCheck : isExpired ? Clock : CircleX}
+              as={isSuccess ? CircleCheck : requiresServerDecision ? CircleAlert : isExpired ? Clock : CircleX}
               size={36}
               className={
                 isSuccess
                   ? 'text-emerald-600 dark:text-emerald-400'
+                  : requiresServerDecision
+                  ? 'text-amber-600 dark:text-amber-400'
                   : isExpired
                   ? 'text-muted-foreground'
                   : 'text-destructive'
@@ -111,7 +125,7 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
           {Boolean(result.message) && (
             <Text
               className={`text-xs text-center px-4 mt-0.5 ${
-                isSuccess
+                isSuccess || requiresServerDecision
                   ? 'text-muted-foreground'
                   : 'text-destructive font-medium'
               }`}
@@ -184,7 +198,7 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
           {(isSuccess || requiresServerDecision) && onPrimaryAction ? (
             <Button
               onPress={onPrimaryAction}
-              disabled={loading}
+              disabled={loading || primaryActionDisabled}
               className="w-full h-12 bg-emerald-600 active:bg-emerald-700 flex-row items-center justify-center gap-2"
               accessibilityRole="button"
               accessibilityLabel={primaryActionLabel}
@@ -193,6 +207,19 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
               <Text className="text-sm font-bold text-white">
                 {loading ? 'Processing...' : primaryActionLabel}
               </Text>
+            </Button>
+          ) : null}
+
+          {onExtraAction && extraActionLabel ? (
+            <Button
+              variant="outline"
+              onPress={onExtraAction}
+              disabled={loading || extraActionDisabled}
+              className="w-full h-12 flex-row items-center justify-center gap-2 border-border active:bg-secondary/60"
+              accessibilityRole="button"
+              accessibilityLabel={extraActionLabel}
+            >
+              <Text className="text-sm font-bold text-foreground">{extraActionLabel}</Text>
             </Button>
           ) : null}
 

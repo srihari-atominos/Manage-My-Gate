@@ -5,6 +5,8 @@ import { WalkInApprovalCard } from './WalkInApprovalCard';
 import { WalkInVisitorDetailsModal } from './WalkInVisitorDetailsModal';
 import { WalkInApprovalItem } from '../../mocks/visitorMocks';
 import { useVisitorPass } from '../../hooks/useVisitorPass';
+import { useSelector } from 'react-redux';
+import { selectActiveOrgId } from '../../../auth/store/authSelectors';
 
 export const WalkInApprovalsView: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<WalkInApprovalItem | null>(null);
@@ -14,9 +16,13 @@ export const WalkInApprovalsView: React.FC = () => {
 
   const { walkIns, loadPendingWalkIns, resolveWalkIn } = useVisitorPass();
 
+  const activeOrgId = useSelector(selectActiveOrgId);
+
   const loadData = useCallback(async () => {
+    // Org context restores asynchronously; this re-runs once it is available.
+    if (!activeOrgId) return;
     await loadPendingWalkIns();
-  }, [loadPendingWalkIns]);
+  }, [loadPendingWalkIns, activeOrgId]);
 
   useEffect(() => {
     loadData();

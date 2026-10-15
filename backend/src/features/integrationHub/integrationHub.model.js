@@ -70,6 +70,14 @@ const integrationHubSchema = new mongoose.Schema(
       enum: ['connected', 'disconnected'],
       default: 'connected',
     },
+    // Result of the most recent verification ("Test connection" or the one done when connecting).
+    // Kept apart from `status`: payments/e-mail only use `status: connected`, so a transient network failure
+    // during a test must never switch a working integration off.
+    lastCheck: {
+      ok: { type: Boolean, default: null },
+      at: { type: Date, default: null },
+      message: { type: String, default: '', maxlength: 300 },
+    },
   },
   {
     timestamps: true,

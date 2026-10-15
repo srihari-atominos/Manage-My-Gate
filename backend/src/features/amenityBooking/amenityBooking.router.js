@@ -36,5 +36,6 @@ router.get('/stats/recent-activity', authorizePermission('amenities', 'dashboard
 // Scanner routes
 router.get('/scans/recent', authorizePermission('amenities', 'scanner'), amenityBookingController.getRecentScans);
 router.post('/:id/checkin', authorizePermission('amenities', 'scanner'), amenityBookingController.checkInBooking);
+router.post('/:id/checkout', authorizePermission('amenities', 'scanner'), amenityBookingController.checkOutBooking);
 
 export default router;

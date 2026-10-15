@@ -65,7 +65,7 @@ export const assertRolesAssignable = async (req, orgId, roleNames) => {
  */
 export const listAssignableRoles = async (req, orgId) => {
   const Role = (await import('../../role/role.model.js')).default;
-  const roles = await Role.find({ orgId }).select('name description isTenantRole').sort({ name: 1 }).lean();
+  const roles = await Role.find({ orgId }).select('name description isTenantRole roleScope communityOnly').sort({ name: 1 }).lean();
   const assignable = [];
   for (const role of roles) {
     try {

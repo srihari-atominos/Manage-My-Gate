@@ -14,6 +14,7 @@ import { Complaint, AssignTechnicianPayload } from '../types';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { ContactPickerButton } from '@/components/forms/ContactPickerButton';
 import { validatePhone } from '@/src/utils/validation';
+import { isCommunityAssignable } from '@/src/features/staff/staffCategories';
 
 interface StaffMember {
   _id: string;
@@ -23,6 +24,8 @@ interface StaffMember {
   specialization?: string;
   specialty?: string;
   type?: string;
+  staffCategory?: string;
+  communityOnly?: boolean;
   rating?: number | string;
   status?: string;
   activeJobsCount?: number;
@@ -73,17 +76,18 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
 
   useEffect(() => {
     if (visible) {
+      // Unit Staff (Internal Staff) only work on units residents allocate them to, never on complaints.
       if (initialTechnicians && initialTechnicians.length > 0) {
-        setStaffList(initialTechnicians);
+        setStaffList(initialTechnicians.filter(isCommunityAssignable));
         return;
       }
       setIsLoadingStaff(true);
       apiClient
-        .get('/technicians')
+        .get('/technicians', { params: { assignableFor: 'COMMUNITY' } })
         .then((res: any) => {
           const list = res?.data || res || [];
           if (Array.isArray(list)) {
-            setStaffList(list);
+            setStaffList(list.filter(isCommunityAssignable));
           }
         })
         .catch((err) => {

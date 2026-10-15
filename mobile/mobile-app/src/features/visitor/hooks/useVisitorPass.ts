@@ -75,7 +75,6 @@ export const useVisitorPass = () => {
     (orgIdParam?: string) => {
       const orgId = orgIdParam || activeOrgId;
       if (!orgId) {
-        console.warn('Cannot fetch pending walk-ins: organization context is not loaded.');
         return;
       }
       return dispatch(fetchPendingWalkIns(orgId));
@@ -179,8 +178,10 @@ export const useVisitorPass = () => {
   );
 
   const checkoutVisitor = useCallback(
-    async (logId: string) => {
-      const res = await dispatch(checkoutVisitorThunk(logId));
+    async (logId: string, payload?: { gateName?: string; reason?: string }) => {
+      const res = await dispatch(
+        checkoutVisitorThunk(payload ? { logId, ...payload } : logId)
+      );
       if (checkoutVisitorThunk.rejected.match(res)) {
         throw new Error(String(res.payload || 'Failed to checkout visitor'));
       }

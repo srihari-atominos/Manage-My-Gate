@@ -84,19 +84,88 @@ export class StaffNotificationService {
   }
 
   /**
-   * Resolves recipient candidates for a staff member gate entry.
+   * Enqueues a durable OutboxEvent upon legitimate, persisted gate exit.
+   *
+   * @param {Object} params
+   * @param {Object} params.session - Persisted StaffAttendance document
+   * @param {Object} params.technician - Resolved Technician document
+   * @param {string|mongoose.Types.ObjectId} params.orgId - Community organization ID
+   * @param {string|mongoose.Types.ObjectId} [params.guardId] - Gate guard user ID
+   * @param {string} [params.gateId] - Name/ID of exit gate
+   * @returns {Promise<Object|null>} Enqueued OutboxEvent or null if skipped/failed
+   */
+  async enqueueStaffExitNotification({ session, technician, orgId, guardId = null, gateId = 'Main Gate' }) {
+    if (!session || !technician || !orgId) {
+      logger.warn('[StaffNotification] Skipping exit outbox enqueue: missing required parameters');
+      return null;
+    }
+
+    const sessionId = session._id ? session._id.toString() : String(session);
+    const technicianId = technician._id ? technician._id.toString() : String(technician);
+    const orgIdStr = orgId.toString();
+
+    const staffName =
+      technician.name ||
+      `${technician.firstName || ''} ${technician.lastName || ''}`.trim() ||
+      'Staff Member';
+    const department = technician.department || technician.trade || technician.designation || 'Staff';
+
+    const payload = {
+      sessionId,
+      technicianId,
+      staffCode: technician.staffCode || '',
+      staffName,
+      department,
+      orgId: orgIdStr,
+      gateId: gateId || session.exitGate || 'Main Gate',
+      guardId: guardId ? guardId.toString() : session.exitGuardId ? session.exitGuardId.toString() : null,
+      checkOutTime: session.checkOutTime || new Date(),
+    };
+
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      return {
+        eventId: new mongoose.Types.ObjectId().toString(),
+        aggregateType: 'STAFF_ATTENDANCE',
+        aggregateId: sessionId,
+        eventType: 'STAFF_GATE_EXIT',
+        payload,
+        status: 'PENDING',
+      };
+    }
+
+    try {
+      const event = await outboxService.enqueueEvent({
+        aggregateType: 'STAFF_ATTENDANCE',
+        aggregateId: sessionId,
+        eventType: 'STAFF_GATE_EXIT',
+        payload,
+      });
+
+      logger.info(`[StaffNotification] Enqueued STAFF_GATE_EXIT event for session ${sessionId}`);
+      return event;
+    } catch (err) {
+      logger.error(`[StaffNotification] Failed to enqueue STAFF_GATE_EXIT outbox event: ${err.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Resolves recipient candidates for a staff member gate entry or exit.
    *
    * Policy:
-   * Scenario A: Staff has active unit associations -> Notify eligible active residents of those units only.
+   * Scenario A: Staff has active unit associations -> Notify eligible active residents of those units.
    * Scenario B: Staff has NO active unit associations -> Fallback to authorized Community Admins in the org.
+   * Also: Community Admins (Global scope) can always receive oversight notifications if configured.
    * Scenario C: Inactive memberships, suspended users, former residents, or cross-tenant users are excluded.
-   * Deduplication: Recipients are deduplicated across units.
+   * Deduplication: Recipients are deduplicated across units and roles.
    *
    * @param {string} orgId - Organization ID
    * @param {string} technicianId - Technician ID
-   * @returns {Promise<{ scenario: string, recipients: Array<{ userId: string, unitNumbers?: string[] }> }>}
+   * @param {Object} [options]
+   * @param {boolean} [options.includeAdmins=false] - When true, also includes community admins
+   * @returns {Promise<{ scenario: string, recipients: Array<{ userId: string, unitNumbers?: string[], isAdmin?: boolean }> }>}
    */
-  async resolveRecipients(orgId, technicianId) {
+  async resolveRecipients(orgId, technicianId, options = {}) {
     if (!orgId || !technicianId) {
       return { scenario: 'NONE', recipients: [] };
     }
@@ -204,6 +273,22 @@ export class StaffNotificationService {
             unitNumbers: Array.from(unitNumbersSet),
           });
         }
+
+        // If includeAdmins is requested, append community admins (deduplicated)
+        if (options.includeAdmins) {
+          const admins = await orgMembershipService.getCommunityAdmins(orgId);
+          for (const a of (admins || [])) {
+            if (a.userId && !candidateRecipientsByUser.has(String(a.userId))) {
+              recipients.push({
+                userId: String(a.userId),
+                isAdmin: true,
+                name: a.name,
+                email: a.email,
+              });
+            }
+          }
+        }
+
         return {
           scenario: 'ASSOCIATED_RESIDENTS',
           recipients,
@@ -225,6 +310,7 @@ export class StaffNotificationService {
 
     const recipients = validAdmins.map((a) => ({
       userId: a.userId,
+      isAdmin: true,
       name: a.name,
       email: a.email,
     }));
@@ -284,7 +370,7 @@ export class StaffNotificationService {
       const title = 'Staff Gate Entry';
       let body;
 
-      if (scenario === 'ASSOCIATED_RESIDENTS') {
+      if (scenario === 'ASSOCIATED_RESIDENTS' && !recipient.isAdmin) {
         const unitsStr = recipient.unitNumbers && recipient.unitNumbers.length > 0
           ? recipient.unitNumbers.join(', ')
           : 'your unit';
@@ -328,6 +414,109 @@ export class StaffNotificationService {
 
     logger.info(
       `[StaffNotification] Processed STAFF_GATE_ENTRY (Session: ${sessionId}, Scenario: ${scenario}, Delivered: ${deliveredCount}, Skipped: ${skippedCount})`
+    );
+
+    return {
+      success: true,
+      scenario,
+      deliveredCount,
+      skippedCount,
+      totalRecipients: recipients.length,
+    };
+  }
+
+  /**
+   * Processes a STAFF_GATE_EXIT event payload:
+   * Resolves recipients according to policy, constructs privacy-safe content,
+   * enforces deduplication via unique dedupKey, and creates in-app notifications.
+   *
+   * @param {Object} payload
+   * @returns {Promise<Object>} Summary of notification delivery
+   */
+  async processStaffExitEvent(payload) {
+    if (!payload || !payload.sessionId || !payload.technicianId || !payload.orgId) {
+      logger.warn('[StaffNotification] Invalid event payload for STAFF_GATE_EXIT. Skipping.');
+      return { success: false, reason: 'INVALID_PAYLOAD' };
+    }
+
+    const { sessionId, technicianId, orgId, staffName, department, gateId, guardId } = payload;
+    const orgIdStr = orgId.toString();
+
+    const { scenario, recipients } = await this.resolveRecipients(orgIdStr, technicianId);
+
+    if (!recipients || recipients.length === 0) {
+      logger.info(`[StaffNotification] No eligible recipients found for staff exit (Session: ${sessionId}, Scenario: ${scenario})`);
+      return {
+        success: true,
+        scenario,
+        deliveredCount: 0,
+        skippedCount: 0,
+      };
+    }
+
+    let deliveredCount = 0;
+    let skippedCount = 0;
+
+    for (const recipient of recipients) {
+      const recipientUserId = recipient.userId;
+      // Stable notification key format: ${attendanceSessionId}:${recipientUserId}:EXIT
+      const dedupKey = `${sessionId}:${recipientUserId}:EXIT`;
+
+      // Check if already delivered
+      const existing = await notificationRepository.findByDedupKey(dedupKey);
+      if (existing) {
+        logger.info(`[StaffNotification] Exit notification already delivered for dedupKey ${dedupKey}. Skipping.`);
+        skippedCount++;
+        continue;
+      }
+
+      // Compose privacy-safe title and body
+      const title = 'Staff Gate Exit';
+      let body;
+
+      if (scenario === 'ASSOCIATED_RESIDENTS' && !recipient.isAdmin) {
+        const unitsStr = recipient.unitNumbers && recipient.unitNumbers.length > 0
+          ? recipient.unitNumbers.join(', ')
+          : 'your unit';
+        body = `${staffName || 'Staff'} (${department || 'General'}) associated with your unit (${unitsStr}) has checked out and departed the community.`;
+      } else {
+        body = `${staffName || 'Staff'} (${department || 'General'}) has checked out and departed the community gate (${gateId || 'Main Gate'}).`;
+      }
+
+      const notificationData = {
+        recipientId: new mongoose.Types.ObjectId(recipientUserId),
+        orgId: new mongoose.Types.ObjectId(orgIdStr),
+        senderId: guardId && mongoose.isValidObjectId(guardId) ? new mongoose.Types.ObjectId(guardId) : null,
+        title,
+        body,
+        actionUrl: '/staff/attendance',
+        type: 'INFO',
+        metadata: {
+          staffAttendanceId: sessionId,
+          technicianId,
+          orgId: orgIdStr,
+          type: 'STAFF_EXIT',
+          gateId: gateId || 'Main Gate',
+          unitNumbers: recipient.unitNumbers || [],
+        },
+        dedupKey,
+      };
+
+      try {
+        await notificationService.createNotification(notificationData);
+        deliveredCount++;
+      } catch (notifErr) {
+        logger.error(`[StaffNotification] Failed to create exit notification for user ${recipientUserId}: ${notifErr.message}`);
+        if (notifErr.code === 11000) {
+          skippedCount++;
+        } else {
+          throw notifErr;
+        }
+      }
+    }
+
+    logger.info(
+      `[StaffNotification] Processed STAFF_GATE_EXIT (Session: ${sessionId}, Scenario: ${scenario}, Delivered: ${deliveredCount}, Skipped: ${skippedCount})`
     );
 
     return {
@@ -412,6 +601,66 @@ export class StaffNotificationService {
     }
 
     logger.info(`[StaffNotification Reconciliation] Checked: ${sessions.length}, Reconciled: ${reconciledCount}`);
+    return { checkedCount: sessions.length, reconciledCount };
+  }
+
+  /**
+   * Exit counterpart of reconcileMissingStaffEntryEvents: re-enqueues STAFF_GATE_EXIT for recently
+   * closed sessions that have neither an outbox event nor a delivered exit notification.
+   * System auto-closed sessions are skipped because nobody actually left through a gate.
+   */
+  async reconcileMissingStaffExitEvents(orgId = null, lookbackHours = 48) {
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      return { checkedCount: 0, reconciledCount: 0 };
+    }
+
+    const sinceDate = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
+    const filter = { status: 'Closed', autoClosed: { $ne: true }, checkOutTime: { $gte: sinceDate } };
+    if (orgId) {
+      filter.orgId = orgId;
+    }
+
+    const sessions = await staffAttendanceService.getRecentSessionsForReconciliation(filter);
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+      return { checkedCount: 0, reconciledCount: 0 };
+    }
+
+    let reconciledCount = 0;
+    const OutboxEvent = (await import('../outbox/outboxEvent.model.js')).default;
+    const Notification = (await import('../notification/notification.model.js')).default;
+
+    for (const session of sessions) {
+      const sessionIdStr = session._id ? session._id.toString() : String(session);
+
+      const existingOutbox = await OutboxEvent.findOne({
+        aggregateId: sessionIdStr,
+        eventType: 'STAFF_GATE_EXIT',
+      });
+      if (existingOutbox) continue;
+
+      const existingNotif = await Notification.findOne({
+        dedupKey: new RegExp(`^${sessionIdStr}:.*:EXIT$`),
+      });
+      if (existingNotif) continue;
+
+      try {
+        const technician = await technicianService.getTechnicianById(session.technicianId, session.orgId);
+        if (technician) {
+          await this.enqueueStaffExitNotification({
+            session,
+            technician,
+            orgId: session.orgId,
+            guardId: session.exitGuardId,
+            gateId: session.exitGate,
+          });
+          reconciledCount++;
+        }
+      } catch (recErr) {
+        logger.error(`[StaffNotification Exit Reconciliation] Failed for session ${sessionIdStr}: ${recErr.message}`);
+      }
+    }
+
+    logger.info(`[StaffNotification Exit Reconciliation] Checked: ${sessions.length}, Reconciled: ${reconciledCount}`);
     return { checkedCount: sessions.length, reconciledCount };
   }
 }

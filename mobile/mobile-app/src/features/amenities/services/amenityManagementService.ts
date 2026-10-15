@@ -434,6 +434,16 @@ export const amenityManagementService = {
     return extractEnvelope(response);
   },
 
+  /** Resident moves their own booking to another time (same length and price). */
+  async rescheduleReservation(
+    id: string,
+    payload: { newStartDateTime: string; newEndDateTime: string }
+  ): Promise<ApiResponse<ApiAmenityReservation>> {
+    const url = getAmenityV2Url(`/reservations/${id}/reschedule`);
+    const response = await apiClient.post<ApiResponse<ApiAmenityReservation>>(url, payload);
+    return extractEnvelope(response);
+  },
+
   /** Staff decision on a booking flagged for review (no-show, unpaid balance, overdue return). */
   async resolveReservationReview(
     id: string,

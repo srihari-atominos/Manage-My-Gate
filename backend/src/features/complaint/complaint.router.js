@@ -4,8 +4,7 @@ import {
   createComplaintValidator, 
   assignTechnicianValidator, 
   updateStatusValidator, 
-  addCommentValidator 
-} from './complaint.validators.js';
+  addCommentValidator, reopenComplaintValidator } from './complaint.validators.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
@@ -146,6 +145,18 @@ router.post(
   '/:id/work-notes',
   authorizePermission('complaints', assigneePermissions),
   complaintController.addWorkNotes
+);
+// Resident actions (ownership is enforced in the service, not just by permission)
+router.post(
+  '/:id/reopen',
+  authorizePermission('complaints', ['view', 'track_requests', 'raise_ticket', 'create']),
+  reopenComplaintValidator,
+  complaintController.reopen
+);
+router.post(
+  '/:id/cancel',
+  authorizePermission('complaints', ['view', 'track_requests', 'raise_ticket', 'create']),
+  complaintController.cancel
 );
 router.post(
   '/:id/confirm',

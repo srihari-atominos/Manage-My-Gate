@@ -1,6 +1,5 @@
-import { runSoon } from '@/src/utils/runSoon';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Linking } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
@@ -37,6 +36,13 @@ export const GuardWalkInStatusView: React.FC = () => {
   const dispatch = useDispatch<any>();
   const activeOrgId = useSelector(selectActiveOrgId);
 
+  const handleCallVisitor = (phone?: string) => {
+    if (!phone) return;
+    const cleanPhone = phone.replace(/[^0-9+]/g, '');
+    if (!cleanPhone) return;
+    Linking.openURL(`tel:${cleanPhone}`).catch(() => {});
+  };
+
   // Today's walk-ins in every status come from the backend, so outcomes survive an app restart.
   const loadBoard = useCallback(async () => {
     if (!activeOrgId) return;
@@ -50,11 +56,11 @@ export const GuardWalkInStatusView: React.FC = () => {
   }, [loadBoard]);
 
   useEffect(() => {
-    const task = runSoon(() => {
-        loadBoard();
-      });
+    const timer = setTimeout(() => {
+      loadBoard();
+    }, 0);
     return () => {
-      task.cancel();
+      clearTimeout(timer);
     };
   }, [loadBoard]);
 
@@ -151,6 +157,20 @@ export const GuardWalkInStatusView: React.FC = () => {
                 label: badge.label,
                 variant: badge.variant,
               }}
+              rightContent={
+                item.phone ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onPress={() => handleCallVisitor(item.phone)}
+                    className="flex-row items-center gap-1 h-8 px-2.5 rounded-xl border-primary/30 bg-primary/10"
+                    accessibilityLabel={`Call visitor ${item.visitorName}`}
+                  >
+                    <Phone size={13} className="text-primary" />
+                    <Text className="text-xs font-bold text-primary">Dial</Text>
+                  </Button>
+                ) : null
+              }
               showChevron={false}
               className="mb-3"
             >

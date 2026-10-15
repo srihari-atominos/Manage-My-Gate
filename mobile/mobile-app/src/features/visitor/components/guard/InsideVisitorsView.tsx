@@ -97,7 +97,7 @@ export const InsideVisitorsView: React.FC = () => {
           const villaInfo = log.passId?.villaId || log.residentId?.villaId;
           const villaUnit = villaInfo?.unitNumber || villaInfo?.villaNumber || '';
           const villaBlock = villaInfo?.blockOrBuilding || villaInfo?.block ? ` (${villaInfo.blockOrBuilding || villaInfo.block})` : '';
-          const villaText = villaUnit ? `Villa ${villaUnit}${villaBlock}` : 'Estate Premises';
+          const villaText = villaUnit ? `Villa ${villaUnit}${villaBlock}` : 'Community Premises';
 
           const hostName = log.residentId?.name || log.residentId?.username || 'Host Resident';
           const vehiclePlate = log.snapshot?.vehicleNumber || log.passId?.vehicleDetails?.number || '';

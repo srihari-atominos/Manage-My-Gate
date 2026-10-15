@@ -13,6 +13,7 @@ import ActionIconButton from 'src/components/common/ActionIconButton';
 import useRoles from './hooks/useRoles';
 import RoleFormModal from './components/RoleFormModal';
 import './styles/_roleBuilder.scss';
+import { getRoleScopeOption } from './roleScopes'
 
 const RoleBuilderList = () => {
   const {
@@ -43,14 +44,23 @@ const RoleBuilderList = () => {
       {
         key: 'isTenantRole',
         label: 'Scope',
-        render: (val) => (
-          <Badge
-            variant={val ? 'lightInfo' : 'lightPrimary'}
-            className="px-2.5 py-0.5 rounded-full text-xs font-medium"
-          >
-            {val ? 'Tenant / Unit' : 'Global'}
-          </Badge>
-        ),
+        render: (val, role) => {
+          const scope =
+            role?.roleScope ||
+            (/staff|guard|technician|vendor|maintenance|maid|driver|cook|gardener|electrician|plumber|carpenter|cleaner|housekeeping/i.test(
+              role?.name || ''
+            )
+              ? 'STAFF'
+              : val
+                ? 'UNIT'
+                : 'GLOBAL')
+          const option = getRoleScopeOption(scope) || getRoleScopeOption('GLOBAL')
+          return (
+            <Badge className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${option.badgeClass}`}>
+              {option.label}
+            </Badge>
+          )
+        },
       },
       {
         key: 'description',

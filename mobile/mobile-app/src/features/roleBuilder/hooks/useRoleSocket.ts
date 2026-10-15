@@ -30,13 +30,21 @@ export const useRoleSocket = () => {
     const socket = io(getSocketBaseUrl(), {
       ...(token ? { auth: { token } } : {}),
       withCredentials: true,
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+      timeout: 10000,
     });
 
     socket.on('connect', () => {
       if (activeOrgId) {
         socket.emit('join_room', `org:${activeOrgId}`);
       }
+    });
+
+    socket.on('connect_error', (_err) => {
+      // Gracefully allow fallback to polling without flooding console
     });
 
     const handleRoleUpdate = (payload: any) => {

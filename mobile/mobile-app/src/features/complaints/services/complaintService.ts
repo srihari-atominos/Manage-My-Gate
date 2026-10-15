@@ -83,6 +83,16 @@ export const complaintService = {
     return await apiClient.post(`${BASE_URL}/${id}/work-notes`, { notes });
   },
 
+  /** Resident: "it is not fixed". Goes back to the same employee. */
+  reopen: async (id: string, reason: string) => {
+    return await apiClient.post(`${BASE_URL}/${id}/reopen`, { reason });
+  },
+
+  /** Resident: withdraw a ticket nobody has picked up yet. */
+  cancel: async (id: string, reason?: string) => {
+    return await apiClient.post(`${BASE_URL}/${id}/cancel`, { reason: reason || '' });
+  },
+
   confirmCompletion: async (id: string, payload?: any) => {
     return await apiClient.post(`${BASE_URL}/${id}/confirm`, payload || {});
   },

@@ -6,12 +6,14 @@ import { Button } from '../../../../components/ui/button';
 import { Icon } from '../../../../components/ui/icon';
 import { TextInput } from '../../../../components/forms/TextInput';
 import { Checkbox } from '../../../../components/forms/Checkbox';
+import { ToggleSwitch } from '@/components/forms/ToggleSwitch';
 import { ChevronDown, ChevronUp, Plug } from 'lucide-react-native';
 import { RoleData } from '../services/roleService';
 import { useRoleForm } from '../hooks/useRoleForm';
 import PermissionMatrixGrid from './PermissionMatrixGrid';
 import RoleIntegrationConfigurator from './RoleIntegrationConfigurator';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { ROLE_SCOPE_OPTIONS } from '../roleScopes';
 
 interface RoleFormSheetModalProps {
   visible: boolean;
@@ -39,6 +41,7 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
     selectedPermissions,
     isTenantRole,
     roleScope,
+    communityOnly,
     handleSelectScope,
     integrationMappings,
     isIntegrationDrawerOpen,
@@ -105,7 +108,7 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
             onChangeText={(text) => setValue('description', text, { shouldValidate: true })}
           />
 
-          {/* Scope Archetype Selector: Global vs Unit vs Staff */}
+          {/* Scope Archetype Selector: Global, Unit, Community Staff, Unit Staff */}
           <View className="bg-card border border-border/80 rounded-2xl p-3 shadow-xs">
             <Text className="text-xs font-bold text-foreground mb-1">Role Scope & Tenancy Archetype</Text>
             <Text className="text-[11px] text-muted-foreground mb-2.5">
@@ -113,94 +116,55 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
             </Text>
 
             <View className="gap-2">
-              {/* Option 1: Global Role */}
-              <Pressable
-                onPress={() => handleSelectScope('GLOBAL')}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: roleScope === 'GLOBAL' }}
-                className={`p-2.5 rounded-xl border flex-row items-center justify-between cursor-pointer ${
-                  roleScope === 'GLOBAL'
-                    ? 'bg-blue-500/10 border-blue-500'
-                    : 'bg-muted/20 border-border/60 active:bg-muted/40'
-                }`}
-              >
-                <View className="flex-1 me-2 pointer-events-none">
-                  <View className="flex-row items-center gap-1.5">
-                    <Text className={`text-xs font-bold ${roleScope === 'GLOBAL' ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}>
-                      Global Scope
-                    </Text>
-                    <View className="bg-blue-500/15 px-1.5 py-0.2 rounded-md">
-                      <Text className="text-[9px] font-bold text-blue-600 dark:text-blue-400">COMMUNITY</Text>
+              {ROLE_SCOPE_OPTIONS.map((option) => {
+                const isSelected = roleScope === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => handleSelectScope(option.value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    className={`p-2.5 rounded-xl border flex-row items-center justify-between cursor-pointer ${
+                      isSelected ? option.selectedCardClass : 'bg-muted/20 border-border/60 active:bg-muted/40'
+                    }`}
+                  >
+                    <View className="flex-1 me-2 pointer-events-none">
+                      <View className="flex-row items-center gap-1.5 flex-wrap">
+                        <Text className={`text-xs font-bold ${isSelected ? option.titleClass : 'text-foreground'}`}>
+                          {option.label}
+                        </Text>
+                        <View className={`${option.tagClass} px-1.5 py-0.2 rounded-md`}>
+                          <Text className={`text-[9px] font-bold ${option.tagTextClass}`}>{option.tag}</Text>
+                        </View>
+                      </View>
+                      <Text className="text-[10px] text-muted-foreground mt-0.5">{option.description}</Text>
                     </View>
-                  </View>
-                  <Text className="text-[10px] text-muted-foreground mt-0.5">
-                    Community-wide facility & management access. Unrestricted to any single unit.
-                  </Text>
-                </View>
-                <View className={`w-4 h-4 rounded-full border items-center justify-center pointer-events-none ${roleScope === 'GLOBAL' ? 'border-blue-600 bg-blue-600' : 'border-muted-foreground/40'}`}>
-                  {roleScope === 'GLOBAL' ? <View className="w-1.5 h-1.5 rounded-full bg-white" /> : null}
-                </View>
-              </Pressable>
-
-              {/* Option 2: Unit Scope */}
-              <Pressable
-                onPress={() => handleSelectScope('UNIT')}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: roleScope === 'UNIT' }}
-                className={`p-2.5 rounded-xl border flex-row items-center justify-between cursor-pointer ${
-                  roleScope === 'UNIT'
-                    ? 'bg-emerald-500/10 border-emerald-500'
-                    : 'bg-muted/20 border-border/60 active:bg-muted/40'
-                }`}
-              >
-                <View className="flex-1 me-2 pointer-events-none">
-                  <View className="flex-row items-center gap-1.5">
-                    <Text className={`text-xs font-bold ${roleScope === 'UNIT' ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
-                      Unit Scope
-                    </Text>
-                    <View className="bg-emerald-500/15 px-1.5 py-0.2 rounded-md">
-                      <Text className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">RESIDENTIAL</Text>
+                    <View
+                      className={`w-4 h-4 rounded-full border items-center justify-center pointer-events-none ${
+                        isSelected ? option.radioClass : 'border-muted-foreground/40'
+                      }`}
+                    >
+                      {isSelected ? <View className="w-1.5 h-1.5 rounded-full bg-white" /> : null}
                     </View>
-                  </View>
-                  <Text className="text-[10px] text-muted-foreground mt-0.5">
-                    Bound to specific villas/apartments when onboarding residents.
-                  </Text>
-                </View>
-                <View className={`w-4 h-4 rounded-full border items-center justify-center pointer-events-none ${roleScope === 'UNIT' ? 'border-emerald-600 bg-emerald-600' : 'border-muted-foreground/40'}`}>
-                  {roleScope === 'UNIT' ? <View className="w-1.5 h-1.5 rounded-full bg-white" /> : null}
-                </View>
-              </Pressable>
-
-              {/* Option 3: Staff Member (Dual Scope: Global & Unit Access) */}
-              <Pressable
-                onPress={() => handleSelectScope('STAFF')}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: roleScope === 'STAFF' }}
-                className={`p-2.5 rounded-xl border flex-row items-center justify-between cursor-pointer ${
-                  roleScope === 'STAFF'
-                    ? 'bg-amber-500/10 border-amber-500'
-                    : 'bg-muted/20 border-border/60 active:bg-muted/40'
-                }`}
-              >
-                <View className="flex-1 me-2 pointer-events-none">
-                  <View className="flex-row items-center gap-1.5">
-                    <Text className={`text-xs font-bold ${roleScope === 'STAFF' ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}`}>
-                      Staff Member
-                    </Text>
-                    <View className="bg-amber-500/15 px-1.5 py-0.2 rounded-md">
-                      <Text className="text-[9px] font-bold text-amber-600 dark:text-amber-400">DUAL: GLOBAL & UNIT</Text>
-                    </View>
-                  </View>
-                  <Text className="text-[10px] text-muted-foreground mt-0.5">
-                    Acts across community facilities and can be linked to specific units. Auto-syncs to Staff Management.
-                  </Text>
-                </View>
-                <View className={`w-4 h-4 rounded-full border items-center justify-center pointer-events-none ${roleScope === 'STAFF' ? 'border-amber-600 bg-amber-600' : 'border-muted-foreground/40'}`}>
-                  {roleScope === 'STAFF' ? <View className="w-1.5 h-1.5 rounded-full bg-white" /> : null}
-                </View>
-              </Pressable>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
+
+          {roleScope === 'COMMUNITY_STAFF' ? (
+            <ToggleSwitch
+              label="Community only"
+              description={
+                communityOnly
+                  ? 'This role works only for community operations. Residents cannot assign staff with this role to their units.'
+                  : 'This role supports both community operations and resident-assigned unit work.'
+              }
+              value={communityOnly}
+              onValueChange={(value) => setValue('communityOnly', value, { shouldValidate: true, shouldDirty: true })}
+              disabled={isSubmitting}
+            />
+          ) : null}
 
           {/* Integration Hub Drawer Card */}
           <View className="border border-border/80 rounded-2xl bg-card p-3 shadow-xs">

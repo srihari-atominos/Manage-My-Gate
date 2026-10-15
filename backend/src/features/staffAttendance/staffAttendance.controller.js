@@ -1,6 +1,13 @@
 import staffAttendanceService from './staffAttendance.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 import { checkIsAdmin } from '../../middlewares/rbac.middleware.js';
+import {
+  buildAttendanceReport,
+  reportToCsv,
+  reportToXlsxBuffer,
+  exportFileName,
+  assertFormat,
+} from './staffAttendance.export.js';
 
 class StaffAttendanceController {
   async scan(req, res, next) {
@@ -57,6 +64,48 @@ class StaffAttendanceController {
     }
   }
 
+  async lookup(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const data = await staffAttendanceService.lookupStaffForScan({
+        scannedPayload: req.body.scannedPayload,
+        orgId,
+      });
+      res.success(data, 'Staff pass verified');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Downloads the attendance report as a friendly CSV or Excel file for the current filters.
+   */
+  async exportAttendance(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const format = assertFormat(req.query.format);
+      const report = await buildAttendanceReport(orgId, req.query, {
+        generatedBy: req.user?.name || req.user?.username || '',
+      });
+      const fileName = exportFileName(format, req.query);
+
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('X-Export-Filename', fileName);
+      res.setHeader('X-Export-Rows', String(report.rows.length));
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, X-Export-Filename, X-Export-Rows');
+
+      if (format === 'csv') {
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        return res.send(reportToCsv(report));
+      }
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(await reportToXlsxBuffer(report));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getHistory(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
@@ -87,6 +136,18 @@ class StaffAttendanceController {
       const orgId = req.tenant.orgId;
       const sessions = await staffAttendanceService.getActiveSessions(orgId);
       res.success(sessions, 'Active staff attendance sessions retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getActiveForMyUnits(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const userId = req.user.id || req.user._id;
+      const isAdmin = await checkIsAdmin(req);
+      const data = await staffAttendanceService.getActiveStaffForMyUnits(userId, orgId, isAdmin);
+      res.success(data, 'Staff currently inside for your units retrieved successfully');
     } catch (error) {
       next(error);
     }

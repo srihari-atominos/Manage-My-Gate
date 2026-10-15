@@ -77,75 +77,11 @@ export const useAdminVisitorManagement = () => {
   }
   const [localPasses, setLocalPasses] = useState(generateMockPasses())
 
-  const [localWalkins] = useState([
-    {
-      id: 'W-901',
-      visitorName: 'David Miller',
-      company: 'FedEx Courier',
-      purpose: 'Delivery of Parcel',
-      vehicle: 'DL-3C-AS-8812',
-      guardName: 'Officer Ramesh',
-      photoUrl:
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100',
-      timestamp: 'Just now',
-      status: 'PENDING',
-    },
-  ])
+  const [localWalkins] = useState([])
 
-  const [localLogs] = useState([
-    {
-      id: 'L-1',
-      visitorName: 'John Doe',
-      type: 'guest',
-      villa: 'Villa 102',
-      resident: 'David Lee',
-      checkIn: '09 Jul 2026, 09:12 AM',
-      checkOut: '09 Jul 2026, 11:30 AM',
-      status: 'COMPLETED',
-      guard: 'Officer Ramesh',
-    },
-    {
-      id: 'L-2',
-      visitorName: 'Zomato Delivery',
-      type: 'cab_delivery',
-      villa: 'Villa 54',
-      resident: 'Sarah Jenkins',
-      checkIn: '09 Jul 2026, 10:15 AM',
-      checkOut: '—',
-      status: 'INSIDE',
-      guard: 'Officer Khan',
-    },
-    {
-      id: 'L-3',
-      visitorName: 'Mike the Electrician',
-      type: 'service',
-      villa: 'Villa 12',
-      resident: 'Kumar Swamy',
-      checkIn: '09 Jul 2026, 08:30 AM',
-      checkOut: '—',
-      status: 'INSIDE',
-      guard: 'Officer Ramesh',
-    },
-  ])
+  const [localLogs] = useState([])
 
-  const [localBlacklist, setLocalBlacklist] = useState([
-    {
-      id: 'B-1',
-      name: 'Robert Vance',
-      phone: '+971 50 123 4567',
-      plate: 'DXB-88190',
-      reason: 'Unauthorised commercial solicitation',
-      dateAdded: '01 Jul 2026',
-    },
-    {
-      id: 'B-2',
-      name: 'Security Bypasser Van',
-      phone: '—',
-      plate: 'SHJ-10229',
-      reason: 'Tailgated resident vehicle through gate barrier',
-      dateAdded: '05 Jul 2026',
-    },
-  ])
+  const [localBlacklist, setLocalBlacklist] = useState([])
 
   useEffect(() => {
     if (activeOrgId) {

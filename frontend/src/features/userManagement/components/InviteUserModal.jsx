@@ -15,6 +15,7 @@ import {
 } from '@coreui/react'
 import apiClient from '../../../services/apiClient'
 import { validateEmail, parseBackendError } from '../../../utils/validation'
+import { getRoleScopeOption } from '../../roleBuilder/roleScopes'
 
 /**
  * InviteUserModal Component
@@ -35,6 +36,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
   const [loadingVillas, setLoadingVillas] = useState(false)
   const [loadingRoles, setLoadingRoles] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
   const [department, setDepartment] = useState('Others')
   const [staffType, setStaffType] = useState('In-House Staff')
   const [designation, setDesignation] = useState('')
@@ -62,7 +64,10 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
 
   const selectedRoleObj = roles.find((r) => r.name === selectedRoleName)
   const isTenantRole = selectedRoleObj ? selectedRoleObj.isTenantRole : false
-  const isStaff = isStaffRole(selectedRoleName)
+  // Community Staff (Global Staff) work community-wide, so they are never tied to a unit at invite time.
+  const isCommunityStaffRole = selectedRoleObj?.roleScope === 'COMMUNITY_STAFF'
+  const isStaff =
+    isStaffRole(selectedRoleName) || selectedRoleObj?.roleScope === 'STAFF' || isCommunityStaffRole
 
   useEffect(() => {
     if (visible) {
@@ -123,7 +128,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
     // Determine residentType based on roleName
     let residentType = 'None'
     if (isStaff) {
-      residentType = selectedVillaId ? 'Household Staff' : 'Community Staff'
+      residentType = selectedVillaId && !isCommunityStaffRole ? 'Household Staff' : 'Community Staff'
     } else if (isTenantRole && selectedRoleName) {
       const lowerName = selectedRoleName.toLowerCase()
       if (lowerName.includes('owner')) residentType = 'Owner'
@@ -138,7 +143,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
         name: inviteName.trim(),
         email: inviteEmail.trim(),
         phone: invitePhone.trim(),
-        villaId: selectedVillaId || null,
+        villaId: (!isCommunityStaffRole && selectedVillaId) || null,
         residentType,
         roleName: selectedRoleName || null,
       }
@@ -306,7 +311,8 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
               <option value="">-- Choose a Role --</option>
               {roles.map((role) => (
                 <option key={role.id} value={role.name}>
-                  {role.name} ({role.isTenantRole ? 'Tenant/Unit' : 'Global'})
+                  {role.name} (
+                  {getRoleScopeOption(role.roleScope)?.label || (role.isTenantRole ? 'Tenant/Unit' : 'Global')})
                 </option>
               ))}
             </CFormSelect>
@@ -369,7 +375,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
             </div>
           )}
 
-          {(isTenantRole || isStaff) && (
+          {(isTenantRole || isStaff) && !isCommunityStaffRole && (
             <div className="mb-3 position-relative">
               <CFormLabel
                 htmlFor="invite-villa-select"

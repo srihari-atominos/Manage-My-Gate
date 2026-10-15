@@ -21,6 +21,7 @@ import useRoleForm from '../hooks/useRoleForm';
 import RoleIntegrationConfigurator from './RoleIntegrationConfigurator';
 import PermissionMatrix from './PermissionMatrix';
 import '../styles/_roleBuilder.scss';
+import { ROLE_SCOPE_OPTIONS } from '../roleScopes'
 
 const RoleFormModal = ({ visible, role, onClose, onSave }) => {
   const { permissionsList, isPermissionsLoading, loadPermissions } = useRoles();
@@ -31,6 +32,8 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
     handleSubmit,
     errors,
     selectedPermissions,
+    roleScope,
+    handleSelectScope,
     integrationMappings,
     activeMappingsCount,
     setValue,
@@ -96,21 +99,43 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
             )}
           </div>
 
-          <div className="flex items-start gap-2 pt-1">
-            <Checkbox
-              id="role-is-tenant-input"
-              checked={register('isTenantRole').value}
-              onCheckedChange={(checked) => setValue('isTenantRole', !!checked, { shouldDirty: true })}
-              className="checkbox mt-0.5"
-              {...register('isTenantRole')}
-            />
-            <div>
-              <Label htmlFor="role-is-tenant-input" className="text-sm font-semibold text-black dark:text-white cursor-pointer">
-                Is Tenant/Unit Role (Belongs to Villa/Apartment Unit)
-              </Label>
-              <p className="text-gray-400 dark:text-gray-500 text-xs mt-0.5">
-                If checked, this role will belong to the unit and be selectable when onboarding residents to specific villas/apartments.
-              </p>
+          {/* Role Scope & Tenancy Archetype Selector */}
+          <div>
+            <Label className="text-sm font-semibold block mb-1">
+              Role Scope & Tenancy Archetype
+            </Label>
+            <p className="text-gray-400 dark:text-gray-500 text-xs mb-2.5">
+              Choose how this role behaves across community facilities and residential units:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {ROLE_SCOPE_OPTIONS.map((option) => {
+                const isSelected = roleScope === option.value
+                return (
+                  <div
+                    key={option.value}
+                    onClick={() => handleSelectScope(option.value)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      isSelected
+                        ? option.selectedClass
+                        : 'border-stroke dark:border-strokedark bg-transparent hover:bg-gray-50 dark:hover:bg-meta-4/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-bold ${isSelected ? option.titleClass : 'text-black dark:text-white'}`}>
+                        {option.label}
+                      </span>
+                      <input
+                        type="radio"
+                        name="roleScopeOption"
+                        checked={isSelected}
+                        onChange={() => handleSelectScope(option.value)}
+                        className="cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">{option.description}</p>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

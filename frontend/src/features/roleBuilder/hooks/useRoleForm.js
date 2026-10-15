@@ -3,12 +3,13 @@ import { useDispatch } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
+import { ROLE_SCOPE_VALUES, isTenantScope } from '../roleScopes'
 
 const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required'),
   description: yup.string().trim().optional(),
   isTenantRole: yup.boolean().optional().default(false),
-  roleScope: yup.string().oneOf(['GLOBAL', 'UNIT', 'STAFF']).optional().default('GLOBAL'),
+  roleScope: yup.string().oneOf(ROLE_SCOPE_VALUES).optional().default('GLOBAL'),
   permissions: yup.array().of(yup.string().required()).required('Permissions array is required'),
   integrationMappings: yup.object().optional().default({}),
 })
@@ -52,7 +53,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
       reset({
         name: role.name || '',
         description: role.description || '',
-        isTenantRole: derivedScope === 'UNIT' || derivedScope === 'STAFF',
+        isTenantRole: isTenantScope(derivedScope),
         roleScope: derivedScope,
         permissions: role.permissions || [],
         integrationMappings: role.integrationMappings || {},

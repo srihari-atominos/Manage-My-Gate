@@ -58,7 +58,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
   useEffect(() => {
     setIsFetchingTechs(true)
     apiClient
-      .get('/technicians')
+      .get('/technicians', { params: { assignableFor: 'COMMUNITY' } })
       .then((res) => {
         const activeTechs = res?.data || []
         setTechniciansList(activeTechs.filter((t) => ['Active', 'Pending'].includes(t.status)))

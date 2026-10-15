@@ -5,12 +5,13 @@ import {
   fetchCatalogAsync,
   fetchConnectionsAsync,
   connectIntegrationAsync,
-  updateConnectionLabelAsync,
+  updateConnectionAsync,
+  testConnectionAsync,
   deleteConnectionAsync,
   setSelectedProvider,
   clearError,
 } from '../store/integrationHubSlice';
-import { ProviderCatalogItem, IntegrationConnection } from '../services/integrationHubApi';
+import { ProviderCatalogItem, IntegrationConnection, UpdateConnectionPayload } from '../services/integrationHubApi';
 
 export const useIntegrationHub = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -127,8 +128,12 @@ export const useIntegrationHub = () => {
         })
       );
 
+      if (!connectIntegrationAsync.fulfilled.match(bankAction)) {
+        return false;
+      }
+
       if (bankingData.razorpayKeyId && bankingData.razorpayKeySecret) {
-        await dispatch(
+        const razorpayAction = await dispatch(
           connectIntegrationAsync({
             provider: 'razorpay',
             accountLabel: 'Razorpay Payment Gateway',
@@ -138,13 +143,14 @@ export const useIntegrationHub = () => {
             },
           })
         );
+        // The bank account is already saved; keep the form open so the Razorpay keys can be corrected.
+        if (!connectIntegrationAsync.fulfilled.match(razorpayAction)) {
+          return false;
+        }
       }
 
-      if (connectIntegrationAsync.fulfilled.match(bankAction)) {
-        setBankModalVisible(false);
-        return true;
-      }
-      return false;
+      setBankModalVisible(false);
+      return true;
     },
     [dispatch]
   );
@@ -161,18 +167,38 @@ export const useIntegrationHub = () => {
     dispatch(clearError());
   }, [dispatch]);
 
-  const handleUpdateLabelSubmit = useCallback(
-    async (id: string, newLabel: string) => {
-      const action = await dispatch(updateConnectionLabelAsync({ id, accountLabel: newLabel }));
-      if (updateConnectionLabelAsync.fulfilled.match(action)) {
+  const handleUpdateSubmit = useCallback(
+    async (id: string, changes: UpdateConnectionPayload) => {
+      const action = await dispatch(updateConnectionAsync({ id, changes }));
+      if (updateConnectionAsync.fulfilled.match(action)) {
         setEditModalVisible(false);
         setSelectedConnection(null);
-        dispatch(fetchConnectionsAsync({ provider: selectedProvider, page: 1 }));
         return true;
       }
       return false;
     },
-    [dispatch, selectedProvider]
+    [dispatch]
+  );
+
+  // "Test connection": re-verifies the saved credentials with the provider
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const handleTestConnection = useCallback(
+    async (id: string) => {
+      setTestingId(id);
+      try {
+        const action = await dispatch(testConnectionAsync(id));
+        if (testConnectionAsync.fulfilled.match(action)) {
+          setSelectedConnection((prev) =>
+            prev && prev.id === id
+              ? { ...prev, lastCheck: { ok: action.payload.ok, at: action.payload.at, message: action.payload.message } }
+              : prev
+          );
+        }
+      } finally {
+        setTestingId(null);
+      }
+    },
+    [dispatch]
   );
 
   // Connection Details Modal handlers
@@ -199,9 +225,12 @@ export const useIntegrationHub = () => {
 
   const confirmDelete = useCallback(async () => {
     if (targetConnection) {
-      await dispatch(deleteConnectionAsync(targetConnection.id));
-      setDeleteModalVisible(false);
-      setTargetConnection(null);
+      const action = await dispatch(deleteConnectionAsync(targetConnection.id));
+      if (deleteConnectionAsync.fulfilled.match(action)) {
+        setDeleteModalVisible(false);
+        setTargetConnection(null);
+      }
+      // On failure the dialog stays open and the server's reason is shown (the error banner).
     }
   }, [dispatch, targetConnection]);
 
@@ -233,7 +262,9 @@ export const useIntegrationHub = () => {
     handleBankDetailsSubmit,
     openEditModal,
     closeEditModal,
-    handleUpdateLabelSubmit,
+    handleUpdateSubmit,
+    handleTestConnection,
+    testingId,
     openDetailsModal,
     closeDetailsModal,
     promptDelete,

@@ -1,6 +1,7 @@
 import OrgMembership from '../orgMembership/orgMembership.model.js';
 import User from '../user/user.model.js';
 import mongoose from 'mongoose';
+import { escapeRegex } from '../../utils/regex.utils.js';
 
 export const directoryRepository = {
   async getPaginatedDirectory({ orgId, role, search, page = 1, limit = 50 }) {
@@ -213,7 +214,7 @@ export const directoryRepository = {
 
     // Optional Search Filter
     if (search && search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       pipeline.push({
         $match: {
           $or: [
@@ -227,6 +228,9 @@ export const directoryRepository = {
         },
       });
     }
+
+    // Stable order so pages never repeat or skip people between requests
+    pipeline.push({ $sort: { name: 1, _id: 1 } });
 
     // $facet for Data + Total Pagination Count
     pipeline.push({

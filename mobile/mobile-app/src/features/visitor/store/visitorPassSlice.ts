@@ -373,9 +373,14 @@ export const processPreApprovedThunk = createAsyncThunk(
 
 export const checkoutVisitorThunk = createAsyncThunk(
   'visitorPass/checkoutVisitor',
-  async (logId: string, { rejectWithValue }) => {
+  async (
+    args: string | { logId: string; gateName?: string; reason?: string },
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await visitorService.checkoutVisitor(logId);
+      const logId = typeof args === 'string' ? args : args.logId;
+      const payload = typeof args === 'string' ? {} : { gateName: args.gateName, reason: args.reason };
+      const response = await visitorService.checkoutVisitor(logId, payload);
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       const data = body?.data || body;
       return { logId, data };

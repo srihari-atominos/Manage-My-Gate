@@ -169,7 +169,6 @@ export default function AllFeaturesScreen() {
       iconName="LayoutGrid"
       scrollable={false}
       showBackButton={true}
-      showGlobalNavButton={true}
       onBackPress={handleBackPress}
       loading={!isReady}
       disableInteractionDeferral
@@ -250,6 +249,7 @@ export default function AllFeaturesScreen() {
                   notice_board_polls: { icon: 'Megaphone', subKey: 'cat_notice_sub', subtitle: 'Broadcasts & Resident Polls', color: '#DB2777', bgColor: 'bg-pink-50', darkBgColor: 'bg-pink-950/40' },
                   digital_wallet: { icon: 'WalletCards', subKey: 'cat_wallet_sub', subtitle: 'Prepaid Balance & Ledger', color: '#10B981', bgColor: 'bg-emerald-50', darkBgColor: 'bg-emerald-950/40' },
                   financial_billing: { icon: 'CreditCard', subKey: 'cat_billing_sub', subtitle: 'Dues, Invoices & Accounts', color: '#0D9488', bgColor: 'bg-teal-50', darkBgColor: 'bg-teal-950/40' },
+                  staff_management: { icon: 'Users', subKey: 'cat_staff_sub', subtitle: 'Registry, Duty & Household Passes', color: '#2563EB', bgColor: 'bg-blue-50', darkBgColor: 'bg-blue-950/40' },
                   administration_security: { icon: 'UserRoundCog', subKey: 'cat_admin_sub', subtitle: 'Staff, RBAC & Settings', color: '#D97706', bgColor: 'bg-amber-50', darkBgColor: 'bg-amber-950/40' },
                 };
 

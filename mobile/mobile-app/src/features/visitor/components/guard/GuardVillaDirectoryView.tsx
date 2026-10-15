@@ -84,7 +84,9 @@ export const GuardVillaDirectoryView: React.FC = () => {
 
   const handleCallResident = (phone?: string) => {
     if (!phone) return;
-    Linking.openURL(`tel:${phone}`).catch(() => {});
+    const cleanPhone = phone.replace(/[^0-9+]/g, '');
+    if (!cleanPhone) return;
+    Linking.openURL(`tel:${cleanPhone}`).catch(() => {});
   };
 
   const renderHeader = () => (

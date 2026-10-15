@@ -40,6 +40,11 @@ export const updateStatusValidator = validate([
   body('attachments').optional().isArray()
 ]);
 
+export const reopenComplaintValidator = validate([
+  body('reason').isString().withMessage('Please explain what is still not fixed')
+    .trim().isLength({ min: 5, max: 1000 }).withMessage('Please explain what is still not fixed (5-1000 characters)')
+]);
+
 export const addCommentValidator = validate([
   body('remarks').notEmpty().withMessage('Remarks/Comment text is required'),
   body('attachments').optional().isArray()

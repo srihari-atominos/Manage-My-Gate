@@ -94,6 +94,7 @@ const ComplaintManagement = React.lazy(
   () => import('./features/complaints/views/ComplaintManagement'),
 )
 const StaffAndVendor = React.lazy(() => import('./features/complaints/views/StaffAndVendor'))
+const StaffAttendanceView = React.lazy(() => import('./features/complaints/views/StaffAttendanceView'))
 const AssigneeView = React.lazy(() => import('./features/complaints/views/Assignee'))
 const CommunityIssueReportsView = React.lazy(
   () => import('./features/issueReport/views/CommunityIssueReportsView'),
@@ -394,6 +395,12 @@ export const routes = [
     path: '/admin/complaints/staff',
     name: 'Staff & Vendors',
     element: StaffAndVendor,
+    requiredPermission: 'complaints:staff',
+  },
+  {
+    path: '/admin/complaints/staff-attendance',
+    name: 'Staff Attendance',
+    element: StaffAttendanceView,
     requiredPermission: 'complaints:staff',
   },
   {

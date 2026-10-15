@@ -10,6 +10,7 @@ import { Badge } from 'src/components/ui/badge'
 import { Input } from 'src/components/ui/input'
 import { Plus, Search, Users, UserCheck, Clock, CheckCircle } from 'lucide-react'
 import '../styles/_complaints.scss'
+import { staffCategoryLabel, staffCategoryOf } from '../staffCategories'
 
 const StaffAndVendor = () => {
   const dispatch = useDispatch()
@@ -154,6 +155,7 @@ const StaffAndVendor = () => {
                   <th className="py-3 px-5 font-semibold text-black dark:text-white">Name</th>
                   <th className="py-3 px-5 font-semibold text-black dark:text-white">Trade / Dept</th>
                   <th className="py-3 px-5 font-semibold text-black dark:text-white">Type</th>
+                  <th className="py-3 px-5 font-semibold text-black dark:text-white">Category</th>
                   <th className="py-3 px-5 font-semibold text-black dark:text-white">Active Tasks</th>
                   <th className="py-3 px-5 font-semibold text-black dark:text-white">Completed Today</th>
                   <th className="py-3 px-5 font-semibold text-black dark:text-white">Status</th>
@@ -163,13 +165,13 @@ const StaffAndVendor = () => {
               <tbody className="divide-y divide-stroke dark:divide-strokedark">
                 {status === 'loading' && !staffVendors ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-400 dark:text-gray-500">
+                    <td colSpan="8" className="py-6 text-center text-gray-400 dark:text-gray-500">
                       Loading workloads...
                     </td>
                   </tr>
                 ) : filteredStaff.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-400 dark:text-gray-500">
+                    <td colSpan="8" className="py-6 text-center text-gray-400 dark:text-gray-500">
                       No staff/vendors found.
                     </td>
                   </tr>
@@ -189,6 +191,11 @@ const StaffAndVendor = () => {
                       </td>
                       <td className="py-3 px-5 text-gray-600 dark:text-gray-300">{s.department}</td>
                       <td className="py-3 px-5 text-gray-600 dark:text-gray-300">{s.type}</td>
+                      <td className="py-3 px-5">
+                        <Badge variant={staffCategoryOf(s) === 'UNIT' ? 'lightWarning' : 'lightInfo'}>
+                          {staffCategoryLabel(s)}
+                        </Badge>
+                      </td>
                       <td className="py-3 px-5">
                         <Badge
                           variant={s.activeComplaintsCount > 0 ? 'lightWarning' : 'lightSuccess'}

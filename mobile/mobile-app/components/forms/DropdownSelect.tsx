@@ -8,6 +8,7 @@ import {
   ScrollView,
   Platform,
   TextInput as RNTextInput,
+  Image,
   KeyboardAvoidingView,
 } from 'react-native';
 import { ChevronDown, Check, AlertCircle, Search } from 'lucide-react-native';
@@ -17,6 +18,9 @@ import { useTranslation } from '../../src/utils/i18n';
 export interface DropdownOption {
   label: string;
   value: string;
+  /** Optional thumbnail and secondary line for richer option sheets. */
+  imageUrl?: string | null;
+  description?: string;
 }
 
 export interface DropdownSelectProps {
@@ -239,14 +243,27 @@ export const DropdownSelect = ({
                         setModalVisible(false);
                       }}
                     >
-                      <Text
-                        className={cn(
-                          'text-base font-sans',
-                          isSelected ? 'font-bold text-primary' : 'text-foreground'
-                        )}
-                      >
-                        {translateText(item.label)}
-                      </Text>
+                      <View className="flex-row items-center flex-1 me-3">
+                        {item.imageUrl ? (
+                          <Image source={{ uri: item.imageUrl }} className="h-10 w-10 rounded-full bg-muted me-3" />
+                        ) : null}
+                        <View className="flex-1">
+                          <Text
+                            className={cn(
+                              'text-base font-sans',
+                              isSelected ? 'font-bold text-primary' : 'text-foreground'
+                            )}
+                            numberOfLines={1}
+                          >
+                            {translateText(item.label)}
+                          </Text>
+                          {item.description ? (
+                            <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
+                              {translateText(item.description)}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
                       {isSelected && <Check size={18} className="text-primary" />}
                     </Pressable>
                   );

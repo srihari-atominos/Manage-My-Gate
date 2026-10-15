@@ -54,13 +54,20 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   { id: 'financial_history', name: 'Financial History', subtitle: 'Receipts & Transactions', iconName: 'Receipt', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/history', permission: 'billing:action_center', categoryKey: 'digital_wallet', categoryName: 'Digital Wallet & Ledger' },
 
   // 6. Financial Suite & Billing
+  { id: 'billing_dashboard', name: 'Billing', subtitle: 'Dues, Payments & Receipts', iconName: 'Receipt', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing', permission: 'billing:billing_hub', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'billing_my_dues', name: 'My Dues', subtitle: 'Pending Invoices', iconName: 'FileText', colorBg: 'bg-amber-50 dark:bg-amber-950/40', colorIcon: '#D97706', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/my-dues', permission: 'billing:my_dues', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
   { id: 'billing_my_invoices', name: 'My Invoices', subtitle: 'Dues & Payment History', iconName: 'FileText', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/my-dues', permission: 'billing:my_invoices', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
   { id: 'billing_assessment_manager', name: 'Assessments', subtitle: 'Levy Generation', iconName: 'Calculator', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/billing/assessments', permission: 'billing:assessments', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
   { id: 'billing_action_center', name: 'Billing Ledger', subtitle: 'Amenities & Collections', iconName: 'BookOpenCheck', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/billing/ledger', permission: 'billing:ledger', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
 
-  // 6. Administration & Security
+  // 7. Staff Management (Dedicated Feature Section)
+  { id: 'admin_staff_directory', name: 'Staff Directory', subtitle: 'Community Registry', iconName: 'Users', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/staff/directory', permission: 'staff:view', categoryKey: 'staff_management', categoryName: 'Staff Management' },
+  { id: 'admin_staff_attendance', name: 'Staff Attendance', subtitle: 'Gate Logs & Duty', iconName: 'CalendarClock', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/staff/attendance', permission: 'staff:attendance', categoryKey: 'staff_management', categoryName: 'Staff Management' },
+  { id: 'admin_staff_allocations', name: 'Unit Allocations', subtitle: 'Household Staff Assign', iconName: 'Home', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/staff/my-staff', permission: 'staff:assign_unit', categoryKey: 'staff_management', categoryName: 'Staff Management' },
+  { id: 'admin_staff_portal', name: 'Staff Portal & Pass', subtitle: 'Member Pass & Schedule', iconName: 'UserCheck', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/staff/dashboard', permission: 'staff:view_own', categoryKey: 'staff_management', categoryName: 'Staff Management' },
+
+  // 8. Administration & Security
   { id: 'admin_users', name: 'User Management', subtitle: 'Residents & Staff', iconName: 'UserRoundCog', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/users', permission: 'users:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_staff', name: 'Staff Management', subtitle: 'Community Registry', iconName: 'BadgeCheck', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/staff', permission: 'staff:view', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
   { id: 'admin_villas', name: 'Unit Management', subtitle: 'Blocks & Villas', iconName: 'House', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/villas', permission: 'villas:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
   { id: 'admin_role_builder', name: 'Role Builder', subtitle: 'RBAC Matrices', iconName: 'ShieldCheck', colorBg: 'bg-purple-50 dark:bg-purple-950/40', colorIcon: '#7C3AED', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/role-builder', permission: 'roles:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
   { id: 'admin_workspace_settings', name: 'Workspace Settings', subtitle: 'Tenant Rules', iconName: 'Settings2', colorBg: 'bg-slate-100 dark:bg-slate-800/40', colorIcon: '#475569', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/workspace-settings', permission: 'workspaces:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
@@ -71,12 +78,6 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   // 7. Community & Directory
   { id: 'community_directory', name: 'Directory', subtitle: 'Resident Directory', iconName: 'ContactRound', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/directory', categoryKey: 'community_directory', categoryName: 'Community' },
   { id: 'community_notes', name: 'Community Notes', subtitle: 'Public Notes Feed', iconName: 'Sparkles', colorBg: 'bg-pink-50 dark:bg-pink-950/40', colorIcon: '#EC4899', iconShapeClass: 'rounded-[18px]', route: '/(resident)/notes', categoryKey: 'community_directory', categoryName: 'Community' },
-
-  // 8. Staff Self-Service
-  { id: 'staff_dashboard', name: 'Staff Dashboard', subtitle: 'Personal Portal', iconName: 'UserCheck', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/staff/dashboard', permission: 'staff:view_own', categoryKey: 'staff_self_service', categoryName: 'Staff Self-Service' },
-
-  // 9. Household & Staff Associations
-  { id: 'resident_staff_associations', name: 'My Unit Staff', subtitle: 'Household Associates', iconName: 'UsersRound', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#16A34A', iconShapeClass: 'rounded-[18px]', route: '/(resident)/staff/my-staff', permission: 'staff:assign_unit', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
 ];
 
 export const REAL_APP_FEATURES = ALL_AVAILABLE_FEATURES;
@@ -105,7 +106,7 @@ export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
     'admin_workspace_settings',
   ],
   staff: [
-    'staff_dashboard',
+    'admin_staff_portal',
     'complaints_assignee',
     'community_engagement',
     'notices_active_board',

@@ -1,5 +1,6 @@
 import logger from '../../utils/logger.utils.js';
 import deviceTokenService from '../deviceToken/deviceToken.services.js';
+import { buildPushCopy } from './notification.pushCopy.js';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const CHUNK_SIZE = 100;
@@ -109,6 +110,7 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
     const { title, body, actionUrl = null, type = 'INFO', sound = 'default', data = {} } = notificationPayload;
     const resolvedChannel = resolveAndroidChannel(notificationPayload);
     const resolvedType = resolveNotificationType(notificationPayload);
+    const pushCopy = buildPushCopy({ title, body, seed: data.notificationId }, resolvedType);
     const messages = [];
     const tokenRecordMap = new Map();
 
@@ -123,8 +125,10 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
       messages.push({
         to: token,
         sound,
-        title: title || 'Nahom Alert',
-        body: body || '',
+        title: pushCopy.title,
+        subtitle: pushCopy.subtitle,
+        body: pushCopy.body,
+        ...(pushCopy.ttl ? { ttl: pushCopy.ttl } : {}),
         data: {
           notificationId: data.notificationId || null,
           type: resolvedType,
@@ -134,6 +138,9 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
           actionUrl,
           orgId: data.orgId || null,
           createdAt: data.createdAt || new Date().toISOString(),
+          // Original in-app text, so client-side title matching keeps working
+          inboxTitle: title || null,
+          inboxBody: body || null,
           ...data,
         },
         channelId: resolvedChannel,
@@ -155,13 +162,19 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
       const chunk = messages.slice(i, i + CHUNK_SIZE);
 
       try {
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Accept-Encoding': 'gzip, deflate',
+        };
+
+        if (process.env.EXPO_ACCESS_TOKEN) {
+          headers['Authorization'] = `Bearer ${process.env.EXPO_ACCESS_TOKEN.trim()}`;
+        }
+
         const response = await fetch(EXPO_PUSH_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip, deflate',
-          },
+          headers,
           body: JSON.stringify(chunk),
         });
 
@@ -176,14 +189,18 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
         const tickets = result?.data || [];
 
         // 4. Process tickets and handle token deactivation if device is no longer registered
+        const ticketIdsToCheck = [];
         tickets.forEach((ticket, idx) => {
           const targetToken = chunk[idx]?.to;
 
           if (ticket.status === 'ok') {
             sentCount++;
+            if (ticket.id) {
+              ticketIdsToCheck.push({ id: ticket.id, token: targetToken });
+            }
           } else if (ticket.status === 'error') {
             failedCount++;
-            logger.warn(`[Push Notification] Delivery error for token ${targetToken?.slice(0, 15)}...: ${ticket.message}`);
+            logger.warn(`[Push Notification] Ticket error for token ${targetToken?.slice(0, 15)}...: ${ticket.message} (${ticket.details?.error || 'Unknown'})`);
 
             if (ticket.details?.error === 'DeviceNotRegistered' && targetToken) {
               // Automatically deactivate stale token
@@ -191,13 +208,18 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
             }
           }
         });
+
+        // 5. Asynchronously verify delivery receipts with Expo after a delay (15-30s)
+        if (ticketIdsToCheck.length > 0) {
+          scheduleReceiptCheck(ticketIdsToCheck, headers);
+        }
       } catch (chunkError) {
         logger.error('[Push Notification] Network failure sending chunk to Expo:', chunkError);
         failedCount += chunk.length;
       }
     }
 
-    logger.info(`[Push Notification] Completed push dispatch: ${sentCount} sent, ${failedCount} failed`);
+    logger.info(`[Push Notification] Completed push ticket dispatch: ${sentCount} accepted, ${failedCount} rejected`);
     return { sent: sentCount, failed: failedCount };
   } catch (error) {
     // Swallowing errors inside safe try/catch block so push drops never crash caller
@@ -206,7 +228,51 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
   }
 };
 
+const EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
+
+/**
+ * Checks delivery receipts for Expo push tickets to catch FCM/APNs gateway errors (DeviceNotRegistered, MessageTooBig, etc.)
+ */
+const scheduleReceiptCheck = (ticketItems, headers) => {
+  // Wait 20 seconds before querying receipts from Expo
+  setTimeout(async () => {
+    try {
+      const ids = ticketItems.map((item) => item.id);
+      const tokenMap = new Map(ticketItems.map((item) => [item.id, item.token]));
+
+      const response = await fetch(EXPO_RECEIPTS_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ids }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.warn(`[Push Receipts] Failed to retrieve receipts (${response.status}):`, errorText);
+        return;
+      }
+
+      const result = await response.json();
+      const receipts = result?.data || {};
+
+      for (const [ticketId, receipt] of Object.entries(receipts)) {
+        if (receipt.status === 'error') {
+          const targetToken = tokenMap.get(ticketId);
+          logger.warn(`[Push Receipts] Delivery failed by APNs/FCM for token ${targetToken ? targetToken.slice(0, 15) : 'unknown'}... Error: ${receipt.message} (${receipt.details?.error || 'Unknown'})`);
+
+          if (receipt.details?.error === 'DeviceNotRegistered' && targetToken) {
+            await deviceTokenService.deactivateInvalidToken(targetToken);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn('[Push Receipts] Error querying push receipts:', err);
+    }
+  }, 20000);
+};
+
 export default {
   isValidExpoPushToken,
   dispatchPushNotification,
+  scheduleReceiptCheck,
 };

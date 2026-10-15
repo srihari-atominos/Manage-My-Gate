@@ -14,6 +14,10 @@ const assertNotManagedFacility = async (amenityId) => {
   }
 };
 import paymentService from '../payment/payment.service.js';
+import logger from '../../utils/logger.utils.js';
+
+// Stored on the booking so a late payment can recognise a booking that was released for non-payment.
+export const UNPAID_EXPIRY_REASON = 'Payment was not completed in time';
 
 export class AmenityBookingService {
   async getBookingsQueue(orgId, page = 1, limit = 10, filters = {}) {
@@ -164,7 +168,7 @@ export class AmenityBookingService {
           '../amenityManagement/maintenance/amenityMaintenanceBlock.service.js'
         );
         const maintenanceBlocks = await amenityMaintenanceBlockService.getOverlappingBlocks({
-          orgId: user.orgId || amenity.orgId,
+          orgId: orgId || amenity.orgId,
           facilityId: amenity._id,
           startDateTime: bookingDateTimeStart,
           endDateTime: bookingDateTimeEnd,
@@ -396,6 +400,20 @@ export class AmenityBookingService {
 
       const booking = await amenityBookingRepository.create(newBookingData, sessionOpt);
 
+      // The availability check above and this insert are not atomic (a standalone database cannot lock the
+      // slot), so two people tapping "Book" together could both pass it. Re-check now: whoever was created
+      // first keeps the slot, the other is rolled back before any money moves.
+      {
+        const after = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime, sessionOpt);
+        const keepers = after.filter((b) => String(b._id) <= String(booking._id));
+        const bookedSpots = keepers.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
+        const overbooked = amenity.pricing?.pricingType === 'daily' ? keepers.length > 1 : bookedSpots > amenity.capacity;
+        if (overbooked) {
+          await amenityBookingRepository.deleteById(booking._id, sessionOpt);
+          throw new HttpError(409, 'Sorry, this slot was just taken by someone else. Please choose another time.');
+        }
+      }
+
       let updatedWallet = null;
       let walletTxn = null;
       let paymentDoc = null;
@@ -590,8 +608,37 @@ export class AmenityBookingService {
       return booking;
     }
 
+    // The money arrived after the unpaid booking had been released. Take the slot back if it is still free;
+    // otherwise return the payment to the resident's wallet instead of confirming a double booking.
+    if (booking.status === 'cancelled' && booking.cancellationReason === UNPAID_EXPIRY_REASON) {
+      const amenityId = booking.amenityId?._id || booking.amenityId;
+      const conflicts = await amenityBookingRepository.findConflicts(booking.orgId, amenityId, booking.bookingDate, booking.startTime, booking.endTime, session);
+      const slotTaken = conflicts.some((c) => String(c._id) !== String(booking._id));
+      if (slotTaken) {
+        const paid = Number(booking.pricingDetails?.totalAmount ?? booking.totalPrice) || 0;
+        if (paid > 0) {
+          await this._refundToWallet({
+            targetUserId: booking.userId?._id || booking.userId,
+            orgId: booking.orgId,
+            refundAmount: paid,
+            refundPercentage: 100,
+            booking,
+            paymentMethod: paymentData?.paymentMethod || 'ONLINE',
+          });
+        }
+        booking.paymentStatus = 'refunded';
+        booking.refundAmount = paid;
+        booking.refundPercentage = 100;
+        await booking.save({ session });
+        return booking;
+      }
+      booking.status = 'pending';
+      booking.cancelledAt = null;
+      booking.cancellationReason = null;
+    }
+
     const { qrCodeUrl, bookingIdStr, passToken, passTokenHash } = await this.generateAccessQRCode(booking, session, false);
-    const qrExpiresAt = new Date(`${booking.bookingDate}T${booking.endTime}`);
+    const qrExpiresAt = await this._bookingEndInstant(booking);
 
     // Robust extraction: support both standard paymentData object and raw Razorpay payload
     const paymentEntity = paymentData?.payment?.entity || paymentData?.order?.entity || {};
@@ -619,6 +666,16 @@ export class AmenityBookingService {
 
     await booking.save({ session });
     return booking;
+  }
+
+  /** When the booking ends, in the community timezone (an end time before the start means the next day). */
+  async _bookingEndInstant(booking) {
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const start = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+    const end = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+    if (end.isBefore(start)) end.add(1, 'days');
+    return end.toDate();
   }
 
   _calculatePricing(amenity, startDateTime, endDateTime, numberOfPersons = 1) {
@@ -878,8 +935,22 @@ export class AmenityBookingService {
         }
       }
 
+      // A resident cannot cancel once the slot has started (otherwise a no-show could take a full refund).
+      if (!isAdmin) {
+        const moment = (await import('moment-timezone')).default;
+        const startsAt = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', 'Asia/Kolkata');
+        if (startsAt.isSameOrBefore(moment())) {
+          throw new HttpError(400, 'This booking has already started and can no longer be cancelled.');
+        }
+      }
+
       let refundPercentage = 100; // default to full refund if no rules
       let refundAmount = rawBookingAmount;
+      // The refundable security deposit is not part of the booking charge: it is returned in full
+      // (the facility was not used); the cancellation percentage applies to the rest.
+      const depositPart = Math.min(rawBookingAmount, Number(booking.pricingDetails?.securityDeposit) || 0);
+      const applyRefundPercentage = (pct) =>
+        Math.round(((rawBookingAmount - depositPart) * pct / 100 + depositPart) * 100) / 100;
 
       // 2. Read cancellationRefundRules or administrative refund override
       const rawOverride = typeof options === 'number'
@@ -889,7 +960,7 @@ export class AmenityBookingService {
 
       if (refundOverride !== null && isAdmin) {
         refundPercentage = Math.max(0, Math.min(100, refundOverride));
-        refundAmount = (refundAmount * refundPercentage) / 100;
+        refundAmount = applyRefundPercentage(refundPercentage);
       } else if (amenity?.bookingRules?.isCancellationEnabled && amenity.bookingRules.cancellationRefundRules?.length > 0) {
         const rules = [...amenity.bookingRules.cancellationRefundRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
         
@@ -910,7 +981,7 @@ export class AmenityBookingService {
           refundPercentage = 0;
         }
         
-        refundAmount = (refundAmount * refundPercentage) / 100;
+        refundAmount = applyRefundPercentage(refundPercentage);
       }
 
       // 3. Process Refund logic if payment was success
@@ -1174,6 +1245,16 @@ export class AmenityBookingService {
     }
   }
 
+  /**
+   * Online bookings that were never paid must not hold a slot forever. Called by the amenity booking cron.
+   * @returns {Promise<number>} how many were released
+   */
+  async expireUnpaidOnlineBookings(now = new Date(), maxAgeMinutes = 30) {
+    const cutoff = new Date(now.getTime() - maxAgeMinutes * 60 * 1000);
+    const released = await amenityBookingRepository.expireUnpaidOnline(cutoff, now, UNPAID_EXPIRY_REASON);
+    return released;
+  }
+
   async hasPendingOrApprovedFutureBookings(amenityId, orgId) {
     const active = await amenityBookingRepository.findActiveBookingsByAmenity(amenityId, orgId);
     return active.length > 0;
@@ -1331,6 +1412,16 @@ export class AmenityBookingService {
       orgId,
       rawToken: bookingId,
       guardId: userId,
+    });
+  }
+
+  async checkOutBooking(bookingId, orgId, userId, inspectionDetails = null) {
+    const { amenityAccessPassService } = await import('../amenityManagement/passes/amenityAccessPass.service.js');
+    return await amenityAccessPassService.recordCheckOut({
+      orgId,
+      rawToken: bookingId,
+      guardId: userId,
+      inspectionDetails,
     });
   }
 

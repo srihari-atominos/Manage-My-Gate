@@ -2,11 +2,76 @@ import mongoose from 'mongoose';
 import roleRepository from './role.repository.js';
 import roleEvents from './role.events.js';
 import HttpError from '../../utils/httpError.utils.js';
+import { isTenantScope } from './roleScope.constants.js';
 
 // Role names that confer platform-level privileges. Only roles inside the platform organisation may use them.
 export const RESERVED_PLATFORM_ROLE_NAMES = ['super admin', 'superadmin', 'platform admin', 'platform super admin', 'super_admin', 'platform_admin'];
 
+// Shared platform roles nobody may change from a community.
+export const PROTECTED_ROLE_NAMES = ['super admin', 'platform super admin'];
+// Roles the rest of the system finds by name (admin checks, notifications): they may be tuned but never
+// renamed or deleted, or the community can lose its administrators.
+export const LOCKED_ROLE_NAMES = ['community admin', 'admin'];
+
+const lower = (value) => String(value ?? '').trim().toLowerCase();
+const normalizePermission = (value) => String(value ?? '').trim().replace(':', '.').toLowerCase();
+
+/** Resolves requested permissions (ids, names like `staff:view`, `staff.view`, or codes) to catalog documents. */
+export const matchPermissions = (allPermissions, requested) => {
+  const wanted = (Array.isArray(requested) ? requested : []).filter(Boolean).map((perm) => String(perm).trim());
+  if (wanted.length === 0) return [];
+  return (allPermissions || []).filter((p) => {
+    const pId = p._id ? p._id.toString() : '';
+    const pName = p.name ? p.name.trim() : '';
+    const pCode = p.code ? p.code.trim() : '';
+    const pNormalized = normalizePermission(pName);
+    return wanted.some(
+      (perm) => perm === pId || perm === pName || perm === pCode || normalizePermission(perm) === pNormalized
+    );
+  });
+};
+
 export class RoleService {
+  /**
+   * Who may touch a role. `actor` is { orgId, isPlatform, permissions } of the caller; when it is not
+   * given (internal callers such as community setup) no check is made.
+   * - A community can only see and change roles that belong to it.
+   * - Shared roles (no community) are read-only for communities; only platform admins change them.
+   */
+  assertRoleAccess(role, actor, { write = false } = {}) {
+    if (!actor || actor.isPlatform) return;
+    const roleOrg = role.orgId ? String(role.orgId) : null;
+    if (roleOrg && roleOrg !== String(actor.orgId)) {
+      // Do not reveal that the role exists in another community.
+      throw new HttpError(404, `Role with ID ${role._id} not found.`);
+    }
+    if (!roleOrg && write) {
+      throw new HttpError(403, 'Shared system roles can only be changed by platform administrators.');
+    }
+  }
+
+  assertRoleNotProtected(role, { renameOrDelete = false } = {}) {
+    const name = lower(role.name);
+    if (PROTECTED_ROLE_NAMES.includes(name)) {
+      throw new HttpError(403, 'The Super Admin and Platform Super Admin roles are protected system roles and cannot be modified.');
+    }
+    if (renameOrDelete && LOCKED_ROLE_NAMES.includes(name)) {
+      throw new HttpError(403, `The '${role.name}' role is required by the community and cannot be renamed or deleted. You can still adjust its permissions.`);
+    }
+  }
+
+  /** A role manager can only newly grant permissions they hold themselves. */
+  assertCanGrant(addedPermissions, actor) {
+    if (!actor || actor.isPlatform || addedPermissions.length === 0) return;
+    const held = Array.isArray(actor.permissions) ? actor.permissions : [];
+    if (held.includes('*')) return;
+    const heldSet = new Set(held.map(normalizePermission));
+    const missing = addedPermissions.map((p) => p.name).filter((name) => !heldSet.has(normalizePermission(name)));
+    if (missing.length > 0) {
+      throw new HttpError(403, `You cannot grant permissions you do not have yourself: ${missing.join(', ')}.`);
+    }
+  }
+
   /**
    * Reject reserved platform role names for any non-platform organisation, so tenants cannot
    * mint a role that impersonates a platform administrator.
@@ -22,13 +87,20 @@ export class RoleService {
     }
   }
 
-  async getAllRoles(orgId, page = 1, limit = 10) {
+  async getAllRoles(orgId, page = 1, limit = 10, search = '') {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
       const skip = (page - 1) * limit;
-      const { data, totalRecords } = await roleRepository.findAllPaginated(orgId, skip, limit, session);
+      const { data, totalRecords } = await roleRepository.findAllPaginated(orgId, skip, limit, session, search);
       await session.commitTransaction();
+      if (orgId && data.length > 0) {
+        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+        const counts = await orgMembershipService.countActiveMembersByRole(orgId, data.map((r) => r._id));
+        data.forEach((r) => {
+          r.memberCount = counts[String(r._id)] || 0;
+        });
+      }
       const totalPages = Math.ceil(totalRecords / limit);
       return {
         data,
@@ -59,7 +131,7 @@ export class RoleService {
     return await roleRepository.findByName(name, orgId, session);
   }
 
-  async createRole(roleData, session = null) {
+  async createRole(roleData, session = null, actor = null) {
     let localSession = null;
     if (!session) {
       localSession = await mongoose.startSession();
@@ -68,7 +140,7 @@ export class RoleService {
     const currentSession = session || localSession;
 
     try {
-      const { name, description, permissions, integrationMappings, orgId, isTenantRole, roleScope } = roleData;
+      const { name, description, permissions, integrationMappings, orgId, isTenantRole, roleScope, communityOnly } = roleData;
       const trimmedName = name ? name.trim() : '';
       if (!trimmedName) {
         throw new HttpError(400, 'Role name is required.');
@@ -84,7 +156,10 @@ export class RoleService {
       if (!effectiveScope) {
         effectiveScope = isTenantRole ? 'UNIT' : 'GLOBAL';
       }
-      const effectiveIsTenantRole = effectiveScope === 'UNIT' || effectiveScope === 'STAFF' || !!isTenantRole;
+      // Community Staff work community-wide; only unit-bound scopes are tenant roles.
+      const effectiveIsTenantRole = effectiveScope === 'COMMUNITY_STAFF'
+        ? false
+        : isTenantScope(effectiveScope) || !!isTenantRole;
 
       const newRole = await roleRepository.create({
         name: trimmedName,
@@ -93,40 +168,25 @@ export class RoleService {
         orgId,
         isTenantRole: effectiveIsTenantRole,
         roleScope: effectiveScope,
+        communityOnly: effectiveScope === 'COMMUNITY_STAFF' && communityOnly === true,
       }, currentSession);
-      
+
       let populatedPermissions = [];
       if (permissions && permissions.length > 0) {
         const permissionService = (await import('../permission/permission.services.js')).default;
         const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
-        
-        const allPermissions = await permissionService.getAllPermissions();
-        const matchedPermissions = allPermissions.filter((p) => {
-          const pId = p._id ? p._id.toString() : '';
-          const pName = p.name ? p.name.trim() : '';
-          const pCode = p.code ? p.code.trim() : '';
-          const pNormalized = pName.replace(':', '.');
 
-          return permissions.some((perm) => {
-            if (!perm) return false;
-            const strPerm = String(perm).trim();
-            const permNormalized = strPerm.replace(':', '.');
-            return (
-              strPerm === pId ||
-              strPerm === pName ||
-              strPerm === pCode ||
-              permNormalized === pNormalized
-            );
-          });
-        });
+        const allPermissions = await permissionService.getAllPermissions();
+        const matchedPermissions = matchPermissions(allPermissions, permissions);
+        this.assertCanGrant(matchedPermissions, actor);
         const permissionIds = matchedPermissions.map((p) => p._id);
-        
+
         await rolePermissionService.updateRolePermissions(newRole._id.toString(), permissionIds, currentSession);
         populatedPermissions = matchedPermissions.map(p => p.name);
         // Emit event after role creation with permissions
         roleEvents.emit('rolePermissionsUpdated', { roleId: newRole._id.toString(), permissionIds, permissions: populatedPermissions });
       }
-      
+
       if (localSession) {
         await localSession.commitTransaction();
       }
@@ -146,57 +206,51 @@ export class RoleService {
     }
   }
 
-  async updateRole(id, updateData) {
+  async updateRole(id, updateData, actor = null) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
       const currentRole = await this.getRoleById(id, session);
-      const { name, description, permissions, integrationMappings, orgId, isTenantRole, roleScope } = updateData;
-      
+      this.assertRoleAccess(currentRole, actor, { write: true });
+      this.assertRoleNotProtected(currentRole);
+      const { name, description, permissions, integrationMappings, orgId, isTenantRole, roleScope, communityOnly } = updateData;
+
       const roleUpdates = { description, integrationMappings };
+      if (communityOnly !== undefined) roleUpdates.communityOnly = communityOnly === true;
       if (roleScope !== undefined) {
         roleUpdates.roleScope = roleScope;
-        roleUpdates.isTenantRole = roleScope === 'UNIT' || roleScope === 'STAFF';
+        roleUpdates.isTenantRole = isTenantScope(roleScope);
+        if (roleScope !== 'COMMUNITY_STAFF') roleUpdates.communityOnly = false;
       } else if (isTenantRole !== undefined) {
         roleUpdates.isTenantRole = isTenantRole;
         roleUpdates.roleScope = isTenantRole ? 'UNIT' : 'GLOBAL';
       }
+      if (name && lower(name) !== lower(currentRole.name)) {
+        this.assertRoleNotProtected(currentRole, { renameOrDelete: true });
+      }
       if (name) {
         const trimmedName = name.trim();
         await this.assertRoleNameAllowed(trimmedName, currentRole.orgId || orgId, session);
-        const existing = await roleRepository.findByOrgAndName(trimmedName, orgId, session);
+        const existing = await roleRepository.findByOrgAndName(trimmedName, currentRole.orgId || orgId, session);
         if (existing && existing._id.toString() !== id) {
           throw new HttpError(400, `Role with name '${trimmedName}' already exists.`);
         }
         roleUpdates.name = trimmedName;
       }
       const updatedRole = await roleRepository.update(id, roleUpdates, session);
-      
+
       let populatedPermissions = [];
       const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
       if (permissions !== undefined) {
         const permissionService = (await import('../permission/permission.services.js')).default;
         const allPermissions = await permissionService.getAllPermissions();
-        const matchedPermissions = allPermissions.filter((p) => {
-          const pId = p._id ? p._id.toString() : '';
-          const pName = p.name ? p.name.trim() : '';
-          const pCode = p.code ? p.code.trim() : '';
-          const pNormalized = pName.replace(':', '.');
-
-          return permissions.some((perm) => {
-            if (!perm) return false;
-            const strPerm = String(perm).trim();
-            const permNormalized = strPerm.replace(':', '.');
-            return (
-              strPerm === pId ||
-              strPerm === pName ||
-              strPerm === pCode ||
-              permNormalized === pNormalized
-            );
-          });
-        });
+        const matchedPermissions = matchPermissions(allPermissions, permissions);
+        // Only permissions the role does not already have count as newly granted.
+        const currentPerms = await rolePermissionService.getPermissionsByRoleId(id);
+        const currentIds = new Set(currentPerms.map((p) => String(p._id)));
+        this.assertCanGrant(matchedPermissions.filter((p) => !currentIds.has(String(p._id))), actor);
         const permissionIds = matchedPermissions.map((p) => p._id);
-        
+
         await rolePermissionService.updateRolePermissions(id, permissionIds, session);
         populatedPermissions = matchedPermissions.map(p => p.name);
         // Emit event after successful permission update
@@ -205,8 +259,35 @@ export class RoleService {
         const permissionsList = await rolePermissionService.getPermissionsByRoleId(id);
         populatedPermissions = permissionsList.map(p => p.name);
       }
-      
+
+      // A role is the source of truth for whether its Community Staff may serve residents.
+      // Update every linked staff record so Staff Management and resident allocation use the same rule.
+      const isCommunityStaffRole = updatedRole.roleScope === 'COMMUNITY_STAFF';
+      const technicianRepository = (await import('../technician/technician.repository.js')).default;
+      await technicianRepository.updateByRoleId(
+        currentRole.orgId || orgId,
+        updatedRole._id,
+        {
+          staffCategory: isCommunityStaffRole ? 'COMMUNITY' : 'UNIT',
+          communityOnly: isCommunityStaffRole && updatedRole.communityOnly === true,
+        },
+        session
+      );
       await session.commitTransaction();
+
+      // Existing unit allocations must also stop immediately when the role becomes community-only.
+      if (isCommunityStaffRole && updatedRole.communityOnly === true) {
+        const linkedStaff = await technicianRepository.findAll(currentRole.orgId || orgId, { roleId: updatedRole._id });
+        const associationRepository = (await import('../staffUnitAssociation/staffUnitAssociation.repository.js')).default;
+        await Promise.all(linkedStaff.map((staff) =>
+          associationRepository.deactivateAllForTechnician(
+            currentRole.orgId || orgId,
+            staff._id,
+            'Staff role changed to community-only work'
+          )
+        ));
+      }
+
       return {
         ...updatedRole.toObject(),
         permissions: populatedPermissions
@@ -219,19 +300,30 @@ export class RoleService {
     }
   }
 
-  async deleteRole(id) {
+  async deleteRole(id, actor = null) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      await this.getRoleById(id, session);
+      const role = await this.getRoleById(id, session);
+      this.assertRoleAccess(role, actor, { write: true });
+      this.assertRoleNotProtected(role, { renameOrDelete: true });
+
+      // Deleting a role that people still hold would silently strip their access.
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+      const inUse = await orgMembershipService.countActiveMembersWithRole(id, session);
+      if (inUse > 0) {
+        throw new HttpError(
+          409,
+          `This role is assigned to ${inUse} active member${inUse === 1 ? '' : 's'}. Assign them a different role first, then delete it.`
+        );
+      }
       const deletedRole = await roleRepository.delete(id, session);
-      
+
       const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
       await rolePermissionService.updateRolePermissions(id, [], session);
-      
-      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+
       await orgMembershipService.clearRoleFromMemberships(id, session);
-      
+
       await session.commitTransaction();
       return deletedRole;
     } catch (error) {
@@ -283,34 +375,38 @@ export class RoleService {
     return grouped;
   }
 
-  async getRolePermissions(roleId) {
-    await this.getRoleById(roleId);
+  async getRolePermissions(roleId, actor = null) {
+    const role = await this.getRoleById(roleId);
+    this.assertRoleAccess(role, actor);
     const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
     return await rolePermissionService.getPermissionsByRoleId(roleId);
   }
 
-  async syncRolePermissions(roleId, permissionNames) {
-    await this.getRoleById(roleId);
-    
-    let permissionIds = [];
-    if (permissionNames && permissionNames.length > 0) {
-      const permissionService = (await import('../permission/permission.services.js')).default;
-      const allPermissions = await permissionService.getAllPermissions();
-      const matchedPermissions = allPermissions.filter(p => permissionNames.includes(p.name) || permissionNames.includes(p._id.toString()));
-      permissionIds = matchedPermissions.map(p => p._id);
-    }
-    
+  async syncRolePermissions(roleId, permissionNames, actor = null) {
+    const role = await this.getRoleById(roleId);
+    this.assertRoleAccess(role, actor, { write: true });
+    this.assertRoleNotProtected(role);
+
+    const permissionService = (await import('../permission/permission.services.js')).default;
     const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+    const allPermissions = await permissionService.getAllPermissions();
+    const matchedPermissions = matchPermissions(allPermissions, permissionNames);
+
+    // Only permissions the role does not already have count as newly granted.
+    const currentPerms = await rolePermissionService.getPermissionsByRoleId(roleId);
+    const currentIds = new Set(currentPerms.map((p) => String(p._id)));
+    this.assertCanGrant(matchedPermissions.filter((p) => !currentIds.has(String(p._id))), actor);
+
+    const permissionIds = matchedPermissions.map((p) => p._id);
     await rolePermissionService.updateRolePermissions(roleId, permissionIds);
     const updatedPerms = await rolePermissionService.getPermissionsByRoleId(roleId);
-    const populatedPermissions = updatedPerms.map(p => p.name || p);
+    const populatedPermissions = updatedPerms.map((p) => p.name || p);
     roleEvents.emit('rolePermissionsUpdated', { roleId, permissionIds, permissions: populatedPermissions });
     return updatedPerms;
   }
 
   async getRolesByIds(ids, session = null) {
-    const Role = (await import('./role.model.js')).default;
-    return await Role.find({ _id: { $in: ids } }).session(session);
+    return await roleRepository.findByIds(ids, session);
   }
 }
 

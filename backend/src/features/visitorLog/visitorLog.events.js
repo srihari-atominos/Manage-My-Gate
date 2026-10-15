@@ -14,6 +14,7 @@ visitorLogEvents.on('walk_in_pending', (log) => {
   
   // Create a DB notification for the resident to alert them via UI headers/inbox
   if (log.residentId) {
+    const logIdStr = log._id ? log._id.toString() : '';
     notificationService.createNotification({
       recipientId: log.residentId,
       orgId: log.orgId || null,
@@ -21,7 +22,20 @@ visitorLogEvents.on('walk_in_pending', (log) => {
       title: 'Gate Approval Required',
       body: `Visitor "${log.snapshot?.visitorName || 'Walk-in'}" is waiting at the gate.`,
       actionUrl: '#/visitor-management?tab=walkin',
-      type: 'WARNING'
+      type: 'WARNING',
+      metadata: {
+        logId: logIdStr,
+        visitorLogId: logIdStr,
+        entityId: logIdStr,
+        type: 'VISITOR_REQUEST',
+        visitorName: log.snapshot?.visitorName || 'Walk-in',
+        phone: log.snapshot?.phone || '',
+        vehicleNumber: log.snapshot?.vehicleNumber || '',
+        idProofNumber: log.snapshot?.idProofNumber || '',
+        gateName: log.gateName || 'Main gate',
+        entryType: 'WALK_IN',
+        waitingSince: log.createdAt || new Date().toISOString(),
+      },
     }).catch((err) => {
       logger.error(`Failed to create VMS notification for resident ${log.residentId}:`, err);
     });
@@ -35,6 +49,7 @@ visitorLogEvents.on('walk_in_resolved', (log) => {
   // Create a DB notification for the guard to alert them via UI headers/inbox
   if (log.guardId) {
     const isApproved = log.logStatus === 'INSIDE';
+    const logIdStr = log._id ? log._id.toString() : '';
     notificationService.createNotification({
       recipientId: log.guardId,
       orgId: log.orgId || null,
@@ -42,7 +57,16 @@ visitorLogEvents.on('walk_in_resolved', (log) => {
       title: isApproved ? 'Walk-in Entry Approved' : 'Walk-in Entry Denied',
       body: `Walk-in request for visitor "${log.snapshot?.visitorName || 'Walk-in'}" has been ${isApproved ? 'approved' : 'denied'} by host.`,
       actionUrl: '#/visitor-management?tab=live',
-      type: isApproved ? 'SUCCESS' : 'ERROR'
+      type: isApproved ? 'SUCCESS' : 'ERROR',
+      metadata: {
+        logId: logIdStr,
+        visitorLogId: logIdStr,
+        entityId: logIdStr,
+        type: 'VISITOR_RESOLVED',
+        visitorName: log.snapshot?.visitorName || 'Walk-in',
+        status: log.logStatus,
+        isApproved,
+      },
     }).catch((err) => {
       logger.error(`Failed to create VMS notification for guard ${log.guardId}:`, err);
     });

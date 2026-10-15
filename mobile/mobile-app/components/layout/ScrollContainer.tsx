@@ -15,6 +15,7 @@ export const ScrollContainer = ({
   withBottomInset = true,
   className,
   contentClassName,
+  contentContainerStyle,
   ...props
 }: ScrollContainerProps) => {
   const insets = useSafeAreaInsets();
@@ -24,6 +25,7 @@ export const ScrollContainer = ({
       className={cn('flex-1 bg-slate-50 dark:bg-slate-950', className)}
       contentContainerStyle={[
         { paddingBottom: withBottomInset ? Math.max(insets.bottom, 24) : 0 },
+        contentContainerStyle,
       ]}
       contentContainerClassName={cn('p-4', contentClassName)}
       showsVerticalScrollIndicator={false}

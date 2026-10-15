@@ -86,6 +86,7 @@ export default function VisitorDashboardScreen() {
       value: String(pendingWalkInsCount),
       iconName: 'Clock',
       variant: pendingWalkInsCount > 0 ? 'warning' : 'accent',
+      onPress: () => router.navigate('/(resident)/visitor/walk-ins' as any),
       trend: {
         direction: pendingWalkInsCount > 0 ? 'down' : 'up',
         value: pendingWalkInsCount > 0 ? t('needs_action', 'Needs action') : t('clear', 'Clear'),
@@ -129,6 +130,8 @@ export default function VisitorDashboardScreen() {
       iconName: 'ShieldAlert',
       colorBg: 'bg-amber-500/10',
       colorIcon: '#f59e0b',
+      badge: pendingWalkInsCount > 0 ? String(pendingWalkInsCount) : undefined,
+      badgeColor: 'bg-amber-500',
       route: '/(resident)/visitor/walk-ins',
     },
   ];

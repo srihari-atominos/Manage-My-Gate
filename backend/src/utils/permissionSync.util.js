@@ -205,6 +205,24 @@ export const syncPermissions = async () => {
       }
     }
 
+    // 6.5c Self-healing: Ensure default resident, tenant, family and staff roles possess their baseline permissions
+    const { DEFAULT_ROLE_PERMISSIONS } = await import('../features/organization/defaultRolePermissions.js');
+    for (const [roleName, defaultPermList] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
+      const targetRoles = await RoleModel.find({ name: roleName });
+      if (!targetRoles.length) continue;
+      const permsToEnsure = await PermissionModel.find({ name: { $in: defaultPermList } });
+      for (const role of targetRoles) {
+        for (const p of permsToEnsure) {
+          const hasMapping = await RolePermissionModel.findOne({ roleId: role._id, permissionId: p._id });
+          if (!hasMapping) {
+            await RolePermissionModel.create({ roleId: role._id, permissionId: p._id });
+            rolePermissionService.cache.delete(role._id.toString());
+            logger.info(`Self-healed baseline permission "${p.name}" to role "${role.name}" (${role._id}).`);
+          }
+        }
+      }
+    }
+
     // 6.6 Self-healing: tenant (resident) roles must never hold admin-only permissions.
     // Communities created before this fix were seeded with `amenities:amenities` on
     // Resident Owner / Resident Tenant, which unlocked facility and maintenance admin APIs.

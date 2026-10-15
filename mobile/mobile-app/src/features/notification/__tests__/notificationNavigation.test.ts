@@ -114,7 +114,7 @@ describe('Notification Deep-Linking & Route Resolution', () => {
         invitationId: '650f1a90c1234567890abcde',
         title: 'Invitation to Green Meadows',
       };
-      expect(resolveNotificationRoute(payloadWithInvId)).toBe('/(auth)/accept-invite?invitationId=650f1a90c1234567890abcde');
+      expect(resolveNotificationRoute(payloadWithInvId)).toBe('/(auth)/login?inviteToken=650f1a90c1234567890abcde');
 
       const payloadWithEntityId = {
         notificationId: 'notif-11b',
@@ -122,7 +122,7 @@ describe('Notification Deep-Linking & Route Resolution', () => {
         entityId: 'inv-entity-7788',
         title: 'Invitation to Green Meadows',
       };
-      expect(resolveNotificationRoute(payloadWithEntityId)).toBe('/(auth)/accept-invite?invitationId=inv-entity-7788');
+      expect(resolveNotificationRoute(payloadWithEntityId)).toBe('/(auth)/login?inviteToken=inv-entity-7788');
     });
   });
 
@@ -182,6 +182,18 @@ describe('Notification Deep-Linking & Route Resolution', () => {
       expect(
         resolveNotificationRoute({ title: 'Important Bill due', body: 'Please check your dues' })
       ).toBe('/(resident)/billing');
+
+      expect(
+        resolveNotificationRoute({ title: 'Gate Approval Required', body: 'Visitor Rahul is waiting at the gate' })
+      ).toBe('/(resident)/visitor/walk-ins');
+
+      expect(
+        resolveNotificationRoute({ title: 'Walk-In Request', body: 'New walkin guest' })
+      ).toBe('/(resident)/visitor/walk-ins');
+
+      expect(
+        resolveNotificationRoute({ title: 'Visitor Arrived', body: 'Visitor pass checked in' })
+      ).toBe('/(resident)/visitor');
     });
   });
 });

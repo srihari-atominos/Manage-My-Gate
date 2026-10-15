@@ -139,6 +139,36 @@ export class AmenityReservationController {
   }
 
   /**
+   * Resident moves their own booking to another time (same length, same price).
+   */
+  async reschedule(req, res, next) {
+    try {
+      const { reservationId } = req.params;
+      const orgId = req.tenant.orgId;
+      const userId = req.user.id || req.user._id;
+
+      const reservation = await amenityReservationService.getReservationById(reservationId);
+      if (!reservation || reservation.orgId.toString() !== orgId.toString()) {
+        throw new HttpError(404, 'Reservation not found');
+      }
+      if (!(await amenityReservationService.canUserAccessReservation(req.user, reservation))) {
+        throw new HttpError(403, 'Forbidden. You do not have permission to change this reservation.');
+      }
+
+      const result = await amenityReservationService.residentReschedule({
+        reservationId,
+        orgId,
+        actorId: userId,
+        newStartDateTime: req.body.newStartDateTime,
+        newEndDateTime: req.body.newEndDateTime,
+      });
+      return res.success(result, 'Booking moved to the new time');
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
    * Cancels an existing reservation.
    */
   async cancel(req, res, next) {

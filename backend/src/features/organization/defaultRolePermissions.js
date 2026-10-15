@@ -40,11 +40,13 @@ export const DEFAULT_ROLE_PERMISSIONS = Object.freeze({
     'workspaces:read',
     'notices:read',
     'staff:view_own',
+    'complaints:assignee',
   ],
   'Household Staff': [
     'workspaces:read',
     'notices:read',
     'staff:view_own',
+    'complaints:assignee',
   ],
 });
 

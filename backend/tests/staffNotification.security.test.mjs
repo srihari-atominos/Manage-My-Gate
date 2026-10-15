@@ -848,3 +848,170 @@ test('20. Outbox Worker Integration: processEvent handles STAFF_GATE_ENTRY event
     staffNotificationService.processStaffEntryEvent = origProcessStaffEntry;
   }
 });
+
+test('21. Staff Exit Notifications: Gate EXIT scan enqueues STAFF_GATE_EXIT outbox event', async () => {
+  const origGetTech = technicianService.getTechnicianById;
+  const origGetAssoc = staffUnitAssociationService.getActiveAssociationsForStaff;
+  const origFindActive = staffAttendanceRepository.findActiveSession;
+  const origClose = staffAttendanceRepository.closeSession;
+  const origEnqueueExit = staffNotificationService.enqueueStaffExitNotification;
+
+  let enqueuedExitCall = null;
+
+  try {
+    technicianService.getTechnicianById = async () => ({
+      _id: TECH_1,
+      name: 'Salim Khan',
+      orgId: ORG_A,
+      status: 'Active',
+      isDeleted: false,
+      staffCode: 'STF-001',
+    });
+    staffUnitAssociationService.getActiveAssociationsForStaff = async () => [];
+    staffAttendanceRepository.findActiveSession = async () => ({
+      _id: SESSION_1,
+      status: 'Open',
+      checkInTime: new Date(Date.now() - 3600000),
+    });
+    staffAttendanceRepository.closeSession = async (id, orgId, data) => ({
+      _id: id,
+      status: 'Closed',
+      ...data,
+    });
+    staffNotificationService.enqueueStaffExitNotification = async (params) => {
+      enqueuedExitCall = params;
+      return { eventId: 'evt-exit-1', status: 'PENDING' };
+    };
+
+    const res = await staffAttendanceService.recordGateScan({
+      scannedPayload: validScanToken,
+      gateId: 'Exit Gate North',
+      guardId: GUARD_USER_A,
+      orgId: ORG_A,
+      action: 'EXIT',
+    });
+
+    assert.equal(res.action, 'EXIT');
+    assert.ok(enqueuedExitCall, 'enqueueStaffExitNotification should be called on EXIT');
+    assert.equal(enqueuedExitCall.session._id, SESSION_1);
+    assert.equal(enqueuedExitCall.technician._id, TECH_1);
+    assert.equal(enqueuedExitCall.gateId, 'Exit Gate North');
+  } finally {
+    technicianService.getTechnicianById = origGetTech;
+    staffUnitAssociationService.getActiveAssociationsForStaff = origGetAssoc;
+    staffAttendanceRepository.findActiveSession = origFindActive;
+    staffAttendanceRepository.closeSession = origClose;
+    staffNotificationService.enqueueStaffExitNotification = origEnqueueExit;
+  }
+});
+
+test('22. Staff Exit Notifications: processStaffExitEvent creates in-app notification with EXIT dedupKey', async () => {
+  const origResolve = staffNotificationService.resolveRecipients;
+  const origFindByDedup = notificationRepository.findByDedupKey;
+  const origCreateNotif = notificationService.createNotification;
+
+  let createdNotification = null;
+
+  try {
+    staffNotificationService.resolveRecipients = async () => ({
+      scenario: 'ASSOCIATED_RESIDENTS',
+      recipients: [{ userId: RESIDENT_1, unitNumbers: ['Unit 101'] }],
+    });
+    notificationRepository.findByDedupKey = async () => null;
+    notificationService.createNotification = async (data) => {
+      createdNotification = data;
+      return data;
+    };
+
+    const result = await staffNotificationService.processStaffExitEvent({
+      sessionId: SESSION_1,
+      technicianId: TECH_1,
+      orgId: ORG_A,
+      staffName: 'Salim Khan',
+      department: 'Plumbing',
+      gateId: 'Main Gate',
+      guardId: GUARD_USER_A,
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.deliveredCount, 1);
+    assert.ok(createdNotification);
+    assert.equal(createdNotification.title, 'Staff Gate Exit');
+    assert.equal(createdNotification.dedupKey, `${SESSION_1}:${RESIDENT_1}:EXIT`);
+    assert.equal(createdNotification.metadata.type, 'STAFF_EXIT');
+  } finally {
+    staffNotificationService.resolveRecipients = origResolve;
+    notificationRepository.findByDedupKey = origFindByDedup;
+    notificationService.createNotification = origCreateNotif;
+  }
+});
+
+test('23. Staff Unit Association Notifications: Event emissions persist in-app notifications', async () => {
+  const staffUnitAssociationEvents = (await import('../src/features/staffUnitAssociation/staffUnitAssociation.events.js')).default;
+  const { initStaffUnitAssociationSocket } = await import('../src/features/staffUnitAssociation/staffUnitAssociation.socket.js');
+  initStaffUnitAssociationSocket();
+  const origCreateNotif = notificationService.createNotification;
+
+  const capturedNotifications = [];
+
+  try {
+    notificationService.createNotification = async (data) => {
+      capturedNotifications.push(data);
+      return data;
+    };
+
+    // Emit staff_associated_to_unit
+    staffUnitAssociationEvents.emit('staff_associated_to_unit', {
+      associationId: 'assoc-999',
+      orgId: ORG_A,
+      villaId: VILLA_1,
+      technicianUserId: 'staff-user-123',
+      associatedBy: RESIDENT_1,
+      status: 'Pending',
+    });
+
+    // Allow event loop to process async listener
+    await new Promise((r) => setTimeout(r, 20));
+
+    const inviteNotif = capturedNotifications.find((n) => n.metadata?.type === 'STAFF_ASSOCIATION_REQUESTED');
+    assert.ok(inviteNotif, 'Should create persisted in-app notification for invited staff');
+    assert.equal(inviteNotif.recipientId, 'staff-user-123');
+    assert.equal(inviteNotif.senderId, RESIDENT_1);
+  } finally {
+    notificationService.createNotification = origCreateNotif;
+  }
+});
+
+test('24. Visitor Pass Notifications: pass_created emits and persists confirmation for resident host', async () => {
+  const visitorPassEvents = (await import('../src/features/visitorPass/visitorPass.events.js')).default;
+  const origCreateNotif = notificationService.createNotification;
+
+  const capturedNotifications = [];
+
+  try {
+    notificationService.createNotification = async (data) => {
+      capturedNotifications.push(data);
+      return data;
+    };
+
+    visitorPassEvents.emit('pass_created', {
+      _id: 'pass-777',
+      orgId: ORG_A,
+      createdById: RESIDENT_1,
+      passType: 'GUEST',
+      visitorDetails: { name: 'Alice Cooper' },
+      shortKey: 'VP-1234',
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    const passNotif = capturedNotifications.find((n) => n.metadata?.type === 'VISITOR_PASS_CREATED');
+    assert.ok(passNotif, 'Should persist notification confirming pass creation');
+    assert.equal(passNotif.recipientId, RESIDENT_1);
+    assert.ok(passNotif.body.includes('Alice Cooper'));
+    assert.ok(passNotif.body.includes('VP-1234'));
+  } finally {
+    notificationService.createNotification = origCreateNotif;
+  }
+});
+

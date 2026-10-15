@@ -183,6 +183,36 @@ complaintEvents.on('complaint.updated', async ({ orgId, complaint, action, previ
     await notifyRole(orgId, 'Admin', title, body);
   };
 
+  // Helper to notify the employee working on the ticket
+  const notifyAssignee = async (title, body) => {
+    const assignee = complaint.assignedTechnicianId;
+    const assigneeId = assignee && typeof assignee === 'object' ? (assignee._id || assignee.id) : assignee;
+    if (!assigneeId) return;
+    try {
+      await notificationService.createNotification({
+        recipientId: assigneeId,
+        orgId,
+        title, body,
+        actionUrl: `/admin/complaints/assignee`,
+        type: 'INFO'
+      });
+    } catch (err) { logger.error('Failed to notify assignee:', err); }
+  };
+
+  if (action === 'Complaint Reopened') {
+    await notifyAssignee('Complaint Reopened', `The resident says complaint ${complaint.complaintNumber} is not fully fixed. Please check the reason and finish the work.`);
+    await notifyAdmin('Complaint Reopened', `Resident reopened complaint ${complaint.complaintNumber}.`);
+  }
+
+  if (action === 'Confirmation Reminder') {
+    await notifyResident('Please confirm your complaint', `The work on complaint ${complaint.complaintNumber} is finished. Please confirm it is fixed, or reopen it if not.`);
+  }
+
+  if (action === 'Complaint Auto-Closed') {
+    await notifyResident('Complaint Closed', `Complaint ${complaint.complaintNumber} was closed automatically because there was no response after the work was completed.`);
+    await notifyAssignee('Complaint Closed', `Complaint ${complaint.complaintNumber} was closed automatically.`);
+  }
+
   if (action === 'Assignment Accepted') {
     await notifyResident('Technician Assigned', `Your complaint (${complaint.complaintNumber}) has been assigned and accepted by ${complaint.assignedTechnicianName}.`);
     await notifyAdmin('Assignment Accepted', `Technician ${complaint.assignedTechnicianName} accepted complaint ${complaint.complaintNumber}.`);
@@ -229,6 +259,7 @@ complaintEvents.on('complaint.updated', async ({ orgId, complaint, action, previ
 
   if (action === 'Resident Confirmed') {
     await notifyAdmin('Resident Confirmed', `Resident confirmed completion of complaint ${complaint.complaintNumber}.`);
+    await notifyAssignee('Work Confirmed', `The resident confirmed your work on complaint ${complaint.complaintNumber}. Well done!`);
   }
 
   if (action === 'Complaint Closed') {

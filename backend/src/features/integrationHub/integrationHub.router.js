@@ -1,173 +1,94 @@
 import { Router } from 'express';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import integrationHubController from './integrationHub.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
-import { connectRules, deleteConnectionRules, updateLabelRules, listRules } from './integrationHub.validator.js';
+import {
+  connectRules,
+  deleteConnectionRules,
+  updateLabelRules,
+  testConnectionRules,
+  listRules,
+} from './integrationHub.validator.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
+import { authorizeAnyPermission } from '../../middlewares/rbac.middleware.js';
 
 const router = Router();
 
-// Protect all integration hub endpoints with authentication and tenant scope check
+// Every endpoint needs a signed-in member of the community...
 router.use(isAuthenticated);
 router.use(tenantContext);
+
+// ...and a specific permission. Integration credentials (payment keys, mail accounts) are the most sensitive
+// data a community holds: being a member is never enough. Community and platform admins pass by role.
+const canRead = authorizeAnyPermission(['integrations:read', 'roles:create', 'roles:update']);
+const canCreate = authorizeAnyPermission(['integrations:create']);
+const canUpdate = authorizeAnyPermission(['integrations:update']);
+const canDelete = authorizeAnyPermission(['integrations:delete']);
+
+// Connecting/testing contacts external services, so it is limited per signed-in user.
+const verifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // IPv6 clients are grouped by network prefix so one person cannot dodge the limit with many addresses.
+  keyGenerator: (req) => String(req.user?.id || req.user?._id || ipKeyGenerator(req.ip)),
+  message: { success: false, message: 'Too many connection attempts. Please wait a few minutes and try again.' },
+});
 
 /**
  * @swagger
  * /integrations/catalog:
  *   get:
- *     summary: Retrieve dynamic schema catalog of supported integrations
- *     tags:
- *       - Integration Hub
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Dynamic form schema JSON array.
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal server error.
+ *     summary: Integrations the caller may configure (fields, description, category)
+ *     tags: [Integration Hub]
  */
-router.get('/catalog', integrationHubController.getCatalog);
+router.get('/catalog', canRead, integrationHubController.getCatalog);
 
 /**
  * @swagger
  * /integrations/connect:
  *   post:
  *     summary: Verify, encrypt, and save integration connection credentials
- *     tags:
- *       - Integration Hub
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - provider
- *               - accountLabel
- *               - credentials
- *             properties:
- *               provider:
- *                 type: string
- *                 enum: [openai, twilio, resend]
- *               accountLabel:
- *                 type: string
- *               credentials:
- *                 type: object
- *     responses:
- *       200:
- *         description: Connection established and credentials saved.
- *       400:
- *         description: Validation failed.
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal server error.
+ *     tags: [Integration Hub]
  */
-router.post('/connect', validate(connectRules), integrationHubController.connectIntegration);
+router.post('/connect', canCreate, verifyLimiter, validate(connectRules), integrationHubController.connectIntegration);
 
 /**
  * @swagger
  * /integrations:
  *   get:
- *     summary: List all connected integrations for the authenticated user (paginated)
- *     tags:
- *       - Integration Hub
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *       - in: query
- *         name: provider
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Paginated response payload.
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal server error.
+ *     summary: List the community's integrations (paginated, never returns secrets)
+ *     tags: [Integration Hub]
  */
-router.get('/', validate(listRules), integrationHubController.getIntegrations);
+router.get('/', canRead, validate(listRules), integrationHubController.getIntegrations);
+
+/**
+ * @swagger
+ * /integrations/{id}/test:
+ *   post:
+ *     summary: Re-verify the stored credentials with the provider
+ *     tags: [Integration Hub]
+ */
+router.post('/:id/test', canUpdate, verifyLimiter, validate(testConnectionRules), integrationHubController.testConnection);
 
 /**
  * @swagger
  * /integrations/{id}:
  *   put:
- *     summary: Update account label of a connection
- *     tags:
- *       - Integration Hub
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - accountLabel
- *             properties:
- *               accountLabel:
- *                 type: string
- *     responses:
- *       200:
- *         description: Label updated successfully.
- *       400:
- *         description: Invalid input or format.
- *       401:
- *         description: Unauthorized.
- *       404:
- *         description: Connection not found.
- *       500:
- *         description: Internal server error.
+ *     summary: Rename a connection and/or rotate its credentials (blank fields keep the stored value)
+ *     tags: [Integration Hub]
  */
-router.put('/:id', validate(updateLabelRules), integrationHubController.updateConnection);
+router.put('/:id', canUpdate, verifyLimiter, validate(updateLabelRules), integrationHubController.updateConnection);
 
 /**
  * @swagger
  * /integrations/{id}:
  *   delete:
- *     summary: Disconnect and delete integration connection by ID
- *     tags:
- *       - Integration Hub
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Connection deleted.
- *       400:
- *         description: Invalid ID format.
- *       401:
- *         description: Unauthorized.
- *       409:
- *         description: Conflict. Connection is mapped to a role.
- *       500:
- *         description: Internal server error.
+ *     summary: Disconnect and delete an integration connection
+ *     tags: [Integration Hub]
  */
-router.delete('/:id', validate(deleteConnectionRules), integrationHubController.disconnectIntegration);
+router.delete('/:id', canDelete, validate(deleteConnectionRules), integrationHubController.disconnectIntegration);
 
 export default router;

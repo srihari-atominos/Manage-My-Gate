@@ -172,7 +172,7 @@ export const UserCard: React.FC<UserCardProps> = ({
                     >
                       {t('unit_label', 'Unit')} {unit.villaNumber} {unit.villaBlock ? `(${unit.villaBlock})` : ''}
                     </Text>
-                    {unit.residentType && unit.residentType !== 'None' ? (
+                    {unit.residentType && unit.residentType !== 'None' && (!unit.role || i18n.tRole(unit.residentType) !== i18n.tRole(unit.role)) ? (
                       <Text 
                         className="text-[11px] text-muted-foreground font-sans font-medium shrink-0 ms-1"
                       >
@@ -182,13 +182,13 @@ export const UserCard: React.FC<UserCardProps> = ({
                   </View>
                 </View>
 
-                {unit.role ? (
+                {unit.role || (unit.residentType && unit.residentType !== 'None') ? (
                   <View className="bg-card border border-border/60 px-2 py-1 rounded-lg shadow-sm shrink">
                     <Text 
                       className="text-[10px] font-bold text-foreground font-sans tracking-wide text-center"
                       numberOfLines={2}
                     >
-                      {i18n.tRole(unit.role)}
+                      {i18n.tRole(unit.role || unit.residentType)}
                     </Text>
                   </View>
                 ) : null}

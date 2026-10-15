@@ -65,7 +65,7 @@ export const initComplaintSockets = () => {
         if (action === 'Work Started') eventName = 'complaint_started';
         if (action === 'Work Completed') eventName = 'complaint_completed';
         if (action === 'Resident Confirmed') eventName = 'complaint_completed';
-        if (action === 'Complaint Closed') eventName = 'complaint_closed';
+        if (action === 'Complaint Closed' || action === 'Complaint Auto-Closed') eventName = 'complaint_closed';
 
         // Emit specific event
         io.to(`org:${orgId}:role:admin`).emit(eventName, complaint);

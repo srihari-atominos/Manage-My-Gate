@@ -6,12 +6,14 @@ import TechnicianModal from '../components/TechnicianModal'
 import { technicianService } from '../services/technician.service'
 import { toast } from 'react-hot-toast'
 import '../styles/_complaints.scss'
+import { staffCategoryLabel, staffCategoryOf } from '../staffCategories'
 
 const StaffAndVendor = () => {
   const dispatch = useDispatch()
   const { staffVendors, status } = useSelector((state) => state.complaints)
 
   const [filter, setFilter] = useState('All Departments')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
   const [search, setSearch] = useState('')
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -26,6 +28,7 @@ const StaffAndVendor = () => {
 
   const filteredStaff = technicians.filter((s) => {
     if (filter !== 'All Departments' && s.department !== filter) return false
+    if (categoryFilter !== 'ALL' && staffCategoryOf(s) !== categoryFilter) return false
     if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.phone.includes(search))
       return false
     return true
@@ -205,6 +208,15 @@ const StaffAndVendor = () => {
                 <option>Carpentry</option>
                 <option>Others</option>
               </select>
+              <select
+                className="filter-select"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="ALL">All Staff Categories</option>
+                <option value="COMMUNITY">Community Staff (Global Staff)</option>
+                <option value="UNIT">Unit Staff (Internal Staff)</option>
+              </select>
             </div>
           </div>
 
@@ -216,6 +228,7 @@ const StaffAndVendor = () => {
                     <th>Name</th>
                     <th>Trade / Dept</th>
                     <th>Type</th>
+                    <th>Category</th>
                     <th>Active Tasks</th>
                     <th>Completed Today</th>
                     <th>Status</th>
@@ -225,13 +238,13 @@ const StaffAndVendor = () => {
                 <tbody>
                   {status === 'loading' && !staffVendors ? (
                     <tr>
-                      <td colSpan="7" className="text-center py-4">
+                      <td colSpan="8" className="text-center py-4">
                         Loading workloads...
                       </td>
                     </tr>
                   ) : filteredStaff.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="text-center py-4">
+                      <td colSpan="8" className="text-center py-4">
                         No staff/vendors found.
                       </td>
                     </tr>
@@ -257,6 +270,13 @@ const StaffAndVendor = () => {
                         </td>
                         <td>{s.department}</td>
                         <td>{s.type}</td>
+                        <td>
+                          <span
+                            className={`badge ${staffCategoryOf(s) === 'UNIT' ? 'badge-warning' : 'badge-info'}`}
+                          >
+                            {staffCategoryLabel(s)}
+                          </span>
+                        </td>
                         <td>
                           <span
                             className={`badge ${s.activeComplaintsCount > 0 ? 'badge-warning' : 'badge-success'}`}

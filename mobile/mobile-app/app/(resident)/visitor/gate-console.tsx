@@ -23,7 +23,7 @@ import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
 import { useSelector } from 'react-redux';
 import visitorService from '@/src/features/visitor/services/visitorService';
-import staffService from '@/src/features/staff/services/staffService';
+import staffService, { resolveStaffPhotoUrl, getDepartmentLabel, type StaffScanLookup } from '@/src/features/staff/services/staffService';
 import {
   QrCode,
   ScanLine,
@@ -79,7 +79,12 @@ export default function GateConsoleScreen() {
   const [scanResultSheetOpen, setScanResultSheetOpen] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResultData | null>(null);
   const [isInsideAction, setIsInsideAction] = useState(false);
+  // Verified staff pass awaiting the guard's explicit Check In / Check Out choice.
+  const [staffScan, setStaffScan] = useState<{ payload: string; key: string; lookup: StaffScanLookup } | null>(null);
   const [activeLogId, setActiveLogId] = useState<string | null>(null);
+  // Group passes: one QR admits many people, so check-in and check-out are both offered while some are inside.
+  const [groupCheckoutLogId, setGroupCheckoutLogId] = useState<string | null>(null);
+  const [groupAdmitAllowed, setGroupAdmitAllowed] = useState(true);
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'CONSOLE' | 'WALK_INS' | 'INSIDE' | 'DIRECTORY'>('CONSOLE');
@@ -103,17 +108,20 @@ export default function GateConsoleScreen() {
   }, [activeOrgId, fetchActiveVisitors]);
 
   const loadData = useCallback(async () => {
+    if (!activeOrgId) return;
     setRefreshing(true);
     await Promise.all([
-      loadPendingWalkIns(),
+      loadPendingWalkIns(activeOrgId),
       fetchActiveVisitors(activeOrgId),
     ]);
     setRefreshing(false);
   }, [loadPendingWalkIns, fetchActiveVisitors, activeOrgId]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (activeOrgId) {
+      loadData();
+    }
+  }, [loadData, activeOrgId]);
 
   const extractCodeFromRaw = (raw: string): string => {
     let text = (raw || '').trim();
@@ -136,6 +144,8 @@ export default function GateConsoleScreen() {
     return text.replace(/^PASS-?/i, '').replace(/[\s-]/g, '').trim();
   };
 
+  const isStaffResult = scanResult?.passType === 'STAFF';
+
   const handleVerifyPass = async (codeToVerify?: string) => {
     const raw = (codeToVerify || passCode).trim();
     if (!raw) return;
@@ -149,6 +159,10 @@ export default function GateConsoleScreen() {
     const cleanCode = extractCodeFromRaw(code);
     if (!cleanCode) return;
 
+    // Group-pass sheet state must not leak into staff or non-group results.
+    setGroupCheckoutLogId(null);
+    setGroupAdmitAllowed(true);
+
     // Detect Staff Pass / Service barcode
     const isStaffBarcode =
       barcodeMeta?.type === 'SERVICE' ||
@@ -159,37 +173,54 @@ export default function GateConsoleScreen() {
     if (isStaffBarcode) {
       setLoading(true);
       setStatusMessage(null);
+      // Staff attendance is recorded by the scan itself. Clear any visitor check-in/out state left over
+      // from a previous scan so the result sheet can never act on another visitor's log.
+      setIsInsideAction(false);
+      setActiveLogId(null);
+      setStaffScan(null);
       try {
-        const staffRes = await staffService.scanAttendance({
-          scannedPayload: raw,
-          gateId: 'Main Gate',
-          action: 'AUTO',
-        });
-
-        const isEntry = staffRes.action === 'ENTRY';
-        const tech = staffRes.technician;
+        const lookup = await staffService.lookupStaffScan(raw);
+        const tech = lookup.technician;
         const assignedUnitsStr =
-          staffRes.associatedUnits && staffRes.associatedUnits.length > 0
-            ? staffRes.associatedUnits.map((u) => u.unitNumber).join(', ')
+          lookup.associatedUnits && lookup.associatedUnits.length > 0
+            ? lookup.associatedUnits.map((u) => u.unitNumber).join(', ')
             : 'Community-Wide / General';
+        const fmt = (iso?: string) =>
+          iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+        setStaffScan({ payload: raw, key: `${tech._id}-${Date.now()}`, lookup });
 
         const result: ScanResultData = {
           success: true,
-          status: 'VERIFIED',
-          statusLabel: isEntry ? 'CHECKED IN' : 'CHECKED OUT',
-          title: isEntry ? 'Staff Check-In Recorded' : 'Staff Check-Out Recorded',
-          message: staffRes.message || (isEntry ? 'Staff member entry recorded.' : 'Staff member exit recorded.'),
+          // PENDING makes the sheet show the action buttons: nothing is recorded until the guard chooses.
+          status: 'PENDING',
+          statusLabel: lookup.isInside ? 'INSIDE' : 'OUTSIDE',
+          title: 'Staff Pass Verified',
+          message: lookup.canCheckIn
+            ? 'Tap Check In to record entry.'
+            : lookup.canCheckOut
+            ? 'Staff member is inside. Tap Check Out to record exit.'
+            : 'This staff member cannot be checked in.',
           visitorName: tech?.name || 'Staff Member',
           visitorPhone: tech?.phone,
+          // Face next to the QR result lets the guard confirm the person holding the pass is the staff member.
+          visitorPhoto: resolveStaffPhotoUrl((tech as any)?.photoUrl),
           passType: 'STAFF',
           unitOrVilla: assignedUnitsStr,
-          hostName: tech?.department ? `Department: ${tech.department}` : 'Staff',
-          bookingReference: tech?.staffCode || staffRes.session?._id,
-          validityWindow: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          // The sheet is shared with visitor passes: staff facts go in `details`, not Host / Validity rows.
+          bookingReference: tech?.staffCode || undefined,
           details: [
-            { label: 'Action', value: isEntry ? 'Gate Entry (Check-In)' : 'Gate Exit (Check-Out)' },
-            { label: 'Department', value: tech?.department || '-' },
-            { label: 'Staff Code', value: tech?.staffCode || '-' },
+            {
+              label: 'Current Status',
+              value: lookup.isInside
+                ? `Inside since ${fmt(lookup.openSession?.checkInTime)}${
+                    lookup.openSession?.checkInGate ? ` via ${lookup.openSession.checkInGate}` : ''
+                  }`
+                : 'Outside',
+            },
+            { label: 'Department', value: getDepartmentLabel(tech) || '-' },
+            ...(tech?.designation ? [{ label: 'Role', value: tech.designation }] : []),
+            ...(tech?.staffCode ? [] : [{ label: 'Staff Code', value: 'Not assigned' }]),
             { label: 'Authorized Units', value: assignedUnitsStr },
           ],
         };
@@ -269,35 +300,61 @@ export default function GateConsoleScreen() {
     setLoading(false);
 
     if (passData && (passData._id || passData.visitorName || passData.visitorDetails)) {
+      const isGroupPass = Boolean(passData.isGroupPass);
+      const targetId = (passData._id || passData.id)?.toString();
+
       // Check if visitor is currently INSIDE
       let isCurrentlyInside = false;
       let matchedLogId: string | null = null;
+      let groupInsideLogs: any[] = [];
 
       try {
-        const currentActiveList = activeVisitors && activeVisitors.length > 0 ? activeVisitors : await fetchActiveVisitors(activeOrgId);
+        // Group passes need a fresh list: other gates admit and release people from the same pass.
+        const currentActiveList = !isGroupPass && activeVisitors && activeVisitors.length > 0
+          ? activeVisitors
+          : await fetchActiveVisitors(activeOrgId);
         const logs = Array.isArray(currentActiveList) ? currentActiveList : [];
-        const foundInside = logs.find((l: any) => {
+        const matches = logs.filter((l: any) => {
           const lPassId = (l.passId?._id || l.passId)?.toString();
-          const targetId = (passData._id || passData.id)?.toString();
           return lPassId && targetId && lPassId === targetId;
         });
-        if (foundInside) {
+        if (isGroupPass) {
+          // Oldest check-in first: group members share one identity, so release in arrival order.
+          groupInsideLogs = [...matches].sort(
+            (a: any, b: any) => new Date(a.checkInTime || 0).getTime() - new Date(b.checkInTime || 0).getTime()
+          );
+        } else if (matches[0]) {
           isCurrentlyInside = true;
-          matchedLogId = foundInside._id || foundInside.id;
+          matchedLogId = matches[0]._id || matches[0].id;
         }
       } catch {}
-
-      setIsInsideAction(isCurrentlyInside);
-      setActiveLogId(matchedLogId);
 
       const isRevoked = passData.status === 'REVOKED';
       const isExpired =
         passData.status === 'EXPIRED' ||
         (passData.validUntil && new Date(passData.validUntil).getTime() < Date.now());
-      const requiresServerDecision = !isCurrentlyInside && !isRevoked && !isExpired;
+
+      const groupInsideCount = groupInsideLogs.length;
+      const maxUses = passData.usageLimit?.maxUses || 1;
+      const usesLeft = Math.max(0, maxUses - (passData.usageLimit?.currentUses || 0));
+      const groupCanAdmit = isGroupPass && !isRevoked && !isExpired && usesLeft > 0;
+      const groupHasInside = isGroupPass && groupInsideCount > 0;
+      if (groupHasInside) isCurrentlyInside = true;
+
+      // Group: the primary button stays Confirm Entry; check-out is the extra button.
+      setIsInsideAction(isGroupPass ? false : isCurrentlyInside);
+      setActiveLogId(matchedLogId);
+      setGroupCheckoutLogId(groupHasInside ? groupInsideLogs[0]._id || groupInsideLogs[0].id : null);
+      setGroupAdmitAllowed(!groupHasInside || groupCanAdmit);
+
+      const requiresServerDecision = isGroupPass
+        ? groupCanAdmit
+        : !isCurrentlyInside && !isRevoked && !isExpired;
 
       // A visitor already inside is a verified pass awaiting check-out, not a refusal.
-      const status: 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'PENDING' | 'REVOKED' = isCurrentlyInside
+      const status: 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'PENDING' | 'REVOKED' = groupHasInside
+        ? (groupCanAdmit ? 'PENDING' : 'VERIFIED')
+        : isCurrentlyInside
         ? 'VERIFIED'
         : isRevoked
         ? 'REVOKED'
@@ -310,19 +367,28 @@ export default function GateConsoleScreen() {
       const result: ScanResultData = {
         success: isCurrentlyInside,
         status,
-        title: isCurrentlyInside
+        ...(groupHasInside ? { statusLabel: `GROUP PASS · ${groupInsideCount} INSIDE` } : {}),
+        title: groupHasInside
+          ? 'Group Pass: Guests On-Premises'
+          : isCurrentlyInside
           ? 'Visitor Currently On-Premises'
           : requiresServerDecision
           ? 'Pass Located'
           : 'Access Verification Denied',
-        message: isCurrentlyInside
-          ? 'Visitor is currently inside the estate. Tap below to log gate check-out.'
+        message: groupHasInside
+          ? `${groupInsideCount} of this group ${groupInsideCount === 1 ? 'is' : 'are'} inside. ${
+              groupCanAdmit
+                ? `${usesLeft} ${usesLeft === 1 ? 'entry' : 'entries'} left: admit the next guest or check one out.`
+                : 'No entries left: check guests out as they leave.'
+            }`
+          : isCurrentlyInside
+          ? 'Visitor is currently inside the community. Tap below to log gate check-out.'
           : isRevoked
-          ? 'Pass has been revoked by host resident or estate admin.'
+          ? 'Pass has been revoked by host resident or community admin.'
           : isExpired
           ? 'This visitor pass has expired.'
           : requiresServerDecision
-          ? 'Confirm entry to request the current server authorization decision.'
+          ? 'Pass found. Tap Confirm Gate Entry to let the visitor in.'
           : 'Pass is not eligible for entry.',
         visitorName: passData.visitorDetails?.name || passData.visitorName || 'Guest Visitor',
         visitorPhone: passData.visitorDetails?.phone || passData.phone,
@@ -355,7 +421,38 @@ export default function GateConsoleScreen() {
     }
   };
 
+  const handleStaffAttendanceAction = async (action: 'ENTRY' | 'EXIT') => {
+    if (!staffScan) return;
+    setAdmitLoading(true);
+    try {
+      const res = await staffService.scanAttendance({
+        scannedPayload: staffScan.payload,
+        gateId: t('default_gate_name', 'Main gate'),
+        action,
+        // Stable per scan+action so a double tap or network retry cannot record twice.
+        idempotencyKey: `${staffScan.key}-${action}`,
+      });
+      const name = res.technician?.name || staffScan.lookup.technician?.name || 'Staff member';
+      setScanResultSheetOpen(false);
+      setStaffScan(null);
+      setPassCode('');
+      setStatusMessage(`${name} ${action === 'ENTRY' ? 'checked in' : 'checked out'} successfully.`);
+      await loadData();
+    } catch (err: any) {
+      setScanResultSheetOpen(false);
+      setStaffScan(null);
+      setStatusMessage(err?.response?.data?.message || err?.message || 'Failed to record staff attendance.');
+    } finally {
+      setAdmitLoading(false);
+    }
+  };
+
   const handleAdmitVisitor = async () => {
+    // Staff results use handleStaffAttendanceAction; they are never visitor passes to admit.
+    if (scanResult?.passType === 'STAFF') {
+      setScanResultSheetOpen(false);
+      return;
+    }
     if (!scanResult?.metadata?.passId && !scanResult?.bookingReference) {
       setScanResultSheetOpen(false);
       return;
@@ -384,14 +481,15 @@ export default function GateConsoleScreen() {
   };
 
   const handleCheckOutFromConsole = async () => {
-    if (!activeLogId) {
+    const logIdToRelease = groupCheckoutLogId && !isInsideAction ? groupCheckoutLogId : activeLogId;
+    if (!logIdToRelease) {
       setScanResultSheetOpen(false);
       return;
     }
 
     setAdmitLoading(true);
     try {
-      await checkoutVisitor(activeLogId);
+      await checkoutVisitor(logIdToRelease);
       setScanResultSheetOpen(false);
       setPassCode('');
       setStatusMessage(`Visitor ${scanResult?.visitorName || ''} checked out successfully!`);
@@ -666,9 +764,39 @@ export default function GateConsoleScreen() {
         visible={scanResultSheetOpen}
         result={scanResult}
         loading={admitLoading}
-        primaryActionLabel={isInsideAction ? t('gate_check_out', 'Gate Check-Out') : t('confirm_gate_entry', 'Confirm Gate Entry')}
-        secondaryActionLabel={t('dismiss', 'Dismiss')}
-        onPrimaryAction={isInsideAction ? handleCheckOutFromConsole : handleAdmitVisitor}
+        primaryActionLabel={
+          isStaffResult
+            ? t('staff_check_in', 'Check In')
+            : isInsideAction
+            ? t('gate_check_out', 'Gate Check-Out')
+            : t('confirm_gate_entry', 'Confirm Gate Entry')
+        }
+        secondaryActionLabel={isStaffResult ? t('scan_next_pass', 'Scan Next Pass') : t('dismiss', 'Dismiss')}
+        onPrimaryAction={
+          isStaffResult
+            ? () => handleStaffAttendanceAction('ENTRY')
+            : isInsideAction
+            ? handleCheckOutFromConsole
+            : groupAdmitAllowed
+            ? handleAdmitVisitor
+            : undefined
+        }
+        primaryActionDisabled={isStaffResult && !staffScan?.lookup.canCheckIn}
+        extraActionLabel={
+          isStaffResult
+            ? t('staff_check_out', 'Check Out')
+            : groupCheckoutLogId
+            ? t('gate_check_out', 'Gate Check-Out')
+            : undefined
+        }
+        onExtraAction={
+          isStaffResult
+            ? () => handleStaffAttendanceAction('EXIT')
+            : groupCheckoutLogId
+            ? handleCheckOutFromConsole
+            : undefined
+        }
+        extraActionDisabled={isStaffResult && !staffScan?.lookup.canCheckOut}
         onSecondaryAction={() => setScanResultSheetOpen(false)}
         onClose={() => setScanResultSheetOpen(false)}
       />

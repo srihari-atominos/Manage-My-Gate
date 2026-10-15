@@ -47,6 +47,14 @@ export class OrgMembershipService {
     return await orgMembershipRepository.deleteByUserIdAndOrgId(userId, orgId, session);
   }
 
+  async countActiveMembersWithRole(roleId, session = null) {
+    return await orgMembershipRepository.countActiveMembersWithRole(roleId, session);
+  }
+
+  async countActiveMembersByRole(orgId, roleIds, session = null) {
+    return await orgMembershipRepository.countActiveMembersByRole(orgId, roleIds, session);
+  }
+
   async clearRoleFromMemberships(roleId, session = null) {
     return await orgMembershipRepository.clearRoleFromMemberships(roleId, session);
   }

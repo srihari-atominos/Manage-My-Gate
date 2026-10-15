@@ -38,6 +38,12 @@ export const RoleOverflowMenu: React.FC<RoleOverflowMenuProps> = ({
   if (!role) return null;
 
   const isSuperAdmin = role.name === 'Super Admin' || role.name === 'Platform Super Admin';
+  const memberCount = role.memberCount ?? 0;
+  const deleteBlockedReason = role.isLocked
+    ? t('role_locked_hint', 'Built-in role: the community needs it, so it cannot be deleted')
+    : memberCount > 0
+    ? t('role_in_use_hint', 'Assigned to {{count}} member(s). Reassign them first.', { count: memberCount })
+    : null;
   const isTenant = !!role.isTenantRole;
   const permissionsCount = Array.isArray(role.permissions) ? role.permissions.length : 0;
 
@@ -165,7 +171,9 @@ export const RoleOverflowMenu: React.FC<RoleOverflowMenuProps> = ({
           {!isSuperAdmin ? (
             <TouchableOpacity
               onPress={() => handleAction(() => onDelete(role))}
+              disabled={Boolean(deleteBlockedReason)}
               activeOpacity={0.7}
+              style={deleteBlockedReason ? { opacity: 0.5 } : undefined}
               className="flex-row items-center justify-between p-3.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 active:bg-rose-100/60"
               accessibilityRole="button"
               accessibilityLabel={t('delete_role', 'Delete Role')}
@@ -179,7 +187,8 @@ export const RoleOverflowMenu: React.FC<RoleOverflowMenuProps> = ({
                     {t('delete_role', 'Delete Role')}
                   </Text>
                   <Text className="text-[11px] text-muted-foreground font-sans">
-                    {t('permanently_remove_role', 'Permanently remove role from community registry')}
+                    {deleteBlockedReason ||
+                      t('permanently_remove_role', 'Permanently remove role from community registry')}
                   </Text>
                 </View>
               </View>

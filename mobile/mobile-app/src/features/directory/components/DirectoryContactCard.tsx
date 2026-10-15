@@ -10,14 +10,12 @@ import { cn } from '@/lib/utils';
 
 export interface DirectoryContactCardProps {
   member: DirectoryMember;
-  currentUserId?: string;
   onCall?: (phone: string) => void;
   className?: string;
 }
 
 export const DirectoryContactCard = ({
   member,
-  currentUserId,
   onCall,
   className,
 }: DirectoryContactCardProps) => {

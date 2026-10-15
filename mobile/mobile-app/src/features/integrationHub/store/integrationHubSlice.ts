@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import integrationHubApi, {
   ProviderCatalogItem,
   IntegrationConnection,
+  UpdateConnectionPayload,
 } from '../services/integrationHubApi';
 
 export interface IntegrationHubState {
@@ -19,56 +20,8 @@ export interface IntegrationHubState {
   };
 }
 
-export const DUMMY_CATALOG: ProviderCatalogItem[] = [
-  {
-    id: 'stripe',
-    name: 'Stripe Payments',
-    category: 'Payment Gateway',
-    description: 'Credit Card & Online Payment Gateway for resident assessments & maintenance dues.',
-    icon: 'CreditCard',
-    fields: [
-      { name: 'apiKey', label: 'API Key', type: 'text', required: true },
-      { name: 'webhookSecret', label: 'Webhook Secret', type: 'text', required: true },
-    ],
-  },
-  {
-    id: 'razorpay',
-    name: 'Razorpay PG',
-    category: 'Payment Gateway',
-    description: 'UPI, Net Banking & Card Processor for India region community payments.',
-    icon: 'Coins',
-    fields: [
-      { name: 'keyId', label: 'Key ID', type: 'text', required: true },
-      { name: 'keySecret', label: 'Key Secret', type: 'password', required: true },
-    ],
-  },
-  {
-    id: 'twillio',
-    name: 'Twilio SMS',
-    category: 'SMS & WhatsApp',
-    description: 'Automated SMS alerts for gate visitor approvals and urgent notices.',
-    icon: 'MessageSquare',
-    fields: [
-      { name: 'accountSid', label: 'Account SID', type: 'text', required: true },
-      { name: 'authToken', label: 'Auth Token', type: 'password', required: true },
-    ],
-  },
-  {
-    id: 'sendgrid',
-    name: 'SendGrid Email',
-    category: 'Email Dispatch',
-    description: 'Transactional email service for resident invite tokens and billing receipts.',
-    icon: 'Mail',
-    fields: [
-      { name: 'apiKey', label: 'API Key', type: 'password', required: true },
-    ],
-  },
-];
-
-export const DUMMY_CONNECTIONS: IntegrationConnection[] = [];
-
 const initialState: IntegrationHubState = {
-  catalog: DUMMY_CATALOG,
+  catalog: [],
   connections: [],
   selectedProvider: 'all',
   isLoading: false,
@@ -135,21 +88,27 @@ export const connectIntegrationAsync = createAsyncThunk(
   }
 );
 
-export const updateConnectionLabelAsync = createAsyncThunk(
-  'integrationHub/updateConnectionLabel',
-  async (payload: { id: string; accountLabel: string }, { rejectWithValue }) => {
+export const updateConnectionAsync = createAsyncThunk(
+  'integrationHub/updateConnection',
+  async (payload: { id: string; changes: UpdateConnectionPayload }, { rejectWithValue }) => {
     try {
-      if (!/^[0-9a-fA-F]{24}$/.test(payload.id)) {
-        return { id: payload.id, accountLabel: payload.accountLabel } as any;
-      }
-      const updated = await integrationHubApi.updateConnectionLabel(
-        payload.id,
-        payload.accountLabel
-      );
-      return updated;
+      return await integrationHubApi.updateConnection(payload.id, payload.changes);
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to update account label'
+        error.response?.data?.message || error.message || 'Failed to update the integration'
+      );
+    }
+  }
+);
+
+export const testConnectionAsync = createAsyncThunk(
+  'integrationHub/testConnection',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      return await integrationHubApi.testConnection(id);
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Could not test the connection'
       );
     }
   }
@@ -159,9 +118,6 @@ export const deleteConnectionAsync = createAsyncThunk(
   'integrationHub/deleteConnection',
   async (id: string, { rejectWithValue }) => {
     try {
-      if (!/^[0-9a-fA-F]{24}$/.test(id)) {
-        return id;
-      }
       await integrationHubApi.deleteConnection(id);
       return id;
     } catch (error: any) {
@@ -192,11 +148,11 @@ const integrationHubSlice = createSlice({
       })
       .addCase(fetchCatalogAsync.fulfilled, (state, action: PayloadAction<ProviderCatalogItem[]>) => {
         state.isLoading = false;
-        state.catalog = action.payload && action.payload.length > 0 ? action.payload : DUMMY_CATALOG;
+        state.catalog = action.payload || [];
       })
       .addCase(fetchCatalogAsync.rejected, (state, action) => {
+        // No made-up providers: if the catalog cannot be loaded the screen says so instead.
         state.isLoading = false;
-        if (state.catalog.length === 0) state.catalog = DUMMY_CATALOG;
         state.error = action.payload as string;
       })
 
@@ -234,18 +190,44 @@ const integrationHubSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // Update Connection Label
-      .addCase(updateConnectionLabelAsync.fulfilled, (state, action) => {
+      // Update connection (label and/or credentials)
+      .addCase(updateConnectionAsync.pending, (state) => {
+        state.isSubmitting = true;
+        state.error = null;
+      })
+      .addCase(updateConnectionAsync.fulfilled, (state, action) => {
+        state.isSubmitting = false;
         const index = state.connections.findIndex((item) => item.id === action.payload.id);
         if (index !== -1) {
-          state.connections[index] = action.payload;
+          state.connections[index] = { ...state.connections[index], ...action.payload };
         }
+      })
+      .addCase(updateConnectionAsync.rejected, (state, action) => {
+        state.isSubmitting = false;
+        state.error = action.payload as string;
+      })
+
+      // Test connection: store the fresh result on the card
+      .addCase(testConnectionAsync.fulfilled, (state, action) => {
+        const index = state.connections.findIndex((item) => item.id === action.payload.id);
+        if (index !== -1) {
+          state.connections[index] = {
+            ...state.connections[index],
+            lastCheck: { ok: action.payload.ok, at: action.payload.at, message: action.payload.message },
+          };
+        }
+      })
+      .addCase(testConnectionAsync.rejected, (state, action) => {
+        state.error = action.payload as string;
       })
 
       // Delete Connection
       .addCase(deleteConnectionAsync.fulfilled, (state, action: PayloadAction<string>) => {
         state.connections = state.connections.filter((item) => item.id !== action.payload);
         state.pagination.totalRecords = Math.max(0, state.pagination.totalRecords - 1);
+      })
+      .addCase(deleteConnectionAsync.rejected, (state, action) => {
+        state.error = action.payload as string;
       });
   },
 });

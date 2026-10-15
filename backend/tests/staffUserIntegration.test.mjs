@@ -30,12 +30,14 @@ test('1. Role classification: isStaffRole correctly detects staff roles', () => 
 });
 
 test('2. Technician synchronization: syncOrUpsertTechnicianFromUser creates new technician profile', async () => {
-  const origFindByContact = technicianRepository.findByContactOrUserId;
+  const origFindByContact = technicianRepository.findAnyByContactOrUserId;
   const origCreate = technicianRepository.create;
+  const origExistsDeleted = technicianRepository.existsDeletedByUserIdOrContact;
   let createdData = null;
 
   try {
-    technicianRepository.findByContactOrUserId = async () => null;
+    technicianRepository.findAnyByContactOrUserId = async () => null;
+    technicianRepository.existsDeletedByUserIdOrContact = async () => false;
     technicianRepository.create = async (doc) => {
       createdData = doc;
       return { _id: 'tech_new_1', ...doc };
@@ -61,7 +63,8 @@ test('2. Technician synchronization: syncOrUpsertTechnicianFromUser creates new 
     assert.equal(createdData.type, 'In-House Staff');
     assert.equal(createdData.designation, 'Community Electrician');
   } finally {
-    technicianRepository.findByContactOrUserId = origFindByContact;
+    technicianRepository.findAnyByContactOrUserId = origFindByContact;
+    technicianRepository.existsDeletedByUserIdOrContact = origExistsDeleted;
     technicianRepository.create = origCreate;
   }
 });
@@ -190,3 +193,42 @@ test('5. Bulk Unit Upload: Recognizes Household Staff and triggers staff onboard
     userService.inviteUser = origInvite;
   }
 });
+
+test('6. Dynamic Role Sync: Custom role with roleScope STAFF auto-syncs technician profile', async () => {
+  const origSync = technicianService.syncOrUpsertTechnicianFromUser;
+  const roleService = (await import('../src/features/role/role.services.js')).default;
+  const origGetRoleByName = roleService.getRoleByName;
+  let syncCalled = false;
+
+  try {
+    roleService.getRoleByName = async (name) => {
+      if (name === 'Private Butler') {
+        return { name: 'Private Butler', roleScope: 'STAFF', isTenantRole: true };
+      }
+      return null;
+    };
+
+    technicianService.syncOrUpsertTechnicianFromUser = async (data) => {
+      syncCalled = true;
+      return { _id: 'tech_custom_1', ...data };
+    };
+
+    // Role name does not contain "staff" keyword, but roleScope is 'STAFF'
+    await userService.syncTechnicianForStaffUser(
+      USER_ID,
+      ORG_ID,
+      ['Private Butler'],
+      null,
+      {
+        name: 'James Butler',
+        email: 'james@example.com',
+      }
+    );
+
+    assert.equal(syncCalled, true, 'Custom role with roleScope STAFF should trigger technician sync');
+  } finally {
+    technicianService.syncOrUpsertTechnicianFromUser = origSync;
+    roleService.getRoleByName = origGetRoleByName;
+  }
+});
+

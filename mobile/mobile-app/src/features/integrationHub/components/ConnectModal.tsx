@@ -141,11 +141,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                   value={credentials[field.name] || ''}
                   onChangeText={(val: string) => handleFieldChange(field.name, val)}
                   placeholder={field.placeholder || `Enter ${field.label}...`}
-                  secureTextEntry={
-                    field.name.toLowerCase().includes('secret') ||
-                    field.name.toLowerCase().includes('key') ||
-                    field.name.toLowerCase().includes('password')
-                  }
+                  secureTextEntry={field.type === 'password'}
                 />
               ))}
             </View>

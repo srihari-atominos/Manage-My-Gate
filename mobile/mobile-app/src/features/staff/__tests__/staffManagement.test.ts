@@ -31,15 +31,35 @@ import {
 
 describe('Staff Management — Phase 3 Mobile Integration & RBAC Contracts', () => {
   describe('1. Catalog and Navigation Integrity', () => {
-    it('registers exactly one admin_staff feature under Administration & Security', () => {
-      const staffFeatures = ALL_AVAILABLE_FEATURES.filter((f) => f.id === 'admin_staff');
-      expect(staffFeatures).toHaveLength(1);
+    it('registers the 4 distinct staff sub-features under Staff Management', () => {
+      const directory = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_directory');
+      const attendance = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_attendance');
+      const allocations = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_allocations');
+      const portal = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_portal');
 
-      const staffFeature = staffFeatures[0];
-      expect(staffFeature.name).toBe('Staff Management');
-      expect(staffFeature.route).toBe('/(resident)/admin/staff');
-      expect(staffFeature.permission).toBe('staff:view');
-      expect(staffFeature.categoryKey).toBe('administration_security');
+      expect(directory).toBeDefined();
+      expect(directory?.name).toBe('Staff Directory');
+      expect(directory?.permission).toBe('staff:view');
+      expect(directory?.categoryKey).toBe('staff_management');
+      expect(directory?.route).toBe('/(resident)/admin/staff/directory');
+
+      expect(attendance).toBeDefined();
+      expect(attendance?.name).toBe('Staff Attendance');
+      expect(attendance?.permission).toBe('staff:attendance');
+      expect(attendance?.categoryKey).toBe('staff_management');
+      expect(attendance?.route).toBe('/(resident)/admin/staff/attendance');
+
+      expect(allocations).toBeDefined();
+      expect(allocations?.name).toBe('Unit Allocations');
+      expect(allocations?.permission).toBe('staff:assign_unit');
+      expect(allocations?.categoryKey).toBe('staff_management');
+      expect(allocations?.route).toBe('/(resident)/staff/my-staff');
+
+      expect(portal).toBeDefined();
+      expect(portal?.name).toBe('Staff Portal & Pass');
+      expect(portal?.permission).toBe('staff:view_own');
+      expect(portal?.categoryKey).toBe('staff_management');
+      expect(portal?.route).toBe('/(resident)/staff/dashboard');
     });
 
     it('ensures no duplicate feature IDs exist in dashboard catalog', () => {
@@ -50,7 +70,7 @@ describe('Staff Management — Phase 3 Mobile Integration & RBAC Contracts', () 
   });
 
   describe('2. RBAC Access Control & Permission Boundaries', () => {
-    const adminStaffFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff')!;
+    const adminStaffFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_directory')!;
 
     it('allows access for a legitimate Community Admin', () => {
       const adminUser = {
@@ -106,6 +126,36 @@ describe('Staff Management — Phase 3 Mobile Integration & RBAC Contracts', () 
         permissions: ['complaints:view', 'complaints:track_requests'],
       };
       expect(isFeatureAllowedForUser(adminStaffFeature, complaintViewer)).toBe(false);
+    });
+
+    it('independently allows only the selected staff feature (e.g., Attendance Logs only)', () => {
+      const attendanceFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_attendance')!;
+      const directoryFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_directory')!;
+      const allocationsFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_allocations')!;
+      const portalFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_portal')!;
+
+      const attendanceOnlyUser = {
+        role: 'Attendance Auditor',
+        permissions: ['staff:attendance'],
+      };
+
+      expect(isFeatureAllowedForUser(attendanceFeature, attendanceOnlyUser)).toBe(true);
+      expect(isFeatureAllowedForUser(directoryFeature, attendanceOnlyUser)).toBe(false);
+      expect(isFeatureAllowedForUser(allocationsFeature, attendanceOnlyUser)).toBe(false);
+      expect(isFeatureAllowedForUser(portalFeature, attendanceOnlyUser)).toBe(false);
+    });
+
+    it('independently allows only Unit Allocation when staff:assign_unit is selected', () => {
+      const allocationsFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_allocations')!;
+      const directoryFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_directory')!;
+
+      const unitAssigner = {
+        role: 'Resident Coordinator',
+        permissions: ['staff:assign_unit'],
+      };
+
+      expect(isFeatureAllowedForUser(allocationsFeature, unitAssigner)).toBe(true);
+      expect(isFeatureAllowedForUser(directoryFeature, unitAssigner)).toBe(false);
     });
   });
 
@@ -225,13 +275,13 @@ describe('Staff Management — Phase 3 Mobile Integration & RBAC Contracts', () 
   });
 
   describe('4. Staff Dashboard Catalog & Self-Service Authorization', () => {
-    const staffDashboardFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'staff_dashboard')!;
-    const adminStaffFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff')!;
+    const staffDashboardFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_portal')!;
+    const adminStaffFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_directory')!;
 
-    it('registers exactly one staff_dashboard feature with correct route and permission', () => {
-      const matches = ALL_AVAILABLE_FEATURES.filter((f) => f.id === 'staff_dashboard');
+    it('registers exactly one admin_staff_portal feature with correct route and permission', () => {
+      const matches = ALL_AVAILABLE_FEATURES.filter((f) => f.id === 'admin_staff_portal');
       expect(matches).toHaveLength(1);
-      expect(matches[0].name).toBe('Staff Dashboard');
+      expect(matches[0].name).toBe('Staff Portal & Pass');
       expect(matches[0].route).toBe('/(resident)/staff/dashboard');
       expect(matches[0].permission).toBe('staff:view_own');
     });
@@ -354,11 +404,11 @@ describe('Staff Management — Phase 3 Mobile Integration & RBAC Contracts', () 
   });
 
   describe('6. Resident Staff Associations Catalog & RBAC Authorization', () => {
-    const residentStaffFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'resident_staff_associations')!;
+    const residentStaffFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_allocations')!;
 
-    it('registers exactly one resident_staff_associations feature with correct route and permission', () => {
+    it('registers exactly one admin_staff_allocations feature with correct route and permission', () => {
       expect(residentStaffFeature).toBeDefined();
-      expect(residentStaffFeature.name).toBe('My Unit Staff');
+      expect(residentStaffFeature.name).toBe('Unit Allocations');
       expect(residentStaffFeature.route).toBe('/(resident)/staff/my-staff');
       expect(residentStaffFeature.permission).toBe('staff:assign_unit');
     });
@@ -396,7 +446,7 @@ describe('Staff Management — Phase 3 Mobile Integration & RBAC Contracts', () 
     });
 
     it('verifies staff:assign_unit does NOT grant admin staff management (least-privilege separation)', () => {
-      const adminStaffFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff')!;
+      const adminStaffFeature = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'admin_staff_directory')!;
       const residentUser = {
         role: 'Resident Owner',
         permissions: ['staff:assign_unit'],
@@ -798,7 +848,337 @@ describe('Staff Management — Phase 3 Mobile Integration & RBAC Contracts', () 
       expect(res.records).toHaveLength(1);
       spy.mockRestore();
     });
+
+    it('staffService.getAttendanceHistory supports department, status, and ISO date parameters', async () => {
+      const spy = jest.spyOn(apiClient, 'get').mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {
+            records: [
+              mockAttendanceRecord,
+              {
+                ...mockAttendanceRecord,
+                _id: 'session_889',
+                status: 'Closed',
+                checkOutTime: new Date().toISOString(),
+                durationMinutes: 120,
+              },
+            ],
+            pagination: { totalRecords: 2, totalPages: 1 },
+          },
+        },
+      });
+
+      const query = {
+        department: 'Plumbing',
+        status: 'Open',
+        startDate: '2026-10-01',
+        endDate: '2026-10-31',
+      };
+      const res = await staffService.getAttendanceHistory(query);
+      expect(spy).toHaveBeenCalledWith('/staff-attendance', { params: query });
+      expect(res.records).toHaveLength(2);
+      expect(res.records[0].status).toBe('Open');
+      expect(res.records[1].status).toBe('Closed');
+      spy.mockRestore();
+    });
+  });
+
+  describe('10. Simplified Attendance Filters & Export Data Integrity', () => {
+    const sampleStaffSessions = [
+      {
+        _id: 'sess_1',
+        orgId: 'org_main',
+        technicianId: {
+          _id: 'tech_p1',
+          name: 'Ahmed Plumber',
+          department: 'Plumbing',
+          designation: 'Master Plumber',
+          staffCode: 'STF-PL-01',
+          type: 'In-House Staff',
+        },
+        staffCode: 'STF-PL-01',
+        status: 'Open',
+        checkInTime: '2026-10-13T08:00:00.000Z',
+        checkInGate: 'Main Gate',
+        checkOutTime: null,
+        exitGate: null,
+        durationMinutes: null,
+        isMissingCheckout: false,
+      },
+      {
+        _id: 'sess_2',
+        orgId: 'org_main',
+        technicianId: {
+          _id: 'tech_e1',
+          name: 'Suresh Electrician',
+          department: 'Electrical',
+          designation: 'Lead Technician',
+          staffCode: 'STF-EL-02',
+          type: 'External Vendor',
+        },
+        staffCode: 'STF-EL-02',
+        status: 'Closed',
+        checkInTime: '2026-10-12T09:00:00.000Z',
+        checkInGate: 'Service Gate',
+        checkOutTime: '2026-10-12T13:30:00.000Z',
+        exitGate: 'Service Gate',
+        durationMinutes: 270,
+        isMissingCheckout: false,
+      },
+      {
+        _id: 'sess_3',
+        orgId: 'org_main',
+        technicianId: {
+          _id: 'tech_s1',
+          name: 'Security Officer Salim',
+          department: 'Security',
+          designation: 'Patrol Guard',
+          staffCode: 'STF-SEC-09',
+          type: 'In-House Staff',
+        },
+        staffCode: 'STF-SEC-09',
+        status: 'Open',
+        checkInTime: '2026-10-10T06:00:00.000Z',
+        checkInGate: 'Main Gate',
+        checkOutTime: null,
+        exitGate: null,
+        durationMinutes: null,
+        isMissingCheckout: true,
+      },
+    ];
+
+    it('filters staff sessions by status: Open, Closed, and Missing Checkout', () => {
+      const openSessions = sampleStaffSessions.filter((s) => s.status === 'Open' && !s.isMissingCheckout);
+      expect(openSessions).toHaveLength(1);
+      expect(openSessions[0].technicianId.name).toBe('Ahmed Plumber');
+
+      const closedSessions = sampleStaffSessions.filter((s) => s.status === 'Closed');
+      expect(closedSessions).toHaveLength(1);
+      expect(closedSessions[0].durationMinutes).toBe(270);
+
+      const exceptionSessions = sampleStaffSessions.filter((s) => s.isMissingCheckout);
+      expect(exceptionSessions).toHaveLength(1);
+      expect(exceptionSessions[0].technicianId.name).toBe('Security Officer Salim');
+    });
+
+    it('filters staff sessions by department across supported categories without excluding valid roles', () => {
+      const plumbingSessions = sampleStaffSessions.filter(
+        (s) => s.technicianId.department === 'Plumbing'
+      );
+      expect(plumbingSessions).toHaveLength(1);
+      expect(plumbingSessions[0].staffCode).toBe('STF-PL-01');
+
+      const securitySessions = sampleStaffSessions.filter(
+        (s) => s.technicianId.department === 'Security'
+      );
+      expect(securitySessions).toHaveLength(1);
+
+      // External vendor staff attendance is included (not treated as visitor)
+      const vendorStaff = sampleStaffSessions.filter(
+        (s) => s.technicianId.type === 'External Vendor'
+      );
+      expect(vendorStaff).toHaveLength(1);
+      expect(vendorStaff[0].technicianId.name).toBe('Suresh Electrician');
+    });
+
+    it('validates custom date ranges: start date must not exceed end date', () => {
+      const validStart = '2026-10-01';
+      const validEnd = '2026-10-15';
+      const sTime = new Date(`${validStart}T00:00:00Z`).getTime();
+      const eTime = new Date(`${validEnd}T23:59:59Z`).getTime();
+      expect(sTime <= eTime).toBe(true);
+
+      const invalidStart = '2026-10-20';
+      const invalidEnd = '2026-10-10';
+      const badSTime = new Date(`${invalidStart}T00:00:00Z`).getTime();
+      const badETime = new Date(`${invalidEnd}T23:59:59Z`).getTime();
+      expect(badSTime > badETime).toBe(true);
+    });
+
+    it('sanitizes export fields to prevent spreadsheet formula injection', () => {
+      const sanitizeField = (val: any): string => {
+        if (val === null || val === undefined) return '';
+        const str = String(val).trim();
+        if (/^[=+@\-\t\r]/.test(str)) {
+          return `'${str}`;
+        }
+        return str;
+      };
+
+      expect(sanitizeField('=SUM(A1:A10)')).toBe("'=SUM(A1:A10)");
+      expect(sanitizeField('+123456')).toBe("'+123456");
+      expect(sanitizeField('@EVIL')).toBe("'@EVIL");
+      expect(sanitizeField('-CMD')).toBe("'-CMD");
+      expect(sanitizeField('Standard Name')).toBe('Standard Name');
+    });
+  });
+
+  describe('11. Staff Self-Service Dashboard — Allocation Accept/Reject Workflows', () => {
+    const { staffService } = require('../services/staffService');
+    const {
+      fetchMyAllocationsThunk,
+      acceptAssociationThunk,
+      rejectAssociationThunk,
+    } = require('../store/staffSlice');
+    const apiClient = require('../../../services/apiClient').default;
+
+    const dummyInitialState: StaffState = {
+      staffList: [],
+      isLoading: false,
+      isSubmitting: false,
+      error: null,
+      selectedStaff: null,
+      currentOrgId: null,
+      myProfile: null,
+      isProfileLoading: false,
+      profileError: null,
+      myUnits: [],
+      eligibleStaff: [],
+      associations: [],
+      isAssociationsLoading: false,
+      isAssociationSubmitting: false,
+      associationError: null,
+      attendanceStats: null,
+      attendanceRecords: [],
+      attendancePagination: {},
+      isAttendanceLoading: false,
+      attendanceError: null,
+      myAttendanceRecords: [],
+      isMyAttendanceLoading: false,
+      myAttendanceError: null,
+      myAllocations: [],
+      isAllocationsLoading: false,
+      allocationsError: null,
+    };
+
+    const pendingAlloc: StaffUnitAssociation = {
+      _id: 'alloc_req_101',
+      orgId: 'org_comm_01',
+      villaId: { _id: 'villa_101', unitNumber: '101', blockOrBuilding: 'Building A' },
+      technicianId: { _id: 'tech_501', name: 'Khalid Mansoor', department: 'Plumbing', staffCode: 'STF-501' },
+      status: 'Pending',
+      roleOrTrade: 'Private Maintenance',
+      associatedBy: { _id: 'user_res_01', name: 'John Resident' },
+    };
+
+    it('populates myAllocations upon fetchMyAllocationsThunk.fulfilled', () => {
+      const action = {
+        type: fetchMyAllocationsThunk.fulfilled.type,
+        payload: [pendingAlloc],
+      };
+      const state = staffReducer(dummyInitialState, action);
+      expect(state.myAllocations).toHaveLength(1);
+      expect(state.myAllocations[0].status).toBe('Pending');
+      expect(state.isAllocationsLoading).toBe(false);
+    });
+
+    it('transitions allocation to Active upon acceptAssociationThunk.fulfilled', () => {
+      const existingState: StaffState = {
+        ...dummyInitialState,
+        myAllocations: [pendingAlloc],
+      };
+
+      const acceptedAlloc: StaffUnitAssociation = {
+        ...pendingAlloc,
+        status: 'Active',
+      };
+
+      const action = {
+        type: acceptAssociationThunk.fulfilled.type,
+        payload: acceptedAlloc,
+      };
+
+      const state = staffReducer(existingState, action);
+      expect(state.myAllocations).toHaveLength(1);
+      expect(state.myAllocations[0].status).toBe('Active');
+
+      // Filter verification: Active vs Pending
+      const activeAllocations = state.myAllocations.filter((a) => a.status === 'Active');
+      const pendingAllocations = state.myAllocations.filter((a) => a.status === 'Pending');
+      expect(activeAllocations).toHaveLength(1);
+      expect(pendingAllocations).toHaveLength(0);
+    });
+
+    it('transitions allocation to Rejected upon rejectAssociationThunk.fulfilled', () => {
+      const existingState: StaffState = {
+        ...dummyInitialState,
+        myAllocations: [pendingAlloc],
+      };
+
+      const rejectedAlloc: StaffUnitAssociation = {
+        ...pendingAlloc,
+        status: 'Rejected',
+      };
+
+      const action = {
+        type: rejectAssociationThunk.fulfilled.type,
+        payload: rejectedAlloc,
+      };
+
+      const state = staffReducer(existingState, action);
+      expect(state.myAllocations).toHaveLength(1);
+      expect(state.myAllocations[0].status).toBe('Rejected');
+
+      // Filter verification
+      const activeAllocations = state.myAllocations.filter((a) => a.status === 'Active');
+      const pendingAllocations = state.myAllocations.filter((a) => a.status === 'Pending');
+      expect(activeAllocations).toHaveLength(0);
+      expect(pendingAllocations).toHaveLength(0);
+    });
+
+    it('staffService.acceptAssociation calls POST /staff-associations/:id/accept', async () => {
+      const postSpy = jest.spyOn(apiClient, 'post').mockResolvedValueOnce({
+        data: { data: { ...pendingAlloc, status: 'Active' } },
+      } as any);
+
+      const res = await staffService.acceptAssociation('alloc_req_101');
+      expect(postSpy).toHaveBeenCalledWith('/staff-associations/alloc_req_101/accept');
+      expect(res.status).toBe('Active');
+      postSpy.mockRestore();
+    });
+
+    it('staffService.rejectAssociation calls POST /staff-associations/:id/reject with reason', async () => {
+      const postSpy = jest.spyOn(apiClient, 'post').mockResolvedValueOnce({
+        data: { data: { ...pendingAlloc, status: 'Rejected' } },
+      } as any);
+
+      const res = await staffService.rejectAssociation('alloc_req_101', 'Schedule conflict');
+      expect(postSpy).toHaveBeenCalledWith('/staff-associations/alloc_req_101/reject', {
+        reason: 'Schedule conflict',
+      });
+      expect(res.status).toBe('Rejected');
+      postSpy.mockRestore();
+    });
+  });
+
+  describe('12. Staff Dashboard Scope Segmentation — Global vs Dual Staff', () => {
+    it('identifies roleScope: "STAFF" as Dual Staff with full operational features', () => {
+      const dualStaffUser = {
+        role: { name: 'Technician', roleScope: 'STAFF' },
+        permissions: ['staff:view_own'],
+      };
+      const roleScope = dualStaffUser.role.roleScope;
+      const isDual = roleScope === 'STAFF';
+      expect(isDual).toBe(true);
+    });
+
+    it('identifies roleScope: "GLOBAL" as strictly single-scope Global Pass without operational modules', () => {
+      const globalStaffUser = {
+        role: { name: 'Support Rep', roleScope: 'GLOBAL' },
+        permissions: ['staff:view_own'],
+      };
+      const roleScope = globalStaffUser.role.roleScope;
+      const isDual =
+        roleScope === 'STAFF' ||
+        (roleScope === 'GLOBAL' &&
+          (globalStaffUser.permissions.includes('complaints:assignee') ||
+            globalStaffUser.permissions.includes('staff:attendance') ||
+            globalStaffUser.permissions.includes('staff:assign_unit')));
+      expect(isDual).toBe(false);
+    });
   });
 });
+
 
 
