@@ -260,6 +260,7 @@ describe('SEC-WS-REM — Phase 4 WebSocket Tenant Isolation & Remediation Verifi
     if (mongoose.connection.readyState === 1) {
       await mongoose.disconnect();
     }
+    setTimeout(() => process.exit(0), 100);
   });
 
   const createClient = (token, extraOpts = {}) => {

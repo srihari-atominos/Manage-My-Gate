@@ -6,13 +6,15 @@ import HttpError from '../src/utils/httpError.utils.js';
 
 describe('GoogleProvider SSO Verification', () => {
   it('should have both Web and Android Client IDs configured in config.sso', () => {
+    assert.ok(config.sso.googleClientId, 'Google Web Client ID must be configured');
+    assert.ok(config.sso.googleAndroidClientId, 'Google Android Client ID must be configured');
     assert.equal(
       config.sso.googleClientId,
-      '610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com'
+      process.env.GOOGLE_CLIENT_ID || '610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com'
     );
     assert.equal(
       config.sso.googleAndroidClientId,
-      '610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com'
+      process.env.GOOGLE_ANDROID_CLIENT_ID || '610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com'
     );
   });
 
@@ -23,16 +25,16 @@ describe('GoogleProvider SSO Verification', () => {
     ].filter(Boolean);
 
     assert.equal(validAudiences.length, 2);
-    assert.ok(validAudiences.includes('610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com'));
-    assert.ok(validAudiences.includes('610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com'));
+    assert.ok(validAudiences.includes(config.sso.googleClientId));
+    assert.ok(validAudiences.includes(config.sso.googleAndroidClientId));
     
     // Simulate OAuth2Client audience array verification logic
     const verifyAudience = (tokenAud) => validAudiences.indexOf(tokenAud) > -1;
 
     // Web Client ID must be trusted
-    assert.equal(verifyAudience('610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com'), true);
+    assert.equal(verifyAudience(config.sso.googleClientId), true);
     // Android Client ID must be trusted
-    assert.equal(verifyAudience('610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com'), true);
+    assert.equal(verifyAudience(config.sso.googleAndroidClientId), true);
     // Any other arbitrary audience must be rejected
     assert.equal(verifyAudience('arbitrary-unauthorized-client-id.apps.googleusercontent.com'), false);
     assert.equal(verifyAudience(''), false);

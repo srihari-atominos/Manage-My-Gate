@@ -25,9 +25,9 @@ export const setupPaymentSocketListeners = async () => {
       io.to(userRoom).emit('paymentSuccess', payment);
 
       if (orgId) {
-        const orgRoom = `org:${orgId}`;
-        logger.info(`Broadcasting payment_success to room: ${orgRoom}`);
-        io.to(orgRoom).emit('payment_success', payment);
+        const adminRoom = `org:${orgId}:role:admin`;
+        logger.info(`Broadcasting payment_success to room: ${adminRoom}`);
+        io.to(adminRoom).emit('payment_success', payment);
       }
     } catch (error) {
       logger.error('Error emitting payment_success socket event:', error);
