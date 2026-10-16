@@ -7,11 +7,7 @@ import nodemailer from 'nodemailer';
 
 export const sendOtpNotification = async ({ identifier, code, type }) => {
   if (type === 'EMAIL') {
-    if (process.env.NODE_ENV !== 'production') {
-      logger.info(`[AUTH OTP DELIVERED] Identifier: ${maskEmail(identifier)} | Verification OTP Code: ${code}`);
-    } else {
-      logger.info(`[AUTH OTP DISPATCHED] Identifier: ${maskEmail(identifier)}`);
-    }
+    logger.info(`[AUTH OTP DISPATCHED] Identifier: ${maskEmail(identifier)}`);
 
     try {
       // 1. Check IntegrationHub SMTP integrations (prefer latest updated connected SMTP)
@@ -103,23 +99,12 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
         return;
       }
 
-      if (process.env.NODE_ENV !== 'production') {
-        logger.warn(`No active SMTP/Resend provider configured. Email not sent. [DEV OTP CODE: ${code}]`);
-      } else {
-        logger.warn(`No active SMTP/Resend provider configured. Email not sent to ${maskEmail(identifier)}`);
-      }
+      logger.warn(`No active SMTP/Resend provider configured. Email not sent to ${maskEmail(identifier)}`);
     } catch (error) {
       logger.error(`Failed to send OTP email to ${maskEmail(identifier)}: ${error.message}`);
-      if (process.env.NODE_ENV !== 'production') {
-        logger.info(`[FALLBACK DEV OTP] Code for ${maskEmail(identifier)}: ${code}`);
-      }
     }
   } else if (type === 'SMS') {
-    if (process.env.NODE_ENV !== 'production') {
-      logger.info(`[AUTH OTP DELIVERED - SMS] Phone: ${maskPhone(identifier)} | Verification OTP Code: ${code}`);
-    } else {
-      logger.info(`[AUTH OTP DISPATCHED - SMS] Phone: ${maskPhone(identifier)}`);
-    }
+    logger.info(`[AUTH OTP DISPATCHED - SMS] Phone: ${maskPhone(identifier)}`);
     try {
       // 1. Check Twilio
       const twilioIntegration = await IntegrationHub.findOne({ provider: 'twilio', status: 'connected' });

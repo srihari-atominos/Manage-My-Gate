@@ -121,6 +121,17 @@ let failedQueue: Array<{
 
 let store: any;
 
+const inFlightRequests = new Map<string, AbortController>();
+
+export const cancelInFlightRequests = (reason = 'Tenant switch or session termination') => {
+  inFlightRequests.forEach((controller) => {
+    try {
+      controller.abort(reason);
+    } catch (e) {}
+  });
+  inFlightRequests.clear();
+};
+
 export const injectStore = (_store: any) => {
   store = _store;
 };
@@ -184,7 +195,15 @@ apiClient.interceptors.request.use(
     config.baseURL = getApiBaseUrl();
 
     // Generate and inject a unique Request Correlation ID
-    config.headers['X-Request-ID'] = generateUUID();
+    const requestId = (config.headers['X-Request-ID'] as string) || generateUUID();
+    config.headers['X-Request-ID'] = requestId;
+    (config as any)._requestId = requestId;
+
+    if (!config.signal) {
+      const controller = new AbortController();
+      config.signal = controller.signal;
+      inFlightRequests.set(requestId, controller);
+    }
     config.headers['X-Client-Type'] = 'APP';
 
     try {
@@ -252,6 +271,7 @@ apiClient.interceptors.request.use(
 
       if (activeOrgId && activeOrgId !== '[object Object]') {
         config.headers['x-organization-id'] = activeOrgId;
+        (config as any)._tenantId = activeOrgId;
       }
 
       let rawUserId =
@@ -305,6 +325,29 @@ apiClient.interceptors.request.use(
 // Response Interceptor: Extract envelope data and handle JWT refresh
 apiClient.interceptors.response.use(
   (response) => {
+    const reqId = (response.config as any)?._requestId;
+    if (reqId) inFlightRequests.delete(reqId);
+
+    // F04: Discard response if tenant context switched while request was in-flight
+    const reqTenantId = (response.config as any)?._tenantId;
+    if (store && reqTenantId) {
+      const currentState = store.getState() as any;
+      const currentActiveOrgId =
+        currentState?.workspace?.activeOrganizationId ||
+        currentState?.auth?.user?.activeOrgId ||
+        currentState?.auth?.user?.orgId ||
+        null;
+
+      if (!currentActiveOrgId || reqTenantId !== currentActiveOrgId) {
+        console.warn(
+          `[Mobile ApiClient] Stale tenant response discarded: requested for ${reqTenantId}, active is ${currentActiveOrgId || 'NONE (Logged out)'}`
+        );
+        return Promise.reject(
+          new axios.Cancel(`Stale tenant response discarded for superseded tenant ${reqTenantId}`)
+        );
+      }
+    }
+
     // If 304 Not Modified without body, safely return success envelope
     if (response.status === 304 && !response.data) {
       return { success: true, message: 'Not Modified', data: null, notModified: true };
@@ -313,6 +356,12 @@ apiClient.interceptors.response.use(
     return response.data;
   },
   async (error) => {
+    const reqId = (error.config as any)?._requestId;
+    if (reqId) inFlightRequests.delete(reqId);
+
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
     const originalRequest = error.config;
 
     if (error.message === 'Network Error') {

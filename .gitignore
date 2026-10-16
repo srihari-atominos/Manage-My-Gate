@@ -25,6 +25,31 @@ last_error.json
 **/last_error.json
 scratch/
 **/scratch/
+patch*
+fix*
+repo_*.js
+find_id.js
+check_tenant_repos.js
+clean_imports.cjs
+check_invite.mjs
+check_smtp.mjs
+query.mjs
+backend/temp_*
+backend/scratch_*
+backend/check_*
+backend/find_*
+backend/test_*
+backend/send_*
+backend/manual_invite.mjs
+backend/rename_*
+backend/update_admin.mjs
+backend/add_*.mjs
+backend/assign_villa.mjs
+backend/create_family_role.mjs
+backend/fix_*.mjs
+backend/get_*.mjs
+backend/query*
+backend/retroactive_super_admin_fix.mjs
 
 # Expo
 .expo/

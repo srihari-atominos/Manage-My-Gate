@@ -64,7 +64,8 @@ export class ReconciliationController {
   async getRunReport(req, res, next) {
     try {
       const { runId } = req.params;
-      const report = await reconciliationReportService.getRunReport(runId);
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
+      const report = await reconciliationReportService.getRunReport(runId, orgId);
       if (!report) {
         return res.status(404).json({ success: false, message: `Run report ${runId} not found` });
       }
@@ -96,11 +97,13 @@ export class ReconciliationController {
       const { exceptionId } = req.params;
       const { status, resolutionNotes } = req.body;
       const resolvedBy = req.user?._id || req.user?.id || null;
+      const orgId = req.tenant?.isPlatform && req.body?.orgId ? req.body.orgId : req.tenant?.orgId;
 
       const updated = await historicalReconciliationService.updateException(exceptionId, {
         status,
         resolutionNotes,
         resolvedBy,
+        orgId,
       });
       res.status(200).json({ success: true, data: updated });
     } catch (err) {

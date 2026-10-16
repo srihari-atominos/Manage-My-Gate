@@ -3,7 +3,8 @@ import HttpError from '../../utils/httpError.utils.js';
 
 export const getLogs = async (req, res, next) => {
   try {
-    const { orgId } = req.user;
+    const orgId = req.tenant?.orgId || req.user?.orgId;
+    if (!orgId) throw new HttpError(403, 'Tenant context is required');
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
@@ -40,7 +41,8 @@ export const getLogs = async (req, res, next) => {
 
 export const getDashboardStats = async (req, res, next) => {
   try {
-    const { orgId } = req.user;
+    const orgId = req.tenant?.orgId || req.user?.orgId;
+    if (!orgId) throw new HttpError(403, 'Tenant context is required');
     const activeGate = req.user?.activeAssignment?.type === 'gate' ? req.user.activeAssignment.name : (req.query.gateName || null);
     const stats = await securityLogService.getDashboardStats(orgId, activeGate);
     res.json({ success: true, stats });
@@ -51,7 +53,10 @@ export const getDashboardStats = async (req, res, next) => {
 
 export const manualVerification = async (req, res, next) => {
   try {
-    const { orgId, _id: userId, name: guardName } = req.user;
+    const orgId = req.tenant?.orgId || req.user?.orgId;
+    if (!orgId) throw new HttpError(403, 'Tenant context is required');
+    const userId = req.user?.id || req.user?._id;
+    const guardName = req.user?.name || req.user?.username || 'Guard';
     const { bookingId, reason, remarks, status } = req.body;
     
     // In a real scenario, we'd fetch the booking to log it properly.
@@ -78,7 +83,8 @@ export const manualVerification = async (req, res, next) => {
 
 export const deleteLog = async (req, res, next) => {
   try {
-    const { orgId } = req.user;
+    const orgId = req.tenant?.orgId || req.user?.orgId;
+    if (!orgId) throw new HttpError(403, 'Tenant context is required');
     const { id } = req.params;
 
     const deletedLog = await securityLogService.deleteLog(id, orgId);

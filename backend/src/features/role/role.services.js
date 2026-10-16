@@ -183,7 +183,7 @@ export class RoleService {
         // Emit event after successful permission update
         roleEvents.emit('rolePermissionsUpdated', { roleId: id, permissionIds, permissions: populatedPermissions });
       } else {
-        const permissionsList = await rolePermissionService.getPermissionsByRoleId(id);
+        const permissionsList = await rolePermissionService.getPermissionsByRoleId(id, updatedRole?.orgId);
         populatedPermissions = permissionsList.map(p => p.name);
       }
       
@@ -204,11 +204,12 @@ export class RoleService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      await this.getRoleById(id, session);
+      const existingRole = await this.getRoleById(id, session);
       const deletedRole = await roleRepository.delete(id, session);
       
       const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
       await rolePermissionService.updateRolePermissions(id, [], session);
+      await rolePermissionService.clearCache(id, existingRole?.orgId);
       
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.clearRoleFromMemberships(id, session);
@@ -265,13 +266,13 @@ export class RoleService {
   }
 
   async getRolePermissions(roleId) {
-    await this.getRoleById(roleId);
+    const role = await this.getRoleById(roleId);
     const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
-    return await rolePermissionService.getPermissionsByRoleId(roleId);
+    return await rolePermissionService.getPermissionsByRoleId(roleId, role?.orgId);
   }
 
   async syncRolePermissions(roleId, permissionNames) {
-    await this.getRoleById(roleId);
+    const role = await this.getRoleById(roleId);
     
     let permissionIds = [];
     if (permissionNames && permissionNames.length > 0) {
@@ -283,7 +284,7 @@ export class RoleService {
     
     const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
     await rolePermissionService.updateRolePermissions(roleId, permissionIds);
-    const updatedPerms = await rolePermissionService.getPermissionsByRoleId(roleId);
+    const updatedPerms = await rolePermissionService.getPermissionsByRoleId(roleId, role?.orgId);
     const populatedPermissions = updatedPerms.map(p => p.name || p);
     roleEvents.emit('rolePermissionsUpdated', { roleId, permissionIds, permissions: populatedPermissions });
     return updatedPerms;

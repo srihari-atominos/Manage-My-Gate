@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import authService from '../services/authService';
 import storage from '../../../utils/storage';
+import { cancelInFlightRequests } from '../../../services/apiClient';
 
 export interface User {
   id: string;
@@ -585,6 +586,7 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
   { rejectValue: string }
 >('auth/switchWorkspaceContext', async (payload, { dispatch, rejectWithValue }) => {
   try {
+    cancelInFlightRequests('Workspace context switched');
     const cleanPayload: {
       targetOrgId?: string;
       targetRole?: string;
@@ -715,6 +717,8 @@ export const updateOrganizationFeaturesThunk = createAsyncThunk(
 export const performLogout = createAsyncThunk(
   'auth/performLogout',
   async (_, { dispatch }) => {
+    cancelInFlightRequests('User logged out');
+    storage.clearMemoryCache();
     try {
       await authService.logoutApi();
     } catch (error) {
@@ -723,6 +727,7 @@ export const performLogout = createAsyncThunk(
     await storage.removeItem('token');
     await storage.removeItem('refreshToken');
     await storage.removeItem('user');
+    await storage.removeItem('availableWorkspaces');
     dispatch(logout());
     return true;
   }
@@ -731,11 +736,14 @@ export const performLogout = createAsyncThunk(
 export const deleteAccountThunk = createAsyncThunk(
   'auth/deleteAccount',
   async (_, { dispatch, rejectWithValue }) => {
+    cancelInFlightRequests('User deleted account');
+    storage.clearMemoryCache();
     try {
       await authService.deleteAccount();
       await storage.removeItem('token');
       await storage.removeItem('refreshToken');
       await storage.removeItem('user');
+      await storage.removeItem('availableWorkspaces');
       dispatch(logout());
       return true;
     } catch (error: any) {

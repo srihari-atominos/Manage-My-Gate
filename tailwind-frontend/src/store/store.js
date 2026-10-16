@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import uiReducer from './uiSlice.js';
 import sampleFeatureReducer from '../features/sampleFeature/store/sampleFeatureSlice.js';
 import authReducer from '../features/auth/store/authSlice.js';
@@ -23,47 +23,95 @@ import blacklistReducer from '../features/visitorManagement/store/blacklistSlice
 import noticeBoardReducer from '../features/noticeBoard/store/noticeBoardSlice.js';
 import complaintReducer from '../features/complaints/store/complaintSlice.js';
 import complaintSettingsReducer from '../features/complaints/store/complaintSettingsSlice.js';
+import { cancelInFlightRequests, injectStore } from '../services/apiClient.js';
+
+// Redact sensitive credentials before console logging
+const sanitizeStateForLog = (state) => {
+  if (!state || typeof state !== 'object') return state;
+  return {
+    ...state,
+    auth: state.auth
+      ? {
+          ...state.auth,
+          token: state.auth.token ? '***REDACTED***' : null,
+          user: state.auth.user
+            ? {
+                ...state.auth.user,
+                password: state.auth.user.password ? '***REDACTED***' : undefined,
+              }
+            : null,
+        }
+      : undefined,
+  };
+};
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
   console.group(`Action: ${action.type}`);
-  console.log('%cPrev State:', 'color: #9E9E9E; font-weight: bold;', store.getState());
+  console.log('%cPrev State:', 'color: #9E9E9E; font-weight: bold;', sanitizeStateForLog(store.getState()));
   console.log('%cAction:', 'color: #03A9F4; font-weight: bold;', action);
   const result = next(action);
-  console.log('%cNext State:', 'color: #4CAF50; font-weight: bold;', store.getState());
+  console.log('%cNext State:', 'color: #4CAF50; font-weight: bold;', sanitizeStateForLog(store.getState()));
   console.groupEnd();
   return result;
 };
 
 const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
 
-export const store = configureStore({
-  reducer: {
-    ui: uiReducer,
-    sampleFeature: sampleFeatureReducer,
-    auth: authReducer,
-    userManagement: userReducer,
-    roleBuilder: roleReducer,
-    notifications: notificationsReducer,
-    integrationHub: integrationHubReducer,
-    workspace: workspaceReducer,
-    workspaceModules: workspaceModulesReducer,
-    adminWorkspace: adminWorkspaceReducer,
-    organization: organizationReducer,
-    auditLog: auditLogReducer,
+const appReducer = combineReducers({
+  ui: uiReducer,
+  sampleFeature: sampleFeatureReducer,
+  auth: authReducer,
+  userManagement: userReducer,
+  roleBuilder: roleReducer,
+  notifications: notificationsReducer,
+  integrationHub: integrationHubReducer,
+  workspace: workspaceReducer,
+  workspaceModules: workspaceModulesReducer,
+  adminWorkspace: adminWorkspaceReducer,
+  organization: organizationReducer,
+  auditLog: auditLogReducer,
 
-    messageTemplate: messageTemplateReducer,
-    villa: villaReducer,
-    amenities: amenityReducer,
-    amenitiesDashboard: dashboardReducer,
-    securityLogs: securityLogReducer,
-    visitorPass: visitorPassReducer,
-    visitorLog: visitorLogReducer,
-    blacklist: blacklistReducer,
-    noticeBoard: noticeBoardReducer,
-    complaints: complaintReducer,
-    complaintSettings: complaintSettingsReducer,
-  },
+  messageTemplate: messageTemplateReducer,
+  villa: villaReducer,
+  amenities: amenityReducer,
+  amenitiesDashboard: dashboardReducer,
+  securityLogs: securityLogReducer,
+  visitorPass: visitorPassReducer,
+  visitorLog: visitorLogReducer,
+  blacklist: blacklistReducer,
+  noticeBoard: noticeBoardReducer,
+  complaints: complaintReducer,
+  complaintSettings: complaintSettingsReducer,
+});
+
+// Root reducer to handle global resets for tenant isolation
+const rootReducer = (state, action) => {
+  // Wipe all sensitive and tenant state on user logout
+  if (action.type === 'auth/logout' || action.type === 'auth/performLogout/fulfilled') {
+    cancelInFlightRequests('User logged out');
+    state = { ui: state?.ui };
+  } else if (
+    // Wipe all tenant-scoped feature data when switching tenant or workspace context
+    action.type === 'workspace/setActiveWorkspace' ||
+    action.type === 'auth/switchWorkspaceContext/fulfilled' ||
+    action.type === 'auth/switchWorkspaceContext/pending' ||
+    action.type === 'workspace/clearWorkspace'
+  ) {
+    cancelInFlightRequests('Tenant context switched');
+    // Keep auth state, ui, and workspace metadata, but reset all feature slices to clean initialState
+    state = {
+      auth: state?.auth,
+      ui: state?.ui,
+      workspace: state?.workspace,
+      workspaceModules: state?.workspaceModules,
+    };
+  }
+  return appReducer(state, action);
+};
+
+export const store = configureStore({
+  reducer: rootReducer,
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();
     if (isDev) {
@@ -73,5 +121,7 @@ export const store = configureStore({
   },
   devTools: isDev,
 });
+
+injectStore(store);
 
 export default store;

@@ -61,7 +61,7 @@ export class NoticeBoardController {
       let permissions = [];
       if (req.user.roleId) {
         const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
-        const permissionsList = await rolePermissionService.getPermissionsByRoleId(req.user.roleId);
+        const permissionsList = await rolePermissionService.getPermissionsByRoleId(req.user.roleId, req.tenant?.orgId || req.user?.orgId);
         permissions = permissionsList.map((p) => p.name);
       } else if (req.user.role && req.tenant?.orgId) {
         try {
@@ -69,7 +69,7 @@ export class NoticeBoardController {
           const role = await roleService.getRoleByName(req.user.role, req.tenant.orgId);
           if (role) {
             const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
-            const permissionsList = await rolePermissionService.getPermissionsByRoleId(role._id);
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(role._id, req.tenant?.orgId || req.user?.orgId);
             permissions = permissionsList.map((p) => p.name);
           }
         } catch (err) {

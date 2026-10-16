@@ -229,9 +229,10 @@ export class IntegrationHubService {
    * Retrieve and decrypt credentials for a specific connection.
    * Strictly for internal cross-feature use. Supports both GCM and CBC decryption.
    * @param {string} connectionId - ID of the connection
+   * @param {string} [expectedOrgId=null] - Optional expected Organization ID to enforce tenant isolation
    * @returns {Promise<object>} Raw decrypted credentials key-value object
    */
-  async getDecryptedCredentialsById(connectionId) {
+  async getDecryptedCredentialsById(connectionId, expectedOrgId = null) {
     if (!connectionId) {
       throw new HttpError(400, 'Connection ID is required.');
     }
@@ -239,6 +240,15 @@ export class IntegrationHubService {
     const connection = await integrationHubRepository.getConnectionById(connectionId);
     if (!connection) {
       throw new HttpError(404, `Connection with ID ${connectionId} not found.`);
+    }
+
+    if (connection.orgId && !connection.isGlobal) {
+      if (!expectedOrgId) {
+        throw new HttpError(400, 'Tenant context (expectedOrgId) is required for tenant-scoped integration credentials.');
+      }
+      if (String(connection.orgId) !== String(expectedOrgId)) {
+        throw new HttpError(403, 'Access denied: Integration connection belongs to another organization.');
+      }
     }
 
     const decryptedCredentials = {};

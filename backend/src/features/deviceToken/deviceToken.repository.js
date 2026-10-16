@@ -63,10 +63,15 @@ export class DeviceTokenRepository {
    * Deactivate a specific push token.
    * @param {string} pushToken
    * @param {mongoose.ClientSession} [session]
+   * @param {string} [userId=null]
    */
-  async deactivateToken(pushToken, session = null) {
+  async deactivateToken(pushToken, session = null, userId = null) {
+    const query = { pushToken };
+    if (userId) {
+      query.userId = userId;
+    }
     return await DeviceToken.findOneAndUpdate(
-      { pushToken },
+      query,
       { $set: { isActive: false } },
       { returnDocument: 'after', session }
     );

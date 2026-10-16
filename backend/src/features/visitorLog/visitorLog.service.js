@@ -27,13 +27,13 @@ export class VisitorLogService {
     assertVisitorPermission(['gate', 'manager'], actor);
     const guardId = getActorId(actor);
     // 1. Verify pass status, dates, times, allowed days, usage limits
-    const pass = await visitorPassService.verifyPassForEntry(passId, session);
+    const pass = await visitorPassService.verifyPassForEntry(passId, context.orgId, session);
     if (String(pass.orgId) !== String(context.orgId)) {
-      throw new HttpError(403, 'Forbidden. This pass belongs to another community.');
+      throw new HttpError(404, `Visitor pass with ID ${passId} not found.`);
     }
 
     // 2. Use pass transactionally (increments usage count, updates status)
-    await visitorPassService.usePass(pass, session);
+    await visitorPassService.usePass(pass, context.orgId, session);
 
     // 3. Prepare log data
     const logData = {
@@ -137,7 +137,7 @@ export class VisitorLogService {
     }
 
     if (String(log.orgId) !== String(actor?.orgId)) {
-      throw new HttpError(403, 'Forbidden. This request belongs to another community.');
+      throw new HttpError(404, `Visitor log with ID ${logId} not found.`);
     }
     if (log.logStatus !== 'PENDING') {
       throw new HttpError(400, `Visitor log with ID ${logId} is already resolved or not pending.`);
@@ -189,7 +189,7 @@ export class VisitorLogService {
 
     if (!log) {
       try {
-        await visitorPassService.getPassById(logIdOrPassId);
+        await visitorPassService.getPassById(logIdOrPassId, context.orgId);
       } catch (err) {
         // Ignore pass fetch errors and throw standard log not found error below
       }
@@ -197,7 +197,7 @@ export class VisitorLogService {
     }
 
     if (String(log.orgId) !== String(context.orgId)) {
-      throw new HttpError(403, 'Forbidden. This entry belongs to another community.');
+      throw new HttpError(404, `Visitor log with ID ${logIdOrPassId} not found.`);
     }
     if (log.logStatus !== 'INSIDE') {
       throw new HttpError(400, `Visitor log with ID ${log._id} status is not INSIDE.`);
@@ -214,7 +214,7 @@ export class VisitorLogService {
     // Update pass status to EXPIRED upon check-out if usage limit reached and no other visitors remain inside
     if (updatedLog.passId) {
       try {
-        const pass = await visitorPassService.getPassById(updatedLog.passId, session);
+        const pass = await visitorPassService.getPassById(updatedLog.passId, log.orgId, session);
         if (pass && (pass.status === 'ACTIVE' || pass.status === 'PENDING')) {
           const logsInside = await visitorLogRepository.findActiveLogsInside(log.orgId, null, session);
           const anyoneLeft = logsInside.some(l => 
@@ -222,8 +222,8 @@ export class VisitorLogService {
             l._id?.toString() !== log._id.toString()
           );
           if (!anyoneLeft && (pass.usageLimit?.currentUses >= pass.usageLimit?.maxUses)) {
-            await visitorPassService.updatePassStatus(pass._id, 'EXPIRED', session, { actorId: getActorId(actor) });
-            await visitorPassTokenService.deleteTokenByPassId(pass._id, session);
+            await visitorPassService.updatePassStatus(pass._id, 'EXPIRED', log.orgId, session, { actorId: getActorId(actor) });
+            await visitorPassTokenService.deleteTokenByPassId(pass._id, session, log.orgId);
           }
         }
       } catch (err) {

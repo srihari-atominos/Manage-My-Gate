@@ -37,6 +37,15 @@ if (process.env.NODE_ENV === 'production') {
   if (process.env.ALLOW_MOCK_PAYMENTS === 'true') {
     throw new Error('ALLOW_MOCK_PAYMENTS must not be enabled in production.');
   }
+  if (process.env.REQUIRE_REDIS_LOCK !== 'true') {
+    throw new Error('REQUIRE_REDIS_LOCK must be set to "true" in production to prevent local in-memory lock split-brain.');
+  }
+  if (process.env.REQUIRE_REDIS_RATE_LIMIT !== 'true') {
+    throw new Error('REQUIRE_REDIS_RATE_LIMIT must be set to "true" in production to enforce distributed rate limiting.');
+  }
+  if (process.env.REQUIRE_REDIS_ADAPTER !== 'true') {
+    throw new Error('REQUIRE_REDIS_ADAPTER must be set to "true" in production to prevent split-brain room isolation.');
+  }
 }
 
 export const config = {

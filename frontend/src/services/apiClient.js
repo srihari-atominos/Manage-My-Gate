@@ -22,6 +22,17 @@ let isRefreshing = false
 let failedQueue = []
 let store
 
+const inFlightAbortControllers = new Map()
+
+export const cancelInFlightRequests = (reason = 'Tenant switch or session termination') => {
+  inFlightAbortControllers.forEach((controller) => {
+    try {
+      controller.abort(reason)
+    } catch (e) {}
+  })
+  inFlightAbortControllers.clear()
+}
+
 export const injectStore = (_store) => {
   store = _store
 }
@@ -46,7 +57,16 @@ apiClient.interceptors.request.use(
     }
 
     // Generate and inject a unique Request Correlation ID
-    config.headers['X-Request-ID'] = uuidv4()
+    const requestId = uuidv4()
+    config.headers['X-Request-ID'] = requestId
+
+    // Attach AbortController for in-flight request cancellation if not already provided
+    if (!config.signal) {
+      const controller = new AbortController()
+      config.signal = controller.signal
+      inFlightAbortControllers.set(requestId, controller)
+      config._requestId = requestId
+    }
 
     // Use injected store to get state
     try {
@@ -59,9 +79,9 @@ apiClient.interceptors.request.use(
         }
 
         const rawOrgId =
+          state.workspace?.activeOrganizationId ||
           state.auth?.user?.orgId ||
           state.auth?.user?.organizationId ||
-          state.workspace?.activeOrganizationId ||
           state.auth?.user?.org?._id ||
           state.auth?.user?.org
 
@@ -76,6 +96,7 @@ apiClient.interceptors.request.use(
           !config.headers['x-organization-id']
         ) {
           config.headers['x-organization-id'] = activeOrgId
+          config._tenantId = activeOrgId
         }
       }
     } catch (err) {
@@ -89,8 +110,42 @@ apiClient.interceptors.request.use(
 
 // Response Interceptor: Catch global errors
 apiClient.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    if (response.config?._requestId) {
+      inFlightAbortControllers.delete(response.config._requestId)
+    }
+
+    // F04: Discard response if tenant context switched while request was in-flight
+    if (store && response.config?._tenantId) {
+      const state = store.getState()
+      const currentActiveOrgId =
+        state.workspace?.activeOrganizationId ||
+        state.auth?.user?.orgId ||
+        state.auth?.user?.organizationId ||
+        null
+
+      if (!currentActiveOrgId || response.config._tenantId !== currentActiveOrgId) {
+        console.warn(
+          `[ApiClient] Stale tenant response discarded: requested for ${response.config._tenantId}, but active tenant is now ${currentActiveOrgId || 'NONE (Logged out)'}`,
+        )
+        const staleError = new axios.Cancel(
+          `Stale tenant response discarded for superseded tenant ${response.config._tenantId}`,
+        )
+        return Promise.reject(staleError)
+      }
+    }
+
+    return response.data
+  },
   async (error) => {
+    if (error.config?._requestId) {
+      inFlightAbortControllers.delete(error.config._requestId)
+    }
+
+    // Pass through canceled requests cleanly
+    if (axios.isCancel(error)) {
+      return Promise.reject(error)
+    }
     const originalRequest = error.config
     // Check if error is due to CORS (or network error where response is undefined)
     if (
@@ -166,6 +221,7 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshError) {
         processQueue(refreshError, null)
+        cancelInFlightRequests('Session expired')
 
         if (store) {
           store.dispatch({ type: 'auth/logout' })
@@ -183,6 +239,7 @@ apiClient.interceptors.response.use(
       error.response?.data?.message === 'Workspace context is required.'
     ) {
       console.warn('Workspace context lost. Forcing auto-logout to recover corrupted local state.')
+      cancelInFlightRequests('Workspace context lost')
       if (store) {
         try {
           store.dispatch({ type: 'auth/logout' })

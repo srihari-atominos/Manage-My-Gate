@@ -700,7 +700,7 @@ export class UserService {
       
       let updatedPermissions = [];
       for (const rId of roleIds) {
-        const perms = await rolePermissionService.getPermissionsByRoleId(rId);
+        const perms = await rolePermissionService.getPermissionsByRoleId(rId, orgId);
         updatedPermissions.push(...perms.map((p) => p.name));
       }
       updatedPermissions = Array.from(new Set(updatedPermissions));

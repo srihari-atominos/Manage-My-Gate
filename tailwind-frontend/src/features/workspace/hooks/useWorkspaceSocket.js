@@ -5,13 +5,15 @@ import { fetchCurrentWorkspace } from '../store/workspaceSlice';
 
 const useWorkspaceSocket = () => {
   const dispatch = useDispatch();
-  const user = useSelector((state) => state.auth.user);
+  const user = useSelector((state) => state.auth?.user);
+  const token = useSelector((state) => state.auth?.token) || localStorage.getItem('token');
   
   useEffect(() => {
-    if (!user) return;
+    if (!user || !token) return;
     
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5006';
     const socket = io(socketUrl, {
+      auth: { token },
       transports: ['websocket', 'polling'],
     });
 

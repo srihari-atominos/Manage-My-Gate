@@ -1,5 +1,6 @@
 import SecurityLog from './securityLog.model.js';
 import mongoose from 'mongoose';
+import { escapeRegex } from '../../utils/regex.utils.js';
 
 class SecurityLogRepository {
   async createLog(logData) {
@@ -8,14 +9,18 @@ class SecurityLogRepository {
   }
 
   async getLogs(orgId, filters = {}, skip = 0, limit = 20) {
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return { total: 0, logs: [] };
+    }
     const query = { orgId: new mongoose.Types.ObjectId(orgId) };
 
     if (filters.search) {
+      const sanitizedSearch = escapeRegex(filters.search);
       query.$or = [
-        { bookingReference: { $regex: filters.search, $options: 'i' } },
-        { residentName: { $regex: filters.search, $options: 'i' } },
-        { amenityName: { $regex: filters.search, $options: 'i' } },
-        { guardName: { $regex: filters.search, $options: 'i' } }
+        { bookingReference: { $regex: sanitizedSearch, $options: 'i' } },
+        { residentName: { $regex: sanitizedSearch, $options: 'i' } },
+        { amenityName: { $regex: sanitizedSearch, $options: 'i' } },
+        { guardName: { $regex: sanitizedSearch, $options: 'i' } }
       ];
       // Note: Full searching across joined collections (like phone number in User) would require aggregation.
       // We stored most searchable fields directly on the log for faster querying.
@@ -24,8 +29,8 @@ class SecurityLogRepository {
     if (filters.status) query.status = filters.status;
     if (filters.scanType) query.scanType = filters.scanType;
     if (filters.gateName) query.gateName = filters.gateName;
-    if (filters.amenityId) query.amenityId = new mongoose.Types.ObjectId(filters.amenityId);
-    if (filters.checkedInBy) query.checkedInBy = new mongoose.Types.ObjectId(filters.checkedInBy);
+    if (filters.amenityId && mongoose.Types.ObjectId.isValid(filters.amenityId)) query.amenityId = new mongoose.Types.ObjectId(filters.amenityId);
+    if (filters.checkedInBy && mongoose.Types.ObjectId.isValid(filters.checkedInBy)) query.checkedInBy = new mongoose.Types.ObjectId(filters.checkedInBy);
     
     if (filters.dateRange) {
       const now = new Date();
@@ -67,6 +72,17 @@ class SecurityLogRepository {
   }
 
   async getDashboardStats(orgId, gateName = null) {
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return {
+        entries: 0,
+        exits: 0,
+        denied: 0,
+        manualVerifications: 0,
+        cancelled: 0,
+        refunds: 0,
+        qrExpired: 0
+      };
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

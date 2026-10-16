@@ -91,7 +91,10 @@ class ComplaintService {
     // Auto-map department (placeholder for dynamic config lookup)
     const department = data.department || 'General Maintenance';
 
+    const { orgId: _ignoredOrg, residentId: _ignoredRes, communityId: _ignoredComm, ...cleanData } = data;
+
     const newComplaint = {
+      ...cleanData,
       orgId,
       residentId,
       residentName,
@@ -100,7 +103,6 @@ class ComplaintService {
       complaintNumber,
       slaDueDate,
       expectedSLA: priority === 'Critical' ? 'Immediate' : 'Standard',
-      ...data,
       priority,
       department,
       status: 'Open',

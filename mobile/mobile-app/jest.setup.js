@@ -80,4 +80,13 @@ jest.mock('expo-file-system/legacy', () => ({
 }));
 
 
+jest.mock('expo-crypto', () => ({
+  randomUUID: jest.fn(() => '10000000-1000-4000-8000-100000000000'),
+  getRandomBytes: jest.fn(() => new Uint8Array(16)),
+  getRandomBytesAsync: jest.fn().mockResolvedValue(new Uint8Array(16)),
+  digestStringAsync: jest.fn().mockResolvedValue('mock-hash'),
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+  CryptoEncoding: { HEX: 'hex', BASE64: 'base64' },
+}));
+
 jest.mock('expo-router', () => ({ useRouter: jest.fn(() => ({ push: jest.fn(), back: jest.fn(), navigate: jest.fn(), replace: jest.fn() })), useLocalSearchParams: jest.fn(() => ({})), usePathname: jest.fn(() => ''), Link: 'Link' }));

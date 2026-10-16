@@ -89,6 +89,7 @@ test('Phase 1 - Controller BOLA/IDOR Security Enforcement', async (t) => {
   
   await t.test('VisitorLogController - getInside rejects/overrides req.params.orgId', async () => {
     let passedOrgId = null;
+    let passedError = null;
     const req = {
       params: { orgId: 'HACKED_ORG_B' },
       tenant: { orgId: 'LEGIT_ORG_A', isPlatform: false },
@@ -102,11 +103,13 @@ test('Phase 1 - Controller BOLA/IDOR Security Enforcement', async (t) => {
     };
     
     const res = { success: () => {} };
-    const next = () => {};
+    const next = (err) => { passedError = err; };
     
     try {
       await visitorLogController.getInside(req, res, next);
-      assert.strictEqual(passedOrgId, 'LEGIT_ORG_A', 'Must strictly use req.tenant.orgId');
+      assert.ok(passedError, 'Must reject mismatched req.params.orgId with an error');
+      assert.strictEqual(passedError.statusCode, 403, 'Must return 403 Forbidden for mismatched orgId');
+      assert.strictEqual(passedOrgId, null, 'Must not call service with tampered orgId');
     } finally {
       (await import('../src/features/visitorLog/visitorLog.service.js')).default.getActiveLogsInside = originalGetInside;
     }

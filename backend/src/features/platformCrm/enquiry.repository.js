@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Enquiry from './enquiry.model.js';
 
 class EnquiryRepository {

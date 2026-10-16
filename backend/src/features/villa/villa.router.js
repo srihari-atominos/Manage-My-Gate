@@ -87,6 +87,21 @@ router.post(
 
 /**
  * @swagger
+ * /villas/export:
+ *   get:
+ *     summary: Export units to CSV format
+ */
+router.get(
+  '/export',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', 'read'),
+  villaController.exportUnits
+);
+
+/**
+ * @swagger
  * /villas/{id}:
  *   get:
  *     summary: Retrieve a single unit and its residents
@@ -149,20 +164,7 @@ router.put(
   villaController.update
 );
 
-/**
- * @swagger
- * /villas/export:
- *   get:
- *     summary: Export units to CSV format
- */
-router.get(
-  '/export',
-  correlationIdMiddleware,
-  isAuthenticated,
-  tenantContext,
-  authorizePermission('villas', 'read'),
-  villaController.exportUnits
-);
+
 
 /**
  * @swagger

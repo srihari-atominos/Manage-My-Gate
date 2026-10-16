@@ -23,8 +23,8 @@ class EnquiryController {
   async getAll(req, res, next) {
     try {
       const xRequestId = req.headers['x-request-id'] || req.id;
-      const userRole = req.user?.role?.name || req.user?.role || '';
-      const isPlatformAdmin = ['Super Admin', 'Platform Admin', 'SUPER_ADMIN', 'PLATFORM_ADMIN'].includes(userRole);
+      const userRole = (req.user?.role?.name || req.user?.role || '').toLowerCase().trim();
+      const isPlatformAdmin = Boolean(req.user?.isPlatform) || ['super admin', 'platform admin', 'platform super admin'].includes(userRole);
       
       const queryParams = { ...req.query };
       if (!isPlatformAdmin && (req.user?.orgId || req.user?.organizationId)) {

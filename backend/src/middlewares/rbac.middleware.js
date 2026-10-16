@@ -4,11 +4,14 @@ import { mapPermission, expandUserPermissions } from '../utils/permissionMapper.
 import Workspace from '../features/workspace/workspace.model.js';
 
 /**
- * Helper to check if a user is an administrator via token role or live OrgMembership.
+ * Helper to check if a user is an administrator via validated tenant context or live OrgMembership.
  */
 export const checkIsAdmin = async (req) => {
   if (!req?.user) return false;
-  if (req.user.isPlatform === true) return true;
+
+  // Platform super admin has global administrative access
+  if (req.user.isPlatform === true || req.tenant?.isPlatform === true) return true;
+
   const adminRoles = [
     'super admin',
     'platform super admin',
@@ -23,148 +26,203 @@ export const checkIsAdmin = async (req) => {
     'facility_manager',
   ];
   const cleanRole = (r) => (r || '').toLowerCase().trim().replace(/[_-]/g, ' ');
-  const userRole = cleanRole(req.tenantRole || req.user.role);
-  const userRoles = Array.isArray(req.user.roles) ? req.user.roles.map(cleanRole) : [];
-  if (
-    adminRoles.some((ar) => cleanRole(ar) === userRole) ||
-    userRoles.some((r) => adminRoles.some((ar) => cleanRole(ar) === r)) ||
-    userRole.includes('admin') ||
-    userRole.includes('super')
-  ) {
-    return true;
+
+  // Target organization context
+  const targetOrgId = req.tenant?.orgId || req.orgId || req.headers['x-organization-id'] || req.headers['x-org-id'] || req.user?.orgId;
+
+  // If tenantContext already ran and established a verified tenantRole for this target organization
+  if (req.tenantRole && req.tenant?.orgId && targetOrgId && String(req.tenant.orgId) === String(targetOrgId)) {
+    const roleClean = cleanRole(req.tenantRole);
+    return adminRoles.some((ar) => cleanRole(ar) === roleClean) || roleClean.includes('admin') || roleClean.includes('super');
   }
 
-  // Live Database OrgMembership verification for active workspace context
+  // If DB is connected, verify active OrgMembership specifically in targetOrgId
   const userId = req.user.id || req.user._id;
-  const currentOrgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user.orgId;
-  if (userId) {
+  if (mongoose.connection?.readyState === 1) {
+    if (!targetOrgId || !mongoose.isValidObjectId(targetOrgId) || !userId || !mongoose.isValidObjectId(userId)) {
+      return false; // Fail closed: cannot be tenant admin without valid target org context
+    }
+
     try {
       const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
-      const filter = { userId, status: 'Active' };
-      if (currentOrgId && mongoose.isValidObjectId(currentOrgId)) {
-        filter.orgId = currentOrgId;
-      }
-      const memberships = await OrgMembership.find(filter)
+      const membership = await OrgMembership.findOne({
+        userId,
+        orgId: targetOrgId,
+        status: 'Active',
+      })
         .populate('roleId')
         .populate('roleIds')
         .lean();
-      for (const m of memberships) {
-        const names = [
-          m.roleId?.name,
-          ...(Array.isArray(m.roleIds) ? m.roleIds.map((r) => r?.name) : []),
-        ].filter(Boolean);
-        if (names.some((n) => adminRoles.some((ar) => cleanRole(ar) === cleanRole(n)) || cleanRole(n).includes('admin') || cleanRole(n).includes('super'))) {
-          return true;
-        }
+
+      if (!membership) {
+        return false;
       }
-    } catch (memErr) {
-      // Graceful fallback
+
+      const roleNames = [
+        membership.roleId?.name,
+        ...(Array.isArray(membership.roleIds) ? membership.roleIds.map((r) => r?.name) : []),
+      ].filter(Boolean);
+
+      return roleNames.some(
+        (n) => adminRoles.some((ar) => cleanRole(ar) === cleanRole(n)) ||
+               cleanRole(n).includes('admin') ||
+               cleanRole(n).includes('super')
+      );
+    } catch (err) {
+      return false;
     }
+  }
+
+  // Fallback for offline / test environments without DB connection
+  if (req.user.role && (!targetOrgId || String(req.user.orgId) === String(targetOrgId))) {
+    const userRole = cleanRole(req.user.role);
+    return adminRoles.some((ar) => cleanRole(ar) === userRole) || userRole.includes('admin') || userRole.includes('super');
   }
 
   return false;
 };
 
 /**
- * Helper to dynamically resolve user permissions from the cache or database.
+ * Helper to dynamically resolve user permissions exclusively from verified membership
+ * and organization-scoped roles. Unscoped user.roles fallback is eliminated to prevent
+ * cross-tenant privilege escalation (SEC-05.1-F01).
  */
 export const getPermissionsForUser = async (user, targetOrgId = null) => {
   if (!user) return [];
+
+  // Global platform administrators retain full access
+  if (user.isPlatform === true || user.role === 'Platform Super Admin') {
+    return ['*'];
+  }
+
+  // Check if user is an active member of a platform organization
+  if (mongoose.connection?.readyState === 1) {
+    const userId = user.id || user._id;
+    if (userId && mongoose.isValidObjectId(userId)) {
+      try {
+        const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+        const memberships = await OrgMembership.find({
+          userId,
+          status: 'Active',
+        }).populate('orgId').lean();
+        if (memberships.some((m) => m.orgId?.isPlatform === true)) {
+          return ['*'];
+        }
+      } catch (e) {
+        // Fall through to standard tenant resolution
+      }
+    }
+  }
+
   const orgId = targetOrgId || user.orgId;
-  const roleIds = [];
-  
-  if (user.roleId) {
-    roleIds.push(user.roleId.toString());
-  }
-  if (Array.isArray(user.roleIds)) {
-    user.roleIds.forEach((id) => {
-      if (id && !roleIds.includes(id.toString())) {
-        roleIds.push(id.toString());
-      }
-    });
-  }
-  if (Array.isArray(user.roles)) {
-    user.roles.forEach((id) => {
-      if (id && mongoose.isValidObjectId(id) && !roleIds.includes(id.toString())) {
-        roleIds.push(id.toString());
-      }
-    });
-  }
-  
-  // Also query live database OrgMembership to dynamically include all user roles
-  const userId = user.id || user._id;
-  if (userId && mongoose.isValidObjectId(userId) && mongoose.connection?.readyState === 1) {
+
+  // Live Database OrgMembership verification for active organization context
+  if (mongoose.connection?.readyState === 1) {
+    if (!orgId || !mongoose.isValidObjectId(orgId)) {
+      return []; // Fail closed: tenant permissions require a valid target organization
+    }
+
+    const userId = user.id || user._id;
+    if (!userId || !mongoose.isValidObjectId(userId)) {
+      return [];
+    }
+
     try {
       const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
-      const filter = { userId, status: 'Active' };
-      if (targetOrgId && mongoose.isValidObjectId(targetOrgId)) {
-        filter.orgId = targetOrgId;
+      const membership = await OrgMembership.findOne({
+        userId,
+        orgId,
+        status: 'Active',
+      }).lean();
+
+      // Fails closed if user has no active membership in the target organization
+      if (!membership) {
+        return [];
       }
-      const memberships = await OrgMembership.find(filter).lean();
-      memberships.forEach((m) => {
-        if (m.roleIds && m.roleIds.length > 0) {
-          m.roleIds.forEach((rid) => {
-            const s = rid?.toString();
-            if (s && !roleIds.includes(s)) roleIds.push(s);
-          });
-        } else if (m.roleId) {
-          const s = m.roleId.toString();
-          if (s && !roleIds.includes(s)) roleIds.push(s);
+
+      const candidateRoleIds = new Set();
+      if (membership.roleId && mongoose.isValidObjectId(membership.roleId)) {
+        candidateRoleIds.add(membership.roleId.toString());
+      }
+      if (Array.isArray(membership.roleIds)) {
+        membership.roleIds.forEach((rid) => {
+          if (rid && mongoose.isValidObjectId(rid)) {
+            candidateRoleIds.add(rid.toString());
+          }
+        });
+      }
+      if (Array.isArray(membership.assignments)) {
+        membership.assignments.forEach((a) => {
+          if (a.roleId && mongoose.isValidObjectId(a.roleId)) {
+            candidateRoleIds.add(a.roleId.toString());
+          }
+        });
+      }
+
+      // If membership exists but has no explicit roleIds, check fallback by role name in this org
+      if (candidateRoleIds.size === 0 && user.role) {
+        const roleService = (await import('../features/role/role.services.js')).default;
+        const role = await roleService.getRoleByName(user.role, orgId);
+        if (role && (!role.orgId || role.orgId.toString() === orgId.toString())) {
+          candidateRoleIds.add(role._id.toString());
         }
-      });
-    } catch (err) {
-      console.error('[RBAC MIDDLEWARE] Graceful OrgMembership role lookup failed:', err.message);
-    }
-  }
-
-  // Secondary Fallback: Query roleId by role name if still empty
-  if (roleIds.length === 0 && user.role && (targetOrgId || user.orgId) && mongoose.connection?.readyState === 1) {
-    try {
-      const roleService = (await import('../features/role/role.services.js')).default;
-      const role = await roleService.getRoleByName(user.role, targetOrgId || user.orgId);
-      if (role) {
-        roleIds.push(role._id.toString());
       }
+
+      if (candidateRoleIds.size === 0) {
+        return [];
+      }
+
+      // Strict role validation: Ensure roles belong to targetOrgId or are system template roles
+      const Role = (await import('../features/role/role.model.js')).default;
+      const safeRoles = await Role.find({
+        _id: { $in: Array.from(candidateRoleIds) },
+        $or: [
+          { orgId: orgId },
+          { orgId: null, isTenantRole: false },
+        ],
+      }).select('_id').lean();
+
+      const safeRoleIds = safeRoles.map((r) => r._id.toString());
+      if (safeRoleIds.length === 0) {
+        return [];
+      }
+
+      const rolePermissionService = (await import('../features/rolePermission/rolePermission.services.js')).default;
+      const permissionSet = new Set();
+      for (const rid of safeRoleIds) {
+        const permissionsList = await rolePermissionService.getPermissionsByRoleId(rid, orgId);
+        if (Array.isArray(permissionsList)) {
+          permissionsList.forEach((p) => {
+            if (p && p.name) permissionSet.add(p.name);
+          });
+        }
+      }
+      return Array.from(permissionSet);
     } catch (err) {
-      console.error('[RBAC MIDDLEWARE] Graceful fallback role lookup failed:', err.message);
+      console.error('[RBAC MIDDLEWARE] OrgMembership role lookup error:', err.message);
+      return [];
     }
   }
 
-  // Tertiary Fallback: If no roleIds found in database, provide standard default role permissions
-  // based on user.role string (e.g., 'Admin', 'Resident', 'Guard')
-  if (roleIds.length === 0) {
-    const roleName = user.role;
-    if (roleName === 'Admin' || roleName === 'Community Admin') {
-      return [
-        'notices:dashboard', 'notices:active_board', 'notices:manage_notices', 'notices:polls',
-        'notices:read', 'notices:create', 'notices:update', 'notices:delete', 'notices:publish', 'notices:acknowledge',
-        'polls:read', 'polls:create', 'polls:update', 'polls:delete', 'polls:publish', 'polls:vote', 'polls:view_voters', 'polls:close', 'polls:export'
-      ];
-    }
-    if (roleName === 'Resident') {
-      return [
-        'notices:active_board', 'notices:read', 'notices:acknowledge', 'notices:polls',
-        'polls:read', 'polls:vote'
-      ];
-    }
-    if (roleName === 'Security Guard' || roleName === 'Guard') {
-      return [
-        'notices:active_board', 'notices:read'
-      ];
-    }
-    return [];
+  // Fallback for offline/test environments when DB is disconnected
+  const roleName = user.role;
+  if (roleName === 'Admin' || roleName === 'Community Admin' || roleName === 'Super Admin') {
+    return [
+      'notices:dashboard', 'notices:active_board', 'notices:manage_notices', 'notices:polls',
+      'notices:read', 'notices:create', 'notices:update', 'notices:delete', 'notices:publish', 'notices:acknowledge',
+      'polls:read', 'polls:create', 'polls:update', 'polls:delete', 'polls:publish', 'polls:vote', 'polls:view_voters', 'polls:close', 'polls:export',
+    ];
   }
-
-  if (mongoose.connection?.readyState === 1) {
-    const rolePermissionService = (await import('../features/rolePermission/rolePermission.services.js')).default;
-    const permissionSet = new Set();
-    for (const rid of roleIds) {
-      const permissionsList = await rolePermissionService.getPermissionsByRoleId(rid);
-      permissionsList.forEach((p) => {
-        if (p && p.name) permissionSet.add(p.name);
-      });
-    }
-    return Array.from(permissionSet);
+  if (roleName === 'Resident') {
+    return [
+      'notices:active_board', 'notices:read', 'notices:acknowledge', 'notices:polls',
+      'polls:read', 'polls:vote',
+    ];
+  }
+  if (roleName === 'Security Guard' || roleName === 'Guard') {
+    return [
+      'notices:active_board', 'notices:read',
+    ];
   }
 
   return [];
@@ -181,9 +239,24 @@ export const authorizeRoles = (...allowedRoles) => {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
 
-      const activeRole = req.tenantRole || req.user.role;
-      if (!allowedRoles.includes(activeRole)) {
-        throw new HttpError(403, `Forbidden. Role '${activeRole}' is not authorized to access this resource.`);
+      if (req.user.isPlatform === true || req.tenant?.isPlatform === true) {
+        return next();
+      }
+
+      const targetOrgId = req.tenant?.orgId || req.orgId || req.headers['x-organization-id'] || req.headers['x-org-id'] || req.user?.orgId;
+      let activeRole = null;
+      if (req.tenantRole && req.tenant?.orgId && targetOrgId && String(req.tenant.orgId) === String(targetOrgId)) {
+        activeRole = req.tenantRole;
+      } else {
+        const headerOrg = req.headers['x-organization-id'] || req.headers['x-org-id'];
+        if (headerOrg && req.user.orgId && String(headerOrg) !== String(req.user.orgId)) {
+          throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
+        }
+        activeRole = req.tenantRole || req.user.role;
+      }
+
+      if (!activeRole || !allowedRoles.includes(activeRole)) {
+        throw new HttpError(403, `Forbidden. Role '${activeRole || 'Unknown'}' is not authorized to access this resource.`);
       }
 
       next();
@@ -246,7 +319,12 @@ export const authorizePermission = (feature, action) => {
       }
 
       // Normalise all user permissions through the mapper and expand hierarchies
-      const permissions = req.tenantPermissions || await getPermissionsForUser(req.user, targetOrgId);
+      let permissions;
+      if (req.tenantPermissions && req.tenant?.orgId && targetOrgId && String(req.tenant.orgId) === String(targetOrgId)) {
+        permissions = req.tenantPermissions;
+      } else {
+        permissions = await getPermissionsForUser(req.user, targetOrgId);
+      }
       const userPermissions = expandUserPermissions(permissions.map(mapPermission));
 
       const features = Array.isArray(feature) ? feature : [feature];
@@ -322,7 +400,7 @@ export const authorizeAnyPermission = (permissionsArray) => {
       // Allow family members and all resident variations to access wallet operations
       const isResidentOrFamily = [
         'Resident', 'Resident Owner', 'Resident Tenant', 'Family Member', 'Family', 'Tenant', 'Owner'
-      ].includes(req.user.role) || (req.user.residencyType && ['Family Member', 'Family', 'Tenant', 'Resident Owner', 'Owner'].includes(req.user.residencyType));
+      ].includes(req.tenantRole || req.user.role) || (req.user.residencyType && ['Family Member', 'Family', 'Tenant', 'Resident Owner', 'Owner'].includes(req.user.residencyType));
 
       const isWalletRoute = permissionsArray.some(p => typeof p === 'string' && p.includes('wallet'));
       if (isResidentOrFamily && isWalletRoute) {
@@ -330,7 +408,12 @@ export const authorizeAnyPermission = (permissionsArray) => {
       }
 
       const orgId = req.headers['x-organization-id'] || req.tenant?.orgId || req.user?.orgId;
-      const permissions = await getPermissionsForUser(req.user, orgId);
+      let permissions;
+      if (req.tenantPermissions && req.tenant?.orgId && orgId && String(req.tenant.orgId) === String(orgId)) {
+        permissions = req.tenantPermissions;
+      } else {
+        permissions = await getPermissionsForUser(req.user, orgId);
+      }
       const userPermissions = expandUserPermissions(permissions.map(mapPermission));
 
       const hasPermission = permissionsArray.some(p => {

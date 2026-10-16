@@ -2,7 +2,8 @@ import { Router } from 'express';
 import enquiryController from './enquiry.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
-import authorizeRoles from '../../middlewares/rbac.middleware.js';
+import { authorizeRoles } from '../../middlewares/rbac.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 import {
   createEnquiryRules,
   updateEnquiryStatusRules,
@@ -22,6 +23,7 @@ router.post(
 
 // Protected CRM routes
 router.use(isAuthenticated);
+router.use(tenantContext({ requirePlatformContext: true }));
 router.use(authorizeRoles('SUPER_ADMIN', 'ADMIN', 'SALES_EXECUTIVE'));
 
 router.post('/enquiries/ensure', enquiryController.ensureInquiry);

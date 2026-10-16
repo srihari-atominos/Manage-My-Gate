@@ -14,8 +14,9 @@ export const correlationIdMiddleware = (req, res, next) => {
   // Expose on response headers for transparency/client debugging
   res.setHeader('X-Request-ID', correlationId);
 
-  // Bind the request ID to the async call stack context
-  loggerStorage.run(correlationId, () => {
+  // Bind the execution context object to the async call stack context
+  const contextStore = { requestId: correlationId };
+  loggerStorage.run(contextStore, () => {
     next();
   });
 };

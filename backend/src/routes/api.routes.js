@@ -102,8 +102,8 @@ router.use('/complaints/settings', complaintSettingsRouter);
 router.use('/complaints', complaintRouter);
 router.use('/technicians', technicianRouter);
 
-router.use('/visitor-pass', visitorPassRouter);
-router.use('/visitor-log', visitorLogRouter);
+router.use(['/visitor-pass', '/visitor-passes'], visitorPassRouter);
+router.use(['/visitor-log', '/visitor-logs'], visitorLogRouter);
 router.use('/blacklist', blacklistRouter);
 router.use('/master-pricing', masterPricingRouter);
 router.use('/platform-orders', platformOrderRouter);

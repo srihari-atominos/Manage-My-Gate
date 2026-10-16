@@ -206,7 +206,18 @@ class ComplaintController {
   async exportComplaints(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
-      const filters = req.query; // Advanced filters including slaStatus
+      const filters = { ...(req.query || {}) }; // Advanced filters including slaStatus
+
+      // RBAC: Residents only export their own complaints
+      const userRoles = req.user?.roles || [];
+      const primaryRole = req.user?.role || '';
+      const isAdmin = userRoles.some(r => ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager'].includes(r)) || ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager'].includes(primaryRole);
+      
+      if (!isAdmin) {
+        const userId = req.user?.id || req.user?._id;
+        filters.residentId = userId;
+      }
+
       const complaints = await complaintService.getComplaints(orgId, filters, { limit: 1000, skip: 0 }, { createdAt: -1 });
       
       if (!complaints.data || complaints.data.length === 0) {

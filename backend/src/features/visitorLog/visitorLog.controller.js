@@ -82,7 +82,15 @@ export class VisitorLogController {
    */
   async getInside(req, res, next) {
     try {
-      const orgId = req.tenant?.isPlatform && req.params.orgId ? req.params.orgId : req.tenant?.orgId;
+      const isPlatform = Boolean(req.tenant?.isPlatform);
+      const tenantOrgId = req.tenant?.orgId;
+      if (!isPlatform && req.params.orgId && String(req.params.orgId) !== String(tenantOrgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
+      }
+      const orgId = isPlatform && req.params.orgId ? req.params.orgId : tenantOrgId;
+      if (!isPlatform && !orgId) {
+        throw new HttpError(403, 'Tenant context is required');
+      }
       const data = await visitorLogService.getActiveLogsInside(orgId, req.user);
       res.success(data, 'Active logs retrieved successfully');
     } catch (error) {
@@ -95,7 +103,15 @@ export class VisitorLogController {
    */
   async getPending(req, res, next) {
     try {
-      const orgId = req.tenant?.isPlatform && req.params.orgId ? req.params.orgId : req.tenant?.orgId;
+      const isPlatform = Boolean(req.tenant?.isPlatform);
+      const tenantOrgId = req.tenant?.orgId;
+      if (!isPlatform && req.params.orgId && String(req.params.orgId) !== String(tenantOrgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
+      }
+      const orgId = isPlatform && req.params.orgId ? req.params.orgId : tenantOrgId;
+      if (!isPlatform && !orgId) {
+        throw new HttpError(403, 'Tenant context is required');
+      }
       const data = await visitorLogService.getPendingApprovals(orgId, req.user);
       res.success(data, 'Pending approvals retrieved successfully');
     } catch (error) {
@@ -108,7 +124,15 @@ export class VisitorLogController {
    */
   async getWalkInBoard(req, res, next) {
     try {
-      const orgId = req.tenant?.isPlatform && req.params.orgId ? req.params.orgId : req.tenant?.orgId;
+      const isPlatform = Boolean(req.tenant?.isPlatform);
+      const tenantOrgId = req.tenant?.orgId;
+      if (!isPlatform && req.params.orgId && String(req.params.orgId) !== String(tenantOrgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
+      }
+      const orgId = isPlatform && req.params.orgId ? req.params.orgId : tenantOrgId;
+      if (!isPlatform && !orgId) {
+        throw new HttpError(403, 'Tenant context is required');
+      }
       const now = Date.now();
       const requested = req.query.since ? new Date(req.query.since).getTime() : now - DAY_MS;
       // Never reach back further than a week, whatever the client asks for.
@@ -125,7 +149,15 @@ export class VisitorLogController {
    */
   async getHistory(req, res, next) {
     try {
-      const orgId = req.tenant?.isPlatform && req.params.orgId ? req.params.orgId : req.tenant?.orgId;
+      const isPlatform = Boolean(req.tenant?.isPlatform);
+      const tenantOrgId = req.tenant?.orgId;
+      if (!isPlatform && req.params.orgId && String(req.params.orgId) !== String(tenantOrgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
+      }
+      const orgId = isPlatform && req.params.orgId ? req.params.orgId : tenantOrgId;
+      if (!isPlatform && !orgId) {
+        throw new HttpError(403, 'Tenant context is required');
+      }
       const skip = parseInt(req.query.skip, 10) || 0;
       const limit = parseInt(req.query.limit, 10) || 10;
       

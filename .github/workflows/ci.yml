@@ -59,6 +59,7 @@ jobs:
           REDIS_URL: redis://127.0.0.1:6379
           REQUIRE_REDIS_ADAPTER: "true"
           REQUIRE_REDIS_LOCK: "true"
+          REQUIRE_REDIS_RATE_LIMIT: "true"
           JWT_SECRET: ci_secret_key_12345
           SESSION_SECRET: ci_session_secret_key_12345
           ENCRYPTION_KEY: ci_encryption_key_12345

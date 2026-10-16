@@ -50,8 +50,8 @@ export const communityNoteService = {
     return communityNoteRepository.findActiveByOrgId(orgId);
   },
 
-  async deleteNote(noteId, userId) {
-    const updated = await communityNoteRepository.deactivateById(noteId, userId);
+  async deleteNote(noteId, userId, orgId = null) {
+    const updated = await communityNoteRepository.deactivateById(noteId, userId, orgId);
     if (!updated) {
       throw new Error('Note not found or already expired');
     }

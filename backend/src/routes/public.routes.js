@@ -9,11 +9,17 @@ import { validatePublicLead } from '../features/crmInquiry/crmInquiry.validator.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { createRateLimitStore } from '../middlewares/rateLimiter.middleware.js';
+
 const router = Router();
 
 const publicLeadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
+  store: createRateLimitStore('public-lead'),
+  passOnStoreError: process.env.REQUIRE_REDIS_RATE_LIMIT !== 'true',
+  keyGenerator: (req) => `lead:${req.ip}`,
+  validate: { xForwardedForHeader: false, default: true, keyGeneratorIpFallback: false },
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 

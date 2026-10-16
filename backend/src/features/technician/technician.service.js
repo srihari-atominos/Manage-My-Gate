@@ -38,17 +38,20 @@ class TechnicianService {
       ]
     });
 
+    const { orgId: _ignoredOrg, ...cleanData } = data;
+
     if (existingTech && existingTech.length > 0) {
       const targetTech = existingTech[0];
       const updated = await technicianRepository.update(targetTech._id, orgId, {
-        ...data,
+        ...cleanData,
+        orgId,
         userId: userId || targetTech.userId,
         isDeleted: false,
       });
       return updated;
     }
 
-    const technician = await technicianRepository.create({ orgId, userId, ...data });
+    const technician = await technicianRepository.create({ ...cleanData, orgId, userId });
     return technician;
   }
 

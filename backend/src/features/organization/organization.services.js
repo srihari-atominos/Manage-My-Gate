@@ -454,11 +454,6 @@ export class OrganizationService {
     const plainCode = await otpService.createOTP(normalizedEmail, 'COMMUNITY_ADMIN_EMAIL_VERIFICATION', 15);
 
     const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      console.log(`\n=========================================`);
-      console.log(`[COMMUNITY ADMIN EMAIL OTP] Code for ${normalizedEmail}: ${plainCode}`);
-      console.log(`=========================================\n`);
-    }
 
     orgEventEmitter.emit('COMMUNITY_ADMIN_EMAIL_OTP_SENT', { email: normalizedEmail, code: plainCode });
 

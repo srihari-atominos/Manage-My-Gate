@@ -14,7 +14,7 @@ class ComplaintRepository {
 
   async findAll(orgId, filter, pagination, sort) {
     const { skip, limit } = pagination;
-    const query = { orgId: new mongoose.Types.ObjectId(orgId), ...filter };
+    const query = { ...filter, orgId: new mongoose.Types.ObjectId(orgId) };
     
     if (query.residentId && typeof query.residentId === 'string') {
       query.residentId = new mongoose.Types.ObjectId(query.residentId);
@@ -196,7 +196,7 @@ class ComplaintRepository {
   }
 
   async getDashboardAnalytics(orgId, filters = {}) {
-    const matchStage = { orgId, ...filters };
+    const matchStage = { ...filters, orgId: new mongoose.Types.ObjectId(orgId) };
 
     const aggregation = await Complaint.aggregate([
       { $match: matchStage },

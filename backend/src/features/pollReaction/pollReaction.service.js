@@ -40,7 +40,7 @@ export class PollReactionService {
     }
 
     if (poll.orgId.toString() !== orgId.toString()) {
-      throw new HttpError(403, 'Forbidden. Poll belongs to another community.');
+      throw new HttpError(404, `Poll with ID ${pollId} not found.`);
     }
 
     // Eligibility check
@@ -116,7 +116,7 @@ export class PollReactionService {
     }
 
     if (poll.orgId.toString() !== orgId.toString()) {
-      throw new HttpError(403, 'Forbidden. Poll belongs to another community.');
+      throw new HttpError(404, `Poll with ID ${pollId} not found.`);
     }
 
     const pollObjectId = new mongoose.Types.ObjectId(pollId);

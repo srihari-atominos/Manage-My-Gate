@@ -1,11 +1,12 @@
 import express from 'express';
 import { getMyWallet, addMoney, payInvoice, createOrder, verifyPayment, refundToOriginalPayment } from './wallet.controller.js';
 import { isAuthenticated } from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 import { authorizeAnyPermission } from '../../middlewares/rbac.middleware.js';
 
 const router = express.Router();
 
-router.use(isAuthenticated);
+router.use(isAuthenticated, tenantContext);
 
 // Resident & Admin routes for wallet
 router.get('/', authorizeAnyPermission(['billing:action_center', 'billing:wallet', 'amenities:wallet', 'wallet:read', 'wallet:manage']), getMyWallet);

@@ -2,7 +2,7 @@ import OutboxEvent from '../features/outbox/outboxEvent.model.js';
 import outboxService from '../features/outbox/outbox.service.js';
 import integrationHubService from '../features/integrationHub/integrationHub.service.js';
 import messageTemplateService from '../features/messageTemplate/messageTemplate.service.js';
-import logger from '../utils/logger.utils.js';
+import logger, { loggerStorage } from '../utils/logger.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from '../features/user/utils/invite.utils.js';
 import { sendEmail } from '../utils/email.utils.js';
@@ -166,30 +166,41 @@ export async function processOutboxEvents() {
     }
 
     processedCount++;
-    logger.info(`[Outbox Worker] Locked event ${event._id} (${event.eventType}). Processing...`);
+    const eventOrgId = (event.organizationId || event.payload?.orgId || event.orgId)?.toString();
+    const eventJobId = `worker-outbox-${event._id}`;
 
-    try {
-      await processEvent(event);
-      
-      // Update event status to COMPLETED on success
-      event.status = 'COMPLETED';
-      event.error = null;
-      await event.save();
-      logger.info(`[Outbox Worker] Event ${event._id} processed successfully.`);
-    } catch (err) {
-      logger.error(`[Outbox Worker] Failed to process event ${event._id}: ${err.message}`);
-      
-      event.retries += 1;
-      event.error = err.message;
-      
-      // Retry logic: if retries < 3, set back to PENDING, otherwise mark as FAILED
-      if (event.retries < 3) {
-        event.status = 'PENDING';
-      } else {
-        event.status = 'FAILED';
+    await loggerStorage.run({ requestId: eventJobId, orgId: eventOrgId }, async () => {
+      logger.info(`[Outbox Worker] Locked event ${event._id} (${event.eventType}). Processing...`, {
+        orgId: eventOrgId,
+        eventType: event.eventType,
+      });
+
+      try {
+        await processEvent(event);
+        
+        // Update event status to COMPLETED on success
+        event.status = 'COMPLETED';
+        event.error = null;
+        await event.save();
+        logger.info(`[Outbox Worker] Event ${event._id} processed successfully.`, { orgId: eventOrgId });
+      } catch (err) {
+        logger.error(`[Outbox Worker] Failed to process event ${event._id}: ${err.message}`, {
+          orgId: eventOrgId,
+          error: err.message,
+        });
+        
+        event.retries += 1;
+        event.error = err.message;
+        
+        // Retry logic: if retries < 3, set back to PENDING, otherwise mark as FAILED
+        if (event.retries < 3) {
+          event.status = 'PENDING';
+        } else {
+          event.status = 'FAILED';
+        }
+        await event.save();
       }
-      await event.save();
-    }
+    });
   }
 }
 

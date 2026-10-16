@@ -7,6 +7,9 @@ import { getSocketBaseUrl } from '../services/apiClient';
 // Module-level singleton socket instance
 let sharedSocket: Socket | null = null;
 let lastLoggedErrorTime = 0;
+let currentSocketOrgId: string | null = null;
+let currentSocketUserId: string | null = null;
+let currentSocketToken: string | null = null;
 
 export const useAppSocket = () => {
   const { isAuthenticated, user, token } = useAuth();
@@ -30,10 +33,28 @@ export const useAppSocket = () => {
       if (sharedSocket) {
         sharedSocket.disconnect();
         sharedSocket = null;
+        currentSocketOrgId = null;
+        currentSocketUserId = null;
+        currentSocketToken = null;
         setActiveSocket(null);
         // console.log('[Socket] Disconnected due to unauthenticated state');
       }
       return;
+    }
+
+    // If tenant context, user identity, or token changed, disconnect stale socket to leave prior tenant rooms
+    if (
+      sharedSocket &&
+      (currentSocketOrgId !== (orgId || null) ||
+        currentSocketUserId !== (userId || null) ||
+        currentSocketToken !== (token || null))
+    ) {
+      sharedSocket.disconnect();
+      sharedSocket = null;
+      currentSocketOrgId = null;
+      currentSocketUserId = null;
+      currentSocketToken = null;
+      setActiveSocket(null);
     }
 
     const socketUrl = getSocketBaseUrl();
@@ -62,6 +83,10 @@ export const useAppSocket = () => {
     // Create singleton instance if it doesn't exist
     if (!sharedSocket) {
       // console.log(`[Socket] Initializing shared connection to: ${socketUrl}`);
+
+      currentSocketOrgId = orgId || null;
+      currentSocketUserId = userId || null;
+      currentSocketToken = token || null;
 
       sharedSocket = io(socketUrl, {
         transports: ['websocket', 'polling'],

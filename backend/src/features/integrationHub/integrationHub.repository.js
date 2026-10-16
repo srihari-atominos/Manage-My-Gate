@@ -76,10 +76,21 @@ export class IntegrationHubRepository {
    * Find a specific connection document by its ID.
    * @param {string} connectionId - ID of the connection
    * @param {import('mongoose').ClientSession} [session] - Optional transaction session
+   * @param {string} [orgId=null] - Optional organization ID for strict scoping
    * @returns {Promise<object|null>} The integration connection document or null
    */
-  async getConnectionById(connectionId, session) {
-    return await IntegrationHub.findById(connectionId).session(session || null);
+  async getConnectionById(connectionId, session = null, orgId = null) {
+    let actualSession = session;
+    let actualOrgId = orgId;
+    if (session && (typeof session === 'string' || session instanceof mongoose.Types.ObjectId || !session?.inTransaction)) {
+      actualOrgId = session;
+      actualSession = null;
+    }
+    const query = { _id: connectionId };
+    if (actualOrgId) {
+      query.orgId = actualOrgId;
+    }
+    return await IntegrationHub.findOne(query).session(actualSession || null);
   }
 
   /**
@@ -149,6 +160,7 @@ export class IntegrationHubRepository {
    */
   async findGlobalConnectionByProvider(provider, session = null) {
     return await IntegrationHub.findOne({
+      $or: [{ orgId: null }, { isGlobal: true }],
       provider: provider.toLowerCase(),
       status: 'connected',
     }).session(session || null);

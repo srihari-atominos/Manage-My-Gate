@@ -116,10 +116,12 @@ export const communityNoteRepository = {
     return this.formatNotesWithMemberData(notes, orgId);
   },
 
-  async deactivateById(noteId, userId, session = null) {
+  async deactivateById(noteId, userId, orgId = null, session = null) {
     const options = session ? { session } : {};
+    const query = { _id: noteId, userId };
+    if (orgId) query.orgId = orgId;
     return CommunityNote.findOneAndUpdate(
-      { _id: noteId, userId },
+      query,
       { $set: { isActive: false } },
       { new: true, ...options }
     );

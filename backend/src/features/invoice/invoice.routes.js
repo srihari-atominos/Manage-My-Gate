@@ -104,6 +104,7 @@ router.post(
 
 router.get(
   '/:id',
+  tenantContext,
   authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
   invoiceController.getInvoiceById
 );

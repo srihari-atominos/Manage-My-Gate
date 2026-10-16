@@ -33,14 +33,35 @@ import pricingReducer from '../features/pricing/store/pricingSlice.js'
 import platformQuoteReducer from '../features/platformQuote/store/platformQuoteSlice.js'
 import platformSubscriptionReducer from '../features/platformSubscription/store/platformSubscriptionSlice.js'
 import config from '../config/config.js'
+import { cancelInFlightRequests } from '../services/apiClient.js'
+
+// Redact sensitive credentials before console logging
+const sanitizeStateForLog = (state) => {
+  if (!state || typeof state !== 'object') return state
+  return {
+    ...state,
+    auth: state.auth
+      ? {
+          ...state.auth,
+          token: state.auth.token ? '***REDACTED***' : null,
+          user: state.auth.user
+            ? {
+                ...state.auth.user,
+                password: state.auth.user.password ? '***REDACTED***' : undefined,
+              }
+            : null,
+        }
+      : undefined,
+  }
+}
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
   console.group(`Action: ${action.type}`)
-  console.log('%cPrev State:', 'color: #9E9E9E; font-weight: bold;', store.getState())
+  console.log('%cPrev State:', 'color: #9E9E9E; font-weight: bold;', sanitizeStateForLog(store.getState()))
   console.log('%cAction:', 'color: #03A9F4; font-weight: bold;', action)
   const result = next(action)
-  console.log('%cNext State:', 'color: #4CAF50; font-weight: bold;', store.getState())
+  console.log('%cNext State:', 'color: #4CAF50; font-weight: bold;', sanitizeStateForLog(store.getState()))
   console.groupEnd()
   return result
 }
@@ -81,17 +102,29 @@ const appReducer = combineReducers({
   pricing: pricingReducer,
   platformQuote: platformQuoteReducer,
   platformSubscription: platformSubscriptionReducer,
-});
+})
 
 // Root reducer to handle global resets for tenant isolation
 const rootReducer = (state, action) => {
-  // Wipe state on logout or when switching tenant/workspaces to prevent data leakage across organizations
-  if (action.type === 'auth/logout' || action.type === 'workspace/setActiveOrganizationId') {
-    // Keep auth state (if needed for tokens during switch) and routing, but destroy feature data
+  // Wipe all sensitive and tenant state on user logout
+  if (action.type === 'auth/logout' || action.type === 'auth/performLogout/fulfilled') {
+    cancelInFlightRequests('User logged out')
     state = {
-      auth: state.auth,
-      ui: state.ui,
-      workspace: state.workspace,
+      ui: state?.ui,
+    }
+  } else if (
+    // Wipe all tenant-scoped feature data when switching tenant or workspace context
+    action.type === 'workspace/setActiveWorkspace' ||
+    action.type === 'auth/switchWorkspaceContext/fulfilled' ||
+    action.type === 'auth/switchWorkspaceContext/pending' ||
+    action.type === 'workspace/clearWorkspace'
+  ) {
+    cancelInFlightRequests('Tenant context switched')
+    // Keep auth state (tokens), ui (theme/sidebar), and workspace metadata, but reset all feature slices to clean initialState
+    state = {
+      auth: state?.auth,
+      ui: state?.ui,
+      workspace: state?.workspace,
     }
   }
   return appReducer(state, action)

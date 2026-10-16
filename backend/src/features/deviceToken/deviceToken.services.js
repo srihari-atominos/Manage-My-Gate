@@ -53,7 +53,7 @@ export class DeviceTokenService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const updated = await deviceTokenRepository.deactivateToken(pushToken, session);
+      const updated = await deviceTokenRepository.deactivateToken(pushToken, session, userId);
       await session.commitTransaction();
 
       logger.info(`Device push token deactivated: ${pushToken.slice(0, 15)}...`);

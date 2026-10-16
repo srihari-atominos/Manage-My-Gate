@@ -348,7 +348,7 @@ export class AuthService {
         roleName = targetRole;
         activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
         if (activeRoleObj) {
-          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id, orgId);
           permissions = permissionsList.map((permission) => permission.name);
         }
       } else {
@@ -356,7 +356,7 @@ export class AuthService {
         if (roleName) {
           activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
           if (activeRoleObj) {
-            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id, orgId);
             permissions = permissionsList.map((permission) => permission.name);
           }
         }
@@ -2799,17 +2799,13 @@ export class AuthService {
     const plainCode = await otpService.createOTP(targetIdentifier, 'FIRST_TIME_ACCOUNT_SETUP', 15);
 
     const isDev = process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      console.log(`\n=========================================`);
-      console.log(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
-      console.log(`=========================================\n`);
-    }
 
     sendOtpNotification({ identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     return {
       message: `Verification code sent to ${targetIdentifier}`,
       identifier: targetIdentifier,
+      ...(isDev && { devCode: plainCode }),
     };
   }
 

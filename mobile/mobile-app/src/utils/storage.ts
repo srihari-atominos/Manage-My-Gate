@@ -81,6 +81,11 @@ export const storage = {
       console.warn(`SecureStore deleteItem failed for key: ${key}, falling back to memory.`, err);
     }
   },
+
+  clearMemoryCache: (): void => {
+    Object.keys(memoryCache).forEach((k) => delete memoryCache[k]);
+    Object.keys(sessionMemoryCache).forEach((k) => delete sessionMemoryCache[k]);
+  },
 };
 
 export const sessionStore = {
