@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Image, Platform } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, Home, Building2, ChevronDown, Sun, Moon, Settings } from 'lucide-react-native';
+import { Bell, Home, Building2, ChevronDown, Sun, Moon, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import storage from '../../src/utils/storage';
@@ -329,18 +329,26 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             ) : null}
           </TouchableOpacity>
 
-          {/* Settings Icon Button */}
+          {/* Profile Trigger Icon Button */}
           <TouchableOpacity
             onPress={() => {
               blurActiveElement();
-              router.navigate('/(resident)/settings' as any);
+              router.navigate('/(resident)/profile' as any);
             }}
             activeOpacity={0.7}
-            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center active:bg-neutral-100 dark:active:bg-muted shadow-xs"
+            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center active:bg-neutral-100 dark:active:bg-muted shadow-xs overflow-hidden"
             accessibilityRole="button"
-            accessibilityLabel={t('settings', 'Settings')}
+            accessibilityLabel={t('profile', 'Profile')}
           >
-            <Settings size={18} color={colorScheme === 'dark' ? '#FFFFFF' : '#000000'} strokeWidth={2.6} />
+            {resolvedAvatarUrl && !imageError ? (
+              <Image
+                source={{ uri: resolvedAvatarUrl }}
+                className="size-full rounded-full"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <User size={19} color={colorScheme === 'dark' ? '#FFFFFF' : '#000000'} strokeWidth={2.4} />
+            )}
           </TouchableOpacity>
         </View>
       </View>

@@ -56,10 +56,11 @@ export interface PhoneInputProps {
   /** Rendered at the end of the field, e.g. a contact-picker button. */
   rightElement?: React.ReactNode;
   testID?: string;
-  /** 'form' matches the standard Input card field; 'glass' is the translucent auth-screen look. */
-  variant?: 'form' | 'glass';
+  /** 'form' matches the standard Input card field; 'glass' is the translucent auth-screen look; 'navy' is dark navy theme. */
+  variant?: 'form' | 'glass' | 'navy';
   /** Whether the input is editable. Defaults to true. */
   editable?: boolean;
+  wrapperStyle?: any;
 }
 
 const buildFullNumber = (digits: string, country: PhoneCountry): string => {
@@ -97,9 +98,11 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   testID,
   variant = 'form',
   editable = true,
+  wrapperStyle,
 }) => {
   const { translateText } = useTranslation();
   const isGlass = variant === 'glass';
+  const isNavy = variant === 'navy';
   const [selectedCountry, setSelectedCountry] = useState<PhoneCountry>(() =>
     getPhoneCountry(defaultCountry || getDefaultPhoneCountry())
   );
@@ -201,14 +204,17 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       )}
 
       <View
+        style={wrapperStyle}
         className={cn(
-          'flex-row items-center rounded-2xl border px-3.5 min-h-[48px] py-1 shadow-2xs transition-colors',
-          isGlass
-            ? 'bg-white/75 dark:bg-[#292524]/75 border-white/80 dark:border-white/20 py-2.5 backdrop-blur-sm'
-            : 'bg-card border-border/80',
-          isFocused && !error && 'border-border/80 bg-card',
-          (isIncomplete || isInvalid) && !error && !isGlass && 'border-amber-500/80 bg-amber-500/5',
-          isComplete && !error && !isGlass && 'border-emerald-500/80 bg-emerald-500/5',
+          'flex-row items-center border px-3.5 min-h-[48px] py-1 shadow-2xs transition-colors',
+          isNavy
+            ? 'bg-[#172238] border-[#46516A] rounded-[16px] min-h-[52px]'
+            : isGlass
+            ? 'rounded-2xl bg-white/75 dark:bg-[#292524]/75 border-white/80 dark:border-white/20 py-2.5 backdrop-blur-sm'
+            : 'rounded-2xl bg-card border-border/80',
+          isFocused && !error && (isNavy ? 'border-[#FF8C1A]' : 'border-border/80 bg-card'),
+          (isIncomplete || isInvalid) && !error && !isGlass && !isNavy && 'border-amber-500/80 bg-amber-500/5',
+          isComplete && !error && !isGlass && !isNavy && 'border-emerald-500/80 bg-emerald-500/5',
           Boolean(error) && 'border-destructive bg-destructive/5 shadow-sm',
           className
         )}
@@ -217,20 +223,25 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         <TouchableOpacity
           onPress={() => setIsPickerVisible(true)}
           disabled={!editable}
-          className={cn("flex-row items-center me-2.5 pe-2.5 border-e border-border/80", dividerClassName, !editable && "opacity-80")}
+          className={cn(
+            "flex-row items-center me-2.5 pe-2.5 border-e",
+            isNavy ? "border-[#46516A]" : "border-border/80",
+            dividerClassName,
+            !editable && "opacity-80"
+          )}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={`Selected country ${selectedCountry.name}, dial code ${selectedCountry.dialCode}. Tap to change.`}
           testID={testID ? `${testID}-country` : undefined}
         >
           <Text className="text-base me-1">{selectedCountry.flag}</Text>
-          <Text className={cn('text-xs font-bold text-foreground me-1', codeClassName)}>
+          <Text className={cn('text-xs font-bold me-1', isNavy ? 'text-white' : 'text-foreground', codeClassName)}>
             {selectedCountry.dialCode}
           </Text>
           <ChevronDown
             size={14}
-            color={chevronColor || undefined}
-            className={chevronColor ? undefined : 'text-muted-foreground'}
+            color={chevronColor || (isNavy ? '#A0A8BA' : undefined)}
+            className={chevronColor || isNavy ? undefined : 'text-muted-foreground'}
           />
         </TouchableOpacity>
 
@@ -248,8 +259,8 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
             <RNTextInput
               editable={editable}
               className={cn(
-                'flex-1 text-foreground self-stretch min-h-[44px] py-3 outline-none focus:outline-none focus-visible:outline-none',
-                isGlass ? 'text-sm' : 'text-[16px]',
+                'flex-1 self-stretch min-h-[44px] py-3 outline-none focus:outline-none focus-visible:outline-none',
+                isNavy ? 'text-white text-[15px]' : isGlass ? 'text-foreground text-sm' : 'text-foreground text-[16px]',
                 !hasFontFamily && 'font-sans',
                 !editable && 'opacity-80',
                 inputClassName
@@ -260,13 +271,15 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
                   outlineStyle: 'none',
                   outlineWidth: 0,
                   outlineColor: 'transparent',
-                  color: isGlass ? undefined : undefined, 
+                  color: isNavy ? '#FFFFFF' : undefined, 
                 } as any,
                 style,
               ]}
+              selectionColor={isNavy ? '#FF8C1A' : undefined}
+              cursorColor={isNavy ? '#FF8C1A' : undefined}
               keyboardType="phone-pad"
               placeholder={placeholder ? translateText(placeholder) : (typeof examplePhone === 'function' ? examplePhone(selectedCountry.code) : undefined) || '99887 76655'}
-              placeholderTextColor={placeholderTextColor || '#737c88'}
+              placeholderTextColor={placeholderTextColor || (isNavy ? '#A0A8BA' : '#737c88')}
               value={nationalNumber}
               onFocus={() => {
                 setIsFocused(true);

@@ -11,7 +11,7 @@ export interface AppleSignInButtonProps {
   onSuccess?: (data: any) => void;
   onError?: (error: string) => void;
   disabled?: boolean;
-  variant?: 'full' | 'compact' | 'glass';
+  variant?: 'full' | 'compact' | 'glass' | 'navy';
   className?: string;
   style?: any;
 }
@@ -19,7 +19,8 @@ export interface AppleSignInButtonProps {
 export function AppleSignInButton(props: AppleSignInButtonProps = {}) {
   const { disabled = false, variant = 'glass', className = '', style, ...authOptions } = props;
   const { handleAppleSignIn, loading, isAvailable } = useAppleAuthSession(authOptions);
-  const buttonHeight = variant === 'compact' ? 44 : 48;
+  const isNavy = variant === 'navy';
+  const buttonHeight = isNavy ? 52 : variant === 'compact' ? 44 : 48;
   const isDisabled = disabled || loading;
 
   // Keep the entry point visible on every platform. Only supported iOS
@@ -32,15 +33,45 @@ export function AppleSignInButton(props: AppleSignInButtonProps = {}) {
         accessibilityState={{ disabled: isDisabled }}
         disabled={isDisabled}
         onPress={() => void handleAppleSignIn()}
-        style={[{ height: buttonHeight, backgroundColor: '#FFFFFF', borderColor: '#000000', borderWidth: 1 }, style]}
-        className={`flex-1 flex-row items-center justify-center gap-2 rounded-full px-2 ${isDisabled ? 'opacity-60' : ''} ${className}`}
+        style={[
+          isNavy
+            ? {
+                height: 52,
+                backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                borderColor: 'rgba(255, 255, 255, 0.22)',
+                borderWidth: 1.2,
+                borderRadius: 28,
+              }
+            : {
+                height: 52,
+                backgroundColor: '#FFFFFF',
+                borderColor: '#E2E8F0',
+                borderWidth: 1.5,
+                borderRadius: 28,
+                shadowColor: '#64748B',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 6,
+                elevation: 2,
+              },
+          style,
+        ]}
+        className={`flex-1 flex-row items-center justify-center gap-2 rounded-full px-3 ${isDisabled ? 'opacity-60' : ''} ${className}`}
       >
-        <AppleIcon size={19} color="#000000" />
+        <AppleIcon size={20} color={isNavy ? '#FFFFFF' : '#0F172A'} />
         <Text
           numberOfLines={1}
-          adjustsFontSizeToFit
+          adjustsFontSizeToFit={!isNavy}
           minimumFontScale={0.8}
-          style={{ color: '#000000', flexShrink: 1, lineHeight: 20, includeFontPadding: false, textAlignVertical: 'center' }}
+          style={{
+            color: isNavy ? '#FFFFFF' : '#0F172A',
+            fontSize: 14.5,
+            fontWeight: '600',
+            flexShrink: 1,
+            lineHeight: 20,
+            includeFontPadding: false,
+            textAlignVertical: 'center',
+          }}
           className="text-sm font-semibold text-center"
         >
           {variant === 'full' ? 'Sign in with Apple' : 'Apple'}
@@ -52,13 +83,22 @@ export function AppleSignInButton(props: AppleSignInButtonProps = {}) {
   return (
     <View
       pointerEvents={isDisabled ? 'none' : 'auto'}
-      style={[{ height: buttonHeight }, style]}
+      style={[
+        {
+          height: buttonHeight,
+          borderRadius: 28,
+          borderColor: isNavy ? 'rgba(255, 255, 255, 0.22)' : undefined,
+          borderWidth: isNavy ? 1.2 : 0,
+          backgroundColor: isNavy ? 'rgba(0, 0, 0, 0.45)' : undefined,
+        },
+        style,
+      ]}
       className={`w-full flex-1 overflow-hidden rounded-full ${isDisabled ? 'opacity-60' : ''} ${className}`}
     >
       <AppleAuthentication.AppleAuthenticationButton
         buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-        cornerRadius={buttonHeight / 2}
+        buttonStyle={isNavy ? AppleAuthentication.AppleAuthenticationButtonStyle.BLACK : AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+        cornerRadius={28}
         style={{ width: '100%', height: buttonHeight, opacity: loading ? 0.6 : 1 }}
         onPress={() => {
           if (!isDisabled) void handleAppleSignIn();

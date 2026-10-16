@@ -17,7 +17,7 @@ import { useColorScheme } from 'nativewind';
 import {
   Home,
   LayoutGrid,
-  User,
+  Users,
 } from 'lucide-react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -31,7 +31,7 @@ import Animated, {
 import { cn } from '../../lib/utils';
 import { useBottomNavScroll, useBottomNavCompact } from './BottomNavScrollContext';
 
-export type MainTabKey = 'dashboard' | 'view_all' | 'profile';
+export type MainTabKey = 'dashboard' | 'view_all' | 'directory';
 
 const normalizeRoute = (path: string): string => {
   if (!path) return '';
@@ -62,10 +62,10 @@ const TAB_ITEMS: TabItem[] = [
     icon: LayoutGrid,
   },
   {
-    key: 'profile',
-    label: 'Profile',
-    route: '/(resident)/profile',
-    icon: User,
+    key: 'directory',
+    label: 'Directory',
+    route: '/(resident)/directory',
+    icon: Users,
   },
 ];
 
@@ -106,7 +106,7 @@ const AndroidTabButton = React.memo(function AndroidTabButton({
   const isNarrowScreen = Dimensions.get('window').width <= 350;
   const tabFontSize = isNarrowScreen ? 12 : isArabic ? 14.5 : 13.5;
   const tabLineHeight = isNarrowScreen ? 16 : isArabic ? 19 : 17;
-  const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key, item.label);
+  const translatedLabel = item.key === 'directory' ? t('directory', 'Directory') : t(item.key === 'dashboard' ? 'home' : item.key, item.label);
 
   useEffect(() => {
     activeScale.value = withTiming(isActive ? 1.06 : 1, { duration: 60 });
@@ -203,7 +203,7 @@ const InsetTabButton = React.memo(function InsetTabButton({
   const activeColor = isDark ? THEME_ACTIVE_DARK : THEME_ACTIVE_LIGHT;
   const iconColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
   const labelColor = isActive ? activeColor : (isDark ? '#94A3B8' : '#64748B');
-  const translatedLabel = t(item.key === 'dashboard' ? 'home' : item.key, item.label);
+  const translatedLabel = item.key === 'directory' ? t('directory', 'Directory') : t(item.key === 'dashboard' ? 'home' : item.key, item.label);
 
   return (
     <Pressable
@@ -272,7 +272,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
 
   const activeTab: MainTabKey = useMemo(() => {
     if (pathname.includes('/all-features')) return 'view_all';
-    if (pathname.includes('/profile') || pathname.includes('/account')) return 'profile';
+    if (pathname.includes('/directory')) return 'directory';
     return 'dashboard';
   }, [pathname]);
 
