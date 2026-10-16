@@ -9,7 +9,7 @@ export interface OtpInputFieldProps {
   error?: boolean;
   className?: string;
   cellClassName?: string;
-  variant?: 'card' | 'light';
+  variant?: 'card' | 'light' | 'navy';
 }
 
 export const OtpInputField = ({
@@ -29,6 +29,7 @@ export const OtpInputField = ({
   };
 
   const isLight = variant === 'light';
+  const isNavy = variant === 'navy';
   const cellWidth = length >= 6 ? 46 : 56;
   const cellHeight = length >= 6 ? 52 : 56;
 
@@ -50,20 +51,28 @@ export const OtpInputField = ({
             minHeight: cellHeight,
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: 14,
-            backgroundColor: isLight ? '#FFFFFF' : undefined,
-            borderWidth: isCurrentFocus ? 2 : 1,
-            borderColor: error ? '#EF4444' : isCurrentFocus ? '#172B4D' : isLight ? '#E2E8F0' : undefined,
-            shadowColor: '#000000',
+            borderRadius: isNavy ? 16 : 14,
+            backgroundColor: isNavy ? 'rgba(0, 0, 0, 0.55)' : isLight ? '#FFFFFF' : undefined,
+            borderWidth: isCurrentFocus ? (isNavy ? 1.5 : 2) : 1,
+            borderColor: error
+              ? '#EF4444'
+              : isCurrentFocus
+              ? isNavy ? '#FF8C1A' : '#172B4D'
+              : isNavy
+              ? 'rgba(255, 255, 255, 0.22)'
+              : isLight
+              ? '#E2E8F0'
+              : undefined,
+            shadowColor: isNavy && isCurrentFocus ? '#FF8C1A' : '#000000',
             shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: isLight ? 0.08 : 0.04,
+            shadowOpacity: isNavy ? 0.2 : isLight ? 0.08 : 0.04,
             shadowRadius: 3,
-            elevation: isLight ? 2 : 1,
+            elevation: isLight || isNavy ? 2 : 1,
           }}
           className={cn(
-            !isLight && 'border border-border bg-card shadow-xs',
-            !isLight && isCurrentFocus && 'border-[#172B4D] shadow-sm bg-primary/5',
-            !isLight && error && 'border-destructive bg-destructive/10',
+            !isLight && !isNavy && 'border border-border bg-card shadow-xs',
+            !isLight && !isNavy && isCurrentFocus && 'border-[#172B4D] shadow-sm bg-primary/5',
+            !isLight && !isNavy && error && 'border-destructive bg-destructive/10',
             cellClassName
           )}
         >
@@ -71,14 +80,14 @@ export const OtpInputField = ({
             style={{
               fontSize: length >= 6 ? 22 : 25,
               fontWeight: '700',
-              color: isLight ? '#0F172A' : undefined,
+              color: isNavy ? '#FFFFFF' : isLight ? '#0F172A' : undefined,
               textAlign: 'center',
               lineHeight: length >= 6 ? 26 : 30,
               includeFontPadding: false,
             }}
             className={cn(
               'font-bold font-sans text-center',
-              !isLight && 'text-foreground'
+              !isLight && !isNavy && 'text-foreground'
             )}
           >
             {char}

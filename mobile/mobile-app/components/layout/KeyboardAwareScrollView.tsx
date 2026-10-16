@@ -44,7 +44,7 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
     useEffect(() => {
       if (Platform.OS === 'web') return;
 
-      const subscription = Keyboard.addListener('keyboardDidShow', (event) => {
+      const showSubscription = Keyboard.addListener('keyboardDidShow', (event) => {
         const focusedInput = RNTextInput.State.currentlyFocusedInput?.();
         const focusedHandle = focusedInput ? findNodeHandle(focusedInput as any) : null;
         const scrollHandle = findNodeHandle(scrollViewRef.current);
@@ -64,7 +64,15 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
         }, 80);
       });
 
-      return () => subscription.remove();
+      const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+      const hideSubscription = Keyboard.addListener(hideEvent, () => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      });
+
+      return () => {
+        showSubscription.remove();
+        hideSubscription.remove();
+      };
     }, [extraScrollHeight, keyboardHeight]);
 
     const dismissAnyKeyboard = () => {
@@ -83,8 +91,8 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
         automaticallyAdjustKeyboardInsets={false}
         decelerationRate="normal"
         scrollEventThrottle={16}
-        alwaysBounceVertical={true}
-        overScrollMode="always"
+        alwaysBounceVertical={false}
+        overScrollMode="never"
         directionalLockEnabled={true}
         contentContainerStyle={[
           { flexGrow: 1 },

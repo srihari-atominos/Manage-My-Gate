@@ -36,13 +36,10 @@ import {
   Check,
   LogOut,
   Trash2,
-  Users,
   ChevronLeft,
   Globe,
   UserX,
   HelpCircle,
-  Building2,
-  Home,
   UserCheck,
   AlertCircle,
   Sparkles,
@@ -341,40 +338,7 @@ export default function SettingsScreen() {
 
         {/* 5. Section Groups */}
 
-        {/* Group A: Household & Access */}
-        <SettingsCard title={t('household_group', 'Household & Access')}>
-          {hasMultipleOrgs && (
-            <SettingsRow
-              icon={Building2}
-              iconColor="#6366f1"
-              iconBgColor="rgba(99, 102, 241, 0.12)"
-              title={t('switch_community', 'Switch Community')}
-              subtitle={dynamicCommunity}
-              onPress={() => setOrgModalVisible(true)}
-            />
-          )}
-          {hasMultipleUnits && (
-            <SettingsRow
-              icon={Home}
-              iconColor="#10b981"
-              iconBgColor="rgba(16, 185, 129, 0.12)"
-              title={t('switch_unit', 'Switch Villa Unit')}
-              subtitle={dynamicUnit}
-              onPress={() => setVillaModalVisible(true)}
-            />
-          )}
-          <SettingsRow
-            icon={Users}
-            iconColor="#0ea5e9"
-            iconBgColor="rgba(14, 165, 233, 0.12)"
-            title={t('community_directory', 'Community Directory')}
-            subtitle={t('find_residents_security', 'Find residents, security & staff')}
-            onPress={() => router.navigate('/(resident)/directory' as any)}
-            isLast={true}
-          />
-        </SettingsCard>
-
-        {/* Group B: General Settings & Preferences */}
+        {/* Group A: General Settings & Preferences */}
         <SettingsCard title={t('general_settings_group', 'General Settings & Preferences')}>
           <ThemeToggleSwitch
             themeMode={themeMode}

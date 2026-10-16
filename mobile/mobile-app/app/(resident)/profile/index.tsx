@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as Location from 'expo-location';
-import { View, ScrollView, Modal, Pressable, Alert, Platform, TextInput as RNTextInput, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Modal, Pressable, TouchableOpacity, Alert, Platform, TextInput as RNTextInput, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -663,6 +663,17 @@ export default function ProfileScreen() {
       scrollable={false}
       showBackButton={true}
       onBackPress={handleBack}
+      headerRight={
+        <TouchableOpacity
+          onPress={() => router.push('/(resident)/settings' as any)}
+          activeOpacity={0.7}
+          className="size-10 rounded-full bg-secondary border border-border items-center justify-center active:bg-muted"
+          accessibilityRole="button"
+          accessibilityLabel={t('settings', 'Settings')}
+        >
+          <Settings size={18} className="text-foreground" />
+        </TouchableOpacity>
+      }
     >
       <ScrollView
         className="flex-1"
@@ -1073,155 +1084,7 @@ export default function ProfileScreen() {
               </ScrollView>
             </View>
 
-            {/* Interests with Tag Cloud & Category Suggestions */}
-            <View className="gap-3">
-              {/* Section Header */}
-              <View className="flex-row items-center justify-between px-0.5">
-                <View className="flex-row items-center gap-1.5">
-                  <Sparkles size={14} className="text-primary" />
-                  <Text className="text-sm font-bold font-sans text-foreground">
-                    {t('interests', 'Interests & Hobbies')}
-                  </Text>
-                </View>
-                <View className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
-                  <Text className="text-xs font-bold text-primary">
-                    {currentInterests.length}/20 {t('selected', 'selected')}
-                  </Text>
-                </View>
-              </View>
 
-              {/* Selected Interests Tag Cloud */}
-              {currentInterests.length > 0 ? (
-                <View className="p-2.5 bg-secondary/30 rounded-2xl border border-border/70 gap-1.5">
-                  <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    {t('your_interests', 'Your Interests')}
-                  </Text>
-                  <View className="flex-row flex-wrap gap-1.5">
-                    {currentInterests.map((interest) => (
-                      <View
-                        key={interest}
-                        className="flex-row items-center px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/30"
-                      >
-                        <Text className="text-xs font-bold text-primary me-1.5">
-                          {interest}
-                        </Text>
-                        <Pressable
-                          onPress={() => handleRemoveInterest(interest)}
-                          hitSlop={6}
-                          className="size-3.5 rounded-full bg-primary/25 items-center justify-center active:bg-primary/50"
-                          accessibilityRole="button"
-                          accessibilityLabel={`Remove ${interest}`}
-                        >
-                          <X size={9} className="text-primary" />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : (
-                <View className="p-3 bg-secondary/30 rounded-2xl border border-dashed border-border/80 items-center justify-center">
-                  <Text className="text-xs text-muted-foreground font-medium text-center">
-                    {t('no_interests_yet', 'No interests selected. Tap suggestions below or add custom ones.')}
-                  </Text>
-                </View>
-              )}
-
-              {/* Add Custom Interest Input Field */}
-              <View className="flex-row items-center gap-2">
-                <View className="flex-1 flex-row items-center bg-card rounded-xl border border-border px-3 py-1.5 shadow-2xs">
-                  <RNTextInput
-                    value={customInterestInput}
-                    onChangeText={setCustomInterestInput}
-                    placeholder={t('type_custom_interest', 'Type custom interest (e.g. Chess, Hiking)...')}
-                    placeholderTextColor="#9ca3af"
-                    className="flex-1 text-xs text-foreground outline-none py-0 font-medium"
-                    onSubmitEditing={handleAddCustomInterest}
-                    returnKeyType="done"
-                  />
-                </View>
-                <Button
-                  size="sm"
-                  variant="default"
-                  disabled={!customInterestInput.trim() || currentInterests.length >= 20}
-                  onPress={handleAddCustomInterest}
-                  className="px-3 h-8.5 rounded-xl"
-                >
-                  <Plus size={13} className="text-white me-1" />
-                  <Text className="text-xs font-bold text-white">{t('add', 'Add')}</Text>
-                </Button>
-              </View>
-
-              {/* Suggestions by Field Category */}
-              <View className="bg-muted/20 p-3 rounded-2xl border border-border/70 gap-2.5 overflow-hidden">
-                <View className="gap-1">
-                  <View className="flex-row items-center gap-1.5">
-                    <Sparkles size={16} className="text-primary" />
-                    <Text className="text-sm font-extrabold text-foreground">
-                      {t('suggested_by_category', 'Suggestions by Category')}
-                    </Text>
-                  </View>
-                  <Text className="text-xs text-muted-foreground font-medium ms-[22px]">
-                    {t('tap_to_toggle', 'Tap to add / remove')}
-                  </Text>
-                </View>
-
-                {/* Category Tabs: Sports, Tech, Arts, Food, Lifestyle */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerClassName="pe-4 gap-2"
-                  className="flex-row pb-2"
-                >
-                  {INTEREST_CATEGORIES.map((cat) => {
-                    const isActive = activeInterestCategory === cat.id;
-                    return (
-                      <Pressable
-                        key={cat.id}
-                        onPress={() => setActiveInterestCategory(cat.id)}
-                        className={`px-4 py-1.5 rounded-xl border me-1 ${
-                          isActive
-                            ? 'bg-primary border-primary'
-                            : 'bg-card border-border/80 active:bg-secondary/60'
-                        }`}
-                      >
-                        <Text className={`text-sm font-bold ${isActive ? 'text-white' : 'text-foreground'}`}>
-                          {cat.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-
-                {/* Items in Active Category */}
-                <View className="flex-row flex-wrap gap-2 pt-1">
-                  {activeCategoryItems.map((item) => {
-                    const isSelected = currentInterests.some(
-                      (ci) => ci.toLowerCase() === item.toLowerCase()
-                    );
-                    return (
-                      <Pressable
-                        key={item}
-                        onPress={() => handleToggleInterest(item)}
-                        className={`flex-row items-center px-3 py-1.5 rounded-xl border active:opacity-80 shadow-2xs ${
-                          isSelected
-                            ? 'bg-primary border-primary'
-                            : 'bg-card border-border/70 active:bg-secondary/60'
-                        }`}
-                      >
-                        {isSelected ? (
-                          <Check size={14} className="text-white me-1.5" />
-                        ) : (
-                          <Plus size={14} className="text-muted-foreground me-1.5" />
-                        )}
-                        <Text className={`text-xs ${isSelected ? 'text-white font-semibold' : 'text-foreground font-medium'}`}>
-                          {item}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-            </View>
 
             {profileSuccess && <SuccessToast message={profileSuccess} />}
 

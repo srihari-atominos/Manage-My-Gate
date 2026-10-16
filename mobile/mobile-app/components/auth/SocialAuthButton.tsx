@@ -8,7 +8,7 @@ import { AppLoader } from '@/components/ui/AppLoader';
 export interface SocialAuthButtonProps {
   provider: 'google' | 'apple' | 'microsoft';
   onPress?: () => void;
-  variant?: 'full' | 'compact' | 'glass';
+  variant?: 'full' | 'compact' | 'glass' | 'navy';
   className?: string;
   loading?: boolean;
   disabled?: boolean;
@@ -96,6 +96,7 @@ export const SocialAuthButton = ({
   const isGoogle = provider === 'google';
   const isApple = provider === 'apple';
   const isGlass = variant === 'glass';
+  const isNavy = variant === 'navy';
   const providerName = isGoogle ? 'Google' : isApple ? 'Apple' : 'Microsoft';
   const buttonLabel = isGoogle
     ? variant === 'full'
@@ -108,8 +109,7 @@ export const SocialAuthButton = ({
     : variant === 'full'
     ? `Sign in with ${providerName}`
     : providerName;
-  const contentClass = isGlass ? 'text-white' : 'text-[#1C1917] dark:text-white';
-  const indicatorColor = isGlass ? '#FFFFFF' : isGoogle ? '#4285F4' : isApple ? (colorScheme === 'dark' ? '#FFFFFF' : '#1C1917') : '#00A4EF';
+  const contentClass = isNavy ? 'text-white' : isGlass ? 'text-white' : 'text-[#1C1917] dark:text-white';
 
   return (
     <>
@@ -123,36 +123,65 @@ export const SocialAuthButton = ({
           accessibilityRole="button"
           accessibilityLabel={buttonLabel}
           accessibilityHint={`Continue authentication with ${providerName}`}
-          style={isGoogle ? {
-            height: variant === 'compact' ? 44 : 48,
-            backgroundColor: '#FFFFFF',
-            borderColor: '#000000',
-            borderWidth: 1,
-            borderRadius: 999,
-          } : undefined}
-          className={`${isGoogle ? 'flex-row items-center justify-center gap-2 px-2' : `h-[48px] rounded-2xl flex-row items-center justify-center gap-2.5 shadow-2xs backdrop-blur-md active:bg-white/30 ${
-            isGlass
-              ? 'bg-white/20 dark:bg-white/15 border border-white/35'
-              : 'bg-white/75 dark:bg-[#1C1917]/75 border border-white/80 dark:border-white/20'
-          }`} ${disabled || loading ? 'opacity-60' : ''} ${className}`}
+          style={
+            isNavy
+              ? {
+                  height: 52,
+                  backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                  borderColor: 'rgba(255, 255, 255, 0.22)',
+                  borderWidth: 1.2,
+                  borderRadius: 28,
+                }
+              : isGoogle
+              ? {
+                  height: 52,
+                  backgroundColor: '#FFFFFF',
+                  borderColor: '#E2E8F0',
+                  borderWidth: 1.5,
+                  borderRadius: 28,
+                  shadowColor: '#64748B',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 6,
+                  elevation: 2,
+                }
+              : undefined
+          }
+          className={`${
+            isNavy
+              ? 'flex-row items-center justify-center gap-2 px-3'
+              : isGoogle
+              ? 'flex-row items-center justify-center gap-2 px-3'
+              : `h-[48px] rounded-2xl flex-row items-center justify-center gap-2.5 shadow-2xs backdrop-blur-md active:bg-white/30 ${
+                  isGlass
+                    ? 'bg-white/20 dark:bg-white/15 border border-white/35'
+                    : 'bg-white/75 dark:bg-[#1C1917]/75 border border-white/80 dark:border-white/20'
+                }`
+          } ${disabled || loading ? 'opacity-60' : ''} ${className}`}
         >
         {loading ? (
           <AppLoader variant="inline" />
         ) : (
           <>
             {isGoogle ? (
-              <GoogleIcon size={19} />
+              <GoogleIcon size={20} />
             ) : isApple ? (
-              <AppleIcon size={19} color={isGlass ? '#FFFFFF' : undefined} />
+              <AppleIcon size={20} color={isNavy || isGlass ? '#FFFFFF' : undefined} />
             ) : (
-              <MicrosoftIcon size={19} />
+              <MicrosoftIcon size={20} />
             )}
             <Text
-              numberOfLines={isGoogle ? 1 : undefined}
-              adjustsFontSizeToFit={isGoogle}
+              numberOfLines={isGoogle && !isNavy ? 1 : undefined}
+              adjustsFontSizeToFit={isGoogle && !isNavy}
               minimumFontScale={0.8}
-              style={isGoogle ? { color: '#000000', flexShrink: 1, lineHeight: 20, includeFontPadding: false, textAlignVertical: 'center' } : undefined}
-              className={`text-sm font-semibold ${isGoogle ? 'text-center' : `font-sans ${contentClass}`}`}
+              style={
+                isNavy
+                  ? { color: '#FFFFFF', fontSize: 14.5, fontWeight: '600' }
+                  : isGoogle
+                  ? { color: '#0F172A', fontSize: 14.5, fontWeight: '600', lineHeight: 20, includeFontPadding: false, textAlignVertical: 'center' }
+                  : undefined
+              }
+              className={`text-sm font-semibold ${isNavy ? 'text-white font-sans' : isGoogle ? 'text-center font-sans' : `font-sans ${contentClass}`}`}
             >
               {buttonLabel}
             </Text>
