@@ -15,19 +15,27 @@ export interface NahomHouseHProps {
 export const NahomHouseH: React.FC<NahomHouseHProps> = ({
   width = 26,
   height = 30,
-  color = '#FFFFFF',
-  windowColor = '#FF8C1A',
+  color = '#FF7A1A',
+  windowColor = '#FFFFFF',
 }) => {
   return (
-    <Svg
-      width={width}
-      height={height}
-      viewBox="0 0 32 36"
-      fill="none"
+    <View
       style={{
-        filter: 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.75))',
+        width,
+        height,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.75,
+        shadowRadius: 4,
+        elevation: 4,
       }}
     >
+      <Svg
+        width={width}
+        height={height}
+        viewBox="0 0 32 36"
+        fill="none"
+      >
       {/* Pitched House Roof with Overhang Eaves */}
       <Path
         d="M 3 13 L 16 3 L 29 13"
@@ -63,6 +71,7 @@ export const NahomHouseH: React.FC<NahomHouseHProps> = ({
       <Rect x="12" y="15.8" width="3.2" height="3.2" rx="0.5" fill={windowColor} />
       <Rect x="16.8" y="15.8" width="3.2" height="3.2" rx="0.5" fill={windowColor} />
     </Svg>
+    </View>
   );
 };
 

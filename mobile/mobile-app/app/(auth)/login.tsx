@@ -693,7 +693,7 @@ export default function LoginScreen() {
             resizeMode="cover"
           />
         </Animated.View>
-        <View className="absolute inset-0 bg-black/25 dark:bg-black/50" pointerEvents="none" />
+        <View className="absolute inset-0 bg-black/25" pointerEvents="none" />
 
 
         {/* Layout for Full Responsiveness with stationary locked resting state */}
@@ -732,7 +732,7 @@ export default function LoginScreen() {
               <NahomEmblem size={106} />
             </Animated.View>
 
-            {/* App Name: N (Orange), A (White), H (House symbol with orange window), O (Orange), M (White) */}
+            {/* App Name: N (Orange), A (White), H (Orange House SVG with white window), O (White), M (Orange) */}
             <Animated.View
               style={{
                 opacity: wordmarkOpacity,
@@ -748,9 +748,9 @@ export default function LoginScreen() {
             >
               <View
                 style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.55)',
-                  paddingHorizontal: 20,
-                  paddingVertical: 6,
+                  backgroundColor: 'rgba(15, 23, 42, 0.65)',
+                  paddingHorizontal: 22,
+                  paddingVertical: 7,
                   borderRadius: 24,
                   borderWidth: 1.2,
                   borderColor: 'rgba(255, 255, 255, 0.22)',
@@ -780,13 +780,16 @@ export default function LoginScreen() {
             >
               <RNText
                 style={{
-                  color: '#0F172A',
+                  color: '#FFFFFF',
                   fontWeight: '700',
                   fontSize: 28,
                   lineHeight: 38,
                   textAlign: 'center',
                   letterSpacing: -0.4,
                   includeFontPadding: false,
+                  textShadowColor: 'rgba(0, 0, 0, 0.75)',
+                  textShadowOffset: { width: 0, height: 1.5 },
+                  textShadowRadius: 4,
                 }}
               >
                 {t('welcome_back', 'Welcome Back')}
@@ -800,12 +803,12 @@ export default function LoginScreen() {
                   textAlign: 'center',
                   marginTop: 4,
                   includeFontPadding: false,
-                  textShadowColor: 'rgba(0, 0, 0, 0.45)',
+                  textShadowColor: 'rgba(0, 0, 0, 0.75)',
                   textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 3,
+                  textShadowRadius: 4,
                 }}
               >
-                {t('sign_in_to_continue', 'Sign in to continue to NAHOM')}
+                {t('sign_in_to_continue', 'Sign in to continue')}
               </RNText>
             </Animated.View>
 
