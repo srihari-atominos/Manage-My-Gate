@@ -3,6 +3,8 @@ import rateLimit from 'express-rate-limit';
 import logger from '../../utils/logger.utils.js';
 import { verifyPayToken, ensureFreshPaymentLink, publicBaseUrl } from './invoicePayLink.service.js';
 
+import { createRateLimitStore } from '../../middlewares/rateLimiter.middleware.js';
+
 /**
  * Public (no login) "Pay online" endpoint used by invoice emails / WhatsApp.
  * GET /api/billing-links/:token/pay -> 302 to a Razorpay link for the CURRENT outstanding amount,
@@ -10,7 +12,16 @@ import { verifyPayToken, ensureFreshPaymentLink, publicBaseUrl } from './invoice
  */
 const router = express.Router();
 
-const payLinkLimiter = rateLimit({ windowMs: 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+const payLinkLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: createRateLimitStore('paylink'),
+  passOnStoreError: process.env.REQUIRE_REDIS_RATE_LIMIT !== 'true',
+  keyGenerator: (req) => `paylink:${req.params?.token || req.ip}`,
+  validate: { xForwardedForHeader: false, default: true, keyGeneratorIpFallback: false },
+});
 
 const escapeHtml = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

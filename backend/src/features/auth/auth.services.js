@@ -1,4 +1,3 @@
-import { sendOtpNotification } from './auth.listeners.js';
 import userService from '../user/user.services.js';
 import roleService from '../role/role.services.js';
 import rolePermissionService from '../rolePermission/rolePermission.services.js';
@@ -15,6 +14,7 @@ import config from '../../config/config.js';
 import authEvents from './auth.events.js';
 import userEvents from '../user/user.events.js';
 import { normalizePhone } from '../../utils/phone.utils.js';
+import { sendOtpNotification } from './auth.listeners.js';
 
 // Same wording whether or not an account exists, so code requests can't reveal accounts
 const OTP_SENT_PHONE_MESSAGE = 'If an account exists for this phone number, a verification code has been sent.';
@@ -770,6 +770,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
           phone, 
           name: nameToUse || undefined, 
           status: 'Pending Verification',
+          emailVerified: false,
           privacyPolicyAcceptedAt: new Date()
         },
         session
@@ -946,7 +947,13 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       }
       if (!selectedMembership) {
         if (user.isPlatform === true) {
-          selectedMembership = activeMemberships.find((m) => m.orgId && m.orgId.isPlatform === true) || activeMemberships[0];
+          const orgData = await import('../org/org.model.js').then(m => m.default.findById(targetOrgIdStr).lean());
+          if (!orgData) throw new HttpError(404, 'Target community not found.');
+          selectedMembership = {
+            orgId: orgData,
+            roleIds: [],
+            status: 'Active'
+          };
         } else {
           throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
         }
@@ -981,7 +988,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
 
     if (selectedMembership) {
       orgId = selectedMembership.orgId._id.toString();
-      isPlatform = selectedMembership.orgId.isPlatform || false;
+      isPlatform = selectedMembership.orgId.isPlatform || user.isPlatform || false;
 
       // Consolidate all roles assigned to this user within the selected organization
       const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === orgId);
@@ -1006,14 +1013,18 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
 
       roleNames = uniqueRoles.map(r => r?.name).filter(Boolean);
 
-      if (targetRole) {
+      if (isPlatform) {
+        roleName = 'Platform Super Admin';
+        roleNames = Array.from(new Set([...roleNames, 'Platform Super Admin']));
+        permissions = ['*'];
+      } else if (targetRole) {
         if (!roleNames.includes(targetRole)) {
           throw new HttpError(400, `User does not have role '${targetRole}' in this organization.`);
         }
         roleName = targetRole;
         activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
         if (activeRoleObj) {
-          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id, orgId);
           permissions = permissionsList.map((permission) => permission.name);
         }
       } else {
@@ -1021,7 +1032,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         if (roleName) {
           activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
           if (activeRoleObj) {
-            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id, orgId);
             permissions = permissionsList.map((permission) => permission.name);
           }
         }
@@ -1040,6 +1051,11 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         mRoles.push(m.roleId);
       }
       const validRoles = mRoles.filter(Boolean);
+      if (user.isPlatform) {
+        if (!validRoles.some(r => r.name === 'Platform Super Admin')) {
+           validRoles.push({ name: 'Platform Super Admin' });
+        }
+      }
       const hasResidentInWs = validRoles.some(r => /resident|tenant|owner|family/i.test(r.name || ''));
       const firstUnit = m.units && m.units.length > 0 ? m.units[0] : null;
       const primaryVillaDoc = hasResidentInWs ? (m.villaId || firstUnit?.villaId || null) : null;
@@ -1446,8 +1462,8 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       throw new HttpError(403, `Your account has been ${user.status.toLowerCase()}. Please contact support.`);
     }
 
-    if (user.status === 'Pending Verification' && !inviteToken) {
-      throw new HttpError(403, 'Your account is pending verification. Please accept your workspace invitation first.');
+    if ((user.status === 'Pending Verification' || user.emailVerified === false) && !inviteToken) {
+      throw new HttpError(403, 'Email verification required. Please verify your email before logging in.');
     }
 
     if (!user.password) {
@@ -1491,8 +1507,8 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
           const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
           await orgMembershipService.updateStatus(user._id, targetOrgIdFromInvite, 'Active');
 
-          // If user was in Pending Verification, activate their global user profile
-          if (user.status === 'Pending Verification' || user.status === 'Pending') {
+          // If user was in Pending Verification or unverified, activate their global user profile
+          if (user.status === 'Pending Verification' || user.status === 'Pending' || user.emailVerified === false) {
             const User = (await import('../user/user.model.js')).default;
             await User.updateOne(
               { _id: user._id },
@@ -2537,6 +2553,14 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       return { message: OTP_SENT_EMAIL_MESSAGE };
     }
 
+    if (user.status === 'Pending Verification' || user.emailVerified === false) {
+      throw new HttpError(403, 'Email verification required. Please verify your email before logging in.');
+    }
+
+    if (user.status !== 'Active') {
+      throw new HttpError(403, `Account is ${user.status}`);
+    }
+
     const plainCode = await otpService.createOTP(email, 'LOGIN');
     sendOtpNotification({ identifier: email, code: plainCode, type: 'EMAIL' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
@@ -2655,10 +2679,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     // --- TRANSACTION BOUNDARY START ---
     // Encapsulate email OTP validation, user activation verification, and session setup.
     session.startTransaction();
-
     try {
-      await otpService.verifyOTP(email, code, 'LOGIN', session);
-
       const user = await userService.getUserByEmail(email, session);
       if (!user) {
         throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
@@ -2672,6 +2693,8 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       if (user.status !== 'Active' && !['Pending Verification', 'Pending'].includes(user.status)) {
         throw new HttpError(403, `Account is ${user.status}`);
       }
+
+      await otpService.verifyOTP(email, code, 'LOGIN', session);
 
       if (!user.emailVerified) {
         await userService.updateUser(user._id, { emailVerified: true }, session);
@@ -3417,31 +3440,24 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     };
   }
 
-  async checkAccountStatus(identifier) {
-    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
-      return { exists: false, hasPassword: false, isAlreadyConfigured: false };
+  async checkAccountStatus(identifier, { authenticated = false } = {}) {
+    // Anonymous callers learn nothing (otherwise anyone could test which emails/phones have accounts).
+    // Signed-in callers (e.g. an admin inviting someone) only learn whether an account exists and whether
+    // its credentials are set up, never personal data such as name, email, phone or status.
+    if (!authenticated || !identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      return { exists: false, isAlreadyConfigured: false };
     }
 
     const user = await userService.getUserByEmailOrPhone(identifier);
     if (!user) {
-      return { exists: false, hasPassword: false, isAlreadyConfigured: false };
+      return { exists: false, isAlreadyConfigured: false };
     }
 
     const hasPassword = !!(user.password && user.password.length > 0);
     const credStatus = user.credentialStatus || (hasPassword ? 'INITIALIZED' : 'NOT_INITIALIZED');
     const isAlreadyConfigured = hasPassword && credStatus === 'INITIALIZED';
 
-    return {
-      exists: true,
-      hasPassword,
-      credentialStatus: credStatus,
-      appAccessStatus: user.appAccessStatus || 'NOT_YET_ACCESSED',
-      status: user.status,
-      isAlreadyConfigured,
-      email: user.email,
-      phone: user.phone || '',
-      name: user.name || user.username || '',
-    };
+    return { exists: true, isAlreadyConfigured };
   }
 
   async sendFirstTimeSetupOtp(identifier) {
@@ -3463,12 +3479,14 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     if (isOtpDebugEnabled()) {
       logger.info(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
     }
+    const isDev = process.env.NODE_ENV !== 'production';
 
     sendOtpNotification({ identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     return {
       message: `Verification code sent to ${targetIdentifier}`,
       identifier: targetIdentifier,
+      ...(isDev && { devCode: plainCode }),
     };
   }
 

@@ -123,24 +123,14 @@ class TechnicianService {
       { email: emailToUse, phone: data.phone }
     );
 
-    if (existingTech) {
-      if (
-        data.phone &&
-        existingTech.phone === data.phone &&
-        existingTech.name &&
-        data.name &&
-        existingTech.name.trim().toLowerCase() !== data.name.trim().toLowerCase() &&
-        !existingTech.isDeleted
-      ) {
-        throw new HttpError(
-          409,
-          `Phone number is already registered to '${existingTech.name}'. Edit that staff record instead.`
-        );
-      }
-      await this.assertStaffCodeAvailable(orgId, data.staffCode, existingTech._id);
-      const updated = await technicianRepository.restoreOrUpdate(existingTech._id, orgId, {
-        ...data,
-        userId: userId || existingTech.userId,
+    const { orgId: _ignoredOrg, ...cleanData } = data;
+
+    if (existingTech && existingTech.length > 0) {
+      const targetTech = existingTech[0];
+      const updated = await technicianRepository.update(targetTech._id, orgId, {
+        ...cleanData,
+        orgId,
+        userId: userId || targetTech.userId,
         isDeleted: false,
         status: data.status || 'Active',
       });
@@ -148,8 +138,7 @@ class TechnicianService {
       return updated;
     }
 
-    const technician = await technicianRepository.create({ orgId, userId, ...data });
-    technicianEvents.emit('technician_created', { orgId, technician });
+    const technician = await technicianRepository.create({ ...cleanData, orgId, userId });
     return technician;
   }
 

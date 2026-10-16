@@ -9,8 +9,9 @@ export const mapBackendWalkInToApprovalItem = (log: any): WalkInApprovalItem => 
     return {} as WalkInApprovalItem;
   }
 
-  const id = log._id || String(Math.random());
-  const visitorName = log.snapshot?.visitorName || 'Walk-In Visitor';
+  const rawId = log._id || log.id;
+  const id = rawId ? (typeof rawId === 'object' ? String(rawId) : String(rawId)) : '';
+  const visitorName = log.snapshot?.visitorName || log.visitorName || 'Walk-In Visitor';
 
   // Do NOT fabricate or substitute idProofNumber as phone number.
   // Extract phone only if explicit phone field exists in backend payload/snapshot.

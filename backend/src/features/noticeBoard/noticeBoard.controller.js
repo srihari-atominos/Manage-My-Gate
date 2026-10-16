@@ -1,6 +1,7 @@
 import noticeService from './noticeBoard.service.js'
 import noticeReactionService from '../noticeReaction/noticeReaction.service.js'
 import mongoose from 'mongoose'
+import { checkIsAdmin } from '../../middlewares/rbac.middleware.js'
 
 export class NoticeBoardController {
   /**
@@ -60,7 +61,7 @@ export class NoticeBoardController {
       let permissions = [];
       if (req.user.roleId) {
         const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
-        const permissionsList = await rolePermissionService.getPermissionsByRoleId(req.user.roleId);
+        const permissionsList = await rolePermissionService.getPermissionsByRoleId(req.user.roleId, req.tenant?.orgId || req.user?.orgId);
         permissions = permissionsList.map((p) => p.name);
       } else if (req.user.role && req.tenant?.orgId) {
         try {
@@ -68,7 +69,7 @@ export class NoticeBoardController {
           const role = await roleService.getRoleByName(req.user.role, req.tenant.orgId);
           if (role) {
             const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
-            const permissionsList = await rolePermissionService.getPermissionsByRoleId(role._id);
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(role._id, req.tenant?.orgId || req.user?.orgId);
             permissions = permissionsList.map((p) => p.name);
           }
         } catch (err) {
@@ -76,10 +77,12 @@ export class NoticeBoardController {
         }
       }
       const userPermissions = permissions.map((p) => p.replace(':', '.'));
+      const isCommunityAdmin = await checkIsAdmin(req);
       const adminRoleNames = ['super admin', 'platform super admin', 'admin', 'community admin', 'superadmin'];
       const userRoleLower = (req.user.role || '').trim().toLowerCase();
       const userRoles = Array.isArray(req.user.roles) ? req.user.roles.map((r) => (r || '').trim().toLowerCase()) : [];
       const hasCreatePermission =
+        isCommunityAdmin ||
         adminRoleNames.includes(userRoleLower) ||
         userRoles.some((r) => adminRoleNames.includes(r)) ||
         userPermissions.includes('notices.manage_notices') ||

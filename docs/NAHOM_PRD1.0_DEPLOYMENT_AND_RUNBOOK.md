@@ -167,8 +167,11 @@ MONGO_ROOT_PASSWORD=your_secure_mongo_password_here
 # For Docker Containers inside mmg-network (backend -> mongodb):
 MONGODB_URI=mongodb://manageadmin:your_secure_mongo_password_here@mongodb:27017/manage_my_gate_prod?replicaSet=rs0&authSource=admin
 
-# Redis Cache URI
+# Redis Cache URI & Strict Enforcement Flags (Mandatory for Multi-Instance / Production)
 REDIS_URL=redis://redis:6379
+REQUIRE_REDIS_ADAPTER=true
+REQUIRE_REDIS_LOCK=true
+REQUIRE_REDIS_RATE_LIMIT=true
 
 # ==============================================================================
 # Security & Cryptographic Secrets

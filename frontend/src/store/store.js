@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit'
+import { configureStore, combineReducers } from '@reduxjs/toolkit'
 import uiReducer from './uiSlice.js'
 import sampleFeatureReducer from '../features/sampleFeature/store/sampleFeatureSlice.js'
 import authReducer from '../features/auth/store/authSlice.js'
@@ -10,7 +10,6 @@ import workspaceReducer from '../features/workspace/store/workspaceSlice.js'
 import organizationReducer from '../features/organization/store/organizationSlice.js'
 import auditLogReducer from '../features/auditLog/store/auditLogSlice.js'
 import issueReportReducer from '../features/issueReport/store/issueReportSlice.js'
-
 import messageTemplateReducer from '../features/messageTemplate/store/messageTemplateSlice.js'
 import villaReducer from '../features/villa/store/villaSlice.js'
 import amenityReducer from '../features/amenities/store/amenitySlice.js'
@@ -33,59 +32,106 @@ import platformBillingReducer from '../features/platformBilling/store/platformBi
 import pricingReducer from '../features/pricing/store/pricingSlice.js'
 import platformQuoteReducer from '../features/platformQuote/store/platformQuoteSlice.js'
 import platformSubscriptionReducer from '../features/platformSubscription/store/platformSubscriptionSlice.js'
+import config from '../config/config.js'
+import { cancelInFlightRequests } from '../services/apiClient.js'
+
+// Redact sensitive credentials before console logging
+const sanitizeStateForLog = (state) => {
+  if (!state || typeof state !== 'object') return state
+  return {
+    ...state,
+    auth: state.auth
+      ? {
+          ...state.auth,
+          token: state.auth.token ? '***REDACTED***' : null,
+          user: state.auth.user
+            ? {
+                ...state.auth.user,
+                password: state.auth.user.password ? '***REDACTED***' : undefined,
+              }
+            : null,
+        }
+      : undefined,
+  }
+}
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
   console.group(`Action: ${action.type}`)
-  console.log('%cPrev State:', 'color: #9E9E9E; font-weight: bold;', store.getState())
+  console.log('%cPrev State:', 'color: #9E9E9E; font-weight: bold;', sanitizeStateForLog(store.getState()))
   console.log('%cAction:', 'color: #03A9F4; font-weight: bold;', action)
   const result = next(action)
-  console.log('%cNext State:', 'color: #4CAF50; font-weight: bold;', store.getState())
+  console.log('%cNext State:', 'color: #4CAF50; font-weight: bold;', sanitizeStateForLog(store.getState()))
   console.groupEnd()
   return result
 }
 
-import config from '../config/config.js'
-
 const isDev = config.isDev
 
-export const store = configureStore({
-  reducer: {
-    ui: uiReducer,
-    sampleFeature: sampleFeatureReducer,
-    auth: authReducer,
-    userManagement: userReducer,
-    roleBuilder: roleReducer,
-    notifications: notificationsReducer,
-    integrationHub: integrationHubReducer,
-    workspace: workspaceReducer,
-    organization: organizationReducer,
-    auditLog: auditLogReducer,
-    issueReport: issueReportReducer,
+const appReducer = combineReducers({
+  ui: uiReducer,
+  sampleFeature: sampleFeatureReducer,
+  auth: authReducer,
+  userManagement: userReducer,
+  roleBuilder: roleReducer,
+  notifications: notificationsReducer,
+  integrationHub: integrationHubReducer,
+  workspace: workspaceReducer,
+  organization: organizationReducer,
+  auditLog: auditLogReducer,
+  issueReport: issueReportReducer,
+  messageTemplate: messageTemplateReducer,
+  villa: villaReducer,
+  amenities: amenityReducer,
+  amenityBooking: amenityBookingReducer,
+  amenitiesDashboard: dashboardReducer,
+  securityLogs: securityLogReducer,
+  visitorPass: visitorPassReducer,
+  visitorLog: visitorLogReducer,
+  blacklist: blacklistReducer,
+  noticeBoard: noticeBoardReducer,
+  poll: pollReducer,
+  complaints: complaintReducer,
+  complaintSettings: complaintSettingsReducer,
+  billing: billingReducer,
+  assessment: assessmentReducer,
+  wallet: walletReducer,
+  crmWorkspace: crmWorkspaceReducer,
+  onboardingWizard: onboardingWizardReducer,
+  platformBilling: platformBillingReducer,
+  pricing: pricingReducer,
+  platformQuote: platformQuoteReducer,
+  platformSubscription: platformSubscriptionReducer,
+})
 
-    messageTemplate: messageTemplateReducer,
-    villa: villaReducer,
-    amenities: amenityReducer,
-    amenityBooking: amenityBookingReducer,
-    amenitiesDashboard: dashboardReducer,
-    securityLogs: securityLogReducer,
-    visitorPass: visitorPassReducer,
-    visitorLog: visitorLogReducer,
-    blacklist: blacklistReducer,
-    noticeBoard: noticeBoardReducer,
-    poll: pollReducer,
-    complaints: complaintReducer,
-    complaintSettings: complaintSettingsReducer,
-    billing: billingReducer,
-    assessment: assessmentReducer,
-    wallet: walletReducer,
-    crmWorkspace: crmWorkspaceReducer,
-    onboardingWizard: onboardingWizardReducer,
-    platformBilling: platformBillingReducer,
-    pricing: pricingReducer,
-    platformQuote: platformQuoteReducer,
-    platformSubscription: platformSubscriptionReducer,
-  },
+// Root reducer to handle global resets for tenant isolation
+const rootReducer = (state, action) => {
+  // Wipe all sensitive and tenant state on user logout
+  if (action.type === 'auth/logout' || action.type === 'auth/performLogout/fulfilled') {
+    cancelInFlightRequests('User logged out')
+    state = {
+      ui: state?.ui,
+    }
+  } else if (
+    // Wipe all tenant-scoped feature data when switching tenant or workspace context
+    action.type === 'workspace/setActiveWorkspace' ||
+    action.type === 'auth/switchWorkspaceContext/fulfilled' ||
+    action.type === 'auth/switchWorkspaceContext/pending' ||
+    action.type === 'workspace/clearWorkspace'
+  ) {
+    cancelInFlightRequests('Tenant context switched')
+    // Keep auth state (tokens), ui (theme/sidebar), and workspace metadata, but reset all feature slices to clean initialState
+    state = {
+      auth: state?.auth,
+      ui: state?.ui,
+      workspace: state?.workspace,
+    }
+  }
+  return appReducer(state, action)
+}
+
+export const store = configureStore({
+  reducer: rootReducer,
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware()
     if (isDev) {

@@ -22,7 +22,6 @@ import { AppLoader } from '@/components/ui/AppLoader';
 import { Text } from '@/components/ui/text';
 
 // Lazy Load Heavy Modals for Performance Optimization
-const InviteUserModal = lazy(() => import('@/src/features/userManagement').then(m => ({ default: m.InviteUserModal })));
 const BulkInviteModal = lazy(() => import('@/src/features/userManagement').then(m => ({ default: m.BulkInviteModal })));
 const ConfigureInviteTemplateModal = lazy(() => import('@/src/features/userManagement').then(m => ({ default: m.ConfigureInviteTemplateModal })));
 const ManageRolesModal = lazy(() => import('@/src/features/userManagement').then(m => ({ default: m.ManageRolesModal })));
@@ -107,7 +106,7 @@ export default function UserManagementScreen() {
   const scale3 = dialAnimation.interpolate({ inputRange: [0, 0.9, 1], outputRange: [0.5, 1.1, 1], extrapolate: 'clamp' });
 
   const dialOpacity = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
-  const [showInviteModal, setShowInviteModal] = useState(false);
+  
   const [showBulkInviteModal, setShowBulkInviteModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -183,11 +182,11 @@ export default function UserManagementScreen() {
       onRetry={refreshUsers}
       headerRight={
         <HeaderActionButton
-          onPress={() => setShowInviteModal(true)}
+          onPress={() => setShowBulkInviteModal(true)}
           icon={UserPlus}
-          label={t('invite_user', 'Invite')}
+          label={t('bulk_create', 'Bulk Create')}
           accessibilityRole="button"
-          accessibilityLabel={t('invite_user', 'Invite User')}
+          accessibilityLabel={t('bulk_create', 'Bulk Create')}
         />
       }
     >
@@ -252,10 +251,10 @@ export default function UserManagementScreen() {
             description={
               searchQuery || selectedRoles.length > 0
                 ? t('no_users_match', 'No users match your active search or filter criteria.')
-                : t('no_users_registered', 'No community users registered yet. Tap the button below to invite users.')
+                : t('no_users_registered', 'No community users registered yet. Tap the button below to bulk create users.')
             }
-            actionLabel={t('invite_user', 'Invite User')}
-            onAction={() => setShowInviteModal(true)}
+            actionLabel={t('bulk_create', 'Bulk Create')}
+            onAction={() => setShowBulkInviteModal(true)}
           />
         ) : (
           <FlatList
@@ -267,7 +266,6 @@ export default function UserManagementScreen() {
                 user={item}
                 currentUserId={currentUserId}
                 onManageRoles={(u: UserData, unit?: AssignedUnit | null) => openManageRolesModal(u, unit)}
-                onResendInvite={(u: UserData) => handleResendInvite(u)}
                 onDeleteUser={(u: UserData) => setUserToDelete(u)}
                 onViewDetails={(u: UserData) => setUserToEdit(u)}
               />
@@ -350,7 +348,7 @@ export default function UserManagementScreen() {
         <View style={{ position: 'absolute', right: 55, width: 125, alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
           <View className="bg-card px-3 py-1.5 rounded-lg border border-border/60 shadow-sm" style={{ elevation: 2 }}>
             <Text className="text-foreground text-[11px] font-bold tracking-tight text-right" numberOfLines={1}>
-              {t('bulk_invite', 'Bulk Invite')}
+              {t('bulk_create', 'Bulk Create')}
             </Text>
           </View>
         </View>
@@ -363,34 +361,7 @@ export default function UserManagementScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Speed Dial Action 1: Invite User (Top) */}
-      <Animated.View 
-        className="z-[9998]"
-        style={{ 
-          position: 'absolute', bottom: 135, right: 25,
-          width: 50, height: 50,
-          alignItems: 'center', justifyContent: 'center',
-          transform: [{ translateX: transX1 }, { translateY: transY1 }, { scale: scale1 }], 
-          opacity: dialOpacity,
-          overflow: 'visible'
-        }}
-        pointerEvents={isDialOpen ? 'auto' : 'none'}
-      >
-        <View style={{ position: 'absolute', right: 55, width: 125, alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
-          <View className="bg-card px-3 py-1.5 rounded-lg border border-border/60 shadow-sm" style={{ elevation: 2 }}>
-            <Text className="text-foreground text-[11px] font-bold tracking-tight text-right" numberOfLines={1}>
-              {t('invite_user', 'Invite User')}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          activeOpacity={0.7}
-          onPress={() => closeDialAndOpen(setShowInviteModal)}
-          className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
-        >
-          <UserPlus size={22} className="text-primary" />
-        </TouchableOpacity>
-      </Animated.View>
+      
 
       {/* Main Animated FAB */}
       <TouchableOpacity
@@ -419,13 +390,7 @@ export default function UserManagementScreen() {
           />
         )}
 
-        {showInviteModal && (
-          <InviteUserModal
-            visible={showInviteModal}
-            onClose={() => setShowInviteModal(false)}
-            onSendInvite={handleSendInvite}
-          />
-        )}
+        
 
         {showBulkInviteModal && (
           <BulkInviteModal

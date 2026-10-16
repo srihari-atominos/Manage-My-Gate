@@ -36,9 +36,7 @@ export const initRoleSocket = () => {
         io.to(roomName).emit('RECORD_UPDATED', { type: 'ROLE', action: 'UPDATE', data: socketPayload });
       }
       
-      // Also broadcast to all connected clients for instant real-time sync
-      io.emit('ROLE_UPDATED', socketPayload);
-      io.emit('RECORD_UPDATED', { type: 'ROLE', action: 'UPDATE', data: socketPayload });
+      // Global broadcasts removed to prevent cross-tenant leakage
 
       logger.info(`Socket emitted ROLE_UPDATED for role: ${role.name} with ${updatedPermissions.length} permissions`);
     } catch (error) {

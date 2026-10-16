@@ -10,21 +10,95 @@ import issueReportConfigService from '../features/issueReportConfig/issueReportC
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { createRateLimitStore } from '../middlewares/rateLimiter.middleware.js';
+
 const router = Router();
 
 const publicLeadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
+  store: createRateLimitStore('public-lead'),
+  passOnStoreError: process.env.REQUIRE_REDIS_RATE_LIMIT !== 'true',
+  keyGenerator: (req) => `lead:${req.ip}`,
+  validate: { xForwardedForHeader: false, default: true, keyGeneratorIpFallback: false },
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
-router.get('/health', (req, res) => {
-  res.success({
-    status: 'UP',
-    service: 'Nahom Backend API',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  }, 'API is healthy');
+// Checkout/invoice pages are addressed by record id, so cap lookups per IP to make id guessing impractical
+const publicDocumentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  store: createRateLimitStore('public-document'),
+  passOnStoreError: process.env.REQUIRE_REDIS_RATE_LIMIT !== 'true',
+  keyGenerator: (req) => `doc:${req.ip}`,
+  validate: { xForwardedForHeader: false, default: true, keyGeneratorIpFallback: false },
+  message: { success: false, message: 'Too many requests, please try again later.' }
+});
+
+router.get('/health', async (req, res) => {
+  try {
+    const mongoose = (await import('mongoose')).default;
+    const { isRedisAdapterReady } = await import('../config/socket.js');
+    const dbReady = mongoose.connection?.readyState === 1;
+    const redisReady = isRedisAdapterReady();
+    const requireRedis = process.env.REQUIRE_REDIS_ADAPTER === 'true';
+
+    const isReady = dbReady && (!requireRedis || redisReady);
+
+    const payload = {
+      status: isReady ? 'UP' : 'DEGRADED',
+      service: 'Nahom Backend API',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      checks: {
+        database: dbReady ? 'connected' : 'disconnected',
+        realtimeAdapter: redisReady ? 'redis_cluster' : 'local_memory',
+      },
+    };
+
+    // Liveness reports process state without conflating dependency readiness.
+    // Liveness returns 200 (even if degraded) so the container is not killed during recoverable outages.
+    res.status(200).json({ success: true, message: 'API health status', data: payload });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Healthcheck error', error: err.message });
+  }
+});
+
+router.get('/readiness', async (req, res) => {
+  try {
+    const mongoose = (await import('mongoose')).default;
+    const { isRedisAdapterReady } = await import('../config/socket.js');
+    const dbReady = mongoose.connection?.readyState === 1;
+    const redisReady = isRedisAdapterReady();
+    const requireRedis = process.env.REQUIRE_REDIS_ADAPTER === 'true';
+
+    const isReady = dbReady && (!requireRedis || redisReady);
+
+    if (!isReady) {
+      return res.status(503).json({
+        success: false,
+        message: 'Service Not Ready',
+        checks: {
+          database: dbReady ? 'ready' : 'unavailable',
+          realtimeAdapter: (!requireRedis || redisReady) ? 'ready' : 'redis_unavailable',
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Service is ready to handle traffic',
+      data: {
+        status: 'READY',
+        checks: {
+          database: 'ready',
+          realtimeAdapter: redisReady ? 'redis_cluster' : 'local_memory',
+        },
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Readiness check error', error: err.message });
+  }
 });
 
 // Mobile app bootstrap config. MOBILE_MIN_SUPPORTED_VERSION forces older app builds
@@ -49,7 +123,7 @@ router.get('/app/config', async (req, res) => {
 
 router.post('/register-lead', publicLeadLimiter, validate(validatePublicLead), crmInquiryController.registerPublicLead);
 
-router.get('/checkout/:id', async (req, res, next) => {
+router.get('/checkout/:id', publicDocumentLimiter, async (req, res, next) => {
   try {
     const platformPaymentService = (await import('../features/platformPayment/platformPayment.service.js')).default;
     const data = await platformPaymentService.getPublicCheckoutInfo(req.params.id);
@@ -240,7 +314,7 @@ export const buildInvoiceHtml = (checkoutInfo) => {
 </html>`;
 };
 
-router.get('/invoice/:id/view', async (req, res, next) => {
+router.get('/invoice/:id/view', publicDocumentLimiter, async (req, res, next) => {
   try {
     const platformPaymentService = (await import('../features/platformPayment/platformPayment.service.js')).default;
     const checkoutInfo = await platformPaymentService.getPublicCheckoutInfo(req.params.id);
@@ -253,7 +327,7 @@ router.get('/invoice/:id/view', async (req, res, next) => {
   }
 });
 
-router.get('/invoice/:id/download', async (req, res, next) => {
+router.get('/invoice/:id/download', publicDocumentLimiter, async (req, res, next) => {
   try {
     const platformPaymentService = (await import('../features/platformPayment/platformPayment.service.js')).default;
     const checkoutInfo = await platformPaymentService.getPublicCheckoutInfo(req.params.id);

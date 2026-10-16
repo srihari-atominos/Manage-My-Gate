@@ -9,9 +9,9 @@ import PageHeader from '../../../components/common/PageHeader'
 import DataTable from '../../../components/common/DataTable'
 import InvitationToolbar from '../components/InvitationToolbar'
 import RevokeInvitationModal from '../components/RevokeInvitationModal'
-import InviteUserModal from '../components/InviteUserModal'
+
 import { useInvitationList } from '../hooks/useInvitationList'
-import { inviteUser } from '../services/userApi'
+
 import '../styles/_userManagement.scss'
 
 /**
@@ -45,7 +45,7 @@ const InvitationManagementView = () => {
   } = useInvitationList()
 
   const [selectedForRevoke, setSelectedForRevoke] = useState(null)
-  const [showInviteModal, setShowInviteModal] = useState(false)
+  
 
   // Resend action handler
   const onResendClick = async (invitation) => {
@@ -78,12 +78,7 @@ const InvitationManagementView = () => {
     toast.success(t('invitations.revokeSuccess', 'Invitation successfully revoked'))
   }
 
-  // Handle new invite from this view
-  const handleSendInvite = async (inviteData) => {
-    await inviteUser(inviteData)
-    toast.success(t('invitations.inviteSuccess', 'Invitation sent successfully!'))
-    refreshInvitations()
-  }
+  
 
   // Table Columns
   const columns = useMemo(
@@ -227,17 +222,6 @@ const InvitationManagementView = () => {
           { label: t('nav.users', 'Users'), to: '/users' },
           { label: t('nav.invitations', 'Invitations') },
         ]}
-        actions={
-          <CButton
-            color="primary"
-            size="sm"
-            onClick={() => setShowInviteModal(true)}
-            className="d-flex align-items-center gap-2"
-          >
-            <CIcon icon={cilUserPlus} size="sm" />
-            <span>{t('invitations.inviteUser', 'Invite User')}</span>
-          </CButton>
-        }
       />
 
       {error && (
@@ -278,12 +262,7 @@ const InvitationManagementView = () => {
         invitation={selectedForRevoke}
       />
 
-      {/* Invite User Modal */}
-      <InviteUserModal
-        visible={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        onSendInvite={handleSendInvite}
-      />
+      
     </div>
   )
 }

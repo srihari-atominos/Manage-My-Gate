@@ -22,7 +22,7 @@ export class NoticeBoardService {
    * Retrieves a notice by ID.
    */
   async getNoticeById(id, session = null, userId = null, orgId = null, currentUser = null) {
-    const notice = await noticeRepository.findById(id, session);
+    const notice = await noticeRepository.findById(id, orgId, session);
     if (!notice) {
       throw new HttpError(404, `Notice with ID ${id} not found.`);
     }
@@ -38,18 +38,119 @@ export class NoticeBoardService {
     }
 
     // Audience eligibility verification (Community Admin and Super Admin always have access)
-    const adminRoleNames = ['Community Admin', 'Admin', 'Super Admin', 'Platform Super Admin', 'SuperAdmin'];
-    const callerRole = (currentUser?.role || '').trim();
-    const callerRoles = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
-    const isCallerAdmin = adminRoleNames.includes(callerRole) || callerRoles.some((r) => adminRoleNames.includes(r));
+    const adminRoleNames = [
+      'Community Admin',
+      'Admin',
+      'Super Admin',
+      'Platform Super Admin',
+      'SuperAdmin',
+      'Facility Manager',
+      'Manager',
+    ];
+    const cleanRole = (r) => (r || '').trim().toLowerCase().replace(/[_-]/g, ' ');
 
-    if (notice.status === 'Draft' && !isCallerAdmin) {
+    let isCallerAdmin = false;
+
+    const userObj = currentUser || (typeof userId === 'object' && userId !== null ? userId : null);
+    if (userObj) {
+      const callerRole = cleanRole(userObj.role);
+      const callerRoles = Array.isArray(userObj.roles) ? userObj.roles.map(cleanRole) : [];
+      isCallerAdmin =
+        userObj.isPlatform === true ||
+        adminRoleNames.some(
+          (ar) => cleanRole(ar) === callerRole || callerRole.includes('admin') || callerRole.includes('super')
+        ) ||
+        callerRoles.some((r) =>
+          adminRoleNames.some((ar) => cleanRole(ar) === r || r.includes('admin') || r.includes('super'))
+        );
+    } else if (typeof currentUser === 'string') {
+      const callerRole = cleanRole(currentUser);
+      isCallerAdmin = adminRoleNames.some(
+        (ar) => cleanRole(ar) === callerRole || callerRole.includes('admin') || callerRole.includes('super')
+      );
+    }
+
+    const resolvedUserIdStr =
+      typeof userId === 'object' && userId !== null
+        ? (userId._id || userId.id || userId.userId)?.toString()
+        : userId
+        ? userId.toString()
+        : userObj
+        ? (userObj._id || userObj.id || userObj.userId)?.toString()
+        : null;
+
+    // Check if the caller is the author of this notice
+    const isNoticeAuthor = Boolean(
+      resolvedUserIdStr && notice.createdBy && notice.createdBy.toString() === resolvedUserIdStr
+    );
+
+    // If not determined via currentUser object, check live OrgMembership in database
+    if (!isCallerAdmin && resolvedUserIdStr && mongoose.isValidObjectId(resolvedUserIdStr)) {
+      try {
+        const OrgMembership = mongoose.model('OrgMembership');
+        const filter = { userId: resolvedUserIdStr, status: 'Active' };
+        const activeOrgId = orgId || notice.orgId;
+        if (activeOrgId) {
+          filter.orgId = activeOrgId;
+        }
+        const memberships = await OrgMembership.find(filter)
+          .populate('roleId')
+          .populate('roleIds')
+          .lean();
+
+        for (const m of memberships) {
+          const names = [
+            m.roleId?.name,
+            ...(Array.isArray(m.roleIds) ? m.roleIds.map((r) => r?.name) : []),
+          ].filter(Boolean);
+
+          if (
+            names.some(
+              (n) =>
+                adminRoleNames.some((ar) => cleanRole(ar) === cleanRole(n)) ||
+                cleanRole(n).includes('admin') ||
+                cleanRole(n).includes('super')
+            )
+          ) {
+            isCallerAdmin = true;
+            break;
+          }
+        }
+      } catch (err) {
+        // Fallback check on User model if OrgMembership lookup fails
+        try {
+          const User = mongoose.model('User');
+          const u = await User.findById(resolvedUserIdStr).select('role roles isPlatform').lean();
+          if (u) {
+            const callerRole = cleanRole(u.role);
+            const callerRoles = Array.isArray(u.roles) ? u.roles.map(cleanRole) : [];
+            isCallerAdmin =
+              u.isPlatform === true ||
+              adminRoleNames.some(
+                (ar) => cleanRole(ar) === callerRole || callerRole.includes('admin') || callerRole.includes('super')
+              ) ||
+              callerRoles.some((r) =>
+                adminRoleNames.some((ar) => cleanRole(ar) === r || r.includes('admin') || r.includes('super'))
+              );
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    // Draft notices are strictly accessible to Community Admins and the Notice Author
+    if (notice.status === 'Draft' && !isCallerAdmin && !isNoticeAuthor) {
       throw new HttpError(403, 'Draft notices are restricted to community administrators');
     }
 
-    if (!isCallerAdmin && userId && orgId && notice.targetAudience) {
-      const resolvedUserId = typeof userId === 'object' && userId !== null ? (userId._id || userId.id || userId.userId) : userId;
-      const isEligible = await audienceService.checkEligibility(resolvedUserId, notice.targetAudience, orgId, session);
+    if (!isCallerAdmin && !isNoticeAuthor && resolvedUserIdStr && (orgId || notice.orgId) && notice.targetAudience) {
+      const isEligible = await audienceService.checkEligibility(
+        resolvedUserIdStr,
+        notice.targetAudience,
+        orgId || notice.orgId,
+        session
+      );
       if (!isEligible) {
         throw new HttpError(403, 'Access denied: You are not eligible to view this notice.');
       }
@@ -71,10 +172,13 @@ export class NoticeBoardService {
         ...noticeData,
         orgId,
         createdBy: userId,
-        title: noticeData.title.trim(),
-        description: noticeData.description.trim(),
+        title: (noticeData.title || '').trim(),
+        description: (noticeData.description || '').trim(),
+        category: noticeData.category || 'General',
+        priority: noticeData.priority || 'Medium',
         image: noticeData.image || '',
-        scheduleDate: noticeData.scheduleDate ? new Date(noticeData.scheduleDate) : null,
+        scheduleDate: noticeData.scheduleDate && !isNaN(new Date(noticeData.scheduleDate).getTime()) ? new Date(noticeData.scheduleDate) : null,
+        expiryDate: noticeData.expiryDate && !isNaN(new Date(noticeData.expiryDate).getTime()) ? new Date(noticeData.expiryDate) : null,
       };
 
       // Validate Target Audience if provided
@@ -316,12 +420,12 @@ export class NoticeBoardService {
   /**
    * Updates an existing notice.
    */
-  async updateNotice(id, updateData, userId, orgId) {
+  async updateNotice(id, updateData, userId, orgId, currentUser = null) {
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      const notice = await this.getNoticeById(id, session);
+      const notice = await this.getNoticeById(id, session, userId, orgId, currentUser || userId);
 
       // Verify that this notice belongs to the active organization
       if (notice.orgId.toString() !== orgId.toString()) {
@@ -369,9 +473,14 @@ export class NoticeBoardService {
         data.allowReactions = toBoolean(updateData.allowReactions, true);
       }
 
-      if (data.title) data.title = data.title.trim();
-      if (data.description) data.description = data.description.trim();
-      if (data.scheduleDate) data.scheduleDate = new Date(data.scheduleDate);
+      if (data.title !== undefined) data.title = (data.title || '').trim();
+      if (data.description !== undefined) data.description = (data.description || '').trim();
+      if (data.scheduleDate !== undefined) {
+        data.scheduleDate = data.scheduleDate && !isNaN(new Date(data.scheduleDate).getTime()) ? new Date(data.scheduleDate) : null;
+      }
+      if (data.expiryDate !== undefined) {
+        data.expiryDate = data.expiryDate && !isNaN(new Date(data.expiryDate).getTime()) ? new Date(data.expiryDate) : null;
+      }
 
       // If scheduled, check if scheduleDate is past. If yes, auto-publish
       const targetStatus = data.status || notice.status;
@@ -799,3 +908,4 @@ export class NoticeBoardService {
 }
 
 export default new NoticeBoardService();
+

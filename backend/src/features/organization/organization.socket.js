@@ -25,14 +25,7 @@ export const initOrganizationSocket = () => {
         io.to(roomName).emit('RECORD_UPDATED', { type: 'ORGANIZATION', action: 'UPDATE', data: socketPayload });
       }
 
-      // Broadcast globally so all active sessions prune deleted/inactive organizations in real time
-      io.emit('ORGANIZATION_STATUS_CHANGED', socketPayload);
-      io.emit('ORGANIZATION_UPDATED', socketPayload);
-      if (payload.newStatus === 'Deleted' || payload.newStatus === 'Inactive' || payload.newStatus === 'Rejected') {
-        io.emit('ORGANIZATION_DELETED', socketPayload);
-        io.emit('WORKSPACE_DELETED', socketPayload);
-      }
-      io.emit('RECORD_UPDATED', { type: 'ORGANIZATION', action: 'UPDATE', data: socketPayload });
+      // Global broadcasts removed to prevent cross-tenant leakage
 
       logger.info(`Socket emitted ORGANIZATION_STATUS_CHANGED for org: ${payload.targetId} -> ${payload.newStatus}`);
     } catch (error) {

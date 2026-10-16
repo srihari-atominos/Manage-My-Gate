@@ -106,8 +106,9 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
 
     if (isLastStep) {
       // Final submit (Publish / Schedule)
-      publishOrSchedule().catch((err) => {
-        setStepError(err?.message || 'Failed to submit content');
+      publishOrSchedule().catch((err: any) => {
+        const errorMsg = typeof err === 'string' ? err : (err?.message || 'Failed to submit content');
+        setStepError(errorMsg);
       });
     } else {
       const result = goNext();
@@ -131,7 +132,8 @@ export const CommunityEngagementWizard: React.FC<CommunityEngagementWizardProps>
     try {
       await saveDraft();
     } catch (err: any) {
-      setStepError(err?.message || 'Failed to save draft');
+      const errorMsg = typeof err === 'string' ? err : (err?.message || 'Failed to save draft');
+      setStepError(errorMsg);
     } finally {
       setSavingDraft(false);
     }

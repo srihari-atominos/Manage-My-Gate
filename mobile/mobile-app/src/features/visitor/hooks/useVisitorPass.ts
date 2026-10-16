@@ -4,6 +4,7 @@ import { AppDispatch, RootState } from '../../../store/store';
 import { useVisitorSocket } from './useVisitorSocket';
 import { selectActiveOrgId } from '../../auth/store/authSelectors';
 import visitorService from '../services/visitorService';
+import { mapBackendWalkInToApprovalItem } from '../utils/mapBackendWalkInToApprovalItem';
 import {
   getPasses,
   getPassDetails,
@@ -15,6 +16,7 @@ import {
   fetchDashboardSummary,
   fetchPendingWalkIns,
   resolveWalkInRequest,
+  walkInPendingReceived,
   fetchActiveVisitorsThunk,
   processPreApprovedThunk,
   checkoutVisitorThunk,
@@ -140,9 +142,16 @@ export const useVisitorPass = () => {
   const submitWalkIn = useCallback(
     async (payload: any) => {
       const orgId = payload?.orgId || activeOrgId;
-      return await visitorService.initiateWalkIn({ ...payload, orgId });
+      const res = await visitorService.initiateWalkIn({ ...payload, orgId });
+      const body = res && (res as any).success !== undefined ? res : (res as any)?.data;
+      const createdLog = body?.data || body;
+      if (createdLog && (createdLog._id || createdLog.id)) {
+        const mappedItem = mapBackendWalkInToApprovalItem(createdLog);
+        dispatch(walkInPendingReceived({ mappedItem, rawLog: createdLog }));
+      }
+      return res;
     },
-    [activeOrgId]
+    [dispatch, activeOrgId]
   );
 
   const fetchActiveVisitors = useCallback(

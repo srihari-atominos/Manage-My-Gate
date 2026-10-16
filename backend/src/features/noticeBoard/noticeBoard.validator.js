@@ -1,5 +1,8 @@
 import { body, param } from 'express-validator';
 
+const isDraftStatus = (status) => typeof status === 'string' && status.trim().toUpperCase() === 'DRAFT';
+const isScheduledStatus = (status) => typeof status === 'string' && status.trim().toUpperCase() === 'SCHEDULED';
+
 /**
  * Validation rules for creating a Notice.
  */
@@ -15,7 +18,7 @@ export const createNoticeRules = [
 
   body('description')
     .custom((val, { req }) => {
-      if (req.body?.status === 'Draft') return true;
+      if (isDraftStatus(req.body?.status)) return true;
       if (!val || typeof val !== 'string' || !val.trim()) {
         throw new Error('Description is required');
       }
@@ -26,16 +29,44 @@ export const createNoticeRules = [
     }),
 
   body('category')
-    .notEmpty()
-    .withMessage('Category is required')
-    .isIn(['General', 'Maintenance', 'Events', 'Emergency', 'Meetings'])
-    .withMessage('Category must be one of: General, Maintenance, Events, Emergency, Meetings'),
+    .custom((val, { req }) => {
+      if (isDraftStatus(req.body?.status)) {
+        if (!val) return true;
+        const validCategories = ['General', 'Maintenance', 'Events', 'Emergency', 'Meetings', 'Rules'];
+        if (!validCategories.includes(val)) {
+          throw new Error(`Category must be one of: ${validCategories.join(', ')}`);
+        }
+        return true;
+      }
+      if (!val) {
+        throw new Error('Category is required');
+      }
+      const validCategories = ['General', 'Maintenance', 'Events', 'Emergency', 'Meetings', 'Rules'];
+      if (!validCategories.includes(val)) {
+        throw new Error(`Category must be one of: ${validCategories.join(', ')}`);
+      }
+      return true;
+    }),
 
   body('priority')
-    .notEmpty()
-    .withMessage('Priority is required')
-    .isIn(['Low', 'Medium', 'High', 'Critical'])
-    .withMessage('Priority must be one of: Low, Medium, High, Critical'),
+    .custom((val, { req }) => {
+      if (isDraftStatus(req.body?.status)) {
+        if (!val) return true;
+        const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
+        if (!validPriorities.includes(val)) {
+          throw new Error(`Priority must be one of: ${validPriorities.join(', ')}`);
+        }
+        return true;
+      }
+      if (!val) {
+        throw new Error('Priority is required');
+      }
+      const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
+      if (!validPriorities.includes(val)) {
+        throw new Error(`Priority must be one of: ${validPriorities.join(', ')}`);
+      }
+      return true;
+    }),
 
   body('status')
     .optional()
@@ -51,7 +82,7 @@ export const createNoticeRules = [
   body('scheduleDate')
     .optional({ nullable: true, checkFalsy: true })
     .custom((value, { req }) => {
-      if (req.body.status === 'Scheduled') {
+      if (isScheduledStatus(req.body?.status)) {
         if (!value) {
           throw new Error('Schedule date is required when status is Scheduled');
         }
@@ -84,8 +115,9 @@ export const createNoticeRules = [
     .trim(),
 
   body('expiryDate')
+    .optional({ nullable: true, checkFalsy: true })
     .custom((value, { req }) => {
-      if (req.body?.status === 'Draft') {
+      if (isDraftStatus(req.body?.status)) {
         if (!value) return true;
         const inputDate = new Date(value);
         if (isNaN(inputDate.getTime())) {
@@ -189,12 +221,12 @@ export const updateNoticeRules = [
     .withMessage('Description cannot exceed 1000 characters'),
 
   body('category')
-    .optional()
-    .isIn(['General', 'Maintenance', 'Events', 'Emergency', 'Meetings'])
-    .withMessage('Category must be one of: General, Maintenance, Events, Emergency, Meetings'),
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(['General', 'Maintenance', 'Events', 'Emergency', 'Meetings', 'Rules'])
+    .withMessage('Category must be one of: General, Maintenance, Events, Emergency, Meetings, Rules'),
 
   body('priority')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(['Low', 'Medium', 'High', 'Critical'])
     .withMessage('Priority must be one of: Low, Medium, High, Critical'),
 
@@ -212,8 +244,7 @@ export const updateNoticeRules = [
   body('scheduleDate')
     .optional({ nullable: true, checkFalsy: true })
     .custom((value, { req }) => {
-      const targetStatus = req.body.status;
-      if (targetStatus === 'Scheduled') {
+      if (isScheduledStatus(req.body?.status)) {
         if (!value) {
           throw new Error('Schedule date is required when status is Scheduled');
         }
@@ -246,11 +277,20 @@ export const updateNoticeRules = [
     .trim(),
 
   body('expiryDate')
-    .optional()
-    .isISO8601()
-    .withMessage('Expiry date must be a valid ISO 8601 date format')
-    .custom((value) => {
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value, { req }) => {
+      if (!value) return true;
+      if (isDraftStatus(req.body?.status)) {
+        const inputDate = new Date(value);
+        if (isNaN(inputDate.getTime())) {
+          throw new Error('Expiry date must be a valid ISO 8601 date format');
+        }
+        return true;
+      }
       const inputDate = new Date(value);
+      if (isNaN(inputDate.getTime())) {
+        throw new Error('Expiry date must be a valid ISO 8601 date format');
+      }
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
       if (inputDate < today) {

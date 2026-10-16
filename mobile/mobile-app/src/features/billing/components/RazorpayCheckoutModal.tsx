@@ -92,11 +92,11 @@ export function RazorpayCheckoutModal({
   }, [visible]);
 
   const isMock = useMemo(() => {
-    return fallbackToMock || isMockRazorpayKey(options?.razorpayKeyId, options?.orderId);
+    return __DEV__ && (fallbackToMock || isMockRazorpayKey(options?.razorpayKeyId, options?.orderId));
   }, [options, fallbackToMock]);
 
   const handleSimulateMockSuccess = useCallback(() => {
-    if (isHandledRef.current || !options) return;
+    if (!__DEV__ || isHandledRef.current || !options) return;
     isHandledRef.current = true;
     const mockPaymentId = `pay_mock_${Date.now()}`;
     const mockOrderId = options.orderId || `order_mock_${Date.now()}`;

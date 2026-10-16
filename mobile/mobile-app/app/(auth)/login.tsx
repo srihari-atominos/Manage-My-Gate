@@ -1205,35 +1205,6 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Legal consent: signing in means accepting the Terms and Privacy Policy */}
-              <Text className="mt-4 px-4 text-center text-[11px] leading-4 text-white/60">
-                {t('login_consent_prefix', 'By continuing, you agree to our')}{' '}
-                <Text
-                  accessibilityRole="link"
-                  className="text-[11px] font-semibold text-white underline"
-                  onPress={() => void WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/terms')}
-                >
-                  {t('terms_of_service', 'Terms of Service')}
-                </Text>
-                {', '}
-                <Text
-                  accessibilityRole="link"
-                  className="text-[11px] font-semibold text-white underline"
-                  onPress={() => void WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/privacy-policy')}
-                >
-                  {t('privacy_policy', 'Privacy Policy')}
-                </Text>
-                {` ${t('and', 'and')} `}
-                <Text
-                  accessibilityRole="link"
-                  className="text-[11px] font-semibold text-white underline"
-                  onPress={() => void WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/refund-policy')}
-                >
-                  {t('refund_policy', 'Refund Policy')}
-                </Text>
-                .
-              </Text>
-
               {/* Brand footer: kept inside the scroll content so it is reachable on short screens and with the keyboard open. */}
               <View
                 className="mt-5 w-full items-center px-5 py-5"

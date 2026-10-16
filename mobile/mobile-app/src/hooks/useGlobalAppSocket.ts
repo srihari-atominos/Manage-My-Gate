@@ -64,8 +64,23 @@ export const useGlobalAppSocket = () => {
   useEffect(() => {
     if (!socket || !isAuthenticated) return;
 
+    const isMatchingTenant = (payload: any) => {
+      if (!payload || typeof payload !== 'object') return true;
+      const targetOrg =
+        payload.orgId ||
+        payload.organizationId ||
+        payload.data?.orgId ||
+        payload.data?.organizationId;
+      if (!targetOrg) return true; // Broadcast without specific tenant constraint
+      const u = currentUserRef.current;
+      const activeOrg = u?.orgId || u?.activeOrgId;
+      if (!activeOrg) return true;
+      return String(targetOrg) === String(activeOrg);
+    };
+
     // 1. Role & Permission Updates
     const handleRoleOrUserUpdate = (payload: any) => {
+      if (!isMatchingTenant(payload)) return;
       const u = currentUserRef.current;
       const permissions: string[] = u?.permissions || [];
       const userRole = getUserRoleName(u);
@@ -112,14 +127,16 @@ export const useGlobalAppSocket = () => {
     };
 
     // 2. Integration Hub Updates
-    const handleIntegrationUpdate = () => {
+    const handleIntegrationUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('integration', () => {
         dispatch(fetchConnectionsAsync()).catch(() => {});
       });
     };
 
     // 3. Visitor Management Pass & Log Updates
-    const handleVisitorUpdate = () => {
+    const handleVisitorUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('visitor', () => {
         const u = currentUserRef.current;
         const orgId = u?.orgId || u?.activeOrgId || '';
@@ -161,7 +178,8 @@ export const useGlobalAppSocket = () => {
     };
 
     // 4. Billing & Dues Updates
-    const handleBillingUpdate = () => {
+    const handleBillingUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('billing', () => {
         const u = currentUserRef.current;
         const permissions: string[] = u?.permissions || [];
@@ -175,35 +193,40 @@ export const useGlobalAppSocket = () => {
     };
 
     // 5. Complaint Updates
-    const handleComplaintUpdate = () => {
+    const handleComplaintUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('complaint', () => {
         dispatch(fetchComplaints({})).catch(() => {});
       });
     };
 
     // 6. Notice Board Updates
-    const handleNoticeUpdate = () => {
+    const handleNoticeUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('notice', () => {
         dispatch(fetchNotices()).catch(() => {});
       });
     };
 
     // 7. Community Pulse Notes Updates
-    const handleCommunityNoteUpdate = () => {
+    const handleCommunityNoteUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('community_note', () => {
         dispatch(fetchActiveNotes()).catch(() => {});
       });
     };
 
     // 8. Organization & Workspace Lifecycle Updates
-    const handleOrgUpdate = () => {
+    const handleOrgUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('org_lifecycle', () => {
         dispatch(switchWorkspaceContextThunk({})).catch(() => {});
       });
     };
 
     // 9. Staff Profile & Directory Updates
-    const handleStaffDirectoryUpdate = () => {
+    const handleStaffDirectoryUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('staff_directory', () => {
         const u = currentUserRef.current;
         const permissions: string[] = u?.permissions || [];
@@ -234,7 +257,8 @@ export const useGlobalAppSocket = () => {
     };
 
     // 10. Staff Household Allocations & Associations Updates
-    const handleStaffAssociationUpdate = () => {
+    const handleStaffAssociationUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('staff_associations', () => {
         const u = currentUserRef.current;
         const permissions: string[] = u?.permissions || [];
@@ -262,7 +286,8 @@ export const useGlobalAppSocket = () => {
     };
 
     // 11. Staff Attendance & Gate Logs Updates
-    const handleStaffAttendanceUpdate = () => {
+    const handleStaffAttendanceUpdate = (payload?: any) => {
+      if (!isMatchingTenant(payload)) return;
       debounceDispatch('staff_attendance', () => {
         const u = currentUserRef.current;
         const permissions: string[] = u?.permissions || [];
@@ -353,23 +378,23 @@ export const useGlobalAppSocket = () => {
       if (type === 'ROLE' || type === 'USER') {
         handleRoleOrUserUpdate(payload);
       } else if (type === 'ORGANIZATION' || type === 'WORKSPACE') {
-        handleOrgUpdate();
+        handleOrgUpdate(payload);
       } else if (type === 'INTEGRATION') {
-        handleIntegrationUpdate();
+        handleIntegrationUpdate(payload);
       } else if (type === 'VISITOR') {
-        handleVisitorUpdate();
+        handleVisitorUpdate(payload);
       } else if (type === 'BILLING') {
-        handleBillingUpdate();
+        handleBillingUpdate(payload);
       } else if (type === 'COMPLAINT') {
-        handleComplaintUpdate();
+        handleComplaintUpdate(payload);
       } else if (type === 'STAFF' || type === 'STAFF_PROFILE') {
-        handleStaffDirectoryUpdate();
+        handleStaffDirectoryUpdate(payload);
       } else if (type === 'STAFF_ASSOCIATION' || type === 'STAFF_ALLOCATION') {
-        handleStaffAssociationUpdate();
+        handleStaffAssociationUpdate(payload);
       } else if (type === 'STAFF_ATTENDANCE') {
-        handleStaffAttendanceUpdate();
+        handleStaffAttendanceUpdate(payload);
       } else if (type === 'NOTICE') {
-        handleNoticeUpdate();
+        handleNoticeUpdate(payload);
       }
     });
 

@@ -293,16 +293,38 @@ export const fetchPendingWalkIns = createAsyncThunk(
   'visitorPass/fetchPendingWalkIns',
   async (orgId: string, { rejectWithValue }) => {
     try {
-      const response = await visitorService.getPendingApprovals(orgId);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      const logs = Array.isArray(body?.data || body) ? (body?.data || body) : Array.isArray(body) ? body : [];
-      const mapped = logs.map((log: any) => mapBackendWalkInToApprovalItem(log));
+      const [pendingRes, historyRes] = await Promise.all([
+        visitorService.getPendingApprovals(orgId).catch(() => null),
+        visitorService.getHistoryLogs(orgId, { entryType: 'WALK_IN', limit: 50 }).catch(() => null),
+      ]);
+
+      const pendingBody = pendingRes && (pendingRes as any).success !== undefined ? pendingRes : (pendingRes as any)?.data;
+      const pendingLogs = Array.isArray(pendingBody?.data || pendingBody) ? (pendingBody?.data || pendingBody) : Array.isArray(pendingBody) ? pendingBody : [];
+
+      const historyBody = historyRes && (historyRes as any).success !== undefined ? historyRes : (historyRes as any)?.data;
+      const historyInner = historyBody?.data || historyBody;
+      const historyLogs = Array.isArray(historyInner?.data || historyInner) ? (historyInner?.data || historyInner) : Array.isArray(historyInner) ? historyInner : [];
+
+      const combinedMap = new Map<string, any>();
+      for (const log of historyLogs) {
+        if (log && (log._id || log.id)) {
+          combinedMap.set(String(log._id || log.id), log);
+        }
+      }
+      for (const log of pendingLogs) {
+        if (log && (log._id || log.id)) {
+          combinedMap.set(String(log._id || log.id), log);
+        }
+      }
+
+      const allLogs = Array.from(combinedMap.values());
+      const mapped = allLogs.map((log: any) => mapBackendWalkInToApprovalItem(log));
       return {
         mapped,
-        rawLogs: logs,
+        rawLogs: pendingLogs,
       };
     } catch (error: any) {
-      return rejectWithValue(error?.response?.data?.message || error?.message || 'Failed to fetch pending walk-ins');
+      return rejectWithValue(error?.response?.data?.message || error?.message || 'Failed to fetch walk-ins queue');
     }
   }
 );
@@ -413,10 +435,17 @@ export const visitorPassSlice = createSlice({
     },
     walkInResolvedReceived: (state, action: PayloadAction<{ id: string; rawLog?: any }>) => {
       const targetId = action.payload.id;
+      const rawLog = action.payload.rawLog;
 
-      // Idempotent removal from pendingList and pendingWalkIns
-      state.walkIns.pendingList = state.walkIns.pendingList.filter(
-        (item) => item.id !== targetId && item.rawLog?._id !== targetId
+      const newStatus: 'APPROVED' | 'REJECTED' | 'PENDING' =
+        rawLog?.logStatus === 'INSIDE' || rawLog?.logStatus === 'COMPLETED' || rawLog?.logStatus === 'APPROVED'
+          ? 'APPROVED'
+          : rawLog?.logStatus === 'REJECTED' || rawLog?.logStatus === 'DENIED'
+          ? 'REJECTED'
+          : 'PENDING';
+
+      const existingIdx = state.walkIns.pendingList.findIndex(
+        (item) => item.id === targetId || (item.rawLog && item.rawLog._id === targetId)
       );
 
       // Keep the outcome visible on the gate board (APPROVED / DENIED BY HOST).
@@ -427,14 +456,23 @@ export const visitorPassSlice = createSlice({
           ...(state.walkIns.resolvedList || []).filter((item) => item.id !== resolvedItem.id),
         ].slice(0, 50);
       }
+      if (existingIdx !== -1) {
+        state.walkIns.pendingList[existingIdx] = {
+          ...state.walkIns.pendingList[existingIdx],
+          status: newStatus,
+          rawLog: rawLog || state.walkIns.pendingList[existingIdx].rawLog,
+        };
+      } else if (rawLog) {
+        state.walkIns.pendingList.unshift(mapBackendWalkInToApprovalItem(rawLog));
+      }
 
       state.dashboard.pendingWalkIns = state.dashboard.pendingWalkIns.filter(
         (p) => p._id !== targetId && p.id !== targetId
       );
 
       // Add to activeVisitors if the action was APPROVE and we have the log
-      const updatedLog = action.payload.rawLog;
-      if (updatedLog && updatedLog.logStatus === 'INSIDE') {
+      const updatedLog = rawLog || action.payload.rawLog;
+      if (updatedLog && (updatedLog.logStatus === 'INSIDE' || updatedLog.logStatus === 'APPROVED')) {
         const logId = updatedLog._id || updatedLog.id;
         const exists = state.activeVisitors.some(l => (l._id || l.id) === logId);
         if (!exists) {
@@ -514,10 +552,19 @@ export const visitorPassSlice = createSlice({
       .addCase(resolveWalkInRequest.fulfilled, (state, action) => {
         state.walkIns.actionStatus = 'succeeded';
         const targetId = action.payload.id;
+        const resolvedAction = action.payload.action;
+        const newStatus: 'APPROVED' | 'REJECTED' = resolvedAction === 'APPROVE' ? 'APPROVED' : 'REJECTED';
 
-        state.walkIns.pendingList = state.walkIns.pendingList.filter(
-          (item) => item.id !== targetId && item.rawLog?._id !== targetId
+        const existingIdx = state.walkIns.pendingList.findIndex(
+          (item) => item.id === targetId || (item.rawLog && item.rawLog._id === targetId)
         );
+
+        if (existingIdx !== -1) {
+          state.walkIns.pendingList[existingIdx] = {
+            ...state.walkIns.pendingList[existingIdx],
+            status: newStatus,
+          };
+        }
 
         state.dashboard.pendingWalkIns = state.dashboard.pendingWalkIns.filter(
           (p) => p._id !== targetId && p.id !== targetId
@@ -525,7 +572,7 @@ export const visitorPassSlice = createSlice({
 
         // Add to activeVisitors if approved
         const updatedLog = action.payload.data;
-        if (updatedLog && updatedLog.logStatus === 'INSIDE') {
+        if (updatedLog && (updatedLog.logStatus === 'INSIDE' || updatedLog.logStatus === 'APPROVED')) {
           const logId = updatedLog._id || updatedLog.id;
           const exists = state.activeVisitors.some(l => (l._id || l.id) === logId);
           if (!exists) {

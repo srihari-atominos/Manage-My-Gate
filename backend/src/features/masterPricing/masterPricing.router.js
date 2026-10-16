@@ -8,6 +8,7 @@ import {
   getByIdMasterPricingRules,
 } from './masterPricing.validator.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
+import { authorizeRoles } from '../../middlewares/rbac.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
@@ -49,6 +50,7 @@ router.post(
   '/',
   isAuthenticated,
   tenantContext({ requirePlatformContext: true }),
+  authorizeRoles('SUPER_ADMIN', 'ADMIN'),
   validate(createMasterPricingRules),
   masterPricingController.create
 );
@@ -64,6 +66,7 @@ router.put(
   '/:id',
   isAuthenticated,
   tenantContext({ requirePlatformContext: true }),
+  authorizeRoles('SUPER_ADMIN', 'ADMIN'),
   validate(updateMasterPricingRules),
   masterPricingController.update
 );
@@ -79,6 +82,7 @@ router.delete(
   '/:id',
   isAuthenticated,
   tenantContext({ requirePlatformContext: true }),
+  authorizeRoles('SUPER_ADMIN', 'ADMIN'),
   validate(getByIdMasterPricingRules),
   masterPricingController.delete
 );

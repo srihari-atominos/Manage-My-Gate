@@ -288,6 +288,45 @@ describe('Community Engagement Gateway Unit & Integration Tests (Phase 2)', () =
       });
       assert.strictEqual(receivedData.scheduleDate, futureDate);
     });
+
+    it('should successfully save Notice draft with minimal payload (title only, omitting description, priority, category, and dates)', async () => {
+      let receivedData = null;
+
+      const customNoticeService = {
+        createNotice: async (data, userId, orgId) => {
+          receivedData = data;
+          return {
+            _id: new mongoose.Types.ObjectId(),
+            ...data,
+            toObject: function () {
+              return { ...this };
+            },
+          };
+        },
+      };
+
+      const customGateway = new CommunityEngagementService({
+        noticeService: customNoticeService,
+      });
+
+      const payload = {
+        contentType: 'NOTICE',
+        title: 'Minimal Draft Notice Title',
+        status: 'Draft',
+      };
+
+      const result = await customGateway.createContent(
+        payload,
+        adminUser,
+        tenantContextOrgA
+      );
+
+      assert.strictEqual(result.contentType, 'NOTICE');
+      assert.strictEqual(result.title, 'Minimal Draft Notice Title');
+      assert.strictEqual(result.status, 'Draft');
+      assert.strictEqual(receivedData.title, 'Minimal Draft Notice Title');
+      assert.strictEqual(receivedData.description || '', '');
+    });
   });
 
   describe('5. Poll Domain Delegation & Scheduling Contract Preservation', () => {

@@ -45,7 +45,7 @@
           "remote-notification"
         ],
         "NSCameraUsageDescription": "Nahom requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints.",
-        "NSLocationWhenInUseUsageDescription": "Nahom uses your location only while you use the profile's Current Location option to fill in your hometown or location, for example when you tap Current Location and it fills in \"Hyderabad\".",
+        "NSLocationWhenInUseUsageDescription": "Nahom uses your precise location only when you tap Current Location in your Profile to suggest your city and state, for example Hyderabad, Telangana. Nahom does not use your location for advertising, tracking, or in the background.",
         "NSPhotoLibraryUsageDescription": "Nahom requires photo library access to upload images for amenity bookings and complaint tickets.",
         "LSApplicationQueriesSchemes": [
           "tel",
@@ -203,6 +203,8 @@
           "defaultChannel": "general"
         }
       ],
+      "expo-font",
+      "expo-web-browser",
       "expo-apple-authentication",
       [
         "expo-contacts",

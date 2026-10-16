@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import directoryMessageController from './directoryMessage.controller.js';
 import { isAuthenticated } from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 import { body, param, query } from 'express-validator';
 import { validate } from '../../middlewares/validator.middleware.js';
 
 const router = Router();
 
-router.use(isAuthenticated);
+router.use(isAuthenticated, tenantContext());
 
 router.post(
   '/conversation',

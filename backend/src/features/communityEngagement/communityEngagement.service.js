@@ -254,7 +254,7 @@ export class CommunityEngagementService {
         ];
       }
 
-      const updatedNotice = await this.noticeService.updateNotice(id, updateData, userId, orgId);
+      const updatedNotice = await this.noticeService.updateNotice(id, updateData, userId, orgId, user);
       const noticeObj =
         updatedNotice && typeof updatedNotice.toObject === 'function'
           ? updatedNotice.toObject()

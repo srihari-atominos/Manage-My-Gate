@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import AuditLog from './auditLog.model.js';
 
 export class AuditLogRepository {
@@ -12,9 +13,21 @@ export class AuditLogRepository {
   /**
    * Retrieves paginated audit logs with populated actor username/email in a single query
    */
-  async findAllPaginated(page = 1, limit = 10) {
+  async findAllPaginated(orgId, page = 1, limit = 10) {
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return {
+        logs: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      };
+    }
     const skip = (page - 1) * limit;
     const result = await AuditLog.aggregate([
+      {
+        $match: { targetId: new mongoose.Types.ObjectId(orgId) }
+      },
       {
         $lookup: {
           from: 'users',

@@ -92,7 +92,7 @@ export class AssessmentService {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('updateAssessment service called', { id, updateData, orgId, correlationId });
 
-    const existing = await assessmentRepository.findById(id);
+    const existing = await assessmentRepository.findById(id, orgId);
     if (!existing) {
       throw new HttpError(404, `Assessment with ID ${id} not found`);
     }
@@ -105,7 +105,7 @@ export class AssessmentService {
     const mergedData = { ...existing.toObject(), ...updateData };
     await this.validateAssessmentScope(mergedData);
 
-    const updatedAssessment = await assessmentRepository.updateTemplate(id, updateData);
+    const updatedAssessment = await assessmentRepository.updateTemplate(id, updateData, null, orgId);
 
     // Check if there are active invoices for this assessment via invoiceService
     const hasActiveInvoices = await invoiceService.checkActiveInvoicesForAssessment(id);
@@ -171,7 +171,7 @@ export class AssessmentService {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('deleteAssessment service called', { id, orgId, correlationId });
 
-    const existing = await assessmentRepository.findById(id);
+    const existing = await assessmentRepository.findById(id, orgId);
     if (!existing) {
       throw new HttpError(404, `Assessment template with ID ${id} not found`);
     }
@@ -185,14 +185,14 @@ export class AssessmentService {
 
     if (hasInvoices) {
       // Soft delete: set isActive to false
-      await assessmentRepository.updateTemplate(id, { isActive: false });
+      await assessmentRepository.updateTemplate(id, { isActive: false }, null, orgId);
       return {
         status: 'archived',
         message: 'Assessment template archived successfully. Active invoice histories have been preserved.',
       };
     } else {
       // Hard delete: remove physically
-      await assessmentRepository.delete(id);
+      await assessmentRepository.delete(id, null, orgId);
       return {
         status: 'deleted',
         message: 'Assessment template deleted successfully.',
@@ -296,3 +296,4 @@ export class AssessmentService {
 }
 
 export default new AssessmentService();
+

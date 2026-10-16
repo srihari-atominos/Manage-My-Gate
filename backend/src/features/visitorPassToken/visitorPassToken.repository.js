@@ -26,6 +26,7 @@ export class VisitorPassTokenRepository {
     return await VisitorPassToken.findOne({
       // Short keys are only unique per community, so signed-in lookups pass their community.
       ...(orgId ? { orgId } : {}),
+      expiresAt: { $gt: new Date() },
       $or: [
         { passCode: raw },
         { passCode: clean },
@@ -43,7 +44,7 @@ export class VisitorPassTokenRepository {
    * @returns {Promise<Object|null>} The token mapping document, or null if not found.
    */
   async findByShortKey(shortKey, session = null) {
-    return await VisitorPassToken.findOne({ shortKey }).session(session || null);
+    return await VisitorPassToken.findOne({ shortKey, expiresAt: { $gt: new Date() } }).session(session || null);
   }
 
   /**
@@ -60,10 +61,21 @@ export class VisitorPassTokenRepository {
    * Delete a VisitorPassToken mapping by its passId.
    * @param {string} passId - The visitor pass ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
+   * @param {string} [orgId=null] - Optional organization ID.
    * @returns {Promise<Object|null>} The deleted result.
    */
-  async deleteByPassId(passId, session = null) {
-    return await VisitorPassToken.deleteOne({ passId }, session ? { session } : undefined);
+  async deleteByPassId(passId, session = null, orgId = null) {
+    let actualSession = session;
+    let actualOrgId = orgId;
+    if (session && (typeof session === 'string' || session instanceof mongoose.Types.ObjectId || !session?.inTransaction)) {
+      actualOrgId = session;
+      actualSession = null;
+    }
+    const filter = { passId };
+    if (actualOrgId) {
+      filter.orgId = actualOrgId;
+    }
+    return await VisitorPassToken.deleteOne(filter, actualSession ? { session: actualSession } : undefined);
   }
 }
 

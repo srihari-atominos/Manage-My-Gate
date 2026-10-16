@@ -61,10 +61,10 @@ export const buildEngagementPayload = (
   if (isNotice) {
     const formData = new FormData();
     formData.append('contentType', 'NOTICE');
-    formData.append('title', data.title.trim());
-    formData.append('description', data.description.trim());
-    formData.append('category', data.category);
-    formData.append('priority', data.priority);
+    formData.append('title', (data.title || '').trim());
+    formData.append('description', (data.description || '').trim());
+    formData.append('category', data.category || 'General');
+    formData.append('priority', data.priority || 'Medium');
     formData.append('status', finalStatus);
     formData.append('isPinned', data.isPinned ? 'true' : 'false');
     formData.append('allowComments', data.allowComments ? 'true' : 'false');
@@ -77,7 +77,9 @@ export const buildEngagementPayload = (
     if (data.requiresAcknowledgement && data.acknowledgementDeadline) {
       formData.append('acknowledgementDeadline', data.acknowledgementDeadline);
     }
-    formData.append('expiryDate', data.expiryDate);
+    if (data.expiryDate) {
+      formData.append('expiryDate', data.expiryDate);
+    }
 
     if (!data.publishNow && data.scheduleDate) {
       formData.append('scheduleDate', data.scheduleDate);

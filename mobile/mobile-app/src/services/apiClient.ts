@@ -57,6 +57,37 @@ export const getApiBaseUrl = () => {
 
 export const getDefaultBaseUrl = getApiBaseUrl;
 
+// Authentication calls must never enter the refresh-token retry flow. In
+// particular, an Apple identity-token validation error must be shown as such,
+// rather than being replaced with the misleading "Session expired" message.
+const AUTHENTICATION_ENDPOINTS = new Set([
+  '/auth/login',
+  '/auth/refresh-token',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/google',
+  '/auth/microsoft',
+  '/auth/apple',
+  '/auth/logout',
+  '/auth/invitations/accept',
+  '/auth/invitations/decline',
+  '/auth/accept-invite',
+]);
+
+export const isAuthenticationRequest = (url?: string): boolean => {
+  if (!url) return false;
+
+  // Axios may retain a relative route, a route prefixed with /api/v1, or an
+  // absolute URL depending on the adapter. Normalize all of those forms.
+  const path = url.split(/[?#]/, 1)[0].replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  return [...AUTHENTICATION_ENDPOINTS].some(
+    (endpoint) => normalizedPath === endpoint || normalizedPath.endsWith(endpoint)
+  );
+};
+
 export const getSocketBaseUrl = () => {
   let socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL;
 
@@ -122,6 +153,17 @@ let failedQueue: Array<{
 
 let store: any;
 
+const inFlightRequests = new Map<string, AbortController>();
+
+export const cancelInFlightRequests = (reason = 'Tenant switch or session termination') => {
+  inFlightRequests.forEach((controller) => {
+    try {
+      controller.abort(reason);
+    } catch (e) {}
+  });
+  inFlightRequests.clear();
+};
+
 export const injectStore = (_store: any) => {
   store = _store;
 };
@@ -185,7 +227,15 @@ apiClient.interceptors.request.use(
     config.baseURL = getApiBaseUrl();
 
     // Generate and inject a unique Request Correlation ID
-    config.headers['X-Request-ID'] = generateUUID();
+    const requestId = (config.headers['X-Request-ID'] as string) || generateUUID();
+    config.headers['X-Request-ID'] = requestId;
+    (config as any)._requestId = requestId;
+
+    if (!config.signal) {
+      const controller = new AbortController();
+      config.signal = controller.signal;
+      inFlightRequests.set(requestId, controller);
+    }
     config.headers['X-Client-Type'] = 'APP';
 
     try {
@@ -253,6 +303,7 @@ apiClient.interceptors.request.use(
 
       if (activeOrgId && activeOrgId !== '[object Object]') {
         config.headers['x-organization-id'] = activeOrgId;
+        (config as any)._tenantId = activeOrgId;
       }
 
       let rawUserId =
@@ -306,6 +357,29 @@ apiClient.interceptors.request.use(
 // Response Interceptor: Extract envelope data and handle JWT refresh
 apiClient.interceptors.response.use(
   (response) => {
+    const reqId = (response.config as any)?._requestId;
+    if (reqId) inFlightRequests.delete(reqId);
+
+    // F04: Discard response if tenant context switched while request was in-flight
+    const reqTenantId = (response.config as any)?._tenantId;
+    if (store && reqTenantId) {
+      const currentState = store.getState() as any;
+      const currentActiveOrgId =
+        currentState?.workspace?.activeOrganizationId ||
+        currentState?.auth?.user?.activeOrgId ||
+        currentState?.auth?.user?.orgId ||
+        null;
+
+      if (!currentActiveOrgId || reqTenantId !== currentActiveOrgId) {
+        console.warn(
+          `[Mobile ApiClient] Stale tenant response discarded: requested for ${reqTenantId}, active is ${currentActiveOrgId || 'NONE (Logged out)'}`
+        );
+        return Promise.reject(
+          new axios.Cancel(`Stale tenant response discarded for superseded tenant ${reqTenantId}`)
+        );
+      }
+    }
+
     // If 304 Not Modified without body, safely return success envelope
     if (response.status === 304 && !response.data) {
       return { success: true, message: 'Not Modified', data: null, notModified: true };
@@ -315,26 +389,18 @@ apiClient.interceptors.response.use(
     return response.data;
   },
   async (error) => {
+    const reqId = (error.config as any)?._requestId;
+    if (reqId) inFlightRequests.delete(reqId);
+
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
     const originalRequest = error.config;
 
     if (isTimeoutFailure(error)) reportApiFailure('timeout');
     else if (isNetworkFailure(error)) reportApiFailure('backend_unavailable');
 
-    const isAuthEndpoint = originalRequest?.url && (
-      originalRequest.url.includes('/auth/login') ||
-      originalRequest.url.includes('/auth/refresh-token') ||
-      originalRequest.url.includes('/auth/register') ||
-      originalRequest.url.includes('/auth/forgot-password') ||
-      originalRequest.url.includes('/auth/reset-password') ||
-      originalRequest.url.includes('/auth/google') ||
-      originalRequest.url.includes('/auth/microsoft') ||
-      originalRequest.url.includes('/auth/apple') ||
-      originalRequest.url.includes('/auth/logout') ||
-      // An expired invitation ticket is a sign-in problem, not an expired session
-      originalRequest.url.includes('/auth/invitations/accept') ||
-      originalRequest.url.includes('/auth/invitations/decline') ||
-      originalRequest.url.includes('/auth/accept-invite')
-    );
+    const isAuthEndpoint = isAuthenticationRequest(originalRequest?.url);
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {

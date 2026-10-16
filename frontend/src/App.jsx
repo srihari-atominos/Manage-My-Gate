@@ -16,7 +16,8 @@
 
 import React, { Suspense, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
+import { logout, switchWorkspaceContext } from './features/auth/store/authSlice'
 import { Toaster } from 'react-hot-toast'
 import AuthGuard from './features/auth/components/AuthGuard'
 
@@ -45,6 +46,7 @@ const BillingInvoiceLinkPage = React.lazy(
 )
 const EnquiryPendingView = React.lazy(() => import('./features/workspace/views/EnquiryPendingView'))
 const PrivacyPolicyPage = React.lazy(() => import('./views/pages/privacyPolicy/PrivacyPolicyPage'))
+const RefundPolicyPage = React.lazy(() => import('./views/pages/refundPolicy/RefundPolicyPage'))
 const TermsPage = React.lazy(() => import('./views/pages/terms/TermsPage'))
 const DeleteAccountPage = React.lazy(() => import('./views/pages/deleteAccount/DeleteAccountPage'))
 const ContactSupportPage = React.lazy(() => import('./views/pages/contact/ContactSupportPage'))
@@ -68,8 +70,40 @@ const ContactSupportPage = React.lazy(() => import('./views/pages/contact/Contac
  * @returns {React.ReactElement} Application root with routing
  */
 const App = () => {
+  const dispatch = useDispatch()
   const { isColorModeSet, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
   const storedTheme = useSelector((state) => state.ui.theme)
+  const currentToken = useSelector((state) => state.auth?.token)
+  const currentOrgId = useSelector(
+    (state) => state.workspace?.activeOrganizationId || state.auth?.user?.orgId,
+  )
+
+  // Multi-tab synchronization: handle logout or tenant switch from another browser tab
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      // 1. Cross-tab logout: if another tab logged out, immediately clear session in this tab
+      if (e.key === 'auth_logout' || (e.key === 'token' && !e.newValue)) {
+        if (currentToken) {
+          dispatch(logout())
+        }
+      } else if (e.key === 'token' && e.newValue && e.newValue !== currentToken) {
+        // 2. Cross-tab account switch: re-validate with backend rather than blindly trusting local storage
+        dispatch(switchWorkspaceContext({}))
+      } else if (e.key === 'user' && e.newValue) {
+        // 3. Cross-tab workspace change: trigger secure server-side context switch
+        try {
+          const parsed = JSON.parse(e.newValue)
+          const newOrgId = parsed.orgId || parsed.activeOrgId
+          if (newOrgId && newOrgId !== currentOrgId) {
+            dispatch(switchWorkspaceContext({ targetOrgId: newOrgId }))
+          }
+        } catch (err) {}
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [dispatch, currentToken, currentOrgId])
 
   useEffect(() => {
     // Preserve supported hash paths during the BrowserRouter transition.
@@ -102,6 +136,12 @@ const App = () => {
               path="/privacy-policy"
               name="Privacy Policy"
               element={<PrivacyPolicyPage />}
+            />
+            <Route
+              exact
+              path="/refund-policy"
+              name="Refund Policy"
+              element={<RefundPolicyPage />}
             />
             <Route exact path="/terms" name="Terms & Conditions" element={<TermsPage />} />
             <Route

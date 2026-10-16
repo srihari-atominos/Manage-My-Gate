@@ -31,7 +31,7 @@ const DEFAULT_INVITE_BODY = `
 `;
 
 // Register user domain events
-userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting }) => {
+userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting, isBulk, rawPassword }) => {
   try {
     // An invite can be replaced while this asynchronous listener is preparing
     // the email (for example, when an admin corrects and re-sends an invite).
@@ -124,6 +124,18 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
       logger.error(`In-app invitation notification dispatch error: ${notifErr.message}`);
     }
 
+    let subject = `Invitation to join ${communityName}`;
+    let rawTemplateBody = null;
+    try {
+      const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'invitation');
+      if (template) {
+        if (template.subject) subject = template.subject;
+        if (template.body) rawTemplateBody = template.body;
+      }
+    } catch (e) {
+      logger.warn(`Failed to fetch custom email template: ${e.message}`);
+    }
+
     const inviteMode = hasPassword ? 'signin' : 'signup';
     const inviteLink = baseInviteLink;
     const ctaButtonText = 'Step into your Community';
@@ -131,56 +143,174 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
     const targetUserName = targetUser?.name || 'User';
     const registeredPhone = phone || targetUser?.phone || '';
 
-    const customInviteBody = `
-<div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px; line-height: 1.6; border: 1px solid #EFE6DC;">
-  
-${getEmailLogoHtml()}
+    const introSectionHtml = (rawTemplateBody && typeof rawTemplateBody === 'string' && rawTemplateBody.trim().length > 0 && !rawTemplateBody.includes('<html') && !rawTemplateBody.includes('<!DOCTYPE'))
+      ? `<div style="font-size: 15px; line-height: 1.65; color: #334155; margin: 0 0 16px 0;">${rawTemplateBody.replace(/{{invite_link}}/g, inviteLink).replace(/{{community_name}}/g, communityName).replace(/\r?\n/g, '<br/>')}</div>`
+      : `<p style="font-size: 15px; line-height: 1.65; color: #334155; margin: 0 0 16px 0;">
+          Hello,<br/><br/>
+          You have been officially invited to join <strong>${communityName}</strong> on the Nahom platform. Please review your details below and accept your invitation to get started.
+        </p>`;
 
-  <p style="font-size: 18px; font-weight: bold; color: #F45A0A;">Hello ${escapeHtml(targetUserName)},</p>
-  
-  <p>You have been invited to join <strong>${safeCommunityName}</strong> by the community administration.</p>
-  
-  <div style="background-color: #FFF0E5; padding: 15px; border-radius: 12px; margin: 20px 0;">
-    <p style="margin-top: 0; font-weight: bold; color: #F45A0A;">Your registered details are:</p>
-    <ul style="list-style: none; padding-left: 0; margin-bottom: 0;">
-      <li style="margin-bottom: 8px;"><strong>Email:</strong> ${escapeHtml(email || '')}</li>
-      <li style="margin-bottom: 8px;"><strong>Phone:</strong> ${escapeHtml(registeredPhone)}</li>
-      <li><strong>Role:</strong> ${escapeHtml(roleName || '')}</li>
-    </ul>
-  </div>
-  
-  <p>To access your community, click the button below:</p>
-  
-  <div style="margin: 30px 0; text-align: center;">
-    <a href="{{invite_link}}" style="background-color: #F45A0A; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 18px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(244, 90, 10, 0.2);">
-      ${ctaButtonText}
-    </a>
-  </div>
-  
-  <p style="color: #6F6A64; font-size: 14px;">After clicking the button, you will be taken to the appropriate application based on your device. You can sign in using your registered <strong>email address or phone number and OTP</strong>.</p>
-  
-  <p style="color: #6F6A64; font-size: 14px;">If the application is not installed on your mobile device, you will be directed to the appropriate play store or app store.</p>
-  
-  <p style="color: #6F6A64; font-size: 14px;">If you were not expecting this invitation, you can safely ignore this email.</p>
-  
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #EFE6DC;">
-    <p style="margin: 0;">
-      Thank you,<br/>
-      <strong style="color: #F45A0A;">Nahom Team</strong>
-    </p>
-  </div>
-</div>
+    const customInviteBody = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invitation to join ${communityName}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; margin: 0; padding: 40px 12px; width: 100%;">
+    <tr>
+      <td align="center">
+        <!-- Main Card Container -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 560px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); text-align: center;">
+          
+          <!-- Top Platform Header Banner -->
+          <tr>
+            <td style="padding: 40px 28px 24px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center">
+                    <img src="cid:nahomlogo" alt="NAHOM" width="130" style="display: block; max-width: 100%; height: auto; margin-bottom: 8px; pointer-events: none; user-select: none;" />
+                    <div style="font-size: 13px; color: #64748b; margin-top: 6px; font-weight: 500;">
+                      Connected Harmony
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main Body Content -->
+          <tr>
+            <td style="padding: 0 32px 16px 32px;">
+              <h1 style="font-size: 26px; font-weight: 800; color: #0f172a; margin: 0 0 16px 0; line-height: 1.3; letter-spacing: -0.02em;">
+                Welcome to ${communityName}!
+              </h1>
+              
+              <!-- Dynamic Intro Content -->
+              <div style="text-align: left;">
+                ${introSectionHtml}
+              </div>
+
+              <!-- Workspace Details Box -->
+              <div style="background-color: #f1f5f9; border-radius: 14px; padding: 20px; margin: 24px 0; text-align: left;">
+                <div style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px;">
+                  ASSIGNED MEMBERSHIP DETAILS
+                </div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  ${communityName ? `
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #64748b; width: 130px; font-weight: 600;">Organization:</td>
+                    <td style="padding: 6px 0; font-size: 14px; color: #0f172a; font-weight: 700;">${communityName}</td>
+                  </tr>` : ''}
+                  ${villaLabel ? `
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #64748b; width: 130px; font-weight: 600;">Villa / Unit:</td>
+                    <td style="padding: 6px 0; font-size: 14px; color: #0f172a; font-weight: 700;">${villaLabel}</td>
+                  </tr>` : ''}
+                  ${roleName ? `
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #64748b; width: 130px; font-weight: 600;">Assigned Role:</td>
+                    <td style="padding: 6px 0; font-size: 14px; color: #0f172a; font-weight: 700;">
+                      <span style="display: inline-block; background-color: #fff0e5; color: #c24100; padding: 4px 12px; border-radius: 6px; font-size: 13px;">${roleName}</span>
+                    </td>
+                  </tr>` : ''}
+                  ${rawPassword ? `
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #64748b; width: 130px; font-weight: 600;">Password:</td>
+                    <td style="padding: 6px 0; font-size: 14px; color: #0f172a; font-weight: 700; font-family: monospace; font-size: 16px;">${rawPassword}</td>
+                  </tr>` : ''}
+                </table>
+              </div>
+
+              <!-- CTA Buttons -->
+              ${!isBulk ? `
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 28px 0 12px 0;">
+                <tr>
+                  <td align="center" style="padding-bottom: 16px;">
+                    <a href="{{invite_link}}" target="_blank" style="display: inline-block; box-sizing: border-box; background-color: #f45a0a; color: #ffffff; padding: 16px 36px; text-decoration: none; border-radius: 9999px; font-weight: 800; font-size: 16px; text-align: center; box-shadow: 0 4px 12px rgba(244, 90, 10, 0.25); letter-spacing: 0.01em;">
+                      ${ctaButtonText} &rarr;
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <a href="{{reject_link}}" target="_blank" style="display: inline-block; box-sizing: border-box; background-color: transparent; color: #64748b; padding: 8px 24px; text-decoration: underline; font-weight: 600; font-size: 14px; text-align: center;">
+                      Decline Invitation
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              ` : `
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 28px 0 12px 0;">
+                <tr>
+                  <td align="center" style="padding-bottom: 16px; font-size: 16px; color: #334155;">
+                    Please log in to your account via the mobile app or web portal to access your community.
+                  </td>
+                </tr>
+              </table>
+              `}
+            </td>
+          </tr>
+
+          <!-- App Download Section -->
+          ${!isBulk ? `
+          <tr>
+            <td style="padding: 0 32px 32px 32px;">
+              <div style="background-color: #f8fafc; border-radius: 14px; padding: 24px; text-align: center; border: 1px solid #e2e8f0;">
+                <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
+                  📱 Access via Mobile App
+                </div>
+                <div style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+                  Download Nahom for iOS and Android to manage passes & gate access:
+                </div>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
+                  <tr>
+                    <td style="padding: 0 8px;">
+                      <a href="https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px;">
+                        Google Play
+                      </a>
+                    </td>
+                    <td style="padding: 0 8px;">
+                      <a href="https://apps.apple.com/app/manage-my-gate/id6746501635" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px;">
+                        App Store
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+            </td>
+          </tr>
+          ` : ''}
+
+          <!-- Security Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 24px 32px; text-align: center;">
+              <div style="font-size: 12px; color: #64748b; line-height: 1.6; margin-bottom: 16px;">
+                <strong>Security Notice:</strong> This invitation is single-use, secure, and valid for 24 hours. If you did not request this email, you may decline or ignore it.
+              </div>
+              ${!isBulk ? `
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 24px;">
+                <strong>Direct Link:</strong> <br/>
+                <a href="{{invite_link}}" style="color: #4f46e5; text-decoration: none; word-break: break-all;">{{invite_link}}</a>
+              </div>
+              ` : ''}
+              <div style="font-size: 12px; color: #94a3b8;">
+                &copy; 2026 Nahom. Powered by Atominos.
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
 `;
 
-    // Fetch organization's customized user_invitation email template if available
-    const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'user_invitation');
-
-    const defaultSubject = `You’re Invited to Join ${communityName}`;
-    const subject = template?.subject
-      ? template.subject.replace(/{{community_name}}/g, communityName).replace(/{{invite_link}}/g, inviteLink)
-      : defaultSubject;
-
-    const bodyTemplate = template?.body || customInviteBody;
+    const bodyTemplate = (rawTemplateBody && rawTemplateBody.includes('<html')) ? rawTemplateBody : customInviteBody;
 
     // Compile variables – also rewrite any legacy URL formats that may be
     // stored in custom MongoDB email templates (hash-router, /invite/app/, /invite/web/)
@@ -206,7 +336,23 @@ ${getEmailLogoHtml()}
     }
 
     const { sendEmail } = await import('../../utils/email.utils.js');
-    const sent = await sendEmail(orgId, email, compiledSubject, compiledBody);
+    const path = await import('path');
+    const fs = await import('fs');
+    const logoPath = path.resolve(process.cwd(), '../frontend/public/nahom_full_logo.png');
+    
+    let attachments = [];
+    if (fs.existsSync(logoPath)) {
+      attachments.push({
+        filename: 'nahom_full_logo.png',
+        path: logoPath,
+        cid: 'nahomlogo'
+      });
+    }
+
+    const sent = await sendEmail(orgId, email, compiledSubject, compiledBody, { 
+      fromName: communityName || 'Nahom',
+      attachments 
+    });
     if (sent) {
       logger.info(`Invitation email successfully delivered to inbox: ${email}`);
     } else {
@@ -247,7 +393,7 @@ userEvents.on('USER_ADDED', async ({ email, orgId }) => {
     const subject = template?.subject || 'You have been added to a new Workspace';
     const bodyTemplate = template?.body || DEFAULT_ADDED_BODY;
 
-    const credentials = await integrationHubService.getDecryptedCredentialsById(smtpConnection._id);
+    const credentials = await integrationHubService.getDecryptedCredentialsById(smtpConnection._id, orgId);
 
     const transporter = nodemailer.createTransport({
       host: credentials.host,

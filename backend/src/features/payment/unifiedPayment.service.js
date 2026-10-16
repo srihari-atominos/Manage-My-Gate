@@ -275,6 +275,7 @@ export class UnifiedPaymentService {
     razorpay_payment_id,
     razorpay_signature,
     orgId,
+    isPlatform = false,
   }) {
     const effectiveOrderId = orderId || razorpay_order_id;
     const effectivePaymentId = razorpayPaymentId || razorpay_payment_id;
@@ -297,6 +298,14 @@ export class UnifiedPaymentService {
 
     const payment = await query;
     if (!payment) {
+      throw new HttpError(404, 'Payment record not found.');
+    }
+
+    if (payment.orgId && !orgId && !isPlatform) {
+      throw new HttpError(400, 'Tenant context (orgId) is required for payment verification.');
+    }
+
+    if (orgId && payment.orgId && String(payment.orgId) !== String(orgId)) {
       throw new HttpError(404, 'Payment record not found.');
     }
 
@@ -457,13 +466,21 @@ export class UnifiedPaymentService {
     // 2. Tenant-Aware Credential Resolution for Signature Verification
     let webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    // Payment Link payments (invoice emails / WhatsApp) have no pre-created Payment record;
-    // their notes carry orgId + invoiceId (see paymentService.createPaymentLink).
     const linkEntity = payload?.payment_link?.entity || null;
     const linkNotes = linkEntity?.notes || {};
     const linkInvoiceId = notes.invoiceId || linkNotes.invoiceId || (linkEntity?.reference_id ? String(linkEntity.reference_id).split('-')[0] : null);
     const isInvoiceLinkPayment = !!linkInvoiceId && !notes.domain;
-    const secretOrgId = payment?.orgId || (isInvoiceLinkPayment ? notes.orgId || linkNotes.orgId : null);
+
+    let secretOrgId = payment?.orgId || null;
+    if (!secretOrgId && isInvoiceLinkPayment && linkInvoiceId) {
+      try {
+        const Invoice = (await import('../invoice/invoice.model.js')).default;
+        const invoiceDoc = await Invoice.findById(linkInvoiceId);
+        if (invoiceDoc) {
+          secretOrgId = invoiceDoc.communityId || invoiceDoc.orgId;
+        }
+      } catch (e) {}
+    }
 
     if (secretOrgId) {
       const config = await paymentConfigResolver.getConfig({
@@ -481,7 +498,7 @@ export class UnifiedPaymentService {
     }
 
     // 3. Verify Signature
-    if (process.env.NODE_ENV !== 'test') {
+    if (signature || process.env.NODE_ENV !== 'test') {
       if (!signature) throw new HttpError(400, 'Missing Razorpay webhook signature.');
       const isValid = verifyWebhookSignature(rawBody, signature, webhookSecret);
       if (!isValid) {
@@ -616,14 +633,16 @@ export class UnifiedPaymentService {
    * @param {object} [params.notes={}] - Optional notes
    * @returns {Promise<object>} Refund outcome
    */
-  async processRefund(param1, param2, param3) {
-    let paymentId, amount, notes;
+  async processRefund(param1, param2, param3, param4) {
+    let paymentId, amount, notes, orgId, isPlatform;
     if (typeof param1 === 'object' && param1 !== null && !param1._bsontype) {
-      ({ paymentId, amount = null, notes = {} } = param1);
+      ({ paymentId, amount = null, notes = {}, orgId, isPlatform = false } = param1);
     } else {
       paymentId = param1;
       amount = param2 !== undefined ? param2 : null;
       notes = typeof param3 === 'string' ? { reason: param3 } : (param3 || {});
+      orgId = param4?.orgId || (typeof param4 === 'string' ? param4 : null);
+      isPlatform = Boolean(param4?.isPlatform);
     }
 
     logger.info('payment.refund.started', { paymentId, amount });
@@ -634,6 +653,14 @@ export class UnifiedPaymentService {
 
     const originalPayment = await Payment.findById(paymentId);
     if (!originalPayment) {
+      throw new HttpError(404, 'Original payment record not found.');
+    }
+
+    if (originalPayment.orgId && !orgId && !isPlatform) {
+      throw new HttpError(400, 'Tenant context (orgId) is required for payment refund.');
+    }
+
+    if (orgId && originalPayment.orgId && String(originalPayment.orgId) !== String(orgId)) {
       throw new HttpError(404, 'Original payment record not found.');
     }
 

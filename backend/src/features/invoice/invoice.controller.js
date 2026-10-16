@@ -9,14 +9,7 @@ export class InvoiceController {
   async getMyDues(req, res, next) {
     try {
       // Resolve optional communityId from query, x-organization-id header, or tenant context
-      const communityId =
-        req.query.communityId ||
-        req.headers['x-organization-id'] ||
-        req.tenant?.orgId ||
-        req.user?.activeOrganizationId ||
-        req.user?.orgId ||
-        req.user?.communityId ||
-        null;
+      const communityId = req.tenant?.orgId;
 
       const data = await invoiceService.getUserDuesOverview(req.user, communityId);
       res.success(data, 'Outstanding dues retrieved successfully');
@@ -30,7 +23,9 @@ export class InvoiceController {
    */
   async triggerManual(req, res, next) {
     try {
-      const data = await invoiceService.triggerManualBilling(req.body);
+      const orgId = req.tenant?.orgId;
+      if (!orgId) throw new HttpError(400, 'Workspace context is required.');
+      const data = await invoiceService.triggerManualBilling(req.body, orgId);
       res.success(data, 'Manual billing cycle generated successfully', 201);
     } catch (error) {
       next(error);
@@ -56,11 +51,13 @@ export class InvoiceController {
    */
   async settleOffline(req, res, next) {
     try {
+      const orgId = req.tenant?.orgId;
+      if (!orgId) throw new HttpError(400, 'Workspace context is required.');
       const { id } = req.params;
       const { paymentReference, offlineReference, amountPaid, amount, offlineAmount, paymentMethod, paymentDate, paymentScreenshot, payerNotes } = req.body;
       const refToUse = paymentReference || offlineReference;
       const amountToUse = amountPaid !== undefined ? amountPaid : (offlineAmount !== undefined ? offlineAmount : amount);
-      const data = await invoiceService.logOfflinePayment(id, refToUse, amountToUse, paymentMethod || 'BANK_TRANSFER', paymentDate, paymentScreenshot, payerNotes);
+      const data = await invoiceService.logOfflinePayment(id, refToUse, amountToUse, paymentMethod || 'BANK_TRANSFER', paymentDate, paymentScreenshot, payerNotes, orgId);
       res.success(data, 'Offline payment details submitted successfully and pending verification.');
     } catch (error) {
       next(error);
@@ -87,6 +84,8 @@ export class InvoiceController {
    */
   async approvePayment(req, res, next) {
     try {
+      const orgId = req.tenant?.orgId;
+      if (!orgId) throw new HttpError(400, 'Workspace context is required.');
       const { id } = req.params;
       const adminUserId = req.user?.id || req.user?._id;
       const { amount, settlementType, paymentMethod, paymentReference, reference, notes, paymentScreenshot } = req.body || {};
@@ -98,6 +97,7 @@ export class InvoiceController {
         reference,
         notes,
         paymentScreenshot,
+        orgId,
       });
       res.success(data, 'Offline payment verified and confirmed successfully.');
     } catch (error) {
@@ -168,7 +168,7 @@ export class InvoiceController {
    */
   async getDashboardKPIs(req, res, next) {
     try {
-      const orgId = req.query.communityId || req.tenant.orgId;
+      const orgId = (req.tenant?.isPlatform && req.query.communityId) ? req.query.communityId : req.tenant?.orgId;
       const data = await invoiceService.getDashboardKPIs(orgId);
       res.success(data, 'Dashboard billing KPIs retrieved successfully');
     } catch (error) {
@@ -181,7 +181,7 @@ export class InvoiceController {
    */
   async getAllInvoices(req, res, next) {
     try {
-      const orgId = req.query.communityId || req.tenant.orgId;
+      const orgId = (req.tenant?.isPlatform && req.query.communityId) ? req.query.communityId : req.tenant?.orgId;
       const data = await invoiceService.getInvoices(orgId, req.query);
       res.success(data, 'Community invoices retrieved successfully');
     } catch (error) {
@@ -242,7 +242,8 @@ export class InvoiceController {
   async getInvoiceById(req, res, next) {
     try {
       const { id } = req.params;
-      const data = await invoiceService.getInvoiceById(id);
+      const orgId = req.tenant?.isPlatform && req.query?.communityId ? req.query.communityId : req.tenant?.orgId;
+      const data = await invoiceService.getInvoiceById(id, null, orgId);
       res.success(data, 'Invoice retrieved successfully');
     } catch (error) {
       next(error);
@@ -312,3 +313,6 @@ export class InvoiceController {
 }
 
 export default new InvoiceController();
+
+
+

@@ -1,5 +1,6 @@
 import visitorPassService from './visitorPass.service.js';
 import visitorPassTokenService from '../visitorPassToken/visitorPassToken.service.js';
+import visitorPassTokenRepository from '../visitorPassToken/visitorPassToken.repository.js';
 import HttpError from '../../utils/httpError.utils.js';
 import {
   assertPassAccess,
@@ -40,9 +41,9 @@ export class VisitorPassController {
   async getById(req, res, next) {
     try {
       const { id } = req.params;
-      const data = await visitorPassService.getPassById(id);
+      const data = await visitorPassService.getPassById(id, req.tenant?.orgId);
       if (String(data.orgId) !== String(req.tenant.orgId)) {
-        throw new HttpError(403, 'Forbidden. This pass belongs to another community.');
+        throw new HttpError(404, `Visitor pass with ID ${id} not found.`);
       }
       assertPassAccess(data, req.user);
       res.success(data, 'Visitor pass retrieved successfully');
@@ -59,9 +60,9 @@ export class VisitorPassController {
       const { id } = req.params;
       const { status } = req.body;
 
-      const existing = await visitorPassService.getPassById(id);
+      const existing = await visitorPassService.getPassById(id, req.tenant?.orgId);
       if (String(existing.orgId) !== String(req.tenant.orgId)) {
-        throw new HttpError(403, 'Forbidden. This pass belongs to another community.');
+        throw new HttpError(404, `Visitor pass with ID ${id} not found.`);
       }
       assertPassAccess(existing, req.user);
       // Gate staff may read any pass to verify it, but only its owner or a manager may change it.
@@ -71,12 +72,12 @@ export class VisitorPassController {
       }
       let data;
       if (status === 'REVOKED') {
-        data = await visitorPassService.revokePass(id, null, { actorId: getActorId(req.user), reason: req.body.reason });
+        data = await visitorPassService.revokePass(id, req.tenant?.orgId, null, { actorId: getActorId(req.user), reason: req.body.reason });
       } else {
         if (!isVisitorManager(req.user)) {
           throw new HttpError(403, 'Forbidden. Only community managers can set a pass status other than revoked.');
         }
-        data = await visitorPassService.updatePassStatus(id, status, null, { actorId: getActorId(req.user), reason: req.body.reason });
+        data = await visitorPassService.updatePassStatus(id, status, req.tenant?.orgId, null, { actorId: getActorId(req.user), reason: req.body.reason });
       }
 
       res.success(data, `Visitor pass status updated to ${status} successfully`);
@@ -138,7 +139,7 @@ export class VisitorPassController {
           throw err;
         }
       }
-      const data = await visitorPassService.getPassById(passId);
+      const data = await visitorPassService.getPassById(passId, req.tenant.orgId);
       if (String(data.orgId) !== String(req.tenant.orgId)) {
         throw new HttpError(403, 'Forbidden. This pass belongs to another community.');
       }
@@ -155,16 +156,19 @@ export class VisitorPassController {
   async getPublicPass(req, res, next) {
     try {
       const token = req.params.token || req.params.code || req.params.id;
-      let passId = null;
+      let tokenDoc = null;
       try {
-        passId = await visitorPassTokenService.getPassIdByCode(token);
+        tokenDoc = await visitorPassTokenRepository.findByCode(token);
       } catch (err) {
         // Do not fall back to a database ID: a public pass must use its revocable token.
       }
-      if (!passId) {
+      if (!tokenDoc || !tokenDoc.passId) {
         return res.status(404).json({ success: false, message: 'Visitor pass not found or expired' });
       }
-      const data = await visitorPassService.getPassById(passId);
+      const data = await visitorPassService.getPassById(tokenDoc.passId, tokenDoc.orgId);
+      if (!data || data.status === 'REVOKED' || data.status === 'EXPIRED') {
+        return res.status(404).json({ success: false, message: 'Visitor pass not found or expired' });
+      }
       res.success({
         _id: data._id,
         shortKey: token,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { WalkInApprovalCard } from './WalkInApprovalCard';
@@ -34,6 +34,11 @@ export const WalkInApprovalsView: React.FC = () => {
     setRefreshing(false);
   }, [loadData]);
 
+  const pendingItems = useMemo(() => {
+    const list = walkIns?.pendingList || [];
+    return list.filter((item: any) => item.status === 'PENDING');
+  }, [walkIns?.pendingList]);
+
   // A decision can fail (e.g. the request was already resolved elsewhere): say why and refresh.
   const resolve = useCallback(
     async (id: string, action: 'APPROVE' | 'REJECT') => {
@@ -51,16 +56,16 @@ export const WalkInApprovalsView: React.FC = () => {
   const handleApprove = useCallback((id: string) => resolve(id, 'APPROVE'), [resolve]);
   const handleReject = useCallback((id: string) => resolve(id, 'REJECT'), [resolve]);
 
-  const isLoading = walkIns?.status === 'loading' && !refreshing && (walkIns?.pendingList?.length || 0) === 0;
+  const isLoading = walkIns?.status === 'loading' && !refreshing && pendingItems.length === 0;
 
   return (
     <>
       <PaginatedList<WalkInApprovalItem>
-        data={walkIns?.pendingList || []}
+        data={pendingItems}
         pagination={{
           currentPage: 1,
           totalPages: 1,
-          totalRecords: walkIns?.pendingList?.length || 0,
+          totalRecords: pendingItems.length,
           limit: 20,
         }}
         onLoadMore={handleRefresh}

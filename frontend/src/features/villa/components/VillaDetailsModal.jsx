@@ -22,7 +22,6 @@ import {
   CFormCheck,
 } from '@coreui/react'
 import { fetchVillaByIdAsync } from '../store/villaSlice'
-import { inviteUserAsync } from '../../userManagement/store/userSlice'
 import { fetchRolesAsync } from '../../roleBuilder/store/roleSlice'
 import { useAuth } from '../../auth/hooks/useAuth'
 import useVilla from '../hooks/useVilla'
@@ -462,15 +461,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
                         {t('villas.details.tabs.assignExisting', 'Assign Existing')}
                       </CNavLink>
                     </CNavItem>
-                    <CNavItem>
-                      <CNavLink
-                        active={activeTab === 2}
-                        onClick={() => setActiveTab(2)}
-                        className="nav-link-custom"
-                      >
-                        {t('villas.details.tabs.inviteEmail', 'Invite Resident')}
-                      </CNavLink>
-                    </CNavItem>
+                    
                   </CNav>
 
                   {/* Tab Content 1: Assign Existing Workspace User */}
@@ -555,94 +546,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
                     </div>
                   )}
 
-                  {/* Tab Content 2: Invite Resident via Email */}
-                  {activeTab === 2 && (
-                    <div>
-                      {inviteError && (
-                        <CAlert color="danger" className="py-2 small">
-                          {inviteError}
-                        </CAlert>
-                      )}
-                      <CForm onSubmit={handleInviteSubmit}>
-                        <div className="mb-3">
-                          <CFormLabel htmlFor="invite-email" className="small fw-semibold">
-                            {t('villas.details.emailLabel', 'Email Address')}
-                          </CFormLabel>
-                          <CFormInput
-                            id="invite-email"
-                            type="email"
-                            placeholder="resident@example.com"
-                            value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
-                            required
-                            size="sm"
-                          />
-                        </div>
-                        <div className="mb-3">
-                          <CFormLabel htmlFor="invite-phone" className="small fw-semibold">
-                            {t('villas.details.phoneLabel', 'Phone Number (Optional)')}
-                          </CFormLabel>
-                          <PhoneInput
-                            country={'in'}
-                            value={invitePhone}
-                            onChange={(phone, country) => {
-                              if (country && country.format) {
-                                setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
-                              }
-                              setInvitePhone(phone)
-                            }}
-                            containerStyle={{
-                              width: '100%',
-                            }}
-                            inputStyle={{
-                              width: '100%',
-                              height: '31px', // matches size="sm" height
-                              border: '1px solid #d8dbe0', // coreui default border
-                              borderRadius: '0.375rem',
-                              fontSize: '14px',
-                            }}
-                            buttonStyle={{
-                              border: '1px solid #d8dbe0',
-                              borderRadius: '0.375rem 0 0 0.375rem',
-                              backgroundColor: '#ebedef',
-                            }}
-                          />
-                        </div>
-                        <div className="mb-3">
-                          <CFormLabel htmlFor="invite-resident-type" className="small fw-semibold">
-                            {t('villas.details.typeLabel', 'Residency Type')}
-                          </CFormLabel>
-                          <CFormSelect
-                            id="invite-resident-type"
-                            value={inviteResidencyType}
-                            onChange={(e) => setInviteResidencyType(e.target.value)}
-                            size="sm"
-                            required
-                          >
-                            <option value="" disabled>
-                              {t('villas.details.chooseType', 'Choose...')}
-                            </option>
-                            {tenantRoles.map((type) => (
-                              <option key={type} value={type}>
-                                {type}
-                              </option>
-                            ))}
-                          </CFormSelect>
-                        </div>
-                        <CButton
-                          type="submit"
-                          color="primary"
-                          size="sm"
-                          className="w-100 fw-semibold"
-                          disabled={inviting || !inviteEmail.trim()}
-                        >
-                          {inviting
-                            ? t('villas.details.sending', 'Sending Invite...')
-                            : t('villas.details.sendInvite', 'Send Onboarding Invite')}
-                        </CButton>
-                      </CForm>
-                    </div>
-                  )}
+                  
                 </CCol>
               )}
             </CRow>

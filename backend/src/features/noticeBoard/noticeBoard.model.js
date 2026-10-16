@@ -30,7 +30,7 @@ const noticeSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Category is required'],
-      enum: ['General', 'Maintenance', 'Events', 'Emergency', 'Meetings'],
+      enum: ['General', 'Maintenance', 'Events', 'Emergency', 'Meetings', 'Rules'],
       default: 'General',
     },
     priority: {

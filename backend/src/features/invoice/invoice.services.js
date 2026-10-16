@@ -314,13 +314,18 @@ export class InvoiceService {
   /**
    * Wrapper for manual trigger controller.
    */
-  async triggerManualBilling(payload) {
+  async triggerManualBilling(payload, orgId = null) {
     const Assessment = (await import('../assessment/assessment.model.js')).default;
     const assessment = await Assessment.findById(payload.assessmentId).lean();
     if (!assessment) throw new HttpError(404, 'Assessment template not found');
 
-    // Merge manual override payload with template
-    const mergedAssessment = { ...assessment, ...payload };
+    if (orgId && assessment.communityId && assessment.communityId.toString() !== orgId.toString()) {
+      throw new HttpError(404, 'Assessment template not found');
+    }
+
+    // Merge manual override payload with template, guaranteeing tenant scoping
+    const { communityId: _ignoredComm, orgId: _ignoredOrg, ...cleanPayload } = payload;
+    const mergedAssessment = { ...assessment, ...cleanPayload, communityId: orgId || assessment.communityId };
     return this.generateBatchInvoices(mergedAssessment);
   }
 
@@ -486,7 +491,7 @@ export class InvoiceService {
   /**
    * Settle payment with offline payment request.
    */
-  async logOfflinePayment(invoiceId, offlineReference, amount, paymentMethod = 'BANK_TRANSFER', paymentDate = null, paymentScreenshot = null, payerNotes = null) {
+  async logOfflinePayment(invoiceId, offlineReference, amount, paymentMethod = 'BANK_TRANSFER', paymentDate = null, paymentScreenshot = null, payerNotes = null, orgId = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('logOfflinePayment called', { invoiceId, offlineReference, amount, paymentMethod, correlationId });
 
@@ -495,15 +500,19 @@ export class InvoiceService {
 
     const existingInvoice = await Invoice.findById(invoiceId);
     if (!existingInvoice) {
-      throw new Error('Invoice not found');
+      throw new HttpError(404, 'Invoice not found');
+    }
+
+    if (orgId && existingInvoice.communityId && existingInvoice.communityId.toString() !== orgId.toString()) {
+      throw new HttpError(404, 'Invoice not found');
     }
 
     if (existingInvoice.status === 'PAID') {
-      throw new Error('Invoice is already fully settled.');
+      throw new HttpError(400, 'Invoice is already fully settled.');
     }
 
     if (existingInvoice.status === 'VERIFICATION_PENDING') {
-      throw new Error('An offline payment for this invoice is already pending verification.');
+      throw new HttpError(400, 'An offline payment for this invoice is already pending verification.');
     }
 
     const effectiveMethod = (paymentMethod || 'BANK_TRANSFER').toUpperCase();
@@ -626,6 +635,10 @@ export class InvoiceService {
       const invoice = await invoiceQuery;
 
       if (!invoice) {
+        throw new HttpError(404, 'Invoice not found');
+      }
+
+      if (options.orgId && invoice.communityId && invoice.communityId.toString() !== options.orgId.toString()) {
         throw new HttpError(404, 'Invoice not found');
       }
 
@@ -1264,7 +1277,7 @@ export class InvoiceService {
   /**
    * Fetch invoice by ID with optional transaction session.
    */
-  async getInvoiceById(invoiceId, session = null) {
+  async getInvoiceById(invoiceId, session = null, orgId = null) {
     if (!invoiceId) {
       throw new HttpError(400, 'Invoice ID or number is required');
     }
@@ -1297,6 +1310,13 @@ export class InvoiceService {
     const invoice = await query;
     if (!invoice) {
       throw new HttpError(404, 'Invoice not found');
+    }
+
+    if (orgId) {
+      const invOrg = (invoice.communityId?._id || invoice.communityId || invoice.orgId?._id || invoice.orgId)?.toString();
+      if (invOrg && invOrg !== String(orgId)) {
+        throw new HttpError(404, 'Invoice not found');
+      }
     }
     const invObj = invoice.toObject ? invoice.toObject() : invoice;
     if (!invObj.assessmentName) {

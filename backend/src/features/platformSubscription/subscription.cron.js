@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import PlatformSubscription from './platformSubscription.model.js';
 import OutboxEvent from '../outbox/outboxEvent.model.js';
 import PlatformProvisioningJob from '../platformProvisioningJob/platformProvisioningJob.model.js';
-import logger from '../../utils/logger.utils.js';
+import logger, { loggerStorage } from '../../utils/logger.utils.js';
 
 export const startSubscriptionCron = () => {
   // Run daily at 00:00 UTC
@@ -35,59 +35,67 @@ const processExpiries = async () => {
   }).populate('organisationId', 'name contactEmail');
 
   for (const sub of subscriptions) {
-    try {
-      // For Active subscriptions, validTill or billingPeriodEnd indicates expiry
-      const expiryTarget = sub.billingPeriodEnd || sub.validTill;
-      if (!expiryTarget) continue;
+    const subOrgId = (sub.organisationId?._id || sub.organisationId)?.toString();
+    const cronJobId = `cron-sub-${sub._id}`;
 
-      const expiryDate = new Date(expiryTarget);
-      expiryDate.setUTCHours(0, 0, 0, 0);
+    await loggerStorage.run({ requestId: cronJobId, orgId: subOrgId }, async () => {
+      try {
+        // For Active subscriptions, validTill or billingPeriodEnd indicates expiry
+        const expiryTarget = sub.billingPeriodEnd || sub.validTill;
+        if (!expiryTarget) return;
 
-      const diffTime = expiryDate - today;
-      const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const expiryDate = new Date(expiryTarget);
+        expiryDate.setUTCHours(0, 0, 0, 0);
 
-      const org = sub.organisationId;
-      const tenantAdminDetails = org ? {
-        organisationId: org._id,
-        organizationName: org.name,
-        contactEmail: org.contactEmail
-      } : {
-        organisationId: sub.organisationId // fallback if unpopulated
-      };
+        const diffTime = expiryDate - today;
+        const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      if (daysRemaining <= 0) {
-        // Expiry Day (0 or less)
-        sub.status = 'EXPIRED';
-        await sub.save();
+        const org = sub.organisationId;
+        const tenantAdminDetails = org ? {
+          organisationId: org._id,
+          organizationName: org.name,
+          contactEmail: org.contactEmail
+        } : {
+          organisationId: sub.organisationId // fallback if unpopulated
+        };
 
-        await OutboxEvent.create({
-          eventType: 'DISPATCH_EXPIRED_NOTICE',
-          payload: {
-            ...tenantAdminDetails,
-            daysRemaining: 0
-          }
-        });
-        logger.info(`[CRON] Subscription ${sub._id} expired.`);
-      } else if ([14, 7, 3, 2, 1].includes(daysRemaining)) {
-        // Warning Days
-        if (sub.status === 'ACTIVE') {
-          sub.status = 'EXPIRING_SOON';
+        if (daysRemaining <= 0) {
+          // Expiry Day (0 or less)
+          sub.status = 'EXPIRED';
           await sub.save();
-        }
 
-        await OutboxEvent.create({
-          eventType: 'DISPATCH_EXPIRY_WARNING',
-          payload: {
-            ...tenantAdminDetails,
-            daysRemaining
+          await OutboxEvent.create({
+            eventType: 'DISPATCH_EXPIRED_NOTICE',
+            payload: {
+              ...tenantAdminDetails,
+              daysRemaining: 0
+            }
+          });
+          logger.info(`[CRON] Subscription ${sub._id} expired.`, { orgId: subOrgId });
+        } else if ([14, 7, 3, 2, 1].includes(daysRemaining)) {
+          // Warning Days
+          if (sub.status === 'ACTIVE') {
+            sub.status = 'EXPIRING_SOON';
+            await sub.save();
           }
+
+          await OutboxEvent.create({
+            eventType: 'DISPATCH_EXPIRY_WARNING',
+            payload: {
+              ...tenantAdminDetails,
+              daysRemaining
+            }
+          });
+          logger.info(`[CRON] Expiry warning (${daysRemaining} days) queued for subscription ${sub._id}.`, { orgId: subOrgId });
+        }
+      } catch (err) {
+        // Isolate error per record to prevent crashing the whole batch
+        logger.error(`[CRON] Error processing subscription ${sub._id}:`, {
+          orgId: subOrgId,
+          error: err.message,
         });
-        logger.info(`[CRON] Expiry warning (${daysRemaining} days) queued for subscription ${sub._id}.`);
       }
-    } catch (err) {
-      // Isolate error per record to prevent crashing the whole batch
-      logger.error(`[CRON] Error processing subscription ${sub._id}:`, err);
-    }
+    });
   }
 };
 

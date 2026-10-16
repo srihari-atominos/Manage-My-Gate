@@ -44,6 +44,9 @@ export class HistoricalReconciliationService {
     allowGenesis = false,
     domains = [RECONCILIATION_DOMAINS.INVOICE, RECONCILIATION_DOMAINS.AMENITY, RECONCILIATION_DOMAINS.WALLET],
   } = {}) {
+    if (!orgId) {
+      throw new HttpError(400, 'Organization context is required for reconciliation');
+    }
     const normMode = (mode || MIGRATION_EXECUTION_MODES.DRY_RUN).toUpperCase();
 
     // 1. Fast-path: VERIFY mode (read-only invariant audit)
@@ -714,8 +717,8 @@ export class HistoricalReconciliationService {
    * List reconciliation exceptions with filters
    */
   async getExceptions({ orgId, status, domain, limit = 50, skip = 0 } = {}) {
-    const query = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) throw new HttpError(400, 'Organization context is required for exceptions');
+    const query = { orgId };
     if (status) query.status = status;
     if (domain) query.domain = domain;
 
@@ -734,8 +737,9 @@ export class HistoricalReconciliationService {
   /**
    * Update exception status and notes
    */
-  async updateException(exceptionId, { status, resolutionNotes, resolvedBy } = {}) {
+  async updateException(exceptionId, { status, resolutionNotes, resolvedBy, orgId } = {}) {
     if (!exceptionId) throw new HttpError(400, 'Exception ID is required');
+    if (!orgId) throw new HttpError(400, 'Organization context is required');
 
     const update = {};
     if (status) update.status = status;
@@ -745,7 +749,11 @@ export class HistoricalReconciliationService {
       update.resolvedAt = new Date();
     }
 
-    const updated = await ReconciliationException.findByIdAndUpdate(exceptionId, update, { returnDocument: 'after' });
+    const updated = await ReconciliationException.findOneAndUpdate(
+      { _id: exceptionId, orgId },
+      update,
+      { returnDocument: 'after' }
+    );
     if (!updated) throw new HttpError(404, 'Reconciliation exception not found');
     return updated;
   }

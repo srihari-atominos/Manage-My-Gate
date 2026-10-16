@@ -16,8 +16,8 @@ export class AssessmentRepository {
    * @param {string} id - Assessment ID.
    * @returns {Promise<import('mongoose').Document | null>}
    */
-  async findById(id) {
-    return await Assessment.findById(id);
+  async findById(id, communityId = null) {
+    const query = { _id: id }; if (communityId) query.communityId = communityId; return await Assessment.findOne(query);
   }
 
   /**
@@ -56,8 +56,8 @@ export class AssessmentRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose transaction session.
    * @returns {Promise<import('mongoose').Document | null>}
    */
-  async updateTemplate(id, updateData, session) {
-    return await Assessment.findByIdAndUpdate(id, updateData, {
+  async updateTemplate(id, updateData, session, communityId = null) {
+    const query = { _id: id }; if (communityId) query.communityId = communityId; return await Assessment.findOneAndUpdate(query, updateData, {
       returnDocument: 'after',
       runValidators: true,
       ...(session ? { session } : {}),
@@ -70,9 +70,10 @@ export class AssessmentRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional session.
    * @returns {Promise<import('mongoose').Document | null>}
    */
-  async delete(id, session) {
-    return await Assessment.findByIdAndDelete(id, session ? { session } : undefined);
+  async delete(id, session, communityId = null) {
+    const query = { _id: id }; if (communityId) query.communityId = communityId; return await Assessment.findOneAndDelete(query, session ? { session } : undefined);
   }
 }
 
 export default new AssessmentRepository();
+

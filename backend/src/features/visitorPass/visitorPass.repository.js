@@ -1,5 +1,6 @@
 import VisitorPass from './visitorPass.model.js';
 import mongoose from 'mongoose';
+import HttpError from '../../utils/httpError.utils.js';
 
 export class VisitorPassRepository {
   /**
@@ -16,24 +17,46 @@ export class VisitorPassRepository {
   /**
    * Find a VisitorPass by its ID.
    * @param {string} id - The ID of the pass.
+   * @param {string} orgId - The organization ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The pass document, or null if not found.
    */
-  async findById(id, session) {
-    return await VisitorPass.findById(id).session(session || null);
+  async findById(id, orgId = null, session = null) {
+    let resolvedOrgId = orgId;
+    let resolvedSession = session;
+    if (orgId && (orgId.constructor?.name === 'ClientSession' || (orgId.id && orgId.client) || orgId?.inTransaction)) {
+      resolvedSession = orgId;
+      resolvedOrgId = null;
+    }
+    if (!resolvedOrgId) {
+      throw new HttpError(400, 'orgId is required');
+    }
+    const query = { _id: id, orgId: resolvedOrgId };
+    return await VisitorPass.findOne(query).session(resolvedSession || null);
   }
 
   /**
    * Find a VisitorPass with the unit and host resolved, for screens that show who is visiting whom.
    * @param {string} id - The ID of the pass.
+   * @param {string} orgId - The organization ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The pass document, or null if not found.
    */
-  async findByIdWithParties(id, session = null) {
-    return await VisitorPass.findById(id)
+  async findByIdWithParties(id, orgId = null, session = null) {
+    let resolvedOrgId = orgId;
+    let resolvedSession = session;
+    if (orgId && (orgId.constructor?.name === 'ClientSession' || (orgId.id && orgId.client) || orgId?.inTransaction)) {
+      resolvedSession = orgId;
+      resolvedOrgId = null;
+    }
+    if (!resolvedOrgId) {
+      throw new HttpError(400, 'orgId is required');
+    }
+    const query = { _id: id, orgId: resolvedOrgId };
+    return await VisitorPass.findOne(query)
       .populate('villaId', 'unitNumber blockOrBuilding')
       .populate('createdById', 'name')
-      .session(session || null);
+      .session(resolvedSession || null);
   }
 
   /**
@@ -43,26 +66,49 @@ export class VisitorPassRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The updated pass document.
    */
-  async updateStatus(id, status, session) {
-    return await VisitorPass.findByIdAndUpdate(
-      id,
-      { status },
-      { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
+  async updateStatus(id, orgId = null, status, session = null) {
+    let resolvedOrgId = orgId;
+    let resolvedStatus = status;
+    let resolvedSession = session;
+    if (typeof orgId === 'string' && ['PENDING', 'ACTIVE', 'REVOKED', 'EXPIRED'].includes(orgId)) {
+      resolvedStatus = orgId;
+      resolvedOrgId = null;
+      resolvedSession = status;
+    }
+    const query = { _id: id };
+    if (resolvedOrgId) query.orgId = resolvedOrgId;
+    return await VisitorPass.findOneAndUpdate(
+      query,
+      { status: resolvedStatus },
+      { returnDocument: 'after', runValidators: true, ...(resolvedSession ? { session: resolvedSession } : {}) }
     );
   }
 
   /**
    * Update VisitorPass properties.
    * @param {string} id - The ID of the pass.
+   * @param {string} orgId - The organization ID.
    * @param {Object} updateData - The update parameters.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The updated pass document.
    */
-  async update(id, updateData, session = null) {
-    return await VisitorPass.findByIdAndUpdate(
-      id,
-      updateData,
-      { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
+  async update(id, orgId = null, updateData, session = null) {
+    let resolvedOrgId = orgId;
+    let resolvedUpdate = updateData;
+    let resolvedSession = session;
+    if (orgId && (orgId.$set || orgId.$push || orgId.$unset || !updateData)) {
+      resolvedUpdate = orgId;
+      resolvedOrgId = null;
+      resolvedSession = updateData;
+    }
+    if (!resolvedOrgId) {
+      throw new HttpError(400, 'orgId is required');
+    }
+    const query = { _id: id, orgId: resolvedOrgId };
+    return await VisitorPass.findOneAndUpdate(
+      query,
+      resolvedUpdate,
+      { returnDocument: 'after', runValidators: true, ...(resolvedSession ? { session: resolvedSession } : {}) }
     );
   }
 
@@ -99,11 +145,18 @@ export class VisitorPassRepository {
   }
 
   /** Atomically consumes one pass use, preventing replayed QR scans from admitting twice. */
-  async consumeForEntry(id, session = null) {
+  async consumeForEntry(id, orgId = null, session = null) {
+    let resolvedOrgId = orgId;
+    let resolvedSession = session;
+    if (orgId && (orgId.constructor?.name === 'ClientSession' || (orgId.id && orgId.client) || orgId?.inTransaction)) {
+      resolvedSession = orgId;
+      resolvedOrgId = null;
+    }
+    if (!resolvedOrgId) {
+      throw new HttpError(400, 'orgId is required');
+    }
     return VisitorPass.findOneAndUpdate(
-      {
-        _id: id,
-        status: { $in: ['PENDING', 'ACTIVE'] },
+      { _id: id, orgId: resolvedOrgId, status: { $in: ['PENDING', 'ACTIVE'] },
         $expr: {
           $lt: [
             { $ifNull: ['$usageLimit.currentUses', 0] },
@@ -120,7 +173,7 @@ export class VisitorPassRepository {
         },
       ],
       // Mongoose 9 rejects pipeline (array) updates unless explicitly opted in.
-      { returnDocument: 'after', updatePipeline: true, ...(session ? { session } : {}) }
+      { returnDocument: 'after', updatePipeline: true, ...(resolvedSession ? { session: resolvedSession } : {}) }
     );
   }
 
@@ -251,3 +304,4 @@ export class VisitorPassRepository {
 }
 
 export default new VisitorPassRepository();
+

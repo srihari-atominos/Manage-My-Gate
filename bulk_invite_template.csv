@@ -1,0 +1,6 @@
+"Unit Number","Block/Building","Floor","Unit Type","Floor Area (Sq Ft)","Occupancy Status","Resident Name","Resident Email","Resident Type","Phone Number"
+"101","Block A","1","Apartment","1200","Vacant","","","",""
+"102","Block A","1","2 BHK","1350","Occupied","John Doe","john.doe@example.com","Resident Owner","9876543210"
+"103","Block A","2","3 BHK","1600","Occupied","Jane Smith","jane.smith@example.com","Tenant","9876543211"
+"201","Block B","1","Villa","2400","Under Maintenance","","","",""
+"202","Block B","2","Penthouse","3200","Occupied","Alice Johnson","alice.j@example.com","Family Member","9876543212"

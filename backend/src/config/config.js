@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables from backend local directory
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env'), quiet: true });
 
 const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET', 'SESSION_SECRET', 'ENCRYPTION_KEY'];
 
@@ -36,6 +36,15 @@ if (process.env.NODE_ENV === 'production') {
   }
   if (process.env.ALLOW_MOCK_PAYMENTS === 'true') {
     throw new Error('ALLOW_MOCK_PAYMENTS must not be enabled in production.');
+  }
+  if (process.env.REQUIRE_REDIS_LOCK !== 'true') {
+    throw new Error('REQUIRE_REDIS_LOCK must be set to "true" in production to prevent local in-memory lock split-brain.');
+  }
+  if (process.env.REQUIRE_REDIS_RATE_LIMIT !== 'true') {
+    throw new Error('REQUIRE_REDIS_RATE_LIMIT must be set to "true" in production to enforce distributed rate limiting.');
+  }
+  if (process.env.REQUIRE_REDIS_ADAPTER !== 'true') {
+    throw new Error('REQUIRE_REDIS_ADAPTER must be set to "true" in production to prevent split-brain room isolation.');
   }
 }
 
@@ -113,6 +122,10 @@ export const config = {
     // Native Sign in with Apple tokens are issued to the iOS bundle identifier.
     // APPLE_SERVICE_ID is optional and is only needed if a web/Android OAuth flow
     // is added later with an Apple Services ID.
+    // Keep the released native bundle identifier separate from a web Services
+    // ID. A mistaken APPLE_CLIENT_ID deployment value must not reject valid
+    // native Sign in with Apple identity tokens.
+    appleNativeClientId: process.env.APPLE_NATIVE_CLIENT_ID || 'com.atominosconsulting.nahom',
     appleClientId: process.env.APPLE_CLIENT_ID || 'com.atominosconsulting.nahom',
     appleServiceId: process.env.APPLE_SERVICE_ID || '',
   },

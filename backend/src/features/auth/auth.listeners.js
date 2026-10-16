@@ -8,14 +8,8 @@ import { isOtpDebugEnabled } from '../otp/otp.services.js';
 import integrationHubRepository from '../integrationHub/integrationHub.repository.js';
 
 export const sendOtpNotification = async ({ identifier, code, type }) => {
-  const effectiveType = type === 'EMAIL' || (type !== 'SMS' && identifier?.includes('@')) ? 'EMAIL' : 'SMS';
-
-  if (effectiveType === 'EMAIL') {
-    if (process.env.NODE_ENV !== 'production') {
-      logger.info(`[AUTH OTP DELIVERED] Identifier: ${maskEmail(identifier)} | Verification OTP Code: ${code}`);
-    } else {
-      logger.info(`[AUTH OTP DISPATCHED] Identifier: ${maskEmail(identifier)}`);
-    }
+  if (type === 'EMAIL') {
+    logger.info(`[AUTH OTP DISPATCHED] Identifier: ${maskEmail(identifier)}`);
 
     try {
       // 1. Check IntegrationHub SMTP integrations (prefer latest updated connected SMTP)
@@ -106,23 +100,12 @@ export const sendOtpNotification = async ({ identifier, code, type }) => {
         return;
       }
 
-      if (isOtpDebugEnabled()) {
-        logger.warn(`No active SMTP/Resend provider configured. Email not sent. [DEV OTP CODE: ${code}]`);
-      } else {
-        logger.warn(`No active SMTP/Resend provider configured. Email not sent to ${maskEmail(identifier)}`);
-      }
+      logger.warn(`No active SMTP/Resend provider configured. Email not sent to ${maskEmail(identifier)}`);
     } catch (error) {
       logger.error(`Failed to send OTP email to ${maskEmail(identifier)}: ${error.message}`);
-      if (isOtpDebugEnabled()) {
-        logger.info(`[FALLBACK DEV OTP] Code for ${maskEmail(identifier)}: ${code}`);
-      }
     }
-  } else if (effectiveType === 'SMS') {
-    if (process.env.NODE_ENV !== 'production') {
-      logger.info(`[AUTH OTP DELIVERED - SMS] Phone: ${maskPhone(identifier)} | Verification OTP Code: ${code}`);
-    } else {
-      logger.info(`[AUTH OTP DISPATCHED - SMS] Phone: ${maskPhone(identifier)}`);
-    }
+  } else if (type === 'SMS') {
+    logger.info(`[AUTH OTP DISPATCHED - SMS] Phone: ${maskPhone(identifier)}`);
     try {
       // 1. Check MSG91 (either via IntegrationHub or environment configuration)
       const msg91Integration = await integrationHubRepository.findPlatformConnection('msg91');

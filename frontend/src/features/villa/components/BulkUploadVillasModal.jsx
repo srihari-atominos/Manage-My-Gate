@@ -160,6 +160,7 @@ const parseCSV = (csvText) => {
       else if (header.includes('floor')) key = 'floor'
       else if (header.includes('occupancy') || header.includes('status')) key = 'status'
       else if (header.includes('role')) key = 'roleName'
+      else if (header.includes('password')) key = 'password'
       else if (header.includes('phone') || header.includes('mobile')) key = 'phone'
       else if (header.includes('name') || header.includes('resident name')) key = 'name'
 
@@ -303,6 +304,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload, targetOr
         phone: r.phone || undefined,
         residentType: r.email ? r.residentType : undefined,
         roleName: r.email ? r.roleName : undefined,
+        password: r.email ? r.password : undefined,
       }))
       const res = await onBulkUpload(payload)
       setResults(res)

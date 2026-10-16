@@ -13,8 +13,8 @@ export class NoticeBoardRepository {
   /**
    * Find a notice by its ID.
    */
-  async findById(id, session) {
-    return await Notice.findById(id)
+  async findById(id, orgId = null, session) {
+    const query = { _id: id }; if (orgId) query.orgId = orgId; return await Notice.findOne(query)
       .populate('createdBy', 'name username avatar')
       .populate('targetAudience.targetRoles', 'name')
       .populate('targetAudience.targetUsers', 'name username email')
@@ -69,8 +69,8 @@ export class NoticeBoardRepository {
   /**
    * Update a notice by ID.
    */
-  async updateNotice(id, updateData, session) {
-    return await Notice.findByIdAndUpdate(id, updateData, {
+  async updateNotice(id, orgId = null, updateData, session) {
+    const query = { _id: id }; if (orgId) query.orgId = orgId; return await Notice.findOneAndUpdate(query, updateData, {
       returnDocument: 'after',
       runValidators: true,
       session,
@@ -80,19 +80,15 @@ export class NoticeBoardRepository {
   /**
    * Delete a notice by ID.
    */
-  async deleteNotice(id, session) {
-    return await Notice.findByIdAndDelete(id).session(session);
+  async deleteNotice(id, orgId = null, session) {
+    const query = { _id: id }; if (orgId) query.orgId = orgId; return await Notice.findOneAndDelete(query).session(session);
   }
 
   /**
    * Toggle the pin state of a notice.
    */
-  async togglePin(id, isPinned, session) {
-    return await Notice.findByIdAndUpdate(
-      id,
-      { isPinned },
-      { returnDocument: 'after', runValidators: true, session }
-    );
+  async togglePin(id, orgId = null, isPinned, session) {
+    const query = { _id: id }; if (orgId) query.orgId = orgId; return await Notice.findOneAndUpdate(query, { isPinned }, { returnDocument: 'after', runValidators: true, session });
   }
 
   /**
@@ -121,3 +117,4 @@ export class NoticeBoardRepository {
 }
 
 export default new NoticeBoardRepository();
+

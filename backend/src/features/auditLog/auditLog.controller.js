@@ -6,10 +6,11 @@ export class AuditLogController {
    */
   async getAll(req, res, next) {
     try {
+      const orgId = (req.tenant?.isPlatform && req.query.orgId) ? req.query.orgId : req.tenant?.orgId;
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
 
-      const data = await auditLogService.getLogs(page, limit);
+      const data = await auditLogService.getLogs(orgId, page, limit);
       res.success(data, 'Audit logs retrieved successfully');
     } catch (error) {
       next(error);

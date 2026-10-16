@@ -191,6 +191,12 @@ export class UserService {
         if (existingEmailUser && existingEmailUser._id.toString() !== id.toString()) {
           throw new HttpError(409, `User with email '${updateData.email}' already exists.`);
         }
+        const currentUser = await userRepository.findById(id, currentSession);
+        if (currentUser && currentUser.email && currentUser.email.toLowerCase() !== normalizedEmail) {
+          if (updateData.emailVerified === undefined) {
+            updateData.emailVerified = false;
+          }
+        }
         updateData.email = normalizedEmail;
       }
       if (updateData.username && updateData.username.trim()) {
@@ -324,7 +330,8 @@ export class UserService {
     invitationSource = 'WEB',
     inviterId = null,
     onboardingMode = 'INVITATION',
-    staffData = {}
+    isBulk = false,
+    rawPassword = null
   ) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -398,17 +405,30 @@ export class UserService {
         const userData = {
           email: emailToUse,
           username: username,
-          name: cleanedName || username,
-          status: mode === 'ADMIN_ANNOUNCEMENT' ? 'Active' : 'Pending Verification',
+          name: name || username,
+          status: (rawPassword || mode === 'ADMIN_ANNOUNCEMENT') ? 'Active' : 'Pending Verification',
           credentialStatus: 'NOT_INITIALIZED',
           appAccessStatus: 'NOT_YET_ACCESSED',
           ...(phoneToAssign ? { phone: phoneToAssign } : {}),
         };
+        
+        if (rawPassword) {
+          const { hashPassword } = await import('../../utils/crypto.utils.js');
+          userData.password = await hashPassword(rawPassword);
+          userData.emailVerified = true;
+        }
+        
         user = await userRepository.create(userData, session);
       } else {
         const updates = {};
         if (phoneToAssign && !user.phone) updates.phone = phoneToAssign;
-        if (name && (!user.name || user.name === user.username)) updates.name = name.trim();
+        if (name && !user.name) updates.name = name;
+        if (rawPassword) {
+          const { hashPassword } = await import('../../utils/crypto.utils.js');
+          updates.password = await hashPassword(rawPassword);
+          updates.status = 'Active';
+          updates.emailVerified = true;
+        }
         if (Object.keys(updates).length > 0) {
           user = await userRepository.update(user._id, updates, session);
         }
@@ -475,7 +495,7 @@ export class UserService {
       }
 
       // Step 4: Membership status based on onboardingMode
-      const targetMembershipStatus = (mode === 'ADMIN_ANNOUNCEMENT' || isAlreadyActiveMemberAssigningUnit) ? 'Active' : 'Pending';
+      const targetMembershipStatus = (rawPassword || mode === 'ADMIN_ANNOUNCEMENT') ? 'Active' : 'Pending';
 
       let membership = null;
       if (existingMembership) {
@@ -483,10 +503,15 @@ export class UserService {
           existingMembership.roleIds = roleIds;
           existingMembership.roleId = roleIds[0] || null;
         }
+        
+        // Always ensure the units array reflects the latest assignment, even for already active users
         existingMembership.villaId = rootVillaId;
         existingMembership.residentType = rootResidentType;
         existingMembership.units = membershipUnits;
-        existingMembership.status = targetMembershipStatus;
+        
+        if (!existing || existing.status !== 'Active' || existingMembership.status !== 'Active') {
+          existingMembership.status = targetMembershipStatus;
+        }
         membership = await existingMembership.save({ session });
       } else {
         const initialUnits = villaId ? [{ villaId, residentType: calculatedResidentType }] : [];
@@ -498,7 +523,7 @@ export class UserService {
           villaId: rootVillaId,
           residentType: rootResidentType,
           units: initialUnits,
-          status: targetMembershipStatus,
+          status: targetMembershipStatus
         }, session);
       }
 
@@ -562,6 +587,8 @@ export class UserService {
         userId: user._id,
         inviterId,
         isExisting,
+        isBulk,
+        rawPassword,
         onboardingMode: mode,
       });
 
@@ -832,7 +859,7 @@ export class UserService {
       
       let updatedPermissions = [];
       for (const rId of roleIds) {
-        const perms = await rolePermissionService.getPermissionsByRoleId(rId);
+        const perms = await rolePermissionService.getPermissionsByRoleId(rId, orgId);
         updatedPermissions.push(...perms.map((p) => p.name));
       }
       updatedPermissions = Array.from(new Set(updatedPermissions));
@@ -1236,8 +1263,8 @@ export class UserService {
         villaId: payloadVillaId,
         invitationSource: itemSource,
         onboardingMode: itemMode,
+        password: rawPassword,
       } = invite;
-
       const trimmedEmail = email ? email.trim().toLowerCase() : '';
       const trimmedPhone = phone ? String(phone).trim() : '';
       const source = (itemSource || defaultSource || 'WEB').toUpperCase();
@@ -1318,7 +1345,8 @@ export class UserService {
           source,
           inviterId,
           mode,
-          staffData
+          true, // isBulk
+          rawPassword
         );
 
         successes.push({
@@ -1748,7 +1776,9 @@ export class UserService {
       if (email || mobile) {
         const searchConditions = [];
         if (email) searchConditions.push({ email: email.toLowerCase() });
-        if (mobile) searchConditions.push({ mobile });
+        // The user model stores the number as `phone`; searching a non-existent `mobile` field never matched
+        const normalizedMobile = mobile ? normalizePhone(mobile) : null;
+        if (normalizedMobile) searchConditions.push({ phone: normalizedMobile });
 
         const existingUser = await userRepository.findOne({ $or: searchConditions });
         if (existingUser) {

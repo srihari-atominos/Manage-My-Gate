@@ -32,7 +32,7 @@ export const GuardWalkInStatusView: React.FC = () => {
   // Activate real-time socket listener
   useVisitorSocket();
 
-  const { walkIns, loadPendingWalkIns } = useVisitorPass();
+  const { walkIns, loadPendingWalkIns, resolveWalkIn } = useVisitorPass();
   const dispatch = useDispatch<any>();
   const activeOrgId = useSelector(selectActiveOrgId);
 
@@ -211,6 +211,31 @@ export const GuardWalkInStatusView: React.FC = () => {
                   </Text>
                 </View>
               </View>
+
+              {/* Direct Gate Action Controls for PENDING Walk-Ins */}
+              {item.status === 'PENDING' && (
+                <View className="flex-row gap-2 pt-2.5 mt-2 border-t border-border/40">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onPress={() => resolveWalkIn(item.id, 'REJECT')}
+                    className="flex-1 h-9 rounded-xl border-destructive/30 bg-destructive/10"
+                    accessibilityLabel="Deny Walk-In Entry"
+                  >
+                    <Text className="text-xs font-bold text-destructive">Deny Entry</Text>
+                  </Button>
+
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onPress={() => resolveWalkIn(item.id, 'APPROVE')}
+                    className="flex-1 h-9 rounded-xl bg-emerald-600 active:bg-emerald-700"
+                    accessibilityLabel="Approve Walk-In Entry"
+                  >
+                    <Text className="text-xs font-bold text-white">Approve Entry</Text>
+                  </Button>
+                </View>
+              )}
             </ListCard>
           );
         }}

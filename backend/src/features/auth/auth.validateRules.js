@@ -14,7 +14,13 @@ export const registerRules = [
     .withMessage('Email is required')
     .isEmail()
     .withMessage('Please enter a valid email address')
-    .normalizeEmail(),
+    .normalizeEmail({
+      all_lowercase: true,
+      gmail_remove_subaddress: false,
+      outlookdotcom_remove_subaddress: false,
+      yahoo_remove_subaddress: false,
+      icloud_remove_subaddress: false,
+    }),
   body('username')
     .optional()
     .isAlphanumeric()

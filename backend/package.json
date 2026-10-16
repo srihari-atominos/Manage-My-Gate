@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon --ignore last_error.json server.js",
-    "test": "node --test tests/google.provider.test.mjs tests/apple.provider.test.mjs tests/payment.security.test.mjs tests/phase10.onboarding.test.mjs tests/security.sample-route.test.mjs tests/amenityBooking.socket.security.test.mjs tests/invoice-html-output.security.test.mjs tests/phase4.auth.security.test.mjs tests/phase5.config.security.test.mjs tests/phase6.logging.security.test.mjs tests/staff.rbac.security.test.mjs tests/staffUnitAssociation.security.test.mjs tests/staffAttendance.security.test.mjs tests/staffNotification.security.test.mjs tests/pushCopy.test.mjs tests/workspace.security.test.mjs tests/roleBuilder.security.test.mjs tests/staffReporting.security.test.mjs tests/staffUserIntegration.test.mjs tests/staffManagement.logic.test.mjs tests/staffAttendance.export.test.mjs tests/staffPhoto.test.mjs tests/staffCategory.test.mjs tests/complaintResolution.test.mjs tests/amenityResolution.test.mjs tests/integrationHub.test.mjs"
+    "test": "node --test tests/google.provider.test.mjs tests/apple.provider.test.mjs tests/payment.security.test.mjs tests/phase10.onboarding.test.mjs tests/security.sample-route.test.mjs tests/amenityBooking.socket.security.test.mjs tests/invoice-html-output.security.test.mjs tests/phase4.auth.security.test.mjs tests/phase5.config.security.test.mjs tests/phase6.logging.security.test.mjs tests/staff.rbac.security.test.mjs tests/staffUnitAssociation.security.test.mjs tests/staffAttendance.security.test.mjs tests/staffNotification.security.test.mjs tests/pushCopy.test.mjs tests/workspace.security.test.mjs tests/roleBuilder.security.test.mjs tests/staffReporting.security.test.mjs tests/staffUserIntegration.test.mjs tests/staffManagement.logic.test.mjs tests/staffAttendance.export.test.mjs tests/staffPhoto.test.mjs tests/staffCategory.test.mjs tests/complaintResolution.test.mjs tests/amenityResolution.test.mjs tests/integrationHub.test.mjs",
+    "test:features": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand tests/features/",
+    "test:governance": "node --test tests/features/scheduler/governanceScheduler.test.js tests/features/rbac/governanceRbac.test.js tests/features/poll/pollScheduling.service.test.js tests/features/noticeBoard/noticeGovernance.service.test.js tests/features/poll/pollGovernance.service.test.js tests/features/outbox/governanceOutbox.service.test.js tests/features/e2e/governanceE2E.test.js tests/features/communityEngagement/communityEngagementGateway.test.js tests/features/communityEngagement/communityEngagementCron.test.js",
+    "test:websocket": "node --test tests/websocket_multi_instance_redis_verification.test.mjs tests/websocket_tenant_isolation_remediation.test.mjs tests/sec03_1_websocket_tenant_isolation.test.mjs"
   },
   "keywords": [],
   "author": "",
@@ -55,8 +58,11 @@
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {
+    "jest": "^30.5.2",
     "nodemon": "^3.1.14",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "mongodb-memory-server": "^10.0.0",
+    "socket.io-client": "^4.8.1"
   },
   "overrides": {
     "exceljs": {

@@ -41,7 +41,7 @@ export class NoticeReactionService {
     }
 
     if (notice.orgId.toString() !== orgId.toString()) {
-      throw new HttpError(403, 'Forbidden. Notice belongs to another community.');
+      throw new HttpError(404, `Notice with ID ${noticeId} not found.`);
     }
 
     if (notice.allowReactions === false) {
@@ -133,7 +133,7 @@ export class NoticeReactionService {
     }
 
     if (notice.orgId.toString() !== orgId.toString()) {
-      throw new HttpError(403, 'Forbidden. Notice belongs to another community.');
+      throw new HttpError(404, `Notice with ID ${noticeId} not found.`);
     }
 
     let isEligible = await audienceService.checkEligibility(userId, notice.targetAudience, orgId);

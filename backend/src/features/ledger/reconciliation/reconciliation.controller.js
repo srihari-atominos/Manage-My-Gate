@@ -7,7 +7,7 @@ import financialMetricsService from '../financialMetrics.service.js';
 export class ReconciliationController {
   async getIntegrity(req, res, next) {
     try {
-      const orgId = req.query.orgId || null;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const report = await financialIntegrityService.runIntegrityCheck(orgId);
       res.status(200).json({ success: true, data: report });
     } catch (err) {
@@ -17,7 +17,7 @@ export class ReconciliationController {
 
   async getMetrics(req, res, next) {
     try {
-      const orgId = req.query.orgId || null;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const metrics = await financialMetricsService.getMetrics(orgId);
       res.status(200).json({ success: true, data: metrics });
     } catch (err) {
@@ -27,7 +27,7 @@ export class ReconciliationController {
 
   async getInventory(req, res, next) {
     try {
-      const orgId = req.query.orgId || null;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const inventory = await historicalInventoryService.getInventory(orgId);
       res.status(200).json({ success: true, data: inventory });
     } catch (err) {
@@ -37,7 +37,8 @@ export class ReconciliationController {
 
   async runReconciliation(req, res, next) {
     try {
-      const { orgId, mode, allowGenesis, domains } = req.body;
+      const { mode, allowGenesis, domains } = req.body;
+      const orgId = req.tenant?.isPlatform && req.body.orgId ? req.body.orgId : req.tenant?.orgId;
       const result = await historicalReconciliationService.reconcile({
         orgId,
         mode,
@@ -52,7 +53,7 @@ export class ReconciliationController {
 
   async verifyInvariants(req, res, next) {
     try {
-      const orgId = req.query.orgId || null;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const report = await reconciliationReportService.verifyFinancialInvariants(orgId);
       res.status(200).json({ success: true, data: report });
     } catch (err) {
@@ -63,7 +64,8 @@ export class ReconciliationController {
   async getRunReport(req, res, next) {
     try {
       const { runId } = req.params;
-      const report = await reconciliationReportService.getRunReport(runId);
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
+      const report = await reconciliationReportService.getRunReport(runId, orgId);
       if (!report) {
         return res.status(404).json({ success: false, message: `Run report ${runId} not found` });
       }
@@ -75,7 +77,8 @@ export class ReconciliationController {
 
   async getExceptions(req, res, next) {
     try {
-      const { orgId, status, domain, limit, skip } = req.query;
+      const { status, domain, limit, skip } = req.query;
+      const orgId = req.tenant?.isPlatform && req.query.orgId ? req.query.orgId : req.tenant?.orgId;
       const data = await historicalReconciliationService.getExceptions({
         orgId,
         status,
@@ -94,11 +97,13 @@ export class ReconciliationController {
       const { exceptionId } = req.params;
       const { status, resolutionNotes } = req.body;
       const resolvedBy = req.user?._id || req.user?.id || null;
+      const orgId = req.tenant?.isPlatform && req.body?.orgId ? req.body.orgId : req.tenant?.orgId;
 
       const updated = await historicalReconciliationService.updateException(exceptionId, {
         status,
         resolutionNotes,
         resolvedBy,
+        orgId,
       });
       res.status(200).json({ success: true, data: updated });
     } catch (err) {
@@ -109,3 +114,4 @@ export class ReconciliationController {
 
 export const reconciliationController = new ReconciliationController();
 export default reconciliationController;
+

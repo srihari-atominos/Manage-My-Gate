@@ -11,8 +11,8 @@ export class AuditLogService {
   /**
    * Fetches paginated audit logs for view dashboards
    */
-  async getLogs(page = 1, limit = 10) {
-    return await auditLogRepository.findAllPaginated(Number(page), Number(limit));
+  async getLogs(orgId, page = 1, limit = 10) {
+    return await auditLogRepository.findAllPaginated(orgId, Number(page), Number(limit));
   }
 }
 

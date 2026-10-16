@@ -3,7 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import config from '../../../config/config.js';
+import crypto from 'crypto';
 import HttpError from '../../../utils/httpError.utils.js';
+import { verifyMagicBytesSync, cleanUploadedFiles } from '../../../utils/storage.utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,7 +24,8 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    // Unguessable name: attachments are reachable by URL, so the name itself must not be enumerable
+    const uniqueSuffix = crypto.randomBytes(16).toString('hex');
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `cmp-${uniqueSuffix}${ext}`);
   },
@@ -64,5 +67,21 @@ export const upload = multer({
     files: 5, // Limit number of files to 5
   },
 });
+
+/**
+ * The browser-supplied MIME type and file extension are trivially spoofed, so check the real file
+ * signature after multer has stored the files. Anything that is not an image, PDF, Office document or
+ * mp4/webm video is deleted immediately.
+ */
+export const complaintFileSignatureValidator = (req, res, next) => {
+  const files = Array.isArray(req.files) ? req.files : req.file ? [req.file] : [];
+  const allowed = ['IMAGE', 'PDF', 'DOCUMENT', 'VIDEO'];
+  const invalid = files.find((file) => !verifyMagicBytesSync(file.path, allowed));
+  if (invalid) {
+    cleanUploadedFiles(req);
+    return next(new HttpError(400, 'Invalid file signature detected. The uploaded file content does not match an allowed file type.'));
+  }
+  return next();
+};
 
 export default upload;
