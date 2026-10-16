@@ -22,6 +22,9 @@ export function HeaderActionButton({
   return (
     <Pressable
       hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: Boolean(disabled || loading), busy: loading }}
       disabled={disabled || loading}
       className={cn(
         'h-10 min-w-[88px] flex-row items-center justify-center gap-2 rounded-full border border-neutral-300 bg-white px-4 shadow-xs active:bg-neutral-100',

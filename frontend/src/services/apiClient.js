@@ -18,23 +18,90 @@ const apiClient = axios.create({
   withCredentials: true, // Important for secure cookies (Refresh Token)
 })
 
-let isRefreshing = false
-let failedQueue = []
 let store
+let refreshPromise = null
 
 export const injectStore = (_store) => {
   store = _store
 }
 
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error)
-    } else {
-      prom.resolve(token)
+const isAuthUrl = (url = '') =>
+  [
+    '/auth/login',
+    '/auth/refresh-token',
+    '/auth/register',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+    '/auth/verify-phone',
+    '/auth/verify-email-otp',
+    '/auth/accept-invite',
+    '/auth/accept_invite',
+  ].some((fragment) => url.includes(fragment))
+
+// True when the JWT is expired or about to expire (30s margin). Unreadable tokens count as fresh so the
+// server stays the judge.
+const isTokenExpiring = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof payload.exp === 'number' && payload.exp * 1000 < Date.now() + 30000
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Gets a new access token using the refresh cookie. Single-flight: refresh tokens are single-use, so
+ * concurrent callers (many requests failing at once, or a proactive refresh racing a 401) must share
+ * one request, otherwise the second use of a rotated token would sign the user out.
+ */
+const refreshAccessToken = () => {
+  if (refreshPromise) return refreshPromise
+
+  refreshPromise = (async () => {
+    const refreshBody = {}
+    if (store) {
+      const state = store.getState()
+      const rawOrgId =
+        state.workspace?.activeWorkspace?.orgId ||
+        state.workspace?.activeWorkspace?.id ||
+        state.workspace?.activeWorkspace?._id ||
+        state.auth?.user?.orgId ||
+        state.auth?.user?.org?._id ||
+        state.auth?.user?.org
+
+      const activeOrgId =
+        typeof rawOrgId === 'object' && rawOrgId !== null
+          ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
+          : rawOrgId
+
+      if (activeOrgId && activeOrgId !== '[object Object]') {
+        refreshBody.targetOrgId = activeOrgId
+      }
+      if (state.auth?.user?.role) {
+        refreshBody.targetRole = state.auth.user.role
+      }
+      // Keep the unit the user is acting for; without it a multi-unit resident falls back to a default unit
+      if (state.auth?.user?.villaId) {
+        refreshBody.targetVillaId = state.auth.user.villaId
+      }
     }
+
+    const res = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh-token`, refreshBody, {
+      withCredentials: true,
+    })
+    const newToken = res.data?.token || res.data?.data?.token
+    if (!newToken) throw new Error('Refresh response did not include a token')
+
+    if (store) {
+      store.dispatch({ type: 'auth/updateTokenAndUser', payload: { token: newToken } })
+    }
+    apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newToken
+    return newToken
+  })().finally(() => {
+    refreshPromise = null
   })
-  failedQueue = []
+
+  return refreshPromise
 }
 
 // Request Interceptor: Inject Token and Correlation ID
@@ -53,7 +120,16 @@ apiClient.interceptors.request.use(
       if (store) {
         const state = store.getState()
 
-        const token = state.auth?.token || localStorage.getItem('token')
+        let token = state.auth?.token || localStorage.getItem('token')
+        // A token that is already expired would just earn a 401 (and a red console error) before the silent
+        // refresh retries it, so renew it first. Failures fall through to the normal 401 handling.
+        if (token && !isAuthUrl(config.url) && isTokenExpiring(token)) {
+          try {
+            token = await refreshAccessToken()
+          } catch {
+            /* handled by the 401 path */
+          }
+        }
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
@@ -109,95 +185,24 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized globally with Silent Refresh
     // Auth endpoints (login, register, refresh-token, etc.) must not trigger a silent refresh retry
-    const isAuthEndpoint =
-      originalRequest &&
-      originalRequest.url &&
-      (originalRequest.url.includes('/auth/login') ||
-        originalRequest.url.includes('/auth/refresh-token') ||
-        originalRequest.url.includes('/auth/register') ||
-        originalRequest.url.includes('/auth/forgot-password') ||
-        originalRequest.url.includes('/auth/reset-password') ||
-        originalRequest.url.includes('/auth/verify-phone') ||
-        originalRequest.url.includes('/auth/verify-email-otp') ||
-        originalRequest.url.includes('/auth/accept-invite') ||
-        originalRequest.url.includes('/auth/accept_invite'))
-
     if (
       error.response &&
       error.response.status === 401 &&
+      originalRequest &&
       !originalRequest._retry &&
-      !isAuthEndpoint
+      !isAuthUrl(originalRequest.url)
     ) {
-      if (isRefreshing) {
-        return new Promise(function (resolve, reject) {
-          failedQueue.push({ resolve, reject })
-        })
-          .then((token) => {
-            originalRequest.headers['Authorization'] = 'Bearer ' + token
-            return apiClient(originalRequest)
-          })
-          .catch((err) => {
-            return Promise.reject(err)
-          })
-      }
-
       originalRequest._retry = true
-      isRefreshing = true
-
       try {
-        let refreshBody = {}
-        if (store) {
-          const state = store.getState()
-          const rawOrgId =
-            state.workspace?.activeWorkspace?.orgId ||
-            state.workspace?.activeWorkspace?.id ||
-            state.workspace?.activeWorkspace?._id ||
-            state.auth?.user?.orgId ||
-            state.auth?.user?.org?._id ||
-            state.auth?.user?.org
-            
-          const activeOrgId =
-            typeof rawOrgId === 'object' && rawOrgId !== null
-              ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
-              : rawOrgId
-              
-          if (activeOrgId && activeOrgId !== '[object Object]') {
-            refreshBody.targetOrgId = activeOrgId
-          }
-          if (state.auth?.user?.role) {
-            refreshBody.targetRole = state.auth.user.role
-          }
-        }
-
-        const res = await axios.post(
-          `${apiClient.defaults.baseURL}/auth/refresh-token`,
-          refreshBody,
-          { withCredentials: true },
-        )
-
-        if (res.status === 200 || res.status === 201) {
-          const newToken = res.data.token
-
-          if (store) {
-            store.dispatch({ type: 'auth/updateTokenAndUser', payload: { token: newToken } })
-          }
-
-          apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newToken
-          originalRequest.headers['Authorization'] = 'Bearer ' + newToken
-
-          processQueue(null, newToken)
-          return apiClient(originalRequest)
-        }
+        const newToken = await refreshAccessToken()
+        originalRequest.headers['Authorization'] = 'Bearer ' + newToken
+        return apiClient(originalRequest)
       } catch (refreshError) {
-        processQueue(refreshError, null)
-
         if (store) {
           store.dispatch({ type: 'auth/logout' })
         }
         window.location.href = '/login'
         return Promise.reject(refreshError)
-      } finally {
-        isRefreshing = false
       }
     }
 

@@ -1,4 +1,5 @@
 import technicianService from './technician.service.js';
+import userService from '../user/user.services.js';
 import HttpError from '../../utils/httpError.utils.js';
 import { escapeRegex } from '../../utils/regex.utils.js';
 import {
@@ -29,6 +30,9 @@ class TechnicianController {
   async getAll(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
+      // Backfill users who received a Role Builder staff role before the
+      // role-to-directory sync existed. This is intentionally idempotent.
+      await userService.reconcileMissingStaffDirectoryRecords(orgId);
       const filter = {};
 
       if (req.query.department && req.query.department !== 'ALL' && req.query.department !== 'All Departments') {

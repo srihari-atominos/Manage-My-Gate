@@ -1,38 +1,42 @@
-import { useCallback, useEffect, useRef } from 'react';
+﻿import { useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { getNetworkStatus, subscribeNetworkStatus } from '@/src/services/networkStatus';
 
-/**
- * Keeps a screen's data current without relying only on real-time events.
- * Calls `refresh` when the screen regains focus (coming back from another screen) and when the app
- * returns from the background while the screen is showing. Calls are throttled, and the screen's own
- * initial load counts as a run, so opening a screen never fetches twice.
- */
+/** Keeps a focused screen current on navigation, app resume, and device-network recovery. */
 export function useRefreshOnFocus(refresh: () => void, minIntervalMs = 15000) {
   const refreshRef = useRef(refresh);
   const lastRunRef = useRef(Date.now());
   const focusedRef = useRef(false);
+  const recoveryRef = useRef(getNetworkStatus().recoveredAt);
 
   useEffect(() => {
     refreshRef.current = refresh;
   }, [refresh]);
 
-  const run = useCallback(() => {
+  const run = useCallback((force = false) => {
     const now = Date.now();
-    if (now - lastRunRef.current < minIntervalMs) return;
+    if (!force && now - lastRunRef.current < minIntervalMs) return;
     lastRunRef.current = now;
     refreshRef.current();
   }, [minIntervalMs]);
 
-  useFocusEffect(
-    useCallback(() => {
-      focusedRef.current = true;
-      run();
-      return () => {
-        focusedRef.current = false;
-      };
-    }, [run])
-  );
+  useFocusEffect(useCallback(() => {
+    focusedRef.current = true;
+    run();
+    return () => { focusedRef.current = false; };
+  }, [run]));
+
+  useEffect(() => {
+    const unsubscribe = subscribeNetworkStatus(() => {
+      const recoveredAt = getNetworkStatus().recoveredAt;
+      if (recoveredAt && recoveredAt !== recoveryRef.current) {
+        recoveryRef.current = recoveredAt;
+        if (focusedRef.current) run(true);
+      }
+    });
+    return () => { unsubscribe(); };
+  }, [run]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {

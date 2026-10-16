@@ -610,6 +610,14 @@ export class UserService {
       // An explicit category from the caller wins; otherwise it follows the role's scope
       // (Community Staff → COMMUNITY, Unit Staff → UNIT).
       let staffCategory = staffExtra.staffCategory || null;
+      let staffRoleId = staffExtra.roleId || null;
+      // Callers that already resolved a Role Builder role can provide its scope.
+      // This avoids depending on a second name lookup during reconciliation.
+      if (isStaffRoleScope(staffExtra.roleScope)) {
+        isStaff = true;
+        staffCategory = staffCategory || staffCategoryForRoleScope(staffExtra.roleScope);
+        staffExtra.communityOnly = staffExtra.roleScope === 'COMMUNITY_STAFF' && staffExtra.communityOnly === true;
+      }
 
       if (roleNames.length > 0 && orgId) {
         try {
@@ -619,6 +627,9 @@ export class UserService {
             if (roleDoc && isStaffRoleScope(roleDoc.roleScope)) {
               isStaff = true;
               staffCategory = staffCategory || staffCategoryForRoleScope(roleDoc.roleScope);
+              staffRoleId = staffRoleId || roleDoc._id;
+              // This toggle belongs to the Role Builder role, not a per-user staff form.
+              staffExtra.communityOnly = roleDoc.roleScope === 'COMMUNITY_STAFF' && roleDoc.communityOnly === true;
               break;
             }
           }
@@ -655,6 +666,8 @@ export class UserService {
         departmentOther: staffExtra.departmentOther || '',
         type: staffExtra.staffType || staffExtra.type || 'In-House Staff',
         staffCategory,
+        roleId: staffRoleId || undefined,
+        communityOnly: staffExtra.communityOnly === true,
         designation: staffExtra.designation || (roleNames[0] || 'Staff'),
         staffCode: staffExtra.staffCode || null,
         status: status || 'Active',
@@ -684,10 +697,56 @@ export class UserService {
         });
       }
     } catch (err) {
+      // Do not report a successful staff-role assignment when the corresponding
+      // Staff Directory record was not created or updated.
       console.error('Failed to sync technician for staff user:', err);
+      throw err;
     }
   }
 
+  /**
+   * Repairs historic/incomplete role assignments which have a Community Staff or
+   * Unit Staff role but no Staff Directory record. It only creates missing rows;
+   * it never overwrites an administrator-maintained staff profile.
+   */
+  async reconcileMissingStaffDirectoryRecords(orgId) {
+    const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+    const Technician = (await import('../technician/technician.model.js')).default;
+    const { isStaffRoleScope } = await import('../technician/staffCategory.utils.js');
+
+    const memberships = await OrgMembership.find({ orgId })
+      .populate('userId', 'name username email phone status')
+      .populate('roleId', 'name roleScope communityOnly')
+      .populate('roleIds', 'name roleScope communityOnly')
+      .lean();
+
+    for (const membership of memberships) {
+      const user = membership.userId;
+      if (!user?._id) continue;
+      const roles = [membership.roleId, ...(Array.isArray(membership.roleIds) ? membership.roleIds : [])].filter(Boolean);
+      const staffRole = roles.find((role) => role && isStaffRoleScope(role.roleScope));
+      if (!staffRole) continue;
+
+      const existingDirectoryRecord = await Technician.findOne({ orgId, userId: user._id })
+        .select('isDeleted')
+        .lean();
+      // An active row is already in the directory. A deleted row is restored
+      // because the user's current Role Builder assignment explicitly marks
+      // them as Community Staff or Unit Staff.
+      if (existingDirectoryRecord && !existingDirectoryRecord.isDeleted) continue;
+
+      await this.syncTechnicianForStaffUser(user._id, orgId, [staffRole.name], null, {
+        roleId: staffRole._id,
+        roleScope: staffRole.roleScope,
+        communityOnly: staffRole.communityOnly === true,
+        name: user.name || user.username,
+        email: user.email,
+        phone: user.phone,
+        status: user.status === 'Active' ? 'Active' : 'Pending',
+        allowReactivateDeleted: true,
+      });
+    }
+  }
   async updateUserRoles(userId, orgId, roles, villaId = null, session = null) {
     let localSession = null;
     if (!session) {
@@ -700,6 +759,7 @@ export class UserService {
       const roleService = (await import('../role/role.services.js')).default;
       const roleIds = [];
       const foundRoleNames = [];
+      const foundRoles = [];
       
       const roleNames = (Array.isArray(roles) ? roles : [roles]).filter(Boolean);
       
@@ -721,6 +781,7 @@ export class UserService {
           
           roleIds.push(role._id);
           foundRoleNames.push(role.name);
+          foundRoles.push(role);
         } else {
           throw new HttpError(400, `Role '${name}' not found`);
         }
@@ -746,8 +807,24 @@ export class UserService {
         throw new HttpError(404, 'User organization membership not found.');
       }
       
-      // Auto-sync technician record if updated to a staff/vendor role
-      await this.syncTechnicianForStaffUser(userId, orgId, foundRoleNames, currentSession);
+      // Staff Directory is driven by Role Builder scope. Adding a staff role creates
+      // or restores its record; removing every staff role removes it from the directory.
+      const { isStaffRoleScope } = await import('../technician/staffCategory.utils.js');
+      const assignedStaffRole = foundRoles.find((role) => isStaffRoleScope(role.roleScope));
+      if (assignedStaffRole) {
+        await this.syncTechnicianForStaffUser(userId, orgId, [assignedStaffRole.name], currentSession, {
+          roleId: assignedStaffRole._id,
+          roleScope: assignedStaffRole.roleScope,
+          communityOnly: assignedStaffRole.communityOnly === true,
+          allowReactivateDeleted: true,
+        });
+      } else {
+        const technicianRepository = (await import('../technician/technician.repository.js')).default;
+        const technician = await technicianRepository.findByUserId(userId, orgId);
+        if (technician) {
+          await technicianRepository.softDelete(technician._id, orgId);
+        }
+      }
 
       // Fetch fresh permission array for newly assigned roles
       const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
@@ -936,6 +1013,7 @@ export class UserService {
     hometown,
     allowIntercomCalls,
     interests,
+    notificationPreferences,
     avatarFilename,
     removeAvatar,
   }) {
@@ -973,6 +1051,17 @@ export class UserService {
         payload.$set.interests = interests
           .map((interest) => String(interest).trim())
           .filter(Boolean);
+      }
+      if (notificationPreferences && typeof notificationPreferences === 'object') {
+        if (notificationPreferences.push !== undefined) {
+          payload.$set['notificationPreferences.push'] = Boolean(notificationPreferences.push);
+        }
+        if (notificationPreferences.email !== undefined) {
+          payload.$set['notificationPreferences.email'] = Boolean(notificationPreferences.email);
+        }
+        if (notificationPreferences.sms !== undefined) {
+          payload.$set['notificationPreferences.sms'] = Boolean(notificationPreferences.sms);
+        }
       }
 
       // Phone change verification via OTP

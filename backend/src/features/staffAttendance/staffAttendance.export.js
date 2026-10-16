@@ -1,4 +1,5 @@
-﻿import ExcelJS from 'exceljs';
+import ExcelJS from 'exceljs';
+import PDFDocument from 'pdfkit';
 import moment from 'moment-timezone';
 import staffAttendanceRepository from './staffAttendance.repository.js';
 import technicianService from '../technician/technician.service.js';
@@ -9,16 +10,13 @@ const TIMEZONE = 'Asia/Kolkata';
 const MAX_EXPORT_ROWS = 20000;
 const MAX_ABSENT_DAYS = 62;
 const MISSING_CHECKOUT_MS = 12 * 60 * 60 * 1000;
-const EM_DASH = 'â€”';
+const EM_DASH = '-';
 
 export const ATTENDANCE_COLUMNS = [
   { key: 'date', header: 'Date', width: 18 },
   { key: 'name', header: 'Staff Name', width: 24 },
   { key: 'staffCode', header: 'Staff Code', width: 13 },
-  { key: 'department', header: 'Department', width: 15 },
   { key: 'role', header: 'Role', width: 18 },
-  { key: 'staffCategory', header: 'Staff Scope', width: 18 },
-  { key: 'type', header: 'Employment Type', width: 16 },
   { key: 'status', header: 'Status', width: 22 },
   { key: 'checkIn', header: 'Check-In', width: 12 },
   { key: 'checkOut', header: 'Check-Out', width: 14 },
@@ -55,6 +53,10 @@ export const departmentLabel = (tech = {}) =>
   tech.department === 'Others' && tech.departmentOther ? `Others - ${tech.departmentOther}` : tech.department || EM_DASH;
 
 const guardName = (g) => g?.name || g?.username || EM_DASH;
+const staffScopeLabel = (tech = {}) => {
+  if (!tech?._id) return EM_DASH;
+  return tech.staffCategory === 'UNIT' ? 'Unit Staff' : 'Community Staff';
+};
 
 function statusLabel(rec, now) {
   if (rec.status === 'Open') {
@@ -80,7 +82,7 @@ export function sessionToRow(rec, now = Date.now()) {
     staffCode: rec.staffCode || tech.staffCode || EM_DASH,
     department: departmentLabel(tech),
     role: tech.designation || EM_DASH,
-    staffCategory: tech.staffCategory === 'UNIT' ? 'Unit Staff' : 'Community Staff',
+    staffCategory: staffScopeLabel(tech),
     type: tech.type || EM_DASH,
     status: label,
     checkIn: checkIn ? checkIn.format('hh:mm A') : EM_DASH,
@@ -106,7 +108,7 @@ function absentRow(tech, dayKey) {
     staffCode: tech.staffCode || EM_DASH,
     department: departmentLabel(tech),
     role: tech.designation || EM_DASH,
-    staffCategory: tech.staffCategory === 'UNIT' ? 'Unit Staff' : 'Community Staff',
+    staffCategory: staffScopeLabel(tech),
     type: tech.type || EM_DASH,
     status: 'Absent',
     checkIn: EM_DASH,
@@ -148,7 +150,7 @@ function describeFilters(query) {
   if (query.gateId) parts.push(`Gate: ${query.gateId}`);
   if (query.technicianId) parts.push('One staff member');
   if (query.search) parts.push(`Search: "${String(query.search).slice(0, 60)}"`);
-  return parts.length ? parts.join(' Â· ') : 'None (all attendance)';
+  return parts.length ? parts.join(' · ') : 'None (all attendance)';
 }
 
 /**
@@ -189,6 +191,7 @@ export async function buildAttendanceReport(orgId, query = {}, { generatedBy = '
       const techFilter = { status: 'Active', isDeleted: false };
       if (query.department && query.department !== 'ALL') techFilter.department = query.department;
       if (query.staffCategory && query.staffCategory !== 'ALL') techFilter.staffCategory = query.staffCategory === 'COMMUNITY' ? { $ne: 'UNIT' } : query.staffCategory;
+      if (query.roleId) techFilter.roleId = query.roleId;
       if (query.departmentOther) {
         techFilter.department = 'Others';
         techFilter.departmentOther = query.departmentOther;
@@ -229,6 +232,8 @@ export async function buildAttendanceReport(orgId, query = {}, { generatedBy = '
         name: r.name,
         staffCode: r.staffCode,
         department: r.department,
+        role: r.role,
+        staffCategory: r.staffCategory,
         type: r.type,
         days: new Set(),
         absentDays: 0,
@@ -250,6 +255,8 @@ export async function buildAttendanceReport(orgId, query = {}, { generatedBy = '
       name: e.name,
       staffCode: e.staffCode,
       department: e.department,
+      role: e.role,
+      staffCategory: e.staffCategory,
       type: e.type,
       daysPresent: e.days.size,
       daysAbsent: e.absentDays,
@@ -310,7 +317,7 @@ export function reportToCsv(report) {
   const header = ATTENDANCE_COLUMNS.map((c) => csvCell(c.header)).join(',');
   const lines = report.rows.map((row) => ATTENDANCE_COLUMNS.map((c) => csvCell(row[c.key])).join(','));
   // UTF-8 BOM so Excel opens non-English names correctly.
-  return `ï»¿${[header, ...lines].join('\r\n')}\r\n`;
+  return `﻿${[header, ...lines].join('\r\n')}\r\n`;
 }
 
 // ---------------- Excel ----------------
@@ -377,8 +384,7 @@ export async function reportToXlsxBuffer(report) {
   staffSheet.columns = [
     { header: 'Staff Name', key: 'name', width: 24 },
     { header: 'Staff Code', key: 'staffCode', width: 13 },
-    { header: 'Department', key: 'department', width: 15 },
-    { header: 'Type', key: 'type', width: 16 },
+    { header: 'Role', key: 'role', width: 18 },
     { header: 'Days Present', key: 'daysPresent', width: 14 },
     { header: 'Days Absent', key: 'daysAbsent', width: 13 },
     { header: 'Total Hours', key: 'totalHours', width: 13 },
@@ -394,6 +400,46 @@ export async function reportToXlsxBuffer(report) {
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+
+/** A compact, printable version of the same filtered attendance data. */
+export function reportToPdfBuffer(report) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 32 });
+    const chunks = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const columns = [
+      ['Date', 'date', 74], ['Staff Name', 'name', 106], ['Role', 'role', 96],
+      ['Status', 'status', 76], ['Check-In', 'checkIn', 58], ['Check-Out', 'checkOut', 62],
+    ];
+    const drawHeader = () => {
+      doc.font('Helvetica-Bold').fontSize(15).fillColor('#1F3A5F').text('Staff Attendance Report');
+      doc.font('Helvetica').fontSize(8).fillColor('#4B5563').text(`Period: ${report.summary?.[1]?.[1] || 'All dates'}`);
+      doc.moveDown(0.8);
+      let x = 32;
+      doc.font('Helvetica-Bold').fontSize(7).fillColor('#FFFFFF');
+      columns.forEach(([header, , width]) => { doc.rect(x, doc.y, width, 16).fill('#1F3A5F'); doc.fillColor('#FFFFFF').text(header, x + 3, doc.y + 4, { width: width - 6, lineBreak: false }); x += width; });
+      doc.moveDown(1.5);
+    };
+    const drawRow = (row, index) => {
+      const y = doc.y;
+      const rowHeight = 22;
+      if (y + rowHeight > doc.page.height - 38) { doc.addPage(); drawHeader(); return drawRow(row, index); }
+      let x = 32;
+      if (index % 2) doc.rect(32, y - 2, 720, rowHeight).fill('#F3F4F6');
+      doc.font('Helvetica').fontSize(6.5).fillColor('#111827');
+      columns.forEach(([, key, width]) => { doc.text(String(row[key] ?? EM_DASH), x + 3, y + 3, { width: width - 6, height: 15, ellipsis: true }); x += width; });
+      doc.y = y + rowHeight;
+    };
+
+    drawHeader();
+    report.rows.forEach(drawRow);
+    if (!report.rows.length) doc.font('Helvetica').fontSize(10).fillColor('#4B5563').text('No attendance records match the selected filters.');
+    doc.end();
+  });
+}
 export function exportFileName(format, query = {}) {
   const stamp = moment.tz(TIMEZONE).format('YYYY-MM-DD');
   const period =
@@ -407,13 +453,8 @@ export function exportFileName(format, query = {}) {
 
 export function assertFormat(format) {
   const f = String(format || 'xlsx').toLowerCase();
-  if (!['csv', 'xlsx'].includes(f)) {
-    throw new HttpError(400, 'Export format must be csv or xlsx.');
+  if (!['csv', 'xlsx', 'pdf'].includes(f)) {
+    throw new HttpError(400, 'Export format must be csv, xlsx, or pdf.');
   }
   return f;
 }
-
-
-
-
-

@@ -1,15 +1,16 @@
-import React from 'react';
-import { View } from 'react-native';
+﻿import React from 'react';
+import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { StaffMember } from '../services/staffService';
-import { ShieldCheck, UserCheck } from 'lucide-react-native';
+import { ShieldCheck, QrCode } from 'lucide-react-native';
 import { StaffAvatar } from './StaffAvatar';
 
 interface StaffProfileCardProps {
   member: StaffMember;
   activeOrgId?: string | null;
+  onOpenQrPass?: () => void;
 }
 
 const getStatusVariant = (status: string): StatusVariant => {
@@ -27,11 +28,22 @@ const getStatusVariant = (status: string): StatusVariant => {
 export const StaffProfileCard: React.FC<StaffProfileCardProps> = ({
   member,
   activeOrgId,
+  onOpenQrPass,
 }) => {
   return (
     <View className="mb-4 rounded-3xl bg-card border border-border p-5 shadow-sm">
       {/* Top Profile Summary */}
-      <View className="items-center pb-5 border-b border-border">
+      <View className="items-center pb-5 border-b border-border relative">
+        {onOpenQrPass ? (
+          <TouchableOpacity
+            onPress={onOpenQrPass}
+            className="absolute right-0 top-0 h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center active:opacity-70"
+            accessibilityRole="button"
+            accessibilityLabel="Open digital gate QR pass"
+          >
+            <QrCode size={19} className="text-primary" />
+          </TouchableOpacity>
+        ) : null}
         <View className="mb-3 rounded-full border-2 border-primary/20">
           <StaffAvatar name={member.name} photoUrl={member.photoUrl} size={80} />
         </View>
@@ -79,3 +91,5 @@ export const StaffProfileCard: React.FC<StaffProfileCardProps> = ({
 };
 
 export default StaffProfileCard;
+
+

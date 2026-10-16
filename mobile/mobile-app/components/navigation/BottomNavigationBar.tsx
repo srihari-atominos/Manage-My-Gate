@@ -29,9 +29,17 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { cn } from '../../lib/utils';
-import { useBottomNavScroll } from './BottomNavScrollContext';
+import { useBottomNavScroll, useBottomNavCompact } from './BottomNavScrollContext';
 
 export type MainTabKey = 'dashboard' | 'view_all' | 'profile';
+
+const normalizeRoute = (path: string): string => {
+  if (!path) return '';
+  return path
+    .replace(/\/\([^)]+\)/g, '')
+    .replace(/\/index$/, '')
+    .replace(/\/$/, '') || '/';
+};
 
 interface TabItem {
   key: MainTabKey;
@@ -255,32 +263,12 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
-  const { isCompact, setIsCompact } = useBottomNavScroll();
+  const isCompact = useBottomNavCompact();
+  const { setIsCompact } = useBottomNavScroll();
 
-  // Breadth (width) transition dimensions — height remains constant
+  // Breadth (width) dimensions — fixed to comfortable pill size
   const FULL_BREADTH = Math.min(SCREEN_WIDTH - 32, 252);
-  const COMPACT_BREADTH = FULL_BREADTH;
-
-  const containerBreadth = useSharedValue(isCompact ? COMPACT_BREADTH : FULL_BREADTH);
-
-  useEffect(() => {
-    containerBreadth.value = withTiming(isCompact ? COMPACT_BREADTH : FULL_BREADTH, {
-      duration: 80,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [isCompact, FULL_BREADTH, COMPACT_BREADTH, containerBreadth]);
-
-  const ANDROID_FULL_BREADTH = SCREEN_WIDTH;
-  const ANDROID_COMPACT_BREADTH = Math.min(SCREEN_WIDTH - 40, 360);
-
-  const androidBreadth = useSharedValue(isCompact ? ANDROID_COMPACT_BREADTH : ANDROID_FULL_BREADTH);
-
-  useEffect(() => {
-    androidBreadth.value = withTiming(isCompact ? ANDROID_COMPACT_BREADTH : ANDROID_FULL_BREADTH, {
-      duration: 80,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [isCompact, ANDROID_FULL_BREADTH, ANDROID_COMPACT_BREADTH, androidBreadth]);
+  const containerBreadth = useSharedValue(FULL_BREADTH);
 
   const activeTab: MainTabKey = useMemo(() => {
     if (pathname.includes('/all-features')) return 'view_all';
@@ -400,21 +388,30 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     };
   });
 
+  const lastNavTimeRef = useRef<number>(0);
+
   const navigateToTab = useCallback((item: TabItem) => {
-    router.replace(item.route as any);
+    router.navigate(item.route as any);
   }, [router]);
 
   const handleTabPress = useCallback((item: TabItem) => {
     if (isDraggingShared.value) return;
-    
-    // If the tab is already selected visually, ensure we actually navigate to it
-    // if the user is deep inside a sub-route
-    if (item.key === selectedTabKey) {
-      if (pathname !== item.route) {
-        navigateToTab(item);
-      }
+
+    const currentNorm = normalizeRoute(pathname);
+    const targetNorm = normalizeRoute(item.route);
+
+    // ROOT CAUSE FIX: If the user is ALREADY on the exact screen for this tab,
+    // DO NOT NAVIGATE. This stops re-opening and re-mounting the same page.
+    if (currentNorm === targetNorm) {
       return;
     }
+
+    // Debounce rapid successive taps to prevent queued transitions
+    const now = Date.now();
+    if (now - lastNavTimeRef.current < 350) {
+      return;
+    }
+    lastNavTimeRef.current = now;
 
     const targetIdx = TAB_ITEMS.findIndex((t) => t.key === item.key);
     if (targetIdx >= 0) {
@@ -423,7 +420,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
 
     setSelectedTabKey(item.key);
     navigateToTab(item);
-  }, [isDraggingShared, selectedTabKey, activeTabRatio, navigateToTab]);
+  }, [isDraggingShared, pathname, activeTabRatio, navigateToTab]);
 
   const onDragEnd = useCallback((targetIndex: number) => {
     const item = TAB_ITEMS[targetIndex];
@@ -507,7 +504,9 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
               {
                 height: 56,
                 overflow: 'hidden',
-                backgroundColor: isDark ? 'rgba(16, 17, 20, 0.65)' : 'rgba(255, 255, 255, 0.75)',
+                backgroundColor: isDark
+                  ? (isIOS ? 'rgba(16, 17, 20, 0.75)' : '#101114')
+                  : (isIOS ? 'rgba(255, 255, 255, 0.85)' : '#FFFFFF'),
                 borderColor: containerBorder,
                 borderTopColor: containerBorderTop,
                 borderBottomColor: containerBorderBottom,
@@ -526,11 +525,13 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
               barAnimatedStyle,
             ]}
           >
-            <BlurView
-              intensity={isDark ? 60 : 80}
-              tint={isDark ? 'dark' : 'light'}
-              style={StyleSheet.absoluteFill}
-            />
+            {isIOS && (
+              <BlurView
+                intensity={isDark ? 60 : 80}
+                tint={isDark ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            )}
             {containerWidth > 0 && (
               <Animated.View
                 pointerEvents="none"

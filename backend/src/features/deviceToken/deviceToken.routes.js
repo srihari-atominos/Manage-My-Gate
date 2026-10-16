@@ -21,4 +21,9 @@ router.delete(
   deviceTokenController.unregisterToken
 );
 
+router.delete(
+  '/',
+  deviceTokenController.deactivateAllTokens
+);
+
 export default router;

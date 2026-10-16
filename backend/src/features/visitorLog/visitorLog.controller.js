@@ -140,14 +140,18 @@ export class VisitorLogController {
       if (!req.tenant?.isPlatform && req.tenant?.orgId && String(req.tenant.orgId) !== String(orgId)) {
         throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
       }
-      const skip = parseInt(req.query.skip, 10) || 0;
       const limit = parseInt(req.query.limit, 10) || 10;
+      let skip = parseInt(req.query.skip, 10);
+      if (isNaN(skip)) {
+        const page = parseInt(req.query.page, 10) || 1;
+        skip = Math.max(0, (page - 1) * limit);
+      }
       
       const filter = {};
-      if (req.query.status && req.query.status !== 'all') {
+      if (req.query.status && req.query.status.toLowerCase() !== 'all') {
         filter.logStatus = req.query.status.toUpperCase();
       }
-      if (req.query.entryType && req.query.entryType !== 'all') {
+      if (req.query.entryType && req.query.entryType.toLowerCase() !== 'all') {
         filter.entryType = req.query.entryType.toUpperCase();
       }
       

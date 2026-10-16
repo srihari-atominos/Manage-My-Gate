@@ -5,6 +5,7 @@ import {
   buildAttendanceReport,
   reportToCsv,
   reportToXlsxBuffer,
+  reportToPdfBuffer,
   exportFileName,
   assertFormat,
 } from './staffAttendance.export.js';
@@ -98,6 +99,10 @@ class StaffAttendanceController {
       if (format === 'csv') {
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         return res.send(reportToCsv(report));
+      }
+      if (format === 'pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+        return res.send(await reportToPdfBuffer(report));
       }
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       return res.send(await reportToXlsxBuffer(report));

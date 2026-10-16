@@ -132,7 +132,6 @@ export const useGlobalAppSocket = () => {
       if (!log) return;
       if (log.entryType && log.entryType !== 'WALK_IN') return;
 
-      console.log(`[useGlobalAppSocket] Received GATE_APPROVAL_REQUEST for log ${log._id}`);
       const mappedItem = mapBackendWalkInToApprovalItem(log);
       dispatch(walkInPendingReceived({ mappedItem, rawLog: log }));
 
@@ -149,7 +148,6 @@ export const useGlobalAppSocket = () => {
 
     const handleGateApprovalResolved = (log: any) => {
       if (!log || !log._id) return;
-      console.log(`[useGlobalAppSocket] Received GATE_APPROVAL_RESOLVED for log ${log._id}`);
       dispatch(walkInResolvedReceived({ id: log._id, rawLog: log }));
 
       const u = currentUserRef.current;
@@ -219,12 +217,16 @@ export const useGlobalAppSocket = () => {
           permissions.includes('complaints:staff') ||
           permissions.includes('complaints:assign') ||
           permissions.includes('complaints:settings');
+        const roleScope =
+          u?.roleScope ||
+          u?.activeRoleObj?.roleScope ||
+          (typeof u?.role === 'object' ? u.role?.roleScope : '');
         const canViewOwn =
-          isAdmin ||
           permissions.includes('*') ||
           permissions.includes('staff:view_own') ||
-          permissions.includes('staff:view') ||
-          permissions.includes('staff:manage');
+          permissions.includes('staff:portal') ||
+          roleScope === 'COMMUNITY_STAFF' ||
+          roleScope === 'STAFF';
 
         if (canViewStaff) dispatch(fetchStaffThunk(undefined)).catch(() => {});
         if (canViewOwn) dispatch(fetchMyProfileThunk()).catch(() => {});

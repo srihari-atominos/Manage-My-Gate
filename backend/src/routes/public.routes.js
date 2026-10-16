@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import crmInquiryController from '../features/crmInquiry/crmInquiry.controller.js';
 import { validate } from '../middlewares/validator.middleware.js';
 import { validatePublicLead } from '../features/crmInquiry/crmInquiry.validator.js';
+import issueReportConfigService from '../features/issueReportConfig/issueReportConfig.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,8 +29,15 @@ router.get('/health', (req, res) => {
 
 // Mobile app bootstrap config. MOBILE_MIN_SUPPORTED_VERSION forces older app builds
 // to update before they can sign in (needed before password login is switched off).
-router.get('/app/config', (req, res) => {
+router.get('/app/config', async (req, res) => {
+  // Contact address shown in the app's "Contact support" actions; managed by the platform admin
+  // (Issue Reports > Platform Email Notifications). Empty means the app hides the action.
+  let supportEmail = '';
+  try {
+    supportEmail = await issueReportConfigService.getPlatformReportEmail();
+  } catch (_) { /* never block app bootstrap on this */ }
   res.success({
+    supportEmail,
     minSupportedVersion: process.env.MOBILE_MIN_SUPPORTED_VERSION || '0.0.0',
     latestVersion: process.env.MOBILE_LATEST_VERSION || null,
     storeUrls: {

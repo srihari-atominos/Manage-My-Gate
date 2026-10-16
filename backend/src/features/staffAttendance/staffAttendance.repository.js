@@ -247,6 +247,9 @@ class StaffAttendanceRepository {
     if (filter.staffCategory && filter.staffCategory !== 'ALL') {
       postLookupMatch['technician.staffCategory'] = filter.staffCategory === 'COMMUNITY' ? { $ne: 'UNIT' } : filter.staffCategory;
     }
+    if (filter.roleId) {
+      postLookupMatch['technician.roleId'] = mongoose.Types.ObjectId.isValid(filter.roleId) ? new mongoose.Types.ObjectId(filter.roleId) : filter.roleId;
+    }
     if (filter.departmentOther) {
       postLookupMatch['technician.department'] = 'Others';
       postLookupMatch['technician.departmentOther'] = filter.departmentOther;
@@ -304,6 +307,7 @@ class StaffAttendanceRepository {
           'technician.designation': 1,
           'technician.type': 1,
           'technician.staffCategory': 1,
+          'technician.roleId': 1,
           'technician.staffCode': 1,
           'technician.phone': 1,
           'technician.photoKey': 1,
@@ -406,6 +410,7 @@ class StaffAttendanceRepository {
                 'technician.designation': 1,
                 'technician.type': 1,
           'technician.staffCategory': 1,
+          'technician.roleId': 1,
                 'technician.staffCode': 1,
                 'technician.status': 1,
                 'technician.photoKey': 1,
@@ -572,5 +577,6 @@ class StaffAttendanceRepository {
 }
 
 export default new StaffAttendanceRepository();
+
 
 

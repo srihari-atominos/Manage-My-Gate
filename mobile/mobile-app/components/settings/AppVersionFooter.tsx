@@ -8,12 +8,14 @@ import { useTranslation } from '@/src/utils/i18n';
 export interface AppVersionFooterProps {
   onPressPrivacy?: () => void;
   onPressTerms?: () => void;
+  onPressRefund?: () => void;
   className?: string;
 }
 
 export const AppVersionFooter = ({
   onPressPrivacy,
   onPressTerms,
+  onPressRefund,
   className,
 }: AppVersionFooterProps) => {
   const { t } = useTranslation();
@@ -29,10 +31,10 @@ export const AppVersionFooter = ({
         {t('nahom_enterprise', 'Nahom Enterprise')}
       </Text>
 
-      {onPressPrivacy || onPressTerms ? (
+      {onPressPrivacy || onPressTerms || onPressRefund ? (
         <View className="flex-row items-center gap-3">
           {onPressPrivacy && (
-            <Pressable onPress={onPressPrivacy} hitSlop={6} className="active:opacity-75">
+            <Pressable accessibilityRole="link" onPress={onPressPrivacy} hitSlop={6} className="active:opacity-75">
               <Text className="text-[11px] font-semibold text-primary font-sans underline">
                 {t('privacy_policy', 'Privacy Policy')}
               </Text>
@@ -42,9 +44,19 @@ export const AppVersionFooter = ({
             <Text className="text-[11px] text-muted-foreground">•</Text>
           )}
           {onPressTerms && (
-            <Pressable onPress={onPressTerms} hitSlop={6} className="active:opacity-75">
+            <Pressable accessibilityRole="link" onPress={onPressTerms} hitSlop={6} className="active:opacity-75">
               <Text className="text-[11px] font-semibold text-primary font-sans underline">
                 {t('terms_conditions', 'Terms & Conditions')}
+              </Text>
+            </Pressable>
+          )}
+          {onPressRefund && (onPressPrivacy || onPressTerms) && (
+            <Text className="text-[11px] text-muted-foreground">•</Text>
+          )}
+          {onPressRefund && (
+            <Pressable accessibilityRole="link" onPress={onPressRefund} hitSlop={6} className="active:opacity-75">
+              <Text className="text-[11px] font-semibold text-primary font-sans underline">
+                {t('refund_policy', 'Refund Policy')}
               </Text>
             </Pressable>
           )}

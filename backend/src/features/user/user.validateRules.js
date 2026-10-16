@@ -189,6 +189,25 @@ export const updateProfileRules = [
         && items.every((item) => typeof item === 'string' && item.trim().length > 0 && item.trim().length <= 60);
     })
     .withMessage('Interests must be an array of up to 20 short labels'),
+  body('notificationPreferences')
+    .optional()
+    .isObject()
+    .withMessage('notificationPreferences must be an object'),
+  body('notificationPreferences.push')
+    .optional()
+    .isBoolean()
+    .withMessage('notificationPreferences.push must be a boolean')
+    .toBoolean(),
+  body('notificationPreferences.email')
+    .optional()
+    .isBoolean()
+    .withMessage('notificationPreferences.email must be a boolean')
+    .toBoolean(),
+  body('notificationPreferences.sms')
+    .optional()
+    .isBoolean()
+    .withMessage('notificationPreferences.sms must be a boolean')
+    .toBoolean(),
 ];
 
 export const bulkInviteUserRules = [

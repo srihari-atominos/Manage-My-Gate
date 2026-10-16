@@ -107,7 +107,7 @@ export const StaffCameraCaptureModal: React.FC<StaffCameraCaptureModalProps> = (
             {t('staff_photo_camera_hint', 'Allow camera access to take a photo of the staff member.')}
           </Text>
           <Button variant="default" size="sm" onPress={requestPermission} className="mt-2">
-            <Text className="text-white font-bold text-xs">{t('enable_camera', 'Enable Camera')}</Text>
+            <Text className="text-white font-bold text-xs">{t('continue', 'Continue')}</Text>
           </Button>
         </View>
       );

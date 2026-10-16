@@ -1,5 +1,6 @@
 import logger from '../../utils/logger.utils.js';
 import deviceTokenService from '../deviceToken/deviceToken.services.js';
+import userService from '../user/user.services.js';
 import { buildPushCopy } from './notification.pushCopy.js';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
@@ -99,10 +100,29 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
       return { sent: 0, failed: 0 };
     }
 
-    // 1. Fetch active device tokens from DeviceToken feature service
-    const deviceRecords = await deviceTokenService.getActiveTokensByUserIds(userIds);
+    // 1. Filter out users who disabled push notifications in their preferences
+    const eligibleUserIds = [];
+    for (const uId of userIds) {
+      try {
+        const user = await userService.getUserById(uId);
+        if (user && user.notificationPreferences && user.notificationPreferences.push === false) {
+          logger.info(`[Push Notification] Suppressing push for user ${uId}: user disabled push notifications in preferences`);
+          continue;
+        }
+      } catch (err) {
+        // If lookup fails or user doesn't exist, allow fallback to deviceRecords check
+      }
+      eligibleUserIds.push(uId);
+    }
+
+    if (eligibleUserIds.length === 0) {
+      return { sent: 0, failed: 0 };
+    }
+
+    // 2. Fetch active device tokens from DeviceToken feature service
+    const deviceRecords = await deviceTokenService.getActiveTokensByUserIds(eligibleUserIds);
     if (!deviceRecords || deviceRecords.length === 0) {
-      logger.info(`[Push Notification] No active device tokens found for recipients: [${userIds.join(', ')}]`);
+      logger.info(`[Push Notification] No active device tokens found for recipients: [${eligibleUserIds.join(', ')}]`);
       return { sent: 0, failed: 0 };
     }
 

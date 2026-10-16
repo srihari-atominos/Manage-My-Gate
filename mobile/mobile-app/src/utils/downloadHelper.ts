@@ -137,3 +137,41 @@ export const downloadExcelFile = async (data: Blob | string | Uint8Array, fileNa
     Alert.alert('Download Error', err?.message || 'Could not generate or save Excel file.');
   }
 };
+
+/** Downloads a server-generated PDF on web or opens the native share sheet on mobile. */
+export const downloadPDFFile = async (data: Blob, fileName: string) => {
+  try {
+    const pdfBlob = data as Blob;
+    if (Platform.OS === 'web') {
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 200);
+      return;
+    }
+
+    const fs = LegacyFileSystem || {};
+    const fileUri = `${fs.documentDirectory || fs.cacheDirectory || ''}${fileName}`;
+    const reader = new FileReader();
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        resolve(result.split(',')[1] || result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(pdfBlob);
+    });
+    if (fs.writeAsStringAsync) await fs.writeAsStringAsync(fileUri, base64Data, { encoding: 'base64' });
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(fileUri, { mimeType: 'application/pdf', dialogTitle: `Save or Share ${fileName}`, UTI: 'com.adobe.pdf' });
+    } else {
+      Alert.alert('File Saved', `PDF file saved at:\n${fileUri}`);
+    }
+  } catch (err: any) {
+    console.error('Download PDF error:', err);
+    Alert.alert('Download Error', err?.message || 'Could not generate or save PDF file.');
+  }
+};

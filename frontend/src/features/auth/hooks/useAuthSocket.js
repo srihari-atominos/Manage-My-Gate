@@ -16,13 +16,20 @@ import { useTranslation } from 'react-i18next'
 export const useAuthSocket = () => {
   const dispatch = useDispatch()
   const { t } = useTranslation()
-  const user = useSelector((state) => state.auth.user)
+  // Primitives, not the user object: that object is replaced on every token/workspace refresh, which would
+  // tear down a socket that is still connecting ("WebSocket is closed before the connection is established").
+  const userId = useSelector((state) => state.auth.user?.id)
+  const orgId = useSelector((state) => state.auth.user?.orgId)
   const token = useSelector((state) => state.auth.token)
   const socketRef = useRef(null)
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
 
   useEffect(() => {
     // Only connect if user is authenticated and token exists
-    if (!user || !user.id || !token) {
+    if (!userId || !token) {
       if (socketRef.current) {
         socketRef.current.disconnect()
         socketRef.current = null
@@ -42,37 +49,36 @@ export const useAuthSocket = () => {
 
     // Join room dedicated to current user
     socket.on('connect', () => {
-      socket.emit('join_room', `user:${user.id}`)
-      if (user.orgId) {
-        socket.emit('join_room', `org:${user.orgId}`)
+      socket.emit('join_room', `user:${userId}`)
+      if (orgId) {
+        socket.emit('join_room', `org:${orgId}`)
       }
     })
 
     // Listen to session revocation events
     const handleSessionRevoked = (data) => {
       // Trigger error toast and immediately logout user
-      toast.error(t('auth.session.revoked', 'Your session has been revoked. Please log in again.'))
+      toast.error(
+        tRef.current('auth.session.revoked', 'Your session has been revoked. Please log in again.'),
+      )
       dispatch(logout())
     }
 
     // Listen to real-time unit allocation or user updates to refresh state seamlessly
     const handleResidentAssigned = (data) => {
-      if (data?.userId === user.id || data?.residentId === user.id) {
-        toast.success(t('auth.unit.allocated', 'You have been allocated to a unit.'))
-        dispatch(switchWorkspaceContext({ targetOrgId: user.orgId, targetVillaId: data.villaId }))
+      if (data?.userId === userId || data?.residentId === userId) {
+        toast.success(tRef.current('auth.unit.allocated', 'You have been allocated to a unit.'))
+        dispatch(switchWorkspaceContext({ targetOrgId: orgId, targetVillaId: data.villaId }))
       }
     }
 
     const handleRecordUpdated = (data) => {
-      if (data?.type === 'USER' && data?.userId === user.id) {
-        dispatch(switchWorkspaceContext({ targetOrgId: user.orgId }))
+      if (data?.type === 'USER' && data?.userId === userId) {
+        dispatch(switchWorkspaceContext({ targetOrgId: orgId }))
       }
-      if (
-        data?.type === 'ORGANIZATION' &&
-        (data?.orgId === user.orgId || data?.data?.orgId === user.orgId)
-      ) {
+      if (data?.type === 'ORGANIZATION' && (data?.orgId === orgId || data?.data?.orgId === orgId)) {
         // Refresh token context to capture any new role/platform permissions
-        dispatch(switchWorkspaceContext({ targetOrgId: user.orgId }))
+        dispatch(switchWorkspaceContext({ targetOrgId: orgId }))
         // Refresh the frontend UI features
         dispatch(loadCurrentModules())
       }
@@ -89,7 +95,7 @@ export const useAuthSocket = () => {
       socket.disconnect()
       socketRef.current = null
     }
-  }, [dispatch, user, token, t])
+  }, [dispatch, userId, orgId, token])
 
   // Hook doesn't need to return anything
 }

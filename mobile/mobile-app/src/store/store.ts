@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, type Middleware } from '@reduxjs/toolkit';
 import authReducer from '../features/auth/store/authSlice';
 import visitorPassReducer from '../features/visitor/store/visitorPassSlice';
 import noticeBoardReducer from '../features/noticeBoard/store/noticeBoardSlice';
@@ -25,10 +25,33 @@ import communityEngagementReducer from '../features/communityEngagement/store/co
 import issueReportReducer from '../features/issueReport/store/issueReportSlice';
 
 import { injectStore } from '../services/apiClient';
+import { isConnectivityErrorMessage } from '../services/networkStatus';
 
 import visitorReducer from '../modules/visitor-management/visitorSlice';
 import staffReducer from '../features/staff/store/staffSlice';
 import automationReducer from '../modules/automation-engine/automationSlice';
+
+/**
+ * A lost connection is already communicated by NetworkRecoveryProvider. Redux features used to
+ * copy the same message into local error fields, causing every list/form to render its own red
+ * alert. Strip only recognised connectivity messages before reducers see rejected actions; real
+ * validation, permission and server business errors remain unchanged.
+ */
+const suppressInlineConnectivityErrors: Middleware = () => (next) => (action) => {
+  const rejectedAction = action as any;
+  if (typeof rejectedAction?.type !== 'string' || !rejectedAction.type.endsWith('/rejected')) {
+    return next(action);
+  }
+
+  const message = rejectedAction.payload ?? rejectedAction.error?.message;
+  if (!isConnectivityErrorMessage(message)) return next(action);
+
+  return next({
+    ...rejectedAction,
+    payload: null,
+    error: { ...rejectedAction.error, message: '' },
+  });
+};
 
 export const store = configureStore({
   reducer: {
@@ -63,7 +86,7 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
-    }),
+    }).concat(suppressInlineConnectivityErrors),
 });
 
 injectStore(store);

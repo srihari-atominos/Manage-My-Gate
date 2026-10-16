@@ -1,5 +1,6 @@
 import { Text } from '@/components/ui/text';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import {
   Mail,
   Lock,
@@ -57,6 +58,8 @@ import { useTranslation } from '@/src/utils/i18n';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import { isConnectivityErrorMessage } from '@/src/services/networkStatus';
+import { useNetworkStatus } from '@/src/features/network/NetworkRecoveryProvider';
 
 // 1. Basic Auth Validation Schema
 const emailAuthSchema = yup.object().shape({
@@ -88,6 +91,11 @@ export default function LoginScreen() {
   const dispatch = useDispatch();
   
   const { user, requestOtp, verifyOtp, error, isAuthenticated, otpSent, clearStatus, acceptInvitation } = useAuth();
+  const network = useNetworkStatus();
+  const deviceOffline = !network.isOnline;
+  // Connectivity feedback is already presented once by the global, non-destructive status banner.
+  // Keep this card for account and validation errors only.
+  const showAuthError = Boolean(error) && !isConnectivityErrorMessage(error);
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{
     intent?: string;
@@ -618,7 +626,7 @@ export default function LoginScreen() {
 
     if (authMode === 'basic') {
       const trimmed = emailOtpCode.trim();
-      if (trimmed.length === 4 && trimmed !== lastAttemptedCodeRef.current && !isSubmittingBasic) {
+      if (trimmed.length === 6 && trimmed !== lastAttemptedCodeRef.current && !isSubmittingBasic) {
         lastAttemptedCodeRef.current = trimmed;
         dismissKeyboard();
         const emailVal = basicForm.getValues('login')?.trim() || submitted?.value?.trim();
@@ -911,7 +919,7 @@ export default function LoginScreen() {
                           )}
                         </View>
                         <OtpInputField
-                          length={4}
+                          length={6}
                           value={emailOtpCode}
                           onValueChange={setEmailOtpCode}
                           variant="light"
@@ -932,7 +940,7 @@ export default function LoginScreen() {
                     </View>
 
                     {/* Global Error Banner */}
-                    {error ? (
+                    {showAuthError ? (
                       <View className="bg-[#FFF1F2] border border-[#FDA4AF] rounded-xl p-2.5 shadow-sm">
                         <Text className="text-[#9F1239] text-xs text-center font-bold">
                           {error}
@@ -944,7 +952,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handleBasicSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && emailOtpCode.length < 4)}
+                        disabled={deviceOffline || isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && emailOtpCode.length < 6)}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -952,6 +960,7 @@ export default function LoginScreen() {
                           shadowOpacity: 0.35,
                           shadowRadius: 14,
                           elevation: 4,
+                          opacity: deviceOffline ? 0.55 : 1,
                         }}
                         className="mt-1 h-[48px] rounded-full flex-row items-center justify-center gap-2 overflow-hidden relative"
                       >
@@ -1098,7 +1107,7 @@ export default function LoginScreen() {
                     </View>
 
                     {/* Global Error Banner */}
-                    {error ? (
+                    {showAuthError ? (
                       <View className="bg-[#FFF1F2] border border-[#FDA4AF] rounded-xl p-2.5 shadow-sm">
                         <Text className="text-[#9F1239] text-xs text-center font-bold">
                           {error}
@@ -1110,7 +1119,7 @@ export default function LoginScreen() {
                     <Animated.View style={{ transform: [{ scale: buttonPressScale }] }}>
                       <TouchableOpacity
                         onPress={handlePhoneSignIn}
-                        disabled={isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && phoneOtpCode.length < 4)}
+                        disabled={deviceOffline || isSubmittingBasic || isSubmittingPhone || googleLoading || (otpSent && phoneOtpCode.length < 4)}
                         activeOpacity={0.9}
                         style={{
                           shadowColor: '#EA580C',
@@ -1118,6 +1127,7 @@ export default function LoginScreen() {
                           shadowOpacity: 0.35,
                           shadowRadius: 14,
                           elevation: 4,
+                          opacity: deviceOffline ? 0.55 : 1,
                         }}
                         className="mt-1 h-[48px] rounded-full flex-row items-center justify-center gap-2 overflow-hidden relative"
                       >
@@ -1194,6 +1204,35 @@ export default function LoginScreen() {
                   disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
                 />
               </View>
+
+              {/* Legal consent: signing in means accepting the Terms and Privacy Policy */}
+              <Text className="mt-4 px-4 text-center text-[11px] leading-4 text-white/60">
+                {t('login_consent_prefix', 'By continuing, you agree to our')}{' '}
+                <Text
+                  accessibilityRole="link"
+                  className="text-[11px] font-semibold text-white underline"
+                  onPress={() => void WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/terms')}
+                >
+                  {t('terms_of_service', 'Terms of Service')}
+                </Text>
+                {', '}
+                <Text
+                  accessibilityRole="link"
+                  className="text-[11px] font-semibold text-white underline"
+                  onPress={() => void WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/privacy-policy')}
+                >
+                  {t('privacy_policy', 'Privacy Policy')}
+                </Text>
+                {` ${t('and', 'and')} `}
+                <Text
+                  accessibilityRole="link"
+                  className="text-[11px] font-semibold text-white underline"
+                  onPress={() => void WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/refund-policy')}
+                >
+                  {t('refund_policy', 'Refund Policy')}
+                </Text>
+                .
+              </Text>
 
               {/* Brand footer: kept inside the scroll content so it is reachable on short screens and with the keyboard open. */}
               <View

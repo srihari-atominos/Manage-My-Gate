@@ -11,6 +11,14 @@ import staffService, {
   StaffAttendanceRecord,
   StaffAttendanceStats,
 } from '../services/staffService';
+import { isConnectivityErrorMessage } from '@/src/services/networkStatus';
+
+// Connectivity is communicated once by the global network banner. Keeping it out of feature state
+// prevents every staff screen from duplicating it as a destructive (red) form/list error.
+const visibleStaffError = (payload: unknown): string | null => {
+  const message = typeof payload === 'string' ? payload : '';
+  return message && !isConnectivityErrorMessage(message) ? message : null;
+};
 
 export interface StaffState {
   staffList: StaffMember[];
@@ -319,7 +327,7 @@ export const staffSlice = createSlice({
       })
       .addCase(fetchStaffThunk.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload as string;
+        state.error = visibleStaffError(action.payload);
       })
       // Fetch My Profile (Self-Service)
       .addCase(fetchMyProfileThunk.pending, (state) => {
@@ -332,7 +340,7 @@ export const staffSlice = createSlice({
       })
       .addCase(fetchMyProfileThunk.rejected, (state, action) => {
         state.isProfileLoading = false;
-        state.profileError = action.payload as string;
+        state.profileError = visibleStaffError(action.payload);
       })
       // Create
       .addCase(createStaffThunk.pending, (state) => {
@@ -350,7 +358,7 @@ export const staffSlice = createSlice({
       })
       .addCase(createStaffThunk.rejected, (state, action) => {
         state.isSubmitting = false;
-        state.error = action.payload as string;
+        state.error = visibleStaffError(action.payload);
       })
       // Update
       .addCase(updateStaffThunk.pending, (state) => {
@@ -372,7 +380,7 @@ export const staffSlice = createSlice({
       })
       .addCase(updateStaffThunk.rejected, (state, action) => {
         state.isSubmitting = false;
-        state.error = action.payload as string;
+        state.error = visibleStaffError(action.payload);
       })
       // Delete
       .addCase(deleteStaffThunk.pending, (state) => {
@@ -391,7 +399,7 @@ export const staffSlice = createSlice({
       })
       .addCase(deleteStaffThunk.rejected, (state, action) => {
         state.isSubmitting = false;
-        state.error = action.payload as string;
+        state.error = visibleStaffError(action.payload);
       })
       // My Units
       .addCase(fetchMyUnitsThunk.fulfilled, (state, action) => {
@@ -412,7 +420,7 @@ export const staffSlice = createSlice({
       })
       .addCase(fetchAssociationsThunk.rejected, (state, action) => {
         state.isAssociationsLoading = false;
-        state.associationError = action.payload as string;
+        state.associationError = visibleStaffError(action.payload);
       })
       // Create Association
       .addCase(createAssociationThunk.pending, (state) => {
@@ -425,7 +433,7 @@ export const staffSlice = createSlice({
       })
       .addCase(createAssociationThunk.rejected, (state, action) => {
         state.isAssociationSubmitting = false;
-        state.associationError = action.payload as string;
+        state.associationError = visibleStaffError(action.payload);
       })
       // Remove Association
       .addCase(removeAssociationThunk.pending, (state) => {
@@ -439,7 +447,7 @@ export const staffSlice = createSlice({
       })
       .addCase(removeAssociationThunk.rejected, (state, action) => {
         state.isAssociationSubmitting = false;
-        state.associationError = action.payload as string;
+        state.associationError = visibleStaffError(action.payload);
       })
       // My Allocations (Self-Service)
       .addCase(fetchMyAllocationsThunk.pending, (state) => {
@@ -452,7 +460,7 @@ export const staffSlice = createSlice({
       })
       .addCase(fetchMyAllocationsThunk.rejected, (state, action) => {
         state.isAllocationsLoading = false;
-        state.allocationsError = action.payload as string;
+        state.allocationsError = visibleStaffError(action.payload);
       })
       // Accept Allocation
       .addCase(acceptAssociationThunk.fulfilled, (state, action) => {
@@ -481,7 +489,7 @@ export const staffSlice = createSlice({
       })
       .addCase(fetchAttendanceStatsThunk.rejected, (state, action) => {
         state.isAttendanceLoading = false;
-        state.attendanceError = action.payload as string;
+        state.attendanceError = visibleStaffError(action.payload);
       })
       // Attendance History
       .addCase(fetchAttendanceHistoryThunk.pending, (state) => {
@@ -495,7 +503,7 @@ export const staffSlice = createSlice({
       })
       .addCase(fetchAttendanceHistoryThunk.rejected, (state, action) => {
         state.isAttendanceLoading = false;
-        state.attendanceError = action.payload as string;
+        state.attendanceError = visibleStaffError(action.payload);
       })
       // My Attendance (Self-Service)
       .addCase(fetchMyAttendanceThunk.pending, (state) => {
@@ -508,7 +516,7 @@ export const staffSlice = createSlice({
       })
       .addCase(fetchMyAttendanceThunk.rejected, (state, action) => {
         state.isMyAttendanceLoading = false;
-        state.myAttendanceError = action.payload as string;
+        state.myAttendanceError = visibleStaffError(action.payload);
       });
   },
 });

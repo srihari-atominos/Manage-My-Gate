@@ -58,6 +58,7 @@ export const validateHistoryQuery = validate([
     .isString().withMessage('Type must be a string')
     .trim(),
   query('staffCategory').optional().isIn(['COMMUNITY', 'UNIT']).withMessage('Staff category must be COMMUNITY or UNIT'),
+  query('roleId').optional().isMongoId().withMessage('Invalid role ID'),
   query('departmentOther').optional().isString().trim(),
   query('search')
     .optional()
@@ -68,7 +69,7 @@ export const validateHistoryQuery = validate([
 export const validateExportQuery = validate([
   query('format')
     .optional()
-    .isIn(['csv', 'xlsx']).withMessage('Format must be csv or xlsx'),
+    .isIn(['csv', 'xlsx', 'pdf']).withMessage('Format must be csv, xlsx, or pdf'),
   query('technicianId')
     .optional()
     .isMongoId().withMessage('Invalid technician ID format'),
@@ -85,6 +86,7 @@ export const validateExportQuery = validate([
   query('department').optional().isString().trim(),
   query('type').optional().isString().trim(),
   query('staffCategory').optional().isIn(['COMMUNITY', 'UNIT']).withMessage('Staff category must be COMMUNITY or UNIT'),
+  query('roleId').optional().isMongoId().withMessage('Invalid role ID'),
   query('departmentOther').optional().isString().trim(),
   query('search').optional().isString().trim(),
 ]);
@@ -111,4 +113,6 @@ export const validateManualCheckout = validate([
     .isString().withMessage('Gate ID must be a string')
     .trim(),
 ]);
+
+
 

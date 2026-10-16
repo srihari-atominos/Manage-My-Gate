@@ -2207,6 +2207,28 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     return user;
   }
 
+  /** Creates an active, community-less account for a first-time Apple sign-in. @private */
+  async _provisionAppleUser(identityData, session) {
+    const { providerEmail: email, profileData } = identityData;
+    const name = (profileData?.name || '').trim();
+    const base = (name || email.split('@')[0]).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
+    let username = base.length >= 3 ? base : 'user';
+    while (await userService.getUserByEmailOrUsername(username, session).catch(() => null)) {
+      username = `${base.length >= 3 ? base : 'user'}${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+    return await userService.createUser(
+      {
+        email,
+        username,
+        name: name || undefined,
+        status: 'Active',
+        emailVerified: identityData.emailVerified === true,
+        privacyPolicyAcceptedAt: new Date(),
+      },
+      session
+    );
+  }
+
   /**
    * Internal helper to find/register SSO users, activate pending invitations, and scope sessions.
    * @private
@@ -2242,6 +2264,14 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       if (!user && email && identityData.emailVerified === true) {
         // Fallback: link by email, but only when the provider has verified it
         user = await userService.getUserByEmail(email, session);
+      }
+
+      if (!user && provider === 'apple' && email) {
+        // App Store review requires Sign in with Apple to work for a brand-new Apple ID.
+        // The account has no community membership, so it gets no access until invited;
+        // the app lands it on the "not part of a community yet" screen.
+        user = await this._provisionAppleUser(identityData, session);
+        authEvents.emit('USER_CREATED', { userId: user._id, provider });
       }
 
       if (!user) {
@@ -2292,13 +2322,16 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
   async initiatePhoneLogin(phone) {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
-    await otpService.assertCanSend(normalizedPhone);
     const user = await userService.getUserByPhone(normalizedPhone);
     if (!user) {
-      await otpService.recordSend(normalizedPhone);
-      return { message: OTP_SENT_PHONE_MESSAGE };
+      throw new HttpError(404, 'No account was found for this phone number. Please contact your community administrator.');
     }
 
+    if (!['Active', 'Pending', 'Pending Verification'].includes(user.status)) {
+      throw new HttpError(403, `This account is ${String(user.status || 'inactive').toLowerCase()} and cannot sign in.`);
+    }
+
+    await otpService.assertCanSend(normalizedPhone);
     if (otpService.isReviewAccount(normalizedPhone)) {
       const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
       return { message: 'OTP sent successfully', ...devCodeField(normalizedPhone, plainCode) };
@@ -2352,6 +2385,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       const sendUrl = new URL('https://control.msg91.com/api/v5/otp');
       sendUrl.searchParams.set('template_id', templateId);
       sendUrl.searchParams.set('mobile', normalizedPhone.replace(/^\+/, ''));
+      sendUrl.searchParams.set('otp_length', '4');
       if (senderId) {
         sendUrl.searchParams.set('sender', senderId);
       }

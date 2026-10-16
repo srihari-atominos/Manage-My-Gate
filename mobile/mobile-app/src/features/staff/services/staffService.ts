@@ -74,6 +74,7 @@ export interface StaffMember {
   status: StaffStatus;
   designation?: string;
   staffCode?: string;
+  authorId?: string;
   photoUrl?: string | null;
   userId?: string | null;
   whatsappEnabled?: boolean;
@@ -95,6 +96,7 @@ export interface CreateStaffPayload {
   status?: StaffStatus;
   designation?: string;
   staffCode?: string;
+  authorId: string;
   qrValidFrom?: string;
   qrValidUntil?: string;
   shiftWindow?: {
@@ -117,6 +119,7 @@ export interface UpdateStaffPayload {
   status?: StaffStatus;
   designation?: string;
   staffCode?: string;
+  authorId?: string;
   qrValidFrom?: string;
   qrValidUntil?: string;
   shiftWindow?: {
@@ -436,7 +439,7 @@ export const staffService = {
    * Server-built, user-friendly attendance report. The shared apiClient unwraps `response.data`,
    * so a blob request resolves to the file itself.
    */
-  exportAttendanceReport: async (params: Record<string, any>, format: 'csv' | 'xlsx'): Promise<Blob> => {
+  exportAttendanceReport: async (params: Record<string, any>, format: 'csv' | 'xlsx' | 'pdf'): Promise<Blob> => {
     const res: any = await apiClient.get(`${ATTENDANCE_BASE_URL}/export`, {
       params: { ...params, format },
       responseType: 'blob',
@@ -460,4 +463,5 @@ export const staffService = {
 };
 
 export default staffService;
+
 

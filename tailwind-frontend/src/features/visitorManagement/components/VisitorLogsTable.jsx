@@ -7,17 +7,42 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import toast from 'react-hot-toast';
 
-export const VisitorLogsTable = ({ logs }) => {
+const getDestinationString = (log) => {
+  const v = log?.villa;
+  if (typeof v === 'object' && v !== null) {
+    const unit = v.unitNumber || v.villaNumber || '';
+    const block = v.blockOrBuilding || v.block || '';
+    if (unit && block) return `${unit} (${block})`;
+    if (unit) return unit;
+    if (block) return block;
+  } else if (typeof v === 'string' && v.trim()) {
+    return v;
+  }
+  const passVilla = log?.passId?.villaId;
+  if (typeof passVilla === 'object' && passVilla !== null) {
+    const unit = passVilla.unitNumber || passVilla.villaNumber || '';
+    const block = passVilla.blockOrBuilding || passVilla.block || '';
+    if (unit && block) return `${unit} (${block})`;
+    if (unit) return unit;
+  } else if (typeof passVilla === 'string' && passVilla.trim()) {
+    return passVilla;
+  }
+  return 'Villa Gate';
+};
+
+export const VisitorLogsTable = ({ logs = [] }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Let's set logs per page slightly higher than legacy 3 for better view
 
+  const safeLogs = Array.isArray(logs) ? logs : [];
+
   // Filter logs based on search and drop-downs
-  const filteredLogs = logs.filter(log => {
+  const filteredLogs = safeLogs.filter(log => {
     const name = log.visitorName || log.snapshot?.visitorName || '';
-    const destination = log.villa || (log.passId?.villaId?.villaNumber || '');
+    const destination = getDestinationString(log);
     const guardName = log.guard || log.guardId?.name || '';
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -41,7 +66,7 @@ export const VisitorLogsTable = ({ logs }) => {
     const exportData = filteredLogs.map((log) => {
       const name = log.visitorName || log.snapshot?.visitorName || '—';
       const type = (log.type || (log.entryType === 'PRE_APPROVED' ? 'guest' : 'walk_in')).replace('_', ' ');
-      const destination = log.villa || log.passId?.villaId?.villaNumber || 'Villa Gate';
+      const destination = getDestinationString(log);
       const resident = log.resident || log.residentId?.name || '—';
       const checkIn = log.checkIn || (log.checkInTime ? new Date(log.checkInTime).toLocaleString('en-US') : '—');
       const checkOut = log.checkOut || (log.checkOutTime ? new Date(log.checkOutTime).toLocaleString('en-US') : '—');
@@ -168,7 +193,7 @@ export const VisitorLogsTable = ({ logs }) => {
                   const logId = log.id || log._id;
                   const name = log.visitorName || log.snapshot?.visitorName || '—';
                   const type = log.type || (log.entryType === 'PRE_APPROVED' ? 'guest' : 'walk-in');
-                  const villa = log.villa || (log.passId?.villaId?.villaNumber || 'Villa Gate');
+                  const villa = getDestinationString(log);
                   const resident = log.resident || log.residentId?.name || '—';
                   
                   const checkIn = log.checkIn || (log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—');

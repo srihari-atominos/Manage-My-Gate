@@ -54,7 +54,6 @@ export const useDashboard = () => {
   const { checkPermission } = useAuth()
   const allowedFeatures = activeWorkspace?.allowedFeatures || []
   const isPlatform = activeWorkspace?.isPlatform || false
-  console.log('--- DEBUG useDashboard allowedFeatures:', allowedFeatures)
 
   const SUPER_ADMIN_PATHS = new Set([
     '/super-admin/organizations',

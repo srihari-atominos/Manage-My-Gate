@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
 import { View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -162,6 +163,7 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
   const handlePickDocument = async () => {
     try {
       setErrorMsg(null);
+      if (!(await confirmPickerDisclosure('document'))) return;
       const result = await DocumentPicker.getDocumentAsync({
         type: [
           'text/csv',

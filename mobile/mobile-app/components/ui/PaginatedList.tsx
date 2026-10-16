@@ -4,7 +4,8 @@ import { AppLoader } from './AppLoader';
 import { Text } from './text';
 import { cn } from '../../lib/utils';
 import * as LucideIcons from 'lucide-react-native';
-import { Inbox } from 'lucide-react-native';
+import { CloudOff, Inbox } from 'lucide-react-native';
+import { useIsNetworkBannerVisible, useReconnectEffect } from '../../src/features/network/NetworkRecoveryProvider';
 import * as React from 'react';
 import { FlatList, RefreshControl, View, StyleProp, ViewStyle, Platform } from 'react-native';
 
@@ -65,6 +66,9 @@ export function PaginatedList<T>({
   const { language } = useTranslation();
   const { handleScroll } = useBottomNavScroll();
   const onEndReachedCalledDuringMomentum = React.useRef(false);
+  const connectionIssue = useIsNetworkBannerVisible();
+  // Reload automatically once the connection is back so stale or empty lists recover on their own
+  useReconnectEffect(() => onRefresh?.());
 
   const currentPage = pagination?.currentPage ?? (pagination as any)?.page ?? 1;
   const totalPages = pagination?.totalPages ?? 1;
@@ -156,6 +160,20 @@ export function PaginatedList<T>({
     }
 
     if (!loading && data.length === 0) {
+      // Empty while offline almost always means the load failed, not that there is nothing to show
+      if (connectionIssue) {
+        return (
+          <View className="flex-1 justify-center items-center p-6 min-h-[300px]">
+            <Icon as={CloudOff} size={48} className="text-primary/70" />
+            <Text className="text-center mt-4 text-foreground font-sans font-bold text-[18px]">
+              Can't load right now
+            </Text>
+            <Text variant="muted" className="text-center mt-2 text-muted-foreground font-sans text-[14px]">
+              Your information is safe. Reconnect and pull down to refresh.
+            </Text>
+          </View>
+        );
+      }
       const IconComponent = getEmptyIconComponent(emptyIcon);
       return (
         <View className="flex-1 justify-center items-center p-6 min-h-[300px]">

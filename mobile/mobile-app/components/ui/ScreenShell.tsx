@@ -7,7 +7,6 @@ import {
   BackHandler,
   Keyboard,
   Platform,
-  Linking,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
 } from 'react-native';
@@ -19,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { openSupportMail, useSupportEmail } from '@/src/services/supportContact';
 import * as LucideIcons from 'lucide-react-native';
 import { ChevronLeft, AlertCircle, Compass, Mail } from 'lucide-react-native';
 import { Text } from './text';
@@ -100,6 +100,7 @@ export function ScreenShell({
   const router = useRouter();
   const pathname = usePathname() || '';
   const insets = useSafeAreaInsets();
+  const supportEmail = useSupportEmail();
   const { t, translateText, language } = useTranslation();
   const { isCompact, setIsCompact, scrollHandlerProps } = useBottomNavScroll();
 
@@ -310,11 +311,15 @@ export function ScreenShell({
             </Text>
           </View>
           <View className="flex-row items-center gap-1.5 shrink-0">
-            <Pressable
+            {supportEmail ? <Pressable
               onPress={() => {
-                const subject = encodeURIComponent(`Nahom App Error Report: ${title}`);
-                const body = encodeURIComponent(`Screen: ${title}\nError: ${error}\nPlatform: ${Platform.OS}\nTime: ${new Date().toISOString()}`);
-                Linking.openURL(`mailto:developer@nahom.com?subject=${subject}&body=${body}`);
+                void openSupportMail(
+                  `Nahom App Error Report: ${title}`,
+                  `Screen: ${title}
+Error: ${error}
+Platform: ${Platform.OS}
+Time: ${new Date().toISOString()}`
+                );
               }}
               className="p-1.5 rounded-lg bg-destructive/15 border border-destructive/30 flex-row items-center gap-1 active:opacity-75"
               accessibilityRole="button"
@@ -322,7 +327,7 @@ export function ScreenShell({
             >
               <Icon as={Mail} size={13} className="text-destructive" />
               <Text className="text-[11px] font-bold text-destructive">Contact Dev</Text>
-            </Pressable>
+            </Pressable> : null}
             {onRetry ? (
               <Pressable
                 onPress={onRetry}

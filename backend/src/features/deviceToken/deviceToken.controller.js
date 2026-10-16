@@ -27,6 +27,19 @@ export class DeviceTokenController {
       next(error);
     }
   }
+
+  /**
+   * Deactivate all device tokens for the authenticated user.
+   */
+  async deactivateAllTokens(req, res, next) {
+    try {
+      const userId = req.user?._id || req.user?.id;
+      const result = await deviceTokenService.deactivateUserTokens(userId);
+      res.success(result, 'All device push tokens deactivated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new DeviceTokenController();

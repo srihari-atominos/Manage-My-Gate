@@ -71,6 +71,21 @@ describe('ContactPickerButton', () => {
     expect(onPick).toHaveBeenCalledWith({ name: 'Sam', phone: '+14155552671', email: undefined });
   });
 
+  it('requests iOS Contacts permission before opening the picker', async () => {
+    Object.defineProperty(Platform, 'OS', { get: () => 'ios', configurable: true });
+    mockGetPerms.mockResolvedValue({ granted: false, canAskAgain: true });
+    mockRequestPerms.mockResolvedValue({ granted: true, canAskAgain: true });
+    mockPicker.mockResolvedValue(pickedContact({ name: 'Aisha Khan', phoneNumbers: [{ number: '+971 50 123 4567' }] }));
+    const onPick = jest.fn();
+
+    await render(<ContactPickerButton onPick={onPick} />);
+    fireEvent.press(screen.getByTestId('contact-picker-button'));
+
+    await waitFor(() => expect(mockRequestPerms).toHaveBeenCalled());
+    await waitFor(() => expect(mockPicker).toHaveBeenCalled());
+    expect(onPick).toHaveBeenCalledWith({ name: 'Aisha Khan', phone: '+971501234567', email: undefined });
+  });
+
   it('does nothing when Android permission is denied', async () => {
     mockGetPerms.mockResolvedValue({ granted: false, canAskAgain: true });
     mockRequestPerms.mockResolvedValue({ granted: false, canAskAgain: false });

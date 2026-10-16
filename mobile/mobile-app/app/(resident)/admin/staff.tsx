@@ -42,8 +42,9 @@ import {
   FileDown,
   Filter,
   FileSpreadsheet,
+  FileText,
 } from 'lucide-react-native';
-import { downloadCSVFile, downloadExcelFile } from '@/src/utils/downloadHelper';
+import { downloadCSVFile, downloadExcelFile, downloadPDFFile } from '@/src/utils/downloadHelper';
 
 export default function StaffManagementScreen() {
   const router = useRouter();
@@ -135,6 +136,7 @@ export default function StaffManagementScreen() {
     attendanceRoleFilter,
     setAttendanceRoleFilter,
     attendanceDepartmentOptions,
+    attendanceRoleOptions,
     attendanceStartDate,
     setAttendanceStartDate,
     attendanceEndDate,
@@ -218,7 +220,10 @@ export default function StaffManagementScreen() {
       if (attendanceDepartmentFilter.startsWith('trade:')) query.departmentOther = attendanceDepartmentFilter.slice(6);
       else query.department = attendanceDepartmentFilter;
     }
-    if (attendanceRoleFilter !== 'ALL') query.staffCategory = attendanceRoleFilter;
+    if (attendanceRoleFilter !== 'ALL') {
+      if (attendanceRoleFilter.startsWith('role:')) query.roleId = attendanceRoleFilter.slice(5);
+      else query.staffCategory = attendanceRoleFilter;
+    }
     if (attendanceStartDate) query.startDate = attendanceStartDate;
     if (attendanceEndDate) query.endDate = attendanceEndDate;
     if (attendanceSearch.trim()) query.search = attendanceSearch.trim();
@@ -236,6 +241,16 @@ export default function StaffManagementScreen() {
     } finally { setIsExporting(false); }
   };
 
+  const handleExportAttendancePDF = async () => {
+    try {
+      setIsExporting(true);
+      const blob = await staffService.exportAttendanceReport(buildAttendanceExportQuery(), 'pdf');
+      await downloadPDFFile(blob, `staff_attendance_${new Date().toISOString().split('T')[0]}.pdf`);
+      Alert.alert('Export Successful', 'Attendance PDF exported with the selected filters.');
+    } catch (err: any) {
+      Alert.alert('Export Failed', err?.message || 'Could not export attendance PDF.');
+    } finally { setIsExporting(false); }
+  };
   const handleExportAttendanceExcel = async () => {
     try {
       setIsExporting(true);
@@ -682,6 +697,17 @@ export default function StaffManagementScreen() {
                   <FileSpreadsheet size={14} className="text-emerald-600 dark:text-emerald-400" />
                   <Text className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Excel</Text>
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-2.5 flex-row items-center gap-1.5 border-rose-500/40 bg-rose-500/5"
+                  onPress={handleExportAttendancePDF}
+                  disabled={isExporting}
+                  accessibilityLabel="Export Attendance PDF"
+                >
+                  <FileText size={14} className="text-rose-600 dark:text-rose-400" />
+                  <Text className="text-xs font-semibold text-rose-600 dark:text-rose-400">PDF</Text>
+                </Button>
               </View>
             </View>
           </View>
@@ -740,6 +766,7 @@ export default function StaffManagementScreen() {
                 <Button size="sm" variant="outline" className="h-7 px-2.5" onPress={loadAttendance}>
                   Retry
                 </Button>
+
               </View>
             ) : null}
 
@@ -837,6 +864,7 @@ export default function StaffManagementScreen() {
         selectedDepartment={attendanceDepartmentFilter}
         selectedRole={attendanceRoleFilter}
         departmentOptions={attendanceDepartmentOptions}
+        roleOptions={attendanceRoleOptions}
         startDate={attendanceStartDate}
         endDate={attendanceEndDate}
         onSelectStatus={setAttendanceStatusFilter}
@@ -873,6 +901,9 @@ export default function StaffManagementScreen() {
     </ScreenShell>
   );
 }
+
+
+
 
 
 

@@ -4,23 +4,55 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import storage from '../../../utils/storage';
 
 export const isExpoGo =
-  Constants?.executionEnvironment === ExecutionEnvironment.StoreClient ||
+  Boolean(Constants?.executionEnvironment && ExecutionEnvironment && Constants.executionEnvironment === ExecutionEnvironment.StoreClient) ||
   Constants?.appOwnership === 'expo';
 
 // Importing expo-notifications throws in Expo Go on Android as of SDK 53.
 const Notifications: any = isExpoGo ? null : require('expo-notifications');
+/**
+ * Checks whether push notifications are enabled by the user in settings.
+ * Defaults to true if unconfigured.
+ */
+export async function isPushNotificationEnabled(): Promise<boolean> {
+  try {
+    const val = await storage.getItem('setting_gateAlerts');
+    if (val === 'false') {
+      return false;
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Persists the user's push notification enabled state.
+ */
+export async function setPushNotificationEnabled(enabled: boolean): Promise<void> {
+  try {
+    await storage.setItem('setting_gateAlerts', JSON.stringify(enabled));
+  } catch (err) {
+    console.warn('[PushNotificationService] Failed to set push enabled state:', err);
+  }
+}
+
 // Configure how incoming notifications are handled when the app is in the foreground
 if (Platform.OS !== 'web' && !(Platform.OS === 'android' && isExpoGo)) {
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-        priority: Notifications.AndroidNotificationPriority.MAX,
-      }),
+      handleNotification: async () => {
+        const enabled = await isPushNotificationEnabled();
+        return {
+          shouldShowAlert: enabled,
+          shouldPlaySound: enabled,
+          shouldSetBadge: enabled,
+          shouldShowBanner: enabled,
+          shouldShowList: enabled,
+          priority: enabled
+            ? Notifications.AndroidNotificationPriority.MAX
+            : Notifications.AndroidNotificationPriority.MIN,
+        };
+      },
     });
   } catch (err) {
     console.warn('[PushNotificationService] Failed to set notification handler:', err);
@@ -194,12 +226,16 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
     if (!Device.isDevice) {
       console.log('[PushNotificationService] Running on simulator/emulator; returning dev placeholder token.');
-      return 'ExponentPushToken[SIMULATOR_DEV_TOKEN_MANAGE_MY_GATE]';
+      const devToken = 'ExponentPushToken[SIMULATOR_DEV_TOKEN_MANAGE_MY_GATE]';
+      storage.setItem('device_push_token', devToken).catch(() => {});
+      return devToken;
     }
 
     if (Platform.OS === 'android' && isExpoGo) {
       console.log('[PushNotificationService] Running in Expo Go on Android (SDK 53+ lacks native remote push in client); returning dev placeholder token.');
-      return 'ExponentPushToken[EXPO_GO_DEV_TOKEN_MANAGE_MY_GATE]';
+      const devToken = 'ExponentPushToken[EXPO_GO_DEV_TOKEN_MANAGE_MY_GATE]';
+      storage.setItem('device_push_token', devToken).catch(() => {});
+      return devToken;
     }
 
     const isGranted = await requestNotificationPermissionsAsync(false);
@@ -218,8 +254,12 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       projectId ? { projectId } : undefined
     );
 
-    console.log('[PushNotificationService] Acquired Expo Push Token:', tokenData?.data);
-    return tokenData?.data || null;
+    const token = tokenData?.data || null;
+    if (token) {
+      storage.setItem('device_push_token', token).catch(() => {});
+    }
+    console.log('[PushNotificationService] Acquired Expo Push Token:', token);
+    return token;
   } catch (error) {
     console.warn('[PushNotificationService] Failed to get Expo push token:', error);
     return null;
@@ -231,6 +271,8 @@ export default {
   checkNotificationPermissions,
   requestNotificationPermissionsAsync,
   registerForPushNotificationsAsync,
+  isPushNotificationEnabled,
+  setPushNotificationEnabled,
 };
 
 

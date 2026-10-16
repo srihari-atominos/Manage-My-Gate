@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
 import { View, Modal, Pressable, Image, Alert, ScrollView, KeyboardAvoidingView, Platform, ActionSheetIOS, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -99,6 +100,7 @@ export const EditProfileModal = ({
         Alert.alert('Permission Required', 'Photo library access is needed to select a profile photo.');
         return;
       }
+      if (!(await confirmPickerDisclosure('photo'))) return;
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
@@ -131,6 +133,7 @@ export const EditProfileModal = ({
         input.click();
         return;
       }
+      if (!(await confirmPickerDisclosure('document'))) return;
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/jpeg', 'image/png', 'image/webp'],
         copyToCacheDirectory: true,

@@ -30,6 +30,7 @@ const WRITABLE_FIELDS = [
   'whatsappEnabled',
   'designation',
   'staffCode',
+  'authorId',
   'qrValidFrom',
   'qrValidUntil',
   'shiftWindow',
@@ -162,7 +163,9 @@ class TechnicianService {
       department = 'Others',
       departmentOther = '',
       type = 'In-House Staff',
+      roleId = null,
       staffCategory = null,
+      communityOnly = false,
       designation = '',
       staffCode = null,
       status = 'Active',
@@ -193,8 +196,11 @@ class TechnicianService {
         if (department) updateData.department = department;
         if (department) updateData.departmentOther = department === 'Others' ? cleanDepartmentOther(departmentOther) : '';
         if (type) updateData.type = type;
+        if (roleId) updateData.roleId = roleId;
         if (STAFF_CATEGORY_VALUES.includes(staffCategory)) updateData.staffCategory = staffCategory;
-        if (staffCategory === STAFF_CATEGORIES.UNIT) updateData.communityOnly = false;
+        if (STAFF_CATEGORY_VALUES.includes(staffCategory)) {
+          updateData.communityOnly = staffCategory === STAFF_CATEGORIES.UNIT ? false : communityOnly === true;
+        }
         if (designation) updateData.designation = designation;
         if (staffCode) updateData.staffCode = staffCode;
         return await technicianRepository.restoreOrUpdate(existing._id, orgId, updateData, session);
@@ -210,8 +216,11 @@ class TechnicianService {
       if (department) updateData.department = department;
       if (department) updateData.departmentOther = department === 'Others' ? cleanDepartmentOther(departmentOther) : '';
       if (type) updateData.type = type;
+      if (roleId) updateData.roleId = roleId;
       if (STAFF_CATEGORY_VALUES.includes(staffCategory)) updateData.staffCategory = staffCategory;
-      if (staffCategory === STAFF_CATEGORIES.UNIT) updateData.communityOnly = false;
+      if (STAFF_CATEGORY_VALUES.includes(staffCategory)) {
+        updateData.communityOnly = staffCategory === STAFF_CATEGORIES.UNIT ? false : communityOnly === true;
+      }
       if (designation) updateData.designation = designation;
       if (staffCode) updateData.staffCode = staffCode;
       return await technicianRepository.update(existing._id, orgId, updateData, session);
@@ -235,7 +244,9 @@ class TechnicianService {
       department: department || 'Others',
       departmentOther: (department || 'Others') === 'Others' ? cleanDepartmentOther(departmentOther) : '',
       type: type || 'In-House Staff',
+      ...(roleId ? { roleId } : {}),
       staffCategory: STAFF_CATEGORY_VALUES.includes(staffCategory) ? staffCategory : STAFF_CATEGORIES.COMMUNITY,
+      communityOnly: staffCategory === STAFF_CATEGORIES.UNIT ? false : communityOnly === true,
       designation: designation || '',
       ...(staffCode ? { staffCode } : {}),
       status: status || 'Active',

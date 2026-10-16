@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
 import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform, Alert, KeyboardAvoidingView, Pressable, useWindowDimensions } from 'react-native';
 import { X, Users, Upload, Plus, Trash2, CheckCircle2, AlertTriangle, FileSpreadsheet, Download, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -233,6 +234,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   const handlePickDocument = async () => {
     try {
       setErrorMsg('');
+      if (!(await confirmPickerDisclosure('document'))) return;
       const result = await DocumentPicker.getDocumentAsync({
         type: ['text/csv', 'text/comma-separated-values', 'text/plain', 'application/vnd.ms-excel', '*/*'],
         copyToCacheDirectory: true,

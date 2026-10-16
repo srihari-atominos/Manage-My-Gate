@@ -12,7 +12,6 @@ import { Text, TextClassContext } from './text';
 import { Icon } from './icon';
 import { cn } from '../../lib/utils';
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const fabVariants = cva(
   cn(
@@ -90,26 +89,27 @@ export const FAB = React.forwardRef<View, FABProps>(
     const hasLabel = Boolean(label && label.trim().length > 0);
 
     return (
-      <AnimatedPressable
+      <Pressable
         ref={ref as any}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[animatedStyle]}
         className={cn(fabVariants({ variant, hasLabel }), className)}
         accessibilityRole="button"
         accessibilityLabel={label || `Action button ${iconName}`}
         {...props}
       >
-        <TextClassContext.Provider value={fabTextVariants({ variant })}>
-          <Icon as={IconComponent} size={24} className={fabTextVariants({ variant })} />
-          {hasLabel && (
-            <Text className={cn('font-semibold text-base', fabTextVariants({ variant }))}>
-              {label}
-            </Text>
-          )}
-        </TextClassContext.Provider>
-      </AnimatedPressable>
+        <Animated.View style={[animatedStyle, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}>
+          <TextClassContext.Provider value={fabTextVariants({ variant })}>
+            <Icon as={IconComponent} size={24} className={fabTextVariants({ variant })} />
+            {hasLabel && (
+              <Text className={cn('font-semibold text-base ms-2', fabTextVariants({ variant }))}>
+                {label}
+              </Text>
+            )}
+          </TextClassContext.Provider>
+        </Animated.View>
+      </Pressable>
     );
   }
 );

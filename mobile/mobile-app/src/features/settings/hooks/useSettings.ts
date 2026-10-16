@@ -3,6 +3,14 @@ import { useColorScheme } from 'nativewind';
 import { Alert, Platform, useColorScheme as useRNColorScheme } from 'react-native';
 import storage from '../../../utils/storage';
 import i18n, { LanguageCode, LANGUAGE_OPTIONS, useTranslation } from '../../../utils/i18n';
+import apiClient from '../../../services/apiClient';
+import { useAuth } from '../../auth/hooks/useAuth';
+import deviceTokenService from '../../notification/services/deviceTokenService';
+import pushNotificationService, {
+  setPushNotificationEnabled,
+  registerForPushNotificationsAsync,
+} from '../../notification/services/pushNotificationService';
+import * as Device from 'expo-device';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -19,6 +27,8 @@ let globalThemeMode: ThemeMode = 'light';
 const themeListeners = new Set<(mode: ThemeMode) => void>();
 
 export const useSettings = () => {
+  const { user } = useAuth();
+  const userId = user?.id || (user as any)?._id;
   const systemRNTheme = useRNColorScheme();
   const { colorScheme, setColorScheme } = useColorScheme();
   const { t, languageCode, setLanguage } = useTranslation();
@@ -46,7 +56,7 @@ export const useSettings = () => {
     requireGateApprovalPin: false,
   });
 
-  // Restore saved theme mode & language on mount
+  // Restore saved theme mode, language & preferences on mount
   useEffect(() => {
     const restoreSettings = async () => {
       try {
@@ -65,6 +75,31 @@ export const useSettings = () => {
           setThemeModeState('system');
           setColorScheme('system');
           await storage.setItem('theme_preference', 'system');
+        }
+
+        const preferenceKeys: (keyof AppPreferences)[] = [
+          'gateAlerts',
+          'maintenanceNotices',
+          'communityPolls',
+          'emergencyBroadcasts',
+          'biometricUnlock',
+          'requireGateApprovalPin',
+        ];
+
+        const restoredPrefs: Partial<AppPreferences> = {};
+        for (const key of preferenceKeys) {
+          const val = await storage.getItem(`setting_${key}`);
+          if (val !== null && val !== undefined) {
+            try {
+              restoredPrefs[key] = JSON.parse(val);
+            } catch {
+              restoredPrefs[key] = val === 'true';
+            }
+          }
+        }
+
+        if (Object.keys(restoredPrefs).length > 0) {
+          setPreferences((prev) => ({ ...prev, ...restoredPrefs }));
         }
 
         await i18n.initLanguage();
@@ -104,7 +139,50 @@ export const useSettings = () => {
       storage.setItem(`setting_${key}`, JSON.stringify(value)).catch(() => {});
       return next;
     });
-  }, []);
+
+    if (key === 'gateAlerts') {
+      (async () => {
+        try {
+          await setPushNotificationEnabled(value);
+          if (!value) {
+            // 1. User turned off push notifications: deactivate token on backend
+            const cachedToken = await storage.getItem('device_push_token');
+            if (cachedToken) {
+              await deviceTokenService.unregisterToken(cachedToken, userId).catch(() => {});
+            }
+            // Deactivate all tokens for this user as defense-in-depth
+            await apiClient.delete('/device-tokens').catch(() => {});
+            // Sync user profile preference
+            await apiClient.patch('/users/profile', {
+              notificationPreferences: { push: false },
+            }).catch(() => {});
+            console.log('[useSettings] Push notifications deactivated across device and backend');
+          } else {
+            // 2. User re-enabled push notifications: register token with backend
+            const token = await registerForPushNotificationsAsync();
+            if (token && userId) {
+              await deviceTokenService.registerToken(
+                {
+                  pushToken: token,
+                  platform: Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
+                  deviceId: Device.osBuildId || Device.osInternalBuildId || undefined,
+                  deviceModel: Device.modelName || undefined,
+                },
+                userId
+              );
+            }
+            // Sync user profile preference
+            await apiClient.patch('/users/profile', {
+              notificationPreferences: { push: true },
+            }).catch(() => {});
+            console.log('[useSettings] Push notifications re-enabled and registered with backend');
+          }
+        } catch (err) {
+          console.warn('[useSettings] Error updating push notification preference:', err);
+        }
+      })();
+    }
+  }, [userId]);
 
   const handleClearCache = useCallback(() => {
     const doClear = async () => {

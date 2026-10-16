@@ -99,7 +99,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                   Enable camera to scan and verify QR codes or barcodes.
                 </Text>
                 <Button variant="default" size="sm" onPress={requestPermission} className="mt-2">
-                  <Text className="text-white font-bold text-xs">Enable Camera</Text>
+                  <Text className="text-white font-bold text-xs">Continue</Text>
                 </Button>
               </View>
             ) : (

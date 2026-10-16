@@ -1,4 +1,5 @@
 import React from 'react';
+import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
 import { View, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
@@ -66,6 +67,7 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
         return;
       }
 
+      if (!(await confirmPickerDisclosure('photo'))) return;
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,

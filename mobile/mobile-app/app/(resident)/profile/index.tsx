@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
 import * as Location from 'expo-location';
 import { View, ScrollView, Modal, Pressable, Alert, Platform, TextInput as RNTextInput, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -354,6 +355,7 @@ export default function ProfileScreen() {
         );
         return;
       }
+      if (!(await confirmPickerDisclosure('photo'))) return;
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
@@ -398,6 +400,7 @@ export default function ProfileScreen() {
         return;
       }
 
+      if (!(await confirmPickerDisclosure('document'))) return;
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/jpeg', 'image/png', 'image/webp'],
         copyToCacheDirectory: true,

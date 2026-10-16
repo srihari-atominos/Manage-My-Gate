@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { io } from 'socket.io-client';
 import { RootState, AppDispatch } from '../../../store/store';
 import { fetchRolesAsync } from '../store/roleSlice';
 import { updateTokenAndUser } from '../../auth/store/authSlice';
 import { getUserRoleName } from '../../../utils/rbac';
-import { getSocketBaseUrl } from '../../../services/apiClient';
+import { useAppSocket } from '../../../hooks/useAppSocket';
 
 /**
  * Custom Hook: useRoleSocket
@@ -17,7 +16,7 @@ export const useRoleSocket = () => {
   const dispatch = useDispatch<AppDispatch>();
   const authState = useSelector((state: RootState) => (state as any).auth);
   const currentUser = authState?.user;
-  const token = authState?.token || authState?.accessToken;
+  const { socket } = useAppSocket();
 
   const activeOrgId =
     currentUser?.orgId ||
@@ -27,15 +26,7 @@ export const useRoleSocket = () => {
     '';
 
   useEffect(() => {
-    const socket = io(getSocketBaseUrl(), {
-      ...(token ? { auth: { token } } : {}),
-      withCredentials: true,
-      transports: ['polling', 'websocket'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
-      timeout: 10000,
-    });
+    if (!socket) return;
 
     socket.on('connect', () => {
       if (activeOrgId) {
@@ -115,9 +106,8 @@ export const useRoleSocket = () => {
       socket.off('ROLE_UPDATED', handleRoleUpdate);
       socket.off('USER_UPDATED', handleUserUpdate);
       socket.off('RECORD_UPDATED');
-      socket.disconnect();
     };
-  }, [activeOrgId, token, currentUser, dispatch]);
+  }, [activeOrgId, currentUser, dispatch, socket]);
 };
 
 export default useRoleSocket;

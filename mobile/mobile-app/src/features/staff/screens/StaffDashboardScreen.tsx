@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, ScrollView, RefreshControl, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -17,7 +17,6 @@ import {
   ClipboardList,
   ChevronRight,
   ShieldAlert,
-  QrCode,
   CalendarClock,
   CheckCircle2,
   Home,
@@ -59,7 +58,6 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
     confirmLogout,
     cancelLogout,
     executeLogout,
-    isDualStaff,
     canViewWorkOrders,
     canViewAttendance,
     canViewAllocations,
@@ -144,61 +142,31 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
           /* 4. Staff Experience (Portal & Pass vs Staff Dual) */
           <View className="gap-4">
             {/* Staff Profile Card */}
-            <StaffProfileCard member={myProfile} activeOrgId={activeOrgId} />
+            <StaffProfileCard member={myProfile} activeOrgId={activeOrgId} onOpenQrPass={() => setShowQrModal(true)} />
 
-            {/* Quick Metrics Summary (Staff Dual & Configured Staff Roles) */}
-            {(isDualStaff || canViewAllocations || canViewAttendance) && (
+            {/* Quick metrics only include allocations where this staff member may work in units. */}
+            {canViewAttendance ? (
               <View className="flex-row gap-2">
+                {canViewAllocations ? (
+                  <>
+                    <View className="flex-1 py-2.5 px-2 rounded-2xl bg-card border border-border items-center justify-center">
+                      <Text className="text-[11px] font-medium text-muted-foreground text-center" numberOfLines={1}>Allocated Units</Text>
+                      <Text className="text-sm font-bold text-foreground mt-0.5">{activeAllocations.length}</Text>
+                    </View>
+                    <View className="flex-1 py-2.5 px-2 rounded-2xl bg-card border border-border items-center justify-center">
+                      <Text className="text-[11px] font-medium text-muted-foreground text-center" numberOfLines={1}>Pending Invites</Text>
+                      <Text className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingAllocations.length}</Text>
+                    </View>
+                  </>
+                ) : null}
                 <View className="flex-1 py-2.5 px-2 rounded-2xl bg-card border border-border items-center justify-center">
-                  <Text className="text-[11px] font-medium text-muted-foreground text-center" numberOfLines={1}>
-                    Allocated Units
-                  </Text>
-                  <Text className="text-sm font-bold text-foreground mt-0.5">
-                    {activeAllocations.length}
-                  </Text>
-                </View>
-                <View className="flex-1 py-2.5 px-2 rounded-2xl bg-card border border-border items-center justify-center">
-                  <Text className="text-[11px] font-medium text-muted-foreground text-center" numberOfLines={1}>
-                    Pending Invites
-                  </Text>
-                  <Text className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                    {pendingAllocations.length}
-                  </Text>
-                </View>
-                <View className="flex-1 py-2.5 px-2 rounded-2xl bg-card border border-border items-center justify-center">
-                  <Text className="text-[11px] font-medium text-muted-foreground text-center" numberOfLines={1}>
-                    Gate Status
-                  </Text>
+                  <Text className="text-[11px] font-medium text-muted-foreground text-center" numberOfLines={1}>Gate Status</Text>
                   <Text className={`text-sm font-bold mt-0.5 ${activeSession ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                     {activeSession ? 'On-Site' : 'Off-Site'}
                   </Text>
                 </View>
               </View>
-            )}
-
-            {/* Digital Gate QR Pass (Primary Destination for both Staff Portal & Staff Dual) */}
-            <TouchableOpacity
-              onPress={() => setShowQrModal(true)}
-              className="flex-row items-center justify-between p-4 rounded-2xl bg-card border border-primary/30 shadow-xs active:opacity-80"
-              accessibilityRole="button"
-              accessibilityLabel="View staff digital QR pass for gate attendance"
-            >
-              <View className="flex-row items-center flex-1 me-3">
-                <View className="h-11 w-11 rounded-xl bg-primary/10 items-center justify-center me-3">
-                  <QrCode size={22} className="text-primary" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-bold text-foreground">
-                    Digital Gate QR Pass
-                  </Text>
-                  <Text className="text-xs text-muted-foreground mt-0.5">
-                    Show at estate gates for entry & exit attendance
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={18} className="text-primary" />
-            </TouchableOpacity>
-
+            ) : null}
             {/* A. Pending Household Assignment Requests (Dual / Allocations permission only) */}
             {canViewAllocations && pendingAllocations.length > 0 && (
               <View className="gap-2.5">
@@ -258,7 +226,7 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
                           <Text className="text-[11px] font-semibold text-foreground">
                             {alloc.accessSchedule.timeWindow.start} - {alloc.accessSchedule.timeWindow.end}
                             {alloc.accessSchedule.days && alloc.accessSchedule.days.length > 0
-                              ? ` • ${alloc.accessSchedule.days.join(', ')}`
+                              ? ` â€¢ ${alloc.accessSchedule.days.join(', ')}`
                               : ''}
                           </Text>
                         </View>
@@ -339,7 +307,7 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
                               {unitLabel}
                             </Text>
                             <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                              {alloc.roleOrTrade || 'Household Staff'} • {alloc.associatedBy?.name || 'Resident'}
+                              {alloc.roleOrTrade || 'Household Staff'} â€¢ {alloc.associatedBy?.name || 'Resident'}
                             </Text>
                             {alloc.accessSchedule?.timeWindow?.start && alloc.accessSchedule?.timeWindow?.end ? (
                               <Text className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 mt-0.5">
@@ -525,3 +493,7 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
 };
 
 export default StaffDashboardScreen;
+
+
+
+

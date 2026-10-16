@@ -15,6 +15,7 @@ import {
 } from '../store/staffSlice';
 import { StaffMember, CreateStaffPayload, UpdateStaffPayload, StaffDepartment, StaffType, StaffStatus } from '../services/staffService';
 import { checkIsAdmin } from '../../../utils/rbac';
+import { fetchRoles, type RoleData } from '../../roleBuilder/services/roleService';
 
 export const DEPARTMENTS: StaffDepartment[] = [
   'Electrical',
@@ -90,6 +91,7 @@ export function useStaffManagement() {
   const [attendanceStartDate, setAttendanceStartDate] = useState<string>('');
   const [attendanceEndDate, setAttendanceEndDate] = useState<string>('');
   const [attendanceSearch, setAttendanceSearch] = useState<string>('');
+  const [attendanceRoleOptions, setAttendanceRoleOptions] = useState<{ key: string; label: string; scope: 'COMMUNITY' | 'UNIT' }[]>([]);
 
   // Legacy compatibility fallbacks
   const [attendanceGateFilter, setAttendanceGateFilter] = useState<string>('ALL');
@@ -110,7 +112,9 @@ export function useStaffManagement() {
       const eDate = params?.endDate !== undefined ? params.endDate : attendanceEndDate;
       const status = params?.status !== undefined ? params.status : attendanceStatusFilter;
       const dept = params?.department !== undefined ? params.department : attendanceDepartmentFilter;
-      const staffCategory = params?.staffCategory !== undefined ? params.staffCategory : attendanceRoleFilter;
+      const selectedRole = params?.staffCategory !== undefined ? params.staffCategory : attendanceRoleFilter;
+      const staffCategory = selectedRole.startsWith('role:') ? 'ALL' : selectedRole;
+      const roleId = selectedRole.startsWith('role:') ? selectedRole.slice(5) : '';
       const trade = params?.departmentOther !== undefined ? params.departmentOther : (dept.startsWith('trade:') ? dept.slice(6) : '');
       const department = dept.startsWith('trade:') ? 'ALL' : dept;
       const search = params?.search !== undefined ? params.search : attendanceSearch;
@@ -123,6 +127,7 @@ export function useStaffManagement() {
       if (department && department !== 'ALL') queryParams.department = department;
       if (trade) queryParams.departmentOther = trade;
       if (staffCategory && staffCategory !== 'ALL') queryParams.staffCategory = staffCategory;
+      if (roleId) queryParams.roleId = roleId;
       if (search && search.trim()) queryParams.search = search.trim();
       if (params?.page) queryParams.page = params.page;
       if (params?.limit) queryParams.limit = params.limit;
@@ -143,6 +148,21 @@ export function useStaffManagement() {
     ]
   );
 
+  useEffect(() => {
+    if (!hasViewPermission) return;
+    let active = true;
+    fetchRoles({ page: 1, limit: 100 })
+      .then((response: any) => {
+        const roles = (response?.data?.data || response?.data || response || []) as RoleData[];
+        const options = roles
+          .filter((role) => role.roleScope === 'COMMUNITY_STAFF' || role.roleScope === 'STAFF')
+          .map((role) => ({ key: `role:${role._id || role.id}`, label: role.name, scope: role.roleScope === 'STAFF' ? 'UNIT' as const : 'COMMUNITY' as const }))
+          .filter((role) => role.key !== 'role:undefined');
+        if (active) setAttendanceRoleOptions(options);
+      })
+      .catch(() => { if (active) setAttendanceRoleOptions([]); });
+    return () => { active = false; };
+  }, [hasViewPermission, activeOrgId]);
   // Invalidate and reload when active community changes
   const prevOrgIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -281,8 +301,11 @@ export function useStaffManagement() {
     if (attendanceRoleFilter !== 'ALL') {
       result = result.filter((r) => {
         const staffObj = typeof r.technicianId === 'object' && r.technicianId ? (r.technicianId as any) : null;
-        const category = staffObj?.staffCategory === 'UNIT' ? 'UNIT' : 'COMMUNITY';
-        return category === attendanceRoleFilter;
+        if (attendanceRoleFilter.startsWith('role:')) {
+          const roleId = typeof staffObj?.roleId === 'object' ? staffObj.roleId?._id || staffObj.roleId?.id : staffObj?.roleId;
+          return String(roleId || '') === attendanceRoleFilter.slice(5);
+        }
+        return (staffObj?.staffCategory === 'UNIT' ? 'UNIT' : 'COMMUNITY') === attendanceRoleFilter;
       });
     }
 
@@ -349,6 +372,7 @@ export function useStaffManagement() {
     attendanceRoleFilter,
     setAttendanceRoleFilter,
     attendanceDepartmentOptions,
+    attendanceRoleOptions,
     attendanceStartDate,
     setAttendanceStartDate,
     attendanceEndDate,
@@ -384,5 +408,6 @@ export function useStaffManagement() {
 }
 
 export default useStaffManagement;
+
 
 

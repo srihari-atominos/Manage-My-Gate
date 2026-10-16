@@ -133,7 +133,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <TouchableOpacity
                 onPress={() => {
                   onClose();
-                  router.push('/(resident)/profile' as any);
+                  router.navigate('/(resident)/profile' as any);
                 }}
                 activeOpacity={0.8}
                 className="items-center bg-primary/10 border border-primary/25 rounded-2xl p-4 gap-1.5 shadow-xs active:bg-primary/20"

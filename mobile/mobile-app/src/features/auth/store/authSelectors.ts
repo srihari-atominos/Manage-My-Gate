@@ -27,18 +27,21 @@ export const selectActiveVillaId = (state: RootState): string => {
 };
 
 export const selectActiveOrgId = (state: RootState): string => {
+  const auth = (state as any).auth;
   const user = selectAuthUser(state);
-  if (!user) return '';
-
+  
   return (
-    user.orgId ||
-    user.organizationId ||
-    user.org?._id ||
-    user.organization?._id ||
-    user.activeOrgId ||
-    user.activeOrganizationId ||
-    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0]?.orgId) ||
-    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0]?._id) ||
+    auth?.activeOrgId ||
+    auth?.organizationId ||
+    user?.activeOrgId ||
+    user?.orgId ||
+    user?.organizationId ||
+    user?.org?._id ||
+    user?.org?.id ||
+    user?.organization?._id ||
+    user?.organization?.id ||
+    user?.activeOrganizationId ||
+    (Array.isArray(user?.availableWorkspaces) && (user.availableWorkspaces[0]?.orgId || user.availableWorkspaces[0]?._id || user.availableWorkspaces[0]?.id)) ||
     ''
   );
 };

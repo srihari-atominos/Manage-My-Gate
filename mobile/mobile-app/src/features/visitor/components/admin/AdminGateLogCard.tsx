@@ -117,7 +117,6 @@ export const AdminGateLogCard: React.FC<AdminGateLogCardProps> = ({
         label: statusLabel,
         variant: statusVariant,
       }}
-      onPress={() => onPress?.(log)}
       className={cn('mb-3', className)}
     >
       <View className="gap-2.5 pt-2 border-t border-border/40">
@@ -172,8 +171,7 @@ export const AdminGateLogCard: React.FC<AdminGateLogCardProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onPress={() => onPress?.(log)}
-            className="h-8 px-3 rounded-lg flex-row items-center gap-1"
+                  className="h-8 px-3 rounded-lg flex-row items-center gap-1"
           >
             <Text className="text-xs font-semibold text-foreground">{t('inspect_trail', 'Inspect Trail')}</Text>
             <ChevronRight size={13} className="text-muted-foreground" />

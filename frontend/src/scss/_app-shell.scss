@@ -154,6 +154,34 @@
   font-size: var(--nahom-font-base);
 }
 
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 3000;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #1a2b4a;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 8px;
+  outline: 3px solid var(--nahom-focus);
+  outline-offset: 2px;
+}
+
+#main-content:focus {
+  outline: none;
+}
+
+.wrapper :is(a, button, [tabindex]:not([tabindex='-1']), [role='button'], [role='link']):focus-visible {
+  outline: 3px solid var(--nahom-focus);
+  outline-offset: 2px;
+}
+
 .wrapper :is(.btn, .form-control, .form-select, .form-check-input, [role='button']):focus-visible,
 .sidebar :is(.nav-link, .sidebar-toggler, .btn-close):focus-visible {
   outline: 3px solid var(--nahom-focus);

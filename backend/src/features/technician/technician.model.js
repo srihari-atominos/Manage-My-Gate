@@ -83,6 +83,12 @@ const technicianSchema = new mongoose.Schema({
     trim: true,
     sparse: true
   },
+  // Required for staff created from Staff Directory. Legacy/user-management records may be blank.
+  authorId: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   qrValidFrom: {
     type: Date,
     default: null

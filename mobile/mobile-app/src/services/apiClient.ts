@@ -1,7 +1,8 @@
-import axios, { InternalAxiosRequestConfig } from 'axios';
+﻿import axios, { InternalAxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import storage from '../utils/storage';
+import { getSafeApiErrorMessage, isNetworkFailure, isTimeoutFailure, reportApiFailure, reportApiSuccess } from './networkStatus';
 
 // A pure JavaScript UUID v4 generator to prevent Expo native crypto errors
 const generateUUID = (): string => {
@@ -309,15 +310,15 @@ apiClient.interceptors.response.use(
     if (response.status === 304 && !response.data) {
       return { success: true, message: 'Not Modified', data: null, notModified: true };
     }
+    reportApiSuccess();
     // Return the backend's standard { success, message, data } envelope
     return response.data;
   },
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.message === 'Network Error') {
-      console.warn('Network Error - check backend server connectivity');
-    }
+    if (isTimeoutFailure(error)) reportApiFailure('timeout');
+    else if (isNetworkFailure(error)) reportApiFailure('backend_unavailable');
 
     const isAuthEndpoint = originalRequest?.url && (
       originalRequest.url.includes('/auth/login') ||
@@ -416,6 +417,14 @@ apiClient.interceptors.response.use(
       } catch (refreshError: any) {
         processQueue(refreshError, null);
 
+        // A connectivity failure during token refresh is not proof that the session expired.
+        // Preserve the local session and let normal recovery retry after reconnection.
+        if (isNetworkFailure(refreshError) || isTimeoutFailure(refreshError)) {
+          if (isTimeoutFailure(refreshError)) reportApiFailure('timeout');
+          else reportApiFailure('backend_unavailable');
+          return Promise.reject(Object.assign(refreshError, { message: getSafeApiErrorMessage(refreshError) }));
+        }
+
         // Wipe local storage items so stale credentials don't persist
         try {
           await storage.removeItem('token');
@@ -457,16 +466,16 @@ apiClient.interceptors.response.use(
       }
     }
 
-    if (error.response?.data?.message) {
-      error.message = error.response.data.message;
-    } else if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
-      error.message = 'Connection timed out. Please check backend server status.';
-    } else if (error.message === 'Network Error' || (!error.response && error.request)) {
-      error.message = 'Unable to connect to server. Please verify backend is running.';
-    }
+    // Keep a single user-safe message at the API boundary. Screens can still render their own
+    // domain errors, but no URL, backend implementation detail, or duplicate network banner leaks.
+    error.message = getSafeApiErrorMessage(error);
 
     return Promise.reject(error);
   }
 );
 
 export default apiClient;
+
+
+
+

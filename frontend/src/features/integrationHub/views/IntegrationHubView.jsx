@@ -170,56 +170,6 @@ export const IntegrationHubView = () => {
         </CAlert>
       )}
 
-      {/* Bank & Gateway Credential Management Card */}
-      <CCard className="mb-4 bank-details-card">
-        <CCardBody className="p-4">
-          <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
-            <div className="d-flex align-items-center mb-3 mb-md-0">
-              <div className="bank-card-icon me-3">
-                <CIcon icon={cilBank} size="xl" />
-              </div>
-              <div className="text-start">
-                <div className="d-flex align-items-center gap-2">
-                  <h5 className="fw-bold mb-1">
-                    {t('integrationHub.bankCard.title', 'Bank & Gateway Settlement Account')}
-                  </h5>
-                  {bankDetails?.isConfigured ? (
-                    <CBadge color="success" className="d-flex align-items-center gap-1">
-                      <CIcon icon={cilCheckCircle} size="sm" />
-                      {t('integrationHub.bankCard.statusConfigured', 'Configured')}
-                    </CBadge>
-                  ) : (
-                    <CBadge color="warning" className="d-flex align-items-center gap-1">
-                      <CIcon icon={cilWarning} size="sm" />
-                      {t('integrationHub.bankCard.statusPending', 'Action Required')}
-                    </CBadge>
-                  )}
-                </div>
-                <p className="text-muted small mb-0">
-                  {bankDetails?.isConfigured
-                    ? `${bankDetails.bankName || 'Bank'} • A/C: ****${(bankDetails.accountNumber || '').slice(-4)} • IFSC: ${bankDetails.ifscCode || '—'}`
-                    : t(
-                        'integrationHub.bankCard.subtitle',
-                        'Configure community bank account & Razorpay merchant API keys to process automated billing.',
-                      )}
-                </p>
-              </div>
-            </div>
-
-            <CButton
-              color="primary"
-              className="d-flex align-items-center gap-2 px-3 py-2 ms-auto ms-md-0"
-              onClick={() => setIsBankModalOpen(true)}
-            >
-              <CIcon icon={cilSettings} />
-              {bankDetails?.isConfigured
-                ? t('integrationHub.bankCard.editBtn', 'Manage Bank & Gateway')
-                : t('integrationHub.bankCard.setupBtn', 'Configure Bank Account')}
-            </CButton>
-          </div>
-        </CCardBody>
-      </CCard>
-
       {/* Search Input */}
       <div className="relative w-full md:max-w-md lg:max-w-lg mb-4">
         <CFormInput
@@ -274,19 +224,6 @@ export const IntegrationHubView = () => {
           setActionError(null)
         }}
         onCreateConnection={handleConnectionCreate}
-        isLoading={actionLoading || isLoading}
-        actionError={actionError}
-      />
-
-      {/* Bank Account & Gateway Credentials Modal */}
-      <BankDetailsFormModal
-        isOpen={isBankModalOpen}
-        onClose={() => {
-          setIsBankModalOpen(false)
-          setActionError(null)
-        }}
-        initialValues={bankDetails}
-        onSubmit={handleBankDetailsSubmit}
         isLoading={actionLoading || isLoading}
         actionError={actionError}
       />

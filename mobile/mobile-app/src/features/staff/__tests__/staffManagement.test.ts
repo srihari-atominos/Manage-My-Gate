@@ -788,6 +788,15 @@ describe('Staff Management — Phase 3 Mobile Integration & RBAC Contracts', () 
       expect(state.isAttendanceLoading).toBe(false);
     });
 
+    it('keeps connectivity failures out of the inline attendance error state', () => {
+      const action = {
+        type: fetchAttendanceHistoryThunk.rejected.type,
+        payload: 'Unable to connect. Please try again.',
+      };
+      const state = staffReducer(dummyInitialState, action);
+      expect(state.attendanceError).toBeNull();
+      expect(state.isAttendanceLoading).toBe(false);
+    });
     it('populates myAttendanceRecords upon fetchMyAttendanceThunk.fulfilled', () => {
       const action = {
         type: fetchMyAttendanceThunk.fulfilled.type,

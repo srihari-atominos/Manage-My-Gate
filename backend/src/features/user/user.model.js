@@ -77,6 +77,7 @@ const userSchema = new mongoose.Schema(
     notificationPreferences: {
       email: { type: Boolean, default: true },
       sms: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
     },
     avatar: {
       type: String,

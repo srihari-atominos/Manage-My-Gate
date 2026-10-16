@@ -23,12 +23,12 @@ const loadContacts = () => require('expo-contacts') as typeof import('expo-conta
 
 /**
  * Opens the system contact picker for one contact. Only the chosen contact is
- * read — the address book is never listed or uploaded. iOS needs no permission;
- * Android needs READ_CONTACTS, requested on first use.
+ * read — the address book is never listed or uploaded. Contacts access is
+ * requested only after the user chooses to import a contact.
  */
 export const useContactPicker = () => {
   const ensurePermission = useCallback(async (): Promise<boolean> => {
-    if (Platform.OS !== 'android') return true;
+    if (!isContactPickerSupported) return false;
     const Contacts = loadContacts();
     const current = await Contacts.getPermissionsAsync();
     if (current.granted) return true;
