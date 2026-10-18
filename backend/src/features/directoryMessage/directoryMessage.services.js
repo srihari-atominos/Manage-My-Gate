@@ -1,6 +1,7 @@
 import directoryMessageRepository from './directoryMessage.repository.js';
 import directoryMessageEvents from './directoryMessage.events.js';
 import User from '../user/user.model.js';
+import orgMembershipService from '../orgMembership/orgMembership.services.js';
 import notificationService from '../notification/notification.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 
@@ -13,11 +14,17 @@ export const directoryMessageService = {
       throw new HttpError(400, 'Cannot start a conversation with yourself');
     }
 
-    // Check recipient user existence and privacy permissions
+    // Check recipient user existence and organization membership
     const receiver = await User.findById(receiverId).lean();
     if (!receiver) {
       throw new HttpError(404, 'Recipient user not found');
     }
+
+    const recipientMembership = await orgMembershipService.getMembership(receiverId, orgId);
+    if (!recipientMembership || recipientMembership.status !== 'Active') {
+      throw new HttpError(404, 'Recipient user not found');
+    }
+
     if (receiver.allowDirectoryMessages === false) {
       throw new HttpError(403, 'Recipient has disabled direct directory messages');
     }
@@ -53,7 +60,7 @@ export const directoryMessageService = {
     let conversation;
     if (conversationId) {
       conversation = await directoryMessageRepository.findConversationById(conversationId);
-      if (!conversation) {
+      if (!conversation || (orgId && conversation.orgId && conversation.orgId.toString() !== orgId.toString())) {
         throw new HttpError(404, 'Conversation not found');
       }
     } else {
@@ -123,9 +130,9 @@ export const directoryMessageService = {
     return message;
   },
 
-  async getMessages({ conversationId, userId, page = 1, limit = 50 }) {
+  async getMessages({ conversationId, userId, orgId, page = 1, limit = 50 }) {
     const conversation = await directoryMessageRepository.findConversationById(conversationId);
-    if (!conversation) {
+    if (!conversation || (orgId && conversation.orgId && conversation.orgId.toString() !== orgId.toString())) {
       throw new HttpError(404, 'Conversation not found');
     }
 
@@ -139,9 +146,9 @@ export const directoryMessageService = {
     return directoryMessageRepository.findMessagesByConversation(conversationId, page, limit);
   },
 
-  async markConversationRead({ conversationId, userId }) {
+  async markConversationRead({ conversationId, userId, orgId }) {
     const conversation = await directoryMessageRepository.findConversationById(conversationId);
-    if (!conversation) {
+    if (!conversation || (orgId && conversation.orgId && conversation.orgId.toString() !== orgId.toString())) {
       throw new HttpError(404, 'Conversation not found');
     }
 

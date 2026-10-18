@@ -11,6 +11,12 @@ export interface CheckboxProps {
   disabled?: boolean;
   className?: string;
   labelClassName?: string;
+  checkedColor?: string;
+  checkedBorderColor?: string;
+  uncheckedBorderColor?: string;
+  uncheckedBgColor?: string;
+  boxStyle?: any;
+  labelStyle?: any;
 }
 
 export const Checkbox = ({
@@ -21,6 +27,12 @@ export const Checkbox = ({
   disabled = false,
   className,
   labelClassName,
+  checkedColor,
+  checkedBorderColor,
+  uncheckedBorderColor,
+  uncheckedBgColor,
+  boxStyle,
+  labelStyle,
 }: CheckboxProps) => {
   return (
     <Pressable
@@ -31,11 +43,21 @@ export const Checkbox = ({
       accessibilityState={{ checked, disabled }}
     >
       <View
+        style={[
+          checked
+            ? checkedColor
+              ? { backgroundColor: checkedColor, borderColor: checkedBorderColor || checkedColor }
+              : undefined
+            : uncheckedBorderColor || uncheckedBgColor
+            ? { backgroundColor: uncheckedBgColor || 'transparent', borderColor: uncheckedBorderColor || 'transparent' }
+            : undefined,
+          boxStyle,
+        ]}
         className={cn(
           'mt-0.5 h-5 w-5 items-center justify-center rounded-md border',
           checked
-            ? 'border-primary bg-primary'
-            : 'border-border bg-card'
+            ? !checkedColor && 'border-primary bg-primary'
+            : !uncheckedBorderColor && 'border-border bg-card'
         )}
       >
         {checked && <Check size={14} color="#ffffff" strokeWidth={3} />}
@@ -43,7 +65,10 @@ export const Checkbox = ({
       {(Boolean(label) || Boolean(description)) && (
         <View className="ms-2 flex-1 justify-center">
           {Boolean(label) && (
-            <Text className={cn('text-[15px] font-medium font-sans text-foreground', labelClassName)}>
+            <Text
+              style={labelStyle}
+              className={cn('text-[15px] font-medium font-sans text-foreground', labelClassName)}
+            >
               {label}
             </Text>
           )}

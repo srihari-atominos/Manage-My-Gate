@@ -87,11 +87,31 @@ export class IssueReportController {
   async getAttachment(req, res, next) {
     try {
       const { filePath, mimeType } = await issueReportService.getAttachmentFile(req.params.filename, req.tenant);
+      
+      // Enforce strict anti-caching and security headers for sensitive support attachments (SEC-05.1-F05)
       res.setHeader('Content-Type', mimeType || 'application/octet-stream');
       res.setHeader('Content-Disposition', 'inline');
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('Cache-Control', 'private, max-age=300');
-      res.sendFile(filePath, (err) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+
+      const sendOptions = {
+        dotfiles: 'deny',
+        lastModified: false,
+        etag: false,
+        cacheControl: false,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Surrogate-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      };
+
+      res.sendFile(filePath, sendOptions, (err) => {
         if (err && !res.headersSent) next(err);
       });
     } catch (error) {

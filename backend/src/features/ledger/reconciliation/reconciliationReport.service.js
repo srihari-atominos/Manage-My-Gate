@@ -6,6 +6,7 @@ import { Wallet } from '../../wallet/wallet.model.js';
 import ReconciliationException from './models/reconciliationException.model.js';
 import HistoricalMigrationRun from './models/historicalMigrationRun.model.js';
 import logger from '../../../utils/logger.utils.js';
+import HttpError from '../../../utils/httpError.utils.js';
 
 export class ReconciliationReportService {
   /**
@@ -173,11 +174,18 @@ export class ReconciliationReportService {
   /**
    * Retrieve report and audit trail for a migration run.
    */
-  async getRunReport(runId) {
-    const run = await HistoricalMigrationRun.findOne({ runId }).lean();
+  async getRunReport(runId, orgId = null) {
+    if (!orgId) {
+      throw new HttpError(400, 'Organization context is required for run report');
+    }
+    const filter = { runId, orgId };
+    const run = await HistoricalMigrationRun.findOne(filter).lean();
     if (!run) return null;
 
-    const exceptions = await ReconciliationException.find({ runId }).lean();
+    const exceptions = await ReconciliationException.find({
+      runId,
+      ...(orgId ? { orgId } : {}),
+    }).lean();
     return {
       run,
       exceptions,

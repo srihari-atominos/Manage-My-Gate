@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
 import { View, ScrollView, Alert, TouchableOpacity, Platform, Image as RNImage, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -315,6 +316,7 @@ export function ResidentRaiseTicketScreen() {
         Alert.alert('Permission Needed', 'Photo gallery permission is required to choose photos.');
         return;
       }
+      if (!(await confirmPickerDisclosure('photo'))) return;
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,

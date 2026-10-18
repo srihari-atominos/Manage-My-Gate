@@ -344,6 +344,12 @@ export const routes = [
     element: ResidentWalletView,
     requiredPermission: 'amenities:wallet',
   },
+  {
+    path: '/resident/amenities/history',
+    name: 'Booking History',
+    element: ResidentHistoryView,
+    requiredPermission: 'amenities:my_booking',
+  },
 
   // Legacy Routes (Kept for backward compatibility during migration)
   {

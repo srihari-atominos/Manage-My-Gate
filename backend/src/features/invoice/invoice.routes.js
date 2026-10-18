@@ -6,7 +6,7 @@ import isAuthenticated from '../../middlewares/auth.middleware.js';
 import './invoice.listeners.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
-import invoiceUpload from './middlewares/invoiceUpload.middleware.js';
+import invoiceUpload, { invoiceProofSignatureValidator } from './middlewares/invoiceUpload.middleware.js';
 
 const router = Router();
 
@@ -24,6 +24,7 @@ router.post(
   '/upload-proof',
   authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
   invoiceUpload.single('proof'),
+  invoiceProofSignatureValidator,
   invoiceController.uploadProof
 );
 
@@ -104,6 +105,7 @@ router.post(
 
 router.get(
   '/:id',
+  tenantContext,
   authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
   invoiceController.getInvoiceById
 );

@@ -53,7 +53,7 @@ export class DeviceTokenService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const updated = await deviceTokenRepository.deactivateToken(pushToken, session);
+      const updated = await deviceTokenRepository.deactivateToken(pushToken, session, userId);
       await session.commitTransaction();
 
       logger.info(`Device push token deactivated: ${pushToken.slice(0, 15)}...`);
@@ -61,6 +61,32 @@ export class DeviceTokenService {
     } catch (error) {
       await session.abortTransaction();
       logger.error('Failed to unregister device token:', error);
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Deactivate all device tokens for a user (e.g. when disabling push notifications).
+   * @param {string} userId
+   */
+  async deactivateUserTokens(userId) {
+    if (!userId) {
+      throw new HttpError(400, 'User ID is required to deactivate tokens');
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const result = await deviceTokenRepository.deactivateUserTokens(userId, session);
+      await session.commitTransaction();
+
+      logger.info(`All device push tokens deactivated for user ${userId}`);
+      return result;
+    } catch (error) {
+      await session.abortTransaction();
+      logger.error('Failed to deactivate user device tokens:', error);
       throw error;
     } finally {
       await session.endSession();

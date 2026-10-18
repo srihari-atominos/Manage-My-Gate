@@ -1,12 +1,13 @@
 import cron from 'node-cron';
 import Complaint from './complaint.model.js';
 import complaintService from './complaint.service.js';
+import logger, { loggerStorage } from '../../utils/logger.utils.js';
 
 class ComplaintCron {
   init() {
     // Run every hour to check for SLA breaches
     cron.schedule('0 * * * *', async () => {
-      console.log('Running SLA Breach Check Cron Job...');
+      logger.info('[CRON] Running SLA Breach Check Cron Job...');
       try {
         const now = new Date();
         const breachedComplaints = await Complaint.find({
@@ -17,19 +18,24 @@ class ComplaintCron {
         });
 
         for (const complaint of breachedComplaints) {
-          try {
-            await complaintService.escalateComplaint(complaint._id, complaint.orgId, {
-              ipAddress: 'System',
-              browser: 'Cron',
-              device: 'Server'
-            });
-            console.log(`Successfully escalated complaint ${complaint.complaintNumber}`);
-          } catch (err) {
-            console.error(`Failed to escalate complaint ${complaint.complaintNumber}:`, err.message);
-          }
+          const compOrgId = complaint.orgId?.toString();
+          const cronJobId = `cron-complaint-sla-${complaint._id}`;
+
+          await loggerStorage.run({ requestId: cronJobId, orgId: compOrgId }, async () => {
+            try {
+              await complaintService.escalateComplaint(complaint._id, complaint.orgId, {
+                ipAddress: 'System',
+                browser: 'Cron',
+                device: 'Server'
+              });
+              logger.info(`Successfully escalated complaint ${complaint.complaintNumber}`, { orgId: compOrgId });
+            } catch (err) {
+              logger.error(`Failed to escalate complaint ${complaint.complaintNumber}: ${err.message}`, { orgId: compOrgId });
+            }
+          });
         }
       } catch (error) {
-        console.error('Error in SLA Breach Check Cron Job:', error);
+        logger.error('Error in SLA Breach Check Cron Job:', error);
       }
     });
 

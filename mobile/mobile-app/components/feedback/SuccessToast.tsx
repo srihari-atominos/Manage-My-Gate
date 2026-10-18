@@ -45,7 +45,7 @@ export const SuccessToast = ({
         {message}
       </Text>
       {onDismiss ? (
-        <Pressable onPress={onDismiss} className="ms-2 p-1 active:opacity-70">
+        <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel="Dismiss message" hitSlop={8} className="ms-2 p-1 active:opacity-70">
           <X size={16} className="text-status-success" />
         </Pressable>
       ) : null}

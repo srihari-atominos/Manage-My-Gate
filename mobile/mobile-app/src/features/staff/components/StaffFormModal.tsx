@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, ScrollView } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
+import { PhoneInput } from '@/components/forms/PhoneInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -40,6 +41,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
   const [status, setStatus] = useState<StaffStatus>('Active');
   const [designation, setDesignation] = useState('');
   const [staffCode, setStaffCode] = useState('');
+  const [authorId, setAuthorId] = useState('');
 
   // Form error state
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -58,6 +60,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
         setStatus(member.status || 'Active');
         setDesignation(member.designation || '');
         setStaffCode(member.staffCode || '');
+        setAuthorId(member.authorId || '');
       } else {
         setName('');
         setPhone('');
@@ -69,6 +72,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
         setStatus('Active');
         setDesignation('');
         setStaffCode('');
+        setAuthorId('');
       }
       setErrors({});
       setServerError(null);
@@ -95,8 +99,8 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
     }
     if (!phone.trim()) {
       newErrors.phone = 'Phone number is required';
-    } else if (phone.trim().length < 8) {
-      newErrors.phone = 'Please enter a valid phone number';
+    } else if (!/^\+[1-9]\d{6,14}$/.test(phone.replace(/[\s()-]/g, ''))) {
+      newErrors.phone = 'Include a valid country code, e.g. +919876543210';
     }
     if (!email.trim()) {
       newErrors.email = 'Email address is required';
@@ -105,6 +109,11 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
     }
     if (department === 'Others' && !customDepartment.trim()) {
       newErrors.customDepartment = 'Please specify the department name';
+    }
+    if (!authorId.trim()) {
+      newErrors.authorId = 'Author ID is required';
+    } else if (authorId.replace(/\D/g, '').length !== 12) {
+      newErrors.authorId = 'Author ID must contain exactly 12 digits';
     }
     if (!roleId) newErrors.roleId = 'Please select a staff role';
 
@@ -120,7 +129,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
       setServerError(null);
       const payload = {
         name: name.trim(),
-        phone: phone.trim(),
+        phone: phone.replace(/[\s()-]/g, ''),
         email: email.trim(),
         department,
         departmentOther: department === 'Others' ? customDepartment.trim() : '',
@@ -128,6 +137,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
         status,
         designation: designation.trim() || undefined,
         staffCode: staffCode.trim() || undefined,
+        authorId: authorId.replace(/\D/g, ''),
       };
 
       const saved = await onSubmit(payload);
@@ -175,17 +185,18 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
             editable={!isSubmitting}
           />
 
-          <TextInput
+          <PhoneInput
             label="Phone Number"
-            placeholder="e.g. +966 50 123 4567"
+            defaultCountry="IN"
+            placeholder="Enter your phone number"
             value={phone}
             onChangeText={(text) => {
               setPhone(text);
               if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
             }}
-            keyboardType="phone-pad"
             error={errors.phone}
             required
+            showCount={false}
             editable={!isSubmitting}
           />
 
@@ -204,6 +215,21 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({
             editable={!isSubmitting}
           />
 
+          <TextInput
+            label="Author ID"
+            placeholder="1234 5678 9012"
+            value={authorId}
+            onChangeText={(text) => {
+              const digits = text.replace(/\D/g, '').slice(0, 12);
+              setAuthorId(digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim());
+              if (errors.authorId) setErrors((prev) => ({ ...prev, authorId: '' }));
+            }}
+            keyboardType="number-pad"
+            maxLength={14}
+            error={errors.authorId}
+            required
+            editable={!isSubmitting}
+          />
           <View className="flex-row gap-3">
             <View className="flex-1">
               <TextInput

@@ -1,4 +1,4 @@
-import '@/src/utils/consoleFilter';
+﻿import '@/src/utils/consoleFilter';
 import '@/src/utils/cryptoPolyfill';
 import '@/global.css';
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -109,6 +109,7 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 }
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { openSupportMail, useSupportEmail } from '@/src/services/supportContact';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { setDefaultPhoneCountry } from '@/src/utils/phone';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -133,6 +134,7 @@ import { GlobalNotificationPresenter } from '@/components/feedback/GlobalNotific
 import { AnimatedSplash } from '@/components/feedback/AnimatedSplash';
 import { ForceUpdateGate } from '@/components/feedback/ForceUpdateGate';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { NetworkRecoveryProvider } from '@/src/features/network/NetworkRecoveryProvider';
 import { installLocalizedAlertTranslation } from '@/src/utils/alertUtils';
 import { hasActiveCommunity, resolveHomeRoute, SIGNED_IN_AUTH_ROUTES } from '@/src/features/auth/utils/landing';
 
@@ -142,12 +144,22 @@ installLocalizedAlertTranslation();
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  const supportEmail = useSupportEmail();
   const handleContactDev = () => {
-    const subject = encodeURIComponent('Nahom App Crash Report');
-    const body = encodeURIComponent(
-      `Hi Nahom Developer Team,\n\nI encountered a crash in the app:\n\nError: ${error?.message || 'Unknown'}\n\nStack Trace:\n${error?.stack || 'None'}\n\nPlatform: ${Platform.OS}\nDate: ${new Date().toISOString()}`
+    void openSupportMail(
+      'Nahom App Crash Report',
+      `Hi Nahom Support Team,
+
+I encountered a crash in the app:
+
+Error: ${error?.message || 'Unknown'}
+
+Stack Trace:
+${error?.stack || 'None'}
+
+Platform: ${Platform.OS}
+Date: ${new Date().toISOString()}`
     );
-    Linking.openURL(`mailto:developer@nahom.com?subject=${subject}&body=${body}`);
   };
 
   return (
@@ -170,15 +182,15 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
         >
           <Text className="text-xs font-bold text-primary-foreground">Try Again</Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        {supportEmail ? <TouchableOpacity
           onPress={handleContactDev}
           className="flex-1 py-2.5 rounded-xl bg-secondary border border-border items-center justify-center flex-row gap-1.5 active:opacity-80"
           accessibilityRole="button"
           accessibilityLabel="Email App Developer"
         >
           <Mail size={14} className="text-foreground" />
-          <Text className="text-xs font-bold text-foreground">Contact Dev</Text>
-        </TouchableOpacity>
+          <Text className="text-xs font-bold text-foreground">Contact Support</Text>
+        </TouchableOpacity> : null}
       </View>
     </View>
   );
@@ -460,7 +472,8 @@ export default function RootLayout() {
         <View className={visibleColorScheme === 'dark' ? 'dark flex-1 bg-background' : 'flex-1 bg-background'}>
           <Provider store={store}>
             <I18nProvider>
-              <BottomSheetModalProvider>
+              <NetworkRecoveryProvider>
+                <BottomSheetModalProvider>
                 <StatusBar
                   style={visibleColorScheme === 'dark' ? 'light' : 'dark'}
                   {...({ backgroundColor: visibleColorScheme === 'dark' ? '#131316' : '#FFF8EF' } as any)}
@@ -471,7 +484,8 @@ export default function RootLayout() {
                 <GlobalNotificationPresenter />
                 <PortalHost />
                 <AnimatedSplash />
-              </BottomSheetModalProvider>
+                </BottomSheetModalProvider>
+              </NetworkRecoveryProvider>
             </I18nProvider>
           </Provider>
         </View>
@@ -479,3 +493,4 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+

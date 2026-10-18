@@ -1,4 +1,3 @@
-import { sendOtpNotification } from './auth.listeners.js';
 import userService from '../user/user.services.js';
 import roleService from '../role/role.services.js';
 import rolePermissionService from '../rolePermission/rolePermission.services.js';
@@ -1024,7 +1023,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         roleName = targetRole;
         activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
         if (activeRoleObj) {
-          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id, orgId);
           permissions = permissionsList.map((permission) => permission.name);
         }
       } else {
@@ -1032,7 +1031,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         if (roleName) {
           activeRoleObj = uniqueRoles.find(r => r?.name === roleName);
           if (activeRoleObj) {
-            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id, orgId);
             permissions = permissionsList.map((permission) => permission.name);
           }
         }
@@ -1750,7 +1749,6 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
 
       const tokenRes = await tokenService.validateInvitationToken(rawToken, session);
       const userId = tokenRes.userId;
-      const orgId = tokenRes.orgId;
       if (!orgId) {
         throw new HttpError(400, 'This invitation is not linked to a community. Please ask for a new invitation.');
       }
@@ -2238,6 +2236,28 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     return user;
   }
 
+  /** Creates an active, community-less account for a first-time Apple sign-in. @private */
+  async _provisionAppleUser(identityData, session) {
+    const { providerEmail: email, profileData } = identityData;
+    const name = (profileData?.name || '').trim();
+    const base = (name || email.split('@')[0]).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
+    let username = base.length >= 3 ? base : 'user';
+    while (await userService.getUserByEmailOrUsername(username, session).catch(() => null)) {
+      username = `${base.length >= 3 ? base : 'user'}${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+    return await userService.createUser(
+      {
+        email,
+        username,
+        name: name || undefined,
+        status: 'Active',
+        emailVerified: identityData.emailVerified === true,
+        privacyPolicyAcceptedAt: new Date(),
+      },
+      session
+    );
+  }
+
   /**
    * Internal helper to find/register SSO users, activate pending invitations, and scope sessions.
    * @private
@@ -2273,6 +2293,14 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       if (!user && email && identityData.emailVerified === true) {
         // Fallback: link by email, but only when the provider has verified it
         user = await userService.getUserByEmail(email, session);
+      }
+
+      if (!user && provider === 'apple' && email) {
+        // App Store review requires Sign in with Apple to work for a brand-new Apple ID.
+        // The account has no community membership, so it gets no access until invited;
+        // the app lands it on the "not part of a community yet" screen.
+        user = await this._provisionAppleUser(identityData, session);
+        authEvents.emit('USER_CREATED', { userId: user._id, provider });
       }
 
       if (!user) {
@@ -2323,13 +2351,16 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
   async initiatePhoneLogin(phone) {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) throw new HttpError(400, 'Invalid phone number format.');
-    await otpService.assertCanSend(normalizedPhone);
     const user = await userService.getUserByPhone(normalizedPhone);
     if (!user) {
-      await otpService.recordSend(normalizedPhone);
-      return { message: OTP_SENT_PHONE_MESSAGE };
+      throw new HttpError(404, 'No account was found for this phone number. Please contact your community administrator.');
     }
 
+    if (!['Active', 'Pending', 'Pending Verification'].includes(user.status)) {
+      throw new HttpError(403, `This account is ${String(user.status || 'inactive').toLowerCase()} and cannot sign in.`);
+    }
+
+    await otpService.assertCanSend(normalizedPhone);
     if (otpService.isReviewAccount(normalizedPhone)) {
       const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
       return { message: 'OTP sent successfully', ...devCodeField(normalizedPhone, plainCode) };
@@ -2383,6 +2414,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       const sendUrl = new URL('https://control.msg91.com/api/v5/otp');
       sendUrl.searchParams.set('template_id', templateId);
       sendUrl.searchParams.set('mobile', normalizedPhone.replace(/^\+/, ''));
+      sendUrl.searchParams.set('otp_length', '4');
       if (senderId) {
         sendUrl.searchParams.set('sender', senderId);
       }
@@ -3421,31 +3453,24 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     };
   }
 
-  async checkAccountStatus(identifier) {
-    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
-      return { exists: false, hasPassword: false, isAlreadyConfigured: false };
+  async checkAccountStatus(identifier, { authenticated = false } = {}) {
+    // Anonymous callers learn nothing (otherwise anyone could test which emails/phones have accounts).
+    // Signed-in callers (e.g. an admin inviting someone) only learn whether an account exists and whether
+    // its credentials are set up, never personal data such as name, email, phone or status.
+    if (!authenticated || !identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      return { exists: false, isAlreadyConfigured: false };
     }
 
     const user = await userService.getUserByEmailOrPhone(identifier);
     if (!user) {
-      return { exists: false, hasPassword: false, isAlreadyConfigured: false };
+      return { exists: false, isAlreadyConfigured: false };
     }
 
     const hasPassword = !!(user.password && user.password.length > 0);
     const credStatus = user.credentialStatus || (hasPassword ? 'INITIALIZED' : 'NOT_INITIALIZED');
     const isAlreadyConfigured = hasPassword && credStatus === 'INITIALIZED';
 
-    return {
-      exists: true,
-      hasPassword,
-      credentialStatus: credStatus,
-      appAccessStatus: user.appAccessStatus || 'NOT_YET_ACCESSED',
-      status: user.status,
-      isAlreadyConfigured,
-      email: user.email,
-      phone: user.phone || '',
-      name: user.name || user.username || '',
-    };
+    return { exists: true, isAlreadyConfigured };
   }
 
   async sendFirstTimeSetupOtp(identifier) {
@@ -3467,12 +3492,14 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     if (isOtpDebugEnabled()) {
       logger.info(`[FIRST TIME SETUP OTP] Code for ${targetIdentifier}: ${plainCode}`);
     }
+    const isDev = process.env.NODE_ENV !== 'production';
 
     sendOtpNotification({ identifier: targetIdentifier, code: plainCode, type: 'FIRST_TIME_SETUP' }).catch(err => logger.error('Failed to send OTP:' + err.message));
 
     return {
       message: `Verification code sent to ${targetIdentifier}`,
       identifier: targetIdentifier,
+      ...(isDev && { devCode: plainCode }),
     };
   }
 

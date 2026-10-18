@@ -7,7 +7,8 @@ import { PaginatedList } from '@/components/ui/PaginatedList';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { CheckCircle2 } from 'lucide-react-native';
+import { CheckCircle2, CloudOff } from 'lucide-react-native';
+import { useReconnectEffect } from '@/src/features/network/NetworkRecoveryProvider';
 import { useComplaints } from '../hooks/useComplaints';
 import { ComplaintCard } from '../components/ComplaintCard';
 import { ComplaintDetailSheet } from '../components/ComplaintDetailSheet';
@@ -46,6 +47,9 @@ export function ResidentMyTicketsScreen() {
   const loadData = useCallback(() => {
     fetchComplaints({ page: 1, limit: 20 });
   }, [fetchComplaints]);
+
+  // The list reloads itself on reconnect; just drop the stale error so it doesn't linger
+  useReconnectEffect(clearErrors);
 
   const loadMore = useCallback(() => {
     if (!isLoading && pagination.currentPage < pagination.totalPages) {
@@ -180,7 +184,17 @@ export function ResidentMyTicketsScreen() {
             </View>
           )}
           ListEmptyComponent={
-            !isLoading ? (
+            !isLoading && error && complaints.length === 0 ? (
+              <View className="px-4 pt-6">
+                <EmptyState
+                  icon={CloudOff}
+                  title={t('tickets_load_failed', "Couldn't load your tickets")}
+                  description={t('tickets_load_failed_desc', 'Your tickets are safe. Check your connection and try again.')}
+                  actionLabel={t('retry', 'Retry')}
+                  onAction={() => { clearErrors(); loadData(); }}
+                />
+              </View>
+            ) : !isLoading ? (
               <View className="px-4 pt-6">
                 <EmptyState
                   icon={CheckCircle2}

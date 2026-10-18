@@ -31,10 +31,10 @@ export const useIntegrationHub = () => {
   const [isBankModalOpen, setIsBankModalOpen] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
 
-  // Auto-fetch catalog and bank details on mount
+  // Auto-fetch the catalog on mount. Bank account details are managed through the 'Banking Vault'
+  // provider card; the old /integrations/bank-details endpoint does not exist on the server.
   useEffect(() => {
     dispatch(fetchCatalog())
-    dispatch(fetchBankDetails())
   }, [dispatch])
 
   // Auto-fetch connections whenever the selected provider changes

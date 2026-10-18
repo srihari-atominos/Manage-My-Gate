@@ -10,6 +10,9 @@ process.env.SESSION_SECRET = 'b'.repeat(40);
 process.env.ENCRYPTION_KEY = 'c'.repeat(40);
 process.env.JWT_REFRESH_SECRET = 'd'.repeat(40);
 process.env.VAULT_ENCRYPTION_KEY = 'e'.repeat(40);
+process.env.REQUIRE_REDIS_LOCK = 'true';
+process.env.REQUIRE_REDIS_RATE_LIMIT = 'true';
+process.env.REQUIRE_REDIS_ADAPTER = 'true';
 
 const { setupAccountPasswordRules } = await import('../src/features/auth/auth.validateRules.js');
 const { signToken, verifyToken, signRefreshToken, verifyRefreshToken } = await import('../src/utils/jwt.utils.js');

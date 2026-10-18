@@ -74,7 +74,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
         >
           <View className="flex-row items-center gap-1.5">
             <Camera size={14} color="#ffffff" />
-            <Text className="text-white text-xs font-bold">Grant Permission</Text>
+            <Text className="text-white text-xs font-bold">Continue</Text>
           </View>
         </Button>
       </View>

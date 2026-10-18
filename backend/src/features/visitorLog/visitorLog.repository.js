@@ -147,10 +147,50 @@ export class VisitorLogRepository {
    * @returns {Promise<{ data: Object[], totalRecords: number }>}
    */
   async findHistoryLogsByOrg(orgId, skip = 0, limit = 10, filterQuery = {}, session = null) {
+    const isMongoOrgId = mongoose.isValidObjectId(orgId);
     const matchStage = {
-      orgId: new mongoose.Types.ObjectId(orgId),
-      ...filterQuery
+      orgId: isMongoOrgId
+        ? { $in: [new mongoose.Types.ObjectId(orgId), String(orgId)] }
+        : String(orgId)
     };
+
+    if (filterQuery.residentId) {
+      if (typeof filterQuery.residentId === 'string' && mongoose.isValidObjectId(filterQuery.residentId)) {
+        matchStage.residentId = { $in: [new mongoose.Types.ObjectId(filterQuery.residentId), String(filterQuery.residentId)] };
+      } else {
+        matchStage.residentId = filterQuery.residentId;
+      }
+    }
+
+    if (filterQuery.passId) {
+      if (typeof filterQuery.passId === 'string' && mongoose.isValidObjectId(filterQuery.passId)) {
+        matchStage.passId = { $in: [new mongoose.Types.ObjectId(filterQuery.passId), String(filterQuery.passId)] };
+      } else {
+        matchStage.passId = filterQuery.passId;
+      }
+    }
+
+    if (filterQuery.guardId) {
+      if (typeof filterQuery.guardId === 'string' && mongoose.isValidObjectId(filterQuery.guardId)) {
+        matchStage.guardId = { $in: [new mongoose.Types.ObjectId(filterQuery.guardId), String(filterQuery.guardId)] };
+      } else {
+        matchStage.guardId = filterQuery.guardId;
+      }
+    }
+
+    if (filterQuery.logStatus) {
+      matchStage.logStatus = filterQuery.logStatus;
+    }
+
+    if (filterQuery.entryType) {
+      matchStage.entryType = filterQuery.entryType;
+    }
+
+    for (const [key, val] of Object.entries(filterQuery)) {
+      if (!['residentId', 'passId', 'guardId', 'logStatus', 'entryType', 'orgId'].includes(key)) {
+        matchStage[key] = val;
+      }
+    }
 
     const pipeline = [
       { $match: matchStage },
@@ -236,7 +276,13 @@ export class VisitorLogRepository {
                     vars: {
                       v: { $ifNull: [{ $arrayElemAt: ['$passVilla', 0] }, { $arrayElemAt: ['$residentVilla', 0] }] }
                     },
-                    in: { _id: '$$v._id', unitNumber: '$$v.unitNumber', blockOrBuilding: '$$v.blockOrBuilding' }
+                    in: {
+                      $cond: {
+                        if: { $ne: ['$$v', null] },
+                        then: { _id: '$$v._id', unitNumber: '$$v.unitNumber', blockOrBuilding: '$$v.blockOrBuilding' },
+                        else: null
+                      }
+                    }
                   }
                 },
                 createdAt: 1,

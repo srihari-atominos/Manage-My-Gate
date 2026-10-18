@@ -58,23 +58,33 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
   const handleScroll = useCallback(
     (event: any) => {
       const currentY = extractScrollY(event);
+      const now = Date.now();
 
-      // Long-page smart threshold: Never hide bottom bar on top 220px of any page
-      if (currentY <= 220) {
-        setIsCompact(false);
+      // Long-page smart threshold: Never hide bottom bar on top 180px of any page
+      if (currentY <= 180) {
+        if (globalIsCompact) {
+          setIsCompact(false);
+        }
         lastScrollY.current = Math.max(0, currentY);
+        return;
+      }
+
+      // Throttle rapid state flip calls
+      if (now - lastScrollTime.current < 90) {
         return;
       }
 
       const delta = currentY - lastScrollY.current;
 
-      // Scrolling Down threshold: 50px of intentional downward scroll beyond 220px depth
-      if (delta > 50) {
+      // Scrolling Down threshold: 45px of downward scroll
+      if (delta > 45 && !globalIsCompact) {
+        lastScrollTime.current = now;
         setIsCompact(true);
         lastScrollY.current = currentY;
       }
-      // Scrolling Up threshold: 25px of upward scroll immediately reveals the bar
-      else if (delta < -25) {
+      // Scrolling Up threshold: 25px of upward scroll reveals the bar
+      else if (delta < -25 && globalIsCompact) {
+        lastScrollTime.current = now;
         setIsCompact(false);
         lastScrollY.current = currentY;
       }
@@ -84,7 +94,7 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
 
   const scrollHandlerProps = {
     onScroll: handleScroll,
-    scrollEventThrottle: 16,
+    scrollEventThrottle: 32,
   };
 
   return (
@@ -101,10 +111,12 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
   );
 };
 
-export const useBottomNavScroll = () => {
-  const context = useContext(BottomNavScrollContext);
+/**
+ * Dedicated hook for BottomNavigationBar: ONLY component that listens to compact visibility state.
+ * Screens DO NOT use this, preventing unnecessary screen re-renders during scroll.
+ */
+export const useBottomNavCompact = () => {
   const [compact, setCompact] = useState(globalIsCompact);
-  const localLastY = useRef(0);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -119,21 +131,42 @@ export const useBottomNavScroll = () => {
     };
   }, []);
 
+  return compact;
+};
+
+/**
+ * Screen scroll hook: Provides stable onScroll handlers with ZERO React state updates.
+ * Prevents re-rendering entire screen trees during scroll gestures.
+ */
+export const useBottomNavScroll = () => {
+  const context = useContext(BottomNavScrollContext);
+  const localLastY = useRef(0);
+  const lastScrollTime = useRef(0);
+
   const handleLocalScroll = useCallback((event: any) => {
     const currentY = extractScrollY(event);
+    const now = Date.now();
 
-    if (currentY <= 220) {
-      setGlobalBottomNavCompact(false);
+    if (currentY <= 180) {
+      if (globalIsCompact) {
+        setGlobalBottomNavCompact(false);
+      }
       localLastY.current = Math.max(0, currentY);
+      return;
+    }
+
+    if (now - lastScrollTime.current < 90) {
       return;
     }
 
     const delta = currentY - localLastY.current;
 
-    if (delta > 50) {
+    if (delta > 45 && !globalIsCompact) {
+      lastScrollTime.current = now;
       setGlobalBottomNavCompact(true);
       localLastY.current = currentY;
-    } else if (delta < -25) {
+    } else if (delta < -25 && globalIsCompact) {
+      lastScrollTime.current = now;
       setGlobalBottomNavCompact(false);
       localLastY.current = currentY;
     }
@@ -144,12 +177,12 @@ export const useBottomNavScroll = () => {
   }
 
   return {
-    isCompact: compact,
+    isCompact: globalIsCompact,
     setIsCompact: setGlobalBottomNavCompact,
     handleScroll: handleLocalScroll,
     scrollHandlerProps: {
       onScroll: handleLocalScroll,
-      scrollEventThrottle: 16,
+      scrollEventThrottle: 32,
     },
   };
 };

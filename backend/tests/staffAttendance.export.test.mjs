@@ -51,7 +51,7 @@ const withStubs = (sessions, staff, fn) => async () => {
 test('formatDuration is human friendly', () => {
   assert.equal(exp.formatDuration(455), '7h 35m');
   assert.equal(exp.formatDuration(45), '45m');
-  assert.equal(exp.formatDuration(null), '—');
+  assert.equal(exp.formatDuration(null), '-');
 });
 
 test('sessionToRow renders friendly IST date/time, hours and guard names', () => {
@@ -130,12 +130,12 @@ test(
     const att = wb.getWorksheet('Attendance');
     assert.equal(att.getRow(1).getCell(2).value, 'Staff Name');
     assert.equal(att.getRow(2).getCell(2).value, 'Ali Ahmed');
-    assert.equal(typeof att.getRow(2).getCell(11).value, 'number');
+    assert.equal(typeof att.getRow(2).getCell(9).value, 'number');
   })
 );
 
 test('export file names and format validation', () => {
   assert.equal(exp.exportFileName('csv', { startDate: '2026-03-01', endDate: '2026-03-31' }), 'staff_attendance_2026-03-01_to_2026-03-31.csv');
-  assert.throws(() => exp.assertFormat('pdf'), (e) => e.statusCode === 400);
+  assert.equal(exp.assertFormat('pdf'), 'pdf');
   assert.equal(exp.assertFormat(undefined), 'xlsx');
 });

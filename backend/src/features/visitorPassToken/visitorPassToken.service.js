@@ -76,9 +76,16 @@ export class VisitorPassTokenService {
    * Deletes the token mapping associated with a passId.
    * @param {string} passId - The visitor pass ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
+   * @param {string} [orgId=null] - Optional organization ID.
    */
-  async deleteTokenByPassId(passId, session = null) {
-    await visitorPassTokenRepository.deleteByPassId(passId, session);
+  async deleteTokenByPassId(passId, session = null, orgId = null) {
+    let actualSession = session;
+    let actualOrgId = orgId;
+    if (session && (typeof session === 'string' || !session?.inTransaction)) {
+      actualOrgId = session;
+      actualSession = null;
+    }
+    await visitorPassTokenRepository.deleteByPassId(passId, actualSession, actualOrgId);
   }
 }
 

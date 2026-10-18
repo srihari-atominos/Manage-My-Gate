@@ -3,6 +3,7 @@ import authService from '../services/authService';
 import storage from '../../../utils/storage';
 import { deviceTokenService } from '../../notification/services/deviceTokenService';
 import { getPendingInviteToken, clearPendingInviteToken } from '../utils/inviteContext';
+import { cancelInFlightRequests } from '../../../services/apiClient';
 
 export interface User {
   id: string;
@@ -610,6 +611,7 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
   { rejectValue: string }
 >('auth/switchWorkspaceContext', async (payload, { dispatch, rejectWithValue }) => {
   try {
+    cancelInFlightRequests('Workspace context switched');
     const cleanPayload: {
       targetOrgId?: string;
       targetRole?: string;
@@ -688,6 +690,8 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
 export const performLogout = createAsyncThunk(
   'auth/performLogout',
   async (_, { dispatch, getState }) => {
+    cancelInFlightRequests('User logged out');
+    storage.clearMemoryCache();
     const state: any = getState();
     const userId = state?.auth?.user?.id || state?.auth?.user?._id;
 
@@ -704,6 +708,7 @@ export const performLogout = createAsyncThunk(
       storage.removeItem('token'),
       storage.removeItem('refreshToken'),
       storage.removeItem('user'),
+      storage.removeItem('availableWorkspaces'),
     ]);
     dispatch(logout());
 
@@ -734,6 +739,8 @@ export const performLogout = createAsyncThunk(
 export const deleteAccountThunk = createAsyncThunk(
   'auth/deleteAccount',
   async (_, { dispatch, rejectWithValue }) => {
+    cancelInFlightRequests('User deleted account');
+    storage.clearMemoryCache();
     try {
       const deletePromise = authService.deleteAccount();
       // Fast path: clear local storage and state immediately
@@ -741,6 +748,7 @@ export const deleteAccountThunk = createAsyncThunk(
         storage.removeItem('token'),
         storage.removeItem('refreshToken'),
         storage.removeItem('user'),
+        storage.removeItem('availableWorkspaces'),
       ]);
       dispatch(logout());
       await clearStoragePromise;

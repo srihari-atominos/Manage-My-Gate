@@ -26,7 +26,11 @@ function getAppleSigningKey(header, callback) {
 }
 
 function configuredAudiences() {
-  return [...new Set([config.sso.appleClientId, config.sso.appleServiceId].filter(Boolean))];
+  return [...new Set([
+    config.sso.appleNativeClientId,
+    config.sso.appleClientId,
+    config.sso.appleServiceId,
+  ].filter(Boolean))];
 }
 
 export class AppleProvider {

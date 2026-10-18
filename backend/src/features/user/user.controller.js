@@ -375,7 +375,7 @@ export class UserController {
   async updateProfile(req, res, next) {
     try {
       const userId = req.user.id || req.user._id;
-      const { name, phone, phoneOtp, email, emailOtp, updateAuthToken, removeAvatar, bio, work, hometown, allowIntercomCalls } = req.body;
+      const { name, phone, phoneOtp, email, emailOtp, updateAuthToken, removeAvatar, bio, work, hometown, allowIntercomCalls, notificationPreferences } = req.body;
       let interests = req.body.interests;
       if (typeof interests === 'string') {
         interests = JSON.parse(interests);
@@ -393,6 +393,7 @@ export class UserController {
         hometown,
         allowIntercomCalls,
         interests,
+        notificationPreferences,
         avatarFilename,
         removeAvatar: removeAvatar === 'true' || removeAvatar === true || removeAvatar === '1',
         updateAuthToken,
@@ -411,6 +412,7 @@ export class UserController {
         hometown: updatedUser.hometown || '',
         allowIntercomCalls: Boolean(updatedUser.allowIntercomCalls),
         interests: updatedUser.interests || [],
+        notificationPreferences: updatedUser.notificationPreferences || { email: true, sms: true, push: true },
       }, 'Profile updated successfully');
     } catch (error) {
       if (req.file && req.file.path) {

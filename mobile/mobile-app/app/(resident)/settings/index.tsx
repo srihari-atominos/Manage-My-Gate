@@ -1,3 +1,4 @@
+import { openSupportMail, useSupportEmail } from '@/src/services/supportContact';
 import React, { useState } from 'react';
 import { View, ScrollView, Modal, Pressable, Alert, Platform, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,13 +37,10 @@ import {
   Check,
   LogOut,
   Trash2,
-  Users,
   ChevronLeft,
   Globe,
   UserX,
   HelpCircle,
-  Building2,
-  Home,
   UserCheck,
   AlertCircle,
   Sparkles,
@@ -148,14 +146,31 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleOpenRefundPolicy = async () => {
+    try {
+      await WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/refund-policy');
+    } catch (e) {
+      console.warn('Could not open refund policy in browser:', e);
+    }
+  };
+
+  const supportEmail = useSupportEmail();
   const handleOpenSupport = () => {
+    const message = supportEmail
+      ? `${t('support_help_center', 'Nahom Help Center')}: ${supportEmail}`
+      : t('support_unavailable', 'Support contact is not available right now. Please try again later.');
     if (Platform.OS === 'web') {
-      window.alert(t('support_alert', 'Nahom Help Center & 24/7 Security Desk: support@nahom.com'));
+      window.alert(message);
     } else {
       Alert.alert(
         t('support_help', 'Help & Support'),
-        t('support_alert', 'Nahom Help Center & 24/7 Security Desk: support@nahom.com'),
-        [{ text: t('close', 'Close'), style: 'cancel' }]
+        message,
+        supportEmail
+          ? [
+              { text: t('close', 'Close'), style: 'cancel' },
+              { text: t('send_email', 'Send Email'), onPress: () => void openSupportMail('Nahom Support Request', '') },
+            ]
+          : [{ text: t('close', 'Close'), style: 'cancel' }]
       );
     }
   };
@@ -341,40 +356,7 @@ export default function SettingsScreen() {
 
         {/* 5. Section Groups */}
 
-        {/* Group A: Household & Access */}
-        <SettingsCard title={t('household_group', 'Household & Access')}>
-          {hasMultipleOrgs && (
-            <SettingsRow
-              icon={Building2}
-              iconColor="#6366f1"
-              iconBgColor="rgba(99, 102, 241, 0.12)"
-              title={t('switch_community', 'Switch Community')}
-              subtitle={dynamicCommunity}
-              onPress={() => setOrgModalVisible(true)}
-            />
-          )}
-          {hasMultipleUnits && (
-            <SettingsRow
-              icon={Home}
-              iconColor="#10b981"
-              iconBgColor="rgba(16, 185, 129, 0.12)"
-              title={t('switch_unit', 'Switch Villa Unit')}
-              subtitle={dynamicUnit}
-              onPress={() => setVillaModalVisible(true)}
-            />
-          )}
-          <SettingsRow
-            icon={Users}
-            iconColor="#0ea5e9"
-            iconBgColor="rgba(14, 165, 233, 0.12)"
-            title={t('community_directory', 'Community Directory')}
-            subtitle={t('find_residents_security', 'Find residents, security & staff')}
-            onPress={() => router.navigate('/(resident)/directory' as any)}
-            isLast={true}
-          />
-        </SettingsCard>
-
-        {/* Group B: General Settings & Preferences */}
+        {/* Group A: General Settings & Preferences */}
         <SettingsCard title={t('general_settings_group', 'General Settings & Preferences')}>
           <ThemeToggleSwitch
             themeMode={themeMode}
@@ -449,6 +431,7 @@ export default function SettingsScreen() {
         <AppVersionFooter
           onPressPrivacy={handleOpenPrivacyPolicy}
           onPressTerms={handleOpenTerms}
+          onPressRefund={handleOpenRefundPolicy}
         />
           </>
         )}

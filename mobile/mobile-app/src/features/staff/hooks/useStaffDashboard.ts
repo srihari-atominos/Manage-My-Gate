@@ -47,81 +47,42 @@ export const useStaffDashboard = () => {
 
   const permissions = useMemo(() => currentUser?.permissions || [], [currentUser?.permissions]);
 
-  // Check if role is Dual Scope (STAFF roleScope) or Admin or Staff Role Archetype
-  const isDualStaff = useMemo(() => {
-    if (isAdmin) return true;
-    const roleObj = currentUser?.role;
-    const roleScope =
-      (typeof roleObj === 'object' && roleObj?.roleScope) ||
-      currentUser?.roleScope ||
-      currentUser?.activeRoleObj?.roleScope;
+  // The linked staff profile is the source of truth for portal sections. Permissions can grant
+  // access to the portal, but must not turn a community-only or unit-only staff role into dual scope.
+  const staffScope = useMemo<'COMMUNITY' | 'UNIT' | null>(() => {
+    if (!myProfile) return null;
+    return myProfile.staffCategory === 'UNIT' ? 'UNIT' : 'COMMUNITY';
+  }, [myProfile]);
 
-    // Strict Role Builder Scope: If explicitly defined as STAFF, it is Dual Scope
-    if (roleScope === 'STAFF') return true;
+  const isUnitStaff = staffScope === 'UNIT';
+  const isCommunityOnlyStaff = staffScope === 'COMMUNITY' && myProfile?.communityOnly === true;
+  const isDualStaff = staffScope === 'COMMUNITY' && !isCommunityOnlyStaff;
 
-    // Check role name heuristic for common staff archetypes (technician, maid, guard, maintenance, etc.)
-    const roleName = typeof roleObj === 'string' ? roleObj : (roleObj?.name || currentUser?.roleName || '');
-    const isStaffRoleName = /staff|guard|security|technician|maintenance|vendor|maid|driver|cook|gardener/i.test(roleName);
-    if (isStaffRoleName) return true;
-
-    // If explicitly marked as GLOBAL, it operates in dual scope if user has explicit staff capabilities
-    if (roleScope === 'GLOBAL') {
-      return (
-        permissions.includes('complaints:assignee') ||
-        permissions.includes('staff:attendance') ||
-        permissions.includes('staff:assign_unit') ||
-        permissions.includes('staff:view_own')
-      );
-    }
-
-    // Fallback: If user has complaints, attendance, or unit assignment permissions, they operate in dual scope
-    if (
-      permissions.includes('complaints:assignee') ||
-      permissions.includes('staff:attendance') ||
-      permissions.includes('staff:assign_unit') ||
-      permissions.includes('staff:view_own')
-    ) {
-      return true;
-    }
-    return false;
-  }, [isAdmin, currentUser, permissions]);
-
-  // Granular capability flags based on permissions & scope
   const canViewWorkOrders = useMemo(() => {
     if (isAdmin) return true;
-    return (
-      isDualStaff ||
-      permissions.includes('complaints:assignee') ||
-      permissions.includes('complaints:update') ||
-      permissions.includes('complaints') ||
-      permissions.includes('*')
-    );
-  }, [isAdmin, isDualStaff, permissions]);
+    if (staffScope) return staffScope === 'COMMUNITY';
+    return false;
+  }, [isAdmin, staffScope]);
 
   const canViewAttendance = useMemo(() => {
     if (isAdmin) return true;
-    return (
-      isDualStaff ||
-      permissions.includes('staff:attendance') ||
-      permissions.includes('staff.attendance') ||
-      permissions.includes('staff:manage') ||
-      permissions.includes('*')
-    );
-  }, [isAdmin, isDualStaff, permissions]);
+    // Every linked staff member needs their QR pass and personal attendance history.
+    return Boolean(staffScope);
+  }, [isAdmin, staffScope]);
 
   const canViewAllocations = useMemo(() => {
     if (isAdmin) return true;
-    return (
-      isDualStaff ||
-      permissions.includes('staff:assign_unit') ||
-      permissions.includes('staff.assign_unit') ||
-      permissions.includes('staff:manage') ||
-      permissions.includes('*')
-    );
-  }, [isAdmin, isDualStaff, permissions]);
-
+    if (staffScope) return !isCommunityOnlyStaff;
+    return false;
+  }, [isAdmin, staffScope, isCommunityOnlyStaff]);
+  // This only permits opening the portal while the profile loads; visible portal sections
+  // still come exclusively from the linked staff profile above.
+  const hasStaffPortalRole = useMemo(() => {
+    const role = currentUser?.role;
+    const roleScope = (typeof role === 'object' && role?.roleScope) || currentUser?.roleScope || currentUser?.activeRoleObj?.roleScope;
+    return roleScope === 'COMMUNITY_STAFF' || roleScope === 'STAFF';
+  }, [currentUser]);
   const hasStaffAccess = useMemo(() => {
-    if (isAdmin) return true;
     return (
       permissions.includes('staff:view_own') ||
       permissions.includes('staff.view_own') ||
@@ -133,11 +94,13 @@ export const useStaffDashboard = () => {
       permissions.includes('staff') ||
       permissions.includes('*') ||
       permissions.includes('platform:super_admin') ||
-      isDualStaff
+      isDualStaff ||
+      hasStaffPortalRole
     );
-  }, [permissions, isAdmin, isDualStaff]);
+  }, [permissions, isAdmin, isDualStaff, hasStaffPortalRole]);
 
-  // Auto-fetch profile, allocations, and attendance based on capability permissions
+  // Fetch the profile first. Once it is loaded, the authoritative staff scope determines
+  // whether allocation data should be requested.
   useEffect(() => {
     if (!hasStaffAccess) return;
 
@@ -145,23 +108,18 @@ export const useStaffDashboard = () => {
       dispatch(resetStaffState());
       dispatch(setCurrentOrgId(activeOrgId));
       dispatch(fetchMyProfileThunk());
-      if (canViewAllocations) {
-        dispatch(fetchMyAllocationsThunk());
-      }
-      if (canViewAttendance) {
-        dispatch(fetchMyAttendanceThunk());
-      }
-    } else if (!myProfile && !isProfileLoading && !profileError) {
-      if (activeOrgId) {
-        dispatch(setCurrentOrgId(activeOrgId));
-      }
+      return;
+    }
+
+    if (!myProfile && !isProfileLoading && !profileError) {
+      if (activeOrgId) dispatch(setCurrentOrgId(activeOrgId));
       dispatch(fetchMyProfileThunk());
-      if (canViewAllocations) {
-        dispatch(fetchMyAllocationsThunk());
-      }
-      if (canViewAttendance) {
-        dispatch(fetchMyAttendanceThunk());
-      }
+      return;
+    }
+
+    if (myProfile) {
+      if (canViewAllocations) dispatch(fetchMyAllocationsThunk());
+      if (canViewAttendance) dispatch(fetchMyAttendanceThunk());
     }
   }, [
     hasStaffAccess,
@@ -174,7 +132,6 @@ export const useStaffDashboard = () => {
     profileError,
     dispatch,
   ]);
-
   const refreshProfile = useCallback(() => {
     if (hasStaffAccess) {
       dispatch(fetchMyProfileThunk());
@@ -233,6 +190,8 @@ export const useStaffDashboard = () => {
     isAdmin,
     hasStaffAccess,
     isDualStaff,
+    isUnitStaff,
+    isCommunityOnlyStaff,
     canViewWorkOrders,
     canViewAttendance,
     canViewAllocations,

@@ -8,7 +8,7 @@ import { acceptInviteSsoRules } from '../src/features/auth/auth.validateRules.js
 
 describe('AppleProvider SSO verification', () => {
   it('uses the native iOS bundle identifier as the default trusted audience', () => {
-    assert.equal(config.sso.appleClientId, 'com.atominosconsulting.nahom');
+    assert.equal(config.sso.appleNativeClientId, 'com.atominosconsulting.nahom');
   });
 
   it('normalizes a first Apple authorization response', () => {

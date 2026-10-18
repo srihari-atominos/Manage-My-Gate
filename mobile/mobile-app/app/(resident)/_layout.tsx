@@ -18,8 +18,8 @@ export default function ResidentLayout() {
       <Stack.Screen name="polls/[id]" />
       <Stack.Screen name="community-engagement" />
       <Stack.Screen name="visitor" />
-      <Stack.Screen name="profile/index" />
-      <Stack.Screen name="account/index" />
+      <Stack.Screen name="profile/index" options={{ ...instantTransition }} />
+      <Stack.Screen name="account/index" options={{ ...instantTransition }} />
       <Stack.Screen name="directory/index" />
       <Stack.Screen name="directory/conversation/[id]" options={{ ...premiumScreenTransition }} />
       <Stack.Screen name="notes/index" />

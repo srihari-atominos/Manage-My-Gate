@@ -8,7 +8,7 @@ import {
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
-import { upload } from './middlewares/upload.middleware.js';
+import { upload, complaintFileSignatureValidator } from './middlewares/upload.middleware.js';
 
 const router = express.Router();
 
@@ -54,6 +54,7 @@ router.post(
   '/upload',
   authorizePermission('complaints', ['create', 'raise_ticket', 'track_requests', 'complaint_management']),
   upload.array('attachments', 5),
+  complaintFileSignatureValidator,
   complaintController.uploadAttachments
 );
 

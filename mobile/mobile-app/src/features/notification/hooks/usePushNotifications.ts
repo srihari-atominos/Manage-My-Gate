@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { isExpoGo, registerForPushNotificationsAsync } from '../services/pushNotificationService';
+import { isExpoGo, registerForPushNotificationsAsync, isPushNotificationEnabled } from '../services/pushNotificationService';
 import * as Device from 'expo-device';
 import { useAuth } from '../../auth/hooks/useAuth';
 import deviceTokenService from '../services/deviceTokenService';
@@ -41,6 +41,12 @@ export function usePushNotifications() {
       if (!isAuthenticated || !userId) return;
 
       try {
+        const isEnabled = await isPushNotificationEnabled();
+        if (!isEnabled) {
+          console.log('[usePushNotifications] Push notifications disabled in settings; skipping active token registration with backend');
+          return;
+        }
+
         const token = await registerForPushNotificationsAsync();
         if (!token || !isMounted) return;
 
@@ -111,7 +117,13 @@ export function usePushNotifications() {
 
     try {
       // A. Received while app is in foreground
-      notificationListenerRef.current = Notifications.addNotificationReceivedListener((notification: any) => {
+      notificationListenerRef.current = Notifications.addNotificationReceivedListener(async (notification: any) => {
+        const isEnabled = await isPushNotificationEnabled();
+        if (!isEnabled) {
+          console.log('[usePushNotifications] Suppressing incoming foreground notification; push disabled in settings');
+          return;
+        }
+
         console.log('[usePushNotifications] Foreground notification received by Android system:', notification?.request?.content?.title);
         const content = notification?.request?.content;
         const data = content?.data || {};

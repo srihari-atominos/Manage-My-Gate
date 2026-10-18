@@ -8,6 +8,10 @@ import { getSocketBaseUrl } from '../services/apiClient';
 let sharedSocket: Socket | null = null;
 let lastLoggedErrorTime = 0;
 let appStateBound = false;
+// Tenant/identity the shared socket was opened for; a change forces a reconnect so rooms of the previous tenant are left
+let currentSocketOrgId: string | null = null;
+let currentSocketUserId: string | null = null;
+let currentSocketToken: string | null = null;
 
 export const useAppSocket = () => {
   const { isAuthenticated, user, token } = useAuth();
@@ -31,10 +35,28 @@ export const useAppSocket = () => {
       if (sharedSocket) {
         sharedSocket.disconnect();
         sharedSocket = null;
+        currentSocketOrgId = null;
+        currentSocketUserId = null;
+        currentSocketToken = null;
         setActiveSocket(null);
         // console.log('[Socket] Disconnected due to unauthenticated state');
       }
       return;
+    }
+
+    // If tenant context, user identity, or token changed, disconnect stale socket to leave prior tenant rooms
+    if (
+      sharedSocket &&
+      (currentSocketOrgId !== (orgId || null) ||
+        currentSocketUserId !== (userId || null) ||
+        currentSocketToken !== (token || null))
+    ) {
+      sharedSocket.disconnect();
+      sharedSocket = null;
+      currentSocketOrgId = null;
+      currentSocketUserId = null;
+      currentSocketToken = null;
+      setActiveSocket(null);
     }
 
     const socketUrl = getSocketBaseUrl();
@@ -64,8 +86,16 @@ export const useAppSocket = () => {
     if (!sharedSocket) {
       // console.log(`[Socket] Initializing shared connection to: ${socketUrl}`);
 
+      currentSocketOrgId = orgId || null;
+      currentSocketUserId = userId || null;
+      currentSocketToken = token || null;
+
       sharedSocket = io(socketUrl, {
-        transports: ['websocket', 'polling'],
+        // Browsers can emit noisy WebSocket errors while restoring a page from BFCache.
+        // Socket.IO polling remains live and avoids the failed web upgrade attempt.
+        ...(Platform.OS === 'web'
+          ? { transports: ['polling'], upgrade: false }
+          : { transports: ['polling', 'websocket'] }),
         timeout: 10000,
         // Keep trying for as long as the user is signed in; a phone that loses signal for a minute
         // must still get live updates again afterwards instead of giving up after a few attempts.

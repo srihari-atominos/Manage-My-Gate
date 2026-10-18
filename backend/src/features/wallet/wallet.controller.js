@@ -1,28 +1,45 @@
 import walletService from './wallet.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 
-const CANONICAL_ADMIN_ROLES = Object.freeze([
-  'Super Admin',
-  'Platform Super Admin',
-  'Community Admin',
-  'Admin',
-  'SuperAdmin',
-  'Facility Manager',
-]);
+const resolveTargetUserAndOrg = async (req, requestedUserId = null) => {
+  const orgId = req.tenant?.isPlatform && (req.query?.orgId || req.body?.orgId)
+    ? (req.query?.orgId || req.body?.orgId)
+    : (req.tenant?.orgId || req.user?.orgId);
+  if (!orgId) {
+    throw new HttpError(400, 'Workspace context is required.');
+  }
 
-const isUserAdmin = (user) =>
-  CANONICAL_ADMIN_ROLES.includes(user?.role) || user?.isPlatform === true;
+  const roleUpper = (req.tenantRole || req.user?.role || '').toUpperCase();
+  const isFullAdmin = ['SUPER ADMIN', 'PLATFORM SUPER ADMIN', 'COMMUNITY ADMIN', 'ADMIN', 'SUPERADMIN'].includes(roleUpper) ||
+    roleUpper.includes('ADMIN') || roleUpper.includes('SUPER') || req.tenant?.isPlatform || req.user?.isPlatform;
+
+  const currentUserId = req.user.id || req.user._id;
+  let targetUserId = currentUserId;
+
+  if (requestedUserId && String(requestedUserId) !== String(currentUserId)) {
+    if (!isFullAdmin) {
+      throw new HttpError(403, "Forbidden. You cannot view or modify another user's wallet.");
+    }
+    if (!req.tenant?.isPlatform) {
+      const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+      const membership = await OrgMembership.findOne({
+        userId: requestedUserId,
+        orgId: orgId,
+        status: 'Active',
+      }).lean();
+      if (!membership) {
+        throw new HttpError(404, 'User not found in this community.');
+      }
+    }
+    targetUserId = requestedUserId;
+  }
+
+  return { orgId, targetUserId, isFullAdmin };
+};
 
 export const getMyWallet = async (req, res, next) => {
   try {
-    const isFullAdmin = isUserAdmin(req.user);
-
-    const targetUserId = (isFullAdmin && req.query?.userId)
-      ? req.query.userId
-      : (req.user.id || req.user._id);
-
-    const orgId = req.headers['x-organization-id'] || req.query?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
-    
+    const { orgId, targetUserId } = await resolveTargetUserAndOrg(req, req.query?.userId);
     const walletData = await walletService.getWalletData(targetUserId, orgId);
     
     res.status(200).json({
@@ -37,16 +54,8 @@ export const getMyWallet = async (req, res, next) => {
 
 export const addMoney = async (req, res, next) => {
   try {
-    const isFullAdmin = isUserAdmin(req.user);
+    const { orgId, targetUserId, isFullAdmin } = await resolveTargetUserAndOrg(req, req.body?.userId || req.body?.targetUserId);
 
-    const targetUserId = (isFullAdmin && (req.body?.userId || req.body?.targetUserId))
-      ? (req.body.userId || req.body.targetUserId)
-      : (req.user.id || req.user._id);
-
-    // A resident must complete a Razorpay order and signature verification via
-    // /wallet/create-order and /wallet/verify-payment. Allowing this endpoint
-    // to credit a resident wallet directly would let a caller mint balance
-    // without paying the community merchant account.
     if (!isFullAdmin) {
       throw new HttpError(
         403,
@@ -54,7 +63,6 @@ export const addMoney = async (req, res, next) => {
       );
     }
 
-    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
     const { amount, paymentMethod, description } = req.body;
 
     if (!amount || Number(amount) <= 0) {
@@ -65,8 +73,8 @@ export const addMoney = async (req, res, next) => {
       targetUserId,
       orgId,
       Number(amount),
-      paymentMethod || (isFullAdmin ? 'admin_adjustment' : 'wallet'),
-      description || (isFullAdmin ? 'Admin Wallet Credit' : 'Wallet Recharge')
+      paymentMethod || 'admin_adjustment',
+      description || 'Admin Wallet Credit'
     );
     
     res.status(200).json({
@@ -81,8 +89,7 @@ export const addMoney = async (req, res, next) => {
 
 export const payInvoice = async (req, res, next) => {
   try {
-    const userId = req.user.id || req.user._id;
-    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
+    const { orgId, targetUserId: userId } = await resolveTargetUserAndOrg(req);
     const { invoiceId, amount } = req.body;
 
     if (!invoiceId) {
@@ -104,13 +111,8 @@ export const payInvoice = async (req, res, next) => {
 export const createOrder = async (req, res, next) => {
   try {
     const { amount } = req.body;
-    const isFullAdmin = isUserAdmin(req.user);
+    const { orgId, targetUserId } = await resolveTargetUserAndOrg(req, req.body?.userId || req.body?.targetUserId);
 
-    const targetUserId = (isFullAdmin && (req.body?.userId || req.body?.targetUserId))
-      ? (req.body.userId || req.body.targetUserId)
-      : (req.user.id || req.user._id);
-
-    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
     const order = await walletService.createRechargeOrder(targetUserId, orgId, amount);
     res.status(200).json({ success: true, data: order });
   } catch (error) {
@@ -120,13 +122,8 @@ export const createOrder = async (req, res, next) => {
 
 export const verifyPayment = async (req, res, next) => {
   try {
-    const isFullAdmin = isUserAdmin(req.user);
+    const { orgId, targetUserId } = await resolveTargetUserAndOrg(req, req.body?.userId || req.body?.targetUserId);
 
-    const targetUserId = (isFullAdmin && (req.body?.userId || req.body?.targetUserId))
-      ? (req.body.userId || req.body.targetUserId)
-      : (req.user.id || req.user._id);
-
-    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
     const transaction = await walletService.verifyPaymentSignature(targetUserId, orgId, req.body);
     res.status(200).json({ success: true, data: transaction });
   } catch (error) {
@@ -134,15 +131,9 @@ export const verifyPayment = async (req, res, next) => {
   }
 };
 
-/**
- * Resident wallet cash-out. The recipient is intentionally not accepted from
- * the client: Razorpay returns money to the account used for the selected
- * original wallet top-up payment.
- */
 export const refundToOriginalPayment = async (req, res, next) => {
   try {
-    const userId = req.user.id || req.user._id;
-    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
+    const { orgId, targetUserId: userId } = await resolveTargetUserAndOrg(req);
     const { paymentId, amount } = req.body;
 
     const result = await walletService.refundToOriginalPayment({

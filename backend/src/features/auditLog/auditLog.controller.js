@@ -6,7 +6,7 @@ export class AuditLogController {
    */
   async getAll(req, res, next) {
     try {
-      const orgId = req.tenant.orgId;
+      const orgId = (req.tenant?.isPlatform && req.query.orgId) ? req.query.orgId : req.tenant?.orgId;
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
 

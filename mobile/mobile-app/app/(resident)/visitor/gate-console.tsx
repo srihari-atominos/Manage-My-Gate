@@ -681,7 +681,7 @@ export default function GateConsoleScreen() {
                       onPress={requestCameraPermission}
                       className="bg-emerald-600 px-4 py-1.5 rounded-lg mt-1"
                     >
-                      <Text className="text-xs font-bold text-white">{t('enable_camera', 'Enable Camera')}</Text>
+                      <Text className="text-xs font-bold text-white">{t('continue', 'Continue')}</Text>
                     </Button>
                   </View>
                 ) : (

@@ -113,10 +113,13 @@ const DefaultLayout = () => {
 
   return (
     <div>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <AppSidebar />
       <div className="wrapper d-flex flex-column min-vh-100">
         <AppHeader />
-        <div className="body flex-grow-1 position-relative">
+        <div id="main-content" tabIndex={-1} className="body flex-grow-1 position-relative">
           {!isPlatformUser && accessGranted === false && (
             <div
               className="subscription-access-overlay"

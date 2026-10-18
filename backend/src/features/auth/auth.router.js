@@ -328,7 +328,7 @@ router.post('/reset-password', legacyAuthEndpoint);
 router.post('/setup-account-password', legacyAuthEndpoint);
 router.post('/first-time-setup/send-otp', legacyAuthEndpoint);
 router.post('/first-time-setup/complete', legacyAuthEndpoint);
-router.get('/check-account-status', authController.checkAccountStatus);
+router.get('/check-account-status', authLimiter, optionalAuth, authController.checkAccountStatus);
 
 // Session Routes
 router.post('/refresh-token', authLimiter, authController.refreshToken);

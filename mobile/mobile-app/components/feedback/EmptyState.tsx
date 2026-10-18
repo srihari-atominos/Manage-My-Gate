@@ -1,7 +1,8 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Text } from '../ui/text';
-import { LucideIcon } from 'lucide-react-native';
+import { CloudOff, LucideIcon } from 'lucide-react-native';
+import { useIsNetworkBannerVisible } from '../../src/features/network/NetworkRecoveryProvider';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { useTranslation } from '../../src/utils/i18n';
@@ -25,6 +26,13 @@ export const EmptyState = ({
   className,
 }: EmptyStateProps) => {
   const { translateText } = useTranslation();
+  const connectionIssue = useIsNetworkBannerVisible();
+  // An empty result while offline means the data could not load; don't claim there is none
+  if (connectionIssue) {
+    RawIcon = CloudOff;
+    title = "Can't load right now";
+    description = 'Your information is safe. Reconnect and pull down to refresh.';
+  }
 
   return (
     <View className={cn('items-center justify-center py-10 px-4', className)}>

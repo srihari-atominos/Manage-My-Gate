@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
 import { View, Pressable, Alert, Platform, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, ImageIcon, Trash2 } from 'lucide-react-native';
@@ -81,6 +82,7 @@ export const StaffPhotoPicker: React.FC<StaffPhotoPickerProps> = ({
         );
         return;
       }
+      if (!(await confirmPickerDisclosure('photo'))) return;
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,

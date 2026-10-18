@@ -51,12 +51,24 @@ export class VisitorPassService {
   /**
    * Revoke an active or pending VisitorPass.
    * @param {string} passId - The ID of the pass to revoke.
+   * @param {string} orgId - The organization ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object>} The revoked pass document.
    */
-  async revokePass(passId, session, metadata = {}) {
-    const pass = await visitorPassRepository.findById(passId, session);
-    if (!pass) {
+  async revokePass(passId, orgId = null, session = null, metadata = {}) {
+    let actualOrgId = orgId;
+    let actualSession = session;
+    let actualMetadata = metadata;
+    if (orgId && (orgId.constructor?.name === 'ClientSession' || orgId?.inTransaction)) {
+      actualSession = orgId;
+      actualOrgId = null;
+      actualMetadata = session || {};
+    }
+    if (!actualOrgId) {
+      throw new HttpError(400, 'orgId is required');
+    }
+    const pass = await visitorPassRepository.findById(passId, actualOrgId, actualSession);
+    if (!pass || String(pass.orgId) !== String(actualOrgId)) {
       throw new HttpError(404, `Visitor pass with ID ${passId} not found.`);
     }
 
@@ -64,8 +76,8 @@ export class VisitorPassService {
       throw new HttpError(400, `Visitor pass is already ${pass.status.toLowerCase()}.`);
     }
 
-    const updatedPass = await this.updatePassStatus(passId, 'REVOKED', session, metadata);
-    await visitorPassTokenService.deleteTokenByPassId(passId, session);
+    const updatedPass = await this.updatePassStatus(passId, 'REVOKED', actualOrgId, actualSession, actualMetadata);
+    await visitorPassTokenService.deleteTokenByPassId(passId, actualSession, actualOrgId);
 
     visitorPassEvents.emit('pass_revoked', updatedPass);
     return updatedPass;
@@ -74,12 +86,22 @@ export class VisitorPassService {
   /**
    * Verify if a pass is valid for entry.
    * @param {string} passId - The ID of the pass to verify.
+   * @param {string} orgId - The organization ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object>} The verified pass document if valid.
    */
-  async verifyPassForEntry(passId, session) {
-    const pass = await visitorPassRepository.findById(passId, session);
-    if (!pass) {
+  async verifyPassForEntry(passId, orgId = null, session = null) {
+    let actualOrgId = orgId;
+    let actualSession = session;
+    if (orgId && (orgId.constructor?.name === 'ClientSession' || orgId?.inTransaction)) {
+      actualSession = orgId;
+      actualOrgId = null;
+    }
+    if (!actualOrgId) {
+      throw new HttpError(400, 'orgId is required');
+    }
+    const pass = await visitorPassRepository.findById(passId, actualOrgId, actualSession);
+    if (!pass || String(pass.orgId) !== String(actualOrgId)) {
       throw new HttpError(404, `Visitor pass with ID ${passId} not found.`);
     }
 
@@ -104,15 +126,30 @@ export class VisitorPassService {
   /**
    * Record pass usage (increments uses, transitions status from PENDING to ACTIVE, and to EXPIRED if limit reached).
    * @param {string|Object} pass - Pass ID or pass document.
+   * @param {string} orgId - The organization ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object>} The updated pass document.
    */
-  async usePass(pass, session = null) {
+  async usePass(pass, orgId = null, session = null) {
+    let actualOrgId = orgId;
+    let actualSession = session;
+    if (orgId && (orgId.constructor?.name === 'ClientSession' || orgId?.inTransaction)) {
+      actualSession = orgId;
+      actualOrgId = null;
+    }
+    if (!actualOrgId) {
+      throw new HttpError(400, 'orgId is required');
+    }
+
     const passDoc = typeof pass === 'string'
-      ? await this.verifyPassForEntry(pass, session)
+      ? await this.verifyPassForEntry(pass, actualOrgId, actualSession)
       : pass;
 
-    const updated = await visitorPassRepository.consumeForEntry(passDoc._id, session);
+    if (passDoc.orgId && String(passDoc.orgId) !== String(actualOrgId)) {
+      throw new HttpError(403, 'Forbidden. Pass belongs to a different organization.');
+    }
+
+    const updated = await visitorPassRepository.consumeForEntry(passDoc._id, actualOrgId, actualSession);
     if (!updated) {
       throw new HttpError(409, 'Visitor pass was already used, revoked, or changed by another gate action.');
     }
@@ -124,16 +161,26 @@ export class VisitorPassService {
   /**
    * Get a pass by its ID (read-only, does not perform gate validations).
    * @param {string} id - The pass ID.
+   * @param {string} orgId - The organization ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object>} The pass document.
    */
-  async getPassById(id, session = null) {
-    const pass = await visitorPassRepository.findByIdWithParties(id, session);
-    if (!pass) {
+  async getPassById(id, orgId = null, session = null) {
+    let actualOrgId = orgId;
+    let actualSession = session;
+    if (orgId && (orgId.constructor?.name === 'ClientSession' || orgId?.inTransaction)) {
+      actualSession = orgId;
+      actualOrgId = null;
+    }
+    if (!actualOrgId) {
+      throw new HttpError(400, 'orgId is required');
+    }
+    const pass = await visitorPassRepository.findByIdWithParties(id, actualOrgId, actualSession);
+    if (!pass || String(pass.orgId) !== String(actualOrgId)) {
       throw new HttpError(404, `Visitor pass with ID ${id} not found.`);
     }
     const passObj = pass.toObject ? pass.toObject() : pass;
-    passObj.shortKey = await visitorPassTokenService.getShortKeyByPassId(pass._id, session);
+    passObj.shortKey = await visitorPassTokenService.getShortKeyByPassId(pass._id, actualSession);
     return passObj;
   }
 
@@ -171,25 +218,37 @@ export class VisitorPassService {
    * Update a pass status.
    * @param {string} id - The pass ID.
    * @param {string} status - The new status.
+   * @param {string} orgId - The organization ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>}
    */
-  async updatePassStatus(id, status, session = null, metadata = {}) {
-    const existing = await visitorPassRepository.findById(id, session);
-    if (!existing) {
+  async updatePassStatus(id, status, orgId = null, session = null, metadata = {}) {
+    let actualOrgId = orgId;
+    let actualSession = session;
+    let actualMetadata = metadata;
+    if (orgId && (orgId.constructor?.name === 'ClientSession' || orgId?.inTransaction)) {
+      actualSession = orgId;
+      actualOrgId = null;
+      actualMetadata = session || {};
+    }
+    if (!actualOrgId) {
+      throw new HttpError(400, 'orgId is required');
+    }
+    const existing = await visitorPassRepository.findById(id, actualOrgId, actualSession);
+    if (!existing || String(existing.orgId) !== String(actualOrgId)) {
       throw new HttpError(404, `Visitor pass with ID ${id} not found.`);
     }
     const historyItem = {
       fromStatus: existing.status,
       toStatus: status,
-      ...(metadata.actorId ? { actorId: metadata.actorId } : {}),
-      ...(metadata.reason ? { reason: metadata.reason } : {}),
+      ...(actualMetadata.actorId ? { actorId: actualMetadata.actorId } : {}),
+      ...(actualMetadata.reason ? { reason: actualMetadata.reason } : {}),
       occurredAt: new Date(),
     };
-    const updated = await visitorPassRepository.update(id, {
+    const updated = await visitorPassRepository.update(id, actualOrgId, {
       $set: { status },
       $push: { statusHistory: historyItem },
-    }, session);
+    }, actualSession);
     if (!updated) {
       throw new HttpError(404, `Visitor pass with ID ${id} not found.`);
     }

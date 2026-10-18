@@ -16,7 +16,7 @@ import {
 import isAuthenticated from '../../middlewares/auth.middleware.js'
 import { authorizePermission, authorizeAnyPermission } from '../../middlewares/rbac.middleware.js'
 import { upload, imageSignatureValidator } from './middlewares/upload.middleware.js'
-import { otpLimiter } from '../../middlewares/rateLimiter.middleware.js'
+import { otpLimiter, authLimiter } from '../../middlewares/rateLimiter.middleware.js'
 import tenantContext from '../../middlewares/tenant.middleware.js'
 
 import userPreferenceRouter from '../userPreference/userPreference.router.js'
@@ -48,6 +48,7 @@ const router = Router()
  */
 router.post(
   '/request-deletion',
+  authLimiter,
   validate(requestDeletionRules),
   userController.requestAccountDeletion
 )

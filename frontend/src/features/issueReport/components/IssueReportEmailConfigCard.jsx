@@ -90,7 +90,7 @@ export const IssueReportEmailConfigCard = () => {
             <small className="text-muted">
               {t('issueReport.emailConfigSubtitle', {
                 defaultValue:
-                  'Configure the email address that receives reported issue details whenever a user submits an issue.',
+                  'This email receives reported issues and is also the contact address shown to users in the mobile app (Contact support). Leave empty to hide the contact option.',
               })}
             </small>
           </div>

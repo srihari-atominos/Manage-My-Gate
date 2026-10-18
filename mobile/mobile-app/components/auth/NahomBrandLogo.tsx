@@ -1,7 +1,193 @@
 import React from 'react';
-import { View, Image, Dimensions, Animated, Easing } from 'react-native';
+import { View, Text as RNText, Image, Dimensions, Animated, Easing } from 'react-native';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+export interface NahomHouseHProps {
+  width?: number;
+  height?: number;
+  color?: string;
+  windowColor?: string;
+}
+
+// Custom House Symbol H for NAHOM typography
+export const NahomHouseH: React.FC<NahomHouseHProps> = ({
+  width = 26,
+  height = 30,
+  color = '#FF7A1A',
+  windowColor = '#FFFFFF',
+}) => {
+  return (
+    <View
+      style={{
+        width,
+        height,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.75,
+        shadowRadius: 4,
+        elevation: 4,
+      }}
+    >
+      <Svg
+        width={width}
+        height={height}
+        viewBox="0 0 32 36"
+        fill="none"
+      >
+      {/* Pitched House Roof with Overhang Eaves */}
+      <Path
+        d="M 3 13 L 16 3 L 29 13"
+        stroke={color}
+        strokeWidth="3.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Left Stem of H */}
+      <Path
+        d="M 6.5 13 L 6.5 33"
+        stroke={color}
+        strokeWidth="3.6"
+        strokeLinecap="round"
+      />
+      {/* Right Stem of H */}
+      <Path
+        d="M 25.5 13 L 25.5 33"
+        stroke={color}
+        strokeWidth="3.6"
+        strokeLinecap="round"
+      />
+      {/* Horizontal Crossbar of H */}
+      <Path
+        d="M 6.5 25 L 25.5 25"
+        stroke={color}
+        strokeWidth="3.6"
+        strokeLinecap="round"
+      />
+      {/* 4-Pane Window inside Gable */}
+      <Rect x="12" y="11" width="3.2" height="3.2" rx="0.5" fill={windowColor} />
+      <Rect x="16.8" y="11" width="3.2" height="3.2" rx="0.5" fill={windowColor} />
+      <Rect x="12" y="15.8" width="3.2" height="3.2" rx="0.5" fill={windowColor} />
+      <Rect x="16.8" y="15.8" width="3.2" height="3.2" rx="0.5" fill={windowColor} />
+    </Svg>
+    </View>
+  );
+};
+
+// Premium NAHOM App Name: N (Orange), A (White), H (Orange House), O (White), M (Orange)
+export const NahomThemedTitle: React.FC<{
+  fontSize?: number;
+  variant?: 'standard' | 'house';
+  textColor?: string;
+  orangeColor?: string;
+}> = ({
+  fontSize = 28,
+  variant = 'house',
+  textColor = '#FFFFFF',
+  orangeColor = '#FF8C1A',
+}) => {
+  const houseWidth = Math.round(fontSize * (26 / 26));
+  const houseHeight = Math.round(fontSize * (29 / 26));
+  const lineHeight = Math.round(fontSize * 1.3);
+  const letterSpacing = 3;
+
+  const shadowStyle = {
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  };
+
+  return (
+    <View
+      className="flex-row items-center justify-center"
+      style={{ height: lineHeight + 4, paddingVertical: 2 }}
+      accessibilityRole="text"
+      accessibilityLabel="NAHOM"
+    >
+      {/* N - Orange */}
+      <RNText
+        style={{
+          color: orangeColor,
+          fontSize: fontSize,
+          fontWeight: '800',
+          lineHeight: lineHeight,
+          letterSpacing: letterSpacing,
+          includeFontPadding: false,
+          ...shadowStyle,
+        }}
+      >
+        N
+      </RNText>
+
+      {/* A - White */}
+      <RNText
+        style={{
+          color: textColor,
+          fontSize: fontSize,
+          fontWeight: '800',
+          lineHeight: lineHeight,
+          letterSpacing: letterSpacing,
+          includeFontPadding: false,
+          ...shadowStyle,
+        }}
+      >
+        A
+      </RNText>
+
+      {/* H - house symbol - Orange color */}
+      {variant === 'house' ? (
+        <View style={{ marginHorizontal: 2, marginBottom: 1 }}>
+          <NahomHouseH width={houseWidth} height={houseHeight} color={orangeColor} windowColor="#FFFFFF" />
+        </View>
+      ) : (
+        <RNText
+          style={{
+            color: orangeColor,
+            fontSize: fontSize,
+            fontWeight: '800',
+            lineHeight: lineHeight,
+            letterSpacing: letterSpacing,
+            includeFontPadding: false,
+            ...shadowStyle,
+          }}
+        >
+          H
+        </RNText>
+      )}
+
+      {/* O - White */}
+      <RNText
+        style={{
+          color: textColor,
+          fontSize: fontSize,
+          fontWeight: '800',
+          lineHeight: lineHeight,
+          letterSpacing: letterSpacing,
+          includeFontPadding: false,
+          ...shadowStyle,
+        }}
+      >
+        O
+      </RNText>
+
+      {/* M - Orange */}
+      <RNText
+        style={{
+          color: orangeColor,
+          fontSize: fontSize,
+          fontWeight: '800',
+          lineHeight: lineHeight,
+          letterSpacing: 0,
+          includeFontPadding: false,
+          ...shadowStyle,
+        }}
+      >
+        M
+      </RNText>
+    </View>
+  );
+};
 
 export interface NahomBrandLogoProps {
   size?: number;

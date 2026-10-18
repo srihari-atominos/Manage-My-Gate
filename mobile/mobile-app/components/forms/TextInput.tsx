@@ -34,6 +34,7 @@ export interface TextInputProps extends RNTextInputProps {
   errorClassName?: string;
   helperClassName?: string;
   feedbackContainerClassName?: string;
+  wrapperStyle?: any;
 }
 
 export const TextInput = forwardRef<RNTextInput, TextInputProps>(
@@ -59,6 +60,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
       errorClassName,
       helperClassName,
       feedbackContainerClassName,
+      wrapperStyle,
       className,
       value,
       onFocus,
@@ -182,6 +184,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
         )}
 
         <View
+          style={wrapperStyle}
           className={cn(
             'flex-row rounded-2xl border bg-card dark:bg-[#1C1C20] px-3.5 py-3 shadow-2xs transition-colors',
             props.multiline ? 'items-start' : 'items-center',

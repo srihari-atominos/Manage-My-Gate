@@ -5,15 +5,33 @@ import rateLimit from 'express-rate-limit';
 import crmInquiryController from '../features/crmInquiry/crmInquiry.controller.js';
 import { validate } from '../middlewares/validator.middleware.js';
 import { validatePublicLead } from '../features/crmInquiry/crmInquiry.validator.js';
+import issueReportConfigService from '../features/issueReportConfig/issueReportConfig.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+import { createRateLimitStore } from '../middlewares/rateLimiter.middleware.js';
 
 const router = Router();
 
 const publicLeadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
+  store: createRateLimitStore('public-lead'),
+  passOnStoreError: process.env.REQUIRE_REDIS_RATE_LIMIT !== 'true',
+  keyGenerator: (req) => `lead:${req.ip}`,
+  validate: { xForwardedForHeader: false, default: true, keyGeneratorIpFallback: false },
+  message: { success: false, message: 'Too many requests, please try again later.' }
+});
+
+// Checkout/invoice pages are addressed by record id, so cap lookups per IP to make id guessing impractical
+const publicDocumentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  store: createRateLimitStore('public-document'),
+  passOnStoreError: process.env.REQUIRE_REDIS_RATE_LIMIT !== 'true',
+  keyGenerator: (req) => `doc:${req.ip}`,
+  validate: { xForwardedForHeader: false, default: true, keyGeneratorIpFallback: false },
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
@@ -85,8 +103,15 @@ router.get('/readiness', async (req, res) => {
 
 // Mobile app bootstrap config. MOBILE_MIN_SUPPORTED_VERSION forces older app builds
 // to update before they can sign in (needed before password login is switched off).
-router.get('/app/config', (req, res) => {
+router.get('/app/config', async (req, res) => {
+  // Contact address shown in the app's "Contact support" actions; managed by the platform admin
+  // (Issue Reports > Platform Email Notifications). Empty means the app hides the action.
+  let supportEmail = '';
+  try {
+    supportEmail = await issueReportConfigService.getPlatformReportEmail();
+  } catch (_) { /* never block app bootstrap on this */ }
   res.success({
+    supportEmail,
     minSupportedVersion: process.env.MOBILE_MIN_SUPPORTED_VERSION || '0.0.0',
     latestVersion: process.env.MOBILE_LATEST_VERSION || null,
     storeUrls: {
@@ -98,7 +123,7 @@ router.get('/app/config', (req, res) => {
 
 router.post('/register-lead', publicLeadLimiter, validate(validatePublicLead), crmInquiryController.registerPublicLead);
 
-router.get('/checkout/:id', async (req, res, next) => {
+router.get('/checkout/:id', publicDocumentLimiter, async (req, res, next) => {
   try {
     const platformPaymentService = (await import('../features/platformPayment/platformPayment.service.js')).default;
     const data = await platformPaymentService.getPublicCheckoutInfo(req.params.id);
@@ -289,7 +314,7 @@ export const buildInvoiceHtml = (checkoutInfo) => {
 </html>`;
 };
 
-router.get('/invoice/:id/view', async (req, res, next) => {
+router.get('/invoice/:id/view', publicDocumentLimiter, async (req, res, next) => {
   try {
     const platformPaymentService = (await import('../features/platformPayment/platformPayment.service.js')).default;
     const checkoutInfo = await platformPaymentService.getPublicCheckoutInfo(req.params.id);
@@ -302,7 +327,7 @@ router.get('/invoice/:id/view', async (req, res, next) => {
   }
 });
 
-router.get('/invoice/:id/download', async (req, res, next) => {
+router.get('/invoice/:id/download', publicDocumentLimiter, async (req, res, next) => {
   try {
     const platformPaymentService = (await import('../features/platformPayment/platformPayment.service.js')).default;
     const checkoutInfo = await platformPaymentService.getPublicCheckoutInfo(req.params.id);

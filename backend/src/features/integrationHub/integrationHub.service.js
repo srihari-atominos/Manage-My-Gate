@@ -255,9 +255,13 @@ export class IntegrationHubService {
   }
 
   /**
-   * Decrypt credentials of a connection. Strictly for internal cross-feature use; pass orgId to enforce ownership.
+   * Retrieve and decrypt credentials for a specific connection.
+   * Strictly for internal cross-feature use. Supports both GCM and CBC decryption.
+   * @param {string} connectionId - ID of the connection
+   * @param {string} [expectedOrgId=null] - Optional expected Organization ID to enforce tenant isolation
+   * @returns {Promise<object>} Raw decrypted credentials key-value object
    */
-  async getDecryptedCredentialsById(connectionId, orgId = null) {
+  async getDecryptedCredentialsById(connectionId, expectedOrgId = null) {
     if (!connectionId) {
       throw new HttpError(400, 'Connection ID is required.');
     }
@@ -265,7 +269,26 @@ export class IntegrationHubService {
     if (!connection) {
       throw new HttpError(404, `Connection with ID ${connectionId} not found.`);
     }
-    return this.decryptAll(connection);
+
+    if (connection.orgId && !connection.isGlobal) {
+      if (!expectedOrgId) {
+        throw new HttpError(400, 'Tenant context (expectedOrgId) is required for tenant-scoped integration credentials.');
+      }
+      if (String(connection.orgId) !== String(expectedOrgId)) {
+        throw new HttpError(403, 'Access denied: Integration connection belongs to another organization.');
+      }
+    }
+
+    const decryptedCredentials = {};
+    for (const cred of connection.credentials) {
+      if (cred.authTag) {
+        decryptedCredentials[cred.key] = decryptGCM(cred.encryptedValue, cred.iv, cred.authTag);
+      } else {
+        decryptedCredentials[cred.key] = decrypt(cred.encryptedValue, cred.iv, cred.authTag);
+      }
+    }
+
+    return decryptedCredentials;
   }
 
   /**

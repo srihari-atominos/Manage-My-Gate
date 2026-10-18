@@ -1,4 +1,5 @@
 import React from 'react';
+import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
 import {
   View,
   Pressable,
@@ -122,7 +123,8 @@ export const ScreenshotUploader: React.FC<ScreenshotUploaderProps> = ({
           return;
         }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
+        if (!(await confirmPickerDisclosure('photo'))) return;
+      const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           quality: 0.85,
         });

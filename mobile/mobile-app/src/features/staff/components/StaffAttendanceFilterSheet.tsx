@@ -11,12 +11,19 @@ export interface AttendanceDepartmentOption {
   label: string;
 }
 
+export interface AttendanceRoleOption {
+  key: string;
+  label: string;
+  scope: 'COMMUNITY' | 'UNIT';
+}
+
 interface StaffAttendanceFilterSheetProps {
   visible: boolean;
   selectedStatus: string;
   selectedDepartment?: string;
   selectedRole?: string;
   departmentOptions?: AttendanceDepartmentOption[];
+  roleOptions?: AttendanceRoleOption[];
   startDate: string;
   endDate: string;
   onSelectStatus: (status: string) => void;
@@ -42,6 +49,7 @@ export const StaffAttendanceFilterSheet: React.FC<StaffAttendanceFilterSheetProp
   selectedDepartment = 'ALL',
   selectedRole = 'ALL',
   departmentOptions = [],
+  roleOptions = [],
   startDate,
   endDate,
   onSelectStatus,
@@ -103,6 +111,9 @@ export const StaffAttendanceFilterSheet: React.FC<StaffAttendanceFilterSheetProp
               <Chip label="All Staff" selected={selectedRole === 'ALL'} onPress={() => onSelectRole('ALL')} />
               <Chip label="Community Staff" selected={selectedRole === 'COMMUNITY'} onPress={() => onSelectRole('COMMUNITY')} />
               <Chip label="Unit Staff" selected={selectedRole === 'UNIT'} onPress={() => onSelectRole('UNIT')} />
+              {roleOptions.map((role) => (
+                <Chip key={role.key} label={role.label} selected={selectedRole === role.key} onPress={() => onSelectRole(role.key)} />
+              ))}
             </View>
           </View>
         ) : null}
@@ -140,3 +151,5 @@ export const StaffAttendanceFilterSheet: React.FC<StaffAttendanceFilterSheetProp
 };
 
 export default StaffAttendanceFilterSheet;
+
+

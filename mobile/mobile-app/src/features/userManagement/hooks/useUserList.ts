@@ -1,7 +1,6 @@
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { io } from 'socket.io-client';
-import { getSocketBaseUrl } from '../../../services/apiClient';
+import { useAppSocket } from '../../../hooks/useAppSocket';
 import { AppDispatch, RootState } from '../../../store/store';
 import {
   setSearchQuery,
@@ -43,14 +42,11 @@ export const useUserList = () => {
   const currentUserId = authState?.user?.id || (authState as any)?.user?._id;
   const activeOrgId = (authState as any)?.organizationId || (authState as any)?.user?.organizationId;
   const activeVillaId = (authState as any)?.currentVilla?.id || (authState as any)?.currentUser?.villaId || null;
+  const { socket } = useAppSocket();
 
   // Real-time synchronization via Socket.io
   useEffect(() => {
-    if (!activeOrgId) return;
-
-    const socket = io(getSocketBaseUrl(), {
-      transports: ['websocket', 'polling'],
-    });
+    if (!activeOrgId || !socket) return;
 
     socket.on('connect', () => {
       socket.emit('join_room', `org:${activeOrgId}`);
@@ -64,9 +60,8 @@ export const useUserList = () => {
 
     return () => {
       socket.off('RECORD_UPDATED');
-      socket.disconnect();
     };
-  }, [activeOrgId, dispatch, currentPage, rowsPerPage]);
+  }, [activeOrgId, dispatch, currentPage, rowsPerPage, socket]);
 
   // Fetch users initially or refresh explicitly
   const refreshUsers = useCallback(() => {

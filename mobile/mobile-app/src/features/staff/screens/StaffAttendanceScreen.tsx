@@ -23,8 +23,9 @@ import {
   FileDown,
   Filter,
   FileSpreadsheet,
+  FileText,
 } from 'lucide-react-native';
-import { downloadCSVFile, downloadExcelFile } from '@/src/utils/downloadHelper';
+import { downloadCSVFile, downloadExcelFile, downloadPDFFile } from '@/src/utils/downloadHelper';
 
 export const StaffAttendanceScreen: React.FC = () => {
   const router = useRouter();
@@ -54,6 +55,7 @@ export const StaffAttendanceScreen: React.FC = () => {
     attendanceRoleFilter,
     setAttendanceRoleFilter,
     attendanceDepartmentOptions,
+    attendanceRoleOptions,
     attendanceStaffFilter,
     setAttendanceStaffFilter,
     attendanceStartDate,
@@ -138,7 +140,10 @@ export const StaffAttendanceScreen: React.FC = () => {
       if (attendanceDepartmentFilter.startsWith('trade:')) query.departmentOther = attendanceDepartmentFilter.slice(6);
       else query.department = attendanceDepartmentFilter;
     }
-    if (attendanceRoleFilter !== 'ALL') query.staffCategory = attendanceRoleFilter;
+    if (attendanceRoleFilter !== 'ALL') {
+      if (attendanceRoleFilter.startsWith('role:')) query.roleId = attendanceRoleFilter.slice(5);
+      else query.staffCategory = attendanceRoleFilter;
+    }
     if (attendanceStaffFilter !== 'ALL') query.technicianId = attendanceStaffFilter;
     if (attendanceStartDate) query.startDate = attendanceStartDate;
     if (attendanceEndDate) query.endDate = attendanceEndDate;
@@ -146,7 +151,7 @@ export const StaffAttendanceScreen: React.FC = () => {
     return query;
   };
 
-  const exportFileName = (ext: 'csv' | 'xlsx') => {
+  const exportFileName = (ext: 'csv' | 'xlsx' | 'pdf') => {
     const today = new Date().toISOString().split('T')[0];
     const period =
       attendanceStartDate && attendanceEndDate && attendanceStartDate !== attendanceEndDate
@@ -169,6 +174,18 @@ export const StaffAttendanceScreen: React.FC = () => {
     }
   };
 
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+      const blob = await staffService.exportAttendanceReport(buildExportQuery(), 'pdf');
+      await downloadPDFFile(blob, exportFileName('pdf'));
+      Alert.alert('Export Successful', 'Attendance PDF downloaded successfully.');
+    } catch (err: any) {
+      Alert.alert('Export Failed', err?.message || 'Could not export attendance PDF.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
@@ -384,6 +401,7 @@ export const StaffAttendanceScreen: React.FC = () => {
         selectedDepartment={attendanceDepartmentFilter}
         selectedRole={attendanceRoleFilter}
         departmentOptions={attendanceDepartmentOptions}
+        roleOptions={attendanceRoleOptions}
         startDate={attendanceStartDate}
         endDate={attendanceEndDate}
         onSelectStatus={setAttendanceStatusFilter}
@@ -451,6 +469,16 @@ export const StaffAttendanceScreen: React.FC = () => {
             </View>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            onPress={() => { setShowExportSheet(false); handleExportPDF(); }}
+            disabled={isExporting}
+            className="p-3.5 rounded-2xl border border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 flex-row items-center gap-3 active:opacity-80"
+            accessibilityRole="button"
+            accessibilityLabel="Download PDF report"
+          >
+            <View className="h-10 w-10 rounded-xl bg-rose-500/10 items-center justify-center"><FileText size={20} className="text-rose-600 dark:text-rose-400" /></View>
+            <View className="flex-1"><Text className="text-sm font-bold text-foreground">PDF Document (.pdf)</Text><Text className="text-xs text-muted-foreground mt-0.5">Printable attendance report using the selected filters.</Text></View>
+          </TouchableOpacity>
           <Button
             variant="outline"
             className="mt-2 w-full"
@@ -473,5 +501,8 @@ export const StaffAttendanceScreen: React.FC = () => {
 };
 
 export default StaffAttendanceScreen;
+
+
+
 
 

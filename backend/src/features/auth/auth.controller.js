@@ -422,7 +422,7 @@ export class AuthController {
   async checkAccountStatus(req, res, next) {
     try {
       const identifier = req.query.identifier || req.query.email || req.query.phone;
-      const data = await authService.checkAccountStatus(identifier);
+      const data = await authService.checkAccountStatus(identifier, { authenticated: Boolean(req.user) });
       res.success(data, 'Account status fetched successfully.');
     } catch (error) {
       next(error);

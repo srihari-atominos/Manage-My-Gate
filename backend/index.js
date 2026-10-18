@@ -185,6 +185,11 @@ app.get('/privacy-policy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));
 });
 
+// Refund & cancellation policy public route
+app.get('/refund-policy', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'refund-policy.html'));
+});
+
 // API docs expose the full attack surface, so they are not served in production
 if (config.nodeEnv !== 'production') {
   app.use('/', swaggerRouter);

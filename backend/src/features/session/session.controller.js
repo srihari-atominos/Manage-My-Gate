@@ -62,7 +62,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
   }
 
   if (user.status !== 'Active') {
-    throw new HttpError(401, 'User is inactive or not found');
+    throw new HttpError(403, `User account is ${user.status.toLowerCase()}.`);
   }
 
   // Rotate: every refresh token is single-use (a racing duplicate within the grace

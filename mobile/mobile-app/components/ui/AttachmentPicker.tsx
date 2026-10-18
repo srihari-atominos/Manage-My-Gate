@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
 import { View, Pressable, Alert, AlertButton, Platform, Image as RNImage } from 'react-native';
 import { Image, FileText, X, Plus } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -116,7 +117,8 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
       const handleSelect = async (optionName: string, isDoc: boolean) => {
         try {
           if (isDoc) {
-            const result = await DocumentPicker.getDocumentAsync({
+            if (!(await confirmPickerDisclosure('document'))) return;
+      const result = await DocumentPicker.getDocumentAsync({
               type: accept === 'images-and-pdf' ? 'application/pdf' : '*/*',
               multiple: maxFiles > 1,
             });
@@ -148,7 +150,8 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
                 Alert.alert('Permission needed', 'Photo library permission is required to select photos.');
                 return;
               }
-              result = await ImagePicker.launchImageLibraryAsync({
+              if (!(await confirmPickerDisclosure('photo'))) return;
+      result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsMultipleSelection: maxFiles > 1,
                 quality: 0.8,

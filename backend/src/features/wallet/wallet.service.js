@@ -70,14 +70,10 @@ class WalletService {
     let targetOrgId = orgId;
     if (!targetOrgId) {
       const wallet = await walletRepository.getWallet(userId, null);
-      targetOrgId = wallet.orgId;
+      targetOrgId = wallet?.orgId;
     }
     if (!targetOrgId) {
-      try {
-        const Organization = (await import('../organization/organization.model.js')).default;
-        const defaultOrg = (await Organization.findOne({ status: 'Active' })) || (await Organization.findOne({}));
-        if (defaultOrg) targetOrgId = defaultOrg._id;
-      } catch (e) {}
+      throw new HttpError(400, 'Organization context is required for wallet recharge');
     }
 
     const transactionData = {

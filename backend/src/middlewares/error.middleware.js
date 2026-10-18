@@ -45,23 +45,18 @@ export const errorHandler = (err, req, res, next) => {
     statusCode = 409; // Conflict
     if (err.keyValue) {
       const keys = Object.keys(err.keyValue);
-      if (keys.length === 1) {
-        const field = keys[0];
-        const value = err.keyValue[field];
+      const tenantKeys = ['orgId', 'organisationId', 'communityId', 'tenantId', 'workspaceId'];
+      const nonTenantKeys = keys.filter(k => !tenantKeys.includes(k));
+
+      if (nonTenantKeys.length === 1) {
+        const field = nonTenantKeys[0];
         const formattedField = field.charAt(0).toUpperCase() + field.slice(1);
-        if (value !== null && value !== undefined && value !== 'null' && value !== '') {
-          message = `${formattedField} '${value}' is already registered or in use.`;
-        } else {
-          message = `A record with a duplicate or unassigned ${formattedField.toLowerCase()} already exists.`;
-        }
+        message = `${formattedField} is already registered or in use.`;
+      } else if (nonTenantKeys.length > 1) {
+        const fieldNames = nonTenantKeys.map(k => k.charAt(0).toUpperCase() + k.slice(1)).join(', ');
+        message = `A record with duplicate ${fieldNames} already exists.`;
       } else {
-        const fieldDetails = keys
-          .filter(k => k !== 'orgId')
-          .map(k => `${k}: '${err.keyValue[k]}'`)
-          .join(', ');
-        message = fieldDetails 
-          ? `A record with these details already exists (${fieldDetails}).`
-          : 'A duplicate record already exists.';
+        message = 'A duplicate record already exists.';
       }
     } else {
       message = 'A duplicate record already exists.';
@@ -81,32 +76,61 @@ export const errorHandler = (err, req, res, next) => {
   }
 
   // Log error using Winston logger: 5xx server errors get error level with stack; 4xx client errors get warn level
-  if (statusCode >= 500) {
-    logger.error(`HTTP ${statusCode} - ${message}`, {
-      statusCode,
-      stack: err.stack,
-      requestId: req.id
-    });
-  } else {
-    logger.warn(`HTTP ${statusCode} - ${message}`, {
-      statusCode,
-      requestId: req.id
-    });
+  const errorMeta = {
+    statusCode,
+    requestId: req.id,
+    method: req.method,
+    path: req.originalUrl || req.path,
+    orgId: req.tenant?.orgId || req.user?.orgId,
+    userId: req.user?._id || req.user?.id,
+  };
+
+  try {
+    if (statusCode >= 500) {
+      logger.error(`HTTP ${statusCode} - ${err.message || message}`, {
+        ...errorMeta,
+        stack: err.stack,
+      });
+    } else {
+      logger.warn(`HTTP ${statusCode} - ${message}`, errorMeta);
+    }
+  } catch (logErr) {
+    // Fail-safe: logging error must never break error response dispatch
   }
 
   // Local debugging aid only; never persist request bodies (credentials, OTPs) outside development.
   if (config.nodeEnv === 'development') {
     try {
-      const { password, newPassword, currentPassword, confirmPassword, otp, code, token, ...safeBody } = req.body || {};
+      const SENSITIVE_KEYS = /^(password|newPassword|currentPassword|confirmPassword|otp|code|token|secret|authorization|creditCard|cvv)$/i;
+      const sanitizeObj = (obj) => {
+        if (!obj || typeof obj !== 'object') return obj;
+        const res = {};
+        for (const [k, v] of Object.entries(obj)) {
+          if (SENSITIVE_KEYS.test(k)) {
+            res[k] = '[REDACTED]';
+          } else if (typeof v === 'object') {
+            res[k] = sanitizeObj(v);
+          } else {
+            res[k] = v;
+          }
+        }
+        return res;
+      };
+      const safeBody = sanitizeObj(req.body);
       fs.writeFileSync('last_error.json', JSON.stringify({ statusCode, message, stack: err.stack, details, body: safeBody }), 'utf-8');
     } catch (e) {
       // ignore
     }
   }
 
-  // Do not leak internals of server errors to clients in production
+  // Do not leak internals of unexpected server errors to clients in production
   if (statusCode >= 500 && config.nodeEnv === 'production') {
     message = 'Internal Server Error';
+  } else if (typeof message === 'string') {
+    // Strip raw database URIs or filesystem paths (Windows and POSIX/Linux) from any error response
+    message = message
+      .replace(/(?:mongodb(?:\+srv)?|postgres|mysql|redis):\/\/[^\s]+/gi, '[DATABASE_URI_REDACTED]')
+      .replace(/(?:[A-Za-z]:\\[^\s]+|\/(?:app|var|home|usr|etc|tmp)\/[^\s]+|\/[^\s]+\.(?:js|mjs|cjs|json|html|env|ts|yaml|yml))/gi, '[PATH_REDACTED]');
   }
 
   const code = err.code || (details && details.code) || undefined;
@@ -114,10 +138,11 @@ export const errorHandler = (err, req, res, next) => {
 
   const response = {
     success: false,
+    requestId: req.id,
     ...(code && typeof code === 'string' && { code }),
     ...(reason && typeof reason === 'string' && { reason }),
     message,
-    ...(details && { details }),
+    ...(details && (statusCode < 500 || config.nodeEnv !== 'production') && { details }),
     ...(config.nodeEnv === 'development' && { stack: err.stack }),
   };
 

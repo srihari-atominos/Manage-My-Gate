@@ -5,7 +5,7 @@ import { STAFF_CATEGORY_VALUES } from './staffCategory.utils.js';
 export const validateTechnicianCreate = validate([
   body('name').notEmpty().withMessage('Name is required').trim(),
   body('email').notEmpty().withMessage('Email is required').bail().isEmail().withMessage('Invalid email format').trim(),
-  body('phone').notEmpty().withMessage('Phone number is required'),
+  body('phone').matches(/^\+[1-9]\d{6,14}$/).withMessage('Enter a valid phone number with country code, e.g. +919876543210'),
   body('department').notEmpty().withMessage('Department is required').isIn(['Electrical', 'Plumbing', 'Housekeeping', 'Security', 'Carpentry', 'Others']).withMessage('Invalid department'),
   body('type').optional().isIn(['In-House Staff', 'External Vendor', 'Community Staff']).withMessage('Invalid type'),
   body('roleId').notEmpty().withMessage('A staff role is required').isMongoId().withMessage('Invalid role ID'),
@@ -13,6 +13,7 @@ export const validateTechnicianCreate = validate([
   body('communityOnly').optional().isBoolean().withMessage('communityOnly must be a boolean'),
   body('designation').optional().isString().trim(),
   body('staffCode').optional().isString().trim(),
+  body('authorId').notEmpty().withMessage('Author ID is required').bail().isString().trim().matches(/^(?:\d[ ]?){12}$/).withMessage('Author ID must contain exactly 12 digits; spaces are allowed'),
   body('departmentOther').optional().isString().isLength({ max: 60 }).withMessage('Custom department must be at most 60 characters'),
   body('qrValidFrom').optional({ nullable: true }).isISO8601().withMessage('qrValidFrom must be an ISO date'),
   body('qrValidUntil').optional({ nullable: true }).isISO8601().withMessage('qrValidUntil must be an ISO date'),
@@ -26,7 +27,7 @@ export const validateTechnicianCreate = validate([
 export const validateTechnicianUpdate = validate([
   body('name').optional().notEmpty().withMessage('Name cannot be empty').trim(),
   body('email').optional().isEmail().withMessage('Invalid email format').trim(),
-  body('phone').optional().notEmpty().withMessage('Phone cannot be empty'),
+  body('phone').optional().matches(/^\+[1-9]\d{6,14}$/).withMessage('Enter a valid phone number with country code, e.g. +919876543210'),
   body('department').optional().isIn(['Electrical', 'Plumbing', 'Housekeeping', 'Security', 'Carpentry', 'Others']).withMessage('Invalid department'),
   body('type').optional().isIn(['In-House Staff', 'External Vendor', 'Community Staff']).withMessage('Invalid type'),
   body('roleId').optional().isMongoId().withMessage('Invalid role ID'),
@@ -36,6 +37,7 @@ export const validateTechnicianUpdate = validate([
   body('departmentOther').optional().isString().isLength({ max: 60 }).withMessage('Custom department must be at most 60 characters'),
   body('designation').optional().isString().trim(),
   body('staffCode').optional().isString().trim(),
+  body('authorId').optional().isString().trim().matches(/^(?:\d[ ]?){12}$/).withMessage('Author ID must contain exactly 12 digits; spaces are allowed'),
   body('qrValidFrom').optional({ nullable: true }).isISO8601().withMessage('qrValidFrom must be an ISO date'),
   body('qrValidUntil').optional({ nullable: true }).isISO8601().withMessage('qrValidUntil must be an ISO date'),
   body('shiftWindow.startTime').optional({ values: 'falsy' }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('shiftWindow.startTime must be HH:mm'),

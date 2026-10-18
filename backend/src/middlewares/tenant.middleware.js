@@ -1,4 +1,5 @@
 import HttpError from '../utils/httpError.utils.js';
+import logger, { loggerStorage } from '../utils/logger.utils.js';
 
 /**
  * Tenant Context middleware to verify organization membership and attach tenant context.
@@ -38,6 +39,12 @@ export const tenantContext = (optionsOrReq, res, next) => {
             permissions: req.user.permissions,
             isPlatform: true,
           };
+          const store = loggerStorage.getStore();
+          if (store && typeof store === 'object') {
+            store.orgId = req.user.orgId ? String(req.user.orgId) : undefined;
+            store.userId = req.user.id || req.user._id;
+            store.isPlatform = true;
+          }
           return next();
         }
 
@@ -61,7 +68,11 @@ export const tenantContext = (optionsOrReq, res, next) => {
           }).lean();
 
           if (!targetMembership || (targetMembership.status && targetMembership.status !== 'Active')) {
-            console.error(`[TENANT DEBUG] 403 Forbidden. User ${userId} has no active membership in ${requestedOrgIdStr}.`);
+            logger.warn(`Tenant access rejected: User ${userId} has no active membership in target organization ${requestedOrgIdStr}`, {
+              userId,
+              targetOrgId: requestedOrgIdStr,
+              requestId: req.id,
+            });
             throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
           }
 
@@ -127,6 +138,14 @@ export const tenantContext = (optionsOrReq, res, next) => {
           req.user.orgId = requestedOrgIdStr;
           req.user.role = targetRoleName;
           req.user.permissions = targetPermissions;
+        }
+
+        // Enrich loggerStorage context with validated tenant details
+        const store = loggerStorage.getStore();
+        if (store && typeof store === 'object') {
+          store.orgId = requestedOrgIdStr;
+          store.userId = req.user?.id || req.user?._id;
+          store.isPlatform = userIsPlatform;
         }
 
         next();

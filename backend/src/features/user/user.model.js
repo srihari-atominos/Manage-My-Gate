@@ -79,6 +79,7 @@ const userSchema = new mongoose.Schema(
     notificationPreferences: {
       email: { type: Boolean, default: true },
       sms: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
     },
     avatar: {
       type: String,
@@ -160,5 +161,6 @@ userSchema.index(
   }
 );
 
+export const isUserEmailVerified = (user) => Boolean(user && (user.emailVerified === true || (user.emailVerified !== false && user.status === 'Active')));
 export const User = mongoose.models.User || mongoose.model('User', userSchema);
 export default User;

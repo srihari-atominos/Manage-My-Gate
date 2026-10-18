@@ -312,10 +312,13 @@ export class IssueReportService {
       throw new HttpError(400, 'Invalid attachment file name.');
     }
 
-    const orgScope = tenant.isPlatform === true ? null : tenant.orgId;
-    if (!orgScope && tenant.isPlatform !== true) {
-      throw new HttpError(400, 'Valid workspace organization context is required.');
+    if (tenant.isPlatform !== true) {
+      if (!tenant.orgId || !mongoose.Types.ObjectId.isValid(tenant.orgId)) {
+        throw new HttpError(400, 'Valid workspace organization context is required.');
+      }
     }
+
+    const orgScope = tenant.isPlatform === true ? null : String(tenant.orgId);
 
     const match = await issueReportRepository.findAttachment(filename, orgScope);
     if (!match) {

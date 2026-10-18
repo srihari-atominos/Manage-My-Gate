@@ -19,6 +19,11 @@ class SlotLockStore {
   }
 
   async acquire(lockKey, data, ttlMs = 300000) {
+    if (!data || !data.orgId) {
+      logger.error(`[SlotLockStore] Attempted to acquire lock ${lockKey} without orgId.`);
+      return false;
+    }
+
     if (messageBroker.useRedis && messageBroker.publisher && messageBroker.publisher.status === 'ready') {
       try {
         const ttlSec = Math.ceil(ttlMs / 1000);
@@ -45,8 +50,10 @@ class SlotLockStore {
 
     const existing = this.localMap.get(lockKey);
     if (existing) {
-      if (existing.expiresAt > Date.now() && String(existing.userId) !== String(data.userId)) {
-        return false;
+      if (existing.expiresAt > Date.now()) {
+        if (String(existing.userId) !== String(data.userId) || String(existing.orgId) !== String(data.orgId)) {
+          return false;
+        }
       }
     }
     this.localMap.set(lockKey, { ...data, expiresAt: Date.now() + ttlMs });
@@ -81,23 +88,35 @@ class SlotLockStore {
 
   /**
    * Release lock with atomic compare-and-delete (CAS).
-   * If expectedUserId is supplied, only deletes if the lock's recorded userId matches.
+   * Verifies both expectedUserId and expectedOrgId to prevent cross-tenant or cross-user release.
    */
-  async release(lockKey, expectedUserId = null) {
+  async release(lockKey, expectedUserId = null, expectedOrgId = null) {
     if (messageBroker.useRedis && messageBroker.publisher && messageBroker.publisher.status === 'ready') {
       try {
-        if (expectedUserId) {
+        if (expectedUserId || expectedOrgId) {
           const lua = `
             local val = redis.call('get', KEYS[1])
             if not val then return 1 end
             local ok, data = pcall(cjson.decode, val)
-            if ok and data and tostring(data.userId) == tostring(ARGV[1]) then
+            if ok and data then
+              if ARGV[1] and ARGV[1] ~= '' and tostring(data.userId) ~= tostring(ARGV[1]) then
+                return 0
+              end
+              if ARGV[2] and ARGV[2] ~= '' and tostring(data.orgId) ~= tostring(ARGV[2]) then
+                return 0
+              end
               return redis.call('del', KEYS[1])
             else
               return 0
             end
           `;
-          const res = await messageBroker.publisher.eval(lua, 1, `amenity_slot_lock:${lockKey}`, String(expectedUserId));
+          const res = await messageBroker.publisher.eval(
+            lua,
+            1,
+            `amenity_slot_lock:${lockKey}`,
+            String(expectedUserId || ''),
+            String(expectedOrgId || '')
+          );
           if (res === 0) return false;
         } else {
           await messageBroker.publisher.del(`amenity_slot_lock:${lockKey}`);
@@ -111,31 +130,117 @@ class SlotLockStore {
       return false;
     }
     const existing = this.localMap.get(lockKey);
-    if (existing && expectedUserId && String(existing.userId) !== String(expectedUserId)) {
-      return false;
+    if (existing) {
+      if (expectedUserId && String(existing.userId) !== String(expectedUserId)) {
+        return false;
+      }
+      if (expectedOrgId && String(existing.orgId) !== String(expectedOrgId)) {
+        return false;
+      }
     }
     this.localMap.delete(lockKey);
     return true;
   }
 
+  /**
+   * Renew an existing lock lease with atomic compare-and-extend.
+   */
+  async renew(lockKey, ttlMs = 300000, expectedUserId = null, expectedOrgId = null) {
+    if (messageBroker.useRedis && messageBroker.publisher && messageBroker.publisher.status === 'ready') {
+      try {
+        const lua = `
+          local val = redis.call('get', KEYS[1])
+          if not val then return 0 end
+          local ok, data = pcall(cjson.decode, val)
+          if ok and data then
+            if ARGV[1] and ARGV[1] ~= '' and tostring(data.userId) ~= tostring(ARGV[1]) then
+              return 0
+            end
+            if ARGV[2] and ARGV[2] ~= '' and tostring(data.orgId) ~= tostring(ARGV[2]) then
+              return 0
+            end
+            local ttl = tonumber(ARGV[3])
+            redis.call('pexpire', KEYS[1], ttl)
+            return 1
+          else
+            return 0
+          end
+        `;
+        const res = await messageBroker.publisher.eval(
+          lua,
+          1,
+          `amenity_slot_lock:${lockKey}`,
+          String(expectedUserId || ''),
+          String(expectedOrgId || ''),
+          String(ttlMs)
+        );
+        if (res === 1) {
+          const existing = this.localMap.get(lockKey);
+          if (existing) {
+            existing.expiresAt = Date.now() + ttlMs;
+          }
+          return true;
+        }
+        return false;
+      } catch (err) {
+        logger.error(`[SlotLockStore] Redis renew error for ${lockKey}:`, err);
+        if (process.env.REQUIRE_REDIS_LOCK === 'true') return false;
+      }
+    } else if (process.env.REQUIRE_REDIS_LOCK === 'true') {
+      logger.error(`[SlotLockStore] Redis unavailable and REQUIRE_REDIS_LOCK is set for renew of ${lockKey}.`);
+      return false;
+    }
+
+    const existing = this.localMap.get(lockKey);
+    if (!existing) return false;
+    if (existing.expiresAt && existing.expiresAt <= Date.now()) {
+      this.localMap.delete(lockKey);
+      return false;
+    }
+    if (expectedUserId && String(existing.userId) !== String(expectedUserId)) {
+      return false;
+    }
+    if (expectedOrgId && String(existing.orgId) !== String(expectedOrgId)) {
+      return false;
+    }
+    existing.expiresAt = Date.now() + ttlMs;
+    return true;
+  }
+
   async getPublicLocksForAmenity(amenityId, orgId = null) {
+    if (!orgId) {
+      logger.warn(`[SlotLockStore] getPublicLocksForAmenity called without orgId for amenity ${amenityId}. Refusing cross-tenant scan.`);
+      return [];
+    }
+
     const results = [];
     if (messageBroker.useRedis && messageBroker.publisher && messageBroker.publisher.status === 'ready') {
       try {
-        const pattern = orgId ? `amenity_slot_lock:${orgId}_${amenityId}_*` : `amenity_slot_lock:*${amenityId}_*`;
-        const keys = await messageBroker.publisher.keys(pattern);
-        if (keys && keys.length) {
-          const rawVals = await messageBroker.publisher.mget(keys);
+        const pattern = `amenity_slot_lock:${orgId}_${amenityId}_*`;
+        let cursor = '0';
+        const matchedKeys = [];
+        do {
+          const [nextCursor, keys] = await messageBroker.publisher.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+          cursor = nextCursor;
+          if (keys && keys.length) {
+            matchedKeys.push(...keys);
+          }
+        } while (cursor !== '0');
+
+        if (matchedKeys.length) {
+          const rawVals = await messageBroker.publisher.mget(matchedKeys);
           for (const raw of rawVals) {
             if (raw) {
               try {
                 const parsed = JSON.parse(raw);
-                results.push({
-                  amenityId: parsed.amenityId,
-                  date: parsed.date,
-                  startTime: parsed.startTime,
-                  endTime: parsed.endTime,
-                });
+                if (String(parsed.orgId) === String(orgId) && String(parsed.amenityId) === String(amenityId)) {
+                  results.push({
+                    amenityId: parsed.amenityId,
+                    date: parsed.date,
+                    startTime: parsed.startTime,
+                    endTime: parsed.endTime,
+                  });
+                }
               } catch {
                 // Ignore corrupted keys
               }
@@ -144,7 +249,7 @@ class SlotLockStore {
         }
         return results;
       } catch (err) {
-        logger.error(`[SlotLockStore] Redis keys error for amenity ${amenityId}:`, err);
+        logger.error(`[SlotLockStore] Redis scan error for amenity ${amenityId}:`, err);
       }
     }
 
@@ -152,7 +257,7 @@ class SlotLockStore {
     for (const [key, lock] of this.localMap.entries()) {
       if (lock.expiresAt && lock.expiresAt <= now) {
         this.localMap.delete(key);
-      } else if (lock.amenityId === amenityId && (!orgId || String(lock.orgId) === String(orgId))) {
+      } else if (String(lock.amenityId) === String(amenityId) && String(lock.orgId) === String(orgId)) {
         // SEC-WS-04: Strip private user ID and sensitive metadata from public availability sync
         results.push({
           amenityId: lock.amenityId,
@@ -167,25 +272,27 @@ class SlotLockStore {
 }
 
 export const slotLockStore = new SlotLockStore();
-// These locks are a short-lived user-experience hint only. Reservation creation
-// is protected by the database-backed hold transition in the reservation service.
-const slotLocks = new Map();
-const roomFor = (orgId, amenityId) => `amenity:${orgId}:${amenityId}`;
-const lockKeyFor = ({ orgId, amenityId, date, startTime, endTime }) => `${orgId}:${amenityId}:${date}:${startTime}:${endTime}`;
-const deny = (socket) => socket.emit('amenity_access_denied', { code: 'AMENITY_ROOM_FORBIDDEN' });
 
-/** Attaches testable, tenant-scoped handlers for the legacy booking-lock UI. */
+const attachRoomFor = (orgId, amenityId) => `amenity:${orgId}:${amenityId}`;
+const attachLockKeyFor = ({ orgId, amenityId, date, startTime, endTime }) => `${orgId}:${amenityId}:${date}:${startTime}:${endTime}`;
+const attachDeny = (socket) => socket.emit('amenity_access_denied', { code: 'AMENITY_ROOM_FORBIDDEN' });
+
+/**
+ * Dependency-injected variant of the slot-lock handlers (room/lock authorization, identity and the lock
+ * map are all injectable) so the tenant-scoping rules can be unit tested without a live socket server.
+ * Production wiring still goes through initAmenityBookingSockets and the shared slotLockStore above.
+ */
 export const attachAmenityBookingSocketHandlers = (io, socket, {
   authorizeRoom = canJoinRoom,
   resolveIdentity = resolveSocketIdentity,
-  locks = slotLocks,
+  locks = new Map(),
   scheduleRelease = setTimeout,
   now = Date.now,
 } = {}) => {
   const authorize = async (orgId) => {
-    const identity = resolveIdentity(socket);
+    const identity = await resolveIdentity(socket);
     if (!identity?.id || !orgId || !(await authorizeRoom(socket, `org:${orgId}`))) {
-      deny(socket);
+      attachDeny(socket);
       return null;
     }
     return identity;
@@ -194,16 +301,16 @@ export const attachAmenityBookingSocketHandlers = (io, socket, {
   socket.on('join_amenity_room', async ({ amenityId, orgId } = {}) => {
     try {
       if (!amenityId || !(await authorize(orgId))) return;
-      socket.join(roomFor(orgId, amenityId));
+      socket.join(attachRoomFor(orgId, amenityId));
       socket.emit('sync_locked_slots', Array.from(locks.values()).filter((lock) => lock.orgId === orgId && lock.amenityId === amenityId));
-    } catch { deny(socket); }
+    } catch { attachDeny(socket); }
   });
 
   socket.on('leave_amenity_room', async ({ amenityId, orgId } = {}) => {
     try {
       if (!amenityId || !(await authorize(orgId))) return;
-      socket.leave(roomFor(orgId, amenityId));
-    } catch { deny(socket); }
+      socket.leave(attachRoomFor(orgId, amenityId));
+    } catch { attachDeny(socket); }
   });
 
   socket.on('lock_slot', async (payload = {}) => {
@@ -211,7 +318,7 @@ export const attachAmenityBookingSocketHandlers = (io, socket, {
       const { amenityId, orgId, date, startTime, endTime } = payload;
       const identity = await authorize(orgId);
       if (!identity || !amenityId || !date || !startTime || !endTime) return;
-      const lockKey = lockKeyFor({ orgId, amenityId, date, startTime, endTime });
+      const lockKey = attachLockKeyFor({ orgId, amenityId, date, startTime, endTime });
       const existingLock = locks.get(lockKey);
       if (existingLock && existingLock.userId !== identity.id) {
         socket.emit('slot_lock_failed', { message: 'Slot is currently being booked by someone else.' });
@@ -220,7 +327,7 @@ export const attachAmenityBookingSocketHandlers = (io, socket, {
       // userId is derived from the signed socket identity, never client input.
       const lockData = { orgId, amenityId, date, startTime, endTime, userId: identity.id, lockedAt: now() };
       locks.set(lockKey, lockData);
-      const roomName = roomFor(orgId, amenityId);
+      const roomName = attachRoomFor(orgId, amenityId);
       socket.to(roomName).emit('slot_locked', lockData);
       scheduleRelease(() => {
         if (locks.get(lockKey)?.lockedAt === lockData.lockedAt) {
@@ -229,7 +336,7 @@ export const attachAmenityBookingSocketHandlers = (io, socket, {
         }
       }, 5 * 60 * 1000);
       socket.emit('slot_lock_success', lockData);
-    } catch { deny(socket); }
+    } catch { attachDeny(socket); }
   });
 
   socket.on('release_slot', async (payload = {}) => {
@@ -237,24 +344,24 @@ export const attachAmenityBookingSocketHandlers = (io, socket, {
       const { amenityId, orgId, date, startTime, endTime } = payload;
       const identity = await authorize(orgId);
       if (!identity || !amenityId || !date || !startTime || !endTime) return;
-      const lockKey = lockKeyFor({ orgId, amenityId, date, startTime, endTime });
+      const lockKey = attachLockKeyFor({ orgId, amenityId, date, startTime, endTime });
       const lockData = locks.get(lockKey);
       if (!lockData || lockData.userId !== identity.id) {
         socket.emit('slot_lock_failed', { message: 'Only the lock owner may release this slot.' });
         return;
       }
       locks.delete(lockKey);
-      io.to(roomFor(orgId, amenityId)).emit('slot_released', { lockKey, ...lockData });
-    } catch { deny(socket); }
+      io.to(attachRoomFor(orgId, amenityId)).emit('slot_released', { lockKey, ...lockData });
+    } catch { attachDeny(socket); }
   });
 
-  socket.on('disconnect', () => {
-    const identity = resolveIdentity(socket);
+  socket.on('disconnect', async () => {
+    const identity = await resolveIdentity(socket);
     if (!identity?.id) return;
     for (const [lockKey, lockData] of locks.entries()) {
       if (lockData.userId === identity.id) {
         locks.delete(lockKey);
-        io.to(roomFor(lockData.orgId, lockData.amenityId)).emit('slot_released', { lockKey, ...lockData });
+        io.to(attachRoomFor(lockData.orgId, lockData.amenityId)).emit('slot_released', { lockKey, ...lockData });
       }
     }
   });
@@ -262,18 +369,195 @@ export const attachAmenityBookingSocketHandlers = (io, socket, {
 
 export const initAmenityBookingSockets = () => {
   const io = getIO();
-  io.on('connection', (socket) => attachAmenityBookingSocketHandlers(io, socket));
 
+  io.on('connection', (socket) => {
+    // 1. User opens the calendar view for a specific amenity
+    socket.on('join_amenity_room', async ({ amenityId, orgId } = {}) => {
+      try {
+        if (!amenityId || !orgId || !mongoose.isValidObjectId(amenityId) || !mongoose.isValidObjectId(orgId)) return;
+        const roomName = `amenity:${orgId}:${amenityId}`;
+        const { canJoinRoom } = await import('../../config/socketRoomPolicy.js');
+        if (!(await canJoinRoom(socket, roomName))) {
+          logger.warn(`[Socket Auth] Refused amenity room ${roomName} for socket ${socket.id}`);
+          return;
+        }
+        socket.join(roomName);
+        logger.info(`Socket ${socket.id} joined room: ${roomName}`);
+
+        // Send sanitized currently locked slots in this room to the newly joined client
+        const currentLocks = await slotLockStore.getPublicLocksForAmenity(amenityId, orgId);
+        socket.emit('sync_locked_slots', currentLocks);
+      } catch (err) {
+        logger.error('Error joining amenity room:', err);
+      }
+    });
+
+    socket.on('leave_amenity_room', ({ amenityId, orgId } = {}) => {
+      if (!amenityId || !orgId) return;
+      const roomName = `amenity:${orgId}:${amenityId}`;
+      socket.leave(roomName);
+    });
+
+    // 2. User clicks a slot to begin checkout (SEC-WS-03 & SEC-WS-08)
+    socket.on('lock_slot', async (payload = {}) => {
+      try {
+        const { amenityId, orgId, date, startTime, endTime } = payload;
+        if (!amenityId || !orgId || !date || !startTime || !endTime) {
+          socket.emit('slot_lock_failed', { message: 'Invalid slot parameters.' });
+          return;
+        }
+        if (!mongoose.isValidObjectId(amenityId) || !mongoose.isValidObjectId(orgId)) {
+          socket.emit('slot_lock_failed', { message: 'Invalid identifier format.' });
+          return;
+        }
+
+        const { resolveSocketIdentity, canJoinRoom } = await import('../../config/socketRoomPolicy.js');
+        const identity = await resolveSocketIdentity(socket);
+        if (!identity || !identity.id) {
+          socket.emit('slot_lock_failed', { message: 'Authentication required.' });
+          return;
+        }
+
+        // Authoritatively verify that the amenity belongs to the specified organization
+        const Amenity = (await import('../amenity/amenity.model.js')).default;
+        const amenityDoc = await Amenity.findOne({ _id: amenityId, orgId }).select('_id orgId').lean();
+        if (!amenityDoc) {
+          socket.emit('slot_lock_failed', { message: 'Amenity does not belong to specified organization.' });
+          return;
+        }
+
+        const roomName = `amenity:${orgId}:${amenityId}`;
+        if (!(await canJoinRoom(socket, roomName))) {
+          socket.emit('slot_lock_failed', { message: 'Unauthorized organization context.' });
+          return;
+        }
+
+        const userId = identity.id;
+        const lockKey = `${orgId}_${amenityId}_${date}_${startTime}_${endTime}`;
+        const lockData = {
+          amenityId,
+          orgId,
+          date,
+          startTime,
+          endTime,
+          userId,
+          lockedAt: Date.now(),
+        };
+
+        const acquired = await slotLockStore.acquire(lockKey, lockData);
+        if (!acquired) {
+          socket.emit('slot_lock_failed', { message: 'Slot is currently being booked by someone else.' });
+          return;
+        }
+
+        // Broadcast sanitized slot availability to other participants in the room
+        socket.to(roomName).emit('slot_locked', {
+          amenityId,
+          date,
+          startTime,
+          endTime,
+        });
+
+        // Auto-release local lock after 5 minutes if checkout not completed
+        setTimeout(async () => {
+          const current = await slotLockStore.get(lockKey);
+          if (current && current.lockedAt === lockData.lockedAt) {
+            await slotLockStore.release(lockKey, userId, orgId);
+            io.to(roomName).emit('slot_released', { lockKey, amenityId, date, startTime, endTime });
+          }
+        }, 5 * 60 * 1000);
+
+        socket.emit('slot_lock_success', lockData);
+      } catch (err) {
+        logger.error('Error locking slot:', err);
+        socket.emit('slot_lock_failed', { message: 'Internal error processing slot lock.' });
+      }
+    });
+
+    // 3. SEC-WS-03: User cancels or closes checkout early (Harden release_slot)
+    socket.on('release_slot', async (payload = {}) => {
+      try {
+        const { amenityId, orgId, date, startTime, endTime } = payload;
+        if (!amenityId || !orgId || !date || !startTime || !endTime) {
+          socket.emit('slot_release_failed', { message: 'Invalid slot parameters.' });
+          return;
+        }
+        if (!mongoose.isValidObjectId(amenityId) || !mongoose.isValidObjectId(orgId)) {
+          socket.emit('slot_release_failed', { message: 'Invalid identifier format.' });
+          return;
+        }
+
+        const { resolveSocketIdentity, canJoinRoom } = await import('../../config/socketRoomPolicy.js');
+        const identity = await resolveSocketIdentity(socket);
+        if (!identity || !identity.id) {
+          socket.emit('slot_release_failed', { message: 'Authentication required.' });
+          return;
+        }
+
+        // Authoritative verification of amenity and organization
+        const Amenity = (await import('../amenity/amenity.model.js')).default;
+        const amenityDoc = await Amenity.findOne({ _id: amenityId, orgId }).select('_id orgId').lean();
+        if (!amenityDoc) {
+          socket.emit('slot_release_failed', { message: 'Amenity does not belong to specified organization.' });
+          return;
+        }
+
+        const roomName = `amenity:${orgId}:${amenityId}`;
+        if (!(await canJoinRoom(socket, roomName))) {
+          socket.emit('slot_release_failed', { message: 'Unauthorized organization context.' });
+          return;
+        }
+
+        const lockKey = `${orgId}_${amenityId}_${date}_${startTime}_${endTime}`;
+        const existingLock = await slotLockStore.get(lockKey);
+        if (!existingLock) {
+          socket.emit('slot_release_failed', { message: 'No active lock found for this slot.' });
+          return;
+        }
+
+        // Check ownership or admin override
+        const isOwner = String(existingLock.userId) === String(identity.id);
+        let isAuthorizedAdmin = identity.isPlatform === true;
+        if (!isAuthorizedAdmin && !isOwner) {
+          const { getPermissionsForUser } = await import('../../middlewares/rbac.middleware.js');
+          const perms = await getPermissionsForUser({ id: identity.id }, orgId);
+          isAuthorizedAdmin = perms.some((p) => p === '*' || p === 'amenity:write' || p === 'amenity:admin');
+        }
+
+        if (!isOwner && !isAuthorizedAdmin) {
+          socket.emit('slot_release_failed', { message: 'Forbidden: You do not own this slot lock.' });
+          return;
+        }
+
+        // Authorized release with compare-and-delete
+        const released = await slotLockStore.release(lockKey, isOwner && !isAuthorizedAdmin ? identity.id : null, orgId);
+        if (!released) {
+          socket.emit('slot_release_failed', { message: 'Forbidden: You do not own this slot lock.' });
+          return;
+        }
+
+        socket.emit('slot_release_success', { lockKey });
+        // Emit sanitized availability update only after verified release
+        io.to(roomName).emit('slot_released', { lockKey, amenityId, date, startTime, endTime });
+      } catch (err) {
+        logger.error('Error releasing slot:', err);
+        socket.emit('slot_release_failed', { message: 'Internal error processing slot release.' });
+      }
+    });
+
+    socket.on('disconnect', () => {});
+  });
+
+  // 4. Real-time Backend Event Listeners -> Socket.io Broadcasts (SEC-WS-04 Scoping)
   amenityBookingEventEmitter.on(AMENITY_BOOKING_CREATED, async (booking) => {
     try {
-      const lockKey = lockKeyFor({ orgId: String(booking.orgId), amenityId: String(booking.amenityId), date: booking.bookingDate, startTime: booking.startTime, endTime: booking.endTime });
-      if (slotLocks.has(lockKey)) {
-        slotLocks.delete(lockKey);
-        io.to(roomFor(booking.orgId, booking.amenityId)).emit('slot_released', { lockKey });
-      }
+      const lockKey = `${booking.orgId}_${booking.amenityId}_${booking.bookingDate}_${booking.startTime}_${booking.endTime}`;
+      const roomName = `amenity:${booking.orgId}:${booking.amenityId}`;
+
+      await slotLockStore.release(lockKey);
+      io.to(roomName).emit('slot_released', { lockKey });
 
       // SEC-WS-04: Public availability update (omit private resident identities and financial amounts)
-      const roomName = roomFor(booking.orgId, booking.amenityId);
       io.to(roomName).emit('AMENITY_SLOT_RESERVED', {
         amenityId: booking.amenityId,
         date: booking.bookingDate,
@@ -300,6 +584,7 @@ export const initAmenityBookingSockets = () => {
 
   amenityBookingEventEmitter.on(AMENITY_BOOKING_CHECKED_IN, (booking) => {
     try {
+      // SEC-WS-04: Scope check-in updates to guards, admins, and the booking owner
       if (booking?.residentId) {
         io.to(`user:${booking.residentId.toString()}`).emit('AMENITY_CHECKIN', booking);
       }
@@ -314,6 +599,7 @@ export const initAmenityBookingSockets = () => {
 
   amenityBookingEventEmitter.on(AMENITY_BOOKING_CANCELLED, (booking) => {
     try {
+      // SEC-WS-04: Scope cancellation to booking owner and org admin
       if (booking?.residentId) {
         io.to(`user:${booking.residentId.toString()}`).emit('AMENITY_BOOKING_CANCELLED', booking);
       }

@@ -3,7 +3,7 @@ import OutboxEvent from '../features/outbox/outboxEvent.model.js';
 import outboxService from '../features/outbox/outbox.service.js';
 import integrationHubService from '../features/integrationHub/integrationHub.service.js';
 import messageTemplateService from '../features/messageTemplate/messageTemplate.service.js';
-import logger from '../utils/logger.utils.js';
+import logger, { loggerStorage } from '../utils/logger.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from '../features/user/utils/invite.utils.js';
 import { sendEmail } from '../utils/email.utils.js';
@@ -190,35 +190,48 @@ export async function processOutboxEvents() {
     }
 
     processedCount++;
-    logger.info(`[Outbox Worker] Locked event ${event._id} (${event.eventType}) with leaseToken ${claimLeaseToken}. Processing...`);
+    const eventOrgId = (event.organizationId || event.payload?.orgId || event.orgId)?.toString();
+    const eventJobId = `worker-outbox-${event._id}`;
 
-    try {
-      await processEvent(event);
-      
-      // Atomic lease fencing: only mark COMPLETED if leaseToken matches current claim (not reclaimed)
-      const res = await OutboxEvent.updateOne(
-        { _id: event._id, leaseToken: claimLeaseToken },
-        { $set: { status: 'COMPLETED', error: null }, $unset: { leaseToken: 1, lockedAt: 1 } }
-      );
-      if (res.matchedCount === 0) {
-        logger.warn(`[Outbox Worker] Event ${event._id} was reclaimed by lease recovery while processing (leaseToken mismatch); skipped completion overwrite.`);
-      } else {
-        logger.info(`[Outbox Worker] Event ${event._id} processed successfully.`);
-      }
-    } catch (err) {
-      logger.error(`[Outbox Worker] Failed to process event ${event._id}: ${err.message}`);
-      
-      const newRetries = (event.retries || 0) + 1;
-      const nextStatus = newRetries < 3 ? 'PENDING' : 'FAILED';
-      await OutboxEvent.updateOne(
-        { _id: event._id, leaseToken: claimLeaseToken },
-        {
-          $set: { status: nextStatus, error: err.message },
-          $inc: { retries: 1 },
-          $unset: { leaseToken: 1, lockedAt: 1 },
+    // Every log line for this event carries its tenant context
+    await loggerStorage.run({ requestId: eventJobId, orgId: eventOrgId }, async () => {
+      logger.info(`[Outbox Worker] Locked event ${event._id} (${event.eventType}) with leaseToken ${claimLeaseToken}. Processing...`, {
+        orgId: eventOrgId,
+        eventType: event.eventType,
+      });
+
+      try {
+        await processEvent(event);
+
+        // Atomic lease fencing: only mark COMPLETED if leaseToken matches current claim (not reclaimed)
+        const res = await OutboxEvent.updateOne(
+          { _id: event._id, leaseToken: claimLeaseToken },
+          { $set: { status: 'COMPLETED', error: null }, $unset: { leaseToken: 1, lockedAt: 1 } }
+        );
+        if (res.matchedCount === 0) {
+          logger.warn(`[Outbox Worker] Event ${event._id} was reclaimed by lease recovery while processing (leaseToken mismatch); skipped completion overwrite.`, { orgId: eventOrgId });
+        } else {
+          logger.info(`[Outbox Worker] Event ${event._id} processed successfully.`, { orgId: eventOrgId });
         }
-      );
-    }
+      } catch (err) {
+        logger.error(`[Outbox Worker] Failed to process event ${event._id}: ${err.message}`, {
+          orgId: eventOrgId,
+          error: err.message,
+        });
+
+        // Retry up to 3 times, then FAIL; fenced by the lease so a reclaimed event is not overwritten
+        const newRetries = (event.retries || 0) + 1;
+        const nextStatus = newRetries < 3 ? 'PENDING' : 'FAILED';
+        await OutboxEvent.updateOne(
+          { _id: event._id, leaseToken: claimLeaseToken },
+          {
+            $set: { status: nextStatus, error: err.message },
+            $inc: { retries: 1 },
+            $unset: { leaseToken: 1, lockedAt: 1 },
+          }
+        );
+      }
+    });
   }
 }
 

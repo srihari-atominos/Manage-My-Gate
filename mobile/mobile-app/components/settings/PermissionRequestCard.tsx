@@ -9,6 +9,7 @@ export interface PermissionRequestCardProps {
   title: string;
   description: string;
   status: 'granted' | 'denied' | 'undetermined';
+  canAskAgain?: boolean;
   onRequest: () => void;
   className?: string;
 }
@@ -17,6 +18,7 @@ export const PermissionRequestCard = ({
   title,
   description,
   status,
+  canAskAgain = true,
   onRequest,
   className,
 }: PermissionRequestCardProps) => {
@@ -63,7 +65,7 @@ export const PermissionRequestCard = ({
           onPress={onRequest}
           className="w-full"
         >
-          {status === 'denied' ? 'Open System Settings' : 'Grant Permission'}
+          {status === 'denied' && !canAskAgain ? 'Open System Settings' : 'Continue'}
         </Button>
       )}
     </View>

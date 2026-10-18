@@ -26,6 +26,28 @@ import { useColorScheme } from 'nativewind';
 import { EmptyState } from '@/components/feedback/EmptyState';
 
 
+const FEATURES_BY_ID = new Map((ALL_AVAILABLE_FEATURES as any[]).map((f) => [f.id, f]));
+
+const CATEGORY_META: Record<string, { icon: string; subKey: string; subtitle: string; color: string; bgColor: string; darkBgColor: string }> = {
+  visitor_management: { icon: 'ShieldCheck', subKey: 'cat_visitor_sub', subtitle: 'Security & Gate Access', color: '#2563EB', bgColor: 'bg-blue-50', darkBgColor: 'bg-blue-950/40' },
+  amenities_facilities: { icon: 'Sparkles', subKey: 'cat_amenities_sub', subtitle: 'Facilities & Reservations', color: '#16A34A', bgColor: 'bg-emerald-50', darkBgColor: 'bg-emerald-950/40' },
+  complaints_helpdesk: { icon: 'ListTodo', subKey: 'cat_complaints_sub', subtitle: 'Issues & SLA Helpdesk', color: '#7C3AED', bgColor: 'bg-purple-50', darkBgColor: 'bg-purple-950/40' },
+  notice_board_polls: { icon: 'Megaphone', subKey: 'cat_notice_sub', subtitle: 'Broadcasts & Resident Polls', color: '#DB2777', bgColor: 'bg-pink-50', darkBgColor: 'bg-pink-950/40' },
+  digital_wallet: { icon: 'WalletCards', subKey: 'cat_wallet_sub', subtitle: 'Prepaid Balance & Ledger', color: '#10B981', bgColor: 'bg-emerald-50', darkBgColor: 'bg-emerald-950/40' },
+  financial_billing: { icon: 'CreditCard', subKey: 'cat_billing_sub', subtitle: 'Dues, Invoices & Accounts', color: '#0D9488', bgColor: 'bg-teal-50', darkBgColor: 'bg-teal-950/40' },
+  staff_management: { icon: 'Users', subKey: 'cat_staff_sub', subtitle: 'Registry, Duty & Household Passes', color: '#2563EB', bgColor: 'bg-blue-50', darkBgColor: 'bg-blue-950/40' },
+  administration_security: { icon: 'UserRoundCog', subKey: 'cat_admin_sub', subtitle: 'Staff, RBAC & Settings', color: '#D97706', bgColor: 'bg-amber-50', darkBgColor: 'bg-amber-950/40' },
+};
+
+const DEFAULT_CATEGORY_META = {
+  icon: 'Layers',
+  subKey: '',
+  subtitle: 'Module Features',
+  color: '#FF6A00',
+  bgColor: 'bg-primary/10',
+  darkBgColor: 'bg-primary/20',
+};
+
 export default function AllFeaturesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -105,7 +127,7 @@ export default function AllFeaturesScreen() {
     }, [handleBackPress])
   );
 
-  const handleTileClick = (tileId: string) => {
+  const handleTileClick = useCallback((tileId: string) => {
     if (tileId === 'visitor_resident_passes') {
       router.navigate('/(resident)/visitor' as any);
       return;
@@ -140,14 +162,14 @@ export default function AllFeaturesScreen() {
     }
     let feature = allFeaturesList.find((item) => item.id === tileId);
     if (!feature) {
-      feature = (ALL_AVAILABLE_FEATURES as any[]).find((item) => item.id === tileId);
+      feature = FEATURES_BY_ID.get(tileId);
     }
     
     if (feature && feature.route) {
       const targetRoute = feature.route.endsWith('/resident-passes') ? '/(resident)/visitor' : feature.route;
       router.navigate(targetRoute as any);
     }
-  };
+  }, [allFeaturesList, router]);
 
   const toggleCategoryExpand = (catKey: string) => {
     setExpandedCategories((prev) => ({
@@ -241,26 +263,7 @@ export default function AllFeaturesScreen() {
                 const isExpanded = Boolean(expandedCategories[category.categoryKey]) || Boolean(searchQuery);
                 const hasMore = filteredItems.length > 6;
                 const displayedItems = isExpanded ? filteredItems : filteredItems.slice(0, 6);
-
-                const categoryMeta: Record<string, { icon: string; subKey: string; subtitle: string; color: string; bgColor: string; darkBgColor: string }> = {
-                  visitor_management: { icon: 'ShieldCheck', subKey: 'cat_visitor_sub', subtitle: 'Security & Gate Access', color: '#2563EB', bgColor: 'bg-blue-50', darkBgColor: 'bg-blue-950/40' },
-                  amenities_facilities: { icon: 'Sparkles', subKey: 'cat_amenities_sub', subtitle: 'Facilities & Reservations', color: '#16A34A', bgColor: 'bg-emerald-50', darkBgColor: 'bg-emerald-950/40' },
-                  complaints_helpdesk: { icon: 'ListTodo', subKey: 'cat_complaints_sub', subtitle: 'Issues & SLA Helpdesk', color: '#7C3AED', bgColor: 'bg-purple-50', darkBgColor: 'bg-purple-950/40' },
-                  notice_board_polls: { icon: 'Megaphone', subKey: 'cat_notice_sub', subtitle: 'Broadcasts & Resident Polls', color: '#DB2777', bgColor: 'bg-pink-50', darkBgColor: 'bg-pink-950/40' },
-                  digital_wallet: { icon: 'WalletCards', subKey: 'cat_wallet_sub', subtitle: 'Prepaid Balance & Ledger', color: '#10B981', bgColor: 'bg-emerald-50', darkBgColor: 'bg-emerald-950/40' },
-                  financial_billing: { icon: 'CreditCard', subKey: 'cat_billing_sub', subtitle: 'Dues, Invoices & Accounts', color: '#0D9488', bgColor: 'bg-teal-50', darkBgColor: 'bg-teal-950/40' },
-                  staff_management: { icon: 'Users', subKey: 'cat_staff_sub', subtitle: 'Registry, Duty & Household Passes', color: '#2563EB', bgColor: 'bg-blue-50', darkBgColor: 'bg-blue-950/40' },
-                  administration_security: { icon: 'UserRoundCog', subKey: 'cat_admin_sub', subtitle: 'Staff, RBAC & Settings', color: '#D97706', bgColor: 'bg-amber-50', darkBgColor: 'bg-amber-950/40' },
-                };
-
-                const currentMeta = categoryMeta[category.categoryKey] || {
-                  icon: 'Layers',
-                  subKey: '',
-                  subtitle: 'Module Features',
-                  color: '#FF6A00',
-                  bgColor: 'bg-primary/10',
-                  darkBgColor: 'bg-primary/20'
-                };
+                const currentMeta = CATEGORY_META[category.categoryKey] || DEFAULT_CATEGORY_META;
 
                 const actionLabel = hasMore
                   ? isExpanded
@@ -285,7 +288,7 @@ export default function AllFeaturesScreen() {
 
                     <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3.5">
                       {displayedItems.map((item) => {
-                        const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === item.id);
+                        const meta = FEATURES_BY_ID.get(item.id);
                         const iconName = meta?.iconName || item.iconName;
                         const colorIcon = meta?.colorIcon || item.colorIcon || '#245FA8';
                         const badge = meta?.badge || item.badge;

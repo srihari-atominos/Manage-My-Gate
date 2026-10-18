@@ -51,6 +51,7 @@ export default function UserManagementScreen() {
     setCurrentPage,
     setRowsPerPage,
     deleteUser,
+    inviteUser,
     bulkInviteUsers,
     editUser,
     selectedUserForRoles,
@@ -112,7 +113,6 @@ export default function UserManagementScreen() {
   const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
   const [userToEdit, setUserToEdit] = useState<UserData | null>(null);
   const [deleting, setDeleting] = useState(false);
-
 
 
 

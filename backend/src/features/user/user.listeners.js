@@ -393,7 +393,7 @@ userEvents.on('USER_ADDED', async ({ email, orgId }) => {
     const subject = template?.subject || 'You have been added to a new Workspace';
     const bodyTemplate = template?.body || DEFAULT_ADDED_BODY;
 
-    const credentials = await integrationHubService.getDecryptedCredentialsById(smtpConnection._id);
+    const credentials = await integrationHubService.getDecryptedCredentialsById(smtpConnection._id, orgId);
 
     const transporter = nodemailer.createTransport({
       host: credentials.host,

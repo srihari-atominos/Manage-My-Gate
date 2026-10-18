@@ -106,8 +106,9 @@ services:
       - TZ=${TZ:-Asia/Kolkata}
       - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-manageadmin}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DB_NAME:-manage_my_gate_prod}?replicaSet=rs0&authSource=admin
       - REDIS_URL=redis://redis:6379
-      - REQUIRE_REDIS_ADAPTER=${REQUIRE_REDIS_ADAPTER:-false}
-      - REQUIRE_REDIS_LOCK=${REQUIRE_REDIS_LOCK:-false}
+      - REQUIRE_REDIS_ADAPTER=${REQUIRE_REDIS_ADAPTER:-true}
+      - REQUIRE_REDIS_LOCK=${REQUIRE_REDIS_LOCK:-true}
+      - REQUIRE_REDIS_RATE_LIMIT=${REQUIRE_REDIS_RATE_LIMIT:-true}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - SESSION_SECRET=${SESSION_SECRET}

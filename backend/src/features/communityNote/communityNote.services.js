@@ -1,5 +1,6 @@
 import communityNoteRepository from './communityNote.repository.js';
 import communityNoteEvents from './communityNote.events.js';
+import HttpError from '../../utils/httpError.utils.js';
 
 export const communityNoteService = {
   async createNote({ userId, orgId, text, category = 'GENERAL', emoji = '💬' }) {
@@ -50,10 +51,10 @@ export const communityNoteService = {
     return communityNoteRepository.findActiveByOrgId(orgId);
   },
 
-  async deleteNote(noteId, userId) {
-    const updated = await communityNoteRepository.deactivateById(noteId, userId);
+  async deleteNote(noteId, userId, orgId = null) {
+    const updated = await communityNoteRepository.deactivateById(noteId, userId, orgId);
     if (!updated) {
-      throw new Error('Note not found or already expired');
+      throw new HttpError(404, 'Note not found or already expired');
     }
     communityNoteEvents.emit('note:expired', { noteId, userId, orgId: updated.orgId });
     return updated;

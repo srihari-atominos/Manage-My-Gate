@@ -83,6 +83,7 @@ export const RealtimeNotificationToast: React.FC<RealtimeNotificationToastProps>
           onDismiss();
         }}
         activeOpacity={0.9}
+        accessibilityRole="button"
         className="p-3.5 flex-row items-center gap-3 bg-card"
       >
         {/* Type Icon Badge Container */}
@@ -118,6 +119,9 @@ export const RealtimeNotificationToast: React.FC<RealtimeNotificationToastProps>
             e.stopPropagation();
             onDismiss();
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss notification"
+          hitSlop={8}
           className="p-1.5 rounded-full bg-secondary border border-border/60 active:opacity-70 shrink-0"
         >
           <X size={14} className="text-muted-foreground" />
