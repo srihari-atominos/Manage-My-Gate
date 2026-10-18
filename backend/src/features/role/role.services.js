@@ -61,12 +61,28 @@ export class RoleService {
   }
 
   /** A role manager can only newly grant permissions they hold themselves. */
-  assertCanGrant(addedPermissions, actor) {
+  async assertCanGrant(addedPermissions, actor) {
     if (!actor || actor.isPlatform || addedPermissions.length === 0) return;
     const held = Array.isArray(actor.permissions) ? actor.permissions : [];
     if (held.includes('*')) return;
     const heldSet = new Set(held.map(normalizePermission));
-    const missing = addedPermissions.map((p) => p.name).filter((name) => !heldSet.has(normalizePermission(name)));
+    let missingPermissions = addedPermissions.filter((permission) =>
+      !heldSet.has(normalizePermission(permission.name))
+    );
+
+    // The Platform Admin defines which feature modules a community owns. Its
+    // Community Admin may delegate every permission in those selected modules,
+    // even when their current session predates a feature change. Unselected
+    // modules remain non-delegable.
+    const actorRole = lower(actor.role).replace(/[_-]/g, ' ');
+    if (actorRole === 'community admin' && actor.orgId && missingPermissions.length > 0) {
+      const organizationModule = await import('../organization/organization.services.js');
+      const organization = await organizationModule.default.getOrganizationById(actor.orgId);
+      const enabledFeatures = organizationModule.expandFeatureKeys(organization.allowedFeatures || []);
+      missingPermissions = missingPermissions.filter((permission) => !enabledFeatures.has(permission.feature));
+    }
+
+    const missing = missingPermissions.map((p) => p.name);
     if (missing.length > 0) {
       throw new HttpError(403, `You cannot grant permissions you do not have yourself: ${missing.join(', ')}.`);
     }
@@ -178,7 +194,7 @@ export class RoleService {
 
         const allPermissions = await permissionService.getAllPermissions();
         const matchedPermissions = matchPermissions(allPermissions, permissions);
-        this.assertCanGrant(matchedPermissions, actor);
+        await this.assertCanGrant(matchedPermissions, actor);
         const permissionIds = matchedPermissions.map((p) => p._id);
 
         await rolePermissionService.updateRolePermissions(newRole._id.toString(), permissionIds, currentSession);
@@ -248,7 +264,7 @@ export class RoleService {
         // Only permissions the role does not already have count as newly granted.
         const currentPerms = await rolePermissionService.getPermissionsByRoleId(id);
         const currentIds = new Set(currentPerms.map((p) => String(p._id)));
-        this.assertCanGrant(matchedPermissions.filter((p) => !currentIds.has(String(p._id))), actor);
+        await this.assertCanGrant(matchedPermissions.filter((p) => !currentIds.has(String(p._id))), actor);
         const permissionIds = matchedPermissions.map((p) => p._id);
 
         await rolePermissionService.updateRolePermissions(id, permissionIds, session);
@@ -395,7 +411,7 @@ export class RoleService {
     // Only permissions the role does not already have count as newly granted.
     const currentPerms = await rolePermissionService.getPermissionsByRoleId(roleId, role?.orgId);
     const currentIds = new Set(currentPerms.map((p) => String(p._id)));
-    this.assertCanGrant(matchedPermissions.filter((p) => !currentIds.has(String(p._id))), actor);
+    await this.assertCanGrant(matchedPermissions.filter((p) => !currentIds.has(String(p._id))), actor);
 
     const permissionIds = matchedPermissions.map((p) => p._id);
     await rolePermissionService.updateRolePermissions(roleId, permissionIds);

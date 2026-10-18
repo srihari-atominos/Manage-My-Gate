@@ -8,6 +8,7 @@ import { Text } from './text';
 import { Icon } from './icon';
 import { cn } from '../../lib/utils';
 import apiClient from '../../src/services/apiClient';
+import { prepareImageForUpload } from '../../src/utils/imageUpload';
 
 export interface Attachment {
   uri?: string;
@@ -159,13 +160,10 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
             }
             
             if (!result.canceled && result.assets) {
-              const newFiles = result.assets.slice(0, maxFiles - attachments.length).map(asset => ({
-                uri: asset.uri,
-                name: asset.fileName || `photo_${Date.now()}.jpg`,
-                type: asset.mimeType || 'image/jpeg',
-                size: asset.fileSize,
+              const newFiles = await Promise.all(result.assets.slice(0, maxFiles - attachments.length).map(async asset => ({
+                ...(await prepareImageForUpload(asset, { prefix: 'photo' })),
                 isRemote: false,
-              }));
+              })));
               onAdd(newFiles);
             }
           }

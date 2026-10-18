@@ -3,7 +3,8 @@ import { after, before, describe, it } from 'node:test';
 
 // The Express application validates these settings when it is imported. These are
 // non-production test values; no database connection is opened by this route test.
-process.env.NODE_ENV = 'production';
+process.env.NODE_ENV = 'test';
+process.env.ALLOW_MOCK_PAYMENTS = 'false';
 process.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/nahom_sample_route_test';
 process.env.JWT_SECRET = 'test-only-jwt-secret-not-for-production';
 process.env.SESSION_SECRET = 'test-only-session-secret-not-for-production';

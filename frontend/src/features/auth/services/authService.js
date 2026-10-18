@@ -34,15 +34,6 @@ export const getPendingInvitations = async () => {
   return await apiClient.get('/auth/invitations/pending')
 }
 
-export const declineInvitation = async (inviteToken) => {
-  const body = typeof inviteToken === 'object' && inviteToken !== null ? inviteToken : { inviteToken }
-  return await apiClient.post('/auth/invitations/decline', body)
-}
-
-export const rejectInvite = async (payload) => {
-  const body = typeof payload === 'string' ? { token: payload } : payload || {}
-  return await apiClient.post('/auth/reject-invite', body)
-}
 
 export const createWorkspace = async (workspaceData) => {
   return await apiClient.post('/organizations/setup', workspaceData)
@@ -128,8 +119,6 @@ export default {
   acceptInvite,
   acceptInvitation,
   getPendingInvitations,
-  declineInvitation,
-  rejectInvite,
   createWorkspace,
   loginWithGoogle,
   loginWithMicrosoft,

@@ -14,6 +14,7 @@ const ALLOWED_FEATURES = [
   'workspaces',
   'integrations',
   'administration_security',
+  'staff',
 ];
 
 const ALLOWED_ORG_TYPES = [

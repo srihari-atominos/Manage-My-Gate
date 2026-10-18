@@ -24,20 +24,15 @@ export const acceptInvitation = async (inviteToken: string) => {
 };
 
 export const respondToInvitation = async (
-  action: 'accept' | 'decline',
   ref: { invitationId?: string; inviteToken?: string; ticket?: string }
 ) => {
-  const path = action === 'accept' ? '/auth/invitations/accept' : '/auth/invitations/decline';
-  return await apiClient.post(path, ref);
+  return await apiClient.post('/auth/invitations/accept', ref);
 };
 
 export const getPendingInvitations = async () => {
   return await apiClient.get('/auth/invitations/pending');
 };
 
-export const rejectInvite = async ({ token, email }: { token: string; email?: string }) => {
-  return await apiClient.post('/auth/reject-invite', { token, email });
-};
 
 export const validateInvite = async (token: string, email?: string) => {
   const query = new URLSearchParams();
@@ -257,7 +252,6 @@ export default {
   acceptInvitation,
   respondToInvitation,
   getPendingInvitations,
-  rejectInvite,
   validateInvite,
   loginWithGoogle,
   loginWithMicrosoft,

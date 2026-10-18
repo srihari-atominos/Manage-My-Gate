@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text';
 import { useTranslation } from '@/src/utils/i18n';
 import type { StaffPhotoFile } from '../services/staffService';
 import { StaffCameraCaptureModal } from './StaffCameraCaptureModal';
+import { prepareImageForUpload } from '@/src/utils/imageUpload';
 
 export const MAX_STAFF_PHOTO_BYTES = 2 * 1024 * 1024;
 
@@ -37,20 +38,12 @@ export const StaffPhotoPicker: React.FC<StaffPhotoPickerProps> = ({
   const [cameraOpen, setCameraOpen] = useState(false);
   const previewUri = photo?.uri || existingUrl || undefined;
 
-  const accept = (asset: ImagePicker.ImagePickerAsset) => {
-    if (asset.fileSize && asset.fileSize > MAX_STAFF_PHOTO_BYTES) {
-      Alert.alert(
-        t('file_too_large', 'File Too Large'),
-        t('staff_photo_max_size', 'Please choose a photo under 2 MB.')
-      );
-      return;
+  const accept = async (asset: ImagePicker.ImagePickerAsset) => {
+    try {
+      onChange(await prepareImageForUpload(asset, { maxDimension: 1024, quality: 0.72, prefix: 'staff' }));
+    } catch {
+      Alert.alert(t('error', 'Error'), t('staff_photo_process_failed', 'Could not prepare the photo. Please try again.'));
     }
-    onChange({
-      uri: asset.uri,
-      name: asset.fileName || `staff_${Date.now()}.jpg`,
-      type: asset.mimeType || 'image/jpeg',
-      size: asset.fileSize,
-    });
   };
 
   const pickFromWeb = () => {
@@ -89,7 +82,7 @@ export const StaffPhotoPicker: React.FC<StaffPhotoPickerProps> = ({
         aspect: [1, 1],
         quality: 0.6,
       });
-      if (!result.canceled && result.assets?.[0]) accept(result.assets[0]);
+      if (!result.canceled && result.assets?.[0]) await accept(result.assets[0]);
     } catch (err) {
       console.error('[StaffPhotoPicker] error:', err);
       Alert.alert(t('error', 'Error'), t('staff_photo_pick_failed', 'Could not open the photo picker.'));

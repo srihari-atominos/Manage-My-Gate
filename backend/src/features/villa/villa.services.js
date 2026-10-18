@@ -484,7 +484,28 @@ export class VillaService {
               await assertRoleAssignable(finalRoleName);
             }
 
-            await userService.inviteUser(trimmedEmail, orgId, villa._id, normalizedResidentType, finalRoleName, phone, name, invitationSource, null, true, rawPassword);
+            const staffData = isStaffMember
+              ? {
+                  isStaff: true,
+                  designation: finalRoleName,
+                  staffType: 'Household Staff',
+                }
+              : {};
+            await userService.inviteUser(
+              trimmedEmail,
+              orgId,
+              villa._id,
+              normalizedResidentType,
+              finalRoleName,
+              phone,
+              name,
+              invitationSource,
+              null,
+              'INVITATION',
+              staffData,
+              true,
+              rawPassword,
+            );
             userInvited = true;
           } catch (err) {
             inviteError = err.message || 'User invitation failed';

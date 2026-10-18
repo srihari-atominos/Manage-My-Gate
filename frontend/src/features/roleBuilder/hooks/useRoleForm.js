@@ -14,7 +14,7 @@ const schema = yup.object().shape({
   integrationMappings: yup.object().optional().default({}),
 })
 
-export const useRoleForm = ({ role, visible, onSave }) => {
+export const useRoleForm = ({ role, visible, onSave, allowedPermissions = [] }) => {
   const dispatch = useDispatch()
 
   const {
@@ -26,6 +26,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     setValue,
     getValues,
     formState: { errors },
+    setError,
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -126,11 +127,39 @@ export const useRoleForm = ({ role, visible, onSave }) => {
   }
 
   const onSubmit = async (data) => {
+    const name = String(data.name || '').trim()
+    if (!name) {
+      setError('name', { type: 'manual', message: 'Role name is required' })
+      return
+    }
+
     const finalData = {
       ...data,
+      name,
       permissions: getValues('permissions') || [],
       integrationMappings: getValues('integrationMappings') || {},
     }
+
+    // The API correctly prevents a manager from granting a permission they do
+    // not hold. Stop that request in the form as well, so the user gets a
+    // useful message instead of a 403 after clicking Save.
+    const normalizePermission = (value) => String(value || '').trim().replace(':', '.').toLowerCase()
+    const held = new Set((allowedPermissions || []).map(normalizePermission))
+    const existing = new Set((role?.permissions || []).map(normalizePermission))
+    const isPlatformAdmin = held.has('*')
+    const unauthorized = finalData.permissions.filter((permission) => {
+      const normalized = normalizePermission(permission)
+      return !existing.has(normalized) && !isPlatformAdmin && !held.has(normalized)
+    })
+
+    if (unauthorized.length > 0) {
+      setError('permissions', {
+        type: 'manual',
+        message: `You can only grant permissions assigned to your account: ${unauthorized.join(', ')}`,
+      })
+      return
+    }
+
     await onSave(finalData)
   }
 

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { View, ActivityIndicator, TouchableOpacity, Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { BottomSheet } from '../../../../components/ui/BottomSheet';
@@ -34,6 +35,7 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
   onSave,
   onLoadPermissions,
 }) => {
+  const allowedPermissions = useSelector((state: any) => state.auth?.user?.permissions || []);
   const {
     handleSubmit,
     errors,
@@ -50,7 +52,7 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
     handleSelectAllGroup,
     handleTogglePermission,
     handleApplyIntegrationMappings,
-  } = useRoleForm({ role, visible, onSave });
+  } = useRoleForm({ role, visible, onSave, allowedPermissions });
 
   useEffect(() => {
     if (visible) {
@@ -66,7 +68,11 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
       onClose={onClose}
       title={role ? `Edit ${role.name}` : 'New Security Role'}
       footer={
-        <View className="flex-row gap-3 pt-1">
+        <View className="gap-2 pt-1">
+          {errors.permissions?.message ? (
+            <Text className="text-xs text-destructive px-1">{errors.permissions.message}</Text>
+          ) : null}
+          <View className="flex-row gap-3">
           <Button
             variant="outline"
             onPress={onClose}
@@ -84,6 +90,7 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
           >
             <Text className="text-sm font-bold text-white">Save Changes</Text>
           </Button>
+          </View>
         </View>
       }
     >
@@ -227,11 +234,10 @@ export const RoleFormSheetModal: React.FC<RoleFormSheetModalProps> = ({
                 onTogglePermission={handleTogglePermission}
               />
             )}
+            {errors.permissions?.message ? (
+              <Text className="text-xs text-destructive mt-2">{errors.permissions.message}</Text>
+            ) : null}
           </View>
-
-
-
-
 
         </View>
     </BottomSheet>

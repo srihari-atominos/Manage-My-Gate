@@ -107,7 +107,8 @@ const appReducer = combineReducers({
 // Root reducer to handle global resets for tenant isolation
 const rootReducer = (state, action) => {
   // Wipe all sensitive and tenant state on user logout
-  if (action.type === 'auth/logout' || action.type === 'auth/performLogout/fulfilled') {
+  // performLogout dispatches auth/logout itself. Resetting again on its fulfilled action would recreate the module-load auth state.
+  if (action.type === 'auth/logout') {
     cancelInFlightRequests('User logged out')
     state = {
       ui: state?.ui,

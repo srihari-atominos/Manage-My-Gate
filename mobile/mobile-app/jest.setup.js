@@ -100,3 +100,22 @@ jest.mock('expo-crypto', () => ({
 }));
 
 jest.mock('expo-router', () => ({ useRouter: jest.fn(() => ({ push: jest.fn(), back: jest.fn(), navigate: jest.fn(), replace: jest.fn() })), useLocalSearchParams: jest.fn(() => ({})), usePathname: jest.fn(() => ''), Link: 'Link' }));
+
+// Native safe-area providers are unavailable in Jest; use inert host elements and stable zero insets.
+// Keeping this factory free of React Native components avoids NativeWind's transform in Jest.
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaProvider: 'MockSafeAreaProvider',
+  SafeAreaView: 'MockSafeAreaView',
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+  useSafeAreaFrame: () => ({ x: 0, y: 0, width: 0, height: 0 }),
+  initialWindowMetrics: { frame: { x: 0, y: 0, width: 0, height: 0 }, insets: { top: 0, right: 0, bottom: 0, left: 0 } },
+}));
+// Expo 57 no longer exposes these Metro overlay internals as importable modules.
+jest.mock('@expo/metro-runtime/src/error-overlay/Data/LogContext', () => {
+  const React = require('react');
+  const LogContext = React.createContext({ selectedLogIndex: 0, isDisabled: false, logs: [] });
+  return { LogContext, useLogs: () => React.useContext(LogContext) };
+}, { virtual: true });
+jest.mock('@expo/metro-runtime/src/error-overlay/Data/LogBoxLog', () => ({
+  LogBoxLog: class LogBoxLog { constructor(value) { Object.assign(this, value); } },
+}), { virtual: true });

@@ -17,10 +17,7 @@ import {
 import { resolveWalkInRequest } from '@/src/features/visitor/store/visitorPassSlice';
 import { resolveNotificationRoute } from '@/src/features/notification/utils/notificationNavigation';
 import { NotificationItemData } from '@/src/features/notification/services/notificationService';
-import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import {  rejectInviteThunk,
-  switchWorkspaceContextThunk,
-} from '@/src/features/auth/store/authSlice';
+import { switchWorkspaceContextThunk } from '@/src/features/auth/store/authSlice';
 import { useTranslation } from '@/src/utils/i18n';
 
 /**
@@ -29,14 +26,13 @@ import { useTranslation } from '@/src/utils/i18n';
  * Mounts at the root level (_layout.tsx) inside the Redux Provider tree.
  * 1. Guarantees the real-time Socket.io and push notification listener stays permanently active.
  * 2. Renders an interactive heads-up toast banner whenever `latestNotification` arrives.
- * 3. Immediately opens the Invitation decision modal with Accept/Decline actions if the notification is an invitation.
+ * 3. Immediately opens the invitation details modal with an acceptance action if the notification is an invitation.
  * 4. Navigates to the appropriate domain screen for any other notification type.
  */
 export const GlobalNotificationPresenter: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useAuth();
   const { t } = useTranslation();
 
   const {
@@ -150,32 +146,6 @@ export const GlobalNotificationPresenter: React.FC = () => {
     [router]
   );
 
-  const handleRejectInvitation = useCallback(
-    async (token: string, orgName?: string) => {
-      try {
-        await dispatch(rejectInviteThunk({ token, email: user?.email })).unwrap();
-
-        const notifId = selectedInviteNotification?.id || selectedInviteNotification?._id;
-        if (notifId) {
-          markAsRead(notifId);
-        }
-
-        setIsInviteModalVisible(false);
-        setSelectedInviteNotification(null);
-        await fetchNotifications(1, 10);
-
-        Alert.alert(
-          t('invitation_declined', 'Invitation Declined'),
-          `${t('declined_success', 'You have declined the invitation to join')} ${orgName || 'the workspace'}.`
-        );
-      } catch (err: any) {
-        const msg = err?.message || err || 'Failed to reject invitation';
-        Alert.alert(t('error', 'Error'), msg);
-        throw err;
-      }
-    },
-    [dispatch, user?.email, selectedInviteNotification, markAsRead, fetchNotifications, t]
-  );
 
   return (
     <>
@@ -205,7 +175,6 @@ export const GlobalNotificationPresenter: React.FC = () => {
             setSelectedInviteNotification(null);
           }}
           onAccept={handleAcceptInvitation}
-          onReject={handleRejectInvitation}
         />
       )}
 

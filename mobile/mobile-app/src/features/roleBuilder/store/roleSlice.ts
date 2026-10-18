@@ -22,7 +22,6 @@ export interface RoleState {
   rowsPerPage: number;
 }
 
-export const DUMMY_ROLES: roleService.RoleData[] = [];
 
 const initialState: RoleState = {
   roles: [],

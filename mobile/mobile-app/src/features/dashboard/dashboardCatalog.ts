@@ -83,7 +83,7 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
 export const REAL_APP_FEATURES = ALL_AVAILABLE_FEATURES;
 
 export const DEFAULT_8_QUICK_ACTIONS = [
-  'billing_dashboard',
+  'billing_my_invoices',
   'community_directory',
   'visitor_resident_passes',
   'community_engagement',
@@ -123,8 +123,7 @@ export const ROLE_DEFAULT_QUICK_ACTIONS: Record<string, string[]> = {
   ],
   resident: [
     'visitor_resident_passes',
-    'billing_dashboard',
-    'billing_my_dues',
+    'billing_my_invoices',
     'amenities_discover',
     'community_engagement',
     'complaints_raise_ticket',

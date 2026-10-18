@@ -33,6 +33,10 @@ export default function RoleBuilderScreen() {
     currentPage = 1,
     totalPages = 1,
     rowsPerPage = 10,
+    canReadRoles,
+    canCreateRoles,
+    canUpdateRoles,
+    canDeleteRoles,
     isFormModalOpen = false,
     isDeleteModalOpen = false,
     selectedRole = null,
@@ -102,6 +106,22 @@ export default function RoleBuilderScreen() {
       return true;
     });
   }, [roles, scopeFilter]);
+
+  if (!canReadRoles) {
+    return (
+      <ScreenShell
+        title={t('feature_admin_role_builder_name', 'Role Builder')}
+        subtitle="Access Restricted"
+        iconName="ShieldCheck"
+      >
+        <View className="flex-1 items-center justify-center p-6">
+          <Icon as={ShieldCheck} size={36} className="text-muted-foreground mb-3" />
+          <Text className="text-lg font-bold text-foreground text-center">Role Builder access is restricted</Text>
+          <Text className="text-sm text-muted-foreground text-center mt-2">Your account needs the roles:read permission to view community roles.</Text>
+        </View>
+      </ScreenShell>
+    );
+  }
 
   const handleExecutePageJump = () => {
     const pageNum = parseInt(targetPageInput.trim(), 10);
@@ -187,13 +207,15 @@ export default function RoleBuilderScreen() {
       error={error}
       onRetry={handleRefresh}
       headerRight={
-        <HeaderActionButton
-          onPress={openCreateModal}
-          icon={Plus}
-          label={t('create_role', 'Create Role')}
-          accessibilityRole="button"
-          accessibilityLabel="Create Role"
-        />
+        canCreateRoles ? (
+          <HeaderActionButton
+            onPress={openCreateModal}
+            icon={Plus}
+            label={t('create_role', 'Create Role')}
+            accessibilityRole="button"
+            accessibilityLabel="Create Role"
+          />
+        ) : undefined
       }
     >
       <View className="flex-1">
@@ -274,8 +296,8 @@ export default function RoleBuilderScreen() {
                 ? `${t('no_roles_matching', 'No roles found matching')} "${searchQuery}".`
                 : t('no_roles_desc', 'No roles configured yet. Tap the button below to create your first role.')
             }
-            actionLabel={t('create_role', 'Create Role')}
-            onAction={openCreateModal}
+            actionLabel={canCreateRoles ? t('create_role', 'Create Role') : undefined}
+            onAction={canCreateRoles ? openCreateModal : undefined}
           />
         ) : (
           <FlatList
@@ -287,6 +309,8 @@ export default function RoleBuilderScreen() {
                 role={item}
                 onEdit={openEditModal}
                 onDelete={openDeleteModal}
+                canEdit={canUpdateRoles && !item.isShared}
+                canDelete={canDeleteRoles && !item.isShared}
               />
             )}
             contentContainerClassName="p-2.5 pb-28"

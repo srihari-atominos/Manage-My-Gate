@@ -31,7 +31,7 @@ const DEFAULT_INVITE_BODY = `
 `;
 
 // Register user domain events
-userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting, isBulk, rawPassword }) => {
+userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting, isBulk, rawPassword }) => {
   try {
     // An invite can be replaced while this asynchronous listener is preparing
     // the email (for example, when an admin corrects and re-sends an invite).
@@ -231,13 +231,6 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
                   <td align="center" style="padding-bottom: 16px;">
                     <a href="{{invite_link}}" target="_blank" style="display: inline-block; box-sizing: border-box; background-color: #f45a0a; color: #ffffff; padding: 16px 36px; text-decoration: none; border-radius: 9999px; font-weight: 800; font-size: 16px; text-align: center; box-shadow: 0 4px 12px rgba(244, 90, 10, 0.25); letter-spacing: 0.01em;">
                       ${ctaButtonText} &rarr;
-                    </a>
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center">
-                    <a href="{{reject_link}}" target="_blank" style="display: inline-block; box-sizing: border-box; background-color: transparent; color: #64748b; padding: 8px 24px; text-decoration: underline; font-weight: 600; font-size: 14px; text-align: center;">
-                      Decline Invitation
                     </a>
                   </td>
                 </tr>

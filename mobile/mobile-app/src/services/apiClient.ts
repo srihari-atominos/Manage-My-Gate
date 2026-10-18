@@ -1,4 +1,4 @@
-﻿import axios, { InternalAxiosRequestConfig } from 'axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import storage from '../utils/storage';
@@ -71,7 +71,6 @@ const AUTHENTICATION_ENDPOINTS = new Set([
   '/auth/apple',
   '/auth/logout',
   '/auth/invitations/accept',
-  '/auth/invitations/decline',
   '/auth/accept-invite',
 ]);
 

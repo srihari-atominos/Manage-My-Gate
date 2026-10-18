@@ -22,6 +22,7 @@ import { AppLoader } from '@/components/ui/AppLoader';
 import { Text } from '@/components/ui/text';
 
 // Lazy Load Heavy Modals for Performance Optimization
+const InviteUserModal = lazy(() => import('@/src/features/userManagement').then(m => ({ default: m.InviteUserModal })));
 const BulkInviteModal = lazy(() => import('@/src/features/userManagement').then(m => ({ default: m.BulkInviteModal })));
 const ConfigureInviteTemplateModal = lazy(() => import('@/src/features/userManagement').then(m => ({ default: m.ConfigureInviteTemplateModal })));
 const ManageRolesModal = lazy(() => import('@/src/features/userManagement').then(m => ({ default: m.ManageRolesModal })));
@@ -107,6 +108,7 @@ export default function UserManagementScreen() {
 
   const dialOpacity = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showBulkInviteModal, setShowBulkInviteModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -182,11 +184,11 @@ export default function UserManagementScreen() {
       onRetry={refreshUsers}
       headerRight={
         <HeaderActionButton
-          onPress={() => setShowBulkInviteModal(true)}
+          onPress={() => setShowInviteModal(true)}
           icon={UserPlus}
-          label={t('bulk_create', 'Bulk Create')}
+          label={t('invite_user', 'Invite User')}
           accessibilityRole="button"
-          accessibilityLabel={t('bulk_create', 'Bulk Create')}
+          accessibilityLabel={t('invite_user', 'Invite User')}
         />
       }
     >
@@ -303,6 +305,37 @@ export default function UserManagementScreen() {
         </TouchableWithoutFeedback>
       )}
 
+      {/* Speed Dial Action 1: Invite User (Top) */}
+      <Animated.View
+        className="z-[9998]"
+        style={{
+          position: 'absolute', bottom: 135, right: 25,
+          width: 50, height: 50,
+          alignItems: 'center', justifyContent: 'center',
+          transform: [{ translateX: transX1 }, { translateY: transY1 }, { scale: scale1 }],
+          opacity: dialOpacity,
+          overflow: 'visible'
+        }}
+        pointerEvents={isDialOpen ? 'auto' : 'none'}
+      >
+        <View style={{ position: 'absolute', right: 55, width: 125, alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
+          <View className="bg-card px-3 py-1.5 rounded-lg border border-border/60 shadow-sm" style={{ elevation: 2 }}>
+            <Text className="text-foreground text-[11px] font-bold tracking-tight text-right" numberOfLines={1}>
+              {t('invite_user', 'Invite User')}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => closeDialAndOpen(setShowInviteModal)}
+          className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
+          accessibilityRole="button"
+          accessibilityLabel={t('invite_user', 'Invite User')}
+        >
+          <UserPlus size={22} className="text-primary" />
+        </TouchableOpacity>
+      </Animated.View>
+
       {/* Speed Dial Action 3: Email Template (Left) */}
       <Animated.View 
         className="z-[9998]"
@@ -391,6 +424,14 @@ export default function UserManagementScreen() {
         )}
 
         
+
+        {showInviteModal && (
+          <InviteUserModal
+            visible={showInviteModal}
+            onClose={() => setShowInviteModal(false)}
+            onSendInvite={handleSendInvite}
+          />
+        )}
 
         {showBulkInviteModal && (
           <BulkInviteModal

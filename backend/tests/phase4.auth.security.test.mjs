@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import http from 'http';
 
 process.env.NODE_ENV = 'production';
+process.env.ALLOW_MOCK_PAYMENTS = 'false';
 process.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/nahom_phase4_test';
 process.env.JWT_SECRET = 'a'.repeat(40);
 process.env.SESSION_SECRET = 'b'.repeat(40);
@@ -101,6 +102,7 @@ describe('Phase 4 — Authentication, Tokens, and Password Policy Security', () 
     const prevDebug = process.env.OTP_DEBUG;
     try {
       process.env.NODE_ENV = 'production';
+process.env.ALLOW_MOCK_PAYMENTS = 'false';
       process.env.OTP_DEBUG = 'true';
       assert.equal(isOtpDebugEnabled(), false, 'OTP debug must NEVER be enabled in production');
 

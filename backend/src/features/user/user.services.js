@@ -330,6 +330,7 @@ export class UserService {
     invitationSource = 'WEB',
     inviterId = null,
     onboardingMode = 'INVITATION',
+    staffData = {},
     isBulk = false,
     rawPassword = null
   ) {
@@ -1345,6 +1346,7 @@ export class UserService {
           source,
           inviterId,
           mode,
+          staffData,
           true, // isBulk
           rawPassword
         );
@@ -1580,6 +1582,7 @@ export class UserService {
       const isExisting = !!(recipient.status === 'Active' || (recipient.password && recipient.password.length > 0));
       userEvents.emit('USER_INVITED', {
         email: recipient.email,
+        phone: recipient.phone,
         orgId,
         invitationToken: newResult.invitationToken,
         invitationSource: oldToken.invitationSource || 'WEB',

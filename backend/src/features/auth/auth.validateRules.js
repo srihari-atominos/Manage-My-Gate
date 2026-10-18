@@ -143,16 +143,6 @@ export const respondInvitationRules = [
 /**
  * Validation rules for declining an invitation
  */
-export const rejectInviteRules = [
-  body('token')
-    .trim()
-    .notEmpty()
-    .withMessage('Invitation token is required'),
-  body('email')
-    .optional({ nullable: true, checkFalsy: true })
-    .isEmail()
-    .trim(),
-];
 
 /**
  * Validation rules for switching workspace context endpoint

@@ -83,16 +83,55 @@ const appReducer = combineReducers({
   automation: automationReducer,
 });
 
-export const rootReducer = (state: any, action: AnyAction) => {
-  // Reset all feature slices on logout or workspace/tenant switch to prevent cross-tenant data leakage
+type AppState = ReturnType<typeof appReducer>;
+
+// `state: any` here would make Redux infer the whole store state as `any`, silently disabling type
+// checking for every selector in the app, so the real state type is used.
+export const rootReducer = (state: AppState | undefined, action: AnyAction): AppState => {
+  const authState: any = state?.auth;
+  // A role update for the signed-in Community Admin re-syncs the current workspace
+  // with an empty switch payload. That is not a tenant switch and must not clear
+  // the Role Builder list after a successful save. However, cross-org switches
+  // or role demotions MUST reset feature slices.
+  const prevOrgId = authState?.user?.activeOrgId || authState?.user?.orgId;
+  const nextOrgId =
+    action.payload?.user?.activeOrgId ||
+    action.payload?.user?.orgId ||
+    action.meta?.arg?.targetOrgId;
+
+  const prevRole = authState?.user?.role;
+  const nextRole = action.payload?.user?.role || action.meta?.arg?.targetRole;
+
+  const isCrossOrgSwitch = Boolean(
+    (action.meta?.arg?.targetOrgId && action.meta.arg.targetOrgId !== prevOrgId) ||
+    (nextOrgId && prevOrgId && nextOrgId !== prevOrgId)
+  );
+
+  const isRoleSwitch = Boolean(
+    (action.meta?.arg?.targetRole && action.meta.arg.targetRole !== prevRole) ||
+    (nextRole && prevRole && nextRole !== prevRole)
+  );
+
+  const isSameWorkspaceRefresh =
+    (action.type === 'auth/switchWorkspaceContext/fulfilled' ||
+      action.type === 'auth/switchWorkspaceContext/pending') &&
+    !isCrossOrgSwitch &&
+    !isRoleSwitch &&
+    !action.meta?.arg?.targetVillaId &&
+    !action.meta?.arg?.targetAssignmentId &&
+    (action.meta?.arg !== undefined
+      ? !action.meta?.arg?.targetOrgId && !action.meta?.arg?.targetRole
+      : prevOrgId === nextOrgId && prevRole === nextRole);
+
   if (
-    action.type === 'auth/logout' ||
-    action.type === 'auth/performLogout/fulfilled' ||
-    action.type === 'auth/switchWorkspaceContext/fulfilled' ||
-    action.type === 'auth/switchWorkspaceContext/pending' ||
-    action.type === 'auth/setActiveCommunityOrg' ||
-    action.type === 'workspace/setActiveWorkspace' ||
-    action.type === 'workspace/clearWorkspace'
+    !isSameWorkspaceRefresh &&
+    (action.type === 'auth/logout' ||
+      action.type === 'auth/performLogout/fulfilled' ||
+      action.type === 'auth/switchWorkspaceContext/fulfilled' ||
+      action.type === 'auth/switchWorkspaceContext/pending' ||
+      action.type === 'auth/setActiveCommunityOrg' ||
+      action.type === 'workspace/setActiveWorkspace' ||
+      action.type === 'workspace/clearWorkspace')
   ) {
     cancelInFlightRequests(`State reset triggered by ${action.type}`);
     if (
@@ -102,9 +141,7 @@ export const rootReducer = (state: any, action: AnyAction) => {
       action.type === 'workspace/setActiveWorkspace'
     ) {
       // Preserve auth session identity while purging all tenant-scoped feature data
-      state = {
-        auth: state?.auth,
-      };
+      state = { auth: state?.auth } as unknown as AppState;
     } else {
       // Complete logout or teardown: purge all state
       state = undefined;

@@ -180,6 +180,9 @@ app.get(['/health', '/api/health'], (req, res) => {
   });
 });
 
+// API paths must never fall through to the Swagger UI in non-production environments.
+// Returning a JSON 404 keeps client-side error handling and monitoring accurate.
+app.use(['/api', '/api/v1', '/api/v2'], pageNotFound);
 // Privacy policy public route
 app.get('/privacy-policy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));

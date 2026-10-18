@@ -41,6 +41,8 @@ export const isReviewAccount = (identifier) => {
     '+919786608686',
     '9847561230',
     '9786608686',
+    '+919999999999',
+    '9999999999',
   ];
 
   if (defaultReviewers.includes(raw) || envList.includes(raw)) {

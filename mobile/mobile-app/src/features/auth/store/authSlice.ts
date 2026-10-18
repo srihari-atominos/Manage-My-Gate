@@ -427,19 +427,6 @@ export const acceptSsoInviteThunk = createAsyncThunk(
 
 
 
-/** Decline one invitation (signed in) from a notification: by invitation id or link token. */
-export const rejectInviteThunk = createAsyncThunk(
-  'auth/rejectInvite',
-  async ({ token, email }: { token: string; email?: string }, { rejectWithValue }) => {
-    try {
-      const response = await authService.rejectInvite({ token, email });
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return body?.data || body;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to reject invitation');
-    }
-  }
-);
 
 /** Accepts an invitation for an authenticated user and switches to the newly joined community. */
 export const acceptPendingInvitationThunk = createAsyncThunk(
@@ -486,22 +473,19 @@ export const acceptPendingInvitationThunk = createAsyncThunk(
 export const respondToInvitationThunk = createAsyncThunk(
   'auth/respondToInvitation',
   async (
-    payload: { action: 'accept' | 'decline'; invitationId?: string; inviteToken?: string; ticket?: string },
+    payload: { invitationId?: string; inviteToken?: string; ticket?: string },
     { dispatch, rejectWithValue }
   ) => {
     try {
-      const response = await authService.respondToInvitation(payload.action, {
+      const response = await authService.respondToInvitation({
         invitationId: payload.invitationId,
         inviteToken: payload.inviteToken,
         ticket: payload.ticket,
       });
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       const innerData = body?.data || body;
-      if (payload.action === 'accept') {
-        const persisted = await persistLoginResult(innerData);
-        return (persisted || innerData) as any;
-      }
-      return innerData;
+      const persisted = await persistLoginResult(innerData);
+      return (persisted || innerData) as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to respond to invitation');
     }
@@ -611,7 +595,6 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
   { rejectValue: string }
 >('auth/switchWorkspaceContext', async (payload, { dispatch, rejectWithValue }) => {
   try {
-    cancelInFlightRequests('Workspace context switched');
     const cleanPayload: {
       targetOrgId?: string;
       targetRole?: string;
@@ -637,6 +620,12 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
     }
     if (payload?.targetAssignmentType && typeof payload.targetAssignmentType === 'string' && payload.targetAssignmentType.trim()) {
       cleanPayload.targetAssignmentType = payload.targetAssignmentType.trim();
+    }
+    // A no-argument context refresh keeps the current community. Do not abort
+    // its active list requests, otherwise a successful role save surfaces a
+    // misleading "canceled" error in Role Builder.
+    if (Object.keys(cleanPayload).length > 0) {
+      cancelInFlightRequests('Workspace context switched');
     }
 
     let response;
@@ -1132,20 +1121,13 @@ const authSlice = createSlice({
           ? { code: detail.code, attemptsRemaining: detail.attemptsRemaining, retryAfterSeconds: detail.retryAfterSeconds }
           : null;
       })
-      // Respond to Invitation (accept / decline)
+      // Respond to Invitation
       .addCase(respondToInvitationThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(respondToInvitationThunk.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload?.declined) {
-          state.invitationSelection = {
-            ticket: state.invitationSelection?.ticket || null,
-            pendingInvitations: action.payload.pendingInvitations || [],
-          };
-          return;
-        }
         state.token = action.payload?.token || null;
         state.refreshToken = action.payload?.refreshToken || null;
         state.user = normalizeUser(action.payload?.user || null);

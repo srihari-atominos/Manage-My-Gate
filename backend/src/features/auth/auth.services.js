@@ -566,9 +566,24 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     if (isPlaceholder) {
       const pendingInvitations = await listPendingInvitationsForUser(user._id);
       if (pendingInvitations.length === 0) {
-        throw new HttpError(403, 'You don\'t have an active invitation. Please ask your community admin to invite you.', {
-          code: 'INVITATION_REQUIRED',
-        });
+        // OTP/SSO proves identity. A Pending membership is the durable admin invite record,
+        // including when the email-link token has expired or was replaced.
+        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+        const pendingMembership = await OrgMembership.findOne({ userId: user._id, status: 'Pending' }).populate('orgId', 'status').session(session);
+        if (!pendingMembership?.orgId || (pendingMembership.orgId.status && pendingMembership.orgId.status !== 'Active')) {
+          throw new HttpError(403, 'You don\'t have an active invitation. Please ask your community admin to invite you.', { code: 'INVITATION_REQUIRED' });
+        }
+        const orgId = String(pendingMembership.orgId._id || pendingMembership.orgId);
+        const User = (await import('../user/user.model.js')).default;
+        const userUpdate = { status: 'Active', ...(verifiedVia === 'email' ? { emailVerified: true } : {}), ...(verifiedVia === 'phone' ? { phoneVerified: true } : {}) };
+        await User.updateOne({ _id: user._id }, { $set: userUpdate }).session(session);
+        Object.assign(user, userUpdate);
+        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+        await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
+        return async (deviceInfo, method) => {
+          emitInvitationAccepted(user._id, orgId);
+          return this._buildLoginResult(user, { targetOrgId: orgId, deviceInfo, method });
+        };
       }
       
       const firstInvite = pendingInvitations[0];
@@ -593,12 +608,12 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
   }
 
   /**
-   * Accept or decline one invitation chosen from the pending list. The caller is
+   * Accept one invitation chosen from the pending list. The caller is
    * either signed in, or holds a fresh identity ticket from OTP/SSO verification.
    */
-  async respondToInvitation({ action, invitationId = null, inviteToken = null, authUserId = null, ticket = null, deviceInfo = {} }) {
+  async respondToInvitation({ invitationId = null, inviteToken = null, authUserId = null, ticket = null, deviceInfo = {} }) {
     const ref = inviteToken ? { rawToken: inviteToken } : { invitationId };
-    const { verifyIdentityTicket, acceptInvitationForUser, declineInvitationForUser, emitInvitationAccepted } =
+    const { verifyIdentityTicket, acceptInvitationForUser, emitInvitationAccepted } =
       await import('./invitationAcceptance.js');
     let userId = authUserId;
     let verifiedVia = 'session';
@@ -618,11 +633,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       if (['Suspended', 'Blocked', 'Deleted'].includes(user.status)) {
         throw new HttpError(403, 'Account is inactive or suspended.');
       }
-      if (action === 'decline') {
-        ({ orgId } = await declineInvitationForUser(user, ref, session));
-      } else {
-        ({ orgId } = await acceptInvitationForUser(user, ref, verifiedVia, session));
-      }
+      ({ orgId } = await acceptInvitationForUser(user, ref, verifiedVia, session));
       await session.commitTransaction();
     } catch (error) {
       try { await session.abortTransaction(); } catch (_) {}
@@ -631,15 +642,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       await session.endSession();
     }
 
-    if (action === 'decline') {
-      authEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
-      userEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
-      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'rejected' });
-      const { listPendingInvitationsForUser } = await import('./invitationAcceptance.js');
-      return { declined: true, orgId, pendingInvitations: await listPendingInvitationsForUser(user._id) };
-    }
-
-    emitInvitationAccepted(user._id, orgId);
+emitInvitationAccepted(user._id, orgId);
     return this._buildLoginResult(user, { targetOrgId: orgId, deviceInfo, method: 'invitation' });
   }
 
@@ -1856,93 +1859,6 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
   }
 
-  /**
-   * Rejects an invitation, updating OrgMembership status to 'Rejected' and marking token as consumed.
-   * @param {string} rawToken - Unhashed token from client
-   * @param {string} [email=null] - Optional email fallback
-   */
-  async rejectInvitation(rawToken, email = null) {
-    const mongoose = (await import('mongoose')).default;
-    const session = await mongoose.startSession();
-    
-    session.startTransaction();
-    try {
-      // Only the invitation token identifies what is being declined. An email
-      // alone must never touch anyone's memberships.
-      if (!rawToken) {
-        throw new HttpError(400, 'Invitation token is required.');
-      }
-
-      let userId = null;
-      let orgId = null;
-      try {
-        const tokenRes = await tokenService.rejectInvitationToken(rawToken, session);
-        userId = tokenRes.userId;
-        orgId = tokenRes.orgId;
-      } catch (tokenErr) {
-        const msg = tokenErr.message ? tokenErr.message.toLowerCase() : '';
-        if (msg.includes('already been rejected') || msg.includes('already been accepted')) {
-          const tokenDoc = await tokenService.getInvitationToken(rawToken, 'INVITATION');
-          await session.commitTransaction();
-          return {
-            message: msg.includes('already been accepted')
-              ? 'Invitation has already been accepted'
-              : 'Invitation has already been rejected',
-            userId: tokenDoc?.userId,
-            orgId: tokenDoc?.orgId,
-            status: msg.includes('already been accepted') ? 'ACCEPTED' : 'REJECTED',
-          };
-        }
-        throw tokenErr;
-      }
-
-      const user = await userService.getUserById(userId, session).catch(() => null);
-      if (!user) {
-        throw new HttpError(404, 'No pending user account found to reject invitation.');
-      }
-      if (email && user.email && user.email.toLowerCase() !== email.trim().toLowerCase()) {
-        throw new HttpError(403, 'The provided email does not match the invitation identity.');
-      }
-
-      // Update OrgMembership status to Rejected for this organization
-      if (user.status === 'Pending Verification') { await userService.updateUser(user._id, { status: 'Active' }, session); }
-          await (await import('../orgMembership/orgMembership.services.js')).default.updateStatus(user._id, orgId || null, 'Rejected', session).catch(() => null);
-
-      // Ensure user is removed from any villa in this organization
-      if (orgId) {
-        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-        const membership = await orgMembershipService.getMembership(user._id, orgId, session);
-        if (membership && membership.status === 'Pending') {
-          await orgMembershipService.updateStatus(user._id, orgId, 'Rejected', session);
-          const villaService = (await import('../villa/villa.services.js')).default;
-          await villaService.removeUserFromAllVillasInOrg(user._id, orgId, session).catch(() => null);
-        }
-      }
-
-      await session.commitTransaction();
-
-      // Emit event for real-time frontend syncing (admin UI updates to REJECTED badge)
-      authEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
-      userEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
-      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'rejected' });
-
-      return {
-        message: 'Invitation rejected successfully',
-        userId: user._id,
-        orgId,
-      };
-    } catch (error) {
-      if (session) {
-        try { await session.abortTransaction(); } catch (e) {}
-      }
-      throw error;
-    } finally {
-      if (session) {
-        await session.endSession();
-      }
-    }
-  }
-
   async getUserById(id, session) {
     return await userService.getUserById(id, session);
   }
@@ -2349,7 +2265,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
 
     await otpService.assertCanSend(normalizedPhone);
     if (otpService.isReviewAccount(normalizedPhone)) {
-      const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN');
+      const plainCode = await otpService.createOTP(normalizedPhone, 'LOGIN', 5, null, null, 4);
       return { message: 'OTP sent successfully', ...devCodeField(normalizedPhone, plainCode) };
     }
 
@@ -2553,11 +2469,22 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
       return { message: OTP_SENT_EMAIL_MESSAGE };
     }
 
+    // Permit the normal email-OTP flow only for a user who is pending because
+    // they hold a valid invitation. All other unverified accounts remain blocked.
+    let isPendingInvitee = false;
     if (user.status === 'Pending Verification' || user.emailVerified === false) {
-      throw new HttpError(403, 'Email verification required. Please verify your email before logging in.');
+      const { listPendingInvitationsForUser } = await import('./invitationAcceptance.js');
+      const invitations = await listPendingInvitationsForUser(user._id);
+      const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+      const pendingMembership = await OrgMembership.findOne({ userId: user._id, status: 'Pending' }).populate('orgId', 'status').lean();
+      const hasPendingMembership = Boolean(pendingMembership?.orgId && (!pendingMembership.orgId.status || pendingMembership.orgId.status === 'Active'));
+      isPendingInvitee = user.status === 'Pending Verification' && (invitations.length > 0 || hasPendingMembership);
+      if (!isPendingInvitee) {
+        throw new HttpError(403, 'Email verification required. Please verify your email before logging in.');
+      }
     }
 
-    if (user.status !== 'Active') {
+    if (user.status !== 'Active' && !isPendingInvitee) {
       throw new HttpError(403, `Account is ${user.status}`);
     }
 

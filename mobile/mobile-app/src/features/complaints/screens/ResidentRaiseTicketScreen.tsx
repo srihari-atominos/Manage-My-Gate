@@ -5,6 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
+import { prepareImageForUpload } from '@/src/utils/imageUpload';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { Card } from '@/components/common/Card';
@@ -325,11 +326,7 @@ export function ResidentRaiseTicketScreen() {
       if (!result.canceled && result.assets) {
         const remainingSlots = 5 - attachments.length;
         const selectedAssets = result.assets.slice(0, remainingSlots);
-        const newFiles = selectedAssets.map((asset) => ({
-          uri: asset.uri,
-          name: asset.fileName || `gallery_photo_${Date.now()}.jpg`,
-          type: asset.mimeType || 'image/jpeg',
-        }));
+        const newFiles = await Promise.all(selectedAssets.map((asset) => prepareImageForUpload(asset, { prefix: 'complaint' })));
         setAttachments((prev) => [...prev, ...newFiles]);
       }
     } catch (err) {

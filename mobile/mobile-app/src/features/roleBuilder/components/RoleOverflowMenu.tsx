@@ -22,6 +22,8 @@ export interface RoleOverflowMenuProps {
   onManagePermissions?: (role: RoleData) => void;
   onDuplicate?: (role: RoleData) => void;
   onDelete: (role: RoleData) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export const RoleOverflowMenu: React.FC<RoleOverflowMenuProps> = ({
@@ -32,6 +34,8 @@ export const RoleOverflowMenu: React.FC<RoleOverflowMenuProps> = ({
   onManagePermissions,
   onDuplicate,
   onDelete,
+  canEdit = false,
+  canDelete = false,
 }) => {
   const { t } = useTranslation();
 
@@ -89,7 +93,7 @@ export const RoleOverflowMenu: React.FC<RoleOverflowMenuProps> = ({
         {/* Options List */}
         <View className="gap-1.5">
           {/* 1. Edit Role */}
-          <TouchableOpacity
+          {canEdit ? <TouchableOpacity
             onPress={() => handleAction(() => onEdit(role))}
             activeOpacity={0.7}
             className="flex-row items-center justify-between p-3.5 rounded-xl bg-card border border-border/70 active:bg-secondary/60"
@@ -109,10 +113,10 @@ export const RoleOverflowMenu: React.FC<RoleOverflowMenuProps> = ({
                 </Text>
               </View>
             </View>
-          </TouchableOpacity>
+          </TouchableOpacity> : null}
 
           {/* 2. Manage Permissions */}
-          <TouchableOpacity
+          {canEdit ? <TouchableOpacity
             onPress={() =>
               handleAction(() => {
                 if (onManagePermissions) {
@@ -140,7 +144,7 @@ export const RoleOverflowMenu: React.FC<RoleOverflowMenuProps> = ({
                 </Text>
               </View>
             </View>
-          </TouchableOpacity>
+          </TouchableOpacity> : null}
 
           {/* 3. Duplicate Role */}
           {onDuplicate ? (
@@ -168,7 +172,7 @@ export const RoleOverflowMenu: React.FC<RoleOverflowMenuProps> = ({
           ) : null}
 
           {/* 4. Delete Role */}
-          {!isSuperAdmin ? (
+          {canDelete && !isSuperAdmin ? (
             <TouchableOpacity
               onPress={() => handleAction(() => onDelete(role))}
               disabled={Boolean(deleteBlockedReason)}

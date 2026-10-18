@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'http';
 
 process.env.NODE_ENV = 'production';
+process.env.ALLOW_MOCK_PAYMENTS = 'false';
 process.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/nahom_phase5_test';
 process.env.JWT_SECRET = 'a'.repeat(40);
 process.env.SESSION_SECRET = 'b'.repeat(40);

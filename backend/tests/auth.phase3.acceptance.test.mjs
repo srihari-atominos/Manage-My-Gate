@@ -274,15 +274,6 @@ describe('Phase 3 — invitation acceptance and login result', () => {
       assert.equal(await membershipStatus(john._id, orgC._id), 'Pending');
     });
 
-    it('declines one invitation while signed in', async () => {
-      const list = await api('GET', '/auth/invitations/pending', { token: johnToken });
-      const c = list.body.data.find((i) => i.orgId === String(orgC._id));
-      const res = await api('POST', '/auth/invitations/decline', { body: { invitationId: c.id }, token: johnToken });
-      assert.equal(res.status, 200, JSON.stringify(res.body));
-      assert.equal(await membershipStatus(john._id, orgC._id), 'Rejected');
-      assert.equal(res.body.data.pendingInvitations.length, 0);
-      assert.equal((await Token.findById(c.id)).status, 'REJECTED');
-    });
 
     it('password login with an invite token uses the same acceptance', async () => {
       const email = nextEmail('pw');

@@ -4,6 +4,27 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { ROLE_SCOPE_VALUES, RoleScope, getRoleScopeOption, isTenantScope } from '../roleScopes';
 
+export type AmenityTier = 'resident' | 'security_guard' | 'admin' | 'none';
+
+export const AMENITY_V2_TIER_PERMISSIONS: Record<AmenityTier, string[]> = {
+  resident: ['amenities:discover', 'amenities:my_booking', 'amenities:wallet'],
+  security_guard: ['amenities:scanner', 'amenities:security_logs'],
+  admin: ['amenities:amenities', 'amenities:admin_calander', 'amenities:maintenance', 'amenities:settings', 'amenities:dashboard', 'amenities:ledgers'],
+  none: [],
+};
+
+const allAmenityTierPermissions = new Set(Object.values(AMENITY_V2_TIER_PERMISSIONS).flat());
+
+export const detectInitialAmenityTier = (permissions: string[] = []): AmenityTier => {
+  const amenityPermissions = permissions.filter((permission) => allAmenityTierPermissions.has(permission));
+  for (const [tier, tierPermissions] of Object.entries(AMENITY_V2_TIER_PERMISSIONS)) {
+    if (tier !== 'none' && amenityPermissions.length === tierPermissions.length && tierPermissions.every((permission) => amenityPermissions.includes(permission))) {
+      return tier as AmenityTier;
+    }
+  }
+  return 'none';
+};
+
 const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required').max(50, 'Role name cannot exceed 50 characters'),
   description: yup.string().trim().max(200, 'Description cannot exceed 200 characters').optional(),
@@ -28,11 +49,13 @@ interface UseRoleFormProps {
   role?: RoleData | null;
   visible: boolean;
   onSave: (data: RoleData) => Promise<any>;
+  allowedPermissions?: string[];
 }
 
-export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
+export const useRoleForm = ({ role, visible, onSave, allowedPermissions = [] }: UseRoleFormProps) => {
   const [isIntegrationDrawerOpen, setIsIntegrationDrawerOpen] = useState(false);
   const [activeRoleScope, setActiveRoleScope] = useState<RoleScope>('GLOBAL');
+  const [amenityTier, setAmenityTier] = useState<AmenityTier>('none');
 
   const {
     register,
@@ -43,6 +66,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     setValue,
     getValues,
     formState: { errors, isSubmitting },
+    setError,
   } = useForm<RoleData>({
     resolver: yupResolver(schema) as any,
     defaultValues: {
@@ -70,6 +94,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     if (visible && role) {
       const derivedScope = (role.roleScope || (role.isTenantRole ? 'UNIT' : 'GLOBAL')) as RoleScope;
       setActiveRoleScope(derivedScope);
+      setAmenityTier(detectInitialAmenityTier(role.permissions || []));
       reset({
         name: role.name || '',
         description: role.description || '',
@@ -81,6 +106,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
       });
     } else if (visible && !role) {
       setActiveRoleScope('GLOBAL');
+      setAmenityTier('none');
       reset({
         name: '',
         description: '',
@@ -92,6 +118,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
       });
     } else if (!visible) {
       setActiveRoleScope('GLOBAL');
+      setAmenityTier('none');
       reset({
         name: '',
         description: '',
@@ -112,7 +139,18 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     if (scope !== 'COMMUNITY_STAFF') setValue('communityOnly', false, { shouldValidate: true, shouldDirty: true });
     const defaultPerms = getRoleScopeOption(scope)?.defaultPermissions;
     if (defaultPerms) {
-      const merged = Array.from(new Set([...(getValues('permissions') || []), ...defaultPerms]));
+      // A scope is metadata. Do not silently add default permissions that the
+      // editor is not authorized to delegate, because that makes Save appear
+      // unresponsive after a scope change.
+      const normalizePermission = (value: unknown) => String(value || '').trim().replace(':', '.').toLowerCase();
+      const currentPermissions = getValues('permissions') || [];
+      const held = new Set(allowedPermissions.map(normalizePermission));
+      const existing = new Set(currentPermissions.map(normalizePermission));
+      const canGrantAnything = held.has('*');
+      const grantableDefaults = defaultPerms.filter((permission) =>
+        canGrantAnything || existing.has(normalizePermission(permission)) || held.has(normalizePermission(permission))
+      );
+      const merged = Array.from(new Set([...currentPermissions, ...grantableDefaults]));
       setValue('permissions', merged, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -132,6 +170,11 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
       if (code === 'staff:portal') {
         return ['staff:view_own', 'staff:portal'];
       }
+      if (code === 'notices:active_board') return ['notices:active_board', 'notices:read'];
+      if (code === 'notices:polls') return ['notices:polls', 'polls:read', 'polls:vote'];
+      if (code === 'notices:manage_notices') {
+        return ['notices:manage_notices', 'notices:dashboard', 'notices:create', 'notices:update', 'notices:delete', 'notices:publish', 'polls:create', 'polls:update', 'polls:delete', 'polls:publish', 'polls:close'];
+      }
       return code;
     });
 
@@ -149,6 +192,16 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
 
   const handleTogglePermission = (permValue: string, checked: boolean) => {
     const currentPermissions = getValues('permissions') || [];
+    if (permValue.startsWith('amenities_tier:')) {
+      const requestedTier = permValue.slice('amenities_tier:'.length) as AmenityTier;
+      if (!(requestedTier in AMENITY_V2_TIER_PERMISSIONS)) return;
+      const preservedPermissions = currentPermissions.filter((permission) => !allAmenityTierPermissions.has(permission));
+      const nextTier: AmenityTier = checked ? requestedTier : 'none';
+      setAmenityTier(nextTier);
+      setValue('permissions', [...preservedPermissions, ...AMENITY_V2_TIER_PERMISSIONS[nextTier]], { shouldDirty: true, shouldValidate: true });
+      return;
+    }
+
     let newValue: string[];
 
     if (String(permValue).endsWith(':full_access')) {
@@ -196,14 +249,27 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
   };
 
   const onSubmit = async (data: RoleData) => {
+    const name = String(data.name || '').trim();
+    if (!name) {
+      setError('name', { type: 'manual', message: 'Role name is required.' });
+      return;
+    }
+
     const finalData = {
       ...data,
+      name,
       roleScope: activeRoleScope,
       communityOnly: activeRoleScope === 'COMMUNITY_STAFF' && getValues('communityOnly') === true,
       isTenantRole: isTenantScope(activeRoleScope),
       permissions: getValues('permissions') || [],
       integrationMappings: getValues('integrationMappings') || {},
     };
+
+    // Authorization is evaluated by the API from the active community role.
+    // Do not block a save with cached mobile permissions: they can be stale
+    // immediately after a Platform/Community Admin changes role grants.
+    // The backend remains the authoritative delegation check.
+
     await onSave(finalData);
   };
 
@@ -215,6 +281,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     isSubmitting,
     selectedPermissions,
     isTenantRole,
+    amenityTier,
     roleScope: activeRoleScope,
     communityOnly: watch('communityOnly') || false,
     handleSelectScope,

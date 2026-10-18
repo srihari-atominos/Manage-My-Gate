@@ -26,10 +26,10 @@ const env =
 export const config = {
   isDev: Boolean(env.DEV || env.MODE === 'development'),
   apiBaseUrl: env.VITE_API_BASE_URL || '/api',
-  apiUrl: env.VITE_API_URL || 'http://localhost:5002/api',
+  apiUrl: env.VITE_API_URL || 'http://localhost:5006/api',
   socketUrl:
     env.VITE_SOCKET_URL ||
-    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5002'),
+    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5006'),
   googleClientId: env.VITE_GOOGLE_CLIENT_ID || '',
   microsoftClientId: env.VITE_MICROSOFT_CLIENT_ID || '',
   microsoftTenantId: env.VITE_MICROSOFT_TENANT_ID || 'common',

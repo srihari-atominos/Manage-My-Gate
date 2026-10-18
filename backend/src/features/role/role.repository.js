@@ -49,11 +49,12 @@ export class RoleRepository {
    */
   async findAllPaginated(orgId, skip, limit, session, search = '') {
     const opts = session ? { session } : {};
-    const matchQuery = orgId
-      ? { $or: [{ orgId: new mongoose.Types.ObjectId(orgId) }, { orgId: null }] }
-      : { orgId: null };
+    // A community Role Builder must only show roles created for that community.
+    // Global system roles (for example Platform Super Admin and Resident) are
+    // resolved by auth/onboarding flows, but are not configurable community roles.
 
     const term = String(search || '').trim();
+    const matchQuery = orgId ? { orgId: new mongoose.Types.ObjectId(orgId) } : { orgId: null };
     if (term) {
       const regex = new RegExp(escapeRegex(term), 'i');
       matchQuery.$and = [{ $or: [{ name: regex }, { description: regex }] }];

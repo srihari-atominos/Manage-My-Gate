@@ -232,25 +232,6 @@ describe('Phase 0 — invitation & account-setup security', () => {
     });
   });
 
-  describe('reject-invite', () => {
-    it('rejects an email-only request and leaves every membership untouched', async () => {
-      const res = await api('POST', '/auth/reject-invite', { body: { email: victim.email } });
-      assert.equal(res.status, 400);
-      assert.equal(await membershipStatus(victim._id, orgA._id), 'Active');
-      assert.equal(await membershipStatus(victim._id, orgB._id), 'Pending');
-    });
-
-    it('with a token, declines only that pending membership', async () => {
-      const person = await makeUser('decliner');
-      await OrgMembership.create({ userId: person._id, orgId: orgA._id, status: 'Active' });
-      await OrgMembership.create({ userId: person._id, orgId: orgB._id, status: 'Pending' });
-      const { invitationToken } = await tokenService.generateInvitationToken(person._id, orgB._id);
-      const res = await api('POST', '/auth/reject-invite', { body: { token: invitationToken } });
-      assert.equal(res.status, 200, JSON.stringify(res.body));
-      assert.equal(await membershipStatus(person._id, orgB._id), 'Rejected');
-      assert.equal(await membershipStatus(person._id, orgA._id), 'Active');
-    });
-  });
 
   describe('membership activation', () => {
     it('switch-context cannot promote a Rejected or Pending membership', async () => {

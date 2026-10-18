@@ -3,6 +3,7 @@ import roleService, { PROTECTED_ROLE_NAMES, LOCKED_ROLE_NAMES } from './role.ser
 // Who is calling: the validated community, whether they are a platform admin, and what they hold.
 const actorOf = (req) => ({
   orgId: req.tenant?.orgId,
+  role: req.tenant?.role,
   isPlatform: req.tenant?.isPlatform === true,
   permissions: req.tenant?.permissions || [],
 });

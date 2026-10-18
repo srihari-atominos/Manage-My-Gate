@@ -20,8 +20,14 @@ const sanitizeValue = (val, depth = 0) => {
     return val.map((item) => sanitizeValue(item, depth + 1));
   }
   if (val instanceof Error) {
-    // Deeply sanitize Error objects, their custom properties (e.g. config, response), and message
-    const sanitizedErr = Object.create(Object.getPrototypeOf(val));
+    // Log a plain object rather than cloning the Error prototype. Some errors
+    // (including Mongoose cast errors) expose read-only name/message properties;
+    // assigning to a clone can throw while an application is handling an error.
+    const sanitizedErr = {
+      name: String(val.name || 'Error'),
+      message: sanitizeValue(val.message, depth + 1),
+      stack: val.stack,
+    };
     for (const [key, value] of Object.entries(val)) {
       if (SENSITIVE_KEYS.test(key)) {
         sanitizedErr[key] = '[REDACTED]';
@@ -29,9 +35,6 @@ const sanitizeValue = (val, depth = 0) => {
         sanitizedErr[key] = sanitizeValue(value, depth + 1);
       }
     }
-    sanitizedErr.name = val.name;
-    sanitizedErr.message = sanitizeValue(val.message, depth + 1);
-    sanitizedErr.stack = val.stack;
     return sanitizedErr;
   }
   if (typeof val === 'object' && !(val instanceof Date)) {
