@@ -1,4 +1,5 @@
 import roleService, { PROTECTED_ROLE_NAMES, LOCKED_ROLE_NAMES } from './role.services.js';
+import { ROLE_SCOPE_VALUES } from './roleScope.constants.js';
 
 // Who is calling: the validated community, whether they are a platform admin, and what they hold.
 const actorOf = (req) => ({
@@ -34,9 +35,10 @@ export class RoleController {
       const limit = parseInt(req.query.limit, 10) || 10;
       const orgId = req.tenant.orgId;
       const search = typeof req.query.search === 'string' ? req.query.search : '';
-      const { data: roles, pagination } = await roleService.getAllRoles(orgId, page, limit, search);
+      const scope = ROLE_SCOPE_VALUES.includes(req.query.roleScope) ? req.query.roleScope : '';
+      const { data: roles, pagination, scopeCounts } = await roleService.getAllRoles(orgId, page, limit, search, scope);
       const formatted = roles.map(formatRole);
-      res.success({ data: formatted, pagination }, 'Roles retrieved successfully');
+      res.success({ data: formatted, pagination, scopeCounts }, 'Roles retrieved successfully');
     } catch (error) {
       next(error);
     }

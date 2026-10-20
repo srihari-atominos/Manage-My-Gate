@@ -74,7 +74,8 @@ router.post(
  *         description: List of permissions.
  */
 router.get(
-  '/permissions', 
+  '/permissions',
+  tenantContext,
   authorizePermission('roles', 'read'), 
   roleController.getAllPermissions
 );

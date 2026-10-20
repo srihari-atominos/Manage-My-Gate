@@ -30,6 +30,7 @@ import {
 } from '@/src/utils/validation';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { Text } from '@/components/ui/text';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 interface InviteUserModalProps {
   visible: boolean;
@@ -43,6 +44,10 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   onSendInvite,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const canInviteUsers = Boolean(
+    user?.isPlatform || user?.permissions?.includes('*') || user?.permissions?.includes('users:create')
+  );
   // Form values
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -116,6 +121,12 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   useEffect(() => {
     if (visible) {
       resetForm();
+      if (!canInviteUsers) {
+        setRoles([]);
+        setVillas([]);
+        setSubmitError('You do not have permission to invite users.');
+        return;
+      }
       setLoadingRoles(true);
       apiClient
         .get('/users/assignable-roles')
@@ -123,7 +134,10 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
           const fetched = res.data?.data || res.data || [];
           setRoles(Array.isArray(fetched) ? fetched : []);
         })
-        .catch((err) => console.error('Failed to fetch roles:', err))
+        .catch((err: any) => {
+          setRoles([]);
+          setSubmitError(err?.response?.status === 403 ? 'You do not have permission to invite users.' : 'Unable to load assignable roles. Please try again.');
+        })
         .finally(() => setLoadingRoles(false));
 
       setLoadingVillas(true);
@@ -136,7 +150,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
         .catch((err) => console.error('Failed to fetch villas:', err))
         .finally(() => setLoadingVillas(false));
     }
-  }, [visible]);
+  }, [visible, canInviteUsers]);
 
   const resetForm = () => {
     setName('');

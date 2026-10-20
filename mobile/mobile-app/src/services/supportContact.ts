@@ -7,6 +7,8 @@ const STORAGE_KEY = 'support_contact_email';
 
 let supportEmail = '';
 let loaded = false;
+let lastFailureAt = 0;
+const RETRY_AFTER_FAILURE_MS = 30_000;
 let inflight: Promise<string> | null = null;
 const listeners = new Set<() => void>();
 
@@ -24,6 +26,8 @@ const setEmail = (value: string) => {
 export const loadSupportEmail = (force = false): Promise<string> => {
   if (inflight) return inflight;
   if (loaded && !force) return Promise.resolve(supportEmail);
+  // After a failed fetch (e.g. offline) keep the cached value and try again later instead of on every mount
+  if (!force && lastFailureAt && Date.now() - lastFailureAt < RETRY_AFTER_FAILURE_MS) return Promise.resolve(supportEmail);
   inflight = (async () => {
     try {
       const cached = await storage.getItem(STORAGE_KEY);
@@ -38,10 +42,12 @@ export const loadSupportEmail = (force = false): Promise<string> => {
         if (fresh) await storage.setItem(STORAGE_KEY, fresh);
         else await storage.removeItem(STORAGE_KEY);
       } catch {}
+      loaded = true;
+      lastFailureAt = 0;
     } catch {
-      // Offline or server down: keep whatever we already had
+      // Offline or server down: keep whatever we already had and retry later (not marked as loaded)
+      lastFailureAt = Date.now();
     }
-    loaded = true;
     return supportEmail;
   })().finally(() => {
     inflight = null;

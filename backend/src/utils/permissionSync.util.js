@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises';
+﻿import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import permissionService from '../features/permission/permission.services.js';
@@ -21,7 +21,9 @@ export const syncPermissions = async () => {
     // 1. Read the permissions.json list
     const permissionsPath = path.resolve(__dirname, '../config/permissions.json');
     const fileData = await readFile(permissionsPath, 'utf8');
-    const features = JSON.parse(fileData);
+    // JSON.parse does not accept a UTF-8 BOM. Strip it so a file saved by
+    // Windows editors cannot prevent permission synchronization at startup.
+    const features = JSON.parse(fileData.replace(/^\uFEFF/, ''));
 
     // 2. Upsert permissions
     const upsertedPermissions = [];
@@ -165,8 +167,8 @@ export const syncPermissions = async () => {
       'notices:active_board', 'notices:polls', 'notices:manage_notices',
       'polls:read', 'polls:create', 'polls:update', 'polls:delete', 'polls:publish',
       'polls:vote', 'polls:view_voters', 'polls:close', 'polls:export',
-      'billing:assessments', 'billing:ledger', 'billing:my_invoices', 'billing:action_center',
-      'workspaces:read', 'workspaces:update',
+      'billing:assessments', 'billing:ledger', 'billing:my_invoices', 'billing:action_center', 'billing:view_expense', 'billing:create_expense', 'billing:record_expense_payment', 'billing:reconcile_expense_payment',
+      'workspaces:create', 'workspaces:read', 'workspaces:update', 'workspaces:delete',
       'staff:view', 'staff:manage', 'staff:assign_unit', 'staff:attendance',
     ];
 
@@ -310,3 +312,5 @@ export const syncPermissions = async () => {
 };
 
 export default syncPermissions;
+
+

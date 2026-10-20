@@ -177,6 +177,11 @@ const matchesUserPermissions = (
     const colonPerm = itemPermission.replace('.', ':');
     if (userPermissions.includes(dotPerm) || userPermissions.includes(colonPerm)) return true;
 
+    // Every Complaints dashboard tile maps one-to-one to its Role Builder
+    // checkbox. Do not fall through to broad/legacy synonyms such as
+    // `complaints`, `complaints:update`, or `complaints:read`.
+    if (STRICT_DASHBOARD_PERMISSIONS.has(itemPermission)) return false;
+
     // Check module level match (e.g. 'notices' in permissions array)
     // Note: 'staff' has granular sub-features, so only match module prefix if userPermissions has generic 'staff' or 'staff:*'
     const modulePrefix = itemPermission.split(/[:.]/)[0];
@@ -189,6 +194,18 @@ const matchesUserPermissions = (
 
   return false;
 };
+
+// Dashboard tiles must reflect the individual Role Builder checkboxes.
+// In particular, a broad legacy "complaints" permission must not expose every
+// Complaints & Maintenance tile.
+const STRICT_DASHBOARD_PERMISSIONS = new Set([
+  'complaints:dashboard',
+  'complaints:raise_ticket',
+  'complaints:track_requests',
+  'complaints:complaint_management',
+  'complaints:staff',
+  'complaints:assignee',
+]);
 
 // Features strictly reserved for resident self-service (hidden from Admin and Guard consoles)
 // NOTE: Digital Wallet & Ledger features (wallet, dues, history) are NOT resident-only — see WALLET_LEDGER_FEATURE_IDS.

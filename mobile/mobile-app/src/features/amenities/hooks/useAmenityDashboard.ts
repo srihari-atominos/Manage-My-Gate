@@ -1,65 +1,66 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
+import { AppState, InteractionManager } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import { fetchDashboardStatsThunk } from '../store/amenityBookingSlice';
 import { useAppSocket } from '../../../hooks/useAppSocket';
 
+/**
+ * Owner for Amenity executive dashboard metrics. Keep this hook on the dashboard
+ * screen only; child widgets consume the Redux value to avoid duplicate requests.
+ */
 export function useAmenityDashboard() {
   const dispatch = useDispatch<AppDispatch>();
   const { socket } = useAppSocket();
-
-  const { dashboardStats, loading, error } = useSelector(
+  const { dashboardStats, dashboardStatsLoading, error } = useSelector(
     (state: RootState) => state.amenityBookings
   );
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadData = useCallback(() => {
-    dispatch(fetchDashboardStatsThunk());
+    // The thunk condition coalesces concurrent calls from retries and socket bursts.
+    return dispatch(fetchDashboardStatsThunk());
   }, [dispatch]);
 
-  useEffect(() => {
-    loadData();
-
-    // 15-second background polling fallback to keep KPI metrics 100% fresh
-    const pollTimer = setInterval(() => {
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null;
       loadData();
-    }, 15000);
+    }, 300);
+  }, [loadData]);
 
-    // Live Socket Event Listener for instant real-time KPI updates
-    if (socket) {
-      const handleRealtimeUpdate = () => {
-        console.log('[AmenityDashboard] Real-time socket event received, refreshing metrics...');
-        loadData();
-      };
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => loadData());
+    return () => task.cancel();
+  }, [loadData]);
 
-      socket.on('AMENITY_BOOKING_CREATED', handleRealtimeUpdate);
-      socket.on('AMENITY_CHECKIN', handleRealtimeUpdate);
-      socket.on('AMENITY_MAINTENANCE_UPDATED', handleRealtimeUpdate);
-      socket.on('SECURITY_LOG_CREATED', handleRealtimeUpdate);
-      socket.on('PAYMENT_SUCCESS', handleRealtimeUpdate);
-      socket.on('bookingUpdated', handleRealtimeUpdate);
-
-      return () => {
-        clearInterval(pollTimer);
-        socket.off('AMENITY_BOOKING_CREATED', handleRealtimeUpdate);
-        socket.off('AMENITY_CHECKIN', handleRealtimeUpdate);
-        socket.off('AMENITY_MAINTENANCE_UPDATED', handleRealtimeUpdate);
-        socket.off('SECURITY_LOG_CREATED', handleRealtimeUpdate);
-        socket.off('PAYMENT_SUCCESS', handleRealtimeUpdate);
-        socket.off('bookingUpdated', handleRealtimeUpdate);
-      };
+  useEffect(() => {
+    if (!socket) {
+      // Offline/realtime fallback: refresh only when the app returns to the
+      // foreground, never every 15 seconds in the background.
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'active') scheduleRefresh();
+      });
+      return () => subscription.remove();
     }
 
+    const events = [
+      'AMENITY_BOOKING_CREATED',
+      'AMENITY_CHECKIN',
+      'AMENITY_MAINTENANCE_UPDATED',
+      'SECURITY_LOG_CREATED',
+      'PAYMENT_SUCCESS',
+      'bookingUpdated',
+    ];
+    events.forEach((event) => socket.on(event, scheduleRefresh));
     return () => {
-      clearInterval(pollTimer);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      events.forEach((event) => socket.off(event, scheduleRefresh));
     };
-  }, [loadData, socket]);
+  }, [scheduleRefresh, socket]);
 
-  return {
-    dashboardStats,
-    loading,
-    error,
-    loadData,
-  };
+  return { dashboardStats, loading: dashboardStatsLoading, error, loadData };
 }
 
 export default useAmenityDashboard;

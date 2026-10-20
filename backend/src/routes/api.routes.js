@@ -27,6 +27,7 @@ import communityEngagementRouter from '../features/communityEngagement/community
 import assessmentRouter from '../features/assessment/assessment.routes.js';
 import invoiceRouter from '../features/invoice/invoice.routes.js';
 import invoicePayLinkRouter from '../features/invoice/invoicePayLink.router.js';
+import expenseRouter from '../features/expense/expense.routes.js';
 import masterPricingRouter from '../features/masterPricing/masterPricing.router.js';
 import platformOrderRouter from '../features/platformOrder/platformOrder.router.js';
 import platformQuoteRouter from '../features/platformQuote/platformQuote.router.js';
@@ -82,6 +83,7 @@ router.use('/polls', pollRouter);
 router.use('/community-engagement', communityEngagementRouter);
 router.use('/assessments', assessmentRouter);
 router.use('/invoices', invoiceRouter);
+router.use('/expenses', expenseRouter);
 router.use('/billing-links', invoicePayLinkRouter); // public: pay-online links from invoice emails
 router.use('/dashboard-feed', dashboardFeedRouter);
 
@@ -142,3 +144,4 @@ router.use('/support/reports', issueReportRouter);
 router.use('/platform/reports', platformReportRouter);
 
 export default router;
+

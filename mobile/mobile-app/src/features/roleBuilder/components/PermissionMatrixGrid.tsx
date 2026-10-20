@@ -232,14 +232,25 @@ const PermissionMatrixGrid = ({
           });
         }
 
+        // Administration features use their real CRUD permissions. Do not collapse
+        // them into a virtual "Full access" toggle, which grants every action.
         if (['users', 'villas', 'roles', 'workspaces', 'integrations'].includes(category)) {
-          perms = [
-            {
-              _id: `${category}:full_access`,
-              name: `${category}:full_access`,
-              description: 'Full Access',
-            },
-          ];
+          const crudOrder = ['create', 'read', 'update', 'delete'];
+          perms = perms
+            .filter((permission) => {
+              const name = String(permission.name || permission.code || permission._id || '')
+                .toLowerCase()
+                .replace(/\./g, ':');
+              return crudOrder.includes(name.split(':')[1]);
+            })
+            .sort((a, b) => {
+              const getAction = (permission: any) =>
+                String(permission.name || permission.code || permission._id || '')
+                  .toLowerCase()
+                  .replace(/\./g, ':')
+                  .split(':')[1];
+              return crudOrder.indexOf(getAction(a)) - crudOrder.indexOf(getAction(b));
+            });
         }
 
         if (category === 'notices') {

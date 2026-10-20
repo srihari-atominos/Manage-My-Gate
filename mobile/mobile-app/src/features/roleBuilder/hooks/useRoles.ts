@@ -13,6 +13,9 @@ import {
   clearRoleError,
 } from '../store/roleSlice';
 import { RoleData } from '../services/roleService';
+import { hasRolePermission } from '../roleAccess';
+import type { RoleScope } from '../roleScopes';
+import { switchWorkspaceContextThunk } from '../../auth/store/authSlice';
 
 export const useRoles = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -27,24 +30,15 @@ export const useRoles = () => {
     currentPage,
     totalPages,
     rowsPerPage,
+    scopeCounts,
   } = useSelector((state: RootState) => state.roleBuilder);
   const currentUser = useSelector((state: RootState) => state.auth.user);
-  // Platform Super Admin configures the community; its Community Admin manages
-  // roles inside that community. Other users need an explicit roles:* grant.
-  const normalizedRole = String(currentUser?.role || '').trim().toLowerCase().replace(/[_-]/g, ' ');
-  const isCommunityAdmin = normalizedRole === 'community admin' || normalizedRole === 'admin';
-  const hasRolePermission = (action: 'read' | 'create' | 'update' | 'delete') =>
-    Boolean(
-      currentUser?.isPlatform ||
-        isCommunityAdmin ||
-        currentUser?.permissions?.includes('*') ||
-        currentUser?.permissions?.includes(`roles:${action}`)
-    );
-  const canReadRoles = hasRolePermission('read');
-  const canCreateRoles = hasRolePermission('create');
-  const canUpdateRoles = hasRolePermission('update');
-  const canDeleteRoles = hasRolePermission('delete');
+  const canReadRoles = hasRolePermission(currentUser, 'read');
+  const canCreateRoles = hasRolePermission(currentUser, 'create');
+  const canUpdateRoles = hasRolePermission(currentUser, 'update');
+  const canDeleteRoles = hasRolePermission(currentUser, 'delete');
 
+  const [scopeFilter, setScopeFilterState] = useState<RoleScope | 'ALL'>('ALL');
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleData | null>(null);
@@ -57,12 +51,14 @@ export const useRoles = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch roles when pagination or search changes
+  const roleScope = scopeFilter === 'ALL' ? undefined : scopeFilter;
+
+  // Fetch roles when pagination, search or the scope filter changes
   useEffect(() => {
     if (canReadRoles) {
-      dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: debouncedSearch }));
+      dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: debouncedSearch, roleScope }));
     }
-  }, [dispatch, currentPage, rowsPerPage, debouncedSearch, canReadRoles]);
+  }, [dispatch, currentPage, rowsPerPage, debouncedSearch, roleScope, canReadRoles]);
 
   // Workspace switching resets tenant slices for safety. If that reset wins the
   // initial request race, retry once so an existing community never shows an
@@ -72,10 +68,10 @@ export const useRoles = () => {
     if (!canReadRoles || isLoading || error || roles.length > 0 || !orgId || emptyListRetryForOrg.current === orgId) return;
     emptyListRetryForOrg.current = orgId;
     const retryTimer = setTimeout(() => {
-      dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: debouncedSearch }));
+      dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: debouncedSearch, roleScope }));
     }, 250);
     return () => clearTimeout(retryTimer);
-  }, [canReadRoles, currentUser?.activeOrgId, currentUser?.orgId, currentUser?.organizationId, isLoading, error, roles.length, currentPage, rowsPerPage, debouncedSearch, dispatch]);
+  }, [canReadRoles, currentUser?.activeOrgId, currentUser?.orgId, currentUser?.organizationId, isLoading, error, roles.length, currentPage, rowsPerPage, debouncedSearch, roleScope, dispatch]);
 
   const loadPermissions = useCallback(() => {
     dispatch(fetchPermissionsAsync());
@@ -134,6 +130,10 @@ export const useRoles = () => {
       if (selectedRole?.id || selectedRole?._id) {
         const roleId = selectedRole.id || selectedRole._id || '';
         await dispatch(updateRoleAsync({ roleId, roleData: data })).unwrap();
+
+        // Socket delivery is best-effort on mobile and web. Refresh the active
+        // session so a changed role takes effect immediately in the dashboard.
+        await dispatch(switchWorkspaceContextThunk({})).unwrap();
       } else {
         await dispatch(createRoleAsync(data)).unwrap();
       }
@@ -159,13 +159,26 @@ export const useRoles = () => {
   const handleConfirmDeleteRole = async () => {
     if (!selectedRole?.id && !selectedRole?._id) return;
     const roleId = selectedRole.id || selectedRole._id || '';
-    await dispatch(deleteRoleAsync(roleId)).unwrap();
-    setIsDeleteModalOpen(false);
-    setSelectedRole(null);
+    try {
+      await dispatch(deleteRoleAsync(roleId)).unwrap();
+      setIsDeleteModalOpen(false);
+      setSelectedRole(null);
+      // Refresh so the page fills up again and the scope counts stay accurate.
+      dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: debouncedSearch, roleScope }));
+    } catch (err: any) {
+      const message = typeof err === 'string' ? err : err?.message || 'Failed to delete role';
+      Alert.alert('Unable to delete role', message);
+      closeDeleteModal();
+    }
   };
 
   const handleRefresh = () => {
-    dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: searchQuery }));
+    dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: searchQuery, roleScope }));
+  };
+
+  const setScopeFilter = (scope: RoleScope | 'ALL') => {
+    setScopeFilterState(scope);
+    dispatch(setCurrentPage(1));
   };
 
   const handleSearch = (query: string) => {
@@ -196,6 +209,9 @@ export const useRoles = () => {
     currentPage,
     totalPages,
     rowsPerPage,
+    scopeCounts,
+    scopeFilter,
+    setScopeFilter,
     canReadRoles,
     canCreateRoles,
     canUpdateRoles,

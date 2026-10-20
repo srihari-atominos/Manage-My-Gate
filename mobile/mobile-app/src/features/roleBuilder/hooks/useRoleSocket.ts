@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import { fetchRolesAsync } from '../store/roleSlice';
 import { updateTokenAndUser } from '../../auth/store/authSlice';
 import { getUserRoleName } from '../../../utils/rbac';
 import { useAppSocket } from '../../../hooks/useAppSocket';
+import { hasRolePermission } from '../roleAccess';
 
 /**
  * Custom Hook: useRoleSocket
@@ -17,6 +18,9 @@ export const useRoleSocket = () => {
   const authState = useSelector((state: RootState) => (state as any).auth);
   const currentUser = authState?.user;
   const { socket } = useAppSocket();
+  const lastQuery = useSelector((state: RootState) => state.roleBuilder.lastQuery);
+  const lastQueryRef = useRef(lastQuery);
+  lastQueryRef.current = lastQuery;
 
   const activeOrgId =
     currentUser?.orgId ||
@@ -28,25 +32,16 @@ export const useRoleSocket = () => {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('connect', () => {
+    const handleConnect = () => {
       if (activeOrgId) {
         socket.emit('join_room', `org:${activeOrgId}`);
       }
-    });
-
-    socket.on('connect_error', (_err) => {
-      // Gracefully allow fallback to polling without flooding console
-    });
+    };
 
     const handleRoleUpdate = (payload: any) => {
-      // 1. Refetch Role Builder list only if user has role:read permission
-      const permissions: string[] = currentUser?.permissions || [];
-      const userRoleName = getUserRoleName(currentUser);
-      const isSuperAdmin = userRoleName === 'SuperAdmin' || userRoleName === 'Admin';
-      const canReadRoles = isSuperAdmin || permissions.includes('role:read') || permissions.includes('roles:read') || permissions.includes('*');
-
-      if (canReadRoles) {
-        dispatch(fetchRolesAsync({ page: 1, limit: 100 }));
+      // 1. Refresh the Role Builder list, keeping the visible page, search and scope filter
+      if (hasRolePermission(currentUser, 'read')) {
+        dispatch(fetchRolesAsync(lastQueryRef.current));
       }
 
       // 2. Real-time live update for active user permissions if their role was updated
@@ -92,20 +87,24 @@ export const useRoleSocket = () => {
       }
     };
 
-    socket.on('ROLE_UPDATED', handleRoleUpdate);
-    socket.on('USER_UPDATED', handleUserUpdate);
-    socket.on('RECORD_UPDATED', (payload: any) => {
+    const handleRecordUpdate = (payload: any) => {
       if (payload?.type === 'ROLE') {
         handleRoleUpdate(payload);
       } else if (payload?.type === 'USER') {
         handleUserUpdate(payload);
       }
-    });
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('ROLE_UPDATED', handleRoleUpdate);
+    socket.on('USER_UPDATED', handleUserUpdate);
+    socket.on('RECORD_UPDATED', handleRecordUpdate);
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('ROLE_UPDATED', handleRoleUpdate);
       socket.off('USER_UPDATED', handleUserUpdate);
-      socket.off('RECORD_UPDATED');
+      socket.off('RECORD_UPDATED', handleRecordUpdate);
     };
   }, [activeOrgId, currentUser, dispatch, socket]);
 };

@@ -140,9 +140,6 @@ const apiClient = axios.create({
   validateStatus: (status) => (status >= 200 && status < 300) || status === 304,
 });
 
-if (__DEV__) {
-  console.log(`[ApiClient] Configured baseURL: ${apiClient.defaults.baseURL}`);
-}
 
 let isRefreshing = false;
 let failedQueue: Array<{

@@ -20,8 +20,11 @@ export interface RoleState {
   currentPage: number;
   totalPages: number;
   rowsPerPage: number;
+  /** Community-wide role count per scope, independent of the active filter. */
+  scopeCounts: Record<string, number>;
+  /** Params of the latest list request, so realtime refreshes keep the visible page, search and filter. */
+  lastQuery: roleService.FetchRolesParams;
 }
-
 
 const initialState: RoleState = {
   roles: [],
@@ -33,6 +36,8 @@ const initialState: RoleState = {
   currentPage: 1,
   totalPages: 1,
   rowsPerPage: 10,
+  scopeCounts: {},
+  lastQuery: {},
 };
 
 export const fetchRolesAsync = createAsyncThunk(
@@ -95,18 +100,6 @@ export const deleteRoleAsync = createAsyncThunk(
   }
 );
 
-export const syncRolePermissionsAsync = createAsyncThunk(
-  'roleBuilder/syncRolePermissions',
-  async ({ roleId, permissionIds }: { roleId: string; permissionIds: string[] }, { rejectWithValue }) => {
-    try {
-      const response = await roleService.syncRolePermissions(roleId, permissionIds);
-      return response.data || response;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to sync permissions');
-    }
-  }
-);
-
 const roleSlice = createSlice({
   name: 'roleBuilder',
   initialState,
@@ -124,9 +117,10 @@ const roleSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Fetch Roles
-      .addCase(fetchRolesAsync.pending, (state) => {
+      .addCase(fetchRolesAsync.pending, (state, action) => {
         state.isLoading = true;
         state.error = null;
+        state.lastQuery = action.meta.arg || {};
       })
       .addCase(fetchRolesAsync.fulfilled, (state, action: any) => {
         state.isLoading = false;
@@ -144,6 +138,7 @@ const roleSlice = createSlice({
         state.totalRecords = pagination?.totalRecords || list.length;
         state.currentPage = pagination?.currentPage || state.currentPage;
         state.totalPages = pagination?.totalPages || Math.ceil(state.totalRecords / state.rowsPerPage) || 1;
+        state.scopeCounts = action.payload?.scopeCounts || payloadData?.scopeCounts || state.scopeCounts;
       })
       .addCase(fetchRolesAsync.rejected, (state, action: any) => {
         state.isLoading = false;

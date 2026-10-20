@@ -20,6 +20,7 @@ import {
 } from '@/src/features/userManagement';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { Text } from '@/components/ui/text';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 // Lazy Load Heavy Modals for Performance Optimization
 const InviteUserModal = lazy(() => import('@/src/features/userManagement').then(m => ({ default: m.InviteUserModal })));
@@ -31,6 +32,10 @@ const EditUserModal = lazy(() => import('@/src/features/userManagement').then(m 
 export default function UserManagementScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const canInviteUsers = Boolean(
+    user?.isPlatform || user?.permissions?.includes('*') || user?.permissions?.includes('users:create')
+  );
 
   // Controller Hook
   const {
@@ -183,13 +188,15 @@ export default function UserManagementScreen() {
       error={error}
       onRetry={refreshUsers}
       headerRight={
-        <HeaderActionButton
-          onPress={() => setShowInviteModal(true)}
-          icon={UserPlus}
-          label={t('invite_user', 'Invite User')}
-          accessibilityRole="button"
-          accessibilityLabel={t('invite_user', 'Invite User')}
-        />
+        canInviteUsers ? (
+          <HeaderActionButton
+            onPress={() => setShowInviteModal(true)}
+            icon={UserPlus}
+            label={t('invite_user', 'Invite User')}
+            accessibilityRole="button"
+            accessibilityLabel={t('invite_user', 'Invite User')}
+          />
+        ) : undefined
       }
     >
       <View className="flex-1 bg-background">
@@ -256,7 +263,7 @@ export default function UserManagementScreen() {
                 : t('no_users_registered', 'No community users registered yet. Tap the button below to bulk create users.')
             }
             actionLabel={t('bulk_create', 'Bulk Create')}
-            onAction={() => setShowBulkInviteModal(true)}
+            onAction={() => canInviteUsers ? setShowBulkInviteModal(true) : Alert.alert('Permission required', 'Your role cannot invite users.')}
           />
         ) : (
           <FlatList
@@ -327,7 +334,7 @@ export default function UserManagementScreen() {
         </View>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => closeDialAndOpen(setShowInviteModal)}
+          onPress={() => canInviteUsers ? closeDialAndOpen(setShowInviteModal) : Alert.alert('Permission required', 'Your role cannot invite users.')}
           className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
           accessibilityRole="button"
           accessibilityLabel={t('invite_user', 'Invite User')}
@@ -387,7 +394,7 @@ export default function UserManagementScreen() {
         </View>
         <TouchableOpacity 
           activeOpacity={0.7}
-          onPress={() => closeDialAndOpen(setShowBulkInviteModal)}
+          onPress={() => canInviteUsers ? closeDialAndOpen(setShowBulkInviteModal) : Alert.alert('Permission required', 'Your role cannot invite users.')}
           className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
         >
           <Users size={22} className="text-primary" />

@@ -33,6 +33,9 @@ export default function RoleBuilderScreen() {
     currentPage = 1,
     totalPages = 1,
     rowsPerPage = 10,
+    scopeCounts = {},
+    scopeFilter = 'ALL',
+    setScopeFilter,
     canReadRoles,
     canCreateRoles,
     canUpdateRoles,
@@ -56,56 +59,22 @@ export default function RoleBuilderScreen() {
     dismissError,
   } = useRoles();
 
-  const isStaffRole = (role: any) => {
-    if (!role) return false;
-    // If role has an explicit roleScope, respect it strictly:
-    if (typeof role === 'object' && role.roleScope) {
-      return role.roleScope === 'STAFF';
-    }
-    const roleName = typeof role === 'string' ? role : role?.name || '';
-    if (!roleName) return false;
-    const lower = roleName.toLowerCase();
-    return (
-      lower.includes('staff') ||
-      lower.includes('guard') ||
-      lower.includes('technician') ||
-      lower.includes('vendor') ||
-      lower.includes('maintenance') ||
-      lower.includes('maid') ||
-      lower.includes('driver') ||
-      lower.includes('cook') ||
-      lower.includes('gardener') ||
-      lower.includes('electrician') ||
-      lower.includes('plumber') ||
-      lower.includes('carpenter') ||
-      lower.includes('cleaner') ||
-      lower.includes('housekeeping')
-    );
-  };
-
-  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'TENANT' | 'GLOBAL' | 'STAFF'>('ALL');
   const [showPageJumpModal, setShowPageJumpModal] = useState(false);
   const [targetPageInput, setTargetPageInput] = useState('');
 
-  const stats = useMemo(() => {
-    const list = roles || [];
-    return {
-      total: list.length,
-      global: list.filter((r: any) => r.roleScope === 'GLOBAL' || (!r.roleScope && !r.isTenantRole && !isStaffRole(r))).length,
-      unit: list.filter((r: any) => r.roleScope === 'UNIT' || (!r.roleScope && r.isTenantRole && !isStaffRole(r))).length,
-      staff: list.filter((r: any) => isStaffRole(r)).length,
-    };
-  }, [roles]);
-
-  const filteredRoles = useMemo(() => {
-    return (roles || []).filter((role: any) => {
-      const isStaff = isStaffRole(role);
-      if (scopeFilter === 'STAFF') return isStaff;
-      if (scopeFilter === 'TENANT') return role.roleScope === 'UNIT' || (!role.roleScope && role.isTenantRole && !isStaff);
-      if (scopeFilter === 'GLOBAL') return role.roleScope === 'GLOBAL' || (!role.roleScope && !role.isTenantRole && !isStaff);
-      return true;
-    });
-  }, [roles, scopeFilter]);
+  // The scope filter runs on the server, so the list, totals and pagination agree.
+  // Counts are community-wide and ignore the active filter.
+  const scopeChips = useMemo(() => {
+    const count = (scope: string) => scopeCounts[scope] || 0;
+    const total = Object.values(scopeCounts).reduce((sum, n) => sum + n, 0);
+    return [
+      { id: 'ALL', label: t('all_roles', 'All Roles'), count: total, color: 'blue' },
+      { id: 'GLOBAL', label: t('global', 'Global'), count: count('GLOBAL'), color: 'blue' },
+      { id: 'UNIT', label: t('unit_scope', 'Unit Scope'), count: count('UNIT'), color: 'green' },
+      { id: 'COMMUNITY_STAFF', label: t('community_staff_roles', 'Community Staff'), count: count('COMMUNITY_STAFF'), color: 'violet' },
+      { id: 'STAFF', label: t('staff_roles', 'Unit Staff'), count: count('STAFF'), color: 'amber' },
+    ];
+  }, [scopeCounts, t]);
 
   if (!canReadRoles) {
     return (
@@ -228,18 +197,15 @@ export default function RoleBuilderScreen() {
 
         {/* Scope Filter Chips (below search bar, outside list) */}
         <View className="px-3 py-1.5 flex-row items-center gap-1.5 flex-wrap">
-          {[
-            { id: 'ALL', label: t('all_roles', 'All Roles'), count: stats.total, color: 'blue' },
-            { id: 'GLOBAL', label: t('global', 'Global'), count: stats.global, color: 'blue' },
-            { id: 'TENANT', label: t('unit_scope', 'Unit Scope'), count: stats.unit, color: 'green' },
-            { id: 'STAFF', label: t('staff_roles', 'Staff Roles'), count: stats.staff, color: 'amber' },
-          ].map((tab) => {
+          {scopeChips.map((tab) => {
             const isActive = scopeFilter === tab.id;
             const activeColorClass =
               tab.color === 'green'
                 ? 'bg-emerald-600 border-emerald-600'
                 : tab.color === 'amber'
                 ? 'bg-amber-600 border-amber-600'
+                : tab.color === 'violet'
+                ? 'bg-violet-600 border-violet-600'
                 : 'bg-blue-600 border-blue-600';
             return (
               <TouchableOpacity
@@ -283,27 +249,29 @@ export default function RoleBuilderScreen() {
         </View>
 
         {/* List Content (matching User Management: FlatList, not PaginatedList) */}
-        {isLoading && filteredRoles.length === 0 ? (
+        {isLoading && roles.length === 0 ? (
           <View className="p-3">
             <SkeletonLoader count={4} variant="card" />
           </View>
-        ) : filteredRoles.length === 0 ? (
+        ) : roles.length === 0 ? (
           <EmptyState
             icon={ShieldCheck}
-            title={searchQuery ? t('no_matching_roles', 'No Matching Roles') : t('no_roles_configured', 'No Roles Configured')}
+            title={searchQuery || scopeFilter !== 'ALL' ? t('no_matching_roles', 'No Matching Roles') : t('no_roles_configured', 'No Roles Configured')}
             description={
               searchQuery
                 ? `${t('no_roles_matching', 'No roles found matching')} "${searchQuery}".`
+                : scopeFilter !== 'ALL'
+                ? t('no_roles_in_scope', 'No roles in this scope.')
                 : t('no_roles_desc', 'No roles configured yet. Tap the button below to create your first role.')
             }
-            actionLabel={canCreateRoles ? t('create_role', 'Create Role') : undefined}
-            onAction={canCreateRoles ? openCreateModal : undefined}
+            actionLabel={canCreateRoles && scopeFilter === 'ALL' ? t('create_role', 'Create Role') : undefined}
+            onAction={canCreateRoles && scopeFilter === 'ALL' ? openCreateModal : undefined}
           />
         ) : (
           <FlatList
             style={{ flex: 1 }}
-            data={filteredRoles}
-            keyExtractor={(item) => item.id || item._id || String(Math.random())}
+            data={roles}
+            keyExtractor={(item, index) => item.id || item._id || `${item.name}-${index}`}
             renderItem={({ item }) => (
               <RoleCard
                 role={item}

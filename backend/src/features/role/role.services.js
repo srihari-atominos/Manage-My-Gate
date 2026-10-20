@@ -103,12 +103,12 @@ export class RoleService {
     }
   }
 
-  async getAllRoles(orgId, page = 1, limit = 10, search = '') {
+  async getAllRoles(orgId, page = 1, limit = 10, search = '', scope = '') {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
       const skip = (page - 1) * limit;
-      const { data, totalRecords } = await roleRepository.findAllPaginated(orgId, skip, limit, session, search);
+      const { data, totalRecords, scopeCounts } = await roleRepository.findAllPaginated(orgId, skip, limit, session, search, scope);
       await session.commitTransaction();
       if (orgId && data.length > 0) {
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
@@ -126,6 +126,7 @@ export class RoleService {
           totalPages: totalPages || 1,
           limit,
         },
+        scopeCounts,
       };
     } catch (error) {
       await session.abortTransaction();
