@@ -329,22 +329,23 @@ export class UserService {
     name = '',
     invitationSource = 'WEB',
     inviterId = null,
-    arg11 = {},
-    arg12 = null,
-    arg13 = {}
+    onboardingMode = 'INVITATION',
+    staffData = {},
+    isBulk = false,
+    rawPassword = null
   ) {
-    let isBulk = false;
-    let rawPassword = null;
-    let staffData = {};
-
-    if (typeof arg11 === 'boolean') {
-      isBulk = arg11;
-      rawPassword = arg12;
-      staffData = arg13 || {};
-    } else if (arg11 && typeof arg11 === 'object') {
-      staffData = arg11;
-      isBulk = arg11.isBulk !== undefined ? !!arg11.isBulk : !!arg12;
-      rawPassword = arg11.rawPassword !== undefined ? arg11.rawPassword : arg13;
+    if (typeof onboardingMode === 'boolean') {
+      isBulk = onboardingMode;
+      rawPassword = staffData;
+      staffData = {};
+      onboardingMode = 'INVITATION';
+    } else if (typeof staffData === 'boolean') {
+      rawPassword = isBulk;
+      isBulk = staffData;
+      staffData = {};
+    } else if (staffData && typeof staffData === 'object') {
+      if (staffData.isBulk !== undefined) isBulk = !!staffData.isBulk;
+      if (staffData.rawPassword !== undefined) rawPassword = staffData.rawPassword;
     }
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -1358,9 +1359,9 @@ export class UserService {
           source,
           inviterId,
           mode,
+          staffData,
           true, // isBulk
-          rawPassword,
-          staffData
+          rawPassword
         );
 
         successes.push({
@@ -1594,6 +1595,7 @@ export class UserService {
       const isExisting = !!(recipient.status === 'Active' || (recipient.password && recipient.password.length > 0));
       userEvents.emit('USER_INVITED', {
         email: recipient.email,
+        phone: recipient.phone,
         orgId,
         invitationToken: newResult.invitationToken,
         invitationSource: oldToken.invitationSource || 'WEB',

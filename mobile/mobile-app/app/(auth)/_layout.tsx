@@ -18,6 +18,7 @@ export default function AuthLayout() {
       {/* One sign-in for everyone: email or phone code, or SSO. Access is by invitation. */}
       <Stack.Screen name="login" options={{ title: 'Sign In', headerShown: false }} />
       <Stack.Screen name="otp" options={{ title: 'Verify Identity' }} />
+      <Stack.Screen name="pending-invitations" options={{ title: 'Choose invitation' }} />
     </Stack>
   );
 }

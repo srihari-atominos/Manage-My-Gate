@@ -57,7 +57,7 @@ export const TEMPLATE_PURPOSES = {
     label: 'User invitation',
     channels: ['email', 'sms'],
     required: ['invite_link'],
-    placeholders: ['invite_link', 'reject_link', 'community_name'],
+    placeholders: ['invite_link', 'community_name'],
     defaultName: 'Default Invitation',
     defaultSubject: 'Invitation to join Workspace',
     defaultBody: {

@@ -151,19 +151,6 @@ export const validateInvitation = createAsyncThunk(
   },
 )
 
-export const rejectInvitation = createAsyncThunk(
-  'auth/rejectInvitation',
-  async (payload, { rejectWithValue }) => {
-    try {
-      const response = await authService.rejectInvite(payload)
-      return response.data || response
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to reject invitation',
-      )
-    }
-  },
-)
 
 export const acceptPendingInvitation = createAsyncThunk(
   'auth/acceptPendingInvitation',
@@ -820,34 +807,6 @@ const authSlice = createSlice({
           state.invitation.error = 'REJECTED'
         } else {
           state.invitation.error = errMsg || 'Invalid or expired invitation token'
-        }
-      })
-      // Reject Invitation
-      .addCase(rejectInvitation.pending, (state) => {
-        state.invitation.loading = true
-        state.invitation.error = null
-      })
-      .addCase(rejectInvitation.fulfilled, (state, action) => {
-        state.invitation.loading = false
-        state.invitation.valid = false
-        state.invitation.error = 'REJECTED'
-        if (state.invitation.data) {
-          state.invitation.data.membershipStatus = 'Rejected'
-          state.invitation.data.invitationStatus = 'REJECTED'
-        }
-      })
-      .addCase(rejectInvitation.rejected, (state, action) => {
-        state.invitation.loading = false
-        const errMsg = action.payload || ''
-        if (typeof errMsg === 'string' && errMsg.toLowerCase().includes('reject')) {
-          state.invitation.valid = false
-          state.invitation.error = 'REJECTED'
-          if (state.invitation.data) {
-            state.invitation.data.membershipStatus = 'Rejected'
-            state.invitation.data.invitationStatus = 'REJECTED'
-          }
-        } else {
-          state.invitation.error = errMsg || 'Failed to reject invitation'
         }
       })
   },

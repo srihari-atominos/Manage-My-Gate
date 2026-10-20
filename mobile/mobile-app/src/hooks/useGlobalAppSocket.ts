@@ -3,8 +3,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store/store';
 import useAppSocket from './useAppSocket';
 import { updateTokenAndUser, switchWorkspaceContextThunk } from '../features/auth/store/authSlice';
-import { fetchRolesAsync } from '../features/roleBuilder/store/roleSlice';
-import { fetchUsersThunk } from '../features/userManagement/store/userSlice';
 import { fetchConnectionsAsync } from '../features/integrationHub/store/integrationHubSlice';
 import {
   getPasses,
@@ -82,18 +80,10 @@ export const useGlobalAppSocket = () => {
     const handleRoleOrUserUpdate = (payload: any) => {
       if (!isMatchingTenant(payload)) return;
       const u = currentUserRef.current;
-      const permissions: string[] = u?.permissions || [];
       const userRole = getUserRoleName(u);
-      const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
-      const canReadRoles = isSuperAdmin || permissions.includes('role:read') || permissions.includes('roles:read') || permissions.includes('*');
-      const canReadUsers = isSuperAdmin || permissions.includes('user:read') || permissions.includes('users:read') || permissions.includes('*');
 
-      // Debounce refetch roles & users
-      debounceDispatch('roles_users', () => {
-        if (canReadRoles) dispatch(fetchRolesAsync({ page: 1, limit: 100 })).catch(() => {});
-        if (canReadUsers) dispatch(fetchUsersThunk({ page: 1, limit: 100 })).catch(() => {});
-      });
-
+      // Role Builder and User Management own their focused list refreshes.
+      // The global socket must not refetch both large lists on every role event.
       if (!payload || !u) return;
 
       const currentId = u.id || u._id;
@@ -119,10 +109,8 @@ export const useGlobalAppSocket = () => {
             })
           );
         }
-        // Re-sync session context from backend to ensure all scoped permissions and features are fresh
-        debounceDispatch('org_context', () => {
-          dispatch(switchWorkspaceContextThunk({})).catch(() => {});
-        });
+        // The event carries authoritative permissions. Avoid a full workspace
+        // switch here; Role Builder performs an explicit session refresh after save.
       }
     };
 

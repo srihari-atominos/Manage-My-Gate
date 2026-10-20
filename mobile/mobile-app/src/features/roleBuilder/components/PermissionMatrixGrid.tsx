@@ -17,32 +17,34 @@ import {
 import { Checkbox } from '@/components/forms/Checkbox';
 
 const formatPermissionLabel = (permissionString: string) => {
+  const exactLabels: Record<string, string> = {
+    'billing:action_center': 'Digital Wallet & Resident Ledger',
+    'billing:dashboard': 'Billing Hub & Community Ledger',
+    'billing:assessment_manager': 'Assessment Manager',
+    'notices:active_board': 'Resident Feed',
+    'notices:polls': 'Community Engagement',
+  };
   if (!permissionString) return '';
-  const str = String(permissionString).toLowerCase();
-  
-  // Custom exact labels for Staff Management 4 pages:
-  if (str === 'staff:directory' || str === 'staff:view' || str === 'staff:manage') {
+  const normalized = String(permissionString).toLowerCase().replace(/\./g, ':');
+  if (exactLabels[normalized]) return exactLabels[normalized];
+  if (
+    normalized === 'staff:directory' ||
+    normalized === 'staff:view' ||
+    normalized === 'staff:manage'
+  )
     return 'Directory';
-  }
-  if (str === 'staff:attendance') {
-    return 'Attendance Logs';
-  }
-  if (str === 'staff:assign_unit') {
-    return 'Unit Allocation';
-  }
-  if (str === 'staff:portal' || str === 'staff:view_own') {
+  if (normalized === 'staff:attendance') return 'Attendance Logs';
+  if (normalized === 'staff:assign_unit') return 'Unit Allocation';
+  if (normalized === 'staff:portal' || normalized === 'staff:view_own')
     return 'Staff Portal & Pass';
-  }
-
-  let label = permissionString;
-  if (label.includes(':')) {
-    const parts = label.split(':');
-    label = parts[parts.length - 1];
-  }
-  label = label.replace(/_/g, ' ');
+  const label = (String(permissionString).split(/[:.]/).pop() || '').replace(/_/g, ' ');
   return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
+const getPermissionDescription = (permissionString: string) =>
+  String(permissionString).toLowerCase().replace(/\./g, ':') === 'billing:action_center'
+    ? 'Prepaid wallet top-up, dues payments, and personal transaction receipts'
+    : '';
 export const isPermissionSelected = (perm: any, selectedIds: string[] = []) => {
   if (!perm || !selectedIds || selectedIds.length === 0) return false;
   const permValue = String(perm?.name || perm?.code || perm?._id || perm);
@@ -57,7 +59,9 @@ export const isPermissionSelected = (perm: any, selectedIds: string[] = []) => {
 
   if (typeof permValue === 'string') {
     const normalizedPerm = permValue.toLowerCase().replace(/\./g, ':');
-    const normalizedSelected = new Set(selectedIds.map((id) => String(id).toLowerCase().replace(/\./g, ':')));
+    const normalizedSelected = new Set(
+      selectedIds.map((id) => String(id).toLowerCase().replace(/\./g, ':'))
+    );
     const noticeAliases: Record<string, string[]> = {
       'notices:active_board': ['notices:active_board', 'notices:read'],
       'notices:polls': ['notices:polls', 'polls:read', 'polls:vote'],
@@ -96,7 +100,8 @@ const getCategoryDisplayName = (category: string) => {
     amenities: 'Amenities & Booking',
     complaints: 'Complaints & Maintenance',
     notices: 'Notice Board & Polls',
-    billing: 'Billing & Invoicing',
+    digital_wallet: 'Digital Wallet & Ledger',
+    billing: 'Billing & Invoices',
     staff: 'Staff Management',
     villas: 'Unit Management',
     users: 'User Management',
@@ -113,6 +118,7 @@ const getCategoryIcon = (category: string) => {
     amenities: Calendar,
     complaints: Settings,
     notices: MessageSquare,
+    digital_wallet: CreditCard,
     billing: CreditCard,
     staff: Users,
     villas: Home,
@@ -129,15 +135,15 @@ const CATEGORY_ORDER: Record<string, number> = {
   amenities: 2,
   complaints: 3,
   notices: 4,
-  billing: 5,
-  staff: 6,
-  villas: 7,
-  users: 8,
-  roles: 9,
-  workspaces: 10,
-  integrations: 11,
+  digital_wallet: 5,
+  billing: 6,
+  staff: 7,
+  villas: 8,
+  users: 9,
+  roles: 10,
+  workspaces: 11,
+  integrations: 12,
 };
-
 interface PermissionMatrixGridProps {
   groupedPermissions: Record<string, any[]>;
   selectedIds: string[];
@@ -160,7 +166,26 @@ const PermissionMatrixGrid = ({
         result.notices = [...(result.notices || []), ...(perms || [])];
         return;
       }
-      result[lowerKey] = perms || [];
+      const categoryPermissions = perms || [];
+      if (lowerKey === 'digital_wallet') {
+        result.digital_wallet = [...(result.digital_wallet || []), ...categoryPermissions];
+        return;
+      }
+
+      if (lowerKey === 'billing') {
+        const walletPermissions = categoryPermissions.filter(
+          (permission) =>
+            String(permission.name || permission.code || permission._id || '')
+              .toLowerCase()
+              .replace(/\./g, ':') === 'billing:action_center'
+        );
+        result.digital_wallet = [...(result.digital_wallet || []), ...walletPermissions];
+        result.billing = categoryPermissions.filter(
+          (permission) => !walletPermissions.includes(permission)
+        );
+        return;
+      }
+      result[lowerKey] = categoryPermissions;
     });
     return result;
   }, [groupedPermissions]);
@@ -176,7 +201,7 @@ const PermissionMatrixGrid = ({
 
   if (categories.length === 0) {
     return (
-      <View className="p-4 items-center justify-center">
+      <View className="items-center justify-center p-4">
         <Text className="text-muted-foreground">No permissions found in the system matrix.</Text>
       </View>
     );
@@ -207,14 +232,25 @@ const PermissionMatrixGrid = ({
           });
         }
 
+        // Administration features use their real CRUD permissions. Do not collapse
+        // them into a virtual "Full access" toggle, which grants every action.
         if (['users', 'villas', 'roles', 'workspaces', 'integrations'].includes(category)) {
-          perms = [
-            {
-              _id: `${category}:full_access`,
-              name: `${category}:full_access`,
-              description: 'Full Access',
-            }
-          ];
+          const crudOrder = ['create', 'read', 'update', 'delete'];
+          perms = perms
+            .filter((permission) => {
+              const name = String(permission.name || permission.code || permission._id || '')
+                .toLowerCase()
+                .replace(/\./g, ':');
+              return crudOrder.includes(name.split(':')[1]);
+            })
+            .sort((a, b) => {
+              const getAction = (permission: any) =>
+                String(permission.name || permission.code || permission._id || '')
+                  .toLowerCase()
+                  .replace(/\./g, ':')
+                  .split(':')[1];
+              return crudOrder.indexOf(getAction(a)) - crudOrder.indexOf(getAction(b));
+            });
         }
 
         if (category === 'notices') {
@@ -271,10 +307,11 @@ const PermissionMatrixGrid = ({
             },
           ];
         }
-        
+
         const groupCodes = perms.map((p) => p.name || p.code || p._id || '');
         const selectedGroupCount = perms.filter((p) => isPermissionSelected(p, selectedIds)).length;
-        const isAllGroupSelected = groupCodes.length > 0 && selectedGroupCount === groupCodes.length;
+        const isAllGroupSelected =
+          groupCodes.length > 0 && selectedGroupCount === groupCodes.length;
 
         const CategoryIcon = getCategoryIcon(category);
 
@@ -283,14 +320,14 @@ const PermissionMatrixGrid = ({
             {/* Category Header */}
             <View className="flex-row items-center justify-between px-1">
               <View className="flex-row items-center gap-2">
-                <View className="w-6 h-6 rounded-lg bg-primary/10 border border-primary/20 items-center justify-center">
+                <View className="h-6 w-6 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
                   <CategoryIcon size={13} className="text-primary" />
                 </View>
-                <Text className="text-xs font-bold text-foreground">
+                <Text className="font-bold text-xs text-foreground">
                   {getCategoryDisplayName(category)}
                 </Text>
-                <View className="px-1.5 py-0.2 rounded-full bg-primary/15">
-                  <Text className="text-xs font-extrabold text-primary">
+                <View className="py-0.2 rounded-full bg-primary/15 px-1.5">
+                  <Text className="font-extrabold text-xs text-primary">
                     {selectedGroupCount}/{groupCodes.length}
                   </Text>
                 </View>
@@ -299,9 +336,8 @@ const PermissionMatrixGrid = ({
               <TouchableOpacity
                 onPress={() => onSelectAllGroup(groupCodes, !isAllGroupSelected)}
                 activeOpacity={0.7}
-                className="px-2.5 py-1 bg-primary/10 rounded-full border border-primary/20"
-              >
-                <Text className="text-xs font-bold text-primary">
+                className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1">
+                <Text className="font-bold text-xs text-primary">
                   {isAllGroupSelected ? 'Deselect All' : 'Select All'}
                 </Text>
               </TouchableOpacity>
@@ -313,18 +349,18 @@ const PermissionMatrixGrid = ({
                 const permValue = perm.name || perm.code || perm._id || '';
                 const isChecked = isPermissionSelected(perm, selectedIds);
                 const label = formatPermissionLabel(perm.name || String(permValue));
+                const description = getPermissionDescription(perm.name || String(permValue));
 
                 return (
                   <TouchableOpacity
                     key={permValue}
                     onPress={() => onTogglePermission(permValue, !isChecked)}
                     activeOpacity={0.7}
-                    className={`self-start flex-row items-center p-2.5 rounded-xl border ${
+                    className={`flex-row items-center self-start rounded-xl border p-2.5 ${
                       isChecked
-                        ? 'bg-primary/10 border-primary/40 shadow-xs'
-                        : 'bg-card border-border/80 shadow-2xs'
-                    }`}
-                  >
+                        ? 'shadow-xs border-primary/40 bg-primary/10'
+                        : 'shadow-2xs border-border/80 bg-card'
+                    }`}>
                     <View className="me-2.5">
                       <Checkbox
                         checked={isChecked}
@@ -333,12 +369,16 @@ const PermissionMatrixGrid = ({
                     </View>
                     <View className="flex-1">
                       <Text
-                        className={`text-[11px] text-start ${
-                          isChecked ? 'text-primary font-bold' : 'text-foreground font-semibold'
-                        }`}
-                      >
+                        className={`text-start text-[11px] ${
+                          isChecked ? 'font-bold text-primary' : 'font-semibold text-foreground'
+                        }`}>
                         {label}
                       </Text>
+                      {description ? (
+                        <Text className="mt-0.5 text-[10px] text-muted-foreground">
+                          {description}
+                        </Text>
+                      ) : null}
                     </View>
                   </TouchableOpacity>
                 );
@@ -351,4 +391,5 @@ const PermissionMatrixGrid = ({
   );
 };
 
+export { PermissionMatrixGrid };
 export default PermissionMatrixGrid;

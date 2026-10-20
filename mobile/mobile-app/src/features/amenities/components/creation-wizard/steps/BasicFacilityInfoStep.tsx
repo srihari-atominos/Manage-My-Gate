@@ -10,6 +10,7 @@ import { UploadCloud, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SECONDARY_CATEGORIES, STATUS_OPTIONS } from '../../../constants/amenityCatalogPresets';
 import { generateFacilityCode } from '../../../services/amenityManagementService';
+import { prepareImageForUpload } from '@/src/utils/imageUpload';
 
 export interface BasicFacilityInfoData {
   name: string;
@@ -71,16 +72,12 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
-        quality: 0.7,
-        base64: true,
+        quality: 0.8,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        const imageUri = asset.base64
-          ? `data:image/jpeg;base64,${asset.base64}`
-          : asset.uri;
-        updateField('imageUrl', imageUri);
+        const image = await prepareImageForUpload(result.assets[0], { maxDimension: 1440, quality: 0.72, prefix: 'facility' });
+        updateField('imageUrl', image.uri);
       }
     } catch (err: any) {
       Alert.alert('Image Picker Error', err?.message || 'Failed to select image.');

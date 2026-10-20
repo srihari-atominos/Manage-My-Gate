@@ -24,7 +24,6 @@ export interface InvitationDetailModalProps {
   onClose: () => void;
   notification: NotificationItemData | null;
   onAccept: (token: string, orgId?: string, orgName?: string) => Promise<void>;
-  onReject: (token: string, orgName?: string) => Promise<void>;
 }
 
 export const extractInvitationToken = (notification?: NotificationItemData | null): string => {
@@ -42,12 +41,10 @@ export const InvitationDetailModal: React.FC<InvitationDetailModalProps> = ({
   onClose,
   notification,
   onAccept,
-  onReject,
 }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [inviteDetails, setInviteDetails] = useState<{
@@ -135,13 +132,7 @@ export const InvitationDetailModal: React.FC<InvitationDetailModalProps> = ({
         .catch((err: any) => {
           if (!isMounted) return;
           const msg = err?.response?.data?.message || err?.message || '';
-          if (msg.toLowerCase().includes('reject')) {
-            setInviteDetails((prev) => ({
-              ...prev,
-              membershipStatus: 'Rejected',
-              invitationStatus: 'REJECTED',
-            }));
-          } else if (
+          if (
             msg.toLowerCase().includes('already') ||
             msg.toLowerCase().includes('accepted')
           ) {
@@ -183,28 +174,6 @@ export const InvitationDetailModal: React.FC<InvitationDetailModalProps> = ({
     }
   }, [token, inviteDetails, onAccept, onClose]);
 
-  const handleRejectPress = useCallback(async () => {
-    if (!token) {
-      setErrorMsg('Invitation token is missing.');
-      return;
-    }
-    setRejecting(true);
-    setErrorMsg(null);
-    try {
-      await onReject(token, inviteDetails?.orgName);
-      setInviteDetails((prev) => ({
-        ...prev,
-        membershipStatus: 'Rejected',
-        invitationStatus: 'REJECTED',
-      }));
-      onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to reject invitation.';
-      setErrorMsg(msg);
-    } finally {
-      setRejecting(false);
-    }
-  }, [token, inviteDetails, onReject, onClose]);
 
   const isRejected =
     inviteDetails?.membershipStatus === 'Rejected' ||
@@ -346,28 +315,13 @@ export const InvitationDetailModal: React.FC<InvitationDetailModalProps> = ({
                 variant="default"
                 onPress={handleAcceptPress}
                 loading={accepting}
-                disabled={rejecting || loading}
+                disabled={loading}
                 className="w-full h-12 shadow-sm"
               >
                 <View className="flex-row items-center justify-center gap-2">
                   <ShieldCheck size={18} color="#FFFFFF" />
                   <Text className="text-white font-bold text-sm">
                     {t('accept_and_join', 'Accept & Switch Community')}
-                  </Text>
-                </View>
-              </Button>
-
-              <Button
-                variant="outline"
-                onPress={handleRejectPress}
-                loading={rejecting}
-                disabled={accepting || loading}
-                className="w-full h-11 border-destructive/40"
-              >
-                <View className="flex-row items-center justify-center gap-1.5">
-                  <XCircle size={16} className="text-destructive" />
-                  <Text className="text-destructive font-semibold text-sm">
-                    {t('reject_invitation', 'Reject Invitation')}
                   </Text>
                 </View>
               </Button>

@@ -305,47 +305,6 @@ async function runPhase6E2E() {
     assert(msUserDoc && msUserDoc.status === 'Active', 'Microsoft user active');
     pass('Microsoft SSO verified, membership Active, token consumed');
 
-    // -------------------------------------------------------------
-    // Scenario 5: Invitation Rejection Flow
-    // -------------------------------------------------------------
-    console.log('\n[Scenario 5] Invitation Rejection Flow');
-    const rejectEmail = `reject_${timestamp}@phase6test.com`;
-    const rejectInvite = await userService.inviteUser(
-      rejectEmail,
-      testOrgA._id.toString(),
-      null,
-      'Resident',
-      'Resident',
-      '',
-      'Reject User',
-      'WEB',
-      adminA._id.toString()
-    );
-    const rejectToken = rejectInvite.invitationToken;
-
-    // Execute rejection
-    const rejectRes = await authService.rejectInvitation(rejectToken);
-    assert(rejectRes.message.includes('rejected'), 'Rejection confirmation returned');
-    pass('Invitation rejected successfully');
-
-    // Verify token status REJECTED
-    const rejectTokenDoc = await Token.findOne({ $or: [{ token: hashToken(rejectToken) }, { token: rejectToken }] });
-    assert.strictEqual(rejectTokenDoc.status, 'REJECTED', 'Token status must be REJECTED');
-    // Verify membership marked Rejected
-    const rejectUser = await User.findOne({ email: rejectEmail });
-    const rejectMembership = await OrgMembership.findOne({ userId: rejectUser._id, orgId: testOrgA._id });
-    assert.strictEqual(rejectMembership.status, 'Rejected', 'Membership status must be Rejected');
-    pass('Token marked REJECTED and OrgMembership marked Rejected');
-
-    // Verify cannot be accepted after rejection
-    let acceptAfterRejectFailed = false;
-    try {
-      await authService.acceptInvitation(rejectToken, 'AnyPassword123!');
-    } catch (e) {
-      acceptAfterRejectFailed = e.statusCode === 400 && e.message.includes('rejected');
-    }
-    assert(acceptAfterRejectFailed, 'Rejected invitation cannot be accepted');
-    pass('Rejected invitation strictly rejected on acceptance attempt with 400 Bad Request');
 
     // -------------------------------------------------------------
     // Scenario 6: Dynamic Expiration Enforcement

@@ -1,10 +1,10 @@
 # ==============================================================================
 # Nahom (Manage-My-Gate): Automated Docker Build & Push Script
-# Default Image: nahom:prd1.0
+# Default Image: nahom:prd1.1
 # ==============================================================================
 param(
     [string]$ImageName = "nahom",
-    [string]$Tag = "prd1.0",
+    [string]$Tag = "prd1.1",
     [string]$Registry = "atocash",
     [switch]$SkipPush
 )

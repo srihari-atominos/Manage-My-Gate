@@ -234,13 +234,6 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
                     </a>
                   </td>
                 </tr>
-                <tr>
-                  <td align="center">
-                    <a href="{{reject_link}}" target="_blank" style="display: inline-block; box-sizing: border-box; background-color: transparent; color: #64748b; padding: 8px 24px; text-decoration: underline; font-weight: 600; font-size: 14px; text-align: center;">
-                      Decline Invitation
-                    </a>
-                  </td>
-                </tr>
               </table>
               ` : `
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 28px 0 12px 0;">

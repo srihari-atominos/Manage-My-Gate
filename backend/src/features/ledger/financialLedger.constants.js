@@ -25,6 +25,9 @@ export const FINANCIAL_ACCOUNTS = Object.freeze({
   // Contra-Revenue & Adjustments (Debit = Increase, Credit = Decrease)
   REFUND_CLEARING: 'REFUND_CLEARING',       // Outbound refund clearing
   REVENUE_ADJUSTMENT: 'REVENUE_ADJUSTMENT', // Revenue reversal / contra account for cancellations
+  OPERATING_EXPENSE: 'OPERATING_EXPENSE',
+  ACCOUNTS_PAYABLE: 'ACCOUNTS_PAYABLE',
+  STAFF_REIMBURSEMENT_PAYABLE: 'STAFF_REIMBURSEMENT_PAYABLE',
 });
 
 // 2. Canonical Entry Types
@@ -47,6 +50,7 @@ export const FINANCIAL_DOMAINS = Object.freeze({
   WALLET: 'WALLET',
   REFUND: 'REFUND',
   ADJUSTMENT: 'ADJUSTMENT',
+  EXPENSE: 'EXPENSE',
 });
 
 // 5. Default Currency
@@ -121,3 +125,4 @@ export function resolveDoubleEntryAccounts(domain, paymentMethod = 'ONLINE', isR
       };
   }
 }
+

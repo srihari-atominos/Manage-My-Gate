@@ -377,9 +377,10 @@ export const authorizePermission = (feature, action) => {
         }
       }
 
-      // Super Admin and Community Admin bypass all permission checks
-      const isFullAdmin = await checkIsAdmin(req);
-      if (isFullAdmin) {
+      // Only platform administrators bypass RBAC. Community Admin is a tenant
+      // role, so permissions removed in Role Builder take effect immediately.
+      const isPlatformAdmin = req.user?.isPlatform === true || req.tenant?.isPlatform === true;
+      if (isPlatformAdmin) {
         return next();
       }
 
@@ -484,8 +485,9 @@ export const authorizeAnyPermission = (permissionsArray) => {
         }
       }
 
-      const isFullAdmin = await checkIsAdmin(req);
-      if (isFullAdmin) {
+      // Tenant administrators are governed by their assigned permissions.
+      const isPlatformAdmin = req.user?.isPlatform === true || req.tenant?.isPlatform === true;
+      if (isPlatformAdmin) {
         return next();
       }
 

@@ -22,6 +22,7 @@ import ActionIconButton from '../../components/common/ActionIconButton'
 import UserToolbar from './components/UserToolbar'
 
 import BulkInviteModal from './components/BulkInviteModal'
+import InviteUserModal from './components/InviteUserModal'
 
 import ManageRolesModal from './components/ManageRolesModal'
 import TemplateEditorCanvasModal from '../messageTemplate/components/TemplateEditorCanvasModal'
@@ -67,6 +68,7 @@ const UserList = () => {
 
   // ── Local UI State ──
   
+  const [showInviteModal, setShowInviteModal] = useState(false)
   const [showBulkInviteModal, setShowBulkInviteModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(null)
@@ -463,6 +465,15 @@ const UserList = () => {
               ✉️ {t('userManagement.configureMail', 'Configure Invitation Mail')}
             </CButton>
             <CButton
+              id="invite-user-btn"
+              color="primary"
+              size="sm"
+              className="fw-semibold d-flex align-items-center gap-1"
+              onClick={() => setShowInviteModal(true)}
+            >
+              + {t('userManagement.inviteUser', 'Invite User')}
+            </CButton>
+            <CButton
               id="bulk-invite-users-btn"
               color="primary"
               variant="outline"
@@ -498,6 +509,13 @@ const UserList = () => {
       />
 
       
+
+      {/* Single User Invite Modal */}
+      <InviteUserModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onSendInvite={handleSendInvite}
+      />
 
       {/* Bulk Invite Modal */}
       <BulkInviteModal

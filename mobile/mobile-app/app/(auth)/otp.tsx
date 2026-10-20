@@ -32,13 +32,9 @@ interface OtpFormValues {
 export default function OtpScreen() {
   const { t } = useTranslation();
   const { phone, email, inviteToken } = useLocalSearchParams<{ phone?: string; email?: string; inviteToken?: string }>();
-  const { verifyOtp, requestOtp, loading, error, successMsg, isAuthenticated, clearStatus } = useAuth();
-  const [resendCooldown, setResendCooldown] = React.useState(30);
+  const { verifyOtp, requestOtp, loading, error, errorDetail, clearStatus } = useAuth();
   const [codeIsDead, setCodeIsDead] = React.useState(false);
-  const [resendIn, setResendIn] = React.useState(0);
-  
-  // Since we don't have errorDetail exposed by useAuth, just parse it locally if needed, or set to null
-  const errorDetail: any = null;
+  const [resendIn, setResendIn] = React.useState(RESEND_COOLDOWN_SECONDS);
 
   // Fix URL decoding issue where '+' might have been converted to a space
   const fixedPhone = phone ? phone.replace(/\s/g, '+') : undefined;
@@ -54,7 +50,6 @@ export default function OtpScreen() {
   React.useEffect(() => () => clearStatus(), []);
 
   // Server-driven state: a used-up/expired code, or a cooldown/lock on requests
-  const CODE_IS_DEAD = new Set(['OTP_EXPIRED', 'OTP_MAX_ATTEMPTS']);
   React.useEffect(() => {
     if (!errorDetail?.code) return;
     if (CODE_IS_DEAD.has(errorDetail.code)) setCodeIsDead(true);
@@ -68,9 +63,20 @@ export default function OtpScreen() {
   }, [resendIn > 0]);
 
   const onSubmit = async (data: OtpFormValues) => {
-    if (!identifier) return;
+    if (!identifier || codeIsDead) return;
     const tokenToUse = inviteToken || getPendingInviteToken() || undefined;
-    await verifyOtp(identifier, data.code, isEmail, tokenToUse);
+    const result: any = await verifyOtp(identifier, data.code, isEmail, tokenToUse);
+
+    if (result?.meta?.requestStatus !== 'fulfilled') return;
+
+    const payload = result.payload || {};
+    if (payload.selection || payload.requiresInvitationSelection) {
+      router.replace('/(auth)/pending-invitations');
+      return;
+    }
+
+    clearPendingInviteToken();
+    router.replace('/');
   };
 
   const handleResend = async () => {

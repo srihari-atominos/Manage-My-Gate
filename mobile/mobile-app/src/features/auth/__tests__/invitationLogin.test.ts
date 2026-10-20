@@ -79,27 +79,12 @@ describe('OTP sign-in with invitations', () => {
       data: { token: 't2', refreshToken: 'r2', user: { id: 'u2', orgId: 'o2' }, landing: 'community_admin', pendingInvitations: [] },
     });
     const store = createStore();
-    await store.dispatch(respondToInvitationThunk({ action: 'accept', invitationId: 'i1', ticket: 'ticket-1' }));
-    expect(authService.respondToInvitation).toHaveBeenCalledWith('accept', { invitationId: 'i1', ticket: 'ticket-1' });
+    await store.dispatch(respondToInvitationThunk({ invitationId: 'i1', ticket: 'ticket-1' }));
+    expect(authService.respondToInvitation).toHaveBeenCalledWith({ invitationId: 'i1', ticket: 'ticket-1' });
     expect(store.getState().auth.isAuthenticated).toBe(true);
     expect(store.getState().auth.invitationSelection).toBeNull();
   });
 
-  it('declining refreshes the list without signing in', async () => {
-    (authService.verifyPhoneLogin as jest.Mock).mockResolvedValue({
-      success: true,
-      data: { requiresInvitationSelection: true, ticket: 'tk', pendingInvitations: [{ id: 'i1' }, { id: 'i2' }] },
-    });
-    (authService.respondToInvitation as jest.Mock).mockResolvedValue({
-      success: true,
-      data: { declined: true, pendingInvitations: [{ id: 'i2' }] },
-    });
-    const store = createStore();
-    await store.dispatch(verifyOtpLogin({ identifier: '+919800000002', code: '111111', isEmail: false }));
-    await store.dispatch(respondToInvitationThunk({ action: 'decline', invitationId: 'i1', ticket: 'tk' }));
-    expect(store.getState().auth.isAuthenticated).toBe(false);
-    expect(store.getState().auth.invitationSelection?.pendingInvitations).toEqual([{ id: 'i2' }]);
-  });
 });
 
 describe('landing routes', () => {

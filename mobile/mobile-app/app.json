@@ -23,7 +23,7 @@
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "28",
+      "buildNumber": "30",
       "associatedDomains": [
         "applinks:nahom.e3esg.com",
         "applinks:app.managemygate.com",
@@ -57,7 +57,7 @@
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 28,
+      "versionCode": 30,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D1015"

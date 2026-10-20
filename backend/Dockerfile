@@ -38,5 +38,8 @@ EXPOSE 5000
 # Set environment defaults
 ENV NODE_ENV=production
 ENV PORT=5000
+ENV REQUIRE_REDIS_LOCK=true
+ENV REQUIRE_REDIS_RATE_LIMIT=true
+ENV REQUIRE_REDIS_ADAPTER=true
 
 CMD ["node", "server.js"]

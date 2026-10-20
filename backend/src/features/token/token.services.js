@@ -182,35 +182,6 @@ export class TokenService {
     return { userId, orgId, inviterId, tokenDoc };
   }
 
-  /**
-   * Atomically transitions a pending invitation token to REJECTED.
-   * @param {string} unhashedToken - Raw token string
-   * @param {import('mongoose').ClientSession} [session]
-   */
-  async rejectInvitationToken(unhashedToken, session = null) {
-    const { userId, orgId, inviterId, tokenDoc } = await this.validateInvitationToken(unhashedToken, session);
-
-    if (tokenDoc && tokenDoc._id) {
-      const rejected = await tokenRepository.findOneAndUpdate(
-        { _id: tokenDoc._id, status: 'PENDING', used: { $ne: true } },
-        {
-          $set: {
-            status: 'REJECTED',
-            used: true,
-            usedAt: new Date(),
-          },
-        },
-        {},
-        session
-      );
-      if (!rejected) throw new HttpError(409, 'Invitation has already been processed.');
-      tokenDoc.status = 'REJECTED';
-      tokenDoc.used = true;
-      tokenDoc.usedAt = new Date();
-    }
-
-    return { userId, orgId, inviterId, tokenDoc };
-  }
 
   /**
    * Revokes an invitation token by token ID or user ID within an organization.

@@ -38,14 +38,14 @@ test('Community Admin can keep its name but cannot be renamed or deleted; Super 
   assert.doesNotThrow(() => roleService.assertRoleNotProtected({ name: 'Auditor' }, { renameOrDelete: true }));
 });
 
-test('a role manager can only newly grant permissions they hold', () => {
+test('a role manager can only newly grant permissions they hold', async () => {
   const added = [{ name: 'staff:view' }, { name: 'billing:approve' }];
-  assert.throws(() => roleService.assertCanGrant(added, community()), /billing:approve/);
-  assert.doesNotThrow(() => roleService.assertCanGrant([{ name: 'staff.manage' }], community()));
-  assert.doesNotThrow(() => roleService.assertCanGrant(added, community({ permissions: ['*'] })));
-  assert.doesNotThrow(() => roleService.assertCanGrant(added, community({ isPlatform: true })));
-  assert.doesNotThrow(() => roleService.assertCanGrant([], community()));
-  assert.doesNotThrow(() => roleService.assertCanGrant(added, null));
+  await assert.rejects(roleService.assertCanGrant(added, community()), /billing:approve/);
+  await assert.doesNotReject(roleService.assertCanGrant([{ name: 'staff.manage' }], community()));
+  await assert.doesNotReject(roleService.assertCanGrant(added, community({ permissions: ['*'] })));
+  await assert.doesNotReject(roleService.assertCanGrant(added, community({ isPlatform: true })));
+  await assert.doesNotReject(roleService.assertCanGrant([], community()));
+  await assert.doesNotReject(roleService.assertCanGrant(added, null));
 });
 
 test('permission matching is the same for ids, colon names, dot names and codes', () => {

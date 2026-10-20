@@ -37,14 +37,15 @@
   },
   {
     "feature": "billing",
-    "actions": ["assessments", "ledger", "my_invoices"]
+    "actions": ["assessments", "ledger", "my_invoices", "action_center", "view_expense", "create_expense", "record_expense_payment", "reconcile_expense_payment"]
   },
   {
     "feature": "workspaces",
-    "actions": ["read", "update"]
+    "actions": ["create", "read", "update", "delete"]
   },
   {
     "feature": "staff",
     "actions": ["view", "manage", "assign_unit", "attendance", "view_own"]
   }
 ]
+

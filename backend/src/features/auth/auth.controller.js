@@ -98,16 +98,6 @@ export class AuthController {
     }
   }
 
-  async rejectInvite(req, res, next) {
-    try {
-      const { token, email } = req.body;
-      const data = await authService.rejectInvitation(token, email);
-      res.success(data, 'Invitation rejected successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
   async acceptInviteWithSSO(req, res, next) {
     try {
       const { inviteToken, ssoCredential, code, codeVerifier, redirectUri, clientId, nonce, fullName, provider } = req.body;
@@ -391,7 +381,6 @@ export class AuthController {
   async acceptPendingInvitation(req, res, next) {
     try {
       const data = await authService.respondToInvitation({
-        action: 'accept',
         invitationId: req.body.invitationId || null,
         inviteToken: req.body.inviteToken || req.body.token || null,
         authUserId: req.user?.id || req.user?._id || null,
@@ -399,21 +388,6 @@ export class AuthController {
         deviceInfo: requestDeviceInfo(req),
       });
       sendLoginResult(res, data, 'Invitation accepted');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async declinePendingInvitation(req, res, next) {
-    try {
-      const data = await authService.respondToInvitation({
-        action: 'decline',
-        invitationId: req.body.invitationId || null,
-        inviteToken: req.body.inviteToken || req.body.token || null,
-        authUserId: req.user?.id || req.user?._id || null,
-        ticket: req.body.ticket || null,
-      });
-      res.success(data, 'Invitation declined');
     } catch (error) {
       next(error);
     }

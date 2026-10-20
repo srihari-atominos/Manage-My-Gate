@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including devDependencies required to build Vite)
-RUN npm ci
+RUN npm ci --no-audit
 
 # Copy build config and application source code
 COPY vite.config.mjs index.html eslint.config.mjs ./
@@ -31,6 +31,7 @@ ARG VITE_MICROSOFT_TENANT_ID
 ENV VITE_MICROSOFT_TENANT_ID=$VITE_MICROSOFT_TENANT_ID
 
 # Build the static files
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN npm run build
 
 # Stage 2: Serve using Nginx

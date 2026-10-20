@@ -1,5 +1,5 @@
 # ==============================================================================
-# Nahom (prd1.0) - Complete Standalone All-In-One Stack (Single Shot)
+# Nahom (prd1.1) - Complete Standalone All-In-One Stack (Single Shot)
 # Services Included:
 #   1. nahom-mongodb          (Port 27020 -> 27017, replicaSet rs0)
 #   2. nahom-mongodb-rs-init  (Replica Set auto-initializer)
@@ -82,7 +82,7 @@ services:
           - nahom-redis
 
   nahom-backend:
-    image: ${BACKEND_IMAGE:-atocash/manage-my-gate-server:prd1.0}
+    image: ${BACKEND_IMAGE:-atocash/manage-my-gate-server:prd1.1}
     container_name: ${BACKEND_CONTAINER_NAME:-nahom-backend}
     restart: unless-stopped
     ports:
@@ -114,16 +114,21 @@ services:
       - REQUIRE_REDIS_RATE_LIMIT=${REQUIRE_REDIS_RATE_LIMIT:-true}
       - NODE_ENV=${NODE_ENV:-production}
       - TZ=${TZ:-Asia/Kolkata}
+      - REVIEW_IDENTIFIERS=${REVIEW_IDENTIFIERS:-}
+      - REVIEW_STATIC_OTP=${REVIEW_STATIC_OTP:-123456}
     depends_on:
       nahom-mongodb:
         condition: service_healthy
       nahom-redis:
         condition: service_healthy
     networks:
-      - nahom-network
+      nahom-network:
+        aliases:
+          - backend
+          - nahom-backend
 
   nahom-frontend:
-    image: ${FRONTEND_IMAGE:-atocash/manage-my-gate-client:prd1.0}
+    image: ${FRONTEND_IMAGE:-atocash/manage-my-gate-client:prd1.1}
     container_name: ${FRONTEND_CONTAINER_NAME:-nahom-frontend}
     restart: unless-stopped
     ports:

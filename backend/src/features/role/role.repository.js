@@ -47,24 +47,33 @@ export class RoleRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<{ data: Array, totalRecords: number }>}
    */
-  async findAllPaginated(orgId, skip, limit, session, search = '') {
+  async findAllPaginated(orgId, skip, limit, session, search = '', scope = '') {
     const opts = session ? { session } : {};
-    const matchQuery = orgId
-      ? { $or: [{ orgId: new mongoose.Types.ObjectId(orgId) }, { orgId: null }] }
-      : { orgId: null };
+    // A community Role Builder must only show roles created for that community.
+    // Global system roles (for example Platform Super Admin and Resident) are
+    // resolved by auth/onboarding flows, but are not configurable community roles.
 
     const term = String(search || '').trim();
+    const matchQuery = orgId ? { orgId: new mongoose.Types.ObjectId(orgId) } : { orgId: null };
     if (term) {
       const regex = new RegExp(escapeRegex(term), 'i');
       matchQuery.$and = [{ $or: [{ name: regex }, { description: regex }] }];
     }
 
+    // Roles saved before role scopes existed have no roleScope; infer it the way the API formats it.
+    const effectiveScope = { $ifNull: ['$roleScope', { $cond: ['$isTenantRole', 'UNIT', 'GLOBAL'] }] };
+    const scopeFilter = scope ? [{ $match: { effectiveScope: String(scope) } }] : [];
+
     const result = await Role.aggregate([
       { $match: matchQuery },
+      { $addFields: { effectiveScope } },
       { $sort: { name: 1 } },
       {
         $facet: {
+          // Counts ignore the scope filter so the filter chips always show the community-wide totals.
+          scopeCounts: [{ $group: { _id: '$effectiveScope', count: { $sum: 1 } } }],
           data: [
+            ...scopeFilter,
             { $skip: skip },
             { $limit: limit },
             {
@@ -98,10 +107,15 @@ export class RoleRepository {
               },
             },
           ],
-          metadata: [{ $count: 'totalRecords' }],
+          metadata: [...scopeFilter, { $count: 'totalRecords' }],
         },
       },
     ]).session(opts.session || null);
+
+    const scopeCounts = (result[0]?.scopeCounts || []).reduce((acc, row) => {
+      acc[row._id] = row.count;
+      return acc;
+    }, {});
 
     const data = result[0]?.data || [];
     // Map aggregation output IDs to string matching standard format (Mongoose normally returns object with _id)
@@ -112,7 +126,7 @@ export class RoleRepository {
     }));
 
     const totalRecords = result[0]?.metadata[0]?.totalRecords || 0;
-    return { data: formattedData, totalRecords };
+    return { data: formattedData, totalRecords, scopeCounts };
   }
 
   async create(roleData, session) {

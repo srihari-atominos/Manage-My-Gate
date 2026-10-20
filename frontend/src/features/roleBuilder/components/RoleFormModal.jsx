@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
+import { useSelector } from 'react-redux'
 import {
   CModal,
   CModalHeader,
@@ -30,6 +31,7 @@ import '../styles/_roleBuilder.scss'
  */
 const RoleFormModal = ({ visible, role, onClose, onSave }) => {
   const { permissionsList, isPermissionsLoading, loadPermissions } = useRoles()
+  const allowedPermissions = useSelector((state) => state.auth.user?.permissions || [])
   const [isConfiguratorOpen, setIsConfiguratorOpen] = useState(false)
 
   const {
@@ -44,7 +46,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
     setValue,
     handleSelectAllGroup,
     handleTogglePermission,
-  } = useRoleForm({ role, visible, onSave })
+  } = useRoleForm({ role, visible, onSave, allowedPermissions })
 
   const handleSelectScope = (scope) => {
     setValue('roleScope', scope, { shouldValidate: true, shouldDirty: true })

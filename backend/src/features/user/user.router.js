@@ -1,4 +1,6 @@
 import { Router } from 'express'
+// Register domain event listeners once when the user feature is mounted.
+import './user.listeners.js'
 import userController from './user.controller.js'
 import { validate } from '../../middlewares/validator.middleware.js'
 import {

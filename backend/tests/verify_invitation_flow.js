@@ -452,51 +452,6 @@ async function runVerification() {
       throw new Error('REVOCATION FAILURE: Able to revoke an already revoked token!');
     }
 
-    // 13. Verify Rejection Lifecycle
-    console.log('\n[Step 12] Testing Rejection Lifecycle:');
-    const rejectEmail = `rejected_resident_${timestamp}@example.com`;
-    const rejectInviteResult = await userService.inviteUser(
-      rejectEmail,
-      orgB._id.toString(),
-      null,
-      'None',
-      'Resident',
-      '',
-      'To Be Rejected',
-      'WEB',
-      adminB._id.toString()
-    );
-    const rejectRawToken = rejectInviteResult.invitationToken;
-    const rejectHashedToken = crypto.createHash('sha256').update(rejectRawToken).digest('hex');
-
-    await authService.rejectInvitation(rejectRawToken);
-    const rejectedTokenDoc = await Token.findOne({ token: rejectHashedToken });
-    console.log(`- Rejected token in DB: status=${rejectedTokenDoc.status}, used=${rejectedTokenDoc.used}`);
-    if (rejectedTokenDoc.status !== 'REJECTED' || rejectedTokenDoc.used !== true) {
-      throw new Error(`REJECTION FAILURE: Token status should be REJECTED and used=true, got ${rejectedTokenDoc.status}`);
-    }
-
-    let rejectValidateCaught = false;
-    try {
-      await authService.validateInvite(rejectRawToken);
-    } catch (err) {
-      rejectValidateCaught = true;
-      console.log(`✓ validateInvite on rejected token correctly blocked: "${err.message}"`);
-    }
-    if (!rejectValidateCaught) {
-      throw new Error('REJECTION FAILURE: validateInvite allowed a rejected token!');
-    }
-
-    let rejectAcceptCaught = false;
-    try {
-      await authService.acceptInvitation(rejectRawToken, 'NewPass123!');
-    } catch (err) {
-      rejectAcceptCaught = true;
-      console.log(`✓ acceptInvitation on rejected token correctly blocked: "${err.message}"`);
-    }
-    if (!rejectAcceptCaught) {
-      throw new Error('REJECTION FAILURE: acceptInvitation allowed a rejected token!');
-    }
 
     // 13. Verify Phase 2 GAP-01: SSO Invitation Scoping to Target Org (Org B)
     console.log('\n[Step 13] Testing SSO Acceptance Scoping to Target Org (GAP-01):');

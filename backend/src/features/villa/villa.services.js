@@ -484,11 +484,15 @@ export class VillaService {
               await assertRoleAssignable(finalRoleName);
             }
 
-            const staffData = {
-              ...(isStaffMember ? { isStaff: true, staffCategory: 'UNIT', designation: residentType || 'Household Staff', department: 'Others' } : {}),
-              isBulk: true,
-              rawPassword,
-            };
+const staffData = isStaffMember
+              ? {
+                  isStaff: true,
+                  staffCategory: 'UNIT',
+                  designation: finalRoleName || residentType || 'Household Staff',
+                  staffType: 'Household Staff',
+                  department: 'Others',
+                }
+              : {};
 
             await userService.inviteUser(
               trimmedEmail,
@@ -501,7 +505,9 @@ export class VillaService {
               invitationSource,
               null,
               'INVITATION',
-              staffData
+              staffData,
+              true,
+              rawPassword
             );
             userInvited = true;
           } catch (err) {

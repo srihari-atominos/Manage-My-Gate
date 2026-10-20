@@ -164,25 +164,6 @@ export const emitInvitationAccepted = (userId, orgId) => {
   userEvents.emit('USER_UPDATED', { userId, orgId, action: 'activated' });
 };
 
-/** Declines exactly one invitation for an already-verified identity. */
-export const declineInvitationForUser = async (user, ref, session) => {
-  const tokenDoc = await resolveInvitationForUser(user, ref, session);
-  const updated = await Token.findOneAndUpdate(
-    { _id: tokenDoc._id, status: 'PENDING' },
-    { $set: { status: 'REJECTED', usedAt: new Date() } },
-    { session, returnDocument: 'after' }
-  );
-  if (!updated) throw invitationError('INVITATION_USED', 'Invitation is no longer pending.');
-
-  const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-  const membership = await orgMembershipService.getMembership(user._id, tokenDoc.orgId, session);
-  if (membership && membership.status === 'Pending') {
-    await orgMembershipService.updateStatus(user._id, tokenDoc.orgId, 'Rejected', session);
-    const villaService = (await import('../villa/villa.services.js')).default;
-    await villaService.removeUserFromAllVillasInOrg(user._id, tokenDoc.orgId, session).catch(() => null);
-  }
-  return { orgId: String(tokenDoc.orgId) };
-};
 
 /**
  * Pending, unexpired invitations addressed to this user, with display details.

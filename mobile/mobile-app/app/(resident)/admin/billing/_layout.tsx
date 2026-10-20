@@ -7,6 +7,9 @@ export default function AdminBillingLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="assessments" />
       <Stack.Screen name="ledger" />
+      <Stack.Screen name="expenses" />
     </Stack>
   );
 }
+
+

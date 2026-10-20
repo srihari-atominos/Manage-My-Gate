@@ -24,6 +24,7 @@ export interface FetchRolesParams {
   page?: number;
   limit?: number;
   search?: string;
+  roleScope?: RoleScope;
 }
 
 /**
@@ -33,7 +34,8 @@ export const fetchRoles = async (params: FetchRolesParams = {}) => {
   const page = params.page || 1;
   const limit = params.limit || 10;
   const search = params.search ? `&search=${encodeURIComponent(params.search)}` : '';
-  const response: any = await apiClient.get(`/roles?page=${page}&limit=${limit}${search}`);
+  const scope = params.roleScope ? `&roleScope=${params.roleScope}` : '';
+  const response: any = await apiClient.get(`/roles?page=${page}&limit=${limit}${search}${scope}`);
   return response;
 };
 

@@ -131,6 +131,10 @@ export const fetchQuickActionsThunk = createAsyncThunk<
   } catch (error: any) {
     return rejectWithValue(error?.message || 'Failed to fetch user preferences');
   }
+}, {
+  // Login, workspace refresh, and dashboard mount can happen together. Keep a
+  // single request in flight; the active context is resolved from fresh state.
+  condition: (_, { getState }) => !(getState() as RootState).dashboard.loading,
 });
 
 /**
@@ -196,7 +200,9 @@ export const dashboardSlice = createSlice({
     },
     resetQuickActionsForContext: (state) => {
       state.activeQuickActions = [];
-      state.loading = true;
+      // Clearing a context is not a request. The following fetch thunk owns the
+      // loading flag so its request-coalescing condition can start normally.
+      state.loading = false;
       state.error = null;
     },
     setActiveQuickActionsLocal: (

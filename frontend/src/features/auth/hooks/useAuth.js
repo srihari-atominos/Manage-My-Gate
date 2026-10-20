@@ -9,7 +9,6 @@ import {
   clearStatus as clearStatusAction,
   clearInvitation as clearInvitationAction,
   validateInvitation,
-  rejectInvitation,
   acceptPendingInvitation,
   loginWithGoogle,
   loginWithMicrosoft,
@@ -67,9 +66,7 @@ export const useAuth = () => {
     }
   }, [dispatch, isAuthenticated])
 
-  const logout = () => {
-    dispatch(performLogout())
-  }
+  const logout = () => dispatch(performLogout())
 
   const updateProfile = (formData) => {
     return dispatch(updateProfileAction(formData))
@@ -106,21 +103,6 @@ export const useAuth = () => {
     dispatch(clearInvitationAction())
   }
 
-  const handleRejectInvitation = async (payload) => {
-    try {
-      const resultAction = await dispatch(rejectInvitation(payload))
-      if (rejectInvitation.fulfilled.match(resultAction)) {
-        toast.success(t('auth.invite.declinedSuccess', 'Invitation declined.'))
-        return { success: true, payload: resultAction.payload }
-      } else {
-        const errorMsg =
-          resultAction.payload || t('auth.invite.error', 'Failed to reject invitation')
-        return { success: false, error: errorMsg }
-      }
-    } catch (err) {
-      return { success: false, error: err.message }
-    }
-  }
 
   const handleAcceptInvitation = async (inviteToken) => {
     try {
@@ -358,7 +340,6 @@ export const useAuth = () => {
     invitation,
     handleValidateInvitation,
     handleClearInvitation,
-    handleRejectInvitation,
     handleAcceptInvitation,
     loginGoogle,
     loginMicrosoft,

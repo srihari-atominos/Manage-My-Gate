@@ -16,7 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { store } from '@/src/store/store';
-import { View, I18nManager, TouchableOpacity, Linking, Platform, LogBox } from 'react-native';
+import { View, I18nManager, TouchableOpacity, Linking, Platform } from 'react-native';
 import { AlertTriangle, Mail } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 
@@ -40,73 +40,9 @@ if (__DEV__ && Platform.OS === 'web' && typeof window !== 'undefined') {
   window.addEventListener('pageshow', handlePageShow);
 }
 
-// Web-specific aggressive patch to silence React Native Web's Chromium violations & auxiliary warnings
-if (Platform.OS === 'web' && typeof window !== 'undefined') {
-  LogBox.ignoreAllLogs(true);
-  
-  const filterWarning = (msg: any) => {
-    if (typeof msg === 'string') {
-      if (
-        msg.includes('textShadow') ||
-        msg.includes('Cross-Origin-Opener-Policy') ||
-        msg.includes('window.closed') ||
-        msg.includes("The action 'GO_BACK' was not handled")
-      ) return true;
-    }
-    return false;
-  };
-
-  const originalWarn = window.console.warn;
-  window.console.warn = function (...args) {
-    if (filterWarning(args[0])) return;
-    originalWarn.apply(console, args);
-  };
-
-  const originalError = window.console.error;
-  window.console.error = function (...args) {
-    if (filterWarning(args[0])) return;
-    originalError.apply(console, args);
-  };
-  
-  const originalAddEventListener = EventTarget.prototype.addEventListener;
-  EventTarget.prototype.addEventListener = function (
-    this: EventTarget,
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions
-  ) {
-    if (type === 'wheel' || type === 'mousewheel' || type === 'touchstart' || type === 'touchmove') {
-      options = typeof options === 'object' ? { ...options, passive: true } : { passive: true };
-    }
-    return originalAddEventListener.call(this, type, listener, options);
-  } as any;
-
-  window.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (
-      e.target instanceof HTMLInputElement ||
-      e.target instanceof HTMLTextAreaElement ||
-      (e.target as HTMLElement)?.isContentEditable
-    ) {
-      return;
-    }
-    if (e.key === 'PageDown' || e.key === 'PageUp') {
-      const scrollable = Array.from(document.querySelectorAll('div')).filter((el) => {
-        const style = window.getComputedStyle(el);
-        const oy = style.overflowY;
-        return (oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight;
-      });
-      const target = scrollable[scrollable.length - 1] || document.documentElement || document.body;
-      if (target) {
-        e.preventDefault();
-        const delta = Math.round(window.innerHeight * 0.75);
-        target.scrollBy({
-          top: e.key === 'PageDown' ? delta : -delta,
-          behavior: 'smooth',
-        });
-      }
-    }
-  });
-}
+// Web performance note: do not globally patch DOM event listeners or scan the full
+// DOM on keyboard input. Those workarounds make scrolling and clicks slower than
+// the warnings they attempted to hide. React Native Web owns its own event setup.
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { openSupportMail, useSupportEmail } from '@/src/services/supportContact';

@@ -1190,7 +1190,12 @@ export class InvoiceService {
     let isOwner = false;
     if (userContext.roles && userContext.roles.length > 0) {
       try {
-        const roles = await roleService.getRolesByIds(userContext.roles);
+        const roleIds = userContext.roles
+          .map((role) => role?._id || role?.id || role)
+          .filter((roleId) => mongoose.isValidObjectId(roleId));
+        const roles = roleIds.length > 0
+          ? await roleService.getRolesByIds(roleIds)
+          : [];
         isOwner = roles.some((r) => r.name.toLowerCase().includes('owner'));
       } catch (err) {
         logger.error('Failed to resolve roles for portfolio dues check:', err);

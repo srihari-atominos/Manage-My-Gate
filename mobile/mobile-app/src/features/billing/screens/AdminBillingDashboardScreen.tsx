@@ -90,21 +90,21 @@ export function AdminBillingDashboardScreen() {
   const kpiCards: KPICardProps[] = [
     {
       title: 'Gross Billed',
-      value: `₹${grossDemand.toLocaleString('en-IN')}`,
+      value: `��${grossDemand.toLocaleString('en-IN')}`,
       subtitle: `${grossDemandCount} total invoices`,
       iconName: 'Receipt',
       variant: 'default',
     },
     {
       title: 'Total Collected',
-      value: `₹${totalCollected.toLocaleString('en-IN')}`,
+      value: `��${totalCollected.toLocaleString('en-IN')}`,
       trend: { direction: 'up', value: `${collectionRate}% rate` },
       iconName: 'TrendingUp',
       variant: 'success',
     },
     {
       title: 'Unpaid Arrears',
-      value: `₹${totalUnpaidArrears.toLocaleString('en-IN')}`,
+      value: `��${totalUnpaidArrears.toLocaleString('en-IN')}`,
       subtitle: 'Pending collection',
       iconName: 'AlertCircle',
       variant: 'destructive',
@@ -116,7 +116,7 @@ export function AdminBillingDashboardScreen() {
     },
     {
       title: 'Pending Clearance',
-      value: `₹${pendingOfflineAmount.toLocaleString('en-IN')}`,
+      value: `��${pendingOfflineAmount.toLocaleString('en-IN')}`,
       subtitle: `${pendingOfflineCount} offline submission${pendingOfflineCount === 1 ? '' : 's'}`,
       iconName: 'Clock',
       variant: 'warning',
@@ -130,6 +130,14 @@ export function AdminBillingDashboardScreen() {
 
   // Quick Navigation Hub ActionGrid Items
   const navItems: ActionGridItem[] = [
+    {
+      id: 'expenses',
+      name: 'Expenses',
+      route: '/(resident)/admin/billing/expenses',
+      iconName: 'Receipt',
+      colorBg: 'bg-orange-500/10',
+      colorIcon: '#f97316',
+    },
     {
       id: 'ledger',
       name: 'Billing Ledger',
@@ -236,10 +244,10 @@ export function AdminBillingDashboardScreen() {
             <ProgressBar progress={collectionRate} className="h-2 rounded-full mb-3" />
             <View className="flex-row justify-between items-center">
               <Text className="text-xs text-muted-foreground">
-                Collected: <Text className="font-semibold text-foreground">₹{totalCollected.toLocaleString('en-IN')}</Text>
+                Collected: <Text className="font-semibold text-foreground">��{totalCollected.toLocaleString('en-IN')}</Text>
               </Text>
               <Text className="text-xs text-muted-foreground">
-                Billed: <Text className="font-semibold text-foreground">₹{grossDemand.toLocaleString('en-IN')}</Text>
+                Billed: <Text className="font-semibold text-foreground">��{grossDemand.toLocaleString('en-IN')}</Text>
               </Text>
             </View>
           </Card>
@@ -254,7 +262,7 @@ export function AdminBillingDashboardScreen() {
                     Pending Offline Payment Verification
                   </Text>
                   <Text className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                    ₹{pendingOfflineAmount.toLocaleString('en-IN')} across {pendingOfflineCount} submission{pendingOfflineCount === 1 ? '' : 's'} awaiting admin clearance.
+                    ��{pendingOfflineAmount.toLocaleString('en-IN')} across {pendingOfflineCount} submission{pendingOfflineCount === 1 ? '' : 's'} awaiting admin clearance.
                   </Text>
                 </View>
               </View>
@@ -297,8 +305,8 @@ export function AdminBillingDashboardScreen() {
                 {recentTransactions.map((tx: any) => (
                   <ListItem
                     key={tx._id || tx.invoiceNumber}
-                    title={`${tx.unitNumber || 'Unit'} • ${tx.targetUser || 'Resident'}`}
-                    subtitle={`Inv #${tx.invoiceNumber || '—'} • ${tx.status || 'UNPAID'} • ₹${(tx.totalDue || tx.totalAmount || tx.amount || 0).toLocaleString('en-IN')}`}
+                    title={`${tx.unitNumber || 'Unit'} ⬢ ${tx.targetUser || 'Resident'}`}
+                    subtitle={`Inv #${tx.invoiceNumber || '�'} ⬢ ${tx.status || 'UNPAID'} ⬢ ��${(tx.totalDue || tx.totalAmount || tx.amount || 0).toLocaleString('en-IN')}`}
                     leftIcon={FileText}
                     onPress={() => router.navigate('/(resident)/admin/billing/ledger' as any)}
                   />
@@ -314,3 +322,5 @@ export function AdminBillingDashboardScreen() {
 }
 
 export default AdminBillingDashboardScreen;
+
+

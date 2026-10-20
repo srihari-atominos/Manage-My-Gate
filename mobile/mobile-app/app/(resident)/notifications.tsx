@@ -20,7 +20,6 @@ import {
   RotateCcw,
   Building2,
   Check,
-  X,
 } from 'lucide-react-native';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
 import { NotificationItemData } from '@/src/features/notification/services/notificationService';
@@ -29,14 +28,9 @@ import {
   InvitationDetailModal,
   extractInvitationToken,
 } from '@/src/features/notification/components/InvitationDetailModal';
-import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/src/store/store';
-import {
-  
-  rejectInviteThunk,
-  switchWorkspaceContextThunk,
-} from '@/src/features/auth/store/authSlice';
+import { switchWorkspaceContextThunk } from '@/src/features/auth/store/authSlice';
 import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from '@/src/utils/i18n';
@@ -44,7 +38,6 @@ import { useTranslation } from '@/src/utils/i18n';
 export default function NotificationsScreen() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useAuth();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [refreshing, setRefreshing] = useState(false);
@@ -57,8 +50,6 @@ export default function NotificationsScreen() {
   // Invitation Modal State
   const [selectedInviteNotification, setSelectedInviteNotification] = useState<NotificationItemData | null>(null);
   const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
-  const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
-  const [inviteStatusMap, setInviteStatusMap] = useState<Record<string, 'ACCEPTED' | 'REJECTED'>>({});
 
   const {
     items,
@@ -139,34 +130,6 @@ export default function NotificationsScreen() {
     [router]
   );
 
-  // Full rejection workflow matching email rejection logic
-  const handleRejectInvitation = useCallback(
-    async (token: string, orgName?: string) => {
-      try {
-        await dispatch(rejectInviteThunk({ token, email: user?.email })).unwrap();
-
-        const notifId = selectedInviteNotification?.id || selectedInviteNotification?._id;
-        if (notifId) {
-          markAsRead(notifId);
-          setInviteStatusMap((prev) => ({ ...prev, [notifId]: 'REJECTED' }));
-        }
-
-        setIsInviteModalVisible(false);
-        setSelectedInviteNotification(null);
-
-        await fetchNotifications(1, 15);
-        Alert.alert(
-          t('invitation_declined', 'Invitation Declined'),
-          `${t('declined_success', 'You have declined the invitation to join')} ${orgName || 'the workspace'}.`
-        );
-      } catch (err: any) {
-        const msg = err?.message || err || 'Failed to reject invitation';
-        Alert.alert(t('error', 'Error'), msg);
-        throw err;
-      }
-    },
-    [dispatch, user?.email, selectedInviteNotification, markAsRead, fetchNotifications, t]
-  );
 
   // A notification does not accept an invitation. It opens unified login with
   // the token as server-validated context.
@@ -181,53 +144,6 @@ export default function NotificationsScreen() {
       router.push({ pathname: '/(auth)/login', params: { inviteToken: token } });
     },
     [router]
-  );
-  // Quick card reject button handler
-  const handleCardQuickReject = useCallback(
-    async (notification: NotificationItemData) => {
-      const token = extractInvitationToken(notification);
-      if (!token) {
-        setSelectedInviteNotification(notification);
-        setIsInviteModalVisible(true);
-        return;
-      }
-      const notifId = notification.id || notification._id || '';
-      const orgName =
-        notification.metadata?.communityName || notification.title || 'the community';
-
-      Alert.alert(
-        t('decline_invitation', 'Decline Invitation'),
-        `${t('confirm_decline', 'Are you sure you want to decline the invitation to join')} ${orgName}?`,
-        [
-          { text: t('cancel', 'Cancel'), style: 'cancel' },
-          {
-            text: t('decline', 'Decline'),
-            style: 'destructive',
-            onPress: async () => {
-              setActionInProgressId(notifId);
-              try {
-                await dispatch(rejectInviteThunk({ token, email: user?.email })).unwrap();
-                if (notifId) {
-                  markAsRead(notifId);
-                  setInviteStatusMap((prev) => ({ ...prev, [notifId]: 'REJECTED' }));
-                }
-                await fetchNotifications(1, 15);
-                Alert.alert(
-                  t('invitation_declined', 'Invitation Declined'),
-                  `${t('declined_success', 'You have declined the invitation to join')} ${orgName}.`
-                );
-              } catch (err: any) {
-                const msg = err?.message || err || 'Failed to reject invitation';
-                Alert.alert(t('error', 'Error'), msg);
-              } finally {
-                setActionInProgressId(null);
-              }
-            },
-          },
-        ]
-      );
-    },
-    [dispatch, user?.email, markAsRead, fetchNotifications, t]
   );
 
   const handleNotificationPress = (notification: NotificationItemData) => {
@@ -298,10 +214,8 @@ export default function NotificationsScreen() {
       notification.id || notification._id || Math.random().toString();
     const isUnread = !notification.isRead;
     const isInvite = isInvitationNotification(notification);
-    const isActionLoading = actionInProgressId === notifId;
 
     const trackedStatus: string =
-      (inviteStatusMap[notifId] as string) ||
       (notification.metadata?.invitationStatus as string) ||
       (notification.metadata?.membershipStatus as string) ||
       '';
@@ -309,10 +223,6 @@ export default function NotificationsScreen() {
       trackedStatus === 'ACCEPTED' ||
       trackedStatus === 'Active' ||
       trackedStatus === 'ACCEPTED_MEMBER';
-    const isInviteRejected =
-      trackedStatus === 'REJECTED' ||
-      trackedStatus === 'Declined' ||
-      trackedStatus === 'Rejected';
 
     const isSelected = selectedIds.has(notifId);
 
@@ -408,15 +318,6 @@ export default function NotificationsScreen() {
                     dot={true}
                   />
                 </View>
-              ) : isInviteRejected ? (
-                <View className="flex-row items-center gap-2">
-                  <StatusBadge
-                    variant="danger"
-                    label={t('declined', 'Declined')}
-                    size="sm"
-                    dot={true}
-                  />
-                </View>
               ) : (
                 <View className="flex-row items-center gap-2">
                   <Button
@@ -426,33 +327,12 @@ export default function NotificationsScreen() {
                       e.stopPropagation();
                       handleCardQuickAccept(notification);
                     }}
-                    loading={isActionLoading}
-                    disabled={isActionLoading}
                     className="h-8 px-3 rounded-lg flex-1"
                   >
                     <View className="flex-row items-center justify-center gap-1">
                       <Check size={13} color="#FFFFFF" />
                       <Text className="text-white text-xs font-bold font-sans">
                         {t('accept', 'Accept')}
-                      </Text>
-                    </View>
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleCardQuickReject(notification);
-                    }}
-                    loading={isActionLoading}
-                    disabled={isActionLoading}
-                    className="h-8 px-3 rounded-lg border-destructive/40 flex-1"
-                  >
-                    <View className="flex-row items-center justify-center gap-1">
-                      <X size={13} className="text-destructive" />
-                      <Text className="text-destructive text-xs font-semibold font-sans">
-                        {t('decline', 'Decline')}
                       </Text>
                     </View>
                   </Button>
@@ -729,7 +609,7 @@ export default function NotificationsScreen() {
         </View>
       </ScreenShell>
 
-      {/* Community Invitation Details Modal with Accept & Reject Actions */}
+      {/* Community Invitation Details Modal */}
       <InvitationDetailModal
         visible={isInviteModalVisible}
         onClose={() => {
@@ -738,7 +618,6 @@ export default function NotificationsScreen() {
         }}
         notification={selectedInviteNotification}
         onAccept={handleAcceptInvitation}
-        onReject={handleRejectInvitation}
       />
     </>
   );

@@ -169,6 +169,8 @@ export interface AmenityBookingState {
   checkInResult: CheckInResult | null;
   pagination: PaginationMeta;
   loading: boolean;
+  /** Dedicated flag so dashboard metric requests can be coalesced independently. */
+  dashboardStatsLoading: boolean;
   creatingBooking: boolean;
   checkingIn: boolean;
   error: string | null;
@@ -285,6 +287,7 @@ const initialState: AmenityBookingState = {
     limit: 10,
   },
   loading: false,
+  dashboardStatsLoading: false,
   creatingBooking: false,
   checkingIn: false,
   error: null,
@@ -455,6 +458,9 @@ export const fetchDashboardStatsThunk = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch dashboard metrics');
     }
+  },
+  {
+    condition: (_, { getState }) => !(getState() as any).amenityBookings.dashboardStatsLoading,
   }
 );
 
@@ -1201,15 +1207,18 @@ const amenityBookingSlice = createSlice({
         state.error = (action.payload as string) || 'Failed to fetch gate audit scans';
       })
       .addCase(fetchDashboardStatsThunk.pending, (state) => {
+        state.dashboardStatsLoading = true;
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchDashboardStatsThunk.fulfilled, (state, action: any) => {
+        state.dashboardStatsLoading = false;
         state.loading = false;
         state.error = null;
         state.dashboardStats = action.payload?.data || action.payload || null;
       })
       .addCase(fetchDashboardStatsThunk.rejected, (state, action) => {
+        state.dashboardStatsLoading = false;
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to fetch dashboard metrics';
       })

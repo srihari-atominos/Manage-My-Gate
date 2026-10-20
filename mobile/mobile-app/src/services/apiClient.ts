@@ -1,4 +1,4 @@
-﻿import axios, { InternalAxiosRequestConfig } from 'axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import storage from '../utils/storage';
@@ -72,7 +72,6 @@ const AUTHENTICATION_ENDPOINTS = new Set([
   '/auth/apple',
   '/auth/logout',
   '/auth/invitations/accept',
-  '/auth/invitations/decline',
   '/auth/accept-invite',
 ]);
 
@@ -143,9 +142,6 @@ const apiClient = axios.create({
   validateStatus: (status) => (status >= 200 && status < 300) || status === 304,
 });
 
-if (__DEV__) {
-  console.log(`[ApiClient] Configured baseURL: ${apiClient.defaults.baseURL}`);
-}
 
 let isRefreshing = false;
 let failedQueue: Array<{

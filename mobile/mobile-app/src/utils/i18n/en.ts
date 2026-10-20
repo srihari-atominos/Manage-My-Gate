@@ -4710,7 +4710,7 @@ export const en: Record<string, string> = {
   'auto_active_days_of_week_c04f920d': 'Active Days of Week',
   'auto_active_on_f87c6848': 'Active on:',
   'auto_add_another_sub_room_8ecfde85': 'Add Another Sub-Room',
-  'auto_add_maintenance_window_43076b48': 'Add maintenance window',
+  'auto_add_maintenance_window_43076b48': 'Add Maintenance Window',
   'auto_add_maintenance_window_3f47d7e1': 'Add Maintenance Window',
   'auto_add_photos_circular_pdfs_or_inspection_photos_max_5_fi_f8a20919': 'Add photos, circular PDFs, or inspection photos. Max 5 files.',
   'auto_add_room_unit_757e4f0d': 'Add Room Unit',

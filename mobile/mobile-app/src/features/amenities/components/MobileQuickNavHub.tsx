@@ -3,7 +3,6 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 export interface QuickNavItem extends ActionGridItem {}
-import { useAmenityDashboard } from '../hooks/useAmenityDashboard';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
@@ -13,7 +12,8 @@ export interface MobileQuickNavHubProps {
 
 export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) {
   const { user } = useAuth();
-  const { dashboardStats } = useAmenityDashboard();
+  // Metrics are loaded once by the parent Amenity dashboard.
+  const dashboardStats = useSelector((state: RootState) => (state as any).amenityBookings?.dashboardStats);
 
   const walletState = useSelector((state: RootState) => (state as any).wallet);
   const myBookingsState = useSelector((state: RootState) => (state as any).amenityBookings);

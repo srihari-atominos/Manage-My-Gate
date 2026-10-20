@@ -37,11 +37,20 @@ if (process.env.NODE_ENV === 'production') {
   if (process.env.ALLOW_MOCK_PAYMENTS === 'true') {
     throw new Error('ALLOW_MOCK_PAYMENTS must not be enabled in production.');
   }
+  if (!process.env.REQUIRE_REDIS_LOCK) {
+    process.env.REQUIRE_REDIS_LOCK = 'true';
+  }
   if (process.env.REQUIRE_REDIS_LOCK !== 'true') {
     throw new Error('REQUIRE_REDIS_LOCK must be set to "true" in production to prevent local in-memory lock split-brain.');
   }
+  if (!process.env.REQUIRE_REDIS_RATE_LIMIT) {
+    process.env.REQUIRE_REDIS_RATE_LIMIT = 'true';
+  }
   if (process.env.REQUIRE_REDIS_RATE_LIMIT !== 'true') {
     throw new Error('REQUIRE_REDIS_RATE_LIMIT must be set to "true" in production to enforce distributed rate limiting.');
+  }
+  if (!process.env.REQUIRE_REDIS_ADAPTER) {
+    process.env.REQUIRE_REDIS_ADAPTER = 'true';
   }
   if (process.env.REQUIRE_REDIS_ADAPTER !== 'true') {
     throw new Error('REQUIRE_REDIS_ADAPTER must be set to "true" in production to prevent split-brain room isolation.');

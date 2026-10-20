@@ -13,6 +13,8 @@ export interface RoleCardProps {
   onOpenMenu?: (role: RoleData) => void;
   onManagePermissions?: (role: RoleData) => void;
   onDuplicate?: (role: RoleData) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
   className?: string;
 }
 
@@ -23,6 +25,8 @@ export const RoleCard: React.FC<RoleCardProps> = ({
   onOpenMenu,
   onManagePermissions,
   onDuplicate,
+  canEdit = false,
+  canDelete = false,
   className = '',
 }) => {
   const { t } = useTranslation();
@@ -133,6 +137,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
               );
             })()}
 
+            {canEdit || canDelete ? (
             <TouchableOpacity
               onPress={handleMenuPress}
               activeOpacity={0.7}
@@ -143,6 +148,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
             >
               <MoreVertical size={16} className="text-foreground" />
             </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
@@ -209,6 +215,8 @@ export const RoleCard: React.FC<RoleCardProps> = ({
           onManagePermissions={onManagePermissions}
           onDuplicate={onDuplicate}
           onDelete={onDelete}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
     </>

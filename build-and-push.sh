@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Nahom (Manage-My-Gate): Automated Docker Build & Push Script (Linux/macOS)
-# Default Image: nahom:prd1.0
+# Default Image: nahom:prd1.1
 # ==============================================================================
 set -e
 
 IMAGE_NAME="${1:-nahom}"
-TAG="${2:-prd1.0}"
+TAG="${2:-prd1.1}"
 REGISTRY="${3:-atocash}"
 SKIP_PUSH="${4:-true}"
 

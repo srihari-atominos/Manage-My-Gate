@@ -23,6 +23,7 @@ export default function BillingEntryGatewayRoute() {
     const hasAdminDashboardAccess =
       !isResidentOrFamily &&
       (permissions.includes('billing:dashboard') ||
+        permissions.includes('billing:assessments') ||
         permissions.includes('billing:assessment_manager') ||
         userRole === 'admin' ||
         userRole === 'accountant' ||
@@ -36,7 +37,7 @@ export default function BillingEntryGatewayRoute() {
   }, [user, router]);
 
   return (
-    <View className="flex-1 justify-center items-center bg-background">
+    <View className="flex-1 items-center justify-center bg-background">
       <Stack.Screen options={{ headerShown: false }} />
       <AppLoader variant="block" />
     </View>

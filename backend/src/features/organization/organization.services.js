@@ -5,11 +5,16 @@ import orgEventEmitter from './organization.events.js';
 import { DEFAULT_ROLE_PERMISSIONS } from './defaultRolePermissions.js';
 import { normalizePhone } from '../../utils/phone.utils.js';
 import logger from '../../utils/logger.utils.js';
+import { isOtpDebugEnabled } from '../otp/otp.services.js';
 
 /** Feature keys shown as one group in the apps, mapped to permission features. */
 const FEATURE_GROUPS = Object.freeze({
   administration_security: ['users', 'roles', 'villas', 'integrations', 'workspaces', 'staff'],
   staff_management: ['staff'],
+  // Poll permissions are a part of the community Notice Board feature. Keeping
+  // this relationship here makes provisioning, subscription updates, and role
+  // delegation agree on what the platform administrator selected.
+  notices: ['notices', 'polls'],
 });
 /** Always granted to the community admin role, whatever features are selected. */
 const CORE_ADMIN_FEATURES = Object.freeze(['users', 'roles', 'villas', 'workspaces']);
@@ -293,25 +298,14 @@ export class OrganizationService {
         session
       );
 
-      let adminPermissionIds;
-      if (Array.isArray(features)) {
-        const targetPermissions = allPermissions.filter(perm =>
-          features.includes(perm.feature)
-        );
-        const granularIds = targetPermissions.map(p => p._id.toString());
-        const basePermissions = allPermissions.filter(perm =>
-          ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'].includes(perm.name)
-        );
-        for (const basePerm of basePermissions) {
-          const bId = basePerm._id.toString();
-          if (!granularIds.includes(bId)) {
-            granularIds.push(bId);
-          }
-        }
-        adminPermissionIds = granularIds;
-      } else {
-        adminPermissionIds = allPermissions.map(p => p._id.toString());
-      }
+      // A Community Admin receives every permission belonging to the features
+      // selected by the Platform Super Admin, plus core administration. Use the
+      // same group expansion as updateFeatures so a new community and an
+      // existing community always resolve permissions identically.
+      const grantedFeatures = expandFeatureKeys(finalFeatures);
+      const adminPermissionIds = allPermissions
+        .filter((permission) => grantedFeatures.has(permission.feature))
+        .map((permission) => permission._id.toString());
       await rolePermissionService.updateRolePermissions(adminRole._id.toString(), adminPermissionIds, session);
 
       // Create Resident Owner Role
