@@ -286,6 +286,7 @@ export const useGlobalAppSocket = () => {
           permissions.includes('*') ||
           permissions.includes('staff:attendance') ||
           permissions.includes('staff:manage') ||
+          permissions.includes('visitor:guard') ||
           permissions.includes('staff:view');
         const canViewMyAttendance =
           isAdmin ||

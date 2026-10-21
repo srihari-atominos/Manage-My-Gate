@@ -8,7 +8,7 @@ const navItems = [
   { name: 'Raise Ticket', to: '/admin/complaints/create', icon: Plus, requiredPermission: 'complaints:raise_ticket' },
   { name: 'Track', to: '/admin/complaints/my-tickets', icon: Search, requiredPermission: 'complaints:track_requests' },
   { name: 'Management', to: '/admin/complaints/manage', icon: List, requiredPermission: 'complaints:complaint_management' },
-  { name: 'Staff', to: '/admin/complaints/staff', icon: Users, requiredPermission: 'complaints:staff' },
+  { name: 'Staff', to: '/admin/complaints/staff', icon: Users, requiredPermission: ['complaints:staff', 'staff:view', 'staff:manage', 'staff:attendance', 'staff:assign_unit', 'staff:view_own'] },
   { name: 'Assignee', to: '/admin/complaints/assignee', icon: Briefcase, requiredPermission: 'complaints:assignee' },
 ];
 

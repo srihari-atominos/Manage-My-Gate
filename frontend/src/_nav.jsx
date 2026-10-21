@@ -99,6 +99,20 @@ const _nav = [
       },
       {
         component: CNavItem,
+        name: 'Staff Management',
+        to: '/admin/complaints/staff',
+        icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
+        requiredPermission: [
+          'staff:view',
+          'staff:manage',
+          'staff:attendance',
+          'staff:assign_unit',
+          'staff:view_own',
+          'complaints:staff',
+        ],
+      },
+      {
+        component: CNavItem,
         name: 'Integration Hub',
         to: '/integrations',
         icon: <CIcon icon={cilApps} customClassName="nav-icon" />,
@@ -149,6 +163,11 @@ const _nav = [
       'complaints:complaint_management',
       'complaints:staff',
       'complaints:assignee',
+      'staff:view',
+      'staff:manage',
+      'staff:attendance',
+      'staff:assign_unit',
+      'staff:view_own',
     ],
   },
   {

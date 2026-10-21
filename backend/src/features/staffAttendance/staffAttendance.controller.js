@@ -27,7 +27,8 @@ class StaffAttendanceController {
         const userPermissions = req.tenant?.permissions || req.user?.permissions || [];
         const hasGuardOrManage =
           userPermissions.includes('visitor:guard') ||
-          userPermissions.includes('staff:manage');
+          userPermissions.includes('staff:manage') ||
+          userPermissions.includes('staff:attendance');
         const isAdmin = await checkIsAdmin(req);
 
         if (!hasGuardOrManage && !isAdmin) {

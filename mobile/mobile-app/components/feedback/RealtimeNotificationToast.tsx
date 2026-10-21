@@ -75,50 +75,50 @@ export const RealtimeNotificationToast: React.FC<RealtimeNotificationToastProps>
         className
       )}
     >
-      <TouchableOpacity
-        onPress={() => {
-          if (onPressBanner) {
-            onPressBanner(notification);
-          }
-          onDismiss();
-        }}
-        activeOpacity={0.9}
-        accessibilityRole="button"
-        className="p-3.5 flex-row items-center gap-3 bg-card"
-      >
-        {/* Type Icon Badge Container */}
-        <View className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center shrink-0">
-          {getIcon(notification.type)}
-        </View>
-
-        {/* Text Content */}
-        <View className="flex-1 pe-2">
-          <View className="flex-row items-center justify-between gap-1">
-            <Text
-              className="text-xs font-black text-foreground tracking-tight"
-              numberOfLines={1}
-            >
-              {notification.title || 'New Notification'}
-            </Text>
-            <View className="bg-primary/15 px-1.5 py-0.5 rounded-full">
-              <Text className="text-[9px] font-bold text-primary">LIVE</Text>
-            </View>
-          </View>
-
-          <Text
-            className="text-[11px] text-muted-foreground mt-0.5 leading-snug"
-            numberOfLines={2}
-          >
-            {notification.body || ''}
-          </Text>
-        </View>
-
-        {/* Close Button */}
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
+      <View className="p-3.5 flex-row items-center gap-3 bg-card">
+        {/* Clickable notification banner content */}
+        <TouchableOpacity
+          onPress={() => {
+            if (onPressBanner) {
+              onPressBanner(notification);
+            }
             onDismiss();
           }}
+          activeOpacity={0.9}
+          accessibilityRole="button"
+          className="flex-1 flex-row items-center gap-3"
+        >
+          {/* Type Icon Badge Container */}
+          <View className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center shrink-0">
+            {getIcon(notification.type)}
+          </View>
+
+          {/* Text Content */}
+          <View className="flex-1 pe-2">
+            <View className="flex-row items-center justify-between gap-1">
+              <Text
+                className="text-xs font-black text-foreground tracking-tight"
+                numberOfLines={1}
+              >
+                {notification.title || 'New Notification'}
+              </Text>
+              <View className="bg-primary/15 px-1.5 py-0.5 rounded-full">
+                <Text className="text-[9px] font-bold text-primary">LIVE</Text>
+              </View>
+            </View>
+
+            <Text
+              className="text-[11px] text-muted-foreground mt-0.5 leading-snug"
+              numberOfLines={2}
+            >
+              {notification.body || ''}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Close Button - sibling to TouchableOpacity, avoiding nested HTML button error */}
+        <Pressable
+          onPress={onDismiss}
           accessibilityRole="button"
           accessibilityLabel="Dismiss notification"
           hitSlop={8}
@@ -126,7 +126,7 @@ export const RealtimeNotificationToast: React.FC<RealtimeNotificationToastProps>
         >
           <X size={14} className="text-muted-foreground" />
         </Pressable>
-      </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 };

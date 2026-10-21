@@ -17,6 +17,7 @@ import {
   UserFilterSheet,
   UserData,
   AssignedUnit,
+  InviteUserData,
 } from '@/src/features/userManagement';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { Text } from '@/components/ui/text';
@@ -122,6 +123,12 @@ export default function UserManagementScreen() {
   const [deleting, setDeleting] = useState(false);
 
 
+
+  const handleSendInvite = async (inviteData: InviteUserData) => {
+    const res = await inviteUser(inviteData);
+    refreshUsers();
+    return res;
+  };
 
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
