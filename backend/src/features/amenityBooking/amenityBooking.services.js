@@ -21,16 +21,18 @@ export const UNPAID_EXPIRY_REASON = 'Payment was not completed in time';
 
 export class AmenityBookingService {
   async getBookingsQueue(orgId, page = 1, limit = 10, filters = {}) {
-    const skip = (page - 1) * limit;
-    const { data, totalRecords, summary, amenitySummary } = await amenityBookingRepository.findByOrgPaginated(orgId, filters, skip, limit);
-    const totalPages = Math.ceil(totalRecords / limit);
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.max(1, parseInt(limit, 10) || 10);
+    const skip = (safePage - 1) * safeLimit;
+    const { data, totalRecords, summary, amenitySummary } = await amenityBookingRepository.findByOrgPaginated(orgId, filters, skip, safeLimit);
+    const totalPages = Math.max(1, Math.ceil(totalRecords / safeLimit));
     return {
       data,
       pagination: {
         totalRecords,
-        currentPage: page,
-        totalPages: totalPages || 1,
-        limit,
+        currentPage: safePage,
+        totalPages,
+        limit: safeLimit,
       },
       summary: summary || {
         totalRevenue: 0,

@@ -53,6 +53,7 @@ import directoryRouter from '../features/directory/directory.router.js';
 import communityNoteRouter from '../features/communityNote/communityNote.router.js';
 import directoryMessageRouter from '../features/directoryMessage/directoryMessage.router.js';
 import issueReportRouter, { platformReportRouter } from '../features/issueReport/issueReport.router.js';
+import emergencySosRouter from '../features/emergencySos/emergencySos.routes.js';
 
 const router = Router();
 
@@ -98,6 +99,7 @@ router.use('/payments', paymentRouter);
 router.use('/amenity-dashboard', amenityDashboardRouter);
 router.use('/wallet', walletRouter);
 router.use('/security-logs', securityLogRouter);
+router.use('/emergency-sos', emergencySosRouter);
 
 // Complaint and Technician routes (resolved merge conflict)
 router.use('/complaints/settings', complaintSettingsRouter);

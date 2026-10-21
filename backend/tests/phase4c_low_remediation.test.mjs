@@ -573,10 +573,24 @@ describe('Phase 4C: Low-Priority Tenant-Isolation Remediation Integration', () =
       assert.strictEqual(res.headers.get('content-type'), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       
       const buffer = Buffer.from(await res.arrayBuffer());
-      const xlsx = await import('xlsx');
-      const workbook = xlsx.read(buffer, { type: 'buffer' });
-      const sheet = workbook.Sheets['Complaints'];
-      const rows = xlsx.utils.sheet_to_json(sheet);
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      const sheet = workbook.getWorksheet('Complaints');
+      const rows = [];
+      const headers = [];
+      sheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.value;
+      });
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) {
+          const rowObj = {};
+          row.eachCell((cell, colNumber) => {
+            rowObj[headers[colNumber]] = cell.value;
+          });
+          rows.push(rowObj);
+        }
+      });
 
       // Resident A must ONLY see their own complaint (CMP-A1-001)
       assert.strictEqual(rows.length, 1);
@@ -594,10 +608,24 @@ describe('Phase 4C: Low-Priority Tenant-Isolation Remediation Integration', () =
 
       assert.strictEqual(res.status, 200);
       const buffer = Buffer.from(await res.arrayBuffer());
-      const xlsx = await import('xlsx');
-      const workbook = xlsx.read(buffer, { type: 'buffer' });
-      const sheet = workbook.Sheets['Complaints'];
-      const rows = xlsx.utils.sheet_to_json(sheet);
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      const sheet = workbook.getWorksheet('Complaints');
+      const rows = [];
+      const headers = [];
+      sheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.value;
+      });
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) {
+          const rowObj = {};
+          row.eachCell((cell, colNumber) => {
+            rowObj[headers[colNumber]] = cell.value;
+          });
+          rows.push(rowObj);
+        }
+      });
 
       // Admin A sees both Org A complaints, but zero Org B complaints
       assert.strictEqual(rows.length, 2);

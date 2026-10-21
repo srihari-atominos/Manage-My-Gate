@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Linking, TouchableOpacity } from 'react-native';
+import { View, Linking, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { ListCard } from '@/components/ui/ListCard';
@@ -99,13 +99,20 @@ export const GuardVillaDirectoryView: React.FC = () => {
       />
 
       {/* Filter Chips */}
-      <View className="flex-row items-center gap-2">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled
+        directionalLockEnabled
+        keyboardShouldPersistTaps="handled"
+        contentContainerClassName="gap-2"
+      >
         {(['ALL', 'Occupied', 'Vacant'] as const).map((st) => (
           <TouchableOpacity
             key={st}
             onPress={() => setStatusFilter(st)}
             activeOpacity={0.7}
-            className={`min-h-11 px-3.5 py-2 rounded-full border items-center justify-center ${
+            className={`min-h-11 px-3.5 py-2 rounded-full border items-center justify-center shrink-0 ${
               statusFilter === st
                 ? 'bg-primary border-primary'
                 : 'bg-card border-border'
@@ -120,7 +127,7 @@ export const GuardVillaDirectoryView: React.FC = () => {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 

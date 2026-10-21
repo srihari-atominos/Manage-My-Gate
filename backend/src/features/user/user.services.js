@@ -155,17 +155,19 @@ export class UserService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const skip = (page - 1) * limit;
-      const { data, totalRecords } = await userRepository.findAllPaginated(skip, limit, session);
+      const safePage = Math.max(1, parseInt(page, 10) || 1);
+      const safeLimit = Math.max(1, parseInt(limit, 10) || 10);
+      const skip = (safePage - 1) * safeLimit;
+      const { data, totalRecords } = await userRepository.findAllPaginated(skip, safeLimit, session);
       await session.commitTransaction();
-      const totalPages = Math.ceil(totalRecords / limit);
+      const totalPages = Math.max(1, Math.ceil(totalRecords / safeLimit));
       return {
         data,
         pagination: {
           totalRecords,
-          currentPage: page,
-          totalPages: totalPages || 1,
-          limit,
+          currentPage: safePage,
+          totalPages,
+          limit: safeLimit,
         },
       };
     } catch (error) {

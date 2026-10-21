@@ -6,7 +6,9 @@ import { escapeRegex } from '../../utils/regex.utils.js';
 export const directoryRepository = {
   async getPaginatedDirectory({ orgId, role, search, page = 1, limit = 50 }) {
     const cleanOrgId = new mongoose.Types.ObjectId(orgId);
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.max(1, parseInt(limit, 10) || 50);
+    const skip = (safePage - 1) * safeLimit;
 
     // Match Stage for OrgMembership
     const matchStage = {

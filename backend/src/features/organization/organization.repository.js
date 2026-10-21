@@ -45,7 +45,9 @@ export class OrganizationRepository {
   }
 
   async findAllPaginated(page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.max(1, parseInt(limit, 10) || 10);
+    const skip = (safePage - 1) * safeLimit;
     const matchQuery = { isPlatform: { $ne: true } };
     const result = await Organization.aggregate([
       { $match: matchQuery },
@@ -187,7 +189,9 @@ export class OrganizationRepository {
 
   async findOrgUsersPaginated(orgId, { page = 1, limit = 10, search = '', role = '', status = '' }) {
     const objectId = new mongoose.Types.ObjectId(orgId);
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.max(1, parseInt(limit, 10) || 10);
+    const skip = (safePage - 1) * safeLimit;
 
     const pipeline = [
       { $match: { orgId: objectId } },

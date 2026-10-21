@@ -222,9 +222,15 @@ apiClient.interceptors.request.use(
     // Dynamically align baseURL with the active runtime environment
     config.baseURL = getApiBaseUrl();
 
+    // Enforce Production TLS & Domain Integrity (OWASP MASVS-NETWORK)
+    if (!__DEV__ && config.baseURL && config.baseURL.startsWith('http://')) {
+      throw new Error('Insecure HTTP traffic blocked. Production API requires TLS/HTTPS.');
+    }
+
     // Generate and inject a unique Request Correlation ID
     const requestId = (config.headers['X-Request-ID'] as string) || generateUUID();
     config.headers['X-Request-ID'] = requestId;
+    config.headers['X-Client-Timestamp'] = Date.now().toString();
     (config as any)._requestId = requestId;
 
     if (!config.signal) {

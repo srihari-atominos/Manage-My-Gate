@@ -385,7 +385,7 @@ export class PaymentService {
         page,
         limit,
         totalRecords,
-        totalPages: Math.ceil(totalRecords / limit),
+        totalPages: Math.max(1, Math.ceil(totalRecords / limit)),
       },
     };
   }

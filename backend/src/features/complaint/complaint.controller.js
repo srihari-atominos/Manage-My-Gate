@@ -224,29 +224,40 @@ class ComplaintController {
         return res.status(404).json({ success: false, message: 'No records found to export' });
       }
 
-      // Convert to Excel
-      const xlsx = await import('xlsx');
-      
-      const excelData = complaints.data.map(c => ({
-        'Complaint No': c.complaintNumber || '',
-        'Resident': c.residentName || (c.residentId && c.residentId.username) || '',
-        'Category': c.category || '',
-        'Priority': c.priority || '',
-        'Status': c.status || '',
-        'SLA Status': c.slaStatus || '',
-        'Assigned To': c.assignedTechnicianName || c.vendor || 'Unassigned',
-        'Created At': new Date(c.createdAt).toLocaleString()
-      }));
+      // Convert to Excel using ExcelJS (secure, prototype pollution free)
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Complaints');
 
-      const worksheet = xlsx.utils.json_to_sheet(excelData);
-      const workbook = xlsx.utils.book_new();
-      xlsx.utils.book_append_sheet(workbook, worksheet, "Complaints");
-      
-      const excelBuffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      worksheet.columns = [
+        { header: 'Complaint No', key: 'complaintNumber', width: 18 },
+        { header: 'Resident', key: 'resident', width: 22 },
+        { header: 'Category', key: 'category', width: 16 },
+        { header: 'Priority', key: 'priority', width: 12 },
+        { header: 'Status', key: 'status', width: 14 },
+        { header: 'SLA Status', key: 'slaStatus', width: 14 },
+        { header: 'Assigned To', key: 'assignedTo', width: 20 },
+        { header: 'Created At', key: 'createdAt', width: 22 },
+      ];
+
+      complaints.data.forEach((c) => {
+        worksheet.addRow({
+          complaintNumber: c.complaintNumber || '',
+          resident: c.residentName || (c.residentId && c.residentId.username) || '',
+          category: c.category || '',
+          priority: c.priority || '',
+          status: c.status || '',
+          slaStatus: c.slaStatus || '',
+          assignedTo: c.assignedTechnicianName || c.vendor || 'Unassigned',
+          createdAt: new Date(c.createdAt).toLocaleString(),
+        });
+      });
+
+      const excelBuffer = await workbook.xlsx.writeBuffer();
       
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename="complaints_export.xlsx"');
-      res.status(200).send(excelBuffer);
+      res.status(200).send(Buffer.from(excelBuffer));
     } catch (error) {
       next(error);
     }

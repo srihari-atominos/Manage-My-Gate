@@ -62,6 +62,9 @@ export function KPIDashboardStrip({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled
+        directionalLockEnabled
+        keyboardShouldPersistTaps="handled"
         className={cn('w-full', className)}
         contentContainerClassName={cn('flex-row gap-3', contentContainerClassName)}
       >
@@ -105,6 +108,9 @@ export function KPIDashboardStrip({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      nestedScrollEnabled
+      directionalLockEnabled
+      keyboardShouldPersistTaps="handled"
       className={cn('w-full', className)}
       contentContainerClassName={cn('flex-row gap-3', contentContainerClassName)}
     >

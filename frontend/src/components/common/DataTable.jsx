@@ -119,9 +119,9 @@ const DataTable = ({
           {totalPages >= 1 && (
             <CPagination className="mb-0" size="sm" aria-label="Page navigation">
               <CPaginationItem
-                disabled={currentPage === 1}
-                onClick={() => onPageChange(currentPage - 1)}
-                className={`datatable-page-item ${currentPage === 1 ? 'disabled' : ''}`}
+                disabled={currentPage <= 1}
+                onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
+                className={`datatable-page-item ${currentPage <= 1 ? 'disabled' : ''}`}
               >
                 Previous
               </CPaginationItem>
@@ -136,9 +136,9 @@ const DataTable = ({
                 </CPaginationItem>
               ))}
               <CPaginationItem
-                disabled={currentPage === totalPages}
-                onClick={() => onPageChange(currentPage + 1)}
-                className={`datatable-page-item ${currentPage === totalPages ? 'disabled' : ''}`}
+                disabled={currentPage >= totalPages}
+                onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
+                className={`datatable-page-item ${currentPage >= totalPages ? 'disabled' : ''}`}
               >
                 Next
               </CPaginationItem>

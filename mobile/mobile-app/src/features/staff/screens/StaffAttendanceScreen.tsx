@@ -18,7 +18,6 @@ import { StaffAttendanceFilterSheet } from '../components/StaffAttendanceFilterS
 import { StaffMember, staffService } from '../services/staffService';
 import {
   ShieldAlert,
-  RotateCw,
   CalendarClock,
   FileDown,
   Filter,
@@ -223,18 +222,6 @@ export const StaffAttendanceScreen: React.FC = () => {
     <ScreenShell
       title="Staff Attendance"
       subtitle="Gate Attendance & Reports"
-      headerRight={
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-9 w-9 rounded-full"
-          onPress={handleRefresh}
-          disabled={isAttendanceLoading}
-          accessibilityLabel="Refresh attendance"
-        >
-          <RotateCw size={18} className={`text-foreground ${isAttendanceLoading ? 'animate-spin' : ''}`} />
-        </Button>
-      }
     >
       {/* Attendance Summary Metrics */}
       <View className="flex-row gap-2 px-4 py-2">
@@ -501,7 +488,6 @@ export const StaffAttendanceScreen: React.FC = () => {
 };
 
 export default StaffAttendanceScreen;
-
 
 
 

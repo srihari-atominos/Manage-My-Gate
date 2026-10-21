@@ -187,9 +187,9 @@ export const ConnectionTable = ({
             </span>
             <CPagination className="mb-0">
               <CPaginationItem
-                disabled={currentPage === 1}
-                onClick={() => onPageChange(currentPage - 1)}
-                style={{ cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                disabled={currentPage <= 1}
+                onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
+                style={{ cursor: currentPage <= 1 ? 'not-allowed' : 'pointer' }}
               >
                 {t('integrationHub.pagination.prev', 'Previous')}
               </CPaginationItem>
@@ -204,11 +204,11 @@ export const ConnectionTable = ({
                 </CPaginationItem>
               ))}
               <CPaginationItem
-                disabled={currentPage === totalPages || totalPages === 0}
-                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages || totalPages === 0}
+                onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
                 style={{
                   cursor:
-                    currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer',
+                    currentPage >= totalPages || totalPages === 0 ? 'not-allowed' : 'pointer',
                 }}
               >
                 {t('integrationHub.pagination.next', 'Next')}

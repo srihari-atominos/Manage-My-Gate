@@ -5,7 +5,8 @@ import Notice from '../features/noticeBoard/noticeBoard.model.js';
 import Complaint from '../features/complaint/complaint.model.js';
 import User from '../features/user/user.model.js';
 import OrgMembership from '../features/orgMembership/orgMembership.model.js';
-import { isPlatformAdministrator } from './rbac.middleware.js';
+import { checkIsAdmin } from './rbac.middleware.js';
+import { verifyToken } from '../utils/jwt.utils.js';
 
 const notFound = () => new HttpError(404, 'Upload not found.');
 
@@ -13,13 +14,14 @@ const urlsFor = (kind, filename) => [
   `/uploads/${kind}/${filename}`,
   `/public/uploads/${kind}/${filename}`,
   `uploads/${kind}/${filename}`,
+  filename,
 ];
 
 /**
- * Authorizes legacy upload URLs before express.static is allowed to read from
- * disk. File names are treated as untrusted, and the owning tenant record is
- * checked server-side. Platform users are allowed to inspect support data;
- * ordinary users can only read files owned by their active tenant.
+ * Authorizes upload URLs before express.static is allowed to read from disk.
+ * File names are treated as untrusted, and the owning tenant record is checked server-side.
+ * Platform users are allowed to inspect support data; ordinary users can only read files
+ * owned by their active tenant. Unauthenticated callers are rejected with 404 (preventing file probing).
  */
 export const authorizeUploadAccess = async (req, res, next) => {
   try {
@@ -30,53 +32,121 @@ export const authorizeUploadAccess = async (req, res, next) => {
     const [kind, filename] = parts;
     if (!kind || !filename || filename !== path.basename(filename)) throw notFound();
 
-    const orgId = req.tenant?.orgId;
-    const isPlatformAdmin = isPlatformAdministrator(req.user, req.tenantRole || req.user?.role);
-    if (!orgId && !isPlatformAdmin) throw notFound();
+    // Block directory traversal or suspicious hidden files
+    if (filename.startsWith('.') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      throw notFound();
+    }
 
     const urlCandidates = urlsFor(kind, filename);
-    const tenantFilter = isPlatformAdmin ? {} : { orgId };
-    let owner = null;
+
+    // Avatars: verify user exists in system
+    if (kind === 'avatars') {
+      const user = await User.findOne({ avatar: { $in: urlCandidates } }).select('_id').lean();
+      if (user) return next();
+      throw notFound();
+    }
+
+    // Resolve authentication from Authorization header, Cookie, or Query parameter (for <img> tags)
+    if (!req.user) {
+      let token = null;
+      if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        token = req.headers.authorization.split(' ')[1];
+      } else if (req.cookies && req.cookies.token) {
+        token = req.cookies.token;
+      } else if (req.query && (req.query.token || req.query.media_token)) {
+        token = String(req.query.token || req.query.media_token);
+      }
+
+      if (token) {
+        try {
+          req.user = verifyToken(token);
+        } catch {
+          // Token expired or invalid
+        }
+      }
+    }
+
+    if (!req.user) {
+      throw notFound();
+    }
+
+    const isPlatformAdmin = Boolean(req.user.isPlatform === true || req.tenant?.isPlatform === true || req.user?.role === 'Platform Super Admin');
+    const userId = req.user.id || req.user._id;
 
     if (kind === 'invoices') {
-      owner = await Invoice.exists({
-        ...tenantFilter,
+      const invoice = await Invoice.findOne({
         $or: [
           { paymentScreenshot: { $in: urlCandidates } },
           { 'invoiceDocuments.url': { $in: urlCandidates } },
         ],
+      }).select('orgId userId').lean();
+
+      if (!invoice) throw notFound();
+      if (isPlatformAdmin) return next();
+
+      // Verify active membership in the organization owning the invoice
+      const isMember = await OrgMembership.exists({
+        userId,
+        orgId: invoice.orgId,
+        status: 'Active',
       });
-    } else if (kind === 'notices') {
-      owner = await Notice.exists({
-        ...tenantFilter,
+      if (!isMember) throw notFound();
+
+      // Non-admin residents may only view invoices for their own unit/user
+      const isAdmin = await checkIsAdmin(req);
+      if (!isAdmin && invoice.userId && String(invoice.userId) !== String(userId)) {
+        throw notFound();
+      }
+
+      return next();
+    }
+
+    if (kind === 'notices') {
+      const notice = await Notice.findOne({
         $or: [
           { image: { $in: urlCandidates } },
           { 'images.filename': filename },
           { 'images.url': { $in: urlCandidates } },
           { attachments: { $in: urlCandidates } },
         ],
+      }).select('orgId').lean();
+
+      if (!notice) throw notFound();
+      if (isPlatformAdmin) return next();
+
+      const isMember = await OrgMembership.exists({
+        userId,
+        orgId: notice.orgId,
+        status: 'Active',
       });
-    } else if (kind === 'complaints') {
-      owner = await Complaint.exists({
-        ...tenantFilter,
+      if (!isMember) throw notFound();
+
+      return next();
+    }
+
+    if (kind === 'complaints') {
+      const complaint = await Complaint.findOne({
         $or: [
           { attachments: { $in: urlCandidates } },
           { 'timeline.attachments': { $in: urlCandidates } },
         ],
+      }).select('orgId residentId assignedTechnicianId').lean();
+
+      if (!complaint) throw notFound();
+      if (isPlatformAdmin) return next();
+
+      const isMember = await OrgMembership.exists({
+        userId,
+        orgId: complaint.orgId,
+        status: 'Active',
       });
-    } else if (kind === 'avatars') {
-      const user = await User.findOne({ avatar: { $in: urlCandidates } }).select('_id').lean();
-      if (user && !isPlatformAdmin) {
-        owner = await OrgMembership.exists({ userId: user._id, orgId, status: 'Active' });
-      } else {
-        owner = user;
-      }
-    } else {
-      throw notFound();
+      if (!isMember) throw notFound();
+
+      return next();
     }
 
-    if (!owner) throw notFound();
-    return next();
+    // Any other kind is not allowed
+    throw notFound();
   } catch (error) {
     return next(error instanceof HttpError ? error : notFound());
   }

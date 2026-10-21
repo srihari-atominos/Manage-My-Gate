@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "9a61dbfd-53d6-43b5-93a5-1a0ba71de46b"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.atominos.managemygatemonorepo",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

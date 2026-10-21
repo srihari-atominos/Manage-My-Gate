@@ -263,7 +263,9 @@ export class NoticeBoardService {
    * Get all notices with pagination, filters, search, and sorting.
    */
   async getAllNotices(orgId, userId, page = 1, limit = 10, queryParams = {}, restrictToPublished = false) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.max(1, parseInt(limit, 10) || 10);
+    const skip = (safePage - 1) * safeLimit;
     const currentDate = new Date();
 
     // 1. Auto-publish scheduled notices whose dates have passed
@@ -357,8 +359,8 @@ export class NoticeBoardService {
     }
 
     // 5. Query repository
-    const { data, totalRecords } = await noticeRepository.getNotices(orgId, skip, limit, filters, sort);
-    const totalPages = Math.ceil(totalRecords / limit);
+    const { data, totalRecords } = await noticeRepository.getNotices(orgId, skip, safeLimit, filters, sort);
+    const totalPages = Math.max(1, Math.ceil(totalRecords / safeLimit));
 
     // 6. Bulk fetch acknowledgements for the current user
     const reqAckNoticeIds = data.filter(n => n.requiresAcknowledgement).map(n => n._id);
@@ -410,9 +412,9 @@ export class NoticeBoardService {
       data: mappedData,
       pagination: {
         totalRecords,
-        currentPage: page,
-        totalPages: totalPages || 1,
-        limit,
+        currentPage: safePage,
+        totalPages,
+        limit: safeLimit,
       },
     };
   }

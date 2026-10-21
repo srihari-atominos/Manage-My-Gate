@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
+import { HeaderActionButton } from '@/components/ui/HeaderActionButton';
 import { FAB } from '@/components/ui/FAB';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { EmptyState } from '@/components/feedback/EmptyState';
@@ -293,16 +293,12 @@ export const ResidentStaffScreen: React.FC<ResidentStaffScreenProps> = ({ embedd
       showBackButton
       headerRight={
         hasAssignPermission ? (
-          <Button
-            size="sm"
-            variant="default"
-            className="h-9 px-3 flex-row items-center gap-1 shadow-xs"
+          <HeaderActionButton
             onPress={() => setIsAssociateModalOpen(true)}
+            icon={Plus}
+            label="Associate Staff"
             accessibilityLabel="Associate Staff to Unit"
-          >
-            <Plus size={16} className="text-primary-foreground" />
-            <Text className="text-xs font-bold text-primary-foreground">Associate Staff</Text>
-          </Button>
+          />
         ) : undefined
       }
     >

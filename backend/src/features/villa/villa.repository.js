@@ -102,7 +102,9 @@ export class VillaRepository {
     if (filters.type) matchQuery.type = filters.type;
     if (filters.floor) matchQuery.floor = filters.floor;
 
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.max(1, parseInt(limit, 10) || 10);
+    const skip = (safePage - 1) * safeLimit;
 
     const sortObj = {};
     const order = sortOrder === 'desc' ? -1 : 1;

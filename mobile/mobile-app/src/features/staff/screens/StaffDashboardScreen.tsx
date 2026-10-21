@@ -13,7 +13,6 @@ import { StaffAttendanceCard } from '../components/StaffAttendanceCard';
 import { StaffMemberAttendanceModal } from '../components/StaffMemberAttendanceModal';
 import { useStaffDashboard } from '../hooks/useStaffDashboard';
 import {
-  LogOut,
   ClipboardList,
   ChevronRight,
   ShieldAlert,
@@ -53,11 +52,7 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
     handleRejectAllocation,
     myAttendanceRecords,
     isAttendanceLoading,
-    showLogoutConfirm,
     refreshProfile,
-    confirmLogout,
-    cancelLogout,
-    executeLogout,
     canViewWorkOrders,
     canViewAttendance,
     canViewAllocations,
@@ -453,17 +448,6 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
         loading={Boolean(actionInProgressId)}
       />
 
-      {/* Logout Confirmation Dialog */}
-      <ConfirmationModal
-        visible={showLogoutConfirm}
-        title="Sign Out"
-        message="Are you sure you want to sign out of your staff account?"
-        confirmLabel="Sign Out"
-        cancelLabel="Cancel"
-        onConfirm={executeLogout}
-        onCancel={cancelLogout}
-        variant="danger"
-      />
     </View>
   );
 
@@ -476,16 +460,6 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
       title="Staff Dashboard"
       subtitle="Personal Self-Service Portal"
       showBackButton={true}
-      headerRight={
-        <TouchableOpacity
-          onPress={confirmLogout}
-          className="h-9 w-9 rounded-xl bg-destructive/10 border border-destructive/20 items-center justify-center"
-          accessibilityRole="button"
-          accessibilityLabel="Sign out of staff portal"
-        >
-          <LogOut size={16} className="text-destructive" />
-        </TouchableOpacity>
-      }
     >
       {content}
     </ScreenShell>
@@ -493,7 +467,6 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
 };
 
 export default StaffDashboardScreen;
-
 
 
 

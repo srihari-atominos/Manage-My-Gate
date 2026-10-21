@@ -10,7 +10,7 @@ import { KPIRow } from '@/components/ui/KPIRow';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView } from 'expo-camera';
 import { QRScannerOverlay } from '@/components/hardware/QRScannerOverlay';
 import { ScanResultSheet, ScanResultData } from '@/components/hardware/ScanResultSheet';
 import { VisitorPassDetailsModal } from '@/src/features/visitor/components/VisitorPassDetailsModal';
@@ -22,6 +22,7 @@ import { GuardVillaDirectoryView } from '@/src/features/visitor/components/guard
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
 import { useSelector } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import visitorService from '@/src/features/visitor/services/visitorService';
 import staffService, { resolveStaffPhotoUrl, getDepartmentLabel, type StaffScanLookup } from '@/src/features/staff/services/staffService';
 import {
@@ -42,9 +43,12 @@ import {
 import { parseAndValidateAppBarcode } from '@/src/utils/appBarcodeProtocol';
 import { useTranslation } from '@/src/utils/i18n';
 import { isFeatureAllowedForUser } from '@/src/utils/rbac';
+import { useCameraPermissionFlow } from '@/src/hooks/useCameraPermissionFlow';
+import { CameraPermissionPrompt } from '@/components/hardware/CameraPermissionPrompt';
 
 export default function GateConsoleScreen() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const GATE_TABS = [
     { key: 'CONSOLE', label: t('console', 'Console') },
     { key: 'WALK_INS', label: t('walk_ins', 'Walk-Ins') },
@@ -93,7 +97,14 @@ export default function GateConsoleScreen() {
   const [insideCount, setInsideCount] = useState<number>(0);
 
   // Minimized Barcode Scanner Hardware State
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const {
+    permission: cameraPermission,
+    requestCameraAccess,
+    settingsHint,
+    settingsPromptVisible,
+    dismissSettingsPrompt,
+    confirmSettingsPrompt,
+  } = useCameraPermissionFlow();
   const [isScannerMinimized, setIsScannerMinimized] = useState(false);
   const [inlineTorchOn, setInlineTorchOn] = useState(false);
 
@@ -480,6 +491,14 @@ export default function GateConsoleScreen() {
     }
   };
 
+  const handleDenyVisitor = () => {
+    if (admitLoading) return;
+    const visitorName = scanResult?.visitorName || 'visitor';
+    setScanResultSheetOpen(false);
+    setPassCode('');
+    setStatusMessage(`Entry denied for ${visitorName}.`);
+  };
+
   const handleCheckOutFromConsole = async () => {
     const logIdToRelease = groupCheckoutLogId && !isInsideAction ? groupCheckoutLogId : activeLogId;
     if (!logIdToRelease) {
@@ -605,10 +624,13 @@ export default function GateConsoleScreen() {
         ) : (
           <ScrollView
             className="flex-1"
-            contentContainerClassName="px-4 gap-4 pb-28 pt-2"
+            contentContainerClassName="px-4 gap-4 pt-2"
+            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 72, 112) }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            nestedScrollEnabled
+            directionalLockEnabled
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}
           >
             {statusMessage && (
@@ -678,11 +700,16 @@ export default function GateConsoleScreen() {
                     <Button
                       size="sm"
                       variant="default"
-                      onPress={requestCameraPermission}
+                      onPress={() => void requestCameraAccess()}
                       className="bg-emerald-600 px-4 py-1.5 rounded-lg mt-1"
                     >
                       <Text className="text-xs font-bold text-white">{t('continue', 'Continue')}</Text>
                     </Button>
+                    {settingsHint ? (
+                      <Text className="text-[11px] text-white/70 text-center px-4 mt-1">
+                        {settingsHint}
+                      </Text>
+                    ) : null}
                   </View>
                 ) : (
                   <View className="h-48 w-full rounded-xl overflow-hidden bg-black relative border border-emerald-500/30">
@@ -759,6 +786,12 @@ export default function GateConsoleScreen() {
         )}
       </View>
 
+      <CameraPermissionPrompt
+        visible={settingsPromptVisible}
+        onNo={dismissSettingsPrompt}
+        onYes={confirmSettingsPrompt}
+      />
+
       {/* Hardware / Verification Scan Result Sheet with Admit / Checkout Action */}
       <ScanResultSheet
         visible={scanResultSheetOpen}
@@ -798,6 +831,7 @@ export default function GateConsoleScreen() {
         }
         extraActionDisabled={isStaffResult && !staffScan?.lookup.canCheckOut}
         onSecondaryAction={() => setScanResultSheetOpen(false)}
+        onDenyAction={handleDenyVisitor}
         onClose={() => setScanResultSheetOpen(false)}
       />
 

@@ -107,8 +107,10 @@ export class RoleService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const skip = (page - 1) * limit;
-      const { data, totalRecords, scopeCounts } = await roleRepository.findAllPaginated(orgId, skip, limit, session, search, scope);
+      const safePage = Math.max(1, parseInt(page, 10) || 1);
+      const safeLimit = Math.max(1, parseInt(limit, 10) || 10);
+      const skip = (safePage - 1) * safeLimit;
+      const { data, totalRecords, scopeCounts } = await roleRepository.findAllPaginated(orgId, skip, safeLimit, session, search, scope);
       await session.commitTransaction();
       if (orgId && data.length > 0) {
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
@@ -117,14 +119,14 @@ export class RoleService {
           r.memberCount = counts[String(r._id)] || 0;
         });
       }
-      const totalPages = Math.ceil(totalRecords / limit);
+      const totalPages = Math.max(1, Math.ceil(totalRecords / safeLimit));
       return {
         data,
         pagination: {
           totalRecords,
-          currentPage: page,
-          totalPages: totalPages || 1,
-          limit,
+          currentPage: safePage,
+          totalPages,
+          limit: safeLimit,
         },
         scopeCounts,
       };

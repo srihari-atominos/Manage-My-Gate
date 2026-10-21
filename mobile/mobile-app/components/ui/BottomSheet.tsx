@@ -7,6 +7,7 @@ import {
   Platform,
   Keyboard,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './text';
 import { X } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
@@ -44,6 +45,7 @@ function BottomSheet({
   footer,
 }: AppBottomSheetProps) {
   const { height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   if (!visible) return null;
 
   const sheetMaxHeight = Platform.OS === 'web'
@@ -108,7 +110,7 @@ function BottomSheet({
             style={{ flex: 1 }}
             extraScrollHeight={48}
             contentContainerStyle={[
-              { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 48, flexGrow: 1 },
+              { paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(insets.bottom + 24, 48), flexGrow: 1 },
               contentContainerStyle,
             ]}
             showsVerticalScrollIndicator={true}

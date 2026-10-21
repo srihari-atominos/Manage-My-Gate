@@ -9,8 +9,8 @@ import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { SkeletonLoader } from '@/components/feedback/SkeletonLoader';
-import { FAB } from '@/components/ui/FAB';
 import { Button } from '@/components/ui/button';
+import { HeaderActionButton } from '@/components/ui/HeaderActionButton';
 import { Text } from '@/components/ui/text';
 import {
   useStaffManagement,
@@ -35,7 +35,6 @@ import {
   Users,
   ShieldAlert,
   Plus,
-  RotateCw,
   CalendarClock,
   Home,
   UserCheck,
@@ -315,16 +314,6 @@ export default function StaffManagementScreen() {
     }
   };
 
-  const handleRefresh = () => {
-    if (activeTab === 'directory') {
-      loadStaff();
-    } else if (activeTab === 'attendance') {
-      loadAttendance();
-    }
-  };
-
-  const isCurrentLoading = activeTab === 'directory' ? isLoading : activeTab === 'attendance' ? isAttendanceLoading : false;
-
   const hasAnyStaffAccess = canAccessDirectory || canAccessAttendance || canAccessAllocations || canAccessPortal || hasViewPermission;
 
   // 1. RBAC Guard: Permission Denied View
@@ -364,16 +353,14 @@ export default function StaffManagementScreen() {
       title="Staff Management"
       subtitle={getSubtitle()}
       headerRight={
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-9 w-9 rounded-full"
-          onPress={handleRefresh}
-          disabled={isCurrentLoading}
-          accessibilityLabel="Refresh current view"
-        >
-          <RotateCw size={18} className={`text-foreground ${isCurrentLoading ? 'animate-spin' : ''}`} />
-        </Button>
+        activeTab === 'directory' && hasManagePermission ? (
+          <HeaderActionButton
+            onPress={handleOpenCreate}
+            icon={Plus}
+            label="Add Staff"
+            accessibilityLabel="Add Staff"
+          />
+        ) : undefined
       }
     >
       {/* Top Segmented Tab Switcher (4 Unified Hub Tabs) */}
@@ -557,20 +544,8 @@ export default function StaffManagementScreen() {
                       : 'No staff members match the selected search or filter criteria.'
                   }
                   icon={Users}
-                  actionLabel={
-                    rawCount === 0 && hasManagePermission
-                      ? '+ Add First Staff Member'
-                      : activeFilterCount > 0
-                      ? 'Clear Filters'
-                      : undefined
-                  }
-                  onAction={
-                    rawCount === 0 && hasManagePermission
-                      ? handleOpenCreate
-                      : activeFilterCount > 0
-                      ? handleResetFilters
-                      : undefined
-                  }
+                  actionLabel={activeFilterCount > 0 ? 'Clear Filters' : undefined}
+                  onAction={activeFilterCount > 0 ? handleResetFilters : undefined}
                 />
               )
             }
@@ -585,14 +560,6 @@ export default function StaffManagementScreen() {
             )}
           />
 
-          {/* Floating Action Button for Adding Staff */}
-          {hasManagePermission ? (
-            <FAB
-              label="Add Staff"
-              iconName="Plus"
-              onPress={handleOpenCreate}
-            />
-          ) : null}
         </>
       ) : activeTab === 'attendance' ? (
         /* TAB 2: ATTENDANCE LOGS & REPORTING */
@@ -901,8 +868,6 @@ export default function StaffManagementScreen() {
     </ScreenShell>
   );
 }
-
-
 
 
 

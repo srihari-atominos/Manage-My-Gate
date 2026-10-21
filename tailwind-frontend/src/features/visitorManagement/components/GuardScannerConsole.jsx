@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   Building,
   Car,
-  AlertTriangle
+  AlertTriangle,
+  Users
 } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -36,6 +37,7 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
   // Web Camera scanning states and references
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const [cameraPermissionRequested, setCameraPermissionRequested] = useState(false);
   const isScanningRef = useRef(false);
   const lastScannedCodeRef = useRef({ code: '', time: 0 });
 
@@ -45,6 +47,10 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
     if (scannerMode === 'camera') {
       setCameraActive(false);
       setCameraError('');
+
+      // Request camera access from an explicit user gesture. Auto-starting in
+      // an effect makes the permission overlay unreliable on mobile browsers.
+      if (!cameraPermissionRequested) return undefined;
 
       // Create a small delay to make sure the div #qr-reader is mounted in the DOM
       const timer = setTimeout(() => {
@@ -115,7 +121,12 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
       setCameraActive(false);
       setCameraError('');
     }
-  }, [scannerMode]);
+  }, [scannerMode, cameraPermissionRequested]);
+
+  const handleStartCamera = () => {
+    setCameraError('');
+    setCameraPermissionRequested(true);
+  };
 
   // Check if pass dates and times are active
   const isPassDateActive = (pass) => {
@@ -289,6 +300,14 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
     }
   };
 
+  const handleDeny = () => {
+    if (isLoading) return;
+    const visitorName = matchedPass?.visitorName || matchedPass?.visitorDetails?.name || 'visitor';
+    setMatchedPass(null);
+    setTypedCode('');
+    toast.error(`Access denied for ${visitorName}.`);
+  };
+
   const handleCheckOut = async () => {
     if (!matchedPass || isLoading) return;
     const logId = getActiveLogId(matchedPass);
@@ -402,6 +421,26 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
                         <AlertTriangle className="h-10 w-10 text-red-500 mb-1" />
                         <div className="text-[10px] font-bold text-red-500 uppercase">CAMERA BLOCKED</div>
                         <div className="text-[9px] leading-relaxed max-w-xs">{cameraError}</div>
+                        <Button
+                          type="button"
+                          onClick={handleStartCamera}
+                          className="mt-2 min-h-11 px-5 text-xs font-bold text-white bg-primary hover:bg-primary/90"
+                        >
+                          Try Again
+                        </Button>
+                      </>
+                    ) : !cameraPermissionRequested ? (
+                      <>
+                        <Camera className="h-10 w-10 text-gray-400 mb-1" />
+                        <div className="text-[10px] font-bold tracking-wider">CAMERA ACCESS REQUIRED</div>
+                        <div className="text-[9px] leading-relaxed max-w-xs">Enable camera to scan visitor QR codes.</div>
+                        <Button
+                          type="button"
+                          onClick={handleStartCamera}
+                          className="mt-2 min-h-11 px-5 text-xs font-bold text-white bg-primary hover:bg-primary/90"
+                        >
+                          Continue
+                        </Button>
                       </>
                     ) : (
                       <>
@@ -573,15 +612,28 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
                   </Button>
                 </div>
               ) : showCheckIn ? (
-                <Button 
-                  variant="default"
-                  onClick={handleCheckIn}
-                  disabled={isLoading}
-                  className="w-full text-xs font-bold py-3 bg-success hover:bg-success/90 border-0 flex items-center justify-center gap-1.5 text-white"
-                >
-                  <LogIn className="h-4 w-4" />
-                  {isLoading ? 'Processing check-in...' : 'Confirm Gate Check-In'}
-                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDeny}
+                    disabled={isLoading}
+                    className="w-full min-h-11 text-xs font-bold py-3 border-red-200 text-red-500 hover:bg-red-50 flex items-center justify-center gap-1.5"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Deny Entry
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="default"
+                    onClick={handleCheckIn}
+                    disabled={isLoading}
+                    className="w-full min-h-11 text-xs font-bold py-3 bg-success hover:bg-success/90 border-0 flex items-center justify-center gap-1.5 text-white"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    {isLoading ? 'Processing...' : 'Accept Entry'}
+                  </Button>
+                </div>
               ) : showCheckOut ? (
                 <Button 
                   variant="default"

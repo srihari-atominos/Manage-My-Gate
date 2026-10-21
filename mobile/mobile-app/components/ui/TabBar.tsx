@@ -190,6 +190,9 @@ export const TabBar = React.forwardRef<View, TabBarProps>(
             showsHorizontalScrollIndicator={false}
             className="flex-1"
             contentContainerClassName="gap-1.5 px-0.5 items-center"
+            nestedScrollEnabled
+            directionalLockEnabled
+            keyboardShouldPersistTaps="handled"
           >
             {renderTabs()}
           </ScrollView>

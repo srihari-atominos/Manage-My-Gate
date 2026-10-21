@@ -143,7 +143,9 @@ export const getPopulatedPollById = async (pollId, orgId) => {
 };
 
 export const getPollsByStatus = async (orgId, status = null, page = 1, limit = 20, search = '', sort = 'latest', userContext = null, audienceOr = null) => {
-  const skip = (page - 1) * limit;
+  const safePage = Math.max(1, parseInt(page, 10) || 1);
+  const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
+  const skip = (safePage - 1) * safeLimit;
   const baseMatch = { orgId: new mongoose.Types.ObjectId(orgId) };
   if (status) {
     baseMatch.status = status;
@@ -154,7 +156,7 @@ export const getPollsByStatus = async (orgId, status = null, page = 1, limit = 2
     { $sort: buildSortStage(sort) },
     {
       $facet: {
-        data: [{ $skip: skip }, { $limit: limit }, ...getPopulateCreatorStages()],
+        data: [{ $skip: skip }, { $limit: safeLimit }, ...getPopulateCreatorStages()],
         totalCount: [{ $count: 'count' }]
       }
     }
@@ -167,13 +169,15 @@ export const getPollsByStatus = async (orgId, status = null, page = 1, limit = 2
   return {
     polls: data,
     totalCount,
-    totalPages: Math.ceil(totalCount / limit),
-    currentPage: page
+    totalPages: Math.max(1, Math.ceil(totalCount / safeLimit)),
+    currentPage: safePage
   };
 };
 
 export const getMyPolls = async (orgId, userId, page = 1, limit = 20, search = '', sort = 'latest', userContext = null, audienceOr = null) => {
-  const skip = (page - 1) * limit;
+  const safePage = Math.max(1, parseInt(page, 10) || 1);
+  const safeLimit = Math.max(1, parseInt(limit, 10) || 20);
+  const skip = (safePage - 1) * safeLimit;
   const baseMatch = {
     orgId: new mongoose.Types.ObjectId(orgId),
     createdBy: new mongoose.Types.ObjectId(userId)
@@ -184,7 +188,7 @@ export const getMyPolls = async (orgId, userId, page = 1, limit = 20, search = '
     { $sort: buildSortStage(sort) },
     {
       $facet: {
-        data: [{ $skip: skip }, { $limit: limit }, ...getPopulateCreatorStages()],
+        data: [{ $skip: skip }, { $limit: safeLimit }, ...getPopulateCreatorStages()],
         totalCount: [{ $count: 'count' }]
       }
     }
@@ -197,8 +201,8 @@ export const getMyPolls = async (orgId, userId, page = 1, limit = 20, search = '
   return {
     polls: data,
     totalCount,
-    totalPages: Math.ceil(totalCount / limit),
-    currentPage: page
+    totalPages: Math.max(1, Math.ceil(totalCount / safeLimit)),
+    currentPage: safePage
   };
 };
 

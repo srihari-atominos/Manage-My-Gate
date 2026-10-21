@@ -10,7 +10,7 @@
 
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
-import XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
@@ -892,107 +892,25 @@ async function seed() {
 
   // ─── PHASE 17: EXCEL EXPORT ───────────────────────────────
   console.log('⏳  Phase 16: Generating Excel credentials file…');
-  const wb = XLSX.utils.book_new();
-
-  // ── Sheet 1: User Credentials ──
-  const wsUsers = XLSX.utils.json_to_sheet(credRows);
-  XLSX.utils.book_append_sheet(wb, wsUsers, 'User Credentials');
-
-  // ── Sheet 2: Roles Reference ──
-  const roleRows = roleData.map(r => ({
-    'Role Name':       r.name,
-    'Is Tenant Role':  r.isTenantRole ? 'Yes' : 'No',
-    'Description':     r.description,
-    'Testing Focus':   r.name === 'Community Admin'
-      ? 'Billing dashboard, user management, assessment config, RBAC, complaint routing, org settings.'
-      : r.name === 'Facility Manager'
-      ? 'Amenity CRUD, maintenance scheduling, complaint assignment, technician dispatch.'
-      : r.name === 'Security Guard'
-      ? 'Visitor pass scanning, walk-in entry, gate log management, visitor log review.'
-      : r.name === 'Resident Owner'
-      ? 'My financials, tenant arrears, visitor passes, amenity bookings, complaints submission, notices.'
-      : r.name === 'Resident Tenant'
-      ? 'Invoice view, offline payment submission, visitor passes, amenity bookings, complaints.'
-      : 'Notices view, visitor pass read, limited profile access.',
-  }));
-  const wsRoles = XLSX.utils.json_to_sheet(roleRows);
-  XLSX.utils.book_append_sheet(wb, wsRoles, 'Roles Reference');
-
-  // ── Sheet 3: Units ──
-  const refreshedUnits = await Villa.find({ orgId: org._id }).lean();
-  const unitRows = refreshedUnits.map(u => ({
-    'Unit Number':   u.unitNumber,
-    'Block':         u.blockOrBuilding,
-    'Type':          u.type,
-    'Floor Area (sqft)': u.floorAreaSqFt || 'N/A',
-    'Status':        u.status,
-    'Resident Count': u.residents.length,
-  }));
-  const wsUnits = XLSX.utils.json_to_sheet(unitRows);
-  XLSX.utils.book_append_sheet(wb, wsUnits, 'Units Overview');
-
-  // ── Sheet 4: Testing Scenarios ──
-  const scenarioRows = [
-    { 'Scenario': 'SCEN-001', 'Actor': 'Community Admin', 'Feature': 'Billing Dashboard', 'Steps': '1. Login as admin.\n2. Navigate to Billing.\n3. Verify KPI cards (Total Due, Collected, Pending).\n4. Find VERIFICATION_PENDING invoice and click Settle.\n5. Check audit trail.' },
-    { 'Scenario': 'SCEN-002', 'Actor': 'Community Admin', 'Feature': 'Assessment Management', 'Steps': '1. Login as admin.\n2. Go to Assessments.\n3. Create a new one-time special levy of ₹3,000 targeting Block C villas.\n4. Generate invoices.\n5. Verify invoices appear for affected units.' },
-    { 'Scenario': 'SCEN-003', 'Actor': 'Community Admin', 'Feature': 'User Management & RBAC', 'Steps': '1. Login as admin.\n2. Go to User Management.\n3. Invite a new user.\n4. Assign Facility Manager role.\n5. Verify role permissions and login as new user.' },
-    { 'Scenario': 'SCEN-004', 'Actor': 'Facility Manager', 'Feature': 'Amenity Management', 'Steps': '1. Login as Facility Manager.\n2. Go to Amenities.\n3. Add maintenance window to Swimming Pool (2 days).\n4. Attempt booking during that window — expect blocked.\n5. Approve a pending booking.' },
-    { 'Scenario': 'SCEN-005', 'Actor': 'Facility Manager', 'Feature': 'Complaint Assignment', 'Steps': '1. Login as Facility Manager.\n2. Go to Complaints.\n3. Filter by status=Open.\n4. Assign a Critical complaint to a technician.\n5. Update status to In Progress.\n6. Verify timeline updates.' },
-    { 'Scenario': 'SCEN-006', 'Actor': 'Security Guard', 'Feature': 'Visitor Management', 'Steps': '1. Login as Security Guard.\n2. Go to Visitor Logs.\n3. Scan or enter a PRE_APPROVED pass.\n4. Log entry (INSIDE).\n5. Later log exit (COMPLETED).\n6. Create a WALK_IN entry for unregistered visitor.' },
-    { 'Scenario': 'SCEN-007', 'Actor': 'Resident Owner', 'Feature': 'My Financials & Tenant Arrears', 'Steps': '1. Login as any Resident Owner.\n2. Check outstanding invoice balance.\n3. View Tenant Arrears section.\n4. Confirm tenant pending payments are visible.\n5. Submit offline payment reference.' },
-    { 'Scenario': 'SCEN-008', 'Actor': 'Resident Tenant', 'Feature': 'Invoice Settlement', 'Steps': '1. Login as any Resident Tenant.\n2. Go to My Financials.\n3. Find UNPAID invoice.\n4. Click "Pay via NEFT".\n5. Enter reference TXN-TEST001.\n6. Verify status changes to VERIFICATION_PENDING.\n7. Login as admin and verify + settle.' },
-    { 'Scenario': 'SCEN-009', 'Actor': 'Resident Owner', 'Feature': 'Visitor Pass Creation', 'Steps': '1. Login as Owner.\n2. Navigate to Visitor Management.\n3. Create a new GUEST pass for family visit.\n4. Set valid dates and time window.\n5. Share pass link.\n6. Login as Guard and scan the pass.' },
-    { 'Scenario': 'SCEN-010', 'Actor': 'Resident Owner/Tenant', 'Feature': 'Amenity Booking', 'Steps': '1. Login as Owner or Tenant.\n2. Navigate to Amenities.\n3. Select Swimming Pool.\n4. Book a 1-hour slot tomorrow at 7 AM.\n5. Verify booking appears as Pending.\n6. Login as Facility Manager and approve.\n7. Verify booking status → Confirmed.' },
-    { 'Scenario': 'SCEN-011', 'Actor': 'Community Admin', 'Feature': 'Notice Board', 'Steps': '1. Login as admin.\n2. Go to Notice Board.\n3. Publish a new Emergency notice.\n4. Pin it to top.\n5. Login as resident and verify the pinned notice appears.' },
-    { 'Scenario': 'SCEN-012', 'Actor': 'Resident Tenant', 'Feature': 'Complaint Submission', 'Steps': '1. Login as Tenant.\n2. Go to Complaints.\n3. Submit a Plumbing complaint with High priority.\n4. Attach location details.\n5. Verify complaint number generated (GFC-XXXX format).\n6. Track status updates via timeline.' },
-  ];
-  const wsScenarios = XLSX.utils.json_to_sheet(scenarioRows);
-  XLSX.utils.book_append_sheet(wb, wsScenarios, 'Testing Scenarios');
-
-  // ── Sheet 5: Summary Stats ──
-  const summaryRows = [
-    { 'Item': 'Organization Name',      'Count/Value': ORG_NAME },
-    { 'Item': 'Total Roles Created',    'Count/Value': roleData.length },
-    { 'Item': 'Total Users Created',    'Count/Value': credRows.length },
-    { 'Item': '→ Community Admins',     'Count/Value': 2 },
-    { 'Item': '→ Facility Managers',    'Count/Value': 3 },
-    { 'Item': '→ Security Guards',      'Count/Value': 5 },
-    { 'Item': '→ Resident Owners',      'Count/Value': 30 },
-    { 'Item': '→ Resident Tenants',     'Count/Value': 40 },
-    { 'Item': '→ Family Members',       'Count/Value': 20 },
-    { 'Item': 'Total Units Created',    'Count/Value': units.length },
-    { 'Item': '→ Studio Units',         'Count/Value': 10 },
-    { 'Item': '→ Apartment Units',      'Count/Value': 25 },
-    { 'Item': '→ Villa Units',          'Count/Value': 30 },
-    { 'Item': '→ Penthouse Units',      'Count/Value': 15 },
-    { 'Item': 'OrgMemberships',         'Count/Value': memberships.length },
-    { 'Item': 'Assessments',            'Count/Value': assessments.length },
-    { 'Item': 'Invoices Generated',     'Count/Value': invoiceDocs.length },
-    { 'Item': 'Complaints Filed',       'Count/Value': complaintDocs.length },
-    { 'Item': 'Amenities Created',      'Count/Value': amenities.length },
-    { 'Item': 'Amenity Bookings',       'Count/Value': bookingDocs.length },
-    { 'Item': 'Visitor Passes',         'Count/Value': visitorPassDocs.length },
-    { 'Item': 'Visitor Logs',           'Count/Value': visitorLogDocs.length },
-    { 'Item': 'Notice Board Posts',     'Count/Value': noticeDocs.length },
-    { 'Item': 'Wallets Created',        'Count/Value': walletDocs.length },
-    { 'Item': 'Default Password (all)', 'Count/Value': PASSWORD },
-    { 'Item': 'Seed Date',              'Count/Value': new Date().toISOString() },
-  ];
-  const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
-  XLSX.utils.book_append_sheet(wb, wsSummary, 'Seed Summary');
-
-  // ── Apply column widths ──
-  const setColWidths = (ws, widths) => {
-    ws['!cols'] = widths.map(w => ({ wch: w }));
+  const wb = new ExcelJS.Workbook();
+  const addSheet = (name, rows) => {
+    const ws = wb.addWorksheet(name);
+    if (rows && rows.length > 0) {
+      const keys = Object.keys(rows[0]);
+      ws.columns = keys.map((k) => ({ header: k, key: k, width: Math.max(k.length + 4, 15) }));
+      rows.forEach((r) => ws.addRow(r));
+    }
+    return ws;
   };
-  setColWidths(wsUsers, [6, 18, 22, 22, 30, 14, 20, 20, 16, 20, 10, 50, 60]);
-  setColWidths(wsRoles, [22, 15, 60, 80]);
-  setColWidths(wsUnits, [15, 30, 14, 18, 12, 15]);
-  setColWidths(wsScenarios, [12, 22, 30, 100]);
-  setColWidths(wsSummary, [35, 25]);
+
+  addSheet('User Credentials', credRows);
+  addSheet('Roles Reference', roleRows);
+  addSheet('Units Overview', unitRows);
+  addSheet('Testing Scenarios', scenarioRows);
+  addSheet('Seed Summary', summaryRows);
 
   const outPath = path.join(__dirname, 'Community_Testing_Credentials_v2.xlsx');
-  XLSX.writeFile(wb, outPath);
+  await wb.xlsx.writeFile(outPath);
   console.log(`   ✔  Excel file saved: ${outPath}\n`);
 
   await mongoose.disconnect();

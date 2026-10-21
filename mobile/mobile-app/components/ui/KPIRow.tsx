@@ -69,6 +69,9 @@ const KPIRow = React.forwardRef<ScrollView, KPIRowProps>(
           ref={ref}
           horizontal
           showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
+          directionalLockEnabled
+          keyboardShouldPersistTaps="handled"
           contentContainerClassName={cn(
             'flex-row items-center ps-4 pe-4 gap-x-3',
             contentContainerClassName
@@ -114,6 +117,9 @@ const KPIRow = React.forwardRef<ScrollView, KPIRowProps>(
         ref={ref}
         horizontal
         showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled
+        directionalLockEnabled
+        keyboardShouldPersistTaps="handled"
         contentContainerClassName={cn(
           'flex-row items-center ps-4 pe-4 gap-x-3',
           contentContainerClassName
@@ -141,4 +147,3 @@ KPIRow.displayName = 'KPIRow';
 
 export { KPIRow };
 export default KPIRow;
-

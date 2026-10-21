@@ -196,9 +196,9 @@ export const UserDirectoryTable = ({
           </div>
           <CPagination aria-label="User directory navigation">
             <CPaginationItem
-              disabled={page === 1}
-              onClick={() => onPageChange(page - 1)}
-              style={{ cursor: page === 1 ? 'default' : 'pointer' }}
+              disabled={page <= 1}
+              onClick={() => page > 1 && onPageChange(page - 1)}
+              style={{ cursor: page <= 1 ? 'default' : 'pointer' }}
             >
               &laquo;
             </CPaginationItem>
@@ -213,9 +213,9 @@ export const UserDirectoryTable = ({
               </CPaginationItem>
             ))}
             <CPaginationItem
-              disabled={page === totalPages}
-              onClick={() => onPageChange(page + 1)}
-              style={{ cursor: page === totalPages ? 'default' : 'pointer' }}
+              disabled={page >= totalPages}
+              onClick={() => page < totalPages && onPageChange(page + 1)}
+              style={{ cursor: page >= totalPages ? 'default' : 'pointer' }}
             >
               &raquo;
             </CPaginationItem>

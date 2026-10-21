@@ -369,17 +369,9 @@ Time: ${new Date().toISOString()}`
           keyboardVerticalOffset={0}
           className="flex-1 bg-transparent"
         >
-          {Platform.OS === 'web' ? (
-            <View className="flex-1 bg-transparent">
-              {children}
-            </View>
-          ) : (
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-              <View className="flex-1 bg-transparent">
-                {children}
-              </View>
-            </TouchableWithoutFeedback>
-          )}
+          <View className="flex-1 bg-transparent">
+            {children}
+          </View>
         </KeyboardAvoidingView>
       )}
 

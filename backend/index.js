@@ -15,6 +15,7 @@ import correlationIdMiddleware from './src/middlewares/correlationId.middleware.
 import httpLoggerMiddleware from './src/middlewares/httpLogger.middleware.js';
 import sanitizeRequest from './src/middlewares/sanitize.middleware.js';
 import { apiLimiter } from './src/middlewares/rateLimiter.middleware.js';
+import authorizeUploadAccess from './src/middlewares/uploadAccess.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -141,10 +142,15 @@ app.use('/.well-known', express.static(path.join(__dirname, 'public', '.well-kno
 app.use(['/uploads/issueReports', '/public/uploads/issueReports'], (req, res) => {
   res.status(404).json({ success: false, message: 'Not found' });
 });
+
+// Authorize all upload assets (invoices, notices, complaints) to enforce tenant isolation and ownership
+app.use(['/uploads', '/public/uploads'], authorizeUploadAccess);
+
 app.use('/public/uploads', express.static(path.join(__dirname, 'uploads'), staticOptions));
-app.use('/public', express.static(path.join(__dirname, 'public'), staticOptions));
+app.use('/public/uploads', express.static(path.join(__dirname, 'public', 'uploads'), staticOptions));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), staticOptions));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), staticOptions));
+app.use('/public', express.static(path.join(__dirname, 'public'), staticOptions));
 
 // Ensure dynamic API responses are not cached by intermediate proxies or browsers
 app.use(['/api', '/api/v1', '/api/v2'], (req, res, next) => {

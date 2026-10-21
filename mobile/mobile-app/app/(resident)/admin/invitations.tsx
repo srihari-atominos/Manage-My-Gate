@@ -44,7 +44,7 @@ export default function InvitationsScreen() {
     async (pageToLoad = 1, isRefresh = false) => {
       if (isRefresh) {
         setRefreshing(true);
-      } else if (pageToLoad === 1) {
+      } else {
         setLoading(true);
       }
 
@@ -62,7 +62,11 @@ export default function InvitationsScreen() {
         if (pageToLoad === 1) {
           setInvitations(records);
         } else {
-          setInvitations((prev) => [...prev, ...records]);
+          setInvitations((prev) => {
+            const existingIds = new Set(prev.map((i) => i._id));
+            const newRecords = records.filter((i) => !existingIds.has(i._id));
+            return [...prev, ...newRecords];
+          });
         }
 
         setCurrentPage(data?.currentPage || 1);

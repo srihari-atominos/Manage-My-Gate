@@ -25,7 +25,7 @@
 
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
-import XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -929,77 +929,33 @@ async function seedMultiCommunity() {
   console.log('📊  GENERATING EXCEL CREDENTIALS WORKBOOK');
   console.log('===========================================================');
 
-  const wb = XLSX.utils.book_new();
-
-  // Sheet 1: Master Credentials List
-  const wsMaster = XLSX.utils.json_to_sheet(masterCredRows);
-  XLSX.utils.book_append_sheet(wb, wsMaster, 'Master Credentials');
-
-  // Sheet 2, 3, 4: Individual Community Credentials
-  for (const cfg of COMMUNITIES_CONFIG) {
-    const wsOrg = XLSX.utils.json_to_sheet(orgCredSheets[cfg.key]);
-    const sheetTitle = cfg.name.split(' ')[0] + ' Credentials';
-    XLSX.utils.book_append_sheet(wb, wsOrg, sheetTitle);
-  }
-
-  // Sheet 5: Roles & Access Matrix
-  const roleMatrixRows = [
-    { 'Role Name': 'Super Admin', 'Level': 'Global Platform', 'Permissions': 'Full unrestricted access across all organizations and system settings.' },
-    { 'Role Name': 'Community Admin', 'Level': 'Community Level', 'Permissions': 'Full admin access to User Management, Roles, Billing, Complaints, Amenities, Notices, Integrations.' },
-    { 'Role Name': 'Facility Manager', 'Level': 'Community Level', 'Permissions': 'Manage Amenities, Maintenance schedules, Complaint assignment & progress tracking, Notice board.' },
-    { 'Role Name': 'Security Guard', 'Level': 'Gate Control', 'Permissions': 'Gate entry/exit scanner, Visitor pass passcode verification, Security logs, read Notices.' },
-    { 'Role Name': 'Resident Owner', 'Level': 'Resident Level', 'Permissions': 'View own financials & tenant arrears, Pay invoices, Book amenities, Generate guest passes, Raise complaints.' },
-    { 'Role Name': 'Resident Tenant', 'Level': 'Resident Level', 'Permissions': 'View & pay rental/unit invoices, Book amenities, Generate guest visitor passes, Submit complaints.' },
-    { 'Role Name': 'Family Member', 'Level': 'Resident Level', 'Permissions': 'View community notices, view events, submit quick maintenance requests.' },
-  ];
-  const wsMatrix = XLSX.utils.json_to_sheet(roleMatrixRows);
-  XLSX.utils.book_append_sheet(wb, wsMatrix, 'Roles & Access Matrix');
-
-  // Sheet 6: Testing Scenarios
-  const scenarioRows = [
-    { 'Scenario ID': 'SCEN-001', 'Actor': 'Super Admin', 'Target Feature': 'Platform Multi-Community Switch', 'Step-by-Step Test Procedure': `1. Login with ${SUPER_ADMIN_EMAIL} / ${SUPER_ADMIN_PASSWORD}.\n2. Open workspace dropdown in header.\n3. Verify all 3 communities (Greenfield Heights, Sunrise Valley, Palm Meadows) are listed.\n4. Switch workspace and verify context changes.` },
-    { 'Scenario ID': 'SCEN-002', 'Actor': 'Community Admin', 'Target Feature': 'Community Dashboard & Users', 'Step-by-Step Test Procedure': '1. Login with admin1@greenfield.com / Test@1234.\n2. Navigate to User Management.\n3. Verify members list and active roles.\n4. Create a new member or modify roles.' },
-    { 'Scenario ID': 'SCEN-003', 'Actor': 'Facility Manager', 'Target Feature': 'Amenity Booking Approval', 'Step-by-Step Test Procedure': '1. Login with fm1@greenfield.com / Test@1234.\n2. Open Amenities tab.\n3. View pending bookings for Banquet Hall.\n4. Click Approve or Reject.\n5. Verify status updates to Confirmed.' },
-    { 'Scenario ID': 'SCEN-004', 'Actor': 'Facility Manager', 'Target Feature': 'Complaint Ticket Assignment', 'Step-by-Step Test Procedure': '1. Login with fm1@sunrisevalley.com / Test@1234.\n2. Go to Complaints.\n3. Filter by Open status.\n4. Assign ticket to staff.\n5. Update status to In Progress.' },
-    { 'Scenario ID': 'SCEN-005', 'Actor': 'Security Guard', 'Target Feature': 'Gate Visitor Verification', 'Step-by-Step Test Procedure': '1. Login with guard1@greenfield.com / Test@1234.\n2. Open Visitor Log / Guard Portal.\n3. Enter passcode GHC8899.\n4. Click Log Entry (INSIDE).\n5. Confirm visitor record updates.' },
-    { 'Scenario ID': 'SCEN-006', 'Actor': 'Resident Owner', 'Target Feature': 'Financials & Tenant Arrears', 'Step-by-Step Test Procedure': '1. Login with owner1@greenfield.com / Test@1234.\n2. Open My Financials.\n3. View maintenance invoice balance.\n4. Check Tenant Arrears tab to see tenant status.' },
-    { 'Scenario ID': 'SCEN-007', 'Actor': 'Resident Tenant', 'Target Feature': 'Invoice Settlement & Pass Creation', 'Step-by-Step Test Procedure': '1. Login with tenant1@palmmeadows.com / Test@1234.\n2. Navigate to My Financials -> Pay Invoice.\n3. Navigate to Visitor Passes -> Create Pass for Guest.' },
-    { 'Scenario ID': 'SCEN-008', 'Actor': 'Resident Owner/Tenant', 'Target Feature': 'Amenity Slot Discovery & Booking', 'Step-by-Step Test Procedure': '1. Login as owner1@sunrisevalley.com / Test@1234.\n2. Open Amenities -> Discover.\n3. Select Tennis Court, pick tomorrow slot.\n4. Complete booking request.' }
-  ];
-  const wsScenarios = XLSX.utils.json_to_sheet(scenarioRows);
-  XLSX.utils.book_append_sheet(wb, wsScenarios, 'Testing Scenarios');
-
-  // Sheet 7: Multi-Community Seed Summary
-  const summaryRows = [
-    { 'Metric / Parameter': 'Total Communities Created', 'Value': COMMUNITIES_CONFIG.length },
-    { 'Metric / Parameter': 'Community 1', 'Value': 'Greenfield Heights Community (GHC)' },
-    { 'Metric / Parameter': 'Community 2', 'Value': 'Sunrise Valley Estates (SVE)' },
-    { 'Metric / Parameter': 'Community 3', 'Value': 'Palm Meadows Residency (PMR)' },
-    { 'Metric / Parameter': 'Total User Credentials Created', 'Value': masterCredRows.length },
-    { 'Metric / Parameter': 'Super Admin Account', 'Value': `${SUPER_ADMIN_EMAIL} (Password: ${SUPER_ADMIN_PASSWORD})` },
-    { 'Metric / Parameter': 'All Other Accounts Password', 'Value': DEFAULT_PASSWORD },
-    { 'Metric / Parameter': 'Total Roles Configured per Org', 'Value': Object.keys(ROLE_PERMISSIONS).length },
-    { 'Metric / Parameter': 'Seed Execution Timestamp', 'Value': new Date().toISOString() },
-  ];
-  const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
-  XLSX.utils.book_append_sheet(wb, wsSummary, 'Seed Summary');
-
-  // Column width formatting
-  const setColWidths = (ws, widths) => {
-    ws['!cols'] = widths.map(w => ({ wch: w }));
+  const wb = new ExcelJS.Workbook();
+  const addSheet = (name, rows) => {
+    const ws = wb.addWorksheet(name);
+    if (rows && rows.length > 0) {
+      const keys = Object.keys(rows[0]);
+      ws.columns = keys.map((k) => ({ header: k, key: k, width: Math.max(k.length + 4, 15) }));
+      rows.forEach((r) => ws.addRow(r));
+    }
+    return ws;
   };
-  setColWidths(wsMaster, [6, 28, 18, 22, 30, 18, 20, 16, 16, 10, 60]);
-  setColWidths(wsMatrix, [20, 20, 80]);
-  setColWidths(wsScenarios, [14, 20, 30, 90]);
-  setColWidths(wsSummary, [35, 45]);
+
+  addSheet('Master Credentials', masterCredRows);
+  for (const cfg of COMMUNITIES_CONFIG) {
+    const sheetTitle = cfg.name.split(' ')[0] + ' Credentials';
+    addSheet(sheetTitle, orgCredSheets[cfg.key]);
+  }
+  addSheet('Roles & Access Matrix', roleMatrixRows);
+  addSheet('Testing Scenarios', scenarioRows);
+  addSheet('Seed Summary', summaryRows);
 
   const outPath1 = path.join(__dirname, 'Multi_Community_Test_Credentials.xlsx');
   const outPath2 = path.join(__dirname, '..', 'Multi_Community_Test_Credentials.xlsx');
   const outPath3 = path.join(__dirname, '..', 'Community_Testing_Credentials.xlsx');
 
-  const tryWrite = (filePath) => {
+  const tryWrite = async (filePath) => {
     try {
-      XLSX.writeFile(wb, filePath);
+      await wb.xlsx.writeFile(filePath);
       console.log(`     - Saved: ${filePath}`);
     } catch (e) {
       console.warn(`     ⚠️ Could not write to ${filePath} (file may be open).`);
@@ -1007,9 +963,9 @@ async function seedMultiCommunity() {
   };
 
   console.log(`   ✔ Excel workbook write status:`);
-  tryWrite(outPath1);
-  tryWrite(outPath2);
-  tryWrite(outPath3);
+  await tryWrite(outPath1);
+  await tryWrite(outPath2);
+  await tryWrite(outPath3);
 
   await mongoose.disconnect();
   console.log('╔══════════════════════════════════════════════════════════╗');

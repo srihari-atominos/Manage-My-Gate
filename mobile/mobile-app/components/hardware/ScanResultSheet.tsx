@@ -43,6 +43,8 @@ export interface ScanResultSheetProps {
   primaryActionDisabled?: boolean;
   onSecondaryAction?: () => void;
   secondaryActionLabel?: string;
+  onDenyAction?: () => void;
+  denyActionLabel?: string;
   /** Optional second action shown under the primary one (e.g. group-pass check-out next to check-in). */
   onExtraAction?: () => void;
   extraActionLabel?: string;
@@ -59,6 +61,8 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
   primaryActionDisabled = false,
   onSecondaryAction,
   secondaryActionLabel = 'Scan Next Pass',
+  onDenyAction,
+  denyActionLabel = 'Deny Entry',
   onExtraAction,
   extraActionLabel,
   extraActionDisabled = false,
@@ -207,6 +211,20 @@ export const ScanResultSheet: React.FC<ScanResultSheetProps> = ({
               <Text className="text-sm font-bold text-white">
                 {loading ? 'Processing...' : primaryActionLabel}
               </Text>
+            </Button>
+          ) : null}
+
+          {requiresServerDecision && onDenyAction ? (
+            <Button
+              variant="destructive-outline"
+              onPress={onDenyAction}
+              disabled={loading}
+              className="w-full h-12 flex-row items-center justify-center gap-2"
+              accessibilityRole="button"
+              accessibilityLabel={denyActionLabel}
+            >
+              <Icon as={CircleX} size={18} className="text-rose-600 dark:text-rose-400" />
+              <Text className="text-sm font-bold text-rose-600 dark:text-rose-400">{denyActionLabel}</Text>
             </Button>
           ) : null}
 

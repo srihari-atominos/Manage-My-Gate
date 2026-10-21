@@ -35,7 +35,9 @@ export class OrgMembershipRepository {
    * @returns {Promise<{ data: Array, totalRecords: number }>}
    */
   async findPaginatedUsersByOrg(orgId, page = 1, limit = 10, filters = {}) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.max(1, parseInt(limit, 10) || 10);
+    const skip = (safePage - 1) * safeLimit;
     const matchQuery = { orgId: new mongoose.Types.ObjectId(orgId) };
 
     const filterMatch = {};

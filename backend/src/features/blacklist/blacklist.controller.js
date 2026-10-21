@@ -50,12 +50,24 @@ export class BlacklistController {
     try {
       assertVisitorPermission(['gate', 'manager'], req.user);
       const orgId = req.tenant?.isPlatform && req.params.orgId ? req.params.orgId : req.tenant?.orgId;
-      const page = parseInt(req.query.page, 10) || 1;
-      const limit = parseInt(req.query.limit, 10) || 10;
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
       const skip = (page - 1) * limit;
 
       const { data, totalRecords } = await blacklistService.getBlacklistByOrg(orgId, skip, limit);
-      res.success({ data, totalRecords }, 'Blacklisted records retrieved successfully');
+      res.success(
+        {
+          data,
+          totalRecords,
+          pagination: {
+            totalRecords,
+            currentPage: page,
+            totalPages: Math.max(1, Math.ceil(totalRecords / limit)),
+            limit,
+          },
+        },
+        'Blacklisted records retrieved successfully'
+      );
     } catch (error) {
       next(error);
     }

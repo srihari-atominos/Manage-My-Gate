@@ -11,6 +11,7 @@ import { TextInput } from '@/components/forms/TextInput';
 import { SuccessToast } from '@/components/feedback/SuccessToast';
 import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
 import { ProfileHeaderCard, ContactChangeWizardModal, LocationPickerModal } from '@/src/features/profile/components';
+import { EmergencySosCard, EmergencySosModal, useEmergencySosSocket } from '@/src/features/emergencySos';
 import { RoleSwitchModal, OrgSwitchModal, AssignmentSwitchModal, VillaSwitchModal } from '@/components/navigation';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
 import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
@@ -26,9 +27,12 @@ import {
   Settings,
   Building2,
   ShieldCheck,
+  ShieldAlert,
   MapPin,
   Home,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   BriefcaseBusiness,
   UserRound,
   LocateFixed,
@@ -84,6 +88,14 @@ export default function ProfileScreen() {
     setAssignmentModalOpen,
   } = useProfile();
   const { scrollHandlerProps } = useBottomNavScroll();
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  const [scrollOffsetY, setScrollOffsetY] = useState(0);
+
+  const handleProfileScroll = (event: any) => {
+    scrollHandlerProps?.onScroll?.(event);
+    const y = event.nativeEvent?.contentOffset?.y || 0;
+    setScrollOffsetY(y);
+  };
 
   // Profile editable fields
   const [name, setName] = useState('');
@@ -114,6 +126,9 @@ export default function ProfileScreen() {
   const [devOtpCode, setDevOtpCode] = useState<string | null>(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [activeInterestCategory, setActiveInterestCategory] = useState<string>('sports');
+  const [sosModalVisible, setSosModalVisible] = useState(false);
+
+  useEmergencySosSocket();
 
   // Parse current interests array
   const currentInterests = React.useMemo(() => {
@@ -667,28 +682,39 @@ export default function ProfileScreen() {
       showBackButton={true}
       onBackPress={handleBack}
       headerRight={
-        <TouchableOpacity
-          onPress={() => router.push('/(resident)/settings' as any)}
-          activeOpacity={0.7}
-          className="size-10 rounded-full bg-secondary border border-border items-center justify-center active:bg-muted"
-          accessibilityRole="button"
-          accessibilityLabel={t('settings', 'Settings')}
-        >
-          <Settings size={18} className="text-foreground" />
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={() => setSosModalVisible(true)}
+            activeOpacity={0.7}
+            className="size-10 rounded-full bg-destructive/15 border border-destructive/30 items-center justify-center active:bg-destructive/25"
+            accessibilityRole="button"
+            accessibilityLabel={t('emergency_sos_title', 'Emergency SOS Panic')}
+          >
+            <ShieldAlert size={18} color="#ef4444" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/(resident)/settings' as any)}
+            activeOpacity={0.7}
+            className="size-10 rounded-full bg-secondary border border-border items-center justify-center active:bg-muted"
+            accessibilityRole="button"
+            accessibilityLabel={t('settings', 'Settings')}
+          >
+            <Settings size={18} className="text-foreground" />
+          </TouchableOpacity>
+        </View>
       }
     >
       <ScrollView
+        ref={scrollViewRef}
         className="flex-1"
         contentContainerClassName="p-4 gap-4 pb-36"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        decelerationRate="normal"
-        alwaysBounceVertical={true}
-        overScrollMode="always"
-        directionalLockEnabled={true}
-        {...scrollHandlerProps}
+        nestedScrollEnabled={true}
+        bounces={true}
+        scrollEventThrottle={16}
+        onScroll={handleProfileScroll}
       >
         {/* Profile Hero Header Card with Avatar & Live Camera / Photo Trigger */}
         <ProfileHeaderCard
@@ -705,14 +731,21 @@ export default function ProfileScreen() {
           onUnitPress={isResidentRole ? () => setVillaModalOpen(true) : undefined}
         />
 
-        {/* Section: Organisation, Role & Villa Switching */}
+        {/* Safety & Emergency SOS Panic */}
+        <EmergencySosCard
+          unitNumber={isResidentRole ? dynamicUnit : undefined}
+          onPressOpen={() => setSosModalVisible(true)}
+          className="mx-0 mt-0"
+        />
+
+        {/* Section: Community, Role & Villa Switching */}
         <View className="gap-2.5">
           <Text className="text-base font-extrabold font-sans text-foreground px-1 tracking-tight">
-            {t('workspace_context', 'Organisation, Role & Villa')}
+            {t('community_context', 'Community, Role & Villa')}
           </Text>
 
           <View className="bg-card border border-border/70 rounded-3xl p-5 shadow-2xs gap-4">
-            {/* Current Organisation */}
+            {/* Current Community */}
             <View className="flex-row items-center justify-between gap-3">
               <View className="flex-row items-center gap-3 flex-1">
                 <View className="size-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 items-center justify-center">
@@ -720,7 +753,7 @@ export default function ProfileScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {t('current_organisation', 'Current Organisation')}
+                    {t('current_community', 'Current Community')}
                   </Text>
                   <Text className="text-base font-bold text-foreground mt-0.5" numberOfLines={1}>
                     {dynamicCommunity}
@@ -810,7 +843,7 @@ export default function ProfileScreen() {
                     <View className="flex-row items-center justify-center gap-2">
                       <Building2 size={15} color="#6366f1" />
                       <Text className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                        {t('switch_organisation', 'Switch Organisation')}
+                        {t('switch_community', 'Switch Community')}
                       </Text>
                     </View>
                   </Button>
@@ -944,7 +977,7 @@ export default function ProfileScreen() {
                     {t('quick_bio_suggestions', 'Quick Bio Suggestions')}
                   </Text>
                 </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-1.5 pb-0.5">
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled={true} className="flex-row gap-1.5 pb-0.5">
                   {BIO_SUGGESTIONS.map((suggestion, idx) => (
                     <Pressable
                       key={idx}
@@ -983,7 +1016,7 @@ export default function ProfileScreen() {
                     {t('popular_roles', 'Popular Roles')}
                   </Text>
                 </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-1.5 pb-0.5">
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled={true} className="flex-row gap-1.5 pb-0.5">
                   {WORK_SUGGESTIONS.map((w) => (
                     <Pressable
                       key={w}
@@ -1036,7 +1069,7 @@ export default function ProfileScreen() {
               />
 
               {/* Location Shortcuts Row */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pb-0.5" contentContainerClassName="gap-2 pe-4">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled={true} className="pb-0.5" contentContainerClassName="gap-2 pe-4">
                 {/* 1. All Locations Picker trigger */}
                 <Pressable
                   onPress={() => setShowLocationModal(true)}
@@ -1106,6 +1139,31 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Quick Scroll Navigation Controls (Go Up / Go Down) */}
+      <View pointerEvents="box-none" className="absolute bottom-24 end-4 items-center gap-2 z-40">
+        {scrollOffsetY > 250 ? (
+          <TouchableOpacity
+            onPress={() => scrollViewRef.current?.scrollTo({ y: 0, animated: true })}
+            activeOpacity={0.8}
+            className="size-11 rounded-full bg-card/95 border border-border shadow-md items-center justify-center active:bg-muted"
+            accessibilityRole="button"
+            accessibilityLabel={t('scroll_to_top', 'Go to Top')}
+          >
+            <ChevronUp size={22} className="text-foreground" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+            activeOpacity={0.8}
+            className="size-11 rounded-full bg-card/95 border border-border shadow-md items-center justify-center active:bg-muted"
+            accessibilityRole="button"
+            accessibilityLabel={t('scroll_to_bottom', 'Go to Bottom')}
+          >
+            <ChevronDown size={22} className="text-foreground" />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Photo Picker Options Bottom Sheet Modal */}
       <Modal
@@ -1241,7 +1299,7 @@ export default function ProfileScreen() {
         onClose={() => setRoleModalOpen(false)}
       />
 
-      {/* Organisation Switch Modal */}
+      {/* Community Switch Modal */}
       <OrgSwitchModal
         visible={orgModalOpen}
         onClose={() => setOrgModalOpen(false)}
@@ -1269,6 +1327,13 @@ export default function ProfileScreen() {
         onClose={() => setShowLocationModal(false)}
         currentValue={hometown}
         onSelectLocation={handleSelectHometown}
+      />
+
+      {/* Emergency SOS Panic Modal */}
+      <EmergencySosModal
+        visible={sosModalVisible}
+        onClose={() => setSosModalVisible(false)}
+        unitNumber={isResidentRole ? dynamicUnit : undefined}
       />
     </ScreenShell>
   );

@@ -6,7 +6,9 @@ import { TextInput } from '@/components/forms/TextInput';
 import { QRScannerOverlay } from './QRScannerOverlay';
 import { FlashlightToggle } from './FlashlightToggle';
 import { ScanLine, X, CameraOff } from 'lucide-react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView } from 'expo-camera';
+import { useCameraPermissionFlow } from '@/src/hooks/useCameraPermissionFlow';
+import { CameraPermissionPrompt } from './CameraPermissionPrompt';
 
 export interface QRScannerModalProps {
   visible: boolean;
@@ -29,7 +31,14 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   instruction = 'Align QR Code inside Frame',
   barcodeTypes = ['qr', 'code128', 'code39'],
 }) => {
-  const [permission, requestPermission] = useCameraPermissions();
+  const {
+    permission,
+    requestCameraAccess,
+    settingsHint,
+    settingsPromptVisible,
+    dismissSettingsPrompt,
+    confirmSettingsPrompt,
+  } = useCameraPermissionFlow();
   const [scanned, setScanned] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -98,9 +107,22 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 <Text className="text-white/60 text-xs text-center px-4">
                   Enable camera to scan and verify QR codes or barcodes.
                 </Text>
-                <Button variant="default" size="sm" onPress={requestPermission} className="mt-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onPress={() => { void requestCameraAccess(); }}
+                  hitSlop={8}
+                  className="mt-2 min-h-12 min-w-32 z-20"
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue and allow camera access"
+                >
                   <Text className="text-white font-bold text-xs">Continue</Text>
                 </Button>
+                {settingsHint ? (
+                  <Text className="text-white/70 text-[11px] text-center px-4 mt-1">
+                    {settingsHint}
+                  </Text>
+                ) : null}
               </View>
             ) : (
               <>
@@ -151,6 +173,11 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
           </View>
         </View>
       </KeyboardAvoidingView>
+      <CameraPermissionPrompt
+        visible={settingsPromptVisible}
+        onNo={dismissSettingsPrompt}
+        onYes={confirmSettingsPrompt}
+      />
     </Modal>
   );
 };

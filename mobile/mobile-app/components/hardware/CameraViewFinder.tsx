@@ -3,9 +3,11 @@ import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Camera, CameraOff, Zap, ZapOff } from 'lucide-react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView } from 'expo-camera';
 import { QRScannerOverlay } from './QRScannerOverlay';
 import { cn } from '@/lib/utils';
+import { useCameraPermissionFlow } from '@/src/hooks/useCameraPermissionFlow';
+import { CameraPermissionPrompt } from './CameraPermissionPrompt';
 
 export interface CameraViewFinderProps {
   onScan: (data: string) => void;
@@ -24,7 +26,14 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
   fullscreen = false,
   className,
 }) => {
-  const [permission, requestPermission] = useCameraPermissions();
+  const {
+    permission,
+    requestCameraAccess,
+    settingsHint,
+    settingsPromptVisible,
+    dismissSettingsPrompt,
+    confirmSettingsPrompt,
+  } = useCameraPermissionFlow();
   const [scanned, setScanned] = useState(false);
   const [internalTorchOn, setInternalTorchOn] = useState(false);
 
@@ -69,7 +78,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
         <Button
           size="sm"
           variant="default"
-          onPress={requestPermission}
+          onPress={() => void requestCameraAccess()}
           className="bg-primary px-4 py-2 rounded-xl"
         >
           <View className="flex-row items-center gap-1.5">
@@ -77,6 +86,16 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
             <Text className="text-white text-xs font-bold">Continue</Text>
           </View>
         </Button>
+        {settingsHint ? (
+          <Text className="text-white/70 text-[11px] text-center px-4 mt-2">
+            {settingsHint}
+          </Text>
+        ) : null}
+        <CameraPermissionPrompt
+          visible={settingsPromptVisible}
+          onNo={dismissSettingsPrompt}
+          onYes={confirmSettingsPrompt}
+        />
       </View>
     );
   }
@@ -124,4 +143,3 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
 };
 
 export default CameraViewFinder;
-

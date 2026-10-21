@@ -18,6 +18,7 @@ import {
   ThemeToggleSwitch,
   AppVersionFooter,
 } from '@/components/settings';
+import { EmergencySosCard, EmergencySosModal, useEmergencySosSocket } from '@/src/features/emergencySos';
 import { ResidentDirectoryModal } from '@/components/settings/ResidentDirectoryModal';
 import { SettingToggleRow } from '@/src/features/settings/components/SettingToggleRow';
 import { useSettings } from '@/src/features/settings/hooks/useSettings';
@@ -80,6 +81,9 @@ export default function SettingsScreen() {
   const [villaModalVisible, setVillaModalVisible] = useState(false);
   const [orgModalVisible, setOrgModalVisible] = useState(false);
   const [roleModalVisible, setRoleModalVisible] = useState(false);
+  const [sosModalVisible, setSosModalVisible] = useState(false);
+
+  useEmergencySosSocket();
 
   const userAny = user as any;
 
@@ -354,6 +358,12 @@ export default function SettingsScreen() {
           onPress={hasMultipleOrgs ? () => setOrgModalVisible(true) : undefined}
         />
 
+        {/* 4.1 Safety & Emergency SOS Panic */}
+        <EmergencySosCard
+          unitNumber={dynamicUnit}
+          onPressOpen={() => setSosModalVisible(true)}
+        />
+
         {/* 5. Section Groups */}
 
         {/* Group A: General Settings & Preferences */}
@@ -553,6 +563,13 @@ export default function SettingsScreen() {
           }
         />
       ) : null}
+
+      {/* Emergency SOS Panic Modal */}
+      <EmergencySosModal
+        visible={sosModalVisible}
+        onClose={() => setSosModalVisible(false)}
+        unitNumber={dynamicUnit}
+      />
 
       <BottomNavigationBar />
     </View>

@@ -170,7 +170,14 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
           </View>
 
           {/* Notifications Scroll List */}
-          <ScrollView className="flex-1 px-4 py-2" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            className="flex-1 px-4 py-2"
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            directionalLockEnabled
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 32 }}
+          >
             {loading && items.length === 0 ? (
               <View className="py-12 items-center justify-center">
                 <AppLoader variant="inline" />

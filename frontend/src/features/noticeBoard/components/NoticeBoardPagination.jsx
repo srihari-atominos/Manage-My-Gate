@@ -36,9 +36,9 @@ export const NoticeBoardPagination = ({ pagination, onPageChange, onNext, onPrev
         {/* Previous page item */}
         <CPaginationItem
           aria-label="Previous"
-          disabled={currentPage === 1}
-          onClick={onPrevious}
-          style={{ cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+          disabled={currentPage <= 1}
+          onClick={currentPage > 1 ? onPrevious : undefined}
+          style={{ cursor: currentPage <= 1 ? 'not-allowed' : 'pointer' }}
         >
           <span aria-hidden="true">&laquo;</span>
         </CPaginationItem>
@@ -58,9 +58,9 @@ export const NoticeBoardPagination = ({ pagination, onPageChange, onNext, onPrev
         {/* Next page item */}
         <CPaginationItem
           aria-label="Next"
-          disabled={currentPage === totalPages}
-          onClick={onNext}
-          style={{ cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+          disabled={currentPage >= totalPages}
+          onClick={currentPage < totalPages ? onNext : undefined}
+          style={{ cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer' }}
         >
           <span aria-hidden="true">&raquo;</span>
         </CPaginationItem>

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
-import XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
@@ -472,19 +472,23 @@ async function seed() {
     }
   ];
 
-  const wb = XLSX.utils.book_new();
-  const wsCredentials = XLSX.utils.json_to_sheet(credentialsData);
-  const wsUnits = XLSX.utils.json_to_sheet(unitsData);
-  const wsScenarios = XLSX.utils.json_to_sheet(scenariosData);
-
-  XLSX.utils.book_append_sheet(wb, wsCredentials, 'User Credentials');
-  XLSX.utils.book_append_sheet(wb, wsUnits, 'Villas & Units');
-  XLSX.utils.book_append_sheet(wb, wsScenarios, 'Testing Scenarios');
+  const wb = new ExcelJS.Workbook();
+  const addSheetWithData = (name, rows) => {
+    const ws = wb.addWorksheet(name);
+    if (rows && rows.length > 0) {
+      const keys = Object.keys(rows[0]);
+      ws.columns = keys.map((k) => ({ header: k, key: k, width: Math.max(k.length + 4, 15) }));
+      rows.forEach((r) => ws.addRow(r));
+    }
+  };
+  addSheetWithData('User Credentials', credentialsData);
+  addSheetWithData('Villas & Units', unitsData);
+  addSheetWithData('Testing Scenarios', scenariosData);
 
   const filename = 'Community_Testing_Credentials.xlsx';
   const filePath = path.join(process.cwd(), filename);
 
-  XLSX.writeFile(wb, filePath);
+  await wb.xlsx.writeFile(filePath);
   console.log(`Excel file created successfully at: ${filePath}`);
 
   await mongoose.disconnect();

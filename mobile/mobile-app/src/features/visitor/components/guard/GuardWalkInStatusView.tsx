@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, TouchableOpacity, Linking } from 'react-native';
+import { View, TouchableOpacity, Linking, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
@@ -84,14 +84,22 @@ export const GuardWalkInStatusView: React.FC = () => {
     <View className="mb-3 px-1">
       {/* Top Filter Chips & Sync Status Header */}
       <View className="bg-card/80 border border-border p-2 rounded-2xl flex-row items-center justify-between gap-2 shadow-xs">
-        <View className="flex-row gap-1.5 flex-1">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
+          directionalLockEnabled
+          keyboardShouldPersistTaps="handled"
+          contentContainerClassName="gap-1.5"
+          className="flex-1"
+        >
           {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map((f) => (
             <TouchableOpacity
               key={f}
               onPress={() => setFilter(f)}
               accessibilityRole="button"
               accessibilityLabel={`Filter by ${f}`}
-              className={`px-3 py-1.5 rounded-full border ${
+              className={`px-3 py-1.5 rounded-full border shrink-0 min-h-11 justify-center ${
                 filter === f
                   ? 'bg-primary border-primary'
                   : 'bg-card border-border'
@@ -106,7 +114,7 @@ export const GuardWalkInStatusView: React.FC = () => {
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         <Button
           variant="ghost"

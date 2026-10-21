@@ -75,7 +75,7 @@ export const IssueReportPagination = ({ pagination, onPageChange, onLimitChange,
           <CPaginationItem
             aria-label="Previous"
             disabled={currentPage <= 1 || loading}
-            onClick={() => onPageChange(currentPage - 1)}
+            onClick={() => currentPage > 1 && !loading && onPageChange(currentPage - 1)}
           >
             &laquo;
           </CPaginationItem>
@@ -85,7 +85,7 @@ export const IssueReportPagination = ({ pagination, onPageChange, onLimitChange,
               key={pageNum}
               active={pageNum === currentPage}
               disabled={loading}
-              onClick={() => onPageChange(pageNum)}
+              onClick={() => !loading && onPageChange(pageNum)}
             >
               {pageNum}
             </CPaginationItem>
@@ -94,7 +94,7 @@ export const IssueReportPagination = ({ pagination, onPageChange, onLimitChange,
           <CPaginationItem
             aria-label="Next"
             disabled={currentPage >= totalPages || loading}
-            onClick={() => onPageChange(currentPage + 1)}
+            onClick={() => currentPage < totalPages && !loading && onPageChange(currentPage + 1)}
           >
             &raquo;
           </CPaginationItem>

@@ -92,8 +92,9 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
         decelerationRate="normal"
         scrollEventThrottle={16}
         alwaysBounceVertical={false}
-        overScrollMode="never"
+        nestedScrollEnabled={true}
         directionalLockEnabled={true}
+        overScrollMode="never"
         contentContainerStyle={[
           { flexGrow: 1 },
           contentContainerStyle,

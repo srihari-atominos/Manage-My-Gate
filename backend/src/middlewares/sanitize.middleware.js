@@ -9,7 +9,7 @@ const strip = (value, depth = 0) => {
     return;
   }
   for (const key of Object.keys(value)) {
-    if (key.startsWith('$')) {
+    if (key.startsWith('$') || key === '__proto__' || key === 'constructor' || key === 'prototype') {
       delete value[key];
     } else {
       strip(value[key], depth + 1);

@@ -5,11 +5,11 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/src/store/store';
 import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 import { ScreenShell } from '@/components/ui/ScreenShell';
+import { HeaderActionButton } from '@/components/ui/HeaderActionButton';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { SkeletonLoader } from '@/components/feedback/SkeletonLoader';
-import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/common/Chip';
 import { useTranslation } from '@/src/utils/i18n';
 import { useRefreshOnFocus } from '@/src/hooks/useRefreshOnFocus';
@@ -22,7 +22,7 @@ import { StaffFormModal } from '../components/StaffFormModal';
 import { StaffDetailModal } from '../components/StaffDetailModal';
 import { StaffFilterSheet } from '../components/StaffFilterSheet';
 import { StaffMember, CreateStaffPayload, UpdateStaffPayload } from '../services/staffService';
-import { ShieldAlert, RotateCw, Plus } from 'lucide-react-native';
+import { ShieldAlert, Plus } from 'lucide-react-native';
 
 export const StaffDirectoryScreen: React.FC = () => {
   const router = useRouter();
@@ -172,30 +172,14 @@ export const StaffDirectoryScreen: React.FC = () => {
       title={t('staff_dir_title', 'Staff Directory')}
       subtitle={t('staff_dir_subtitle', 'Community Staff Registry')}
       headerRight={
-        <View className="flex-row items-center gap-1.5">
-          {hasManagePermission && (
-            <Button
-              size="sm"
-              variant="default"
-              className="h-9 px-3 flex-row items-center gap-1 shadow-xs"
-              onPress={handleOpenCreate}
-              accessibilityLabel="Add New Staff Member"
-            >
-              <Plus size={16} className="text-primary-foreground" />
-              <Text className="text-xs font-bold text-primary-foreground">{t('staff_dir_add', 'Add Staff')}</Text>
-            </Button>
-          )}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-9 w-9 rounded-full"
-            onPress={handleRefresh}
-            disabled={isLoading}
-            accessibilityLabel="Refresh directory"
-          >
-            <RotateCw size={18} className={`text-foreground ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
-        </View>
+        hasManagePermission ? (
+          <HeaderActionButton
+            onPress={handleOpenCreate}
+            icon={Plus}
+            label={t('staff_dir_add', 'Add Staff')}
+            accessibilityLabel="Add New Staff Member"
+          />
+        ) : undefined
       }
     >
       {toastNode}
@@ -306,8 +290,8 @@ export const StaffDirectoryScreen: React.FC = () => {
                   ? t('staff_dir_empty_filtered', 'Try adjusting your search criteria or resetting filters.')
                   : t('staff_dir_empty_none', 'No staff members have been registered in this community yet.')
               }
-              actionLabel={hasManagePermission && !searchQuery && activeFilterCount === 0 ? 'Add Staff' : undefined}
-              onAction={hasManagePermission && !searchQuery && activeFilterCount === 0 ? handleOpenCreate : undefined}
+              actionLabel={activeFilterCount > 0 ? 'Clear Filters' : undefined}
+              onAction={activeFilterCount > 0 ? handleResetFilters : undefined}
             />
           )
         }
