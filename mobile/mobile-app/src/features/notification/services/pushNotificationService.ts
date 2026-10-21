@@ -154,6 +154,19 @@ export async function setupAndroidNotificationChannels() {
       enableVibrate: true,
     });
 
+    // 8. Emergency SOS alerts (highest-priority security notifications)
+    await Notifications.setNotificationChannelAsync('emergency', {
+      name: 'Emergency SOS Alerts',
+      description: 'Urgent emergency alerts for security and guardhouse staff',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 500, 200, 500, 200, 800],
+      lightColor: '#DC2626',
+      sound: 'default',
+      enableLights: true,
+      enableVibrate: true,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    });
+
     channelsInitialized = true;
     console.log('[PushNotificationService] Android notification channels successfully configured');
   } catch (error) {
@@ -274,7 +287,6 @@ export default {
   isPushNotificationEnabled,
   setPushNotificationEnabled,
 };
-
 
 
 

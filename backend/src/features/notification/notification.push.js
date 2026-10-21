@@ -42,6 +42,9 @@ export const resolveAndroidChannel = (payload) => {
   if (str.includes('directory') || str.includes('conversation') || str.includes('message') || str.includes('chat')) {
     return 'messages';
   }
+  if (str.includes('emergency') || str.includes('sos') || str.includes('panic')) {
+    return 'emergency';
+  }
   return 'general';
 };
 
