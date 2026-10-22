@@ -40,7 +40,7 @@ class NahomUpiModule(private val context: ReactApplicationContext) : ReactContex
       promise.reject("UPI_ALREADY_ACTIVE", "Another UPI payment attempt is already active.")
       return
     }
-    val activity = currentActivity
+    val activity = reactApplicationContext.currentActivity ?: getCurrentActivity()
     if (activity == null) {
       promise.reject("UPI_ACTIVITY_UNAVAILABLE", "The Android activity is not available.")
       return
@@ -78,7 +78,7 @@ class NahomUpiModule(private val context: ReactApplicationContext) : ReactContex
     launchPayment(uri, attemptId, null, promise)
   }
 
-  override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
+  override fun onActivityResult(activity: Activity, requestCode: Int, resultCode: Int, data: Intent?) {
     if (requestCode != REQUEST_CODE) return
     val promise = pendingPromise ?: return
     val attemptId = pendingAttemptId
@@ -92,7 +92,7 @@ class NahomUpiModule(private val context: ReactApplicationContext) : ReactContex
     promise.resolve(result)
   }
 
-  override fun onNewIntent(intent: Intent?) = Unit
+  override fun onNewIntent(intent: Intent) = Unit
 
   private fun responseUri(data: Intent?, resultCode: Int): String {
     val returnedUri = data?.dataString
