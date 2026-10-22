@@ -464,7 +464,7 @@ export const isFeatureAllowedForUser = (
 
 
 /**
- * Returns role-appropriate default quick action feature IDs (6 slots)
+ * Returns role-appropriate default quick action feature IDs (Rule: 1 to 7 slots)
  */
 export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined): string[] => {
   if (checkIsSecurityRole(user)) {
@@ -475,6 +475,7 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
       'complaints_track_requests',
       'complaints_raise_ticket',
       'amenities_security_logs',
+      'visitor_admin_logs',
     ];
   }
 
@@ -486,10 +487,11 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
       'billing_ledger',
       'community_engagement_manage',
       'amenities_dashboard',
+      'complaints_complaint_management',
     ];
   }
 
-  // Default Resident Quick Actions (6 slots)
+  // Default Resident Quick Actions (Rule: 1 to 7 slots)
   return [
     'visitor_resident_passes',
     'billing_dashboard',
@@ -497,5 +499,6 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
     'amenities_discover',
     'community_engagement',
     'complaints_raise_ticket',
+    'billing_wallet',
   ];
 };

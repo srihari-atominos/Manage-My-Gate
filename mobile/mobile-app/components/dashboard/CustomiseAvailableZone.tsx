@@ -1,12 +1,11 @@
-import React, { useMemo } from 'react';
-import { View } from 'react-native';
+import React from 'react';
+import { View, TouchableOpacity } from 'react-native';
 import { Text } from '../ui/text';
 import { Star } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import FeatureIcon from '../ui/FeatureIcon';
 import { ALL_AVAILABLE_FEATURES, AppFeatureItem } from '../../src/features/dashboard/dashboardCatalog';
 import { useTranslation } from '../../src/utils/i18n';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 
 export type AvailableFeatureCardItem = AppFeatureItem;
 
@@ -27,54 +26,54 @@ const AvailableFeatureCard: React.FC<AvailableFeatureCardProps> = React.memo(({
   isSelected,
   onToggleSelect,
 }) => {
-  const { t, tFeatureName } = useTranslation();
+  const { tFeatureName } = useTranslation();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const meta = ALL_AVAILABLE_FEATURES.find((item) => item.id === feature.id);
   const iconName = meta?.iconName || feature.iconName;
+  const imageName = meta?.imageName || feature.imageName;
   const colorIcon = meta?.colorIcon || feature.colorIcon || '#245FA8';
   const colorBg = meta?.colorBg || feature.colorBg || 'bg-secondary';
 
-  const tapGesture = useMemo(
-    () => Gesture.Tap().runOnJS(true).onEnd(() => onToggleSelect(feature.id)),
-    [feature.id, onToggleSelect]
-  );
-
   return (
     <View className="w-1/4 px-1.5 pb-4">
-      <GestureDetector gesture={tapGesture}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => onToggleSelect(feature.id)}
+        className="relative items-center"
+        accessibilityRole="button"
+        accessibilityLabel={`${meta?.name || feature.name}, ${isSelected ? 'Selected quick action' : 'Add to quick actions'}`}
+      >
         <View
-          className="relative items-center"
-          accessibilityRole="button"
-          accessibilityLabel={`${meta?.name || feature.name}, ${isSelected ? 'Pinned quick action' : 'Add to quick actions'}`}
+          style={{
+            backgroundColor: isDark
+              ? isSelected ? 'rgba(255, 106, 0, 0.12)' : '#262626'
+              : isSelected ? 'rgba(255, 106, 0, 0.08)' : '#FFFFFF',
+          }}
+          className={`h-[86px] w-full items-center justify-center rounded-[20px] border transition-colors ${
+            isSelected ? 'border-primary border-2 shadow-xs' : 'border-border/65'
+          }`}
         >
-          <View
-            style={{ backgroundColor: isDark ? '#262626' : '#FFFFFF' }}
-            className={`h-[88px] w-full items-center justify-center rounded-[22px] border ${
-              isSelected ? 'border-amber-400 shadow-xs' : 'border-border/65'
-            }`}
-          >
-            <View className={`size-12 items-center justify-center rounded-[17px] border border-border/40 ${colorBg}`}>
-              <FeatureIcon iconName={iconName} color={colorIcon} size={24} strokeWidth={1.9} />
-            </View>
+          <View className={`size-11 items-center justify-center rounded-[16px] border border-border/40 ${colorBg}`}>
+            <FeatureIcon iconName={iconName} imageName={imageName} color={colorIcon} size={18} strokeWidth={1.9} />
           </View>
-
-          {isSelected ? (
-            <View className="absolute -right-1.5 -top-1.5 size-7 rounded-full bg-amber-500 items-center justify-center border-2 border-card z-10">
-              <Star size={13} color="#FFFFFF" fill="#FFFFFF" />
-            </View>
-          ) : null}
-
-          <Text
-            className={`mt-2 min-h-[30px] text-[11px] font-semibold text-center leading-tight ${
-              isSelected ? 'text-foreground' : 'text-muted-foreground'
-            }`}
-            numberOfLines={2}
-          >
-            {tFeatureName(feature.id, meta?.name || feature.name)}
-          </Text>
         </View>
-      </GestureDetector>
+
+        {isSelected ? (
+          <View className="absolute -right-1 -top-1 size-6 rounded-full bg-primary items-center justify-center border-2 border-card z-10 shadow-xs">
+            <Star size={11} color="#FFFFFF" fill="#FFFFFF" />
+          </View>
+        ) : null}
+
+        <Text
+          className={`mt-1.5 min-h-[30px] text-[11px] text-center leading-tight tracking-tight ${
+            isSelected ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'
+          }`}
+          numberOfLines={2}
+        >
+          {tFeatureName(feature.id, meta?.name || feature.name)}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 });

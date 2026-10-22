@@ -7,7 +7,7 @@ import { cn } from '../../lib/utils';
 export interface KPIDashboardStripProps {
   cards: KPICardProps[];
   loading?: boolean;
-  layout?: 'auto' | 'grid2x2' | 'carousel' | 'row';
+  layout?: 'auto' | 'grid2x2' | 'carousel' | 'row' | 'row3';
   className?: string;
   contentContainerClassName?: string;
   skeletonCount?: number;
@@ -25,11 +25,12 @@ export function KPIDashboardStrip({
   const effectiveLayout = React.useMemo(() => {
     if (layout !== 'auto') return layout;
     if (cards.length === 4) return 'grid2x2';
+    if (cards.length === 3) return 'row3';
     if (cards.length === 2) return 'row';
     return 'carousel';
   }, [layout, cards.length]);
 
-  const count = skeletonCount || (effectiveLayout === 'grid2x2' ? 4 : effectiveLayout === 'row' ? 2 : Math.max(cards.length, 3));
+  const count = skeletonCount || (effectiveLayout === 'grid2x2' ? 4 : effectiveLayout === 'row3' ? 3 : effectiveLayout === 'row' ? 2 : Math.max(cards.length, 3));
 
   // Skeleton Loading State
   if (loading) {
@@ -39,6 +40,18 @@ export function KPIDashboardStrip({
           {Array.from({ length: count }).map((_, idx) => (
             <View key={idx} className="w-[48%] min-w-[140px]">
               <Skeleton variant="kpi" className="w-full h-28 rounded-xl" />
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    if (effectiveLayout === 'row3') {
+      return (
+        <View className={cn('flex-row gap-2.5 w-full', className)}>
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <View key={idx} className="flex-1 min-w-0">
+              <Skeleton variant="kpi" className="w-full h-24 rounded-xl" />
             </View>
           ))}
         </View>
@@ -90,7 +103,20 @@ export function KPIDashboardStrip({
     );
   }
 
-  // 2. 2-Column Balanced Row Layout (for 2 metrics)
+  // 2. 3-Column Balanced Row Layout (for exactly 3 metrics)
+  if (effectiveLayout === 'row3') {
+    return (
+      <View className={cn('flex-row gap-2.5 w-full', className)}>
+        {cards.map((card, idx) => (
+          <View key={card.title || idx} className="flex-1 min-w-0">
+            <KPICard {...card} className={cn('w-full min-w-0 p-3', card.className)} />
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  // 3. 2-Column Balanced Row Layout (for 2 metrics)
   if (effectiveLayout === 'row') {
     return (
       <View className={cn('flex-row gap-3', className)}>
@@ -103,7 +129,7 @@ export function KPIDashboardStrip({
     );
   }
 
-  // 3. Horizontal Scrollable Carousel Layout (for 3+ metrics)
+  // 4. Horizontal Scrollable Carousel Layout (for 5+ metrics)
   return (
     <ScrollView
       horizontal

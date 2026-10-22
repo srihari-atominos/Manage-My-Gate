@@ -20,11 +20,17 @@ describe('BottomNavigationBar & Scroll Performance Hardening', () => {
       expect(normalizeRoute('/profile/')).toBe('/profile');
     });
 
-    it('correctly matches dashboard and view-all routes', () => {
+    it('correctly matches dashboard, view-all, directory, and settings routes', () => {
       expect(normalizeRoute('/(resident)/dashboard')).toBe('/dashboard');
       expect(normalizeRoute('/dashboard')).toBe('/dashboard');
       expect(normalizeRoute('/(resident)/all-features')).toBe('/all-features');
       expect(normalizeRoute('/all-features')).toBe('/all-features');
+      expect(normalizeRoute('/(resident)/directory')).toBe('/directory');
+      expect(normalizeRoute('/(resident)/directory/index')).toBe('/directory');
+      expect(normalizeRoute('/directory')).toBe('/directory');
+      expect(normalizeRoute('/(resident)/settings')).toBe('/settings');
+      expect(normalizeRoute('/(resident)/settings/index')).toBe('/settings');
+      expect(normalizeRoute('/settings')).toBe('/settings');
     });
 
     it('identifies identical tab routes to prevent duplicate page re-openings', () => {

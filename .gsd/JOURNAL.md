@@ -112,3 +112,34 @@ Known non-security build hygiene issue found outside this hardening scope:
   admin's values.
 - Targeted ESLint and the frontend production build passed. `/dashboard`
   returned `HTTP/1.1 200 OK`; `git diff --check` passed.
+
+## 2026-10-22 — Mobile frontend latency reduction
+
+- Resized the mobile feature artwork assets from approximately 23 MB to 13 MB
+  while preserving the image-backed feature UI.
+- Moved the shared `FeatureIcon` image lookup out of the render path and memoized
+  the component to avoid rebuilding and rerendering unchanged feature icons.
+- `npx tsc --noEmit` passed in `mobile/mobile-app`.
+- `npx expo export --platform ios --platform android` passed; both platform
+  bundles included the optimized feature assets.
+
+## 2026-10-22 — Bottom navigation directional reveal
+
+- Updated the shared bottom-nav scroll handler so downward movement over 45 px
+  hides the bar, while the first upward scroll event reveals it immediately.
+- Reduced the top-of-page reveal guard from 180 px to 24 px so the bar can hide
+  shortly after downward scrolling begins.
+- `npx tsc --noEmit` passed.
+- The targeted `bottomNavNavigationPerformance.test.ts` suite passed: 5 tests.
+
+## 2026-10-22 — Bottom nav gesture responsiveness and feature tile sizing
+
+- Prioritized upward-direction detection before scroll throttling so a single
+  reverse swipe reveals the bottom nav immediately.
+- Increased compact All Features tile icon boxes from 52/48 px to 58/52 px,
+  with slightly larger image/vector icon sizes while retaining the four-column
+  layout.
+- `npx tsc --noEmit` passed and the targeted bottom-navigation suite passed:
+  5 tests.
+- Playwright MCP was requested but no Playwright/browser MCP tool was exposed
+  in the current workspace, so live gesture screenshots could not be captured.

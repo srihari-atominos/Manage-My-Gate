@@ -1,4 +1,5 @@
 import React from 'react';
+import { Image } from 'react-native';
 import {
   CreditCard,
   Wrench,
@@ -100,15 +101,66 @@ const DARK_MODE_COLOR_MAP: Record<string, string> = {
   '#6366F1': '#818CF8', // Indigo
 };
 
+// Keep image requires outside the render path so every icon render reuses the
+// same immutable lookup table instead of rebuilding it for each tile.
+const IMAGE_SOURCES: Record<string, number> = {
+  'resident-passes': require('../../assets/images/visitor-management/resident-passes.png'),
+  'admin-console': require('../../assets/images/visitor-management/admin-console.png'),
+  'community-passes': require('../../assets/images/visitor-management/community-passes.png'),
+  'visitor-blacklist': require('../../assets/images/visitor-management/visitor-blacklist.png'),
+  'admin-gate-logs': require('../../assets/images/visitor-management/admin-gate-logs.png'),
+  'gate-console': require('../../assets/images/visitor-management/gate-console.png'),
+  'user-management': require('../../assets/images/administration-security/user-management.png'),
+  'unit-management': require('../../assets/images/administration-security/unit-management.png'),
+  'role-builder': require('../../assets/images/administration-security/role-builder.png'),
+  'workspace-settings': require('../../assets/images/administration-security/workspace-settings.png'),
+  'integration-hub': require('../../assets/images/administration-security/integration-hub.png'),
+  'staff-directory': require('../../assets/images/staff-management/staff-directory.png'),
+  'staff-attendance': require('../../assets/images/staff-management/staff-attendance.png'),
+  'unit-allocations': require('../../assets/images/staff-management/unit-allocations.png'),
+  'staff-portal-pass': require('../../assets/images/staff-management/staff-portal-pass.png'),
+  'community-directory': require('../../assets/images/community-directory/community-directory.png'),
+  'community-notes': require('../../assets/images/community-directory/community-notes.png'),
+  'discover-amenities': require('../../assets/images/amenities-booking/discover-amenities.png'),
+  'my-bookings': require('../../assets/images/amenities-booking/my-bookings.png'),
+  'amenity-master': require('../../assets/images/amenities-booking/amenity-master.png'),
+  'booking-queue': require('../../assets/images/amenities-booking/booking-queue.png'),
+  'amenity-settings': require('../../assets/images/amenities-booking/amenity-settings.png'),
+  'admin-calendar': require('../../assets/images/amenities-booking/admin-calendar.png'),
+  'maintenance': require('../../assets/images/amenities-booking/maintenance.png'),
+  'amenity-dashboard': require('../../assets/images/amenities-booking/amenity-dashboard.png'),
+  'ledgers': require('../../assets/images/amenities-booking/ledgers.png'),
+  'security-scanner': require('../../assets/images/amenities-booking/security-scanner.png'),
+  'security-logs': require('../../assets/images/amenities-booking/security-logs.png'),
+  'complaints-stats': require('../../assets/images/complaints-helpdesk/complaints-stats.png'),
+  'raise-ticket': require('../../assets/images/complaints-helpdesk/raise-ticket.png'),
+  'track-tickets': require('../../assets/images/complaints-helpdesk/track-tickets.png'),
+  'complaint-queue': require('../../assets/images/complaints-helpdesk/complaint-queue.png'),
+  'staff-vendors': require('../../assets/images/complaints-helpdesk/staff-vendors.png'),
+  'assignee-console': require('../../assets/images/complaints-helpdesk/assignee-console.png'),
+  'community-engagement': require('../../assets/images/notice-board-polls/community-engagement.png'),
+  'resident-feed': require('../../assets/images/notice-board-polls/resident-feed.png'),
+  'manage-engagement': require('../../assets/images/notice-board-polls/manage-engagement.png'),
+  'digital-wallet': require('../../assets/images/digital-wallet/digital-wallet.png'),
+  'financial-history': require('../../assets/images/digital-wallet/financial-history.png'),
+  'billing': require('../../assets/images/financial-billing/billing.png'),
+  'my-dues': require('../../assets/images/financial-billing/my-dues.png'),
+  'my-invoices': require('../../assets/images/financial-billing/my-invoices.png'),
+  'assessments': require('../../assets/images/financial-billing/assessments.png'),
+  'billing-ledger': require('../../assets/images/financial-billing/billing-ledger.png'),
+};
+
 export interface FeatureIconProps {
   iconName: string;
+  imageName?: string;
   color: string;
   size?: number;
   strokeWidth?: number;
 }
 
-export const FeatureIcon: React.FC<FeatureIconProps> = ({
+const FeatureIconComponent: React.FC<FeatureIconProps> = ({
   iconName,
+  imageName,
   color,
   size = 28,
   strokeWidth = 2.3,
@@ -116,6 +168,20 @@ export const FeatureIcon: React.FC<FeatureIconProps> = ({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const effectiveColor = (isDark && DARK_MODE_COLOR_MAP[color]) ? DARK_MODE_COLOR_MAP[color] : color;
+
+  if (imageName) {
+    const source = IMAGE_SOURCES[imageName];
+    if (source) {
+      return (
+        <Image
+          source={source}
+          resizeMode="cover"
+          accessible={false}
+          style={{ width: size + 24, height: size + 20, borderRadius: 14 }}
+        />
+      );
+    }
+  }
 
   switch (iconName) {
     // Visitor & Gate Security
@@ -295,5 +361,6 @@ export const FeatureIcon: React.FC<FeatureIconProps> = ({
   }
 };
 
-export default FeatureIcon;
+export const FeatureIcon = React.memo(FeatureIconComponent);
 
+export default FeatureIcon;

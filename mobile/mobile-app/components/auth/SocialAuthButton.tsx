@@ -111,6 +111,12 @@ export const SocialAuthButton = ({
     : providerName;
   const contentClass = isNavy ? 'text-white' : isGlass ? 'text-white' : 'text-[#1C1917] dark:text-white';
 
+  const isCompact = variant === 'compact';
+  const buttonHeight = isCompact ? 42 : 52;
+  const buttonRadius = isCompact ? 21 : 28;
+  const iconSize = isCompact ? 18 : 20;
+  const fontSize = isCompact ? 13.5 : 14.5;
+
   return (
     <>
       <Animated.View style={{ flex: 1, minWidth: 0, transform: [{ scale: pressScale }] }}>
@@ -126,19 +132,19 @@ export const SocialAuthButton = ({
           style={
             isNavy
               ? {
-                  height: 52,
+                  height: buttonHeight,
                   backgroundColor: 'rgba(0, 0, 0, 0.45)',
                   borderColor: 'rgba(255, 255, 255, 0.22)',
                   borderWidth: 1.2,
-                  borderRadius: 28,
+                  borderRadius: buttonRadius,
                 }
               : isGoogle
               ? {
-                  height: 52,
+                  height: buttonHeight,
                   backgroundColor: '#FFFFFF',
                   borderColor: '#E2E8F0',
-                  borderWidth: 1.5,
-                  borderRadius: 28,
+                  borderWidth: 1.2,
+                  borderRadius: buttonRadius,
                   shadowColor: '#64748B',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.08,
@@ -149,9 +155,9 @@ export const SocialAuthButton = ({
           }
           className={`${
             isNavy
-              ? 'flex-row items-center justify-center gap-2 px-3'
+              ? 'w-full flex-row items-center justify-center gap-2 px-3'
               : isGoogle
-              ? 'flex-row items-center justify-center gap-2 px-3'
+              ? 'w-full flex-row items-center justify-center gap-2 px-3'
               : `h-[48px] rounded-2xl flex-row items-center justify-center gap-2.5 shadow-2xs backdrop-blur-md active:bg-white/30 ${
                   isGlass
                     ? 'bg-white/20 dark:bg-white/15 border border-white/35'
@@ -164,11 +170,11 @@ export const SocialAuthButton = ({
         ) : (
           <>
             {isGoogle ? (
-              <GoogleIcon size={20} />
+              <GoogleIcon size={iconSize} />
             ) : isApple ? (
-              <AppleIcon size={20} color={isNavy || isGlass ? '#FFFFFF' : undefined} />
+              <AppleIcon size={iconSize} color={isNavy || isGlass ? '#FFFFFF' : undefined} />
             ) : (
-              <MicrosoftIcon size={20} />
+              <MicrosoftIcon size={iconSize} />
             )}
             <Text
               numberOfLines={isGoogle && !isNavy ? 1 : undefined}
@@ -176,9 +182,9 @@ export const SocialAuthButton = ({
               minimumFontScale={0.8}
               style={
                 isNavy
-                  ? { color: '#FFFFFF', fontSize: 14.5, fontWeight: '600' }
+                  ? { color: '#FFFFFF', fontSize, fontWeight: '600' }
                   : isGoogle
-                  ? { color: '#0F172A', fontSize: 14.5, fontWeight: '600', lineHeight: 20, includeFontPadding: false, textAlignVertical: 'center' }
+                  ? { color: '#0F172A', fontSize, fontWeight: '600', lineHeight: 18, includeFontPadding: false, textAlignVertical: 'center' }
                   : undefined
               }
               className={`text-sm font-semibold ${isNavy ? 'text-white font-sans' : isGoogle ? 'text-center font-sans' : `font-sans ${contentClass}`}`}

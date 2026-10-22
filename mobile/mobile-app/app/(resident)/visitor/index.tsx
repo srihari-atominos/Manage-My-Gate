@@ -182,6 +182,8 @@ export default function VisitorDashboardScreen() {
             icon={ShieldCheck}
             title={t('no_recent_visitor_activity', 'No Active Visitor Passes')}
             description={t('no_recent_visitor_sub', 'Create a new pass to pre-approve visitor entry at the gate.')}
+            actionLabel={t('create_visitor_pass', 'Create Visitor Pass')}
+            onAction={() => setInviteSheetOpen(true)}
           />
         ) : (
           <View className="gap-2.5">

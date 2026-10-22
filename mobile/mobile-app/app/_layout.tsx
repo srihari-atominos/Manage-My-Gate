@@ -1,4 +1,4 @@
-﻿import '@/src/utils/consoleFilter';
+import '@/src/utils/consoleFilter';
 import '@/src/utils/cryptoPolyfill';
 import '@/global.css';
 import React, { useEffect, useMemo, useRef } from 'react';

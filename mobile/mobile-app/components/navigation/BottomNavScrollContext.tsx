@@ -16,6 +16,12 @@ const BottomNavScrollContext = createContext<BottomNavScrollContextType | null>(
 let globalIsCompact = false;
 const globalListeners = new Set<(compact: boolean) => void>();
 
+// Keep the bar responsive to direction changes without reacting to tiny
+// finger jitter. The reveal distance is intentionally much smaller than the
+// hide distance so a short upward gesture brings the bar back immediately.
+const TOP_REVEAL_OFFSET = 24;
+const HIDE_SCROLL_DELTA = 45;
+
 export const setGlobalBottomNavCompact = (compact: boolean) => {
   if (globalIsCompact !== compact) {
     globalIsCompact = compact;
@@ -60,8 +66,9 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
       const currentY = extractScrollY(event);
       const now = Date.now();
 
-      // Long-page smart threshold: Never hide bottom bar on top 180px of any page
-      if (currentY <= 180) {
+      // Always show the bar at the very top, but allow it to hide soon after
+      // the user starts moving down the page.
+      if (currentY <= TOP_REVEAL_OFFSET) {
         if (globalIsCompact) {
           setIsCompact(false);
         }
@@ -69,23 +76,26 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
         return;
       }
 
-      // Throttle rapid state flip calls
+      const delta = currentY - lastScrollY.current;
+
+      // Reveal immediately on the first upward event. This check intentionally
+      // happens before throttling so one quick reverse swipe is never lost.
+      if (delta < 0 && globalIsCompact) {
+        lastScrollTime.current = now;
+        setIsCompact(false);
+        lastScrollY.current = currentY;
+        return;
+      }
+
+      // Throttle rapid hide calls; reveal calls above must remain immediate.
       if (now - lastScrollTime.current < 90) {
         return;
       }
 
-      const delta = currentY - lastScrollY.current;
-
-      // Scrolling Down threshold: 45px of downward scroll
-      if (delta > 45 && !globalIsCompact) {
+      // Scrolling Down threshold: accumulated downward scroll
+      if (delta > HIDE_SCROLL_DELTA && !globalIsCompact) {
         lastScrollTime.current = now;
         setIsCompact(true);
-        lastScrollY.current = currentY;
-      }
-      // Scrolling Up threshold: 25px of upward scroll reveals the bar
-      else if (delta < -25 && globalIsCompact) {
-        lastScrollTime.current = now;
-        setIsCompact(false);
         lastScrollY.current = currentY;
       }
     },
@@ -147,7 +157,7 @@ export const useBottomNavScroll = () => {
     const currentY = extractScrollY(event);
     const now = Date.now();
 
-    if (currentY <= 180) {
+    if (currentY <= TOP_REVEAL_OFFSET) {
       if (globalIsCompact) {
         setGlobalBottomNavCompact(false);
       }
@@ -155,19 +165,23 @@ export const useBottomNavScroll = () => {
       return;
     }
 
+    const delta = currentY - localLastY.current;
+
+    // Reveal immediately on the first upward event, before throttling.
+    if (delta < 0 && globalIsCompact) {
+      lastScrollTime.current = now;
+      setGlobalBottomNavCompact(false);
+      localLastY.current = currentY;
+      return;
+    }
+
     if (now - lastScrollTime.current < 90) {
       return;
     }
 
-    const delta = currentY - localLastY.current;
-
-    if (delta > 45 && !globalIsCompact) {
+    if (delta > HIDE_SCROLL_DELTA && !globalIsCompact) {
       lastScrollTime.current = now;
       setGlobalBottomNavCompact(true);
-      localLastY.current = currentY;
-    } else if (delta < -25 && globalIsCompact) {
-      lastScrollTime.current = now;
-      setGlobalBottomNavCompact(false);
       localLastY.current = currentY;
     }
   }, []);

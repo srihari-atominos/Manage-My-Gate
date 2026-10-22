@@ -61,67 +61,76 @@ export function ActionGrid({
         </View>
       ) : null}
 
-      {/* Universal 3-Column Wrap Grid */}
+      {/* Responsive Balanced Wrap Grid */}
       {filteredItems.length > 0 ? (
-        <View className="flex-row flex-wrap justify-start gap-x-[2.9%] gap-y-2.5">
-          {filteredItems.map((item) => {
-            const IconComp = item.iconName
-              ? (LucideIcons as Record<string, any>)[item.iconName] || LucideIcons.Circle
-              : LucideIcons.Circle;
+        (() => {
+          const isTwoCol = filteredItems.length === 2 || filteredItems.length === 4;
+          const colWidthClass = isTwoCol ? 'w-[48.5%]' : 'w-[31.4%]';
+          const gapClass = isTwoCol ? 'gap-x-[3%]' : 'gap-x-[2.9%]';
 
-            const handlePress = () => {
-              if (item.disabled) return;
-              if (item.onPress) {
-                item.onPress();
-              } else if (item.route) {
-                router.push(item.route as any);
-              }
-            };
+          return (
+            <View className={cn('flex-row flex-wrap justify-start gap-y-2.5', gapClass)}>
+              {filteredItems.map((item) => {
+                const IconComp = item.iconName
+                  ? (LucideIcons as Record<string, any>)[item.iconName] || LucideIcons.Circle
+                  : LucideIcons.Circle;
 
-            const displayName = i18n.t(item.id, item.name) || i18n.translateText(item.name);
+                const handlePress = () => {
+                  if (item.disabled) return;
+                  if (item.onPress) {
+                    item.onPress();
+                  } else if (item.route) {
+                    router.push(item.route as any);
+                  }
+                };
 
-            return (
-              <Pressable
-                key={item.id}
-                onPress={handlePress}
-                onPressIn={() => {
-                  if (item.route && !item.disabled) router.prefetch(item.route as any);
-                }}
-                disabled={item.disabled}
-                accessibilityRole="button"
-                accessibilityLabel={displayName}
-                className={cn(
-                  'w-[31.4%] bg-card p-2.5 rounded-xl border border-border items-center justify-center active:opacity-75 shadow-xs relative min-h-[86px]',
-                  item.disabled && 'opacity-50'
-                )}
-              >
-                {/* Icon Container */}
-                <View
-                  className={cn(
-                    'w-9.5 h-9.5 rounded-xl items-center justify-center mb-1.5',
-                    item.colorBg || 'bg-primary/10'
-                  )}
-                >
-                  {item.icon ? (
-                    item.icon
-                  ) : (
-                    <IconComp size={20} color={item.colorIcon || 'hsl(var(--primary))'} strokeWidth={2.2} />
-                  )}
-                </View>
+                const displayName = i18n.t(item.id, item.name) || i18n.translateText(item.name);
 
-                {/* Label Title */}
-                <Text
-                  style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 12.5, lineHeight: 16 } : undefined}
-                  className="text-[11px] font-semibold text-foreground text-center leading-[13px] px-0.5"
-                  numberOfLines={2}
-                  ellipsizeMode="tail"
-                >
-                  {displayName}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={handlePress}
+                    onPressIn={() => {
+                      if (item.route && !item.disabled) router.prefetch(item.route as any);
+                    }}
+                    disabled={item.disabled}
+                    accessibilityRole="button"
+                    accessibilityLabel={displayName}
+                    className={cn(
+                      'bg-card p-2.5 rounded-xl border border-border items-center justify-center active:opacity-75 shadow-xs relative min-h-[86px]',
+                      colWidthClass,
+                      item.disabled && 'opacity-50'
+                    )}
+                  >
+                    {/* Icon Container */}
+                    <View
+                      className={cn(
+                        'w-9.5 h-9.5 rounded-xl items-center justify-center mb-1.5',
+                        item.colorBg || 'bg-primary/10'
+                      )}
+                    >
+                      {item.icon ? (
+                        item.icon
+                      ) : (
+                        <IconComp size={20} color={item.colorIcon || 'hsl(var(--primary))'} strokeWidth={2.2} />
+                      )}
+                    </View>
+
+                    {/* Label Title */}
+                    <Text
+                      style={i18n.getCurrentLanguage() === 'ar' ? { fontSize: 12.5, lineHeight: 16 } : undefined}
+                      className="text-[11px] font-semibold text-foreground text-center leading-[13px] px-0.5"
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
+                      {displayName}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          );
+        })()
       ) : (
         <View className="bg-card p-4 rounded-xl border border-border items-center">
           <Text className="text-xs font-semibold text-muted-foreground">

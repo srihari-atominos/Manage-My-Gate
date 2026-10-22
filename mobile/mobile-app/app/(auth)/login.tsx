@@ -746,23 +746,7 @@ export default function LoginScreen() {
               }}
               pointerEvents="none"
             >
-              <View
-                style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.65)',
-                  paddingHorizontal: 22,
-                  paddingVertical: 7,
-                  borderRadius: 24,
-                  borderWidth: 1.2,
-                  borderColor: 'rgba(255, 255, 255, 0.22)',
-                  shadowColor: '#000000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.35,
-                  shadowRadius: 10,
-                  elevation: 6,
-                }}
-              >
-                <NahomThemedTitle fontSize={28} variant="house" textColor="#FFFFFF" orangeColor="#FF7A1A" />
-              </View>
+              <NahomThemedTitle fontSize={30} variant="house" textColor="#FFFFFF" orangeColor="#FF7A1A" />
             </Animated.View>
 
             {/* Welcome Text Section - RNText with explicit lineHeight prevents any vertical clipping */}
@@ -1278,73 +1262,77 @@ export default function LoginScreen() {
               </View>
 
               {/* OR CONTINUE WITH Divider */}
-              <View className="flex-row items-center my-4 gap-3">
-                <View className="flex-1 h-[1px] bg-white/40" />
+              <View className="flex-row items-center my-3 gap-3">
+                <View className="flex-1 h-[1px] bg-white/35" />
                 <Text
-                  className="text-[11px] font-bold tracking-widest uppercase font-sans"
+                  className="text-[10.5px] font-bold tracking-widest uppercase font-sans"
                   style={{
                     color: '#FFFFFF',
                     textShadowColor: 'rgba(0, 0, 0, 0.75)',
                     textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 4,
+                    textShadowRadius: 3,
                   }}
                 >
                   {t('or_continue_with', 'Or Continue With')}
                 </Text>
-                <View className="flex-1 h-[1px] bg-white/40" />
+                <View className="flex-1 h-[1px] bg-white/35" />
               </View>
 
               {/* Social Authentication: Google ID & Apple ID */}
-              <View className="flex-row items-center gap-3.5 w-full">
-                <SocialAuthButton
-                  provider="google"
-                  variant="compact"
-                  onPress={handleGoogleSignIn}
-                  loading={googleLoading}
-                  disabled={isSubmittingBasic || isSubmittingPhone}
-                />
-                <AppleSignInButton
-                  variant="compact"
-                  disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
-                />
+              <View className="flex-row items-center gap-3 w-full">
+                <View className="flex-1 min-w-0 h-[42px]">
+                  <SocialAuthButton
+                    provider="google"
+                    variant="compact"
+                    onPress={handleGoogleSignIn}
+                    loading={googleLoading}
+                    disabled={isSubmittingBasic || isSubmittingPhone}
+                  />
+                </View>
+                <View className="flex-1 min-w-0 h-[42px]">
+                  <AppleSignInButton
+                    variant="compact"
+                    disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                  />
+                </View>
               </View>
 
               {/* Bottom Tagline: Display only Connect Harmony with subtle orange decorative lines */}
               <View
-                className="w-full items-center justify-center mt-5 mb-2"
+                className="w-full items-center justify-center mt-3.5 mb-1.5"
               >
                 <View
                   style={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-                    paddingHorizontal: 20,
-                    paddingVertical: 7,
-                    borderRadius: 22,
-                    borderWidth: 1.2,
-                    borderColor: 'rgba(255, 255, 255, 0.20)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.60)',
+                    paddingHorizontal: 14,
+                    paddingVertical: 5,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.18)',
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 10,
+                    gap: 8,
                     shadowColor: '#000000',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.35,
-                    shadowRadius: 10,
-                    elevation: 5,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 6,
+                    elevation: 3,
                   }}
                 >
-                  <View style={{ height: 2, width: 22, backgroundColor: '#FF7A1A', borderRadius: 1 }} />
+                  <View style={{ height: 1.5, width: 14, backgroundColor: '#FF7A1A', borderRadius: 1 }} />
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <RNText
                       style={{
                         color: '#FF7A1A',
-                        fontSize: 15,
-                        lineHeight: 20,
+                        fontSize: 12.5,
+                        lineHeight: 16,
                         fontWeight: '700',
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.4,
                         includeFontPadding: false,
                         textShadowColor: 'rgba(0, 0, 0, 0.8)',
                         textShadowOffset: { width: 0, height: 1 },
-                        textShadowRadius: 3,
+                        textShadowRadius: 2,
                       }}
                     >
                       Connect
@@ -1352,20 +1340,20 @@ export default function LoginScreen() {
                     <RNText
                       style={{
                         color: '#FFFFFF',
-                        fontSize: 15,
-                        lineHeight: 20,
+                        fontSize: 12.5,
+                        lineHeight: 16,
                         fontWeight: '700',
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.4,
                         includeFontPadding: false,
                         textShadowColor: 'rgba(0, 0, 0, 0.8)',
                         textShadowOffset: { width: 0, height: 1 },
-                        textShadowRadius: 3,
+                        textShadowRadius: 2,
                       }}
                     >
                       {' '}Harmony
                     </RNText>
                   </View>
-                  <View style={{ height: 2, width: 22, backgroundColor: '#FF7A1A', borderRadius: 1 }} />
+                  <View style={{ height: 1.5, width: 14, backgroundColor: '#FF7A1A', borderRadius: 1 }} />
                 </View>
               </View>
 

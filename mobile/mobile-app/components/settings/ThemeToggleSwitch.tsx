@@ -70,7 +70,7 @@ export const ThemeToggleSwitch = ({
                 'flex-1 flex-row items-center justify-center py-2.5 rounded-lg gap-1.5',
                 isSelected
                   ? 'bg-card border border-border shadow-2xs'
-                  : 'bg-transparent active:bg-muted/60'
+                  : 'bg-transparent border border-transparent active:bg-muted/60'
               )}
               accessibilityRole="button"
               accessibilityLabel={t(opt.labelKey, opt.fallback)}

@@ -24,7 +24,6 @@ import {
   Image as ImageIcon,
   FileUp,
   Trash2,
-  Settings,
   Building2,
   ShieldCheck,
   ShieldAlert,
@@ -681,28 +680,6 @@ export default function ProfileScreen() {
       scrollable={false}
       showBackButton={true}
       onBackPress={handleBack}
-      headerRight={
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity
-            onPress={() => setSosModalVisible(true)}
-            activeOpacity={0.7}
-            className="size-10 rounded-full bg-destructive/15 border border-destructive/30 items-center justify-center active:bg-destructive/25"
-            accessibilityRole="button"
-            accessibilityLabel={t('emergency_sos_title', 'Emergency SOS Panic')}
-          >
-            <ShieldAlert size={18} color="#ef4444" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push('/(resident)/settings' as any)}
-            activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary border border-border items-center justify-center active:bg-muted"
-            accessibilityRole="button"
-            accessibilityLabel={t('settings', 'Settings')}
-          >
-            <Settings size={18} className="text-foreground" />
-          </TouchableOpacity>
-        </View>
-      }
     >
       <ScrollView
         ref={scrollViewRef}
@@ -740,7 +717,7 @@ export default function ProfileScreen() {
 
         {/* Section: Community, Role & Villa Switching */}
         <View className="gap-2.5">
-          <Text className="text-base font-extrabold font-sans text-foreground px-1 tracking-tight">
+          <Text className="text-base font-extrabold font-sans text-foreground tracking-tight">
             {t('community_context', 'Community, Role & Villa')}
           </Text>
 
@@ -904,7 +881,7 @@ export default function ProfileScreen() {
         {/* Section: Personal Details & Edit Form */}
         <View className="gap-2.5">
           <Text
-            className="text-base font-extrabold font-sans text-foreground px-1 tracking-tight"
+            className="text-base font-extrabold font-sans text-foreground tracking-tight"
             style={{ fontWeight: 'bold' }}
           >
             {t('personal_details', 'Personal Details')}

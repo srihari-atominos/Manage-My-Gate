@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { View, TouchableOpacity, ScrollView, TextInput, BackHandler } from 'react-native';
+import { View, TouchableOpacity, ScrollView, TextInput, BackHandler, Image } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -25,6 +25,28 @@ import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { useColorScheme } from 'nativewind';
 import { EmptyState } from '@/components/feedback/EmptyState';
 
+const VISITOR_HEADER_IMAGE = require('../../assets/images/visitor-management/visitor-management-header.png');
+const ADMINISTRATION_SECURITY_HEADER_IMAGE = require('../../assets/images/administration-security/administration-security-header.png');
+const STAFF_MANAGEMENT_HEADER_IMAGE = require('../../assets/images/staff-management/staff-management-header.png');
+const COMMUNITY_DIRECTORY_HEADER_IMAGE = require('../../assets/images/community-directory/community-directory-header.png');
+const AMENITIES_BOOKING_HEADER_IMAGE = require('../../assets/images/amenities-booking/amenities-booking-header.png');
+const COMPLAINTS_HELPDESK_HEADER_IMAGE = require('../../assets/images/complaints-helpdesk/complaints-helpdesk-header.png');
+const NOTICE_BOARD_POLLS_HEADER_IMAGE = require('../../assets/images/notice-board-polls/notice-board-polls-header.png');
+const DIGITAL_WALLET_HEADER_IMAGE = require('../../assets/images/digital-wallet/digital-wallet-header.png');
+const FINANCIAL_BILLING_HEADER_IMAGE = require('../../assets/images/financial-billing/financial-billing-header.png');
+
+const CATEGORY_HEADER_IMAGES: Record<string, number> = {
+  visitor_management: VISITOR_HEADER_IMAGE,
+  administration_security: ADMINISTRATION_SECURITY_HEADER_IMAGE,
+  staff_management: STAFF_MANAGEMENT_HEADER_IMAGE,
+  community_directory: COMMUNITY_DIRECTORY_HEADER_IMAGE,
+  amenities_facilities: AMENITIES_BOOKING_HEADER_IMAGE,
+  complaints_helpdesk: COMPLAINTS_HELPDESK_HEADER_IMAGE,
+  notice_board_polls: NOTICE_BOARD_POLLS_HEADER_IMAGE,
+  digital_wallet: DIGITAL_WALLET_HEADER_IMAGE,
+  financial_billing: FINANCIAL_BILLING_HEADER_IMAGE,
+};
+
 
 const FEATURES_BY_ID = new Map((ALL_AVAILABLE_FEATURES as any[]).map((f) => [f.id, f]));
 
@@ -37,6 +59,7 @@ const CATEGORY_META: Record<string, { icon: string; subKey: string; subtitle: st
   financial_billing: { icon: 'CreditCard', subKey: 'cat_billing_sub', subtitle: 'Dues, Invoices & Accounts', color: '#0D9488', bgColor: 'bg-teal-50', darkBgColor: 'bg-teal-950/40' },
   staff_management: { icon: 'Users', subKey: 'cat_staff_sub', subtitle: 'Registry, Duty & Household Passes', color: '#2563EB', bgColor: 'bg-blue-50', darkBgColor: 'bg-blue-950/40' },
   administration_security: { icon: 'UserRoundCog', subKey: 'cat_admin_sub', subtitle: 'Staff, RBAC & Settings', color: '#D97706', bgColor: 'bg-amber-50', darkBgColor: 'bg-amber-950/40' },
+  community_directory: { icon: 'Building2', subKey: '', subtitle: 'Module Features', color: '#2563EB', bgColor: 'bg-blue-50', darkBgColor: 'bg-blue-950/40' },
 };
 
 const DEFAULT_CATEGORY_META = {
@@ -91,13 +114,8 @@ export default function AllFeaturesScreen() {
       .filter((cat) => cat.items.length > 0);
   }, [featureCatalog, user, searchQuery, tFeatureName]);
 
-  // Lazy loading state to prevent navigation stutter
-  const [isReady, setIsReady] = useState(false);
-  useEffect(() => {
-    // Tab screens have no transition animation, so just wait one frame (header + nav paint first)
-    const id = requestAnimationFrame(() => setIsReady(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
+  // Fast instant mount matching bottom nav tab contract
+  const [isReady] = useState(true);
 
   // Sync selected category with accessible categories
   useEffect(() => {
@@ -261,8 +279,8 @@ export default function AllFeaturesScreen() {
                 if (filteredItems.length === 0) return null;
 
                 const isExpanded = Boolean(expandedCategories[category.categoryKey]) || Boolean(searchQuery);
-                const hasMore = filteredItems.length > 6;
-                const displayedItems = isExpanded ? filteredItems : filteredItems.slice(0, 6);
+                const hasMore = filteredItems.length > 8;
+                const displayedItems = isExpanded ? filteredItems : filteredItems.slice(0, 8);
                 const currentMeta = CATEGORY_META[category.categoryKey] || DEFAULT_CATEGORY_META;
 
                 const actionLabel = hasMore
@@ -272,24 +290,58 @@ export default function AllFeaturesScreen() {
                   : undefined;
 
                 return (
-                  <View key={category.categoryKey} className="gap-2.5">
-                    <SectionHeader
-                      title={tCategoryName(category.categoryKey, category.categoryName)}
-                      subtitle={currentMeta.subKey ? t(currentMeta.subKey, currentMeta.subtitle) : translateText(currentMeta.subtitle)}
-                      count={filteredItems.length}
-                      icon={currentMeta.icon}
-                      iconColor={currentMeta.color}
-                      iconBgColor={isDark ? currentMeta.darkBgColor : currentMeta.bgColor}
-                      actionLabel={actionLabel}
-                      isExpanded={isExpanded}
-                      onAction={hasMore ? () => toggleCategoryExpand(category.categoryKey) : undefined}
-                      className="px-0 py-1"
-                    />
+                  <View key={category.categoryKey} className="gap-2">
+                    {CATEGORY_HEADER_IMAGES[category.categoryKey] ? (
+                      <View className="flex-row items-center justify-between px-1 py-1.5">
+                        <View className="flex-row items-center flex-1 min-w-0 me-2">
+                          <Image
+                            source={CATEGORY_HEADER_IMAGES[category.categoryKey]}
+                            resizeMode="cover"
+                            accessibilityLabel={category.categoryName}
+                            style={{ width: 44, height: 44, borderRadius: 12 }}
+                            className="me-2.5 h-11 w-11 shrink-0 rounded-xl"
+                          />
+                          <View className="flex-1 min-w-0 justify-center">
+                            <Text className="text-[17px] sm:text-[18px] font-bold text-foreground tracking-tight">
+                              {tCategoryName(category.categoryKey, category.categoryName)}
+                            </Text>
+                            <Text numberOfLines={1} className="text-[12px] sm:text-[13px] font-normal text-muted-foreground mt-0.5 tracking-normal">
+                              {currentMeta.subKey ? t(currentMeta.subKey, currentMeta.subtitle) : translateText(currentMeta.subtitle)} · {filteredItems.length} {filteredItems.length === 1 ? 'feature' : 'features'}
+                            </Text>
+                          </View>
+                        </View>
+                        {actionLabel && hasMore ? (
+                          <TouchableOpacity
+                            onPress={() => toggleCategoryExpand(category.categoryKey)}
+                            className="flex-row min-h-9 items-center gap-1.5 bg-card border border-border/80 px-3 py-1 rounded-full shrink-0 shadow-2xs"
+                            accessibilityRole="button"
+                            accessibilityLabel={actionLabel}
+                          >
+                            <Text className="text-[12px] font-bold text-foreground">{actionLabel}</Text>
+                            <ChevronRight size={12} color={isDark ? '#FFFFFF' : '#111827'} strokeWidth={2.4} />
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    ) : (
+                      <SectionHeader
+                        title={tCategoryName(category.categoryKey, category.categoryName)}
+                        subtitle={currentMeta.subKey ? t(currentMeta.subKey, currentMeta.subtitle) : translateText(currentMeta.subtitle)}
+                        count={filteredItems.length}
+                        icon={currentMeta.icon}
+                        iconColor={currentMeta.color}
+                        iconBgColor={isDark ? currentMeta.darkBgColor : currentMeta.bgColor}
+                        actionLabel={actionLabel}
+                        isExpanded={isExpanded}
+                        onAction={hasMore ? () => toggleCategoryExpand(category.categoryKey) : undefined}
+                        className="px-0 py-0.5"
+                      />
+                    )}
 
-                    <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3.5">
+                    <View className="flex-row flex-wrap justify-start gap-x-[2.4%] gap-y-3.5">
                       {displayedItems.map((item) => {
                         const meta = FEATURES_BY_ID.get(item.id);
                         const iconName = meta?.iconName || item.iconName;
+                        const imageName = meta?.imageName || (item as any).imageName;
                         const colorIcon = meta?.colorIcon || item.colorIcon || '#245FA8';
                         const badge = meta?.badge || item.badge;
                         const badgeColor = meta?.badgeColor || item.badgeColor;
@@ -297,8 +349,10 @@ export default function AllFeaturesScreen() {
                         return (
                           <ActionTile
                             key={item.id}
-                            containerClassName="w-[23%]"
-                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={25} strokeWidth={1.9} />}
+                            compact={true}
+                            containerClassName="w-[23.2%]"
+                            iconIsImage={Boolean(imageName)}
+                            icon={<FeatureIcon iconName={iconName} imageName={imageName} color={colorIcon} size={imageName ? 20 : 23} strokeWidth={1.9} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}

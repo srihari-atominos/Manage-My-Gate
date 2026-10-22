@@ -68,60 +68,63 @@ export const ProfileHeaderCard = ({
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        onPress={onAvatarPress}
-        disabled={!onAvatarPress || isAvatarLoading}
-        activeOpacity={0.85}
-        className="absolute left-7 top-24"
-        accessibilityRole={onAvatarPress ? 'button' : 'none'}
-        accessibilityLabel={t('change_profile_photo', 'Change profile photo')}
+      <View
+        pointerEvents="box-none"
+        className="absolute top-20 left-0 right-0 items-center justify-center z-10"
       >
-        <Avatar
-          source={resolvedAvatarUrl ? { uri: resolvedAvatarUrl } : null}
-          fallback={initialLetter}
-          size="xl"
-          style={{ width: 96, height: 96, borderRadius: 48 }}
-          className="border-4 border-card bg-primary/80 shadow-sm"
-          fallbackClassName="text-3xl text-primary-foreground"
-        />
-        {isAvatarLoading ? (
-          <View className="absolute inset-0 rounded-full bg-black/45 items-center justify-center">
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          </View>
-        ) : showCameraBadge ? (
-          <View className="absolute bottom-0 right-0 size-9 rounded-full bg-card border border-border items-center justify-center shadow-sm">
-            <Pencil size={16} className="text-foreground" strokeWidth={2.3} />
-          </View>
-        ) : null}
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onAvatarPress}
+          disabled={!onAvatarPress || isAvatarLoading}
+          activeOpacity={0.85}
+          className="relative items-center justify-center"
+          accessibilityRole={onAvatarPress ? 'button' : 'none'}
+          accessibilityLabel={t('change_profile_photo', 'Change profile photo')}
+        >
+          <Avatar
+            source={resolvedAvatarUrl ? { uri: resolvedAvatarUrl } : null}
+            fallback={initialLetter}
+            size="xl"
+            style={{ width: 96, height: 96, borderRadius: 48 }}
+            className="border-4 border-card bg-primary/80 shadow-sm"
+            fallbackClassName="text-3xl text-primary-foreground"
+          />
+          {isAvatarLoading ? (
+            <View className="absolute inset-0 rounded-full bg-black/45 items-center justify-center">
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            </View>
+          ) : showCameraBadge ? (
+            <View className="absolute bottom-0 right-0 size-9 rounded-full bg-card border border-border items-center justify-center shadow-sm">
+              <Pencil size={16} className="text-foreground" strokeWidth={2.3} />
+            </View>
+          ) : null}
+        </TouchableOpacity>
+      </View>
 
-      <View className="pt-14 px-1 gap-3">
-        <View className="flex-row items-center justify-between gap-3">
-          <Text
-            className="flex-1 text-[26px] font-extrabold font-bold text-foreground tracking-tight"
-            style={{ fontWeight: 'bold' }}
-            numberOfLines={1}
-          >
-            {name}
-          </Text>
-        </View>
+      <View className="pt-16 items-center text-center gap-2">
+        <Text
+          className="text-[24px] font-extrabold text-foreground tracking-tight text-center"
+          style={{ fontWeight: 'bold' }}
+          numberOfLines={1}
+        >
+          {name}
+        </Text>
 
-        <View className="flex-row flex-wrap gap-x-5 gap-y-2">
+        <View className="flex-row items-center justify-center flex-wrap gap-x-4 gap-y-2">
           {unitName ? (
             <TouchableOpacity
               onPress={onUnitPress}
               disabled={!onUnitPress}
               activeOpacity={0.7}
-              className="flex-row items-center gap-2"
+              className="flex-row items-center gap-1.5"
               accessibilityRole={onUnitPress ? 'button' : 'none'}
               accessibilityLabel={onUnitPress ? t('switch_unit', 'Switch villa unit') : unitName}
             >
-              <Building2 size={17} className="text-muted-foreground" />
+              <Building2 size={16} className="text-muted-foreground" />
               <Text className="text-sm font-medium text-muted-foreground">{unitName}</Text>
             </TouchableOpacity>
           ) : null}
-          <View className="flex-row items-center gap-2">
-            <Home size={17} className="text-muted-foreground" />
+          <View className="flex-row items-center gap-1.5">
+            <Home size={16} className="text-muted-foreground" />
             <Text className="text-sm font-medium text-muted-foreground">{tRole(roleName, roleName)}</Text>
           </View>
         </View>

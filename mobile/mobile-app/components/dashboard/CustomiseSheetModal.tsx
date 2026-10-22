@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Modal, TouchableOpacity, Pressable, ScrollView, Dimensions } from 'react-native';
 import { Text } from '../ui/text';
 import Animated, {
@@ -9,7 +9,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
-import { X } from 'lucide-react-native';
+import { X, AlertCircle, Info } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { SearchFilterBar } from '../ui/SearchFilterBar';
 import CustomiseAvailableZone from './CustomiseAvailableZone';
@@ -26,6 +26,7 @@ export { ALL_AVAILABLE_FEATURES, REAL_APP_FEATURES, AppFeatureItem };
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = Math.round(SCREEN_HEIGHT * 0.85);
+const MIN_QUICK_ACTIONS = 1;
 const MAX_QUICK_ACTIONS = 7;
 
 interface CustomiseSheetModalProps {
@@ -51,6 +52,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   const isDark = colorScheme === 'dark';
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [maxWarning, setMaxWarning] = useState(false);
 
   const rawAvailableFeaturesForUser = useMemo(() => {
     return (availableFeatures || ALL_AVAILABLE_FEATURES).filter((item: any) =>
@@ -89,20 +91,31 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   useEffect(() => {
     if (visible) {
       setSelectedIds(sanitizedActiveIds);
+      setMaxWarning(false);
       sheetTranslateY.value = 0;
     }
   }, [visible, sanitizedActiveIds]);
 
-  const toggleSelect = (id: string) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds((prev) => prev.filter((item) => item !== id));
-    } else if (selectedIds.length < MAX_QUICK_ACTIONS) {
-      setSelectedIds((prev) => [...prev, id]);
-    }
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) {
+        setMaxWarning(false);
+        return prev.filter((item) => item !== id);
+      }
+      if (prev.length >= MAX_QUICK_ACTIONS) {
+        setMaxWarning(true);
+        return prev;
+      }
+      setMaxWarning(false);
+      return [...prev, id];
+    });
     if (onToggleFeature) onToggleFeature(id);
-  };
+  }, [onToggleFeature]);
 
   const handleSave = () => {
+    if (selectedIds.length < MIN_QUICK_ACTIONS) {
+      return;
+    }
     if (onSave) onSave(selectedIds.slice(0, MAX_QUICK_ACTIONS));
     onClose();
   };
@@ -170,11 +183,30 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
                 </View>
               </GestureDetector>
 
-              <View className="px-5 pt-3 pb-3 border-b border-border gap-3">
+              <View className="px-5 pt-3 pb-3 border-b border-border gap-2.5">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-[20px] leading-7 font-extrabold text-foreground tracking-tight">
-                    {t('customise_quick_actions', 'Customise Quick Actions')}
-                  </Text>
+                  <View className="flex-row items-center gap-2.5">
+                    <Text className="text-[19px] leading-7 font-extrabold text-foreground tracking-tight">
+                      {t('customise_quick_actions', 'Customise Quick Actions')}
+                    </Text>
+                    <View className={`px-2 py-0.5 rounded-full ${
+                      selectedIds.length === 0
+                        ? 'bg-destructive/15 border border-destructive/30'
+                        : selectedIds.length === MAX_QUICK_ACTIONS
+                        ? 'bg-primary/15 border border-primary/30'
+                        : 'bg-muted border border-border'
+                    }`}>
+                      <Text className={`text-[11px] font-extrabold ${
+                        selectedIds.length === 0
+                          ? 'text-destructive'
+                          : selectedIds.length === MAX_QUICK_ACTIONS
+                          ? 'text-primary'
+                          : 'text-foreground'
+                      }`}>
+                        {selectedIds.length}/{MAX_QUICK_ACTIONS}
+                      </Text>
+                    </View>
+                  </View>
                   <Pressable
                     onPress={handleClose}
                     className="size-9 rounded-full bg-secondary/80 items-center justify-center active:bg-secondary border border-border/60"
@@ -193,6 +225,23 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
                   searchPlaceholder={t('search_features', 'Search actions...')}
                   className="px-0 py-0"
                 />
+
+                {/* Rule: Minimum 1 tile, Maximum 7 tile notification */}
+                {selectedIds.length === 0 ? (
+                  <View className="flex-row items-center gap-2 px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/25">
+                    <AlertCircle size={15} className="text-destructive shrink-0" strokeWidth={2.2} />
+                    <Text className="text-[12px] font-semibold text-destructive flex-1">
+                      {t('select_at_least_one_action', 'You need to select at least 1 feature in quick actions')}
+                    </Text>
+                  </View>
+                ) : maxWarning || selectedIds.length === MAX_QUICK_ACTIONS ? (
+                  <View className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/25">
+                    <Info size={14} className="text-primary shrink-0" strokeWidth={2.2} />
+                    <Text className="text-[11.5px] font-semibold text-primary flex-1">
+                      {t('max_quick_actions_note', 'Maximum 7 quick actions selected (Rule: 1 to 7)')}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             </View>
 
@@ -220,11 +269,20 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSave}
-                className="h-12 flex-1 items-center justify-center rounded-2xl bg-primary active:bg-primary/90"
+                disabled={selectedIds.length === 0}
+                className={`h-12 flex-1 items-center justify-center rounded-2xl ${
+                  selectedIds.length === 0
+                    ? 'bg-muted border border-border opacity-50'
+                    : 'bg-primary active:bg-primary/90'
+                }`}
                 accessibilityRole="button"
                 accessibilityLabel={t('save', 'Save')}
               >
-                <Text className="text-sm font-bold text-primary-foreground">{t('save', 'Save')}</Text>
+                <Text className={`text-sm font-bold ${
+                  selectedIds.length === 0 ? 'text-muted-foreground' : 'text-primary-foreground'
+                }`}>
+                  {t('save', 'Save')}
+                </Text>
               </TouchableOpacity>
             </View>
           </Animated.View>

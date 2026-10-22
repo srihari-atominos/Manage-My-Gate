@@ -73,6 +73,7 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
         {activeItems.map((item) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === item.id);
           const iconName = meta?.iconName || item.iconName;
+          const imageName = meta?.imageName || (item as any).imageName;
 
           return (
             <View key={item.id} className="w-1/4 px-1">
@@ -83,8 +84,9 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
                 >
                   <FeatureIcon
                     iconName={iconName}
+                    imageName={imageName}
                     color={isDark ? '#D6F4F2' : '#103A3F'}
-                    size={29}
+                    size={18}
                     strokeWidth={1.9}
                   />
                 </View>

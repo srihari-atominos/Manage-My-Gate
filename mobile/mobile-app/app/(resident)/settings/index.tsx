@@ -53,13 +53,8 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { scrollHandlerProps } = useBottomNavScroll();
   
-  // Lazy loading state to prevent navigation stutter
-  const [isReady, setIsReady] = React.useState(false);
-  React.useEffect(() => {
-    // Tab screens have no transition animation, so just wait one frame
-    const id = requestAnimationFrame(() => setIsReady(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
+  // Fast instant mount matching bottom nav tab contract
+  const [isReady] = React.useState(true);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -290,7 +285,7 @@ export default function SettingsScreen() {
               if (router.canGoBack()) router.back();
               else router.replace('/(resident)/dashboard' as any);
             }}
-            className="p-2 rounded-full active:bg-muted/60 -ms-2"
+            className="p-2 rounded-full active:bg-muted/60"
             hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel={t('back', 'Back')}
@@ -298,21 +293,11 @@ export default function SettingsScreen() {
             <Icon as={ChevronLeft} size={22} className="text-foreground" />
           </Pressable>
 
-          <View className="flex-1 items-center">
+          <View className="flex-1 items-center pe-9">
             <Text className="text-xl font-extrabold text-foreground font-sans tracking-tight">
               {t('settings', 'Settings')}
             </Text>
           </View>
-
-          <Pressable
-            onPress={handleOpenSupport}
-            className="p-2 rounded-full active:bg-muted/60 -me-2"
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel={t('support_help', 'Help & Support')}
-          >
-            <Icon as={HelpCircle} size={20} className="text-muted-foreground" />
-          </Pressable>
         </View>
       </View>
 
@@ -332,25 +317,16 @@ export default function SettingsScreen() {
           <>
             {/* 2. Profile Block */}
             <SettingsProfileBlock
-          name={user?.name || user?.username || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident Member'))}
-          unitId={dynamicUnit}
-          roleLabel={tRole(dynamicRole, dynamicRole)}
-          avatarUrl={resolvedAvatarUrl}
-          avatarLetter={avatarLetter}
-          onPressProfile={() => router.navigate('/(resident)/profile' as any)}
-          onPressQr={() => router.navigate('/(resident)/visitor' as any)}
-        />
+              name={user?.name || user?.username || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident Member'))}
+              unitId={dynamicUnit}
+              roleLabel={tRole(dynamicRole, dynamicRole)}
+              avatarUrl={resolvedAvatarUrl}
+              avatarLetter={avatarLetter}
+              onPressProfile={() => router.navigate('/(resident)/profile' as any)}
+              onPressQr={() => router.navigate('/(resident)/visitor' as any)}
+            />
 
-        {/* 3. Nudge Row */}
-        <SettingsNudgeRow
-          title={t('profile_nudge_title', 'Profile Completion')}
-          percentage={85}
-          description={t('profile_nudge_desc', 'Complete emergency contacts & vehicle info.')}
-          actionLabel={t('update_details', 'Update')}
-          onActionPress={() => router.navigate('/(resident)/profile' as any)}
-        />
-
-        {/* 4. Update / CTA Row */}
+            {/* 3. Update / CTA Row */}
         <SettingsCtaRow
           label={t('workspace_context_cta', 'Active Workspace Context')}
           subLabel={dynamicCommunity}
