@@ -121,6 +121,12 @@ const invoiceSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Outstanding amount is required'],
     },
+    // Set on an invoice that was rolled into a successor: the part of its balance settled by
+    // payments made against that successor (kept so collections are not counted twice).
+    allocatedFromSuccessorAmount: {
+      type: Number,
+      default: 0,
+    },
     carryForwardEnabled: {
       type: Boolean,
       default: true,

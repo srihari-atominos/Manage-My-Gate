@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useStore } from 'react-redux'
 import useSocket from '../../../hooks/useSocket.js'
-import { syncRealtimeInvoice, fetchMyDues } from '../store/billingSlice.js'
+import usePermission from '../../../hooks/usePermission'
+import {
+  syncRealtimeInvoice,
+  fetchMyDues,
+  fetchAdminKPIs,
+  fetchInvoicesGrid,
+} from '../store/billingSlice.js'
 import { fetchWalletBalance, syncWalletBalance } from '../store/walletSlice.js'
 import logger from '../../../utils/logger.js'
 
@@ -17,6 +23,8 @@ import logger from '../../../utils/logger.js'
  */
 export const useBillingSocket = (userId, communityOrOrgId) => {
   const dispatch = useDispatch()
+  const store = useStore()
+  const canViewAdminDashboard = usePermission('billing', 'dashboard')
 
   const rooms = useMemo(() => {
     const list = []
@@ -30,13 +38,15 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
   // Deduplication cache & debounced refetch timer
   const processedEventsRef = useRef(new Map())
   const refetchTimerRef = useRef(null)
+  const hasSyncedOnceRef = useRef(false)
 
   useEffect(() => {
     if (!socket || !isConnected) return
 
     logger.info(`Registering billing & wallet real-time listeners for rooms: ${rooms.join(', ')}`)
 
-    // Join rooms dynamically
+    // Join rooms dynamically. This effect re-runs on every (re)connect (isConnected flips), so rooms are
+    // re-joined and state is resynced after a network drop; Socket instances never emit 'reconnect'.
     rooms.forEach((room) => emit('join_room', room))
 
     // Helper: Event Deduplicator within a 3-second window
@@ -82,8 +92,28 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
       }
       refetchTimerRef.current = setTimeout(() => {
         dispatch(fetchMyDues())
+        // Admin KPIs and the ledger grid are server-computed; reconcile them instead of relying only on the
+        // optimistic per-invoice patch, which cannot account for events missed while the socket was down.
+        if (canViewAdminDashboard && communityOrOrgId) {
+          const { pagination } = store.getState().billing
+          dispatch(fetchAdminKPIs(communityOrOrgId))
+          dispatch(
+            fetchInvoicesGrid({
+              page: pagination?.currentPage || 1,
+              limit: pagination?.limit || 10,
+              filters: {},
+            }),
+          )
+        }
       }, 300)
     }
+
+    // Events fired while the socket was down are never replayed, so resync when we get connected again
+    if (hasSyncedOnceRef.current) {
+      triggerDebouncedRefetch()
+      dispatch(fetchWalletBalance())
+    }
+    hasSyncedOnceRef.current = true
 
     // 1. Invoice Generation Handler
     const handleInvoiceGenerated = (payload) => {
@@ -121,16 +151,7 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
       triggerDebouncedRefetch()
     }
 
-    // Reconnect handler to ensure room re-subscription and state sync after network restoration
-    const handleReconnect = () => {
-      logger.info(`Socket reconnected. Re-subscribing to rooms: ${rooms.join(', ')}`)
-      rooms.forEach((room) => emit('join_room', room))
-      triggerDebouncedRefetch()
-      dispatch(fetchWalletBalance())
-    }
-
     // Register event listeners
-    socket.on('reconnect', handleReconnect)
     socket.on('invoice_generated', handleInvoiceGenerated)
     socket.on('invoice_status_updated', handleInvoiceStatusUpdated)
     socket.on('INVOICE_UPDATED', handleInvoiceStatusUpdated)
@@ -138,6 +159,13 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
     socket.on('PAYMENT_SUCCESS', handlePaymentSuccess)
     socket.on('WALLET_UPDATED', handleWalletUpdated)
     socket.on('walletUpdated', handleWalletUpdated)
+    socket.on('wallet_updated', handleWalletUpdated)
+    socket.on('wallet_transaction_created', handleWalletUpdated)
+    // Settlement outcomes emitted by backend invoice.socket.js
+    socket.on('offline_payment_approved', handleInvoiceStatusUpdated)
+    socket.on('bank_transfer_rejected', handleInvoiceStatusUpdated)
+    socket.on('cash_payment_recorded', handleInvoiceStatusUpdated)
+    socket.on('invoice_paid', handleInvoiceStatusUpdated)
 
     // Listen for offline payment submission to update the admin billing ledger instantly
     socket.on('offline_payment_submitted', (payload) => {
@@ -146,6 +174,7 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
       if (payload?.invoice) {
         dispatch(syncRealtimeInvoice(payload.invoice))
       }
+      triggerDebouncedRefetch()
     })
 
     // Lifecycle Cleanup
@@ -154,7 +183,6 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
         clearTimeout(refetchTimerRef.current)
       }
       logger.info(`Cleaning up billing & wallet real-time listeners for rooms: ${rooms.join(', ')}`)
-      socket.off('reconnect', handleReconnect)
       socket.off('invoice_generated', handleInvoiceGenerated)
       socket.off('invoice_status_updated', handleInvoiceStatusUpdated)
       socket.off('INVOICE_UPDATED', handleInvoiceStatusUpdated)
@@ -162,9 +190,15 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
       socket.off('PAYMENT_SUCCESS', handlePaymentSuccess)
       socket.off('WALLET_UPDATED', handleWalletUpdated)
       socket.off('walletUpdated', handleWalletUpdated)
+      socket.off('wallet_updated', handleWalletUpdated)
+      socket.off('wallet_transaction_created', handleWalletUpdated)
+      socket.off('offline_payment_approved', handleInvoiceStatusUpdated)
+      socket.off('bank_transfer_rejected', handleInvoiceStatusUpdated)
+      socket.off('cash_payment_recorded', handleInvoiceStatusUpdated)
+      socket.off('invoice_paid', handleInvoiceStatusUpdated)
       socket.off('offline_payment_submitted')
     }
-  }, [socket, isConnected, emit, dispatch, rooms])
+  }, [socket, isConnected, emit, dispatch, rooms, store, canViewAdminDashboard, communityOrOrgId])
 }
 
 export default useBillingSocket

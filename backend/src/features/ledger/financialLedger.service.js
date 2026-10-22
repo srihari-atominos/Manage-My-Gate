@@ -18,16 +18,43 @@ import HttpError from '../../utils/httpError.utils.js';
 export class FinancialLedgerService {
   async recordExpenseIncurredEntry(expense, session = null) {
     const amount = Number(expense.totalAmount || 0); if (!expense.orgId || amount <= 0) throw new HttpError(400, 'Invalid expense ledger entry.');
-    const creditAccount = expense.fundingSource === 'PERSONAL_ACCOUNT' ? FINANCIAL_ACCOUNTS.STAFF_REIMBURSEMENT_PAYABLE : FINANCIAL_ACCOUNTS.ACCOUNTS_PAYABLE;
+    // The liability always accrues to Accounts Payable; who funds the settlement is decided at payment time.
+    const creditAccount = FINANCIAL_ACCOUNTS.ACCOUNTS_PAYABLE;
     const payload = { transactionId: `FTX-EXP-${String(expense._id).slice(-6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`, orgId: expense.orgId, userId: expense.recordedBy || null, domain: 'EXPENSE', referenceType: 'Expense', referenceId: expense._id, debitAccount: FINANCIAL_ACCOUNTS.OPERATING_EXPENSE, creditAccount, amount, currency: expense.currency || 'INR', status: LEDGER_STATUSES.POSTED, idempotencyKey: `${expense._id}:EXPENSE_INCURRED`, description: `Community expense incurred: ${expense.expenseNumber}`, entries: [{ account: FINANCIAL_ACCOUNTS.OPERATING_EXPENSE, entryType: ENTRY_TYPES.DEBIT, amount }, { account: creditAccount, entryType: ENTRY_TYPES.CREDIT, amount }] };
     return (await financialLedgerRepository.createEntry(payload, session)).entry;
   }
 
   async recordExpensePaymentEntry(expense, payment, session = null) {
     const amount = Number(payment.amount || 0); if (!expense.orgId || amount <= 0) throw new HttpError(400, 'Invalid expense payment ledger entry.');
-    const debitAccount = payment.fundingSource === 'PERSONAL_ACCOUNT' ? FINANCIAL_ACCOUNTS.STAFF_REIMBURSEMENT_PAYABLE : FINANCIAL_ACCOUNTS.ACCOUNTS_PAYABLE;
-    const creditAccount = payment.paymentMethod === 'CASH' ? FINANCIAL_ACCOUNTS.CASH_CLEARING : FINANCIAL_ACCOUNTS.BANK_CLEARING;
+    // Settling a payable: DR Accounts Payable. A payment made out of a staff member's pocket moves the
+    // liability to Staff Reimbursement Payable instead of drawing down cash/bank.
+    const debitAccount = FINANCIAL_ACCOUNTS.ACCOUNTS_PAYABLE;
+    const creditAccount = payment.fundingSource === 'PERSONAL_ACCOUNT' ? FINANCIAL_ACCOUNTS.STAFF_REIMBURSEMENT_PAYABLE : payment.paymentMethod === 'CASH' || payment.fundingSource === 'PETTY_CASH' ? FINANCIAL_ACCOUNTS.CASH_CLEARING : FINANCIAL_ACCOUNTS.BANK_CLEARING;
     const payload = { transactionId: `FTX-EXP-PAY-${String(payment._id).slice(-6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`, orgId: expense.orgId, userId: payment.recordedBy || null, domain: 'EXPENSE', referenceType: 'ExpensePayment', referenceId: payment._id, debitAccount, creditAccount, amount, currency: expense.currency || 'INR', status: LEDGER_STATUSES.POSTED, idempotencyKey: `${payment._id}:EXPENSE_PAYMENT`, description: `Reconciled expense payment for ${expense.expenseNumber}`, metadata: { expenseId: expense._id, verificationStatus: payment.verificationStatus }, entries: [{ account: debitAccount, entryType: ENTRY_TYPES.DEBIT, amount }, { account: creditAccount, entryType: ENTRY_TYPES.CREDIT, amount }] };
+    return (await financialLedgerRepository.createEntry(payload, session)).entry;
+  }
+
+  /**
+   * Posts a mirror-image entry of an earlier expense entry (swapped debit/credit), so the original stays
+   * on record and is offset rather than edited. Mirrors the accounts actually posted, so entries written
+   * under older account rules still net to zero.
+   */
+  async reverseExpenseEntry(expense, originalKey, reversalKey, description, session = null) {
+    const original = await financialLedgerRepository.findByIdempotencyKey(originalKey, session);
+    if (!original) return null;
+    const amount = Number(original.amount);
+    const payload = { transactionId: `FTX-EXP-REV-${String(original._id).slice(-6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`, orgId: expense.orgId, userId: original.userId || null, domain: 'EXPENSE', referenceType: original.referenceType, referenceId: original.referenceId, debitAccount: original.creditAccount, creditAccount: original.debitAccount, amount, currency: original.currency || 'INR', status: LEDGER_STATUSES.POSTED, idempotencyKey: reversalKey, description, metadata: { expenseId: expense._id, reverses: original.transactionId }, entries: [{ account: original.creditAccount, entryType: ENTRY_TYPES.DEBIT, amount }, { account: original.debitAccount, entryType: ENTRY_TYPES.CREDIT, amount }] };
+    return (await financialLedgerRepository.createEntry(payload, session)).entry;
+  }
+
+  /** Posts the difference between an expense's old and new total (delta > 0 raises the expense). */
+  async recordExpenseAdjustmentEntry(expense, delta, revision, session = null) {
+    const amount = Math.abs(Number(delta));
+    if (!expense.orgId || !(amount > 0)) throw new HttpError(400, 'Invalid expense adjustment ledger entry.');
+    const increase = delta > 0;
+    const debitAccount = increase ? FINANCIAL_ACCOUNTS.OPERATING_EXPENSE : FINANCIAL_ACCOUNTS.ACCOUNTS_PAYABLE;
+    const creditAccount = increase ? FINANCIAL_ACCOUNTS.ACCOUNTS_PAYABLE : FINANCIAL_ACCOUNTS.OPERATING_EXPENSE;
+    const payload = { transactionId: `FTX-EXP-ADJ-${String(expense._id).slice(-6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`, orgId: expense.orgId, userId: expense.recordedBy || null, domain: 'EXPENSE', referenceType: 'Expense', referenceId: expense._id, debitAccount, creditAccount, amount, currency: expense.currency || 'INR', status: LEDGER_STATUSES.POSTED, idempotencyKey: `${expense._id}:EXPENSE_ADJUSTMENT:${revision}`, description: `Community expense adjusted: ${expense.expenseNumber}`, entries: [{ account: debitAccount, entryType: ENTRY_TYPES.DEBIT, amount }, { account: creditAccount, entryType: ENTRY_TYPES.CREDIT, amount }] };
     return (await financialLedgerRepository.createEntry(payload, session)).entry;
   }
 

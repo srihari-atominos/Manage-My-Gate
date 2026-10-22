@@ -310,6 +310,10 @@ export const resolveNotificationRoute = (payload?: StructuredNotificationPayload
     case 'COMMUNITY_NOTE':
       return '/(resident)/notes';
 
+    case 'APP_UPDATE':
+    case 'UPDATE':
+      return '/(resident)/notifications';
+
     case 'INVITATION': {
       const invId = payload.invitationId || entityId || payload.token;
       return invId

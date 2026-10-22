@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useDispatch } from 'react-redux'
 import { useSocket } from '../../../hooks/useSocket'
 import {
@@ -6,6 +6,7 @@ import {
   pollUpdatedSocket,
   pollPublishedSocket,
   pollClosedSocket,
+  pollReopenedSocket,
   pollVoteAddedSocket,
   pollVoteRemovedSocket,
   pollDeletedSocket,
@@ -19,11 +20,21 @@ import { useAuth } from '../../auth/hooks/useAuth'
 
 export const usePollSocket = (activeTab, searchQuery, sortOption) => {
   const dispatch = useDispatch()
-  const socket = useSocket()
+  // useSocket() returns { socket, isConnected, emit }; the shared hook joins the org room on connect
+  const { socket, isConnected } = useSocket()
   const { user } = useAuth()
+  const connectedBeforeRef = useRef(false)
+
+  // Remember that we have been connected so only a genuine reconnect triggers a resync
+  useEffect(() => {
+    if (!isConnected) return undefined
+    return () => {
+      connectedBeforeRef.current = true
+    }
+  }, [isConnected])
 
   useEffect(() => {
-    if (!socket) return
+    if (!socket || !isConnected) return
 
     const handleReconnect = () => {
       logger.info('Socket reconnected, syncing poll data')
@@ -73,7 +84,8 @@ export const usePollSocket = (activeTab, searchQuery, sortOption) => {
       dispatch(pollDeletedSocket(payload))
     }
 
-    socket.on('connect', handleReconnect)
+    // Events missed while disconnected are not replayed: resync after a reconnect (not the first connect)
+    if (connectedBeforeRef.current) handleReconnect()
     socket.on('poll_created', handlePollCreated)
     socket.on('poll_updated', handlePollUpdated)
     socket.on('poll_published', handlePollPublished)
@@ -84,7 +96,6 @@ export const usePollSocket = (activeTab, searchQuery, sortOption) => {
     socket.on('poll_deleted', handlePollDeleted)
 
     return () => {
-      socket.off('connect', handleReconnect)
       socket.off('poll_created', handlePollCreated)
       socket.off('poll_updated', handlePollUpdated)
       socket.off('poll_published', handlePollPublished)
@@ -94,5 +105,5 @@ export const usePollSocket = (activeTab, searchQuery, sortOption) => {
       socket.off('poll_vote_removed', handlePollVoteRemoved)
       socket.off('poll_deleted', handlePollDeleted)
     }
-  }, [socket, dispatch, activeTab, searchQuery, sortOption, user])
+  }, [socket, isConnected, dispatch, activeTab, searchQuery, sortOption, user])
 }

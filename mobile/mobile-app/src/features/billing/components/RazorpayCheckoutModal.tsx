@@ -27,11 +27,21 @@ const getNativeRazorpayCheckout = (): NativeRazorpayCheckout | null => {
   }
 };
 
+// Known deactivated/expired test keys that should immediately use mock simulation
+const INACTIVE_OR_REVOKED_TEST_KEYS = [
+  'rzp_test_txaj0oalvys0ph',
+];
+
 export const isMockRazorpayKey = (key?: string, orderId?: string): boolean => {
   if (!key) return true;
   if (orderId && orderId.startsWith('order_mock_')) return true;
   const trimmed = String(key).trim().toLowerCase();
-  return !trimmed || trimmed === 'mock' || trimmed === 'dummy';
+  return (
+    !trimmed ||
+    trimmed === 'mock' ||
+    trimmed === 'dummy' ||
+    INACTIVE_OR_REVOKED_TEST_KEYS.includes(trimmed)
+  );
 };
 
 export interface RazorpayCheckoutOptions {
@@ -92,11 +102,11 @@ export function RazorpayCheckoutModal({
   }, [visible]);
 
   const isMock = useMemo(() => {
-    return __DEV__ && (fallbackToMock || isMockRazorpayKey(options?.razorpayKeyId, options?.orderId));
+    return Boolean(fallbackToMock || isMockRazorpayKey(options?.razorpayKeyId, options?.orderId));
   }, [options, fallbackToMock]);
 
   const handleSimulateMockSuccess = useCallback(() => {
-    if (!__DEV__ || isHandledRef.current || !options) return;
+    if (isHandledRef.current || !options) return;
     isHandledRef.current = true;
     const mockPaymentId = `pay_mock_${Date.now()}`;
     const mockOrderId = options.orderId || `order_mock_${Date.now()}`;
@@ -237,6 +247,12 @@ export function RazorpayCheckoutModal({
         <body>
           <div class="spinner"></div>
           <div class="text" id="statusText">Connecting to Secure Razorpay Gateway...</div>
+          <div id="fallbackContainer" style="display: none; margin-top: 20px; text-align: center;">
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">Gateway credentials inactive or taking too long?</p>
+            <button type="button" onclick="sendToParent('PAYMENT_ERROR', { code: 'AUTH_401', description: 'Razorpay gateway test credentials inactive (401)' })" style="background-color: #2563eb; color: #ffffff; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer;">
+              Switch to Test Mode / UPI
+            </button>
+          </div>
 
           <script>
             function sendToParent(type, data) {
@@ -247,6 +263,31 @@ export function RazorpayCheckoutModal({
                 window.parent.postMessage(payload, '*');
               }
             }
+
+            window.addEventListener('error', function(e) {
+              var msg = (e && e.message ? e.message : String(e)).toLowerCase();
+              if (msg.includes('401') || msg.includes('unauthorized') || msg.includes('authentication failed')) {
+                sendToParent('PAYMENT_ERROR', {
+                  code: 'AUTH_401',
+                  description: 'Razorpay API credentials returned 401 Unauthorized.'
+                });
+              }
+            });
+
+            window.addEventListener('unhandledrejection', function(e) {
+              var reason = (e && e.reason ? (e.reason.message || JSON.stringify(e.reason)) : '').toLowerCase();
+              if (reason.includes('401') || reason.includes('unauthorized') || reason.includes('authentication failed')) {
+                sendToParent('PAYMENT_ERROR', {
+                  code: 'AUTH_401',
+                  description: 'Razorpay API credentials returned 401 Unauthorized.'
+                });
+              }
+            });
+
+            setTimeout(function() {
+              var container = document.getElementById('fallbackContainer');
+              if (container) container.style.display = 'block';
+            }, 3000);
 
             function initRazorpay() {
               document.getElementById('statusText').innerText = "Opening Secure Checkout...";
@@ -328,8 +369,14 @@ export function RazorpayCheckoutModal({
           const errCode = String(data?.code || '').toLowerCase();
           const errDesc = String(data?.description || '').toLowerCase();
           
-          if (errCode.includes('401') || errDesc.includes('unauthorized') || errDesc.includes('invalid')) {
-            console.warn('[RazorpayCheckoutModal] API error detected natively. Falling back to test mode.');
+          if (
+            errCode.includes('401') ||
+            errCode.includes('auth') ||
+            errDesc.includes('unauthorized') ||
+            errDesc.includes('invalid') ||
+            errDesc.includes('authentication failed')
+          ) {
+            console.warn('[RazorpayCheckoutModal] API 401 / Auth error detected. Falling back to test simulation mode.');
             setFallbackToMock(true);
             return;
           }

@@ -12,6 +12,8 @@ export interface AppFeatureItem {
   badge?: string;
   badgeColor?: string;
   permission?: string;
+  /** Set false for legacy features retained for deep links but hidden from the dashboard. */
+  dashboardVisible?: boolean;
 }
 
 export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
@@ -54,11 +56,15 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   { id: 'financial_history', name: 'Financial History', subtitle: 'Receipts & Transactions', iconName: 'Receipt', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/history', permission: 'billing:action_center', categoryKey: 'digital_wallet', categoryName: 'Digital Wallet & Ledger' },
 
   // 6. Financial Suite & Billing
-  { id: 'billing_dashboard', name: 'Billing', subtitle: 'Dues, Payments & Receipts', iconName: 'Receipt', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing', permission: 'billing:billing_hub', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
-  { id: 'billing_my_dues', name: 'My Dues', subtitle: 'Pending Invoices', iconName: 'FileText', colorBg: 'bg-amber-50 dark:bg-amber-950/40', colorIcon: '#D97706', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/my-dues', permission: 'billing:my_dues', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
-  { id: 'billing_my_invoices', name: 'My Invoices', subtitle: 'Dues & Payment History', iconName: 'FileText', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/my-dues', permission: 'billing:my_invoices', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'personal_expense_manager', name: 'Personal Expense Manager', subtitle: 'Your income, expenses & budgets', iconName: 'ChartNoAxesCombined', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#059669', iconShapeClass: 'rounded-[18px]', route: '/(resident)/expense-manager', categoryKey: 'personal_finance', categoryName: 'Personal Finance' },
+
+
+  { id: 'billing_dashboard', name: 'Billing & Invoice Dashboard', subtitle: 'Income, invoices, payments & expenses', iconName: 'Receipt', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing', permission: 'billing:billing_hub', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'billing_my_dues', name: 'My Dues', subtitle: 'Pending Invoices', dashboardVisible: false, iconName: 'FileText', colorBg: 'bg-amber-50 dark:bg-amber-950/40', colorIcon: '#D97706', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/my-dues', permission: 'billing:my_dues', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'billing_my_invoices', name: 'My Invoice', subtitle: 'Dues & Payment History', iconName: 'FileText', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/my-dues', permission: 'billing:my_invoices', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
   { id: 'billing_assessment_manager', name: 'Assessments', subtitle: 'Levy Generation', iconName: 'Calculator', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/billing/assessments', permission: 'billing:assessments', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
   { id: 'billing_action_center', name: 'Billing Ledger', subtitle: 'Amenities & Collections', iconName: 'BookOpenCheck', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/billing/ledger', permission: 'billing:ledger', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'billing_expenses', name: 'Community Expenses', subtitle: 'Community expenses & payments', iconName: 'Receipt', colorBg: 'bg-orange-50 dark:bg-orange-950/40', colorIcon: '#F97316', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/billing/expenses', permission: 'billing:view_expense', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
 
   // 7. Staff Management (Dedicated Feature Section)
   { id: 'admin_staff_directory', name: 'Staff Directory', subtitle: 'Community Registry', iconName: 'Users', colorBg: 'bg-blue-50 dark:bg-blue-950/40', colorIcon: '#2563EB', iconShapeClass: 'rounded-[18px]', route: '/(resident)/admin/staff/directory', permission: 'staff:view', categoryKey: 'staff_management', categoryName: 'Staff Management' },

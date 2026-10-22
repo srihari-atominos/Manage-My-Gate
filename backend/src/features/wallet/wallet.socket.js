@@ -22,12 +22,7 @@ export const setupWalletSocketListeners = async () => {
       io.to(userRoom).emit('wallet_updated', payload);
       io.to(userRoom).emit('walletUpdated', payload);
 
-      if (payload.orgId) {
-        const orgId = payload.orgId._id || payload.orgId;
-        const orgRoom = `org:${orgId}`;
-        logger.info(`Broadcasting wallet_updated to room: ${orgRoom}`);
-        io.to(orgRoom).emit('wallet_updated', payload);
-      }
+      // Balances are private to the wallet owner: never broadcast them to the organization room.
     } catch (error) {
       logger.error('Error emitting wallet_updated socket event:', error);
     }

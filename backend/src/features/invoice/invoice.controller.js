@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import invoiceService from './invoice.services.js';
 import HttpError from '../../utils/httpError.utils.js';
+import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 
 export class InvoiceController {
   /**
@@ -54,10 +55,16 @@ export class InvoiceController {
       const orgId = req.tenant?.orgId;
       if (!orgId) throw new HttpError(400, 'Workspace context is required.');
       const { id } = req.params;
+      const canManage = await new Promise((resolve) =>
+        authorizePermission('billing', ['dashboard', 'assessment_manager'])(req, res, (err) => resolve(!err))
+      );
       const { paymentReference, offlineReference, amountPaid, amount, offlineAmount, paymentMethod, paymentDate, paymentScreenshot, payerNotes } = req.body;
       const refToUse = paymentReference || offlineReference;
       const amountToUse = amountPaid !== undefined ? amountPaid : (offlineAmount !== undefined ? offlineAmount : amount);
-      const data = await invoiceService.logOfflinePayment(id, refToUse, amountToUse, paymentMethod || 'BANK_TRANSFER', paymentDate, paymentScreenshot, payerNotes, orgId);
+      const data = await invoiceService.logOfflinePayment(id, refToUse, amountToUse, paymentMethod || 'BANK_TRANSFER', paymentDate, paymentScreenshot, payerNotes, orgId, {
+        userId: req.user?.id || req.user?._id,
+        canManage,
+      });
       res.success(data, 'Offline payment details submitted successfully and pending verification.');
     } catch (error) {
       next(error);
@@ -110,10 +117,12 @@ export class InvoiceController {
    */
   async rejectPayment(req, res, next) {
     try {
+      const orgId = req.tenant?.orgId;
+      if (!orgId) throw new HttpError(400, 'Workspace context is required.');
       const { id } = req.params;
       const adminUserId = req.user?.id || req.user?._id;
       const rejectionReason = req.body?.rejectionReason || req.body?.reason || '';
-      const data = await invoiceService.rejectOfflinePayment(id, adminUserId, rejectionReason);
+      const data = await invoiceService.rejectOfflinePayment(id, adminUserId, rejectionReason, orgId);
       res.success(data, 'Bank transfer payment rejected.');
     } catch (error) {
       next(error);
@@ -125,10 +134,12 @@ export class InvoiceController {
    */
   async recordCashPayment(req, res, next) {
     try {
+      const orgId = req.tenant?.orgId;
+      if (!orgId) throw new HttpError(400, 'Workspace context is required.');
       const { id } = req.params;
       const { amount } = req.body;
       const facilityUserId = req.user?.id || req.user?._id;
-      const data = await invoiceService.recordCashPayment(id, amount, facilityUserId);
+      const data = await invoiceService.recordCashPayment(id, amount, facilityUserId, orgId);
       res.success(data, 'Cash payment recorded and receipt generated successfully.', 201);
     } catch (error) {
       next(error);

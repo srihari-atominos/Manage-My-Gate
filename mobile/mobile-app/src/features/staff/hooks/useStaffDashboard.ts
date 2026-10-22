@@ -22,6 +22,7 @@ export const useStaffDashboard = () => {
     myProfile,
     isProfileLoading,
     profileError,
+    isProfileFetched,
     currentOrgId,
     myAllocations,
     isAllocationsLoading,

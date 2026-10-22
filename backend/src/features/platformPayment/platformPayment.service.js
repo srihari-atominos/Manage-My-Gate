@@ -173,8 +173,8 @@ export class PlatformPaymentService {
 
       // Instantly dispatch Organization Access & Order Confirmation Email
       this.sendOrganizationAccessEmail({
-        recipientEmail: 'naveenpv5886@gmail.com',
-        orgName: 'Green Villa',
+        recipientEmail: updatedPayment.customerEmail || process.env.ADMIN_ALERT_EMAIL || 'admin@community.local',
+        orgName: updatedPayment.organizationName || 'Community Workspace',
         amount: updatedPayment.amount,
         quoteId: updatedPayment.invoiceId || updatedPayment.orderId,
         currency: updatedPayment.currency,
@@ -196,8 +196,8 @@ export class PlatformPaymentService {
       const { decrypt } = await import('../integrationHub/utils/crypto.util.js');
       const nodemailer = (await import('nodemailer')).default;
 
-      const email = recipientEmail || 'naveenpv5886@gmail.com';
-      const name = orgName || 'Green Villa';
+      const email = recipientEmail || process.env.ADMIN_ALERT_EMAIL || 'admin@community.local';
+      const name = orgName || 'Community Workspace';
       const appUrl = process.env.CLIENT_URL || 'http://localhost:3004';
       const paymentLink = `${appUrl}/#/pay/${quoteId || ''}`;
 

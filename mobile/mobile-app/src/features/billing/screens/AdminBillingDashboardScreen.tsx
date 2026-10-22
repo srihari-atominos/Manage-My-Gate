@@ -14,15 +14,11 @@ import { ListItem } from '@/components/common/ListItem';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import {
-  Clock,
-  ShieldAlert,
-  Target,
-  FileText,
-  CreditCard,
-} from 'lucide-react-native';
+import { Clock, ShieldAlert, Target, FileText, CreditCard } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
+
+const formatCurrency = (value: number | string | null | undefined) => String.fromCharCode(0x20b9) + Number(value || 0).toLocaleString('en-IN');
 
 export function AdminBillingDashboardScreen() {
   const router = useRouter();
@@ -41,17 +37,6 @@ export function AdminBillingDashboardScreen() {
 
   // Permission check from auth state accommodating admin roles and permissions
   const hasDashboardPermission = useSelector((state: any) => {
-    const role = state.auth?.user?.role || '';
-    const adminRoles = [
-      'Super Admin',
-      'Platform Super Admin',
-      'Community Admin',
-      'Admin',
-      'SuperAdmin',
-      'Finance Manager',
-      'Finance Admin',
-    ];
-    if (adminRoles.includes(role)) return true;
     const permissions = state.auth?.user?.permissions;
     if (Array.isArray(permissions)) {
       return permissions.some((p: any) => {
@@ -84,27 +69,28 @@ export function AdminBillingDashboardScreen() {
   const pendingOfflineCount = kpis?.pendingOfflineCount ?? (pendingOfflineAmount > 0 ? 1 : 0);
 
   // Calculate collection progress percentage
-  const collectionRate = grossDemand > 0 ? Math.min(100, Math.round((totalCollected / grossDemand) * 100)) : 0;
+  const collectionRate =
+    grossDemand > 0 ? Math.min(100, Math.round((totalCollected / grossDemand) * 100)) : 0;
 
   // Universal KPI metrics configured for KPIDashboardStrip
   const kpiCards: KPICardProps[] = [
     {
       title: 'Gross Billed',
-      value: `��${grossDemand.toLocaleString('en-IN')}`,
+      value: formatCurrency(grossDemand),
       subtitle: `${grossDemandCount} total invoices`,
       iconName: 'Receipt',
       variant: 'default',
     },
     {
       title: 'Total Collected',
-      value: `��${totalCollected.toLocaleString('en-IN')}`,
+      value: formatCurrency(totalCollected),
       trend: { direction: 'up', value: `${collectionRate}% rate` },
       iconName: 'TrendingUp',
       variant: 'success',
     },
     {
       title: 'Unpaid Arrears',
-      value: `��${totalUnpaidArrears.toLocaleString('en-IN')}`,
+      value: formatCurrency(totalUnpaidArrears),
       subtitle: 'Pending collection',
       iconName: 'AlertCircle',
       variant: 'destructive',
@@ -116,7 +102,7 @@ export function AdminBillingDashboardScreen() {
     },
     {
       title: 'Pending Clearance',
-      value: `��${pendingOfflineAmount.toLocaleString('en-IN')}`,
+      value: formatCurrency(pendingOfflineAmount),
       subtitle: `${pendingOfflineCount} offline submission${pendingOfflineCount === 1 ? '' : 's'}`,
       iconName: 'Clock',
       variant: 'warning',
@@ -188,17 +174,18 @@ export function AdminBillingDashboardScreen() {
   return (
     <ScreenShell
       title="Billing Overview"
-      subtitle={!hasDashboardPermission ? 'Access Restricted' : 'Community Collection & Dues Snapshot'}
+      subtitle={
+        !hasDashboardPermission ? 'Access Restricted' : 'Community Collection & Dues Snapshot'
+      }
       iconName="BarChart3"
-      loading={hasDashboardPermission && loadingStates.fetchKPIs && !kpis}
-    >
+      loading={hasDashboardPermission && loadingStates.fetchKPIs && !kpis}>
       {!hasDashboardPermission ? (
-        <View className="flex-1 bg-background p-6 items-center justify-center">
-          <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
+        <View className="flex-1 items-center justify-center bg-background p-6">
+          <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
             <Icon as={ShieldAlert} size={32} className="text-destructive" />
           </View>
-          <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
-          <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
+          <Text className="mb-2 text-center font-bold text-xl text-foreground">Access Denied</Text>
+          <Text className="mb-6 px-4 text-center text-sm text-muted-foreground">
             You do not have administrative permission to view community financial KPIs.
           </Text>
           <Button
@@ -206,8 +193,7 @@ export function AdminBillingDashboardScreen() {
             size="lg"
             onPress={() => router.navigate('/(resident)/billing/my-dues' as any)}
             accessibilityRole="button"
-            accessibilityLabel="Return to My Dues"
-          >
+            accessibilityLabel="Return to My Dues">
             Return to My Dues
           </Button>
         </View>
@@ -215,61 +201,76 @@ export function AdminBillingDashboardScreen() {
         <ScrollView
           className="flex-1 bg-background"
           showsVerticalScrollIndicator={false}
-          contentContainerClassName="p-4 pb-28 gap-5"
+          contentContainerClassName="gap-5 px-4 pb-36 pt-4"
           refreshControl={
             <RefreshControl
               refreshing={loadingStates.fetchKPIs}
               onRefresh={fetchDashboardData}
               colors={['#6366f1']}
             />
-          }
-        >
+          }>
           {/* Error Banner */}
-          {error ? (
-            <ErrorBanner message={error} onDismiss={resetBillingError} />
-          ) : null}
+          {error ? <ErrorBanner message={error} onDismiss={resetBillingError} /> : null}
 
           {/* 1. Universal Top KPI Metrics Strip */}
-          <KPIDashboardStrip cards={kpiCards} loading={loadingStates.fetchKPIs && !kpis} layout="grid2x2" />
+          <KPIDashboardStrip
+            cards={kpiCards}
+            loading={loadingStates.fetchKPIs && !kpis}
+            layout="grid2x2"
+          />
 
           {/* 2. Collection Target Progress Widget */}
-          <Card className="bg-card border border-border rounded-2xl p-4">
-            <View className="flex-row items-center justify-between mb-2">
+          <Card className="rounded-2xl border border-border bg-card p-4">
+            <View className="mb-2 flex-row items-center justify-between">
               <View className="flex-row items-center">
-                <Icon as={Target} size={18} className="text-primary me-2" />
-                <Text className="text-sm font-bold text-foreground">Current Month Collection Progress</Text>
+                <Icon as={Target} size={18} className="me-2 text-primary" />
+                <Text className="font-bold text-sm text-foreground">
+                  Current Month Collection Progress
+                </Text>
               </View>
-              <Text className="text-sm font-extrabold text-primary">{collectionRate}%</Text>
+              <Text className="font-extrabold text-sm text-primary">{collectionRate}%</Text>
             </View>
-            <ProgressBar progress={collectionRate} className="h-2 rounded-full mb-3" />
-            <View className="flex-row justify-between items-center">
+            <ProgressBar progress={collectionRate} className="mb-3 h-2 rounded-full" />
+            <View className="flex-row items-center justify-between">
               <Text className="text-xs text-muted-foreground">
-                Collected: <Text className="font-semibold text-foreground">��{totalCollected.toLocaleString('en-IN')}</Text>
+                Collected:{' '}
+                <Text className="font-semibold text-foreground">
+                  {formatCurrency(totalCollected)}
+                </Text>
               </Text>
               <Text className="text-xs text-muted-foreground">
-                Billed: <Text className="font-semibold text-foreground">��{grossDemand.toLocaleString('en-IN')}</Text>
+                Billed:{' '}
+                <Text className="font-semibold text-foreground">
+                  {formatCurrency(grossDemand)}
+                </Text>
               </Text>
             </View>
           </Card>
 
           {/* 3. Attention Required Box */}
           {pendingOfflineAmount > 0 ? (
-            <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex-row items-start justify-between">
-              <View className="flex-row items-start flex-1 me-3">
-                <Icon as={Clock} size={22} className="text-amber-600 dark:text-amber-400 me-3 mt-0.5" />
+            <View className="flex-row items-start justify-between rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
+              <View className="me-3 flex-1 flex-row items-start">
+                <Icon
+                  as={Clock}
+                  size={22}
+                  className="me-3 mt-0.5 text-amber-600 dark:text-amber-400"
+                />
                 <View className="flex-1">
                   <Text className="font-extrabold text-sm text-amber-900 dark:text-amber-200">
                     Pending Offline Payment Verification
                   </Text>
-                  <Text className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                    ��{pendingOfflineAmount.toLocaleString('en-IN')} across {pendingOfflineCount} submission{pendingOfflineCount === 1 ? '' : 's'} awaiting admin clearance.
+                  <Text className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                    {formatCurrency(pendingOfflineAmount)} across{' '}
+                    {pendingOfflineCount} submission{pendingOfflineCount === 1 ? '' : 's'} awaiting
+                    admin clearance.
                   </Text>
                 </View>
               </View>
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-amber-500/20 border-amber-500/40"
+                className="border-amber-500/40 bg-amber-500/20"
                 onPress={() =>
                   router.navigate({
                     pathname: '/(resident)/admin/billing/ledger',
@@ -277,9 +278,8 @@ export function AdminBillingDashboardScreen() {
                   } as any)
                 }
                 accessibilityRole="button"
-                accessibilityLabel="Review pending offline payments"
-              >
-                <Text className="text-xs font-bold text-amber-900 dark:text-amber-200">Review</Text>
+                accessibilityLabel="Review pending offline payments">
+                <Text className="font-bold text-xs text-amber-900 dark:text-amber-200">Review</Text>
               </Button>
             </View>
           ) : null}
@@ -295,18 +295,18 @@ export function AdminBillingDashboardScreen() {
               onAction={() => router.navigate('/(resident)/admin/billing/ledger' as any)}
             />
             {recentTransactions.length === 0 ? (
-              <Card className="bg-card border border-border rounded-xl p-4 items-center justify-center mt-2">
-                <Text className="text-xs text-muted-foreground text-center">
+              <Card className="mt-2 items-center justify-center rounded-xl border border-border bg-card p-4">
+                <Text className="text-center text-xs text-muted-foreground">
                   No invoices found for this community.
                 </Text>
               </Card>
             ) : (
-              <View className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border mt-2">
+              <View className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
                 {recentTransactions.map((tx: any) => (
                   <ListItem
                     key={tx._id || tx.invoiceNumber}
-                    title={`${tx.unitNumber || 'Unit'} ⬢ ${tx.targetUser || 'Resident'}`}
-                    subtitle={`Inv #${tx.invoiceNumber || '�'} ⬢ ${tx.status || 'UNPAID'} ⬢ ��${(tx.totalDue || tx.totalAmount || tx.amount || 0).toLocaleString('en-IN')}`}
+                    title={`${tx.unitNumber || 'Unit'} - ${tx.targetUser || 'Resident'}`}
+                    subtitle={`Inv #${tx.invoiceNumber || 'N/A'} - ${tx.status || 'UNPAID'} - ${formatCurrency(tx.totalDue || tx.totalAmount || tx.amount || 0)}`}
                     leftIcon={FileText}
                     onPress={() => router.navigate('/(resident)/admin/billing/ledger' as any)}
                   />
@@ -316,11 +316,8 @@ export function AdminBillingDashboardScreen() {
           </View>
         </ScrollView>
       )}
-
     </ScreenShell>
   );
 }
 
 export default AdminBillingDashboardScreen;
-
-

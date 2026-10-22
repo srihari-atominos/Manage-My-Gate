@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchStaffVendorsAnalytics } from '../store/complaintSlice'
+import { useStaffVendorSocket } from '../hooks/useStaffVendorSocket'
 import ComplaintTopNav from '../components/ComplaintTopNav'
 import TechnicianModal from '../components/TechnicianModal'
 import { technicianService } from '../services/technician.service'
@@ -11,6 +12,7 @@ import { staffCategoryLabel, staffCategoryOf } from '../staffCategories'
 const StaffAndVendor = () => {
   const dispatch = useDispatch()
   const { staffVendors, status } = useSelector((state) => state.complaints)
+  useStaffVendorSocket()
 
   const [filter, setFilter] = useState('All Departments')
   const [categoryFilter, setCategoryFilter] = useState('ALL')

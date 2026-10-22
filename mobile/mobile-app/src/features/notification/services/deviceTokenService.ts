@@ -6,6 +6,8 @@ export interface DeviceTokenPayload {
   platform?: 'ios' | 'android' | 'web';
   deviceId?: string;
   deviceModel?: string;
+  appVersion?: string;
+  versionCode?: number;
 }
 
 const CACHE_KEY_PREFIX = 'registered_push_token_';
@@ -48,36 +50,32 @@ export const deviceTokenService = {
 
       if (isConfirmed && cacheKey) {
         await storage.setItem(cacheKey, cleanToken);
-        console.log('[DeviceTokenService] Device token registration confirmed by backend and cached locally.');
-      } else if (!isConfirmed) {
-        console.warn('[DeviceTokenService] Backend responded without clear registration confirmation:', responseData);
+        console.log('[DeviceTokenService] Push token successfully cached locally for user:', userId);
       }
 
       return responseData;
-    } catch (error: any) {
-      const status = error?.response?.status;
-      const message = error?.response?.data?.message || error?.message;
-      console.warn(`[DeviceTokenService] Failed to register push token with backend (Status: ${status || 'Network/Timeout'}):`, message);
-      throw error;
+    } catch (err: any) {
+      console.warn('[DeviceTokenService] Failed to register push token with backend:', err?.response?.data || err?.message || err);
+      throw err;
     }
   },
 
   /**
-   * Unregister / deactivate a push token on user logout.
+   * Unregister / deactivate a device token on logout.
    */
   async unregisterToken(pushToken: string, userId?: string): Promise<any> {
     try {
+      if (!pushToken) return null;
+      const response = await apiClient.delete(`/device-tokens/${encodeURIComponent(pushToken)}`);
       if (userId) {
         await storage.removeItem(`${CACHE_KEY_PREFIX}${userId}`);
       }
-      const response: any = await apiClient.delete(`/device-tokens/${encodeURIComponent(pushToken)}`);
-      return response?.data || response;
-    } catch (error) {
-      console.warn('[DeviceTokenService] Failed to unregister push token with backend:', error);
-      throw error;
+      return response.data;
+    } catch (err: any) {
+      console.warn('[DeviceTokenService] Failed to unregister push token:', err?.message || err);
+      return null;
     }
   },
 };
 
 export default deviceTokenService;
-

@@ -20,6 +20,14 @@ const formatPermissionLabel = (permissionString: string) => {
   const exactLabels: Record<string, string> = {
     'billing:action_center': 'Digital Wallet & Resident Ledger',
     'billing:dashboard': 'Billing Hub & Community Ledger',
+    'billing:billing_hub': 'Billing & Invoice Dashboard',
+    'billing:my_dues': 'Resident Invoices & Dues',
+    'billing:my_invoices': 'My Invoice',
+    'billing:ledger': 'Billing Ledger',
+    'billing:financial_ledger': 'Financial Ledger',
+    'billing:reconciliation_manage': 'Payment Reconciliation',
+    'billing:expenses': 'Expenses',
+    'billing:pay_online_expense': 'Pay Online Expense',
     'billing:assessment_manager': 'Assessment Manager',
     'notices:active_board': 'Resident Feed',
     'notices:polls': 'Community Engagement',
@@ -52,6 +60,10 @@ export const isPermissionSelected = (perm: any, selectedIds: string[] = []) => {
   if (permValue.endsWith(':full_access')) {
     const category = permValue.split(':')[0];
     return selectedIds.some((p) => String(p).startsWith(`${category}:`));
+  }
+
+  if (Array.isArray(perm?.permissionAliases)) {
+    return perm.permissionAliases.every((alias: string) => selectedIds.some((id) => String(id).toLowerCase().replace(/\./g, ':') === alias));
   }
 
   if (selectedIds.includes(permValue)) return true;
@@ -173,6 +185,32 @@ const PermissionMatrixGrid = ({
       }
 
       if (lowerKey === 'billing') {
+        const expensePermissionNames = [
+          'billing:view_expense',
+          'billing:create_expense',
+          'billing:record_expense_payment',
+          'billing:reconcile_expense_payment',
+        ];
+        const canonicalGroups = [
+          ['billing:billing_hub', 'billing:dashboard'],
+          ['billing:my_invoices'],
+          ['billing:assessments', 'billing:assessment_manager'],
+          ['billing:ledger'],
+        ];
+        const byName = new Map(categoryPermissions.map((permission) => [
+          String(permission.name || permission.code || permission._id || '').toLowerCase().replace(/\./g, ':'),
+          permission,
+        ]));
+        const userFacingPermissions = canonicalGroups
+          .map((names) => names.map((name) => byName.get(name)).find(Boolean))
+          .filter(Boolean);
+        userFacingPermissions.push({
+          name: 'billing:expenses',
+          permissionAliases: expensePermissionNames,
+          description: 'View, create, pay, and reconcile community expenses',
+        });
+        const payOnlinePermission = byName.get('billing:pay_online_expense');
+        if (payOnlinePermission) userFacingPermissions.push(payOnlinePermission);
         const walletPermissions = categoryPermissions.filter(
           (permission) =>
             String(permission.name || permission.code || permission._id || '')
@@ -180,9 +218,7 @@ const PermissionMatrixGrid = ({
               .replace(/\./g, ':') === 'billing:action_center'
         );
         result.digital_wallet = [...(result.digital_wallet || []), ...walletPermissions];
-        result.billing = categoryPermissions.filter(
-          (permission) => !walletPermissions.includes(permission)
-        );
+        result.billing = userFacingPermissions;
         return;
       }
       result[lowerKey] = categoryPermissions;

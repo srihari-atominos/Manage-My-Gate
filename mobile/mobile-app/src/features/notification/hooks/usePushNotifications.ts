@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { isExpoGo, registerForPushNotificationsAsync, isPushNotificationEnabled } from '../services/pushNotificationService';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { useAuth } from '../../auth/hooks/useAuth';
 import deviceTokenService from '../services/deviceTokenService';
 import {
@@ -14,6 +15,7 @@ import {
   setLastHandledNotificationId,
   addRealTimeNotification,
 } from '../store/notificationSlice';
+import { checkAppUpdateThunk, showOptionalPrompt } from '../../appUpdate/store/appUpdateSlice';
 
 // The native module cannot load in Expo Go; use a lazy require in development builds.
 const Notifications: any = isExpoGo ? null : require('expo-notifications');
@@ -33,7 +35,7 @@ export function usePushNotifications() {
   const userId = user?.id || (user as any)?._id;
 
   // 1. Asynchronous Token Registration & Lifecycle Management
-    if (isExpoGo) return;
+  if (isExpoGo) return;
   useEffect(() => {
     let isMounted = true;
 
@@ -59,6 +61,8 @@ export function usePushNotifications() {
             platform: Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web',
             deviceId: Device.osBuildId || Device.osInternalBuildId || undefined,
             deviceModel: Device.modelName || undefined,
+            appVersion: Constants.expoConfig?.version || '1.0.8',
+            versionCode: Constants.expoConfig?.android?.versionCode || 30,
           },
           userId
         );
@@ -99,6 +103,11 @@ export function usePushNotifications() {
         if (isDuplicateNotification(notifId)) return;
 
         console.log('[usePushNotifications] Cold start notification tap detected:', { notifId, data });
+        if (data?.type === 'APP_UPDATE') {
+          dispatch(checkAppUpdateThunk() as any);
+          dispatch(showOptionalPrompt());
+        }
+
         const targetRoute = resolveNotificationRoute(data);
 
         dispatch(setPendingRoute(targetRoute));
@@ -130,6 +139,10 @@ export function usePushNotifications() {
         const notifId = data?.notificationId || notification?.request?.identifier;
         if (notifId && isDuplicateNotification(notifId)) return;
 
+        if (data?.type === 'APP_UPDATE') {
+          dispatch(checkAppUpdateThunk() as any);
+        }
+
         const formattedNotification: any = {
           id: notifId,
           _id: notifId,
@@ -152,6 +165,11 @@ export function usePushNotifications() {
         if (isDuplicateNotification(notifId)) return;
 
         console.log('[usePushNotifications] Notification response tapped with data:', { notifId, data });
+        if (data?.type === 'APP_UPDATE') {
+          dispatch(checkAppUpdateThunk() as any);
+          dispatch(showOptionalPrompt());
+        }
+
         const targetRoute = resolveNotificationRoute(data);
 
         dispatch(setLastHandledNotificationId(notifId));
@@ -179,6 +197,3 @@ export function usePushNotifications() {
 }
 
 export default usePushNotifications;
-
-
-

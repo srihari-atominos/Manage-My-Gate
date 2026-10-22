@@ -764,7 +764,7 @@ export class UnifiedPaymentService {
       throw new HttpError(404, 'Payment record not found.');
     }
 
-    return {
+    const result = {
       paymentId: payment._id,
       status: payment.status,
       canonicalStatus: toCanonicalPaymentStatus(payment.status, payment.domain),
@@ -780,6 +780,51 @@ export class UnifiedPaymentService {
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,
     };
+    // A Razorpay order ID (order_...) is not a payment ID. Fetch live gateway
+    // status only when this record has a real Razorpay payment ID (pay_...).
+    if (
+      payment.gateway === 'razorpay' &&
+      typeof payment.gatewayTransactionId === 'string' &&
+      payment.gatewayTransactionId.startsWith('pay_')
+    ) {
+      const provider = paymentProviderFactory.getProvider('razorpay');
+      const config = await paymentConfigResolver.getConfig({
+        orgId: payment.orgId,
+        provider: 'razorpay',
+      });
+      const gatewayPayment = await provider.getPaymentStatus(
+        {
+          paymentId: payment.gatewayTransactionId,
+          orderId: payment.gatewayOrderId,
+          amount: payment.amount,
+          currency: payment.currency,
+        },
+        config
+      );
+      const raw = gatewayPayment.rawPayment || {};
+
+      // Expose only non-sensitive transaction fields. Payer contact data,
+      // UPI addresses, bank/acquirer references, and card data stay private.
+      result.gatewayDetails = {
+        provider: 'razorpay',
+        paymentId: gatewayPayment.paymentId,
+        orderId: gatewayPayment.orderId,
+        amount: gatewayPayment.amount,
+        currency: gatewayPayment.currency,
+        status: gatewayPayment.status,
+        captured: gatewayPayment.captured,
+        method: gatewayPayment.method,
+        createdAt: raw.created_at ? new Date(raw.created_at * 1000).toISOString() : null,
+        error: raw.error_code || raw.error_description
+          ? {
+              code: raw.error_code || null,
+              description: raw.error_description || null,
+            }
+          : null,
+      };
+    }
+
+    return result;
   }
 }
 

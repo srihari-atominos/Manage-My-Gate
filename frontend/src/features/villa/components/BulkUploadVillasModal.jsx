@@ -17,6 +17,45 @@ import { useTranslation } from 'react-i18next'
 import * as XLSX from 'xlsx'
 import { downloadBulkUploadTemplate } from '../services/villaService'
 
+// Accept both the generated template and common revised spreadsheet headings.
+const normalizeBulkHeader = (header) => {
+  const value = (header || '')
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+  const aliases = {
+    unitno: 'unit number',
+    flatno: 'unit number',
+    flatnumber: 'unit number',
+    villano: 'unit number',
+    villanumber: 'unit number',
+    doorno: 'unit number',
+    houseno: 'unit number',
+    tower: 'block',
+    wing: 'block',
+    owneremail: 'email',
+    tenantemail: 'email',
+    emailaddress: 'email',
+    ownername: 'name',
+    tenantname: 'name',
+    occupantname: 'name',
+    fullname: 'name',
+    ownershiptype: 'resident type',
+    occupanttype: 'resident type',
+    residentrole: 'role',
+    rolename: 'role',
+    mobilenumber: 'phone',
+    contactnumber: 'phone',
+    contactno: 'phone',
+    bhktype: 'unit type',
+    floorno: 'floor',
+    floornumber: 'floor',
+    areaft2: 'floor area',
+  }
+  return aliases[value] || (header || '').toString().trim().toLowerCase()
+}
+
 const parseXLSX = (arrayBuffer) => {
   const workbook = XLSX.read(arrayBuffer, { type: 'array' })
   const sheetName = workbook.SheetNames.find((s) => s === 'Upload Data') || workbook.SheetNames[0]
@@ -25,7 +64,7 @@ const parseXLSX = (arrayBuffer) => {
 
   if (jsonData.length < 2) return []
 
-  const headers = (jsonData[0] || []).map((h) => (h || '').toString().trim().toLowerCase())
+  const headers = (jsonData[0] || []).map(normalizeBulkHeader)
 
   const parsed = []
   for (let i = 1; i < jsonData.length; i++) {
@@ -74,15 +113,32 @@ const parseXLSX = (arrayBuffer) => {
       row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
       row.isValidResidentType =
         !row.residentType ||
-        ['owner', 'tenant', 'family', 'resident owner', 'resident tenant', 'family member', 'staff', 'household staff', 'maid', 'driver', 'cook', 'gardener'].some(
-          (t) => (row.residentType || '').toLowerCase().includes(t),
-        )
+        [
+          'owner',
+          'tenant',
+          'family',
+          'resident owner',
+          'resident tenant',
+          'family member',
+          'staff',
+          'household staff',
+          'maid',
+          'driver',
+          'cook',
+          'gardener',
+        ].some((t) => (row.residentType || '').toLowerCase().includes(t))
 
       // Fallback to determine roleName from residentType if not provided
       if (!row.roleName && row.residentType) {
         const lowerRes = row.residentType.toLowerCase()
         if (lowerRes.includes('owner')) row.roleName = 'Resident Owner'
-        else if (lowerRes.includes('staff') || lowerRes.includes('maid') || lowerRes.includes('driver') || lowerRes.includes('cook') || lowerRes.includes('gardener'))
+        else if (
+          lowerRes.includes('staff') ||
+          lowerRes.includes('maid') ||
+          lowerRes.includes('driver') ||
+          lowerRes.includes('cook') ||
+          lowerRes.includes('gardener')
+        )
           row.roleName = 'Household Staff'
         else if (lowerRes.includes('family')) row.roleName = 'Family Member'
         else if (lowerRes.includes('tenant') || lowerRes.includes('resident'))
@@ -129,7 +185,7 @@ const parseCSV = (csvText) => {
     return result
   }
 
-  const headers = parseLine(lines[0]).map((h) => (h || '').toString().trim().toLowerCase())
+  const headers = parseLine(lines[0]).map(normalizeBulkHeader)
 
   const parsed = []
   for (let i = 1; i < lines.length; i++) {
@@ -178,13 +234,32 @@ const parseCSV = (csvText) => {
       row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
       row.isValidResidentType =
         !row.residentType ||
-        ['owner', 'tenant', 'family', 'resident owner', 'resident tenant', 'family member'].some(
-          (t) => (row.residentType || '').toLowerCase().includes(t),
-        )
+        [
+          'owner',
+          'tenant',
+          'family',
+          'resident owner',
+          'resident tenant',
+          'family member',
+          'staff',
+          'household staff',
+          'maid',
+          'driver',
+          'cook',
+          'gardener',
+        ].some((t) => (row.residentType || '').toLowerCase().includes(t))
 
       if (!row.roleName && row.residentType) {
         const lowerRes = row.residentType.toLowerCase()
         if (lowerRes.includes('owner')) row.roleName = 'Resident Owner'
+        else if (
+          lowerRes.includes('staff') ||
+          lowerRes.includes('maid') ||
+          lowerRes.includes('driver') ||
+          lowerRes.includes('cook') ||
+          lowerRes.includes('gardener')
+        )
+          row.roleName = 'Household Staff'
         else if (lowerRes.includes('tenant') || lowerRes.includes('resident'))
           row.roleName = 'Resident Tenant'
         else if (lowerRes.includes('family')) row.roleName = 'Family Member'

@@ -11,21 +11,27 @@ const IGNORED_WARNINGS = [
   '[Reanimated] Reading from `value` during component render',
   '[Reanimated] Writing to `value` during component render',
   'Password field is not contained in a form',
-  "The action 'GO_BACK' was not handled by any navigator"
+  "The action 'GO_BACK' was not handled by any navigator",
+  'Download the React DevTools for a better development experience',
+  'Added non-passive event listener to a scroll-blocking',
 ];
 
 LogBox.ignoreLogs(IGNORED_WARNINGS);
 
 const originalConsoleWarn = console.warn;
 console.warn = (...args) => {
-  if (args[0] && typeof args[0] === 'string' && IGNORED_WARNINGS.some(w => args[0].includes(w))) return;
+  if (args[0] && typeof args[0] === 'string' && IGNORED_WARNINGS.some((w) => args[0].includes(w))) return;
   originalConsoleWarn(...args);
+};
+
+const originalConsoleInfo = console.info;
+console.info = (...args) => {
+  if (args[0] && typeof args[0] === 'string' && IGNORED_WARNINGS.some((w) => args[0].includes(w))) return;
+  originalConsoleInfo(...args);
 };
 
 const originalConsoleError = console.error;
 console.error = (...args) => {
-  if (args[0] && typeof args[0] === 'string' && IGNORED_WARNINGS.some(w => args[0].includes(w))) return;
+  if (args[0] && typeof args[0] === 'string' && IGNORED_WARNINGS.some((w) => args[0].includes(w))) return;
   originalConsoleError(...args);
 };
-
-

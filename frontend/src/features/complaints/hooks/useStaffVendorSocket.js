@@ -1,46 +1,41 @@
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
-import { io } from 'socket.io-client'
-import config from '../../../config/config.js'
+import useSocket from '../../../hooks/useSocket.js'
 import { fetchStaffVendorsAnalytics } from '../store/complaintSlice'
 
-const SOCKET_URL = config.socketUrl
+// Events emitted by backend technician.socket.js / staffUnitAssociation.socket.js / staffAttendance.socket.js
+const STAFF_EVENTS = [
+  'staff:created',
+  'staff:profile_updated',
+  'staff:deleted',
+  'staff:association_created',
+  'staff:association_accepted',
+  'staff:association_rejected',
+  'staff:association_removed',
+  'staff:unit_association_requested',
+  'staff:attendance_updated',
+]
 
 /**
- * Hook to listen for real‑time technician/technician‑analytics events.
- * It dispatches a fresh analytics load when relevant events occur.
+ * Keeps the Staff & Vendor directory in sync: any staff record, unit association or attendance change
+ * reloads the list and analytics. Uses the shared socket, which joins the org room on connect.
  */
-export const useStaffVendorSocket = (token) => {
+export const useStaffVendorSocket = () => {
   const dispatch = useDispatch()
+  const { socket, isConnected } = useSocket()
 
   useEffect(() => {
-    if (!token) return
-    const socket = io(SOCKET_URL, {
-      auth: { token },
-      transports: ['websocket'],
-    })
+    if (!socket || !isConnected) return undefined
 
-    socket.on('connect', () => {
-      console.log('Technician socket connected')
-    })
-
-    // When any technician record changes, reload analytics
-    socket.on('technicians:updated', () => {
-      dispatch(fetchStaffVendorsAnalytics())
-    })
-
-    socket.on('technicians:analytics:updated', () => {
-      dispatch(fetchStaffVendorsAnalytics())
-    })
-
-    socket.on('disconnect', () => {
-      console.log('Technician socket disconnected')
-    })
-
-    return () => {
-      socket.disconnect()
+    const reload = () => {
+      dispatch(fetchStaffVendorsAnalytics({}))
     }
-  }, [token, dispatch])
+
+    STAFF_EVENTS.forEach((name) => socket.on(name, reload))
+    return () => {
+      STAFF_EVENTS.forEach((name) => socket.off(name, reload))
+    }
+  }, [socket, isConnected, dispatch])
 }
 
 export default useStaffVendorSocket

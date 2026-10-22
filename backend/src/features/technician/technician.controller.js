@@ -103,8 +103,15 @@ class TechnicianController {
         email: req.user.email,
         phone: req.user.phone,
       };
-      const technician = await technicianService.getMyProfile(userId, orgId, userDetails);
-      res.success(technician, 'Staff profile retrieved successfully');
+      try {
+        const technician = await technicianService.getMyProfile(userId, orgId, userDetails);
+        res.success(technician, 'Staff profile retrieved successfully');
+      } catch (profileErr) {
+        if (profileErr.statusCode === 404) {
+          return res.success(null, 'No staff profile associated with current user');
+        }
+        throw profileErr;
+      }
     } catch (error) {
       next(error);
     }

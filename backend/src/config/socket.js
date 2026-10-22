@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import logger from '../utils/logger.utils.js';
-import { canJoinRoom } from './socketRoomPolicy.js';
+import { canJoinRoom, getDerivedOrgRooms } from './socketRoomPolicy.js';
 import { initRoleSocket } from '../features/role/role.socket.js';
 import { initUserSocket } from '../features/user/user.socket.js';
 import { setupPaymentSocketListeners } from '../features/payment/payment.socket.js';
@@ -15,6 +15,7 @@ import { initOrganizationSocket } from '../features/organization/organization.so
 import { initStaffUnitAssociationSocket } from '../features/staffUnitAssociation/staffUnitAssociation.socket.js';
 import { initTechnicianSocket } from '../features/technician/technician.socket.js';
 import { initStaffAttendanceSocket } from '../features/staffAttendance/staffAttendance.socket.js';
+import { initExpenseSockets } from '../features/expense/expense.socket.js';
 
 let io = null;
 let redisAdapterActive = false;
@@ -136,6 +137,15 @@ export const initSocket = async (httpServer) => {
         }
         logger.info(`Socket ${socket.id} is joining room: ${room}`);
         socket.join(room);
+
+        // Joining the root org room also subscribes the member to the role / gate rooms the backend
+        // broadcasts to (org:<id>:role:admin, org:<id>:guards, ...). Resolving them here means a client
+        // never misses admin or guard events because it guessed the wrong role-room spelling.
+        const orgRoot = String(room).match(/^org:([a-f\d]{24})$/i);
+        if (orgRoot) {
+          const derived = await getDerivedOrgRooms(socket, orgRoot[1]);
+          derived.forEach((r) => socket.join(r));
+        }
       } catch (error) {
         logger.error(`Failed to authorise socket ${socket.id} for room ${room}:`, error);
       }
@@ -186,6 +196,8 @@ export const initSocket = async (httpServer) => {
           const targetRoom = `org:${newOrgId}`;
           if (await canJoinRoom(socket, targetRoom)) {
             socket.join(targetRoom);
+            const derived = await getDerivedOrgRooms(socket, String(newOrgId));
+            derived.forEach((r) => socket.join(r));
             socket.emit('workspace_switched', { orgId: newOrgId, success: true });
           } else {
             socket.emit('workspace_switched', { orgId: newOrgId, success: false, message: 'Unauthorized organization context' });
@@ -214,6 +226,7 @@ export const initSocket = async (httpServer) => {
   initStaffUnitAssociationSocket();
   initTechnicianSocket();
   initStaffAttendanceSocket();
+  initExpenseSockets();
   setupPaymentSocketListeners().catch((err) => logger.error('Failed to init payment socket listeners', err));
   setupWalletSocketListeners().catch((err) => logger.error('Failed to init wallet socket listeners', err));
 

@@ -1,0 +1,10 @@
+jest.mock('@/src/services/apiClient', () => ({ get: jest.fn(), post: jest.fn(), patch: jest.fn(), put: jest.fn(), delete: jest.fn() }));
+import apiClient from '@/src/services/apiClient';
+import service from '../personalExpenseService';
+const client = apiClient as jest.Mocked<typeof apiClient>;
+describe('personalExpenseService', () => {
+  beforeEach(() => jest.clearAllMocks());
+  it('unwraps the standard response envelope for dashboards', async () => { const dashboard = { period: '2026-10', incomeMinor: 100, expenseMinor: 50, balanceMinor: 50, categoryBreakdown: [], budgets: [], recentTransactions: [] }; client.get.mockResolvedValue({ success: true, data: dashboard } as any); await expect(service.dashboard('2026-10')).resolves.toEqual(dashboard); expect(client.get).toHaveBeenCalledWith('/personal-expenses/dashboard', { params: { period: '2026-10' } }); });
+  it('sends server-supported pagination and filters only', async () => { client.get.mockResolvedValue({ success: true, data: { items: [], total: 0, page: 1, limit: 25, totalPages: 0 } } as any); await service.transactions({ page: 1, limit: 25, type: 'EXPENSE', categoryId: 'food_dining', startDate: '2026-10-01' }); expect(client.get).toHaveBeenCalledWith('/personal-expenses/transactions', { params: { page: 1, limit: 25, type: 'EXPENSE', categoryId: 'food_dining', startDate: '2026-10-01' } }); });
+  it('preserves settlement state and advisory duplicate warnings after writes', async () => { const result = { transaction: { _id: '1', paymentSettlement: 'UNPAID' }, duplicateWarning: true, possibleDuplicates: [{ _id: '0' }] }; client.post.mockResolvedValue({ success: true, data: result } as any); await expect(service.createTransaction({ type: 'EXPENSE', amount: 10, categoryId: 'food_dining', transactionDate: '2026-10-21', paymentMethod: 'UPI', paymentSettlement: 'UNPAID' })).resolves.toEqual(result); expect(client.post).toHaveBeenCalledWith('/personal-expenses/transactions', expect.objectContaining({ paymentSettlement: 'UNPAID' })); });
+});

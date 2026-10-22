@@ -10,7 +10,11 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 async function deleteUserDetails() {
-  const email = 'naveen12rvb2022@gmail.com';
+  const email = process.argv[2] || process.env.TARGET_DELETE_EMAIL;
+  if (!email) {
+    console.error('Usage: node delete_user.js <email>');
+    process.exit(1);
+  }
   console.log(`Connecting to MongoDB...`);
   
   try {

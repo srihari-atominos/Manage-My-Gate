@@ -110,3 +110,25 @@ jobs:
         run: |
           cd mobile/mobile-app
           npm test
+
+  financial-regression:
+    name: Financial Integration Regression (MongoDB-capable runner)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Run expense and UPI integration tests
+        working-directory: backend
+        run: node --test --test-isolation=none tests/features/expense.integration.test.mjs
+      - name: Run financial ledger, invoice, payment, and wallet suites
+        working-directory: backend
+        run: node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand tests/features/financialLedger.integration.test.js tests/features/invoice.integration.test.js tests/features/payment.integration.test.js tests/features/wallet.integration.test.js

@@ -40,6 +40,17 @@ export class InvoiceRepository {
       communityMatchCandidates.push(String(communityId));
     }
 
+    // Invoices already rolled into a successor invoice are represented by that successor's
+    // total; counting them again would double the demand and arrears.
+    const carriedSourceIds = await Invoice.distinct('carryForwardHistory.invoiceId', {
+      isDeleted: { $ne: true },
+      status: { $ne: 'CANCELLED' },
+      $or: [
+        { communityId: { $in: communityMatchCandidates } },
+        { orgId: { $in: communityMatchCandidates } },
+      ],
+    });
+
     const result = await Invoice.aggregate([
       {
         $match: {
@@ -66,11 +77,16 @@ export class InvoiceRepository {
       },
       {
         $addFields: {
+          // New demand of the period only: totalAmount also embeds carried-forward balances.
           totalDueFallback: {
-            $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', { $ifNull: ['$currentCharge', 0] }] }],
+            $ifNull: [
+              { $add: ['$currentCharge', { $ifNull: ['$lateFeeAmount', 0] }] },
+              { $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', 0] }] },
+            ],
           },
+          // Money allocated from a successor invoice is already counted on that successor.
           paidFallback: {
-            $ifNull: ['$paidAmount', 0],
+            $subtract: [{ $ifNull: ['$paidAmount', 0] }, { $ifNull: ['$allocatedFromSuccessorAmount', 0] }],
           },
           outstandingFallback: {
             $ifNull: ['$outstandingAmount', { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', 0] }] }],
@@ -84,7 +100,7 @@ export class InvoiceRepository {
             { $group: { _id: null, total: { $sum: '$totalDueFallback' }, count: { $sum: 1 } } },
           ],
           totalCollected: [
-            { $match: { status: { $in: ['PAID', 'PARTIALLY_PAID'] } } },
+            { $match: { status: { $ne: 'CANCELLED' } } },
             { $group: { _id: null, total: { $sum: '$paidFallback' } } },
           ],
           inTransitGateway: [
@@ -102,7 +118,7 @@ export class InvoiceRepository {
             },
           ],
           totalUnpaidArrears: [
-            { $match: { status: { $in: ['UNPAID', 'OVERDUE', 'PARTIALLY_PAID'] } } },
+            { $match: { status: { $in: ['UNPAID', 'OVERDUE', 'PARTIALLY_PAID'] }, _id: { $nin: carriedSourceIds } } },
             { $group: { _id: null, total: { $sum: '$outstandingFallback' } } },
           ],
         },
@@ -140,7 +156,8 @@ export class InvoiceRepository {
   async getUserPortfolioDues(userId, communityId = null) {
     const matchStage = {
       targetUserId: new mongoose.Types.ObjectId(userId),
-      status: { $ne: 'PAID' },
+      status: { $nin: ['PAID', 'CANCELLED'] },
+      isDeleted: { $ne: true },
     };
     if (communityId) {
       matchStage.communityId = new mongoose.Types.ObjectId(communityId);
@@ -341,6 +358,54 @@ export class InvoiceRepository {
   }
 
   /**
+   * The live invoice (if any) that rolled this invoice's balance forward into its own total.
+   * Such an invoice is settled through the successor, never directly.
+   */
+  async findCarrySuccessor(invoiceId, session) {
+    const query = Invoice.findOne({
+      'carryForwardHistory.invoiceId': invoiceId,
+      status: { $ne: 'CANCELLED' },
+      isDeleted: { $ne: true },
+    }).select('_id invoiceNumber');
+    if (session) query.session(session);
+    return query;
+  }
+
+  /**
+   * Apply a successor's payment to the invoices it carried forward (oldest first), so they
+   * close once the successor's payment covers them and cannot be charged a second time.
+   */
+  async allocateToCarriedSources(successor, amount, session) {
+    let remaining = Math.round(Number(amount || 0) * 100) / 100;
+    const sourceIds = (successor.carryForwardHistory || []).map((h) => h.invoiceId).filter(Boolean);
+    if (remaining <= 0 || sourceIds.length === 0) return;
+
+    const sourcesQuery = Invoice.find({ _id: { $in: sourceIds }, isDeleted: { $ne: true } }).sort({ createdAt: 1 });
+    if (session) sourcesQuery.session(session);
+    const sources = await sourcesQuery;
+
+    for (const source of sources) {
+      if (remaining <= 0) break;
+      if (source.isFrozen || ['PAID', 'CANCELLED'].includes(source.status)) continue;
+      const open = Math.round(Number(source.outstandingAmount || 0) * 100) / 100;
+      const take = Math.min(remaining, open);
+      if (take <= 0) continue;
+
+      source.paidAmount = Math.round((Number(source.paidAmount || 0) + take) * 100) / 100;
+      source.allocatedFromSuccessorAmount = Math.round((Number(source.allocatedFromSuccessorAmount || 0) + take) * 100) / 100;
+      source.lastPaymentDate = new Date();
+      source.auditHistory = source.auditHistory || [];
+      source.auditHistory.push({
+        action: 'PAID_VIA_SUCCESSOR_INVOICE',
+        details: `₹${take} settled through payment on successor invoice #${successor.invoiceNumber || successor._id}.`,
+        date: new Date(),
+      });
+      await source.save(session ? { session } : undefined);
+      remaining = Math.round((remaining - take) * 100) / 100;
+    }
+  }
+
+  /**
    * Transactional check-and-update to prevent race conditions.
    * @param {string} invoiceId - Invoice ID.
    * @param {string} newStatus - New invoice status.
@@ -368,6 +433,23 @@ export class InvoiceRepository {
     if (invoice.status === 'PAID') {
       throw new HttpError(409, 'Invoice is already paid and cannot be updated');
     }
+
+    if (invoice.status === 'CANCELLED' && newStatus !== 'CANCELLED') {
+      throw new HttpError(409, 'Invoice is cancelled and cannot be updated');
+    }
+
+    // Its balance now lives inside a newer invoice; paying it here would charge the resident twice.
+    if (['PAID', 'PARTIALLY_PAID', 'VERIFICATION_PENDING'].includes(newStatus)) {
+      const successor = await this.findCarrySuccessor(invoice._id, activeSession);
+      if (successor) {
+        throw new HttpError(
+          409,
+          `This balance was carried forward into invoice #${successor.invoiceNumber || successor._id}. Please pay that invoice instead.`
+        );
+      }
+    }
+
+    let appliedAmount = 0;
 
     if (newStatus === 'PAID' || newStatus === 'PARTIALLY_PAID') {
       invoice.paid_at = paymentData.paid_at || new Date();
@@ -400,6 +482,7 @@ export class InvoiceRepository {
 
       applyAmount = Math.min(applyAmount, remainingBeforePayment > 0 ? remainingBeforePayment : applyAmount);
 
+      appliedAmount = applyAmount;
       invoice.paidAmount = previousPaid + applyAmount;
       invoice.totalAmount = totalInvoiceLiability;
       invoice.totalDue = totalInvoiceLiability;
@@ -437,7 +520,11 @@ export class InvoiceRepository {
       invoice.auditHistory.push(paymentData.auditEntry);
     }
 
-    return await invoice.save(activeSession ? { session: activeSession } : undefined);
+    const saved = await invoice.save(activeSession ? { session: activeSession } : undefined);
+    if (appliedAmount > 0) {
+      await this.allocateToCarriedSources(saved, appliedAmount, activeSession);
+    }
+    return saved;
   }
 
   /**
@@ -601,7 +688,6 @@ export class InvoiceRepository {
               $or: [
                 { communityId: { $in: communityMatchCandidates } },
                 { orgId: { $in: communityMatchCandidates } },
-                { communityId: { $exists: false } },
               ],
             },
             matchConditions,
@@ -625,7 +711,6 @@ export class InvoiceRepository {
                 { communityId: { $in: communityMatchCandidates } },
                 { orgId: { $in: communityMatchCandidates } },
                 { 'assessment.communityId': { $in: communityMatchCandidates } },
-                { communityId: { $exists: false } },
               ],
             },
             matchConditions,

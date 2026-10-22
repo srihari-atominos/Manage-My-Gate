@@ -15,6 +15,13 @@ export const AMENITY_V2_TIER_PERMISSIONS: Record<AmenityTier, string[]> = {
 
 const allAmenityTierPermissions = new Set(Object.values(AMENITY_V2_TIER_PERMISSIONS).flat());
 
+const BILLING_EXPENSE_PERMISSIONS = [
+  'billing:view_expense',
+  'billing:create_expense',
+  'billing:record_expense_payment',
+  'billing:reconcile_expense_payment',
+];
+
 export const detectInitialAmenityTier = (permissions: string[] = []): AmenityTier => {
   const amenityPermissions = permissions.filter((permission) => allAmenityTierPermissions.has(permission));
   for (const [tier, tierPermissions] of Object.entries(AMENITY_V2_TIER_PERMISSIONS)) {
@@ -160,6 +167,7 @@ export const useRoleForm = ({ role, visible, onSave, allowedPermissions = [] }: 
 
     // Expand any virtual full_access or staff codes into their real backend permissions
     const expandedGroupCodes = groupCodes.flatMap(code => {
+      if (code === 'billing:expenses') return BILLING_EXPENSE_PERMISSIONS;
       if (String(code).endsWith(':full_access')) {
         const category = code.split(':')[0];
         return [`${category}:create`, `${category}:read`, `${category}:update`, `${category}:delete`, `${category}:manage`, `${category}:super_admin`];
@@ -214,6 +222,14 @@ export const useRoleForm = ({ role, visible, onSave, allowedPermissions = [] }: 
       } else {
         const toRemove = new Set(permsToToggle);
         newValue = currentPermissions.filter((p) => !toRemove.has(p) && !String(p).startsWith(`${category}:`));
+      }
+    } else if (permValue === 'billing:expenses') {
+      const targetCodes = BILLING_EXPENSE_PERMISSIONS;
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]));
+      } else {
+        const toRemove = new Set(targetCodes);
+        newValue = currentPermissions.filter((p) => !toRemove.has(p));
       }
     } else if (permValue === 'staff:directory') {
       const targetCodes = ['staff:view', 'staff:manage', 'staff:directory'];

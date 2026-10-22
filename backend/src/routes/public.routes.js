@@ -112,7 +112,7 @@ router.get('/app/config', async (req, res) => {
   } catch (_) { /* never block app bootstrap on this */ }
   res.success({
     supportEmail,
-    minSupportedVersion: process.env.MOBILE_MIN_SUPPORTED_VERSION || '0.0.0',
+    minSupportedVersion: process.env.MOBILE_MIN_SUPPORTED_VERSION || '0.0.0', /* synced with appUpdate */
     latestVersion: process.env.MOBILE_LATEST_VERSION || null,
     storeUrls: {
       android: 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom',

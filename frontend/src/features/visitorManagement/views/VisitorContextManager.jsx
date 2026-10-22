@@ -4,10 +4,12 @@ import { CCallout } from '@coreui/react'
 import ResidentVisitorManagementView from './ResidentVisitorManagementView'
 import GuardVisitormanagementViews from './GuardVisitormanagementViews'
 import AdminVisitorManagementViews from './AdminVisitorManagementViews'
+import { useVisitorRealtimeSync } from '../hooks/useVisitorRealtimeSync'
 
 export const VisitorContextManager = () => {
   const user = useSelector((state) => state.auth.user)
   const context = user?.visitorContext || 'None'
+  useVisitorRealtimeSync(context)
 
   switch (context) {
     case 'Resident':

@@ -51,7 +51,31 @@ export const dispatchWalkInResolved = (log) => {
   }
 };
 
+/**
+ * Tells the community that a visitor log changed (checked in / out) so open Visitor Management screens
+ * refetch. The payload carries ids and status only, no visitor details; each client reloads through the
+ * REST API, which applies its own role and tenant scoping.
+ * @param {Object} log - The visitor log document.
+ * @param {string} action - 'checked_in' | 'checked_out'
+ */
+export const dispatchVisitorLogChanged = (log, action) => {
+  try {
+    if (!log?.orgId) return;
+    const io = getIO();
+    io.to(`org:${log.orgId}`).emit('visitor:log_changed', {
+      logId: log._id ? String(log._id) : '',
+      orgId: String(log.orgId),
+      action,
+      logStatus: log.logStatus,
+      entryType: log.entryType,
+    });
+  } catch (error) {
+    logger.error('Failed to emit visitor:log_changed via Socket.io:', error);
+  }
+};
+
 export default {
   dispatchWalkInPending,
   dispatchWalkInResolved,
+  dispatchVisitorLogChanged,
 };

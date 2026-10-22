@@ -122,6 +122,8 @@ class StaffUnitAssociationService {
     const { unitIds } = await this.resolveUserAuthorizedUnitIds(userId, orgId, isAdmin);
 
     const filter = {};
+    const asText = (value) => (typeof value === 'string' && value ? value : '');
+    query = { ...query, status: asText(query.status), technicianId: asText(query.technicianId), villaId: asText(query.villaId) };
     if (query.status && query.status.toUpperCase() === 'ALL') {
       filter.status = { $in: ['Active', 'Pending', 'Rejected'] };
     } else if (query.status) {

@@ -1,3 +1,4 @@
+import '@/src/utils/passiveEventHelper';
 ﻿import '@/src/utils/consoleFilter';
 import '@/src/utils/cryptoPolyfill';
 import '@/global.css';
@@ -380,8 +381,13 @@ export default function RootLayout() {
       });
     }
 
+    let checkRaf: number | null = null;
     const handleFocusOrBlur = () => {
-      handleAriaHiddenCheck();
+      if (checkRaf != null) cancelAnimationFrame(checkRaf);
+      checkRaf = requestAnimationFrame(() => {
+        handleAriaHiddenCheck();
+        checkRaf = null;
+      });
     };
 
     window.addEventListener('focusin', handleFocusOrBlur, true);
@@ -389,6 +395,7 @@ export default function RootLayout() {
 
     return () => {
       if (observer) observer.disconnect();
+      if (checkRaf != null) cancelAnimationFrame(checkRaf);
       window.removeEventListener('focusin', handleFocusOrBlur, true);
       window.removeEventListener('blur', handleFocusOrBlur, true);
     };

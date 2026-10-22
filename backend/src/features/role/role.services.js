@@ -3,6 +3,7 @@ import roleRepository from './role.repository.js';
 import roleEvents from './role.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 import { isTenantScope } from './roleScope.constants.js';
+import logger from '../../utils/logger.utils.js';
 
 // Role names that confer platform-level privileges. Only roles inside the platform organisation may use them.
 export const RESERVED_PLATFORM_ROLE_NAMES = ['super admin', 'superadmin', 'platform admin', 'platform super admin', 'super_admin', 'platform_admin'];
@@ -20,15 +21,19 @@ const normalizePermission = (value) => String(value ?? '').trim().replace(':', '
 export const matchPermissions = (allPermissions, requested) => {
   const wanted = (Array.isArray(requested) ? requested : []).filter(Boolean).map((perm) => String(perm).trim());
   if (wanted.length === 0) return [];
-  return (allPermissions || []).filter((p) => {
+  const isMatch = (p, perm) => {
     const pId = p._id ? p._id.toString() : '';
     const pName = p.name ? p.name.trim() : '';
     const pCode = p.code ? p.code.trim() : '';
-    const pNormalized = normalizePermission(pName);
-    return wanted.some(
-      (perm) => perm === pId || perm === pName || perm === pCode || normalizePermission(perm) === pNormalized
-    );
-  });
+    return perm === pId || perm === pName || perm === pCode || normalizePermission(perm) === normalizePermission(pName);
+  };
+  const catalog = allPermissions || [];
+  const unknown = wanted.filter((perm) => !catalog.some((p) => isMatch(p, perm)));
+  if (unknown.length > 0) {
+    // Not saved: surface drift between client permission codes and the catalog instead of hiding it.
+    logger.warn(`[RoleService] Ignoring permissions not in the catalog: ${unknown.join(', ')}`);
+  }
+  return catalog.filter((p) => wanted.some((perm) => isMatch(p, perm)));
 };
 
 export class RoleService {
@@ -104,12 +109,9 @@ export class RoleService {
   }
 
   async getAllRoles(orgId, page = 1, limit = 10, search = '', scope = '') {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
+    {
       const skip = (page - 1) * limit;
-      const { data, totalRecords, scopeCounts } = await roleRepository.findAllPaginated(orgId, skip, limit, session, search, scope);
-      await session.commitTransaction();
+      const { data, totalRecords, scopeCounts } = await roleRepository.findAllPaginated(orgId, skip, limit, null, search, scope);
       if (orgId && data.length > 0) {
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
         const counts = await orgMembershipService.countActiveMembersByRole(orgId, data.map((r) => r._id));
@@ -128,11 +130,6 @@ export class RoleService {
         },
         scopeCounts,
       };
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      await session.endSession();
     }
   }
 
@@ -155,6 +152,7 @@ export class RoleService {
       localSession.startTransaction();
     }
     const currentSession = session || localSession;
+    let pendingEvent = null;
 
     try {
       const { name, description, permissions, integrationMappings, orgId, isTenantRole, roleScope, communityOnly } = roleData;
@@ -200,12 +198,19 @@ export class RoleService {
 
         await rolePermissionService.updateRolePermissions(newRole._id.toString(), permissionIds, currentSession);
         populatedPermissions = matchedPermissions.map(p => p.name);
-        // Emit event after role creation with permissions
-        roleEvents.emit('rolePermissionsUpdated', { roleId: newRole._id.toString(), permissionIds, permissions: populatedPermissions });
+        pendingEvent = { roleId: newRole._id.toString(), permissionIds, permissions: populatedPermissions };
       }
 
       if (localSession) {
         await localSession.commitTransaction();
+      }
+      // Emit only once the data is committed (or hand over to the caller's transaction).
+      if (pendingEvent) {
+        if (localSession) {
+          const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+          await rolePermissionService.clearCache(pendingEvent.roleId, orgId);
+        }
+        roleEvents.emit('rolePermissionsUpdated', pendingEvent);
       }
       return {
         ...newRole.toObject(),
@@ -226,6 +231,7 @@ export class RoleService {
   async updateRole(id, updateData, actor = null) {
     const session = await mongoose.startSession();
     session.startTransaction();
+    let pendingEvent = null;
     try {
       const currentRole = await this.getRoleById(id, session);
       this.assertRoleAccess(currentRole, actor, { write: true });
@@ -270,8 +276,7 @@ export class RoleService {
 
         await rolePermissionService.updateRolePermissions(id, permissionIds, session);
         populatedPermissions = matchedPermissions.map(p => p.name);
-        // Emit event after successful permission update
-        roleEvents.emit('rolePermissionsUpdated', { roleId: id, permissionIds, permissions: populatedPermissions });
+        pendingEvent = { roleId: id, permissionIds, permissions: populatedPermissions };
       } else {
         const permissionsList = await rolePermissionService.getPermissionsByRoleId(id, updatedRole?.orgId);
         populatedPermissions = permissionsList.map(p => p.name);
@@ -291,6 +296,11 @@ export class RoleService {
         session
       );
       await session.commitTransaction();
+      if (pendingEvent) {
+        // Evict after commit so a concurrent read cannot re-cache the pre-update permissions.
+        await rolePermissionService.clearCache(id, currentRole.orgId || orgId);
+        roleEvents.emit('rolePermissionsUpdated', pendingEvent);
+      }
 
       // Existing unit allocations must also stop immediately when the role becomes community-only.
       if (isCommunityStaffRole && updatedRole.communityOnly === true) {
@@ -415,7 +425,19 @@ export class RoleService {
     await this.assertCanGrant(matchedPermissions.filter((p) => !currentIds.has(String(p._id))), actor);
 
     const permissionIds = matchedPermissions.map((p) => p._id);
-    await rolePermissionService.updateRolePermissions(roleId, permissionIds);
+    // Delete + re-create must be atomic, otherwise a failure leaves the role with no permissions.
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      await rolePermissionService.updateRolePermissions(roleId, permissionIds, session);
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+    await rolePermissionService.clearCache(roleId, role?.orgId);
     const updatedPerms = await rolePermissionService.getPermissionsByRoleId(roleId, role?.orgId);
     const populatedPermissions = updatedPerms.map((p) => p.name || p);
     roleEvents.emit('rolePermissionsUpdated', { roleId, permissionIds, permissions: populatedPermissions });

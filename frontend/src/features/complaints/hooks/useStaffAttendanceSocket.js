@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { io } from 'socket.io-client'
 import config from '../../../config/config.js'
@@ -10,6 +10,15 @@ import config from '../../../config/config.js'
 export const useStaffAttendanceSocket = (onAttendanceChange) => {
   const { user, token } = useSelector((state) => state.auth || {})
 
+  // Keep the latest callback in a ref: callers pass a callback that changes with every filter/page change,
+  // and listing it as an effect dependency tore down and rebuilt the socket (missing events) each time.
+  const callbackRef = useRef(onAttendanceChange)
+  useEffect(() => {
+    callbackRef.current = onAttendanceChange
+  }, [onAttendanceChange])
+
+  const orgId = user?.orgId || user?.organizationId
+
   useEffect(() => {
     if (!token && !user) return
 
@@ -19,20 +28,24 @@ export const useStaffAttendanceSocket = (onAttendanceChange) => {
       transports: ['websocket', 'polling'],
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
+      reconnectionDelayMax: 15000,
       reconnectionDelay: 1000,
     })
 
+    let connectedBefore = false
     socket.on('connect', () => {
-      const orgId = user?.orgId || user?.organizationId
       if (orgId) {
         socket.emit('join_room', `org:${orgId}`)
       }
+      // Events missed while disconnected are not replayed: reload after a reconnect
+      if (connectedBefore) callbackRef.current?.()
+      connectedBefore = true
     })
 
     const handleUpdate = (payload) => {
-      if (typeof onAttendanceChange === 'function') {
-        onAttendanceChange(payload)
+      if (typeof callbackRef.current === 'function') {
+        callbackRef.current(payload)
       }
     }
 
@@ -46,7 +59,7 @@ export const useStaffAttendanceSocket = (onAttendanceChange) => {
       socket.off('staff:exit', handleUpdate)
       socket.disconnect()
     }
-  }, [user, token, onAttendanceChange])
+  }, [orgId, token])
 
   return null
 }
