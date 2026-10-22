@@ -27,8 +27,8 @@ last_error.json
 **/last_error.json
 scratch/
 **/scratch/
-patch*
-fix*
+*.patch
+/fix*
 repo_*.js
 find_id.js
 check_tenant_repos.js

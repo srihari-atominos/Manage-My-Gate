@@ -1,80 +1,33 @@
-# Ignore .git repository data
+# Ignore git repository data everywhere
 .git
 .git/**
 **/.git
 **/.git/**
 
-# Monorepo services & root files not needed for mobile build
-backend
-backend/**
-frontend
-frontend/**
-tailwind-frontend
-tailwind-frontend/**
-mongodb-data
-mongodb-data/**
-mongodb_data
-mongodb_data/**
-Oct_5_6_7_commits
-Oct_5_6_7_commits/**
-docs
-docs/**
-public
-public/**
-adapters
-adapters/**
-security
-security/**
-private
-private/**
-.agents
-.agents/**
-.idea
-.idea/**
-.vscode
-.vscode/**
-.github
-.github/**
-
-# Alternate / legacy mobile apps
-mobile/mobile-app-sdk54
-mobile/mobile-app-sdk54/**
-
-# Native and build directories for mobile-app
-mobile/mobile-app/android
-mobile/mobile-app/android/**
-mobile/mobile-app/ios
-mobile/mobile-app/ios/**
-mobile/mobile-app/.expo
-mobile/mobile-app/.expo/**
-mobile/mobile-app/dist
-mobile/mobile-app/dist/**
-mobile/mobile-app/web-build
-mobile/mobile-app/web-build/**
-
-# Node modules & dependencies everywhere
-**/node_modules
-**/node_modules/**
+# Ignore node_modules everywhere
 node_modules
 node_modules/**
+**/node_modules
+**/node_modules/**
 
-# Root documents, patches, scripts
-*.md
-*.docx
-*.pdf
-*.patch
-*.txt
-*.log
-*.cjs
-*.py
-*.bat
-*.ps1
-*.sh
-scratch*
-patch*
-fix*
-update*
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-.DS_Store
+# Ignore everything at root level (backend, frontend, docs, root scripts, etc.)
+/*
+!/mobile
+!/package.json
+!/package-lock.json
+
+# Inside mobile/, only include mobile-app
+/mobile/*
+!/mobile/mobile-app
+
+# Inside mobile/mobile-app, exclude local native build folders and caches
+/mobile/mobile-app/android
+/mobile/mobile-app/android/**
+/mobile/mobile-app/ios
+/mobile/mobile-app/ios/**
+/mobile/mobile-app/.expo
+/mobile/mobile-app/.expo/**
+/mobile/mobile-app/dist
+/mobile/mobile-app/dist/**
+/mobile/mobile-app/web-build
+/mobile/mobile-app/web-build/**
