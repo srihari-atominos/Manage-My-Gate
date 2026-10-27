@@ -1,6 +1,7 @@
 import React from 'react';
 import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
-import { View, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Image, Alert, Platform } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
@@ -57,7 +58,26 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
     });
   };
 
+  const pickFromWeb = () => {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp,image/jpg';
+    input.onchange = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      const objectUrl = URL.createObjectURL(file);
+      updateField('imageUrl', objectUrl);
+    };
+    input.click();
+  };
+
   const handlePickImage = async () => {
+    if (Platform.OS === 'web') {
+      pickFromWeb();
+      return;
+    }
+
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
@@ -69,8 +89,9 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
       }
 
       if (!(await confirmPickerDisclosure('photo'))) return;
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions?.Images || ['images'],
         allowsEditing: true,
         quality: 0.8,
       });
@@ -80,7 +101,20 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
         updateField('imageUrl', image.uri);
       }
     } catch (err: any) {
-      Alert.alert('Image Picker Error', err?.message || 'Failed to select image.');
+      console.warn('[BasicFacilityInfoStep] launchImageLibraryAsync failed, falling back to document picker:', err);
+      // Fallback to DocumentPicker if ImagePicker fails on device/web
+      try {
+        const docResult = await DocumentPicker.getDocumentAsync({
+          type: ['image/*'],
+          copyToCacheDirectory: true,
+        });
+        if (!docResult.canceled && docResult.assets && docResult.assets.length > 0) {
+          updateField('imageUrl', docResult.assets[0].uri);
+          return;
+        }
+      } catch (fallbackErr: any) {
+        Alert.alert('Image Picker Error', err?.message || 'Failed to select image.');
+      }
     }
   };
 
