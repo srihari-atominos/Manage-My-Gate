@@ -1028,7 +1028,6 @@ class CommunityFinanceService {
     const maxLimit = options.maxLimit || 20000;
     const cleanQuery = { ...query };
     if (cleanQuery.domain === 'ALL') delete cleanQuery.domain;
-    if (cleanQuery.status === 'ALL') delete cleanQuery.status;
     if (isExport) {
       delete cleanQuery.page;
       delete cleanQuery.limit;

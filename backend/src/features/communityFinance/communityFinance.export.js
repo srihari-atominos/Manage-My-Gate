@@ -94,12 +94,11 @@ export function exportFileName(format, query = {}, meta = {}) {
 // ---- Financial classification (integer paise to avoid float drift) ----
 const toPaise = (n) => Math.round(Number(n || 0) * 100);
 const fromPaise = (p) => p / 100;
-const COMPLETED_STATUSES = new Set(['SUCCESS', 'PAID', 'RECONCILED', 'REFUNDED']);
+const COMPLETED_STATUSES = new Set(['SUCCESS', 'PAID', 'RECONCILED', 'RECORDED', 'REFUNDED']);
 const PENDING_STATUSES = new Set([
   'PENDING',
   'PENDING_VERIFICATION',
   'VERIFICATION_PENDING',
-  'RECORDED',
   'UNPAID',
   'PARTIALLY_PAID',
 ]);
