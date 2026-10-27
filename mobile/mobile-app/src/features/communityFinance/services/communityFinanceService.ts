@@ -135,7 +135,7 @@ class CommunityFinanceService {
     };
     if (params.filters.type && params.filters.type !== 'all') cleanFilters.type = params.filters.type;
     if (params.filters.domain && params.filters.domain !== 'ALL') cleanFilters.domain = params.filters.domain;
-    if (params.filters.status && params.filters.status !== 'ALL') cleanFilters.status = params.filters.status;
+    if (params.filters.status) cleanFilters.status = params.filters.status;
     if (params.filters.startDate) cleanFilters.startDate = params.filters.startDate;
     if (params.filters.endDate) cleanFilters.endDate = params.filters.endDate;
     if (params.filters.search && params.filters.search.trim()) cleanFilters.search = params.filters.search.trim();
