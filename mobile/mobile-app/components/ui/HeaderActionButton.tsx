@@ -1,11 +1,13 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, PressableProps } from 'react-native';
 import { LucideIcon } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import { Text } from './text';
 import { cn } from '@/lib/utils';
 
 interface HeaderActionButtonProps extends Omit<PressableProps, 'children'> {
-  label: string;
+  /** Optional text label. Omit for icon-only compact button. */
+  label?: string;
   icon: LucideIcon;
   loading?: boolean;
   className?: string;
@@ -19,6 +21,9 @@ export function HeaderActionButton({
   disabled,
   ...props
 }: HeaderActionButtonProps) {
+  const { colorScheme } = useColorScheme();
+  const iconColor = colorScheme === 'dark' ? '#F9FAFB' : '#111827';
+
   return (
     <Pressable
       hitSlop={4}
@@ -27,20 +32,28 @@ export function HeaderActionButton({
       accessibilityState={{ disabled: Boolean(disabled || loading), busy: loading }}
       disabled={disabled || loading}
       className={cn(
-        'h-10 min-w-[88px] flex-row items-center justify-center gap-2 rounded-full border border-neutral-300 bg-white px-4 shadow-xs active:bg-neutral-100',
+        label
+          ? 'h-11 min-w-11 max-w-[132px] shrink flex-row items-center justify-center gap-1.5 rounded-full border border-border/80 bg-card px-3 shadow-xs active:bg-secondary'
+          : 'h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card shadow-xs active:bg-secondary',
         (disabled || loading) && 'opacity-70',
         className
       )}
       {...props}
     >
       {loading ? (
-        <ActivityIndicator size="small" color="#000000" />
+        <ActivityIndicator size="small" color={iconColor} />
       ) : (
-        <ActionIcon size={16} color="#000000" strokeWidth={2.5} />
+        <ActionIcon size={16} color={iconColor} strokeWidth={2.5} />
       )}
-      <Text className="text-[13px] font-extrabold text-black" numberOfLines={1}>
-        {label}
-      </Text>
+      {label ? (
+        <Text
+          className="min-w-0 shrink text-[13px] font-extrabold text-foreground"
+          numberOfLines={1}
+          minimumFontScale={0.75}
+        >
+          {label}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
