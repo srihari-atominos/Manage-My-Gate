@@ -67,6 +67,7 @@ export function buildExpenseReport(records = [], query = {}, meta = {}) {
 
     // Extract any completed/latest payment details
     const lastPayment = Array.isArray(r.payments) && r.payments.length > 0 ? r.payments[0] : null;
+    const formattedPaymentMethod = lastPayment?.paymentMethod ? readable(lastPayment.paymentMethod) : (isPaid ? 'Paid' : EM_DASH);
 
     return {
       date: d ? d.format('DD MMM YYYY') : EM_DASH,
@@ -79,7 +80,7 @@ export function buildExpenseReport(records = [], query = {}, meta = {}) {
       totalAmount: Number((r.totalAmount || 0).toFixed(2)),
       recordedPaidAmount: Number((r.recordedPaidAmount || 0).toFixed(2)),
       outstandingAmount: Number((r.outstandingAmount || 0).toFixed(2)),
-      paymentMethod: lastPayment?.paymentMethod || (isPaid ? 'PAID' : EM_DASH),
+      paymentMethod: formattedPaymentMethod,
       reference: lastPayment?.transactionReference || lastPayment?.externalTransactionReference || EM_DASH,
       notes: r.description || r.notes || '',
     };
@@ -216,15 +217,17 @@ export function reportToPdfBuffer(report) {
     doc.on('error', reject);
 
     const columns = [
-      ['Date', 'date', 64],
+      ['Date', 'date', 60],
       ['Expense #', 'expenseNumber', 72],
-      ['Name', 'name', 140],
-      ['Category', 'category', 90],
-      ['Vendor', 'vendor', 100],
-      ['Status', 'status', 64],
-      ['Total (INR)', 'totalAmount', 76],
-      ['Paid (INR)', 'recordedPaidAmount', 70],
-      ['Due (INR)', 'outstandingAmount', 70],
+      ['Name', 'name', 115],
+      ['Category', 'category', 75],
+      ['Vendor', 'vendor', 85],
+      ['Status', 'status', 55],
+      ['Total (INR)', 'totalAmount', 65],
+      ['Paid (INR)', 'recordedPaidAmount', 65],
+      ['Due (INR)', 'outstandingAmount', 60],
+      ['Payment Mode', 'paymentMethod', 65],
+      ['Payment Ref', 'reference', 65],
     ];
 
     const drawHeader = () => {
