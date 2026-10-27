@@ -615,20 +615,28 @@ describe('Phase 7: Historical Backfill + Financial Reconciliation + Genesis Ledg
     assert.ok(exception, 'Exception must be created for ghost payment invoice');
     assert.strictEqual(exception.status, RECONCILIATION_EXCEPTION_STATUSES.OPEN);
 
-    // Admin reviews exception
+    // Missing organization context must fail closed; updateException is tenant-scoped.
+    await assert.rejects(() => historicalReconciliationService.updateException(exception._id, {
+      status: RECONCILIATION_EXCEPTION_STATUSES.REVIEWED,
+      resolvedBy: adminUser._id,
+    }), /Organization context is required/);
+
+    // Admin reviews exception within the established tenant context.
     const reviewed = await historicalReconciliationService.updateException(exception._id, {
       status: RECONCILIATION_EXCEPTION_STATUSES.REVIEWED,
       resolutionNotes: 'Bank statement requested from resident.',
       resolvedBy: adminUser._id,
+      orgId: testOrgA._id,
     });
     assert.strictEqual(reviewed.status, RECONCILIATION_EXCEPTION_STATUSES.REVIEWED);
     assert.strictEqual(reviewed.resolutionNotes, 'Bank statement requested from resident.');
 
-    // Admin resolves exception
+    // Admin resolves exception in the same tenant.
     const resolved = await historicalReconciliationService.updateException(exception._id, {
       status: RECONCILIATION_EXCEPTION_STATUSES.RESOLVED,
       resolutionNotes: 'Verified via physical deposit slip #9921.',
       resolvedBy: adminUser._id,
+      orgId: testOrgA._id,
     });
     assert.strictEqual(resolved.status, RECONCILIATION_EXCEPTION_STATUSES.RESOLVED);
   });

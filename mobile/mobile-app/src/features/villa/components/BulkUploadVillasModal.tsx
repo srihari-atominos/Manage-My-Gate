@@ -68,7 +68,17 @@ export const parseVillaCSV = (fileContent: string): VillaPayload[] => {
     return result;
   };
 
-  const headers = parseCSVLine(rawLines[0]).map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  const headers = parseCSVLine(rawLines[0]).map((h) => {
+    const normalized = h.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const aliases: Record<string, string> = {
+      flatno: 'unitnumber', flatnumber: 'unitnumber', villano: 'unitnumber', villanumber: 'unitnumber', doorno: 'unitnumber', houseno: 'unitnumber',
+      tower: 'block', wing: 'block', owneremail: 'residentemail', tenantemail: 'residentemail', emailaddress: 'residentemail',
+      ownername: 'residentname', tenantname: 'residentname', occupantname: 'residentname', fullname: 'residentname',
+      ownershiptype: 'residenttype', occupanttype: 'residenttype', mobilenumber: 'phone', contactnumber: 'phone', contactno: 'phone',
+      bhktype: 'unittype', floorno: 'floor', floornumber: 'floor', areaft2: 'floorarea',
+    };
+    return aliases[normalized] || normalized;
+  });
 
   const rows: VillaPayload[] = [];
   for (let i = 1; i < rawLines.length; i++) {
@@ -297,7 +307,7 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
                 <StatusBadge label="Vacant" variant="success" size="sm" />
               </View>
               <Text className="text-[11px] text-muted-foreground text-start">
-                Block A â€¢ Floor 1 â€¢ Apartment â€¢ 1,200 sq.ft
+                Block A • Floor 1 • Apartment • 1,200 sq.ft
               </Text>
 
               <View className="flex-row items-center justify-between border-t border-border/40 pt-2 border-b pb-1.5">
@@ -305,10 +315,10 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
                 <StatusBadge label="Occupied" variant="info" size="sm" />
               </View>
               <Text className="text-[11px] text-muted-foreground text-start">
-                Block A â€¢ Floor 1 â€¢ 2 BHK â€¢ 1,350 sq.ft
+                Block A • Floor 1 • 2 BHK • 1,350 sq.ft
               </Text>
               <Text className="text-[11px] font-medium text-primary text-start">
-                ðŸ‘¤ John Doe (john@example.com) â€¢ Resident Owner
+                ?? John Doe (john@example.com) • Resident Owner
               </Text>
             </View>
 
@@ -358,7 +368,7 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
                     {selectedFile.name}
                   </Text>
                   <Text variant="muted" className="text-[10px]">
-                    {((selectedFile.size || 0) / 1000).toFixed(1)} KB â€¢ {parsedData.length} units parsed
+                    {((selectedFile.size || 0) / 1000).toFixed(1)} KB • {parsedData.length} units parsed
                   </Text>
                 </View>
               </View>
@@ -402,16 +412,16 @@ export const BulkUploadVillasModal: React.FC<BulkUploadVillasModalProps> = ({
                     </View>
 
                     <Text className="text-[11px] text-muted-foreground text-start">
-                      {item.blockOrBuilding || 'Main Block'} â€¢ {item.type || 'Apartment'}
-                      {(item.squareFeetArea || item.floorAreaSqFt) ? ` â€¢ ${item.squareFeetArea || item.floorAreaSqFt} sq.ft` : ''}
-                      {item.floor ? ` â€¢ Floor ${item.floor}` : ''}
+                      {item.blockOrBuilding || 'Main Block'} • {item.type || 'Apartment'}
+                      {(item.squareFeetArea || item.floorAreaSqFt) ? ` • ${item.squareFeetArea || item.floorAreaSqFt} sq.ft` : ''}
+                      {item.floor ? ` • Floor ${item.floor}` : ''}
                     </Text>
 
                     {(item.name || item.email) && (
                       <View className="flex-row items-center gap-1 pt-1">
                         <Icon as={User} size={12} className="text-primary" />
                         <Text className="text-[11px] font-medium text-primary text-start flex-1" numberOfLines={1}>
-                          {item.name || 'Resident'} {item.email ? `(${item.email})` : ''} {item.residentType ? `â€¢ ${item.residentType}` : ''}
+                          {item.name || 'Resident'} {item.email ? `(${item.email})` : ''} {item.residentType ? `• ${item.residentType}` : ''}
                         </Text>
                       </View>
                     )}

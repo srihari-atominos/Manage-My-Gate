@@ -13,23 +13,30 @@ const IGNORED_WARNINGS = [
   'Password field is not contained in a form',
   "The action 'GO_BACK' was not handled by any navigator",
   'cannot contain a nested <button>',
-  'validateDOMNesting'
+  'validateDOMNesting',
+  'Download the React DevTools for a better development experience',
+  'Added non-passive event listener to a scroll-blocking',
 ];
 
 LogBox.ignoreLogs(IGNORED_WARNINGS);
 
 const originalConsoleWarn = console.warn;
 console.warn = (...args) => {
-  const fullMessage = args.map(a => (typeof a === 'string' ? a : '')).join(' ');
-  if (fullMessage && IGNORED_WARNINGS.some(w => fullMessage.includes(w))) return;
+  const fullMessage = args.map((a) => (typeof a === 'string' ? a : '')).join(' ');
+  if (fullMessage && IGNORED_WARNINGS.some((w) => fullMessage.includes(w))) return;
   originalConsoleWarn(...args);
+};
+
+const originalConsoleInfo = console.info;
+console.info = (...args) => {
+  const fullMessage = args.map((a) => (typeof a === 'string' ? a : '')).join(' ');
+  if (fullMessage && IGNORED_WARNINGS.some((w) => fullMessage.includes(w))) return;
+  originalConsoleInfo(...args);
 };
 
 const originalConsoleError = console.error;
 console.error = (...args) => {
-  const fullMessage = args.map(a => (typeof a === 'string' ? a : '')).join(' ');
-  if (fullMessage && IGNORED_WARNINGS.some(w => fullMessage.includes(w))) return;
+  const fullMessage = args.map((a) => (typeof a === 'string' ? a : '')).join(' ');
+  if (fullMessage && IGNORED_WARNINGS.some((w) => fullMessage.includes(w))) return;
   originalConsoleError(...args);
 };
-
-

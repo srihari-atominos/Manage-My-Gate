@@ -50,12 +50,26 @@ export function signStaffQr(orgId, technician, secret = getActiveQrSecret()) {
 }
 
 /**
+ * Rejects a pass outside its validity window. A genuine pass that expires while its holder is inside must
+ * still be able to check them out, so callers skip this for check-outs.
+ */
+export function assertStaffQrWithinValidity(technician) {
+  const now = new Date();
+  if (technician.qrValidFrom && now < new Date(technician.qrValidFrom)) {
+    throw new HttpError(403, 'Staff QR pass is not yet active.');
+  }
+  if (technician.qrValidUntil && now > new Date(technician.qrValidUntil)) {
+    throw new HttpError(403, 'Staff QR pass has expired. Please contact Community Admin for renewal.');
+  }
+}
+
+/**
  * Verifies a scanned signature in constant time. Throws 401 when it does not match.
  * Honours the previous secret for key rotation. Once a pass has been rotated (qrVersion > 0),
  * every older format (including the un-timestamped legacy one) is rejected, which is what makes
  * a lost or shared pass revocable.
  */
-export function verifyStaffQrSignature(orgId, technician, providedSignature) {
+export function verifyStaffQrSignature(orgId, technician, providedSignature, { allowOutsideValidity = false } = {}) {
   if (
     !providedSignature ||
     typeof providedSignature !== 'string' ||
@@ -64,13 +78,7 @@ export function verifyStaffQrSignature(orgId, technician, providedSignature) {
     throw new HttpError(401, 'Invalid or tampered staff QR code signature.');
   }
 
-  const now = new Date();
-  if (technician.qrValidFrom && now < new Date(technician.qrValidFrom)) {
-    throw new HttpError(403, 'Staff QR pass is not yet active.');
-  }
-  if (technician.qrValidUntil && now > new Date(technician.qrValidUntil)) {
-    throw new HttpError(403, 'Staff QR pass has expired. Please contact Community Admin for renewal.');
-  }
+  if (!allowOutsideValidity) assertStaffQrWithinValidity(technician);
 
   const secrets = [getActiveQrSecret()];
   if (process.env.QR_HMAC_SECRET_PREVIOUS) secrets.push(process.env.QR_HMAC_SECRET_PREVIOUS);

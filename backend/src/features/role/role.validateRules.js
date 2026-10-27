@@ -64,8 +64,9 @@ export const updateRoleRules = [
     .isMongoId()
     .withMessage('Invalid Role ID format'),
   body('name')
+    .optional()
     .notEmpty()
-    .withMessage('Role name is required')
+    .withMessage('Role name cannot be empty')
     .isString()
     .withMessage('Role name must be a string')
     .trim()

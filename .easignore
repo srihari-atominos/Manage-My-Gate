@@ -1,6 +1,33 @@
-mongodb-data/
-mongodb_data/
-backend/
-frontend/
-node_modules/
-.git/
+# Ignore git repository data everywhere
+.git
+.git/**
+**/.git
+**/.git/**
+
+# Ignore node_modules everywhere
+node_modules
+node_modules/**
+**/node_modules
+**/node_modules/**
+
+# Ignore everything at root level (backend, frontend, docs, root scripts, etc.)
+/*
+!/mobile
+!/package.json
+!/package-lock.json
+
+# Inside mobile/, only include mobile-app
+/mobile/*
+!/mobile/mobile-app
+
+# Inside mobile/mobile-app, exclude local native build folders and caches
+/mobile/mobile-app/android
+/mobile/mobile-app/android/**
+/mobile/mobile-app/ios
+/mobile/mobile-app/ios/**
+/mobile/mobile-app/.expo
+/mobile/mobile-app/.expo/**
+/mobile/mobile-app/dist
+/mobile/mobile-app/dist/**
+/mobile/mobile-app/web-build
+/mobile/mobile-app/web-build/**

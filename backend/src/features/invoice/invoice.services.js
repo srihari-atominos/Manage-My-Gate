@@ -147,10 +147,25 @@ export class InvoiceService {
           query.assessmentId = assessment._id;
         }
 
-        const eligibleInvoices = await Invoice.find(query);
-        
+        query.billingPeriodString = { $ne: defaultPeriodString };
+
+        let eligibleInvoices = await Invoice.find(query);
+
+        // An invoice already rolled into a later invoice must not be carried again,
+        // otherwise its balance compounds every cycle (month 3 would carry month 1 twice).
+        if (eligibleInvoices.length > 0) {
+          const alreadyCarried = new Set(
+            (await Invoice.distinct('carryForwardHistory.invoiceId', {
+              'carryForwardHistory.invoiceId': { $in: eligibleInvoices.map((inv) => inv._id) },
+              status: { $ne: 'CANCELLED' },
+              isDeleted: false,
+            })).map(String)
+          );
+          eligibleInvoices = eligibleInvoices.filter((inv) => !alreadyCarried.has(String(inv._id)));
+        }
+
         for (const prevInv of eligibleInvoices) {
-           previousOutstanding += prevInv.outstandingAmount;
+           previousOutstanding = Math.round((previousOutstanding + prevInv.outstandingAmount) * 100) / 100;
            carryForwardHistory.push({
              invoiceId: prevInv._id,
              invoiceNumber: prevInv.invoiceNumber,
@@ -205,7 +220,7 @@ export class InvoiceService {
         currentCharge: baseAmount,
         previousOutstanding,
         carryForwardHistory,
-        subtotal: baseAmount + previousOutstanding,
+        subtotal: Math.round((baseAmount + previousOutstanding) * 100) / 100,
         taxAmount,
         totalAmount,
         paidAmount: 0,
@@ -340,7 +355,7 @@ export class InvoiceService {
       assessmentId,
       billingPeriodString,
       orgId,
-      status: 'UNPAID'
+      status: { $in: ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'] }
     });
 
     let resentCount = 0;
@@ -491,7 +506,7 @@ export class InvoiceService {
   /**
    * Settle payment with offline payment request.
    */
-  async logOfflinePayment(invoiceId, offlineReference, amount, paymentMethod = 'BANK_TRANSFER', paymentDate = null, paymentScreenshot = null, payerNotes = null, orgId = null) {
+  async logOfflinePayment(invoiceId, offlineReference, amount, paymentMethod = 'BANK_TRANSFER', paymentDate = null, paymentScreenshot = null, payerNotes = null, orgId = null, actor = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('logOfflinePayment called', { invoiceId, offlineReference, amount, paymentMethod, correlationId });
 
@@ -507,8 +522,28 @@ export class InvoiceService {
       throw new HttpError(404, 'Invoice not found');
     }
 
+    // Residents may only submit proof for their own dues; billing managers may submit for anyone.
+    if (actor && !actor.canManage && String(existingInvoice.targetUserId) !== String(actor.userId)) {
+      throw new HttpError(403, 'You can only submit payment for your own invoices.');
+    }
+
     if (existingInvoice.status === 'PAID') {
       throw new HttpError(400, 'Invoice is already fully settled.');
+    }
+
+    if (existingInvoice.status === 'CANCELLED') {
+      throw new HttpError(400, 'Invoice is cancelled and cannot accept payments.');
+    }
+
+    if (amount !== undefined && amount !== null && amount !== '') {
+      const submitted = Number(amount);
+      const outstanding = Number(existingInvoice.outstandingAmount ?? existingInvoice.totalAmount ?? 0);
+      if (!Number.isFinite(submitted) || submitted <= 0) {
+        throw new HttpError(400, 'Payment amount must be greater than zero.');
+      }
+      if (submitted > outstanding + 0.01) {
+        throw new HttpError(400, `Payment amount ₹${submitted} exceeds outstanding balance ₹${outstanding}.`);
+      }
     }
 
     if (existingInvoice.status === 'VERIFICATION_PENDING') {
@@ -536,7 +571,7 @@ export class InvoiceService {
     if (cleanRef) {
       const duplicateRef = await Payment.findOne({ paymentReference: cleanRef, status: { $ne: 'REJECTED' } });
       if (duplicateRef) {
-        throw new Error('This payment reference number has already been submitted.');
+        throw new HttpError(409, 'This payment reference number has already been submitted.');
       }
     }
 
@@ -819,7 +854,7 @@ export class InvoiceService {
   /**
    * Reject a pending offline payment submission (Admin only).
    */
-  async rejectOfflinePayment(invoiceId, adminUserIdOrReason = null, rejectionReasonParam = '') {
+  async rejectOfflinePayment(invoiceId, adminUserIdOrReason = null, rejectionReasonParam = '', orgId = null) {
     let adminUserId = null;
     let reason = '';
 
@@ -841,6 +876,10 @@ export class InvoiceService {
 
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) {
+      throw new HttpError(404, 'Invoice not found');
+    }
+
+    if (orgId && (invoice.communityId || invoice.orgId)?.toString() !== orgId.toString()) {
       throw new HttpError(404, 'Invoice not found');
     }
 
@@ -927,7 +966,7 @@ export class InvoiceService {
   /**
    * Record Cash Payment directly by Facility In-Charge / Admin.
    */
-  async recordCashPayment(invoiceId, amount, facilityUserId) {
+  async recordCashPayment(invoiceId, amount, facilityUserId, orgId = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('recordCashPayment called', { invoiceId, amount, facilityUserId, correlationId });
 
@@ -955,8 +994,20 @@ export class InvoiceService {
         throw new HttpError(404, 'Invoice not found');
       }
 
+      if (orgId && (invoice.communityId || invoice.orgId)?.toString() !== orgId.toString()) {
+        throw new HttpError(404, 'Invoice not found');
+      }
+
       if (invoice.status === 'PAID') {
         throw new HttpError(400, 'Invoice is already fully paid.');
+      }
+
+      if (invoice.status === 'CANCELLED') {
+        throw new HttpError(400, 'Invoice is cancelled and cannot accept payments.');
+      }
+
+      if (invoice.status === 'VERIFICATION_PENDING') {
+        throw new HttpError(400, 'An offline payment for this invoice is pending verification. Approve or reject it first.');
       }
 
       const totalLiability =
@@ -976,11 +1027,11 @@ export class InvoiceService {
         throw new HttpError(400, 'Invalid cash payment amount.');
       }
 
-      if (amountToApply > remainingDue) {
+      if (amountToApply > remainingDue + 0.01) {
         throw new HttpError(400, `Payment amount ₹${amountToApply} exceeds outstanding balance ₹${remainingDue}.`);
       }
 
-      const newOutstanding = Math.max(0, remainingDue - amountToApply);
+      const newOutstanding = Math.max(0, Math.round((remainingDue - amountToApply) * 100) / 100);
       const finalStatus = newOutstanding > 0 ? 'PARTIALLY_PAID' : 'PAID';
 
       // Generate unique receipt number (CASH-YYYY-XXXXXX)
@@ -1082,7 +1133,7 @@ export class InvoiceService {
     }
 
     const q = searchQuery.trim();
-    const regex = new RegExp(q, 'i');
+    const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 
     // Find matching villas
     const matchingVillas = await Villa.find({
@@ -1108,6 +1159,7 @@ export class InvoiceService {
       .populate('targetUserId', 'name username email firstName lastName phone phoneNumber')
       .populate('unitId', 'unitNumber block type')
       .populate('assessmentId', 'title name')
+      .limit(50)
       .lean();
 
     return invoices;
@@ -1121,7 +1173,8 @@ export class InvoiceService {
     
     const filter = {
       paymentMethod: 'CASH',
-      status: 'PAID',
+      status: { $in: ['success', 'PAID'] },
+      domain: 'INVOICE',
     };
 
     if (orgId) {
@@ -1222,7 +1275,8 @@ export class InvoiceService {
           const tenantInvoiceQuery = {
             unitId: unit._id,
             targetUserId: tenant.userId,
-            status: { $in: ['UNPAID', 'VERIFICATION_PENDING'] },
+            status: { $in: ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE', 'VERIFICATION_PENDING'] },
+            isDeleted: false,
           };
           if (communityId) {
             tenantInvoiceQuery.communityId = communityId;
@@ -1233,7 +1287,7 @@ export class InvoiceService {
             secondaryCompliance.push({
               unit: unit.unitNumber,
               tenantName: tenantUser ? (tenantUser.name || tenantUser.username) : 'Tenant',
-              amountDue: inv.totalDue,
+              amountDue: inv.outstandingAmount ?? inv.totalAmount ?? inv.totalDue,
               status: inv.status,
             });
           }
@@ -1354,31 +1408,37 @@ export class InvoiceService {
    * @returns {Promise<object>}
    */
   async sendInvoiceReminder(invoiceId, adminUserId, orgId) {
+    // getInvoiceById returns a plain object with populated refs; normalise them to ids.
     const invoice = await this.getInvoiceById(invoiceId);
+    const refId = (ref) => (ref?._id || ref)?.toString();
+    const invoiceOrgId = refId(invoice.communityId) || refId(invoice.orgId);
+    const targetUserId = refId(invoice.targetUserId);
+    const unitRefId = refId(invoice.unitId);
 
     // Tenant isolation check
-    if (orgId && invoice.communityId?.toString() !== orgId.toString()) {
-      throw new HttpError(403, 'Unauthorized access to this invoice');
+    if (orgId && invoiceOrgId !== orgId.toString()) {
+      throw new HttpError(404, 'Invoice not found');
     }
 
     if (invoice.status === 'PAID') {
       throw new HttpError(400, 'Invoice is already marked as PAID');
     }
 
-    if (!invoice.targetUserId) {
+    if (invoice.status === 'CANCELLED') {
+      throw new HttpError(400, 'Invoice is cancelled');
+    }
+
+    if (!targetUserId) {
       throw new HttpError(400, 'No resident user assigned to this invoice');
     }
 
     // Determine unit representation and gather all configured resident recipients
     let unitStr = 'your unit';
-    const recipientUserIds = new Set();
-    if (invoice.targetUserId) {
-      recipientUserIds.add(invoice.targetUserId.toString());
-    }
+    const recipientUserIds = new Set([targetUserId]);
 
-    if (invoice.unitId && (invoice.communityId || orgId)) {
+    if (unitRefId && (invoiceOrgId || orgId)) {
       try {
-        const unit = await villaService.getUnitById(invoice.unitId, invoice.communityId || orgId);
+        const unit = await villaService.getUnitById(unitRefId, invoiceOrgId || orgId);
         if (unit?.unitNumber) {
           unitStr = `Unit ${unit.unitNumber}`;
         }
@@ -1416,7 +1476,7 @@ export class InvoiceService {
       try {
         const notification = await notificationService.createNotification({
           recipientId,
-          orgId: invoice.orgId || null,
+          orgId: invoiceOrgId || null,
           senderId: adminUserId,
           title,
           body,
@@ -1429,9 +1489,11 @@ export class InvoiceService {
       }
     }
 
-    invoice.reminderCount = (invoice.reminderCount || 0) + 1;
-    invoice.lastReminderSentAt = new Date();
-    await invoice.save();
+    // Atomic update: the invoice here is a plain object, and a full save() would trip the immutability hook.
+    await Invoice.updateOne(
+      { _id: invoice._id },
+      { $inc: { reminderCount: 1 }, $set: { lastReminderSentAt: new Date() } }
+    );
 
     // Admin asked explicitly: always email (force bypasses the once-per-invoice automatic claim).
     const { sendInvoiceEmail } = await import('./invoice.email.js');

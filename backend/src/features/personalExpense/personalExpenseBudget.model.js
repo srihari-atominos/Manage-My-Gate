@@ -1,0 +1,3 @@
+import mongoose from 'mongoose';
+const schema = new mongoose.Schema({ orgId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true }, userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, period: { type: String, required: true, match: /^\d{4}-(0[1-9]|1[0-2])$/ }, categoryId: { type: String, default: null }, amountMinor: { type: Number, required: true, min: 1, validate: Number.isSafeInteger } }, { timestamps: true });
+schema.index({ orgId: 1, userId: 1, period: 1, categoryId: 1 }, { unique: true }); export default mongoose.model('PersonalExpenseBudget', schema);

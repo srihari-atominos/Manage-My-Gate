@@ -66,6 +66,77 @@ export const resolveSocketIdentity = async (socket) => {
 
 const GATE_PERMISSIONS = new Set(['*', 'visitor:guard', 'visitor:admin']);
 
+const normalizeRoleName = (name) => String(name || '').toLowerCase().replace(/[\s_-]+/g, '');
+
+// Backend dispatchers address staff by canonical role rooms (org:<id>:role:admin, org:<id>:role:facilitymanager),
+// while tenants name their roles "Community Admin", "Facility Manager", ... Map every role name to the
+// canonical rooms it must receive so a "Community Admin" is not silently excluded from admin broadcasts.
+const ROLE_ROOM_ALIASES = {
+  admin: ['admin'],
+  communityadmin: ['admin'],
+  superadmin: ['admin'],
+  administrator: ['admin'],
+  facilitymanager: ['facilitymanager'],
+  manager: ['facilitymanager'],
+};
+
+export const getRoleRoomKeys = (roleName) => {
+  const norm = normalizeRoleName(roleName);
+  if (!norm) return [];
+  return [...new Set([norm, ...(ROLE_ROOM_ALIASES[norm] || [])])];
+};
+
+const collectMembershipRoleNames = (membership) => {
+  const roles = [
+    ...(Array.isArray(membership?.roleIds) ? membership.roleIds : []),
+    ...(membership?.roleId ? [membership.roleId] : []),
+  ].map((r) => r?.name || r);
+  if (Array.isArray(membership?.assignments)) {
+    membership.assignments.forEach((a) => {
+      if (a?.roleName) roles.push(a.roleName);
+    });
+  }
+  return roles.map((r) => String(r || '')).filter(Boolean);
+};
+
+/**
+ * Rooms a verified member of <orgId> is entitled to receive (role rooms + gate room), derived on the
+ * server so clients do not have to guess the exact role-room spelling the backend broadcasts to.
+ */
+export const getDerivedOrgRooms = async (socket, orgId) => {
+  const me = await resolveSocketIdentity(socket);
+  if (!me?.id || !orgId || !mongoose.isValidObjectId(orgId)) return [];
+  if (mongoose.connection?.readyState !== 1) return [];
+
+  const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+  const membership = await OrgMembership.findOne({ userId: me.id, orgId, status: 'Active' })
+    .populate('roleIds', 'name')
+    .populate('roleId', 'name')
+    .lean();
+  if (!membership) return [];
+
+  const rooms = new Set();
+  const roleKeys = new Set();
+  collectMembershipRoleNames(membership).forEach((name) => {
+    getRoleRoomKeys(name).forEach((k) => roleKeys.add(k));
+  });
+  roleKeys.forEach((k) => rooms.add(`org:${orgId}:role:${k}`));
+
+  const isGuardOrAdmin = ['securityguard', 'guard', 'admin', 'superadmin'].some((k) => roleKeys.has(k));
+  let canGate = isGuardOrAdmin;
+  if (!canGate) {
+    try {
+      const { getPermissionsForUser } = await import('../middlewares/rbac.middleware.js');
+      const permissions = await getPermissionsForUser({ id: me.id }, orgId);
+      canGate = permissions.some((p) => GATE_PERMISSIONS.has(p));
+    } catch (err) {
+      canGate = false;
+    }
+  }
+  if (canGate) rooms.add(`org:${orgId}:guards`);
+  return [...rooms];
+};
+
 export const canJoinRoom = async (socket, room) => {
   if (!room || typeof room !== 'string') return false;
 
@@ -105,8 +176,8 @@ export const canJoinRoom = async (socket, room) => {
           ...(membership.roleId ? [membership.roleId] : []),
         ];
         const isGuardOrAdminRole = memberRoles.some((r) => {
-          const rName = String(r?.name || r || '').toLowerCase().replace(/[\s_-]+/g, '');
-          return rName === 'securityguard' || rName === 'guard' || rName === 'admin' || rName === 'superadmin';
+          const keys = getRoleRoomKeys(r?.name || r);
+          return keys.includes('securityguard') || keys.includes('guard') || keys.includes('admin') || keys.includes('superadmin');
         });
         if (isGuardOrAdminRole) return true;
 
@@ -132,10 +203,7 @@ export const canJoinRoom = async (socket, room) => {
             if (a?.roleName) memberRoles.push({ name: a.roleName });
           });
         }
-        return memberRoles.some((r) => {
-          const roleName = String(r?.name || r || '').toLowerCase().replace(/[\s_-]+/g, '');
-          return roleName === requestedRoleNorm;
-        });
+        return memberRoles.some((r) => getRoleRoomKeys(r?.name || r).includes(requestedRoleNorm));
       }
 
       // Root org room: org:<orgId>

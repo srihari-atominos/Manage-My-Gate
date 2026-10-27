@@ -1,6 +1,7 @@
 import React, { memo, useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import BillingLedgerTable from '../components/BillingLedgerTable.jsx'
+import CommunityFinancePanel from '../components/CommunityFinancePanel.jsx'
 import { useBilling } from '../hooks/useBilling'
 import { clearInvoicesGrid } from '../store/billingSlice'
 import '../styles/_billing.scss'
@@ -70,6 +71,8 @@ const BillingDashboardView = memo(({ onRunBillingClick }) => {
           </button>
         </div>
       </div>
+
+      <CommunityFinancePanel />
 
       <BillingLedgerTable
         kpis={kpis}

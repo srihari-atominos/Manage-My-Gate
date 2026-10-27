@@ -2,9 +2,13 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import { useAppSocket } from '../../../hooks/useAppSocket';
-import { syncRealtimeInvoice, fetchMyDues, fetchAdminKPIs, fetchInvoicesGrid } from '../store/billingSlice';
+import {
+  syncRealtimeInvoice,
+  fetchMyDues,
+  fetchAdminKPIs,
+  fetchInvoicesGrid,
+} from '../store/billingSlice';
 import { fetchWalletBalance, syncWalletBalance } from '../../wallet/store/walletSlice';
-import { checkIsAdmin } from '../../../utils/rbac';
 
 /**
  * Custom Hook: useBillingSocket
@@ -24,25 +28,42 @@ export const useBillingSocket = () => {
   const { socket } = useAppSocket();
 
   const user = useSelector((state: RootState) => state.auth?.user);
-  const activeOrgId = useSelector((state: any) =>
-    state.workspace?.activeOrganizationId ||
-    state.auth?.activeOrganizationId ||
-    state.auth?.user?.activeOrganizationId ||
-    state.auth?.user?.orgId ||
-    state.auth?.user?.communityId
+  const activeOrgId = useSelector(
+    (state: any) =>
+      state.workspace?.activeOrganizationId ||
+      state.auth?.activeOrganizationId ||
+      state.auth?.user?.activeOrganizationId ||
+      state.auth?.user?.orgId ||
+      state.auth?.user?.communityId
   );
   const userId = user?.id || user?._id;
   const orgId = activeOrgId || user?.orgId;
 
   const permissions: string[] = user?.permissions || [];
-  const canManageAdminBilling = useMemo(() => {
-    return (
-      checkIsAdmin(user) ||
+  const canReadLedger = useMemo(
+    () =>
+      permissions.includes('billing:ledger') ||
       permissions.includes('billing:dashboard') ||
       permissions.includes('billing:assessment_manager') ||
-      permissions.includes('*')
-    );
-  }, [user, permissions]);
+      permissions.includes('*'),
+    [permissions]
+  );
+  const canReadPersonalDues = useMemo(
+    () =>
+      permissions.includes('billing:my_invoices') ||
+      permissions.includes('billing:action_center') ||
+      permissions.includes('billing:dashboard') ||
+      permissions.includes('billing:assessment_manager') ||
+      permissions.includes('*'),
+    [permissions]
+  );
+  const canReadBillingDashboard = useMemo(
+    () =>
+      permissions.includes('billing:dashboard') ||
+      permissions.includes('billing:assessment_manager') ||
+      permissions.includes('*'),
+    [permissions]
+  );
 
   const rooms = useMemo(() => {
     const list: string[] = [];
@@ -107,11 +128,13 @@ export const useBillingSocket = () => {
         clearTimeout(refetchTimerRef.current);
       }
       refetchTimerRef.current = setTimeout(() => {
-        if (orgId) {
+        if (orgId && canReadPersonalDues) {
           dispatch(fetchMyDues(orgId));
         }
-        if (orgId && canManageAdminBilling) {
+        if (orgId && canReadBillingDashboard) {
           dispatch(fetchAdminKPIs(orgId));
+        }
+        if (orgId && canReadLedger) {
           dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
         }
       }, 300);
@@ -122,7 +145,6 @@ export const useBillingSocket = () => {
       if (isDuplicateEvent('invoice_generated', payload)) {
         return;
       }
-      console.log('[Billing Socket] Real-time event: invoice_generated', payload);
       const isCurrentCommunity = isEventForCurrentCommunity(payload);
       if (payload && isCurrentCommunity) {
         dispatch(syncRealtimeInvoice(payload));
@@ -137,7 +159,6 @@ export const useBillingSocket = () => {
       if (isDuplicateEvent('invoice_status_updated', payload)) {
         return;
       }
-      console.log('[Billing Socket] Real-time event: invoice_status_updated / INVOICE_UPDATED', payload);
       const isCurrentCommunity = isEventForCurrentCommunity(payload);
       if (payload && isCurrentCommunity) {
         dispatch(syncRealtimeInvoice(payload));
@@ -173,7 +194,7 @@ export const useBillingSocket = () => {
         dispatch(syncWalletBalance(payload));
       }
       dispatch(fetchWalletBalance());
-      if (orgId) {
+      if (orgId && canReadPersonalDues) {
         dispatch(fetchMyDues(orgId));
       }
     };
@@ -229,8 +250,7 @@ export const useBillingSocket = () => {
       socket.off('wallet_transaction_created', handleWalletUpdated);
       socket.off('offline_payment_submitted', handleOfflinePaymentSubmitted);
     };
-  }, [socket, dispatch, rooms, orgId, canManageAdminBilling]);
+  }, [socket, dispatch, rooms, orgId, canReadPersonalDues, canReadBillingDashboard, canReadLedger]);
 };
 
 export default useBillingSocket;
-

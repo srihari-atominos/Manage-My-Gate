@@ -23,6 +23,7 @@ import communityNoteReducer from '../features/directory/store/communityNoteSlice
 import directoryMessagingReducer from '../features/directory/store/directoryMessagingSlice';
 import communityEngagementReducer from '../features/communityEngagement/store/communityEngagementSlice';
 import issueReportReducer from '../features/issueReport/store/issueReportSlice';
+import appUpdateReducer from '../features/appUpdate/store/appUpdateSlice';
 
 import { injectStore, cancelInFlightRequests } from '../services/apiClient';
 import { isConnectivityErrorMessage } from '../services/networkStatus';
@@ -78,6 +79,7 @@ const appReducer = combineReducers({
   directoryMessaging: directoryMessagingReducer,
   communityEngagement: communityEngagementReducer,
   issueReport: issueReportReducer,
+  appUpdate: appUpdateReducer,
   visitor: visitorReducer,
   staff: staffReducer,
   automation: automationReducer,

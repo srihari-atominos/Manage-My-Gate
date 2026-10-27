@@ -96,6 +96,12 @@ class TechnicianService {
     // Automatically create a user account
     const emailToUse = data.email ? data.email.trim().toLowerCase() : `${data.phone.replace(/\D/g, '')}@staff.local`;
     const roleName = selectedRole.name;
+
+    // Never silently overwrite a live staff member who already uses this email or phone.
+    const liveClash = await technicianRepository.findByContactOrUserId(null, orgId, { email: emailToUse, phone: data.phone });
+    if (liveClash) {
+      throw new HttpError(409, 'A staff member with this email or phone number already exists in this community.');
+    }
     try {
       const roleService = (await import('../role/role.services.js')).default;
       let role = await roleService.getRoleByName(roleName, orgId);
@@ -111,9 +117,9 @@ class TechnicianService {
     } catch (err) {
       console.error('Error auto-inviting technician user:', err);
       const existingUser = await userService.getUserByEmail(emailToUse);
-      if (existingUser) {
-         userId = existingUser._id;
-      }
+      // Without a login account the staff member could never sign in, so surface the real failure.
+      if (!existingUser) throw err;
+      userId = existingUser._id;
     }
 
     // Check if an existing entry (active or soft-deleted) already exists for this user/email/phone
@@ -125,8 +131,10 @@ class TechnicianService {
 
     const { orgId: _ignoredOrg, ...cleanData } = data;
 
-    if (existingTech && existingTech.length > 0) {
-      const targetTech = existingTech[0];
+    // The invite above already created a directory row for this user (or an earlier, removed one exists);
+    // complete that row with the submitted details instead of creating a duplicate.
+    if (existingTech) {
+      const targetTech = existingTech;
       const updated = await technicianRepository.update(targetTech._id, orgId, {
         ...cleanData,
         orgId,
@@ -139,6 +147,7 @@ class TechnicianService {
     }
 
     const technician = await technicianRepository.create({ ...cleanData, orgId, userId });
+    technicianEvents.emit('technician_created', { orgId, technician });
     return technician;
   }
 
@@ -149,13 +158,14 @@ class TechnicianService {
       name,
       email,
       phone,
-      department = 'Others',
+      department = null,
       departmentOther = '',
-      type = 'In-House Staff',
+      type = null,
       roleId = null,
       staffCategory = null,
       communityOnly = false,
       designation = '',
+      defaultDesignation = '',
       staffCode = null,
       status = 'Active',
       allowReactivateDeleted = false,
@@ -195,10 +205,11 @@ class TechnicianService {
         return await technicianRepository.restoreOrUpdate(existing._id, orgId, updateData, session);
       }
 
+      // A deactivated staff member stays deactivated until an admin reactivates them; a role sync must not.
       const updateData = {
         userId: userId || existing.userId,
         isDeleted: false,
-        status: status || existing.status,
+        status: existing.status === 'Inactive' ? 'Inactive' : (status || existing.status),
       };
       if (name && name.trim()) updateData.name = name.trim();
       if (phone && phone !== 'N/A') updateData.phone = phone;
@@ -236,7 +247,7 @@ class TechnicianService {
       ...(roleId ? { roleId } : {}),
       staffCategory: STAFF_CATEGORY_VALUES.includes(staffCategory) ? staffCategory : STAFF_CATEGORIES.COMMUNITY,
       communityOnly: staffCategory === STAFF_CATEGORIES.UNIT ? false : communityOnly === true,
-      designation: designation || '',
+      designation: designation || defaultDesignation || '',
       ...(staffCode ? { staffCode } : {}),
       status: status || 'Active',
       whatsappEnabled: true,
@@ -441,6 +452,7 @@ class TechnicianService {
 
   async updateTechnician(id, orgId, rawData) {
     const data = pickWritable(rawData);
+    let roleChangedTo = null;
     if (data.roleId) {
       const roleService = (await import('../role/role.services.js')).default;
       const selectedRole = await roleService.getRoleById(data.roleId);
@@ -452,7 +464,7 @@ class TechnicianService {
       }
       data.staffCategory = staffCategoryForRoleScope(selectedRole.roleScope);
       data.communityOnly = selectedRole.roleScope === 'COMMUNITY_STAFF' && selectedRole.communityOnly === true;
-      data.type = data.type || 'In-House Staff';
+      roleChangedTo = selectedRole;
     }
     if (data.staffCode !== undefined) {
       await this.assertStaffCodeAvailable(orgId, data.staffCode, id);
@@ -467,6 +479,10 @@ class TechnicianService {
 
     const updated = await technicianRepository.update(id, orgId, data);
     if (!updated) throw new HttpError(404, 'Technician not found');
+
+    if (roleChangedTo && updated.userId && String(current.roleId || '') !== String(roleChangedTo._id)) {
+      await this.syncMembershipStaffRole(updated.userId, orgId, current.roleId, roleChangedTo._id);
+    }
 
     if (data.status === 'Inactive') {
       await this.cascadeOffboarding(updated, orgId, 'Staff member deactivated');
@@ -488,6 +504,23 @@ class TechnicianService {
 
     technicianEvents.emit('technician_updated', { orgId, technician: updated });
     return updated;
+  }
+
+  /**
+   * The directory role decides what the staff member can do in the app, so a role change here must reach
+   * the login's membership too. Only the previous staff role is swapped; any other roles stay as they are.
+   */
+  async syncMembershipStaffRole(userId, orgId, previousRoleId, newRoleId) {
+    const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+    const membership = await OrgMembership.findOne({ userId, orgId });
+    if (!membership) return;
+    const ids = (membership.roleIds || []).map(String).filter((roleId) => roleId !== String(previousRoleId || ''));
+    if (!ids.includes(String(newRoleId))) ids.push(String(newRoleId));
+    membership.roleIds = ids;
+    membership.roleId = ids[0];
+    await membership.save();
+    const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+    rolePermissionService.clearCache();
   }
 
   /**

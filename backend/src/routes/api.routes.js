@@ -28,6 +28,8 @@ import assessmentRouter from '../features/assessment/assessment.routes.js';
 import invoiceRouter from '../features/invoice/invoice.routes.js';
 import invoicePayLinkRouter from '../features/invoice/invoicePayLink.router.js';
 import expenseRouter from '../features/expense/expense.routes.js';
+import communityFinanceRouter from '../features/communityFinance/communityFinance.routes.js';
+import personalExpenseRouter from '../features/personalExpense/personalExpense.router.js';
 import masterPricingRouter from '../features/masterPricing/masterPricing.router.js';
 import platformOrderRouter from '../features/platformOrder/platformOrder.router.js';
 import platformQuoteRouter from '../features/platformQuote/platformQuote.router.js';
@@ -84,6 +86,8 @@ router.use('/community-engagement', communityEngagementRouter);
 router.use('/assessments', assessmentRouter);
 router.use('/invoices', invoiceRouter);
 router.use('/expenses', expenseRouter);
+router.use('/community-finance', communityFinanceRouter);
+router.use('/personal-expenses', personalExpenseRouter);
 router.use('/billing-links', invoicePayLinkRouter); // public: pay-online links from invoice emails
 router.use('/dashboard-feed', dashboardFeedRouter);
 
@@ -136,6 +140,7 @@ router.use('/ledger/reconciliation', reconciliationRouter);
 router.use('/financial-ledger/reconciliation', reconciliationRouter);
 
 import issueReportConfigRouter from '../features/issueReportConfig/issueReportConfig.router.js';
+import appUpdateRouter from '../features/appUpdate/appUpdate.router.js';
 
 // Issue Report feature routes
 router.use('/platform/reports/config', issueReportConfigRouter);
@@ -143,5 +148,7 @@ router.use('/support/reports/config', issueReportConfigRouter);
 router.use('/support/reports', issueReportRouter);
 router.use('/platform/reports', platformReportRouter);
 
-export default router;
+// App Update feature routes
+router.use('/app-updates', appUpdateRouter);
 
+export default router;

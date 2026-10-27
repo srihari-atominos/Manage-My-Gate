@@ -13,6 +13,7 @@ export interface WorkspaceSettings {
   /** ISO country; default for phone numbers typed without a country code. */
   countryCode?: string;
   settings?: any;
+  expenseOnlinePayee?: { name?: string; upiId?: string };
 }
 
 export interface WorkspaceModule {

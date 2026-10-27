@@ -13,6 +13,33 @@ let currentSocketOrgId: string | null = null;
 let currentSocketUserId: string | null = null;
 let currentSocketToken: string | null = null;
 
+// Latest room-membership inputs. The socket's 'connect' handler is registered once, so it must read the
+// current values from here; otherwise automatic reconnects re-join rooms using stale role/permission data.
+type JoinContext = { userId?: string; userRole?: string; orgId?: string; isGateStaff: boolean };
+let joinContext: JoinContext = { isGateStaff: false };
+
+const joinRooms = (sock: Socket) => {
+  const { userId, userRole, orgId, isGateStaff } = joinContext;
+  if (userId) {
+    sock.emit('join_room', `user:${userId}`);
+  }
+  if (userRole) {
+    sock.emit('join_room', `role:${userRole}`);
+    sock.emit('join_room', `role:${userRole.toLowerCase()}`);
+  }
+  if (orgId) {
+    // The server derives the member's role and gate rooms from this root room join.
+    sock.emit('join_room', `org:${orgId}`);
+    if (userRole) {
+      sock.emit('join_room', `org:${orgId}:role:${userRole.toLowerCase()}`);
+      sock.emit('join_room', `org:${orgId}:role:${userRole}`);
+    }
+    if (isGateStaff) {
+      sock.emit('join_room', `org:${orgId}:guards`);
+    }
+  }
+};
+
 export const useAppSocket = () => {
   const { isAuthenticated, user, token } = useAuth();
   const [activeSocket, setActiveSocket] = useState<Socket | null>(sharedSocket);
@@ -44,6 +71,8 @@ export const useAppSocket = () => {
       return;
     }
 
+    joinContext = { userId, userRole, orgId, isGateStaff };
+
     // If tenant context, user identity, or token changed, disconnect stale socket to leave prior tenant rooms
     if (
       sharedSocket &&
@@ -60,27 +89,6 @@ export const useAppSocket = () => {
     }
 
     const socketUrl = getSocketBaseUrl();
-
-    // Helper to join rooms
-    const joinUserRooms = (sock: Socket) => {
-      if (userId) {
-        sock.emit('join_room', `user:${userId}`);
-      }
-      if (userRole) {
-        sock.emit('join_room', `role:${userRole}`);
-        sock.emit('join_room', `role:${userRole.toLowerCase()}`);
-      }
-      if (orgId) {
-        sock.emit('join_room', `org:${orgId}`);
-        if (userRole) {
-          sock.emit('join_room', `org:${orgId}:role:${userRole.toLowerCase()}`);
-          sock.emit('join_room', `org:${orgId}:role:${userRole}`);
-        }
-        if (isGateStaff) {
-          sock.emit('join_room', `org:${orgId}:guards`);
-        }
-      }
-    };
 
     // Create singleton instance if it doesn't exist
     if (!sharedSocket) {
@@ -114,7 +122,7 @@ export const useAppSocket = () => {
         // console.log(`[Socket] Connected successfully: ${sharedSocket?.id}`);
         if (sharedSocket) {
           setActiveSocket(sharedSocket);
-          joinUserRooms(sharedSocket);
+          joinRooms(sharedSocket);
         }
       });
 
@@ -150,7 +158,7 @@ export const useAppSocket = () => {
         setActiveSocket(sharedSocket);
       }
       if (sharedSocket.connected) {
-        joinUserRooms(sharedSocket);
+        joinRooms(sharedSocket);
       }
     }
   }, [isAuthenticated, userId, token, userRole, orgId, isGateStaff]);

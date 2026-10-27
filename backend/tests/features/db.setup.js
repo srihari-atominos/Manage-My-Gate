@@ -1,10 +1,12 @@
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
+import fs from 'node:fs';
 
-// Instruct mongodb-memory-server to use the local pre-installed mongod binary
-// to avoid stalling on a 750MB+ download during the beforeAll hook.
-process.env.MONGOMS_SYSTEM_BINARY = 'C:\\Program Files\\MongoDB\\Server\\8.0\\bin\\mongod.exe';
-
+// Honor a valid test-only system binary, but never force a stale machine-specific path.
+// When it is absent or invalid, mongodb-memory-server may acquire its disposable test binary.
+if (process.env.MONGOMS_SYSTEM_BINARY && !fs.existsSync(process.env.MONGOMS_SYSTEM_BINARY)) {
+  delete process.env.MONGOMS_SYSTEM_BINARY;
+}
 let replset;
 
 export const connectDb = async () => {

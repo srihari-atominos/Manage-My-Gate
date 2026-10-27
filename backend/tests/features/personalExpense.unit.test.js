@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { PersonalExpenseService, categoryCatalog, periodBounds, toMinorUnits } from '../../src/features/personalExpense/personalExpense.service.js';
+
+const user = { id: '507f1f77bcf86cd799439011', orgId: '507f191e810c19729de860ea' };
+test('converts INR to paise', () => { assert.equal(toMinorUnits(12.34), 1234); assert.equal(toMinorUnits('0.01'), 1); assert.throws(() => toMinorUnits(0)); });
+test('uses calendar month boundaries', () => assert.deepEqual(periodBounds('2024-02'), { start: '2024-02-01', end: '2024-02-29' }));
+test('keeps defaults separate from custom categories', () => assert.equal(categoryCatalog([{ _id: '507f1f77bcf86cd799439011', name: 'Pets', type: 'EXPENSE' }]).at(-1).isDefault, false));
+test('scopes list requests to the authenticated user and workspace', async () => { let filter; const service = new PersonalExpenseService({ listTransactions: async (value) => { filter = value; return { items: [], total: 0 }; } }); await service.listTransactions(user, {}); assert.equal(String(filter.userId), user.id); assert.equal(String(filter.orgId), user.orgId); assert.equal(filter.isDeleted, false); });
+test('returns a non-blocking warning for a matching transaction', async () => { const repository = { findDuplicates: async () => [{ _id: '507f191e810c19729de860eb' }], createTransaction: async (value) => value }; const service = new PersonalExpenseService(repository); const result = await service.createTransaction(user, { type: 'EXPENSE', amount: '75.50', categoryId: 'food_dining', transactionDate: '2026-10-21', paymentMethod: 'UPI', merchantOrSource: 'Cafe' }); assert.equal(result.transaction.amountMinor, 7550); assert.equal(result.duplicateWarning, true); assert.equal(result.possibleDuplicates.length, 1); });

@@ -201,10 +201,17 @@ export class PaymentSettlementService {
             );
           } else if (refId && (dom === 'INVOICE' || refType === 'Invoice')) {
             const Invoice = (await import('../invoice/invoice.model.js')).default;
-            await Invoice.updateOne(
-              { _id: refId },
-              { $set: { status: 'UNPAID', paidAmount: 0 } }
-            );
+            // Rebuild from the payments that really succeeded; zeroing would erase earlier partial payments.
+            const invoiceDoc = await Invoice.findById(refId);
+            if (invoiceDoc) {
+              const [{ total = 0 } = {}] = await Payment.aggregate([
+                { $match: { referenceId: invoiceDoc._id, status: 'success', isDeleted: { $ne: true } } },
+                { $group: { _id: null, total: { $sum: '$amount' } } },
+              ]);
+              invoiceDoc.paidAmount = Math.max(0, Math.round(total * 100) / 100);
+              if (invoiceDoc.status === 'PAID') invoiceDoc.status = 'UNPAID';
+              await invoiceDoc.save();
+            }
           }
         } catch (revertErr) {
           logger.error('payment.settlement.standalone_revert_failed', { paymentId, error: revertErr.message });

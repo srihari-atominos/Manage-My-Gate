@@ -23,6 +23,15 @@ export const registerDeviceTokenSchema = [
     .isString()
     .trim()
     .withMessage('deviceModel must be a string'),
+  body('appVersion')
+    .optional()
+    .isString()
+    .trim()
+    .withMessage('appVersion must be a string'),
+  body('versionCode')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('versionCode must be a positive integer'),
 ];
 
 /**

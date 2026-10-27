@@ -19,9 +19,14 @@ export const useAmenitySocket = (params = {}, onUpdate) => {
     paramsRef.current = params
   }, [params])
 
+  // Depend on primitives: the `user` object changes identity on any profile/permission update, which
+  // would tear down and rebuild the socket (and miss events in between).
+  const userId = user?._id || user?.id
+  const orgId = user?.orgId
+
   useEffect(() => {
     // Only connect if user is authenticated
-    if (!user || !token) return
+    if (!userId || !token) return
 
     // Resolve socket URL from environment configuration with backend fallback
     const socketUrl = config.socketUrl
@@ -32,16 +37,17 @@ export const useAmenitySocket = (params = {}, onUpdate) => {
       withCredentials: true,
     })
 
+    let connectedBefore = false
     socket.on('connect', () => {
       // Join tenant/workspace room if necessary (e.g. orgId)
-      if (user.orgId) {
-        socket.emit('join_room', `org:${user.orgId}`)
+      if (orgId) {
+        socket.emit('join_room', `org:${orgId}`)
       }
       // Join user's personal private room for direct booking updates
-      const userId = user._id || user.id
-      if (userId) {
-        socket.emit('join_room', `user:${userId}`)
-      }
+      socket.emit('join_room', `user:${userId}`)
+      // Events missed while disconnected are not replayed: reload after a reconnect
+      if (connectedBefore) dispatch(getAmenities(paramsRef.current))
+      connectedBefore = true
     })
 
     const handleUpdate = () => {
@@ -54,12 +60,18 @@ export const useAmenitySocket = (params = {}, onUpdate) => {
       toast.success(`Booking for ${booking.amenityId?.name || 'Amenity'} is confirmed!`)
     }
 
-    // Amenity Events
+    // Amenity Events (names emitted by backend amenity.socket.js)
+    socket.on('AMENITY_CREATED', handleUpdate)
+    socket.on('AMENITY_UPDATED', handleUpdate)
+    socket.on('AMENITY_DELETED', handleUpdate)
     socket.on('amenity:created', handleUpdate)
     socket.on('amenity:updated', handleUpdate)
     socket.on('amenity:deleted', handleUpdate)
 
     // Booking Events that could affect availability
+    socket.on('AMENITY_BOOKING_CREATED', handleUpdate)
+    socket.on('AMENITY_BOOKING_CANCELLED', handleUpdate)
+    socket.on('AMENITY_CHECKIN', handleUpdate)
     socket.on('amenity_booking_created', handleUpdate)
     socket.on('amenity_booking_cancelled', handleUpdate)
     socket.on('amenity_booking_checked_in', handleUpdate)
@@ -71,6 +83,12 @@ export const useAmenitySocket = (params = {}, onUpdate) => {
     socket.on('AMENITY_BOOKING_CONFIRMED', handleBookingConfirmed)
 
     return () => {
+      socket.off('AMENITY_CREATED', handleUpdate)
+      socket.off('AMENITY_UPDATED', handleUpdate)
+      socket.off('AMENITY_DELETED', handleUpdate)
+      socket.off('AMENITY_BOOKING_CREATED', handleUpdate)
+      socket.off('AMENITY_BOOKING_CANCELLED', handleUpdate)
+      socket.off('AMENITY_CHECKIN', handleUpdate)
       socket.off('amenity:created', handleUpdate)
       socket.off('amenity:updated', handleUpdate)
       socket.off('amenity:deleted', handleUpdate)
@@ -85,7 +103,7 @@ export const useAmenitySocket = (params = {}, onUpdate) => {
       socket.off('AMENITY_BOOKING_CONFIRMED', handleBookingConfirmed)
       socket.disconnect()
     }
-  }, [dispatch, user, token])
+  }, [dispatch, userId, orgId, token])
 
   return null
 }

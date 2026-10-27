@@ -55,6 +55,7 @@ router.get('/:token/pay', payLinkLimiter, async (req, res) => {
     const pages = {
       PAID: ['This invoice is already paid', 'Thank you - no payment is due. Your receipt is in the app.'],
       VERIFICATION_PENDING: ['Payment under review', 'A bank transfer for this invoice is being verified by your community. No further payment is needed right now.'],
+      CARRIED_FORWARD: ['This balance is part of a newer invoice', 'Open the app and pay your latest invoice - it already includes this amount.'],
       CANCELLED: ['This invoice was cancelled', 'No payment is due. Contact your community office if you have questions.'],
       NOT_FOUND: ['Invoice not found', 'Open the app to see your latest dues.'],
     };

@@ -31,7 +31,9 @@ export function BillingLedgerScreen() {
   const params = useLocalSearchParams<{ status?: string; invoiceId?: string }>();
   const initialStatus =
     params.status &&
-    ['ALL', 'VERIFICATION_PENDING', 'OVERDUE', 'UNPAID', 'PARTIALLY_PAID', 'PAID'].includes(params.status)
+    ['ALL', 'VERIFICATION_PENDING', 'OVERDUE', 'UNPAID', 'PARTIALLY_PAID', 'PAID'].includes(
+      params.status
+    )
       ? params.status
       : 'ALL';
 
@@ -53,20 +55,10 @@ export function BillingLedgerScreen() {
 
   // Permission check from auth state
   const hasLedgerPermission = useSelector((state: any) => {
-    const role = state.auth?.user?.role || '';
-    const adminRoles = [
-      'Super Admin',
-      'Platform Super Admin',
-      'Community Admin',
-      'Admin',
-      'SuperAdmin',
-      'Finance Manager',
-      'Finance Admin',
-    ];
-    if (adminRoles.includes(role)) return true;
     const permissions = state.auth?.user?.permissions;
     if (!Array.isArray(permissions)) return false;
     return (
+      permissions.includes('billing:ledger') ||
       permissions.includes('billing:dashboard') ||
       permissions.includes('billing:assessment_manager') ||
       permissions.includes('*')
@@ -88,7 +80,9 @@ export function BillingLedgerScreen() {
   useEffect(() => {
     if (
       params.status &&
-      ['ALL', 'VERIFICATION_PENDING', 'OVERDUE', 'UNPAID', 'PARTIALLY_PAID', 'PAID'].includes(params.status)
+      ['ALL', 'VERIFICATION_PENDING', 'OVERDUE', 'UNPAID', 'PARTIALLY_PAID', 'PAID'].includes(
+        params.status
+      )
     ) {
       setStatusFilter(params.status);
     }
@@ -101,7 +95,12 @@ export function BillingLedgerScreen() {
 
   // Auto-open invoice if navigated with invoiceId
   useEffect(() => {
-    if (params.invoiceId && groupMode === 'flat' && !loadingStates.fetchGrid && invoicesList.length > 0) {
+    if (
+      params.invoiceId &&
+      groupMode === 'flat' &&
+      !loadingStates.fetchGrid &&
+      invoicesList.length > 0
+    ) {
       const targetInvoice = invoicesList.find((inv: any) => inv._id === params.invoiceId);
       if (targetInvoice) {
         setSelectedInvoice(targetInvoice);
@@ -114,13 +113,19 @@ export function BillingLedgerScreen() {
 
   // Auto-open invoice when scanned code matches an invoice in the fetched list
   useEffect(() => {
-    if (lastScannedCodeRef.current && groupMode === 'flat' && !loadingStates.fetchGrid && invoicesList.length > 0) {
+    if (
+      lastScannedCodeRef.current &&
+      groupMode === 'flat' &&
+      !loadingStates.fetchGrid &&
+      invoicesList.length > 0
+    ) {
       const matchTerm = lastScannedCodeRef.current.toLowerCase();
-      const targetInvoice = invoicesList.find((inv: any) =>
-        String(inv.invoiceNumber || '').toLowerCase() === matchTerm ||
-        String(inv._id || '').toLowerCase() === matchTerm ||
-        String(inv.id || '').toLowerCase() === matchTerm ||
-        String(inv.offlineReference || '').toLowerCase() === matchTerm
+      const targetInvoice = invoicesList.find(
+        (inv: any) =>
+          String(inv.invoiceNumber || '').toLowerCase() === matchTerm ||
+          String(inv._id || '').toLowerCase() === matchTerm ||
+          String(inv.id || '').toLowerCase() === matchTerm ||
+          String(inv.offlineReference || '').toLowerCase() === matchTerm
       );
       if (targetInvoice) {
         setSelectedInvoice(targetInvoice);
@@ -147,9 +152,10 @@ export function BillingLedgerScreen() {
       setShowScanner(false);
 
       const parsed = parseAndValidateAppBarcode(scannedCode);
-      const targetCode = (parsed.isValid && (parsed.code || parsed.passId))
-        ? (parsed.code || parsed.passId || '').trim()
-        : scannedCode.replace(/^[#]/, '').trim();
+      const targetCode =
+        parsed.isValid && (parsed.code || parsed.passId)
+          ? (parsed.code || parsed.passId || '').trim()
+          : scannedCode.replace(/^[#]/, '').trim();
 
       lastScannedCodeRef.current = targetCode;
 
@@ -188,25 +194,50 @@ export function BillingLedgerScreen() {
   }, [activeFilters, statusFilter]);
 
   // Combined query params object
-  const currentQueryParams = useMemo(() => ({
-    search,
-    status: statusFilter,
-    startDate: activeFilters.startDate || undefined,
-    endDate: activeFilters.endDate || undefined,
-    block: activeFilters.block !== 'ALL' ? activeFilters.block : undefined,
-    paymentMethod: activeFilters.paymentMethod !== 'ALL' ? activeFilters.paymentMethod : undefined,
-    groupBy: groupMode === 'flat' ? 'none' : groupMode,
-  }), [search, statusFilter, activeFilters, groupMode]);
+  const currentQueryParams = useMemo(
+    () => ({
+      search,
+      status: statusFilter,
+      startDate: activeFilters.startDate || undefined,
+      endDate: activeFilters.endDate || undefined,
+      block: activeFilters.block !== 'ALL' ? activeFilters.block : undefined,
+      paymentMethod:
+        activeFilters.paymentMethod !== 'ALL' ? activeFilters.paymentMethod : undefined,
+      groupBy: groupMode === 'flat' ? 'none' : groupMode,
+    }),
+    [search, statusFilter, activeFilters, groupMode]
+  );
 
   // Dynamic status pill options with live count badges
-  const statusSortOptions = useMemo(() => [
-    { label: `${t('all_statuses', 'All Statuses')}${statusCounts?.ALL !== undefined ? ` (${statusCounts.ALL})` : ''}`, value: 'ALL' },
-    { label: `${t('status_verification_pending', 'Pending')}${statusCounts?.VERIFICATION_PENDING !== undefined ? ` (${statusCounts.VERIFICATION_PENDING})` : ''}`, value: 'VERIFICATION_PENDING' },
-    { label: `${t('status_overdue', 'Overdue')}${statusCounts?.OVERDUE !== undefined ? ` (${statusCounts.OVERDUE})` : ''}`, value: 'OVERDUE' },
-    { label: `${t('status_unpaid', 'Unpaid')}${statusCounts?.UNPAID !== undefined ? ` (${statusCounts.UNPAID})` : ''}`, value: 'UNPAID' },
-    { label: `${t('status_partially_paid', 'Partially Paid')}${statusCounts?.PARTIALLY_PAID !== undefined ? ` (${statusCounts.PARTIALLY_PAID})` : ''}`, value: 'PARTIALLY_PAID' },
-    { label: `${t('status_paid', 'Paid')}${statusCounts?.PAID !== undefined ? ` (${statusCounts.PAID})` : ''}`, value: 'PAID' },
-  ], [statusCounts, t]);
+  const statusSortOptions = useMemo(
+    () => [
+      {
+        label: `${t('all_statuses', 'All Statuses')}${statusCounts?.ALL !== undefined ? ` (${statusCounts.ALL})` : ''}`,
+        value: 'ALL',
+      },
+      {
+        label: `${t('status_verification_pending', 'Pending')}${statusCounts?.VERIFICATION_PENDING !== undefined ? ` (${statusCounts.VERIFICATION_PENDING})` : ''}`,
+        value: 'VERIFICATION_PENDING',
+      },
+      {
+        label: `${t('status_overdue', 'Overdue')}${statusCounts?.OVERDUE !== undefined ? ` (${statusCounts.OVERDUE})` : ''}`,
+        value: 'OVERDUE',
+      },
+      {
+        label: `${t('status_unpaid', 'Unpaid')}${statusCounts?.UNPAID !== undefined ? ` (${statusCounts.UNPAID})` : ''}`,
+        value: 'UNPAID',
+      },
+      {
+        label: `${t('status_partially_paid', 'Partially Paid')}${statusCounts?.PARTIALLY_PAID !== undefined ? ` (${statusCounts.PARTIALLY_PAID})` : ''}`,
+        value: 'PARTIALLY_PAID',
+      },
+      {
+        label: `${t('status_paid', 'Paid')}${statusCounts?.PAID !== undefined ? ` (${statusCounts.PAID})` : ''}`,
+        value: 'PAID',
+      },
+    ],
+    [statusCounts, t]
+  );
 
   // Trigger server-side query when status filter, advanced filters, grouping mode, or active organization changes
   useEffect(() => {
@@ -236,7 +267,12 @@ export function BillingLedgerScreen() {
 
   // Differentiated Empty Subtitles (Must be declared before any conditional return)
   const emptySubtitle = useMemo(() => {
-    if (search.trim()) return t('no_billing_records_matching_search', `No billing records match "${search.trim()}".`, { search: search.trim() });
+    if (search.trim())
+      return t(
+        'no_billing_records_matching_search',
+        `No billing records match "${search.trim()}".`,
+        { search: search.trim() }
+      );
     if (statusFilter !== 'ALL') {
       const statusKey = `status_${statusFilter.toLowerCase()}`;
       const statusName = hasKey(statusKey) ? t(statusKey) : statusFilter.replace(/_/g, ' ');
@@ -246,26 +282,36 @@ export function BillingLedgerScreen() {
   }, [search, statusFilter, t, hasKey]);
 
   // Guaranteed unique key extractor for FlatList across all ledger modes
-  const ledgerKeyExtractor = useCallback((item: any, index: number): string => {
-    if (!item) return `ledger-item-${index}`;
-    if (groupMode === 'cycle') {
-      const period = item.billingPeriodString || (typeof item._id === 'object' ? item._id?.period : '') || '';
-      const assess = item.assessmentName || (typeof item._id === 'object' ? item._id?.assessmentId : '') || '';
-      return `cycle-${period}-${assess}-${index}`;
-    }
-    if (groupMode === 'unit') {
-      const unit = item.unitNumber || item.unitId || (typeof item._id === 'string' ? item._id : '') || '';
-      return `unit-${unit}-${index}`;
-    }
-    if (groupMode === 'resident') {
-      const resident = item.residentName || item.residentId || (typeof item._id === 'string' ? item._id : '') || '';
-      return `resident-${resident}-${index}`;
-    }
-    if (typeof item._id === 'string' && item._id) return item._id;
-    if (item.invoiceNumber) return String(item.invoiceNumber);
-    if (typeof item.id === 'string' && item.id) return item.id;
-    return `invoice-${index}`;
-  }, [groupMode]);
+  const ledgerKeyExtractor = useCallback(
+    (item: any, index: number): string => {
+      if (!item) return `ledger-item-${index}`;
+      if (groupMode === 'cycle') {
+        const period =
+          item.billingPeriodString || (typeof item._id === 'object' ? item._id?.period : '') || '';
+        const assess =
+          item.assessmentName || (typeof item._id === 'object' ? item._id?.assessmentId : '') || '';
+        return `cycle-${period}-${assess}-${index}`;
+      }
+      if (groupMode === 'unit') {
+        const unit =
+          item.unitNumber || item.unitId || (typeof item._id === 'string' ? item._id : '') || '';
+        return `unit-${unit}-${index}`;
+      }
+      if (groupMode === 'resident') {
+        const resident =
+          item.residentName ||
+          item.residentId ||
+          (typeof item._id === 'string' ? item._id : '') ||
+          '';
+        return `resident-${resident}-${index}`;
+      }
+      if (typeof item._id === 'string' && item._id) return item._id;
+      if (item.invoiceNumber) return String(item.invoiceNumber);
+      if (typeof item.id === 'string' && item.id) return item.id;
+      return `invoice-${index}`;
+    },
+    [groupMode]
+  );
 
   return (
     <ScreenShell
@@ -276,24 +322,24 @@ export function BillingLedgerScreen() {
           : `Total ${pagination.totalRecords || 0} community invoices`
       }
       iconName="Receipt"
-      loading={hasLedgerPermission && loadingStates.fetchGrid && invoicesList.length === 0}
-    >
+      loading={hasLedgerPermission && loadingStates.fetchGrid && invoicesList.length === 0}>
       {!hasLedgerPermission ? (
-        <View className="flex-1 bg-background p-6 items-center justify-center">
-          <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
+        <View className="flex-1 items-center justify-center bg-background p-6">
+          <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
             <Icon as={ShieldAlert} size={32} className="text-destructive" />
           </View>
-          <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
-          <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
-            You do not have the required administrative permission (<Text className="font-mono text-xs font-bold">billing:dashboard</Text>) to inspect community ledgers.
+          <Text className="mb-2 text-center font-bold text-xl text-foreground">Access Denied</Text>
+          <Text className="mb-6 px-4 text-center text-sm text-muted-foreground">
+            You do not have the required administrative permission (
+            <Text className="font-bold font-mono text-xs">billing:dashboard</Text>) to inspect
+            community ledgers.
           </Text>
           <Button
             variant="default"
             size="lg"
             onPress={() => router.navigate('/(resident)/billing/my-dues' as any)}
             accessibilityRole="button"
-            accessibilityLabel="Return to My Dues"
-          >
+            accessibilityLabel="Return to My Dues">
             Return to My Dues
           </Button>
         </View>
@@ -310,7 +356,10 @@ export function BillingLedgerScreen() {
           <SearchFilterBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder={t('search_ledger_placeholder', "Search unit 'Villa 104', Chq #, or resident...")}
+            searchPlaceholder={t(
+              'search_ledger_placeholder',
+              "Search unit 'Villa 104', Chq #, or resident..."
+            )}
             sortOptions={statusSortOptions}
             currentSort={statusFilter}
             onSortChange={(val) => setStatusFilter(val as any)}
@@ -321,10 +370,7 @@ export function BillingLedgerScreen() {
           />
 
           {/* Multi-Mode Grouping Toggle (Row 4) */}
-          <LedgerGroupingToggle
-            mode={groupMode}
-            onModeChange={setGroupMode}
-          />
+          <LedgerGroupingToggle mode={groupMode} onModeChange={setGroupMode} />
 
           {/* Paginated Cards List (Flat or Grouped View) */}
           <PaginatedList<any>
@@ -378,57 +424,57 @@ export function BillingLedgerScreen() {
             contentContainerStyle={{ paddingBottom: 110 }}
           />
 
-        {/* Advanced Filter Drawer */}
-        <LedgerFilterDrawer
-          visible={showFilterDrawer}
-          onClose={() => setShowFilterDrawer(false)}
-          filters={{ ...activeFilters, status: statusFilter }}
-          onApply={(newFilters) => {
-            if (newFilters.status) {
-              setStatusFilter(newFilters.status);
-            }
-            setActiveFilters(newFilters);
-          }}
-          onReset={() => {
-            setStatusFilter('ALL');
-            setActiveFilters({
-              startDate: '',
-              endDate: '',
-              datePreset: 'ALL_TIME',
-              block: 'ALL',
-              paymentMethod: 'ALL',
-              status: 'ALL',
-            });
-          }}
-        />
+          {/* Advanced Filter Drawer */}
+          <LedgerFilterDrawer
+            visible={showFilterDrawer}
+            onClose={() => setShowFilterDrawer(false)}
+            filters={{ ...activeFilters, status: statusFilter }}
+            onApply={(newFilters) => {
+              if (newFilters.status) {
+                setStatusFilter(newFilters.status);
+              }
+              setActiveFilters(newFilters);
+            }}
+            onReset={() => {
+              setStatusFilter('ALL');
+              setActiveFilters({
+                startDate: '',
+                endDate: '',
+                datePreset: 'ALL_TIME',
+                block: 'ALL',
+                paymentMethod: 'ALL',
+                status: 'ALL',
+              });
+            }}
+          />
 
-        {/* Hardware QR / Barcode Scanner Modal */}
-        <LedgerQRScannerModal
-          visible={showScanner}
-          onClose={() => setShowScanner(false)}
-          onScanCode={handleScannedCode}
-        />
+          {/* Hardware QR / Barcode Scanner Modal */}
+          <LedgerQRScannerModal
+            visible={showScanner}
+            onClose={() => setShowScanner(false)}
+            onScanCode={handleScannedCode}
+          />
 
-        {/* Quick Actions / Review Details BottomSheet */}
-        <InvoiceActionsBottomSheet
-          visible={!!selectedInvoice}
-          onClose={() => setSelectedInvoice(null)}
-          invoice={selectedInvoice}
-          onApproveOffline={approveOffline}
-          onRejectOffline={rejectOffline}
-          onSettleOfflineModal={(inv) => setSettleInvoice(inv)}
-        />
+          {/* Quick Actions / Review Details BottomSheet */}
+          <InvoiceActionsBottomSheet
+            visible={!!selectedInvoice}
+            onClose={() => setSelectedInvoice(null)}
+            invoice={selectedInvoice}
+            onApproveOffline={approveOffline}
+            onRejectOffline={rejectOffline}
+            onSettleOfflineModal={(inv) => setSettleInvoice(inv)}
+          />
 
-        {/* Admin Offline Payment Settlement Sheet */}
-        <AdminOfflineSettleSheet
-          visible={!!settleInvoice}
-          onClose={() => setSettleInvoice(null)}
-          invoice={settleInvoice}
-          onSuccess={() => {
-            changeTablePage(pagination?.currentPage || 1, currentQueryParams);
-          }}
-        />
-      </View>
+          {/* Admin Offline Payment Settlement Sheet */}
+          <AdminOfflineSettleSheet
+            visible={!!settleInvoice}
+            onClose={() => setSettleInvoice(null)}
+            invoice={settleInvoice}
+            onSuccess={() => {
+              changeTablePage(pagination?.currentPage || 1, currentQueryParams);
+            }}
+          />
+        </View>
       )}
     </ScreenShell>
   );

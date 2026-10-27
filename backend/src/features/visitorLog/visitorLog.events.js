@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { dispatchWalkInPending, dispatchWalkInResolved } from './visitorLog.socket.js';
+import { dispatchWalkInPending, dispatchWalkInResolved, dispatchVisitorLogChanged } from './visitorLog.socket.js';
 import notificationService from '../notification/notification.service.js';
 import logger from '../../utils/logger.utils.js';
 
@@ -75,6 +75,7 @@ visitorLogEvents.on('walk_in_resolved', (log) => {
 
 visitorLogEvents.on('log_created', (log) => {
   logger.info(`Visitor log event bus triggered: log_created for log ID ${log._id}`);
+  dispatchVisitorLogChanged(log, 'checked_in');
   if (log.residentId) {
     notificationService.createNotification({
       recipientId: log.residentId,
@@ -92,6 +93,7 @@ visitorLogEvents.on('log_created', (log) => {
 
 visitorLogEvents.on('log_checked_out', (log) => {
   logger.info(`Visitor log event bus triggered: log_checked_out for log ID ${log._id}`);
+  dispatchVisitorLogChanged(log, 'checked_out');
   if (log.residentId) {
     notificationService.createNotification({
       recipientId: log.residentId,

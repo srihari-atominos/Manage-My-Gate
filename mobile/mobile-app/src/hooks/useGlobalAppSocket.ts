@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store/store';
 import useAppSocket from './useAppSocket';
@@ -28,6 +29,22 @@ import {
   fetchMyAttendanceThunk,
 } from '../features/staff/store/staffSlice';
 import { getUserRoleName } from '../utils/rbac';
+
+// Event names as emitted by the backend dispatchers (see backend/src/features/*/*.socket.js, visitorPass.events.js)
+const VISITOR_PASS_EVENTS = [
+  'visitor:pass_created',
+  'visitor:pass_updated',
+  'visitor:pass_revoked',
+  'visitor:log_changed',
+];
+const NOTICE_EVENTS = [
+  'notice:created',
+  'notice:updated',
+  'notice:deleted',
+  'notice:pinned_toggled',
+  'notice:expired',
+];
+const COMMUNITY_NOTE_EVENTS = ['communityNote:created', 'communityNote:expired'];
 
 /**
  * Global Real-Time Socket Manager Hook
@@ -327,6 +344,8 @@ export const useGlobalAppSocket = () => {
     socket.on('VISITOR_CHECKED_OUT', handleVisitorUpdate);
     socket.on('GATE_APPROVAL_REQUEST', handleGateApprovalRequest);
     socket.on('GATE_APPROVAL_RESOLVED', handleGateApprovalResolved);
+    // Canonical names emitted by the backend visitorPass dispatcher
+    VISITOR_PASS_EVENTS.forEach((name) => socket.on(name, handleVisitorUpdate));
 
     socket.on('BILLING_UPDATED', handleBillingUpdate);
     socket.on('INVOICE_CREATED', handleBillingUpdate);
@@ -358,8 +377,46 @@ export const useGlobalAppSocket = () => {
 
     socket.on('NOTICE_CREATED', handleNoticeUpdate);
     socket.on('NOTICE_UPDATED', handleNoticeUpdate);
+    NOTICE_EVENTS.forEach((name) => socket.on(name, handleNoticeUpdate));
 
     socket.on('COMMUNITY_NOTE_CREATED', handleCommunityNoteUpdate);
+    COMMUNITY_NOTE_EVENTS.forEach((name) => socket.on(name, handleCommunityNoteUpdate));
+
+    // Events emitted while the phone was offline or backgrounded are never replayed by the server, so
+    // refetch the live lists when the socket reconnects and when the app returns to the foreground.
+    const resyncLiveData = () => {
+      debounceDispatch(
+        'resync_all',
+        () => {
+          handleVisitorUpdate();
+          handleBillingUpdate();
+          handleComplaintUpdate();
+          handleNoticeUpdate();
+          handleCommunityNoteUpdate();
+        },
+        500
+      );
+    };
+    let hasConnectedBefore = socket.connected;
+    const handleSocketConnect = () => {
+      if (hasConnectedBefore) resyncLiveData();
+      hasConnectedBefore = true;
+    };
+    socket.on('connect', handleSocketConnect);
+
+    let backgroundedAt: number | null = null;
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        if (backgroundedAt === null) backgroundedAt = Date.now();
+        return;
+      }
+      if (state === 'active') {
+        const awayMs = backgroundedAt === null ? 0 : Date.now() - backgroundedAt;
+        backgroundedAt = null;
+        if (!socket.connected) socket.connect();
+        if (awayMs > 5000) resyncLiveData();
+      }
+    });
 
     socket.on('RECORD_UPDATED', (payload: any) => {
       if (!payload) return;
@@ -406,6 +463,7 @@ export const useGlobalAppSocket = () => {
       socket.off('VISITOR_CHECKED_OUT', handleVisitorUpdate);
       socket.off('GATE_APPROVAL_REQUEST', handleGateApprovalRequest);
       socket.off('GATE_APPROVAL_RESOLVED', handleGateApprovalResolved);
+      VISITOR_PASS_EVENTS.forEach((name) => socket.off(name, handleVisitorUpdate));
       socket.off('BILLING_UPDATED', handleBillingUpdate);
       socket.off('INVOICE_CREATED', handleBillingUpdate);
       socket.off('COMPLAINT_UPDATED', handleComplaintUpdate);
@@ -429,7 +487,11 @@ export const useGlobalAppSocket = () => {
       socket.off('staff:exit', handleStaffAttendanceUpdate);
       socket.off('NOTICE_CREATED', handleNoticeUpdate);
       socket.off('NOTICE_UPDATED', handleNoticeUpdate);
+      NOTICE_EVENTS.forEach((name) => socket.off(name, handleNoticeUpdate));
       socket.off('COMMUNITY_NOTE_CREATED', handleCommunityNoteUpdate);
+      COMMUNITY_NOTE_EVENTS.forEach((name) => socket.off(name, handleCommunityNoteUpdate));
+      socket.off('connect', handleSocketConnect);
+      appStateSub.remove();
       socket.off('RECORD_UPDATED');
       Object.values(debounceTimersRef.current).forEach((timer) => clearTimeout(timer));
       debounceTimersRef.current = {};

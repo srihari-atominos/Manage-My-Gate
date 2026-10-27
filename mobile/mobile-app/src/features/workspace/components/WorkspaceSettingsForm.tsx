@@ -32,6 +32,8 @@ const workspaceSchema = yup.object({
   countryCode: yup.string().optional().default(''),
   timeZone: yup.string().optional().default(''),
   language: yup.string().optional().default(''),
+  expenseOnlinePayeeName: yup.string().optional().default(''),
+  expenseOnlinePayeeUpiId: yup.string().test('valid-upi', 'Enter a valid UPI ID', (v) => !v || /^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9.-]{2,64}$/.test(v)).optional().default(''),
 });
 
 type WorkspaceFormValues = yup.InferType<typeof workspaceSchema>;
@@ -53,6 +55,8 @@ export const WorkspaceSettingsForm = () => {
       countryCode: '',
       timeZone: '',
       language: '',
+      expenseOnlinePayeeName: '',
+      expenseOnlinePayeeUpiId: '',
     },
   });
 
@@ -69,13 +73,16 @@ export const WorkspaceSettingsForm = () => {
         countryCode: settings.countryCode || '',
         timeZone: settings.timeZone || '',
         language: settings.language || '',
+        expenseOnlinePayeeName: settings.expenseOnlinePayee?.name || '',
+        expenseOnlinePayeeUpiId: settings.expenseOnlinePayee?.upiId || '',
       });
     }
   }, [settings, reset]);
 
   const onSubmit = async (data: WorkspaceFormValues) => {
     try {
-      await saveWorkspaceDetails('current', data).unwrap();
+      const { expenseOnlinePayeeName, expenseOnlinePayeeUpiId, ...general } = data;
+      await saveWorkspaceDetails('current', { ...general, expenseOnlinePayee: { name: expenseOnlinePayeeName?.trim() || 'Community payee', upiId: expenseOnlinePayeeUpiId?.trim() || '' } }).unwrap();
       if (data.countryCode) setDefaultPhoneCountry(data.countryCode);
       Alert.alert('Success', 'Workspace settings updated successfully');
     } catch (err: any) {
@@ -193,6 +200,25 @@ export const WorkspaceSettingsForm = () => {
           />
         )}
       />
+
+      <View className="mt-4 gap-3 rounded-2xl border border-border bg-card p-4">
+        <Text className="text-base font-bold text-foreground">Expense online payee</Text>
+        <Text className="text-sm text-muted-foreground">Configure the community UPI destination used by Pay Online. This is not shown as an editable field to expense recorders.</Text>
+        <Controller
+          control={control}
+          name="expenseOnlinePayeeName"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput label="Payee name" placeholder="Community account" onBlur={onBlur} onChangeText={onChange} value={value} error={errors.expenseOnlinePayeeName?.message} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="expenseOnlinePayeeUpiId"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput label="Payee UPI ID" placeholder="community@bank" autoCapitalize="none" onBlur={onBlur} onChangeText={onChange} value={value} error={errors.expenseOnlinePayeeUpiId?.message} />
+          )}
+        />
+      </View>
 
       <View className="mt-4">
         <Button

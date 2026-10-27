@@ -268,6 +268,44 @@ export const getPermissionsForUser = async (user, targetOrgId = null) => {
   return [];
 };
 
+
+const COMMUNITY_ADMIN_ROLE_NAMES = new Set(['community admin', 'admin']);
+
+/**
+ * A Community Admin holds every permission inside its own community. This is true only when
+ * tenantContext verified the membership for the very organization being authorized, so it never
+ * extends to another community. The organization/workspace feature gates still apply before it.
+ */
+export const isVerifiedCommunityAdmin = (req, targetOrgId) => {
+  if (!req?.tenantRole || !req.tenant?.orgId || !targetOrgId) return false;
+  if (String(req.tenant.orgId) !== String(targetOrgId)) return false;
+  return COMMUNITY_ADMIN_ROLE_NAMES.has(String(req.tenantRole).toLowerCase().trim().replace(/[_-]/g, ' '));
+};
+
+/**
+ * Resident self-service routes use only the role resolved by tenantContext for the active organization.
+ * There is deliberately no platform/admin bypass: personal records are not an administrative feature.
+ * The exact role names mirror the repository's existing wallet self-service policy.
+ */
+const RESIDENT_SELF_SERVICE_ROLES = new Set([
+  'Resident', 'Resident Owner', 'Resident Tenant', 'Family Member', 'Family', 'Tenant', 'Owner',
+]);
+
+export const authorizeResidentSelfService = () => (req, res, next) => {
+  try {
+    if (!req.user) throw new HttpError(401, 'Unauthorized. Authentication required.');
+    if (req.user.isPlatform === true || req.tenant?.isPlatform === true) {
+      throw new HttpError(403, 'Forbidden. You do not have permission to access this resource.');
+    }
+    if (!RESIDENT_SELF_SERVICE_ROLES.has(req.tenantRole)) {
+      throw new HttpError(403, 'Forbidden. You do not have permission to access this resource.');
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * Role-Based Access Control middleware.
  * @param {string[]} allowedRoles - Roles allowed to access the route
@@ -377,10 +415,10 @@ export const authorizePermission = (feature, action) => {
         }
       }
 
-      // Only platform administrators bypass RBAC. Community Admin is a tenant
-      // role, so permissions removed in Role Builder take effect immediately.
+      // Platform administrators bypass RBAC. A Community Admin has full access within its own
+      // community (feature gates above still apply).
       const isPlatformAdmin = req.user?.isPlatform === true || req.tenant?.isPlatform === true;
-      if (isPlatformAdmin) {
+      if (isPlatformAdmin || isVerifiedCommunityAdmin(req, targetOrgId)) {
         return next();
       }
 
@@ -485,9 +523,8 @@ export const authorizeAnyPermission = (permissionsArray) => {
         }
       }
 
-      // Tenant administrators are governed by their assigned permissions.
       const isPlatformAdmin = req.user?.isPlatform === true || req.tenant?.isPlatform === true;
-      if (isPlatformAdmin) {
+      if (isPlatformAdmin || isVerifiedCommunityAdmin(req, targetOrgId)) {
         return next();
       }
 

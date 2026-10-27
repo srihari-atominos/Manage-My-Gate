@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { io } from 'socket.io-client'
-import config from '../../../config/config.js'
+import useSocket from '../../../hooks/useSocket.js'
 import {
   fetchComplaints,
   fetchComplaintDetails,
@@ -41,7 +40,12 @@ export const useComplaints = (filters = {}, options = {}) => {
   } = useSelector((state) => state.complaints)
   const settingsState = useSelector((state) => state.complaintSettings)
 
-  const socketRef = useRef(null)
+  const { socket, isConnected } = useSocket()
+  const filtersRef = useRef(filters)
+  useEffect(() => {
+    filtersRef.current = filters
+  })
+  const connectedBeforeRef = useRef(false)
 
   useEffect(() => {
     if (options.disableAutoFetch) return
@@ -52,48 +56,39 @@ export const useComplaints = (filters = {}, options = {}) => {
     return () => clearTimeout(debounce)
   }, [dispatch, JSON.stringify(filters), options.disableAutoFetch])
 
-  const token = useSelector((state) => state.auth.token)
-
+  // Real-time updates over the shared socket (it joins user:/org: rooms and reconnects indefinitely).
+  // Filters are read from a ref so a filter change does not tear the connection down.
   useEffect(() => {
-    if (!token) return
-
-    // Socket initialization for real-time updates
-    socketRef.current = io(config.socketUrl, {
-      auth: { token },
-    })
+    if (!socket || !isConnected) return undefined
 
     const handleUpdate = (data) => {
-      dispatch(fetchComplaints(filters))
+      dispatch(fetchComplaints(filtersRef.current))
       dispatch(fetchDashboardAnalytics())
       if (data && data._id) {
         dispatch(updateCurrentComplaint(data))
       }
     }
 
-    const socket = socketRef.current
+    const events = [
+      'complaint_created',
+      'complaint_updated',
+      'complaint_assigned',
+      'complaint_started',
+      'complaint_completed',
+      'complaint_closed',
+      'complaint_reopened',
+      'complaint_escalated',
+    ]
+    events.forEach((name) => socket.on(name, handleUpdate))
 
-    // Listen to enterprise events
-    socket.on('complaint_created', handleUpdate)
-    socket.on('complaint_updated', handleUpdate)
-    socket.on('complaint_assigned', handleUpdate)
-    socket.on('complaint_started', handleUpdate)
-    socket.on('complaint_completed', handleUpdate)
-    socket.on('complaint_closed', handleUpdate)
-    socket.on('complaint_reopened', handleUpdate)
-    socket.on('complaint_escalated', handleUpdate)
+    // Events missed while disconnected are not replayed: reload after a reconnect (not the first connect)
+    if (connectedBeforeRef.current) handleUpdate()
+    connectedBeforeRef.current = true
 
     return () => {
-      socket.off('complaint_created', handleUpdate)
-      socket.off('complaint_updated', handleUpdate)
-      socket.off('complaint_assigned', handleUpdate)
-      socket.off('complaint_started', handleUpdate)
-      socket.off('complaint_completed', handleUpdate)
-      socket.off('complaint_closed', handleUpdate)
-      socket.off('complaint_reopened', handleUpdate)
-      socket.off('complaint_escalated', handleUpdate)
-      socket.disconnect()
+      events.forEach((name) => socket.off(name, handleUpdate))
     }
-  }, [dispatch, JSON.stringify(filters), token])
+  }, [socket, isConnected, dispatch])
 
   const loadDashboardAnalytics = async (filterParams) => {
     return await dispatch(fetchDashboardAnalytics(filterParams)).unwrap()

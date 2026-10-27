@@ -20,6 +20,7 @@ import { syncPermissions } from './src/utils/permissionSync.util.js';
 import complaintCron from './src/features/complaint/complaint.cron.js';
 import amenityBookingCron from './src/features/amenityBooking/amenityBooking.cron.js';
 import assessmentCron from './src/features/assessment/utils/assessmentCron.js';
+import expenseAttemptCron from './src/features/expense/expenseAttempt.cron.js';
 import invoiceReminderCron from './src/features/invoice/invoiceReminder.cron.js';
 import userCron from './src/features/user/user.cron.js';
 import communityEngagementCron from './src/features/communityEngagement/communityEngagement.cron.js';
@@ -36,6 +37,7 @@ const initCronJobs = () => {
     amenityBookingCron.init();
     assessmentCron.init();
     invoiceReminderCron.init();
+    expenseAttemptCron.init();
     userCron.init();
     communityEngagementCron.init();
     logger.info('Background Cron Jobs Initialized');

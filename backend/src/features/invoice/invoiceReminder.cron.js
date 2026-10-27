@@ -14,7 +14,28 @@ const BATCH_LIMIT = 1000;
  * Finds invoices needing a due-soon reminder or an overdue notice and queues one email each.
  * Idempotent: sendInvoiceEmail claims emailLog.<kind>SentAt, so reruns never double-send.
  */
+export async function markOverdueInvoices(now = new Date()) {
+  // Status is only recomputed on save, so unpaid invoices never age into OVERDUE on their own.
+  const result = await Invoice.updateMany(
+    { status: { $in: ['UNPAID', 'PARTIALLY_PAID'] }, dueDate: { $lt: now }, isDeleted: { $ne: true } },
+    {
+      $set: { status: 'OVERDUE' },
+      $push: {
+        auditHistory: {
+          action: 'INVOICE_MARKED_OVERDUE',
+          details: 'Invoice passed its due date without full payment.',
+          date: now,
+          userRole: 'SYSTEM',
+          source: 'SCHEDULER',
+        },
+      },
+    }
+  );
+  return result.modifiedCount ?? 0;
+}
+
 export async function runInvoiceReminders(now = new Date()) {
+  const markedOverdue = await markOverdueInvoices(now);
   const dueSoon = await Invoice.find({
     status: { $in: ['UNPAID', 'PARTIALLY_PAID'] },
     dueDate: { $gt: now, $lte: new Date(now.getTime() + REMINDER_DAYS_BEFORE_DUE * DAY_MS) },
@@ -35,8 +56,8 @@ export async function runInvoiceReminders(now = new Date()) {
 
   dueSoon.forEach((inv) => enqueueInvoiceEmail('reminder', inv._id));
   overdue.forEach((inv) => enqueueInvoiceEmail('overdue', inv._id));
-  logger.info('Invoice reminder run queued emails', { reminders: dueSoon.length, overdue: overdue.length });
-  return { reminders: dueSoon.length, overdue: overdue.length };
+  logger.info('Invoice reminder run queued emails', { reminders: dueSoon.length, overdue: overdue.length, markedOverdue });
+  return { reminders: dueSoon.length, overdue: overdue.length, markedOverdue };
 }
 
 class InvoiceReminderCron {

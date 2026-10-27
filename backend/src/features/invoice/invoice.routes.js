@@ -16,13 +16,13 @@ router.use(isAuthenticated);
 // Open to all authenticated users (personal dues summary doesn't require x-organization-id tenant context header check)
 router.get(
   '/my-dues',
-  authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
+  authorizePermission('billing', ['my_invoices', 'action_center', 'dashboard', 'assessment_manager']),
   invoiceController.getMyDues
 );
 
 router.post(
   '/upload-proof',
-  authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
+  authorizePermission('billing', ['my_invoices', 'action_center', 'dashboard', 'assessment_manager']),
   invoiceUpload.single('proof'),
   invoiceProofSignatureValidator,
   invoiceController.uploadProof
@@ -46,7 +46,7 @@ router.get(
 router.get(
   '/',
   tenantContext,
-  authorizePermission('billing', ['dashboard', 'assessment_manager']),
+  authorizePermission('billing', ['ledger', 'dashboard', 'assessment_manager']),
   invoiceController.getAllInvoices
 );
 
@@ -106,7 +106,7 @@ router.post(
 router.get(
   '/:id',
   tenantContext,
-  authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
+  authorizePermission('billing', ['ledger', 'action_center', 'dashboard', 'assessment_manager']),
   invoiceController.getInvoiceById
 );
 

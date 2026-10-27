@@ -8,7 +8,6 @@
  * Stack screenOptions across all layout files.
  */
 import { Platform } from 'react-native';
-import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
 /**
  * Premium slide transition with parallax depth effect.

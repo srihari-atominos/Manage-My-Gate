@@ -1,0 +1,6 @@
+import { formatINR, localDate, localPeriod, rupeesToNumber, shiftPeriod, validateTransaction } from '../personalExpense.utils';
+describe('personal expense utilities', () => {
+  it('formats paise and rounds INR inputs safely', () => { expect(formatINR(1234)).toContain('12.34'); expect(rupeesToNumber('12.345')).toBe(12.35); expect(() => rupeesToNumber('0')).toThrow(); });
+  it('uses local date parts without a UTC conversion', () => { const date = new Date(2026, 0, 1, 0, 5); expect(localDate(date)).toBe('2026-01-01'); expect(localPeriod(date)).toBe('2026-01'); expect(shiftPeriod('2026-01', -1)).toBe('2025-12'); });
+  it('validates required transaction fields', () => { expect(validateTransaction({ amount: '10', categoryId: 'food_dining', transactionDate: '2026-10-21', paymentMethod: 'UPI' })).toBeNull(); expect(validateTransaction({ amount: '', categoryId: '', transactionDate: 'bad', paymentMethod: '' })).toBe('Choose a category.'); expect(validateTransaction({ amount: '10', categoryId: 'food_dining', transactionDate: '2026-02-30', paymentMethod: 'UPI' })).toBe('Enter a valid calendar date.'); });
+});

@@ -17,7 +17,7 @@ import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '../../..
 const buildFallbackCatalog = (features: any[]): FeatureCategory[] => {
   const map = new Map<string, { key: string; name: string; items: FeatureItem[] }>();
 
-  features.forEach((item) => {
+  features.filter((item) => item.dashboardVisible !== false).forEach((item) => {
     const key = item.categoryKey || 'general';
     const name = item.categoryName || 'General';
     if (!map.has(key)) {
@@ -139,13 +139,16 @@ export const useQuickActions = () => {
         const validRawItems: FeatureItem[] = (rawCat.items || [])
           .filter((item: FeatureItem) => {
             const canonical = canonicalMap.get(item.id);
-            if (!canonical) return false;
+            if (!canonical || canonical.dashboardVisible === false) return false;
             return (canonical.categoryKey || 'general') === builtinCat.categoryKey;
           })
           .map((item: FeatureItem): FeatureItem => {
             const canonical = canonicalMap.get(item.id)!;
             return {
               ...item,
+              name: canonical.name || item.name,
+              subtitle: canonical.subtitle || item.subtitle,
+              iconName: canonical.iconName || item.iconName,
               permission: canonical.permission || item.permission,
               route: canonical.route || item.route,
             };

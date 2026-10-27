@@ -7,14 +7,22 @@ export class DeviceTokenService {
   /**
    * Register or refresh a push notification device token for a user.
    * @param {string} userId - Authenticated user ID
-   * @param {object} payload - { pushToken, platform, deviceId, deviceModel }
+   * @param {object} payload - { pushToken, platform, deviceId, deviceModel, appVersion, versionCode }
    */
   async registerToken(userId, payload) {
     if (!userId) {
       throw new HttpError(401, 'User ID is required to register device token');
     }
 
-    const { pushToken, platform = 'android', deviceId = null, deviceModel = null } = payload || {};
+    const {
+      pushToken,
+      platform = 'android',
+      deviceId = null,
+      deviceModel = null,
+      appVersion = null,
+      versionCode = null,
+    } = payload || {};
+
     if (!pushToken || typeof pushToken !== 'string') {
       throw new HttpError(400, 'Valid pushToken string is required');
     }
@@ -24,7 +32,7 @@ export class DeviceTokenService {
     try {
       const record = await deviceTokenRepository.upsertToken(
         userId,
-        { pushToken, platform, deviceId, deviceModel },
+        { pushToken, platform, deviceId, deviceModel, appVersion, versionCode },
         session
       );
       await session.commitTransaction();
@@ -102,6 +110,15 @@ export class DeviceTokenService {
   async getActiveTokensByUserIds(userIds) {
     const list = Array.isArray(userIds) ? userIds : [userIds];
     return await deviceTokenRepository.findActiveTokensByUserIds(list);
+  }
+
+  /**
+   * Fetch all active device tokens for a given platform.
+   * Cross-feature service method used by platform release announcements.
+   * @param {string} platform
+   */
+  async getAllActiveTokensByPlatform(platform = 'android') {
+    return await deviceTokenRepository.findActiveTokensByPlatform(platform);
   }
 
   /**

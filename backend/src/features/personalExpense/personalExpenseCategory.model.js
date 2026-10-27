@@ -1,0 +1,3 @@
+import mongoose from 'mongoose'; import { TYPES } from './personalExpense.constants.js';
+const schema = new mongoose.Schema({ orgId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true }, userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, name: { type: String, required: true, trim: true, maxlength: 80 }, normalizedName: { type: String, required: true }, type: { type: String, enum: TYPES, required: true }, isArchived: { type: Boolean, default: false } }, { timestamps: true });
+schema.index({ orgId: 1, userId: 1, type: 1, normalizedName: 1 }, { unique: true }); export default mongoose.model('PersonalExpenseCategory', schema);

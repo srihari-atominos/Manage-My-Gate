@@ -136,6 +136,8 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'billing:assessment_manager': ['billing:assessment_manager', 'billing:assessments', 'billing:view', 'billing'],
   'billing:dashboard': ['billing:dashboard', 'billing:billing_hub', 'billing:ledger', 'billing:view', 'billing'],
 
+  'billing:pay_online_expense': ['billing:pay_online_expense', 'billing.pay_online_expense', 'billing:create_expense', 'billing:record_expense_payment'],
+
   // Administration & Security
   'villas:read': ['villas:read', 'villas.read', 'villas:view', 'villas', 'units:read', 'admin_villas'],
   'users:read': ['users:read', 'users.read', 'users:view', 'users', 'admin_users'],
@@ -312,6 +314,13 @@ export const isFeatureAllowedForUser = (
   }
 
   const permissions = Array.isArray(effectiveUser.permissions) ? effectiveUser.permissions : [];
+
+  // Personal finances are private resident self-service and must never appear in staff, guard, facility, or platform consoles.
+  if (item.id === 'personal_expense_manager') {
+    if (effectiveUser.isPlatform === true || checkIsAdmin(effectiveUser) || checkIsSecurityRole(effectiveUser)) return false;
+    const roleName = getUserRoleName(effectiveUser).toLowerCase();
+    return !roleName || roleName.includes('resident') || roleName.includes('tenant') || roleName.includes('member') || roleName.includes('owner');
+  }
 
   // Super Admin / Platform bypass (full system visibility)
   if (effectiveUser.isPlatform === true || permissions.includes('platform:super_admin') || permissions.includes('*')) {

@@ -44,12 +44,13 @@
         "UIBackgroundModes": [
           "remote-notification"
         ],
-        "NSCameraUsageDescription": "Nahom requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints.",
+        "NSCameraUsageDescription": "Nahom requires camera access to capture receipt photos, scan visitor QR passes, and capture maintenance attachments.",
         "NSLocationWhenInUseUsageDescription": "Nahom uses your precise location only when you tap Current Location in your Profile to suggest your city and state, for example Hyderabad, Telangana. Nahom does not use your location for advertising, tracking, or in the background.",
-        "NSPhotoLibraryUsageDescription": "Nahom requires photo library access to upload images for amenity bookings and complaint tickets.",
+        "NSPhotoLibraryUsageDescription": "Nahom requires photo library access to upload receipt images and other supported attachments.",
         "LSApplicationQueriesSchemes": [
           "tel",
-          "whatsapp"
+          "whatsapp",
+          "upi"
         ]
       }
     },
@@ -168,6 +169,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/withNahomUpi",
       "expo-router",
       [
         "expo-splash-screen",
@@ -180,15 +182,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Nahom requires photo library access to upload images for amenity bookings and complaint tickets.",
-          "cameraPermission": "Nahom requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints.",
+          "photosPermission": "Nahom requires photo library access to upload receipt images and other supported attachments.",
+          "cameraPermission": "Nahom requires camera access to capture receipt photos, scan visitor QR passes, and capture maintenance attachments.",
           "microphonePermission": false
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Nahom requires camera access to scan visitor QR passes and verify amenity tickets.",
+          "cameraPermission": "Nahom requires camera access to capture receipt photos, scan visitor QR passes, and verify amenity tickets.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }

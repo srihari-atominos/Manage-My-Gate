@@ -19,7 +19,6 @@ export function useNoticeSocket() {
     // Join organization specific room to receive notice broadcasts
     if (user?.orgId) {
       socket.emit('join_room', `org:${user.orgId}`);
-      console.log(`Joined notice socket room: org:${user.orgId}`);
     }
 
     // Trigger local list & statistics sync when notice is created remotely
@@ -46,18 +45,9 @@ export function useNoticeSocket() {
       dispatch(fetchNoticeStats());
     };
 
-    // Auto-resync state upon reconnection to prevent stale lists after network drops
-    const handleReconnect = () => {
-      console.log('Socket reconnected, syncing Notice Board state...');
-      if (user?.orgId) {
-        socket.emit('join_room', `org:${user.orgId}`);
-      }
-      dispatch(fetchNotices());
-      dispatch(fetchNoticeStats());
-    };
-
+    // 'connect' fires on the first connection and on every automatic reconnection, so it also resyncs
+    // state after network drops (Socket instances never emit 'reconnect' in socket.io v4).
     const handleConnect = () => {
-      console.log('Socket connected, initializing sync...');
       if (user?.orgId) {
         socket.emit('join_room', `org:${user.orgId}`);
       }
@@ -67,7 +57,6 @@ export function useNoticeSocket() {
 
     // Register listeners
     socket.on('connect', handleConnect);
-    socket.on('reconnect', handleReconnect);
     socket.on('notice:created', handleNoticeCreated);
     socket.on('notice:updated', handleNoticeUpdated);
     socket.on('notice:deleted', handleNoticeDeleted);
@@ -76,17 +65,13 @@ export function useNoticeSocket() {
     // Clean up connections on unmount
     return () => {
       socket.off('connect', handleConnect);
-      socket.off('reconnect', handleReconnect);
       socket.off('notice:created', handleNoticeCreated);
       socket.off('notice:updated', handleNoticeUpdated);
       socket.off('notice:deleted', handleNoticeDeleted);
       socket.off('notice:pinned_toggled', handleNoticePinnedToggled);
-      
-      // Leave organization specific room to clean up socket connections
-      if (user?.orgId) {
-        socket.emit('leave_room', `org:${user.orgId}`);
-        console.log(`Left notice socket room: org:${user.orgId}`);
-      }
+
+      // The org room is shared by every real-time feature on the single app socket (billing, villas,
+      // complaints, visitor passes, ...). Never leave it here or leaving this screen silences them all.
     };
   }, [socket, dispatch, user?.id, user?._id, user?.orgId]);
 }

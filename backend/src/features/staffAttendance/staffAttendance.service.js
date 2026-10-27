@@ -6,7 +6,7 @@ import staffUnitAssociationService from '../staffUnitAssociation/staffUnitAssoci
 import staffNotificationService from '../staffNotification/staffNotification.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger from '../../utils/logger.utils.js';
-import { verifyStaffQrSignature } from '../../utils/staffQr.utils.js';
+import { verifyStaffQrSignature, assertStaffQrWithinValidity } from '../../utils/staffQr.utils.js';
 import { buildStaffPhotoUrl } from '../../utils/staffPhoto.utils.js';
 
 // An open session older than this is treated as a forgotten checkout rather than a live visit.
@@ -93,21 +93,21 @@ class StaffAttendanceService {
   /**
    * Validates HMAC cryptographic signature using constant-time comparison.
    */
-  validateStaffSignature(technician, orgId, providedSignature) {
-    return verifyStaffQrSignature(orgId, technician, providedSignature);
+  validateStaffSignature(technician, orgId, providedSignature, options = {}) {
+    return verifyStaffQrSignature(orgId, technician, providedSignature, options);
   }
 
   /**
    * Scanned QR payloads MUST carry a valid cryptographic signature. Unsigned payloads (raw IDs, codes,
    * legacy barcodes) are rejected unless an authorized manual override or the dev-only legacy flag applies.
    */
-  assertScanAuthenticity(parsed, technician, orgId, isManualEntry = false) {
+  assertScanAuthenticity(parsed, technician, orgId, isManualEntry = false, options = {}) {
     const allowLegacyUnsigned =
       process.env.NODE_ENV !== 'production' &&
       process.env.ALLOW_LEGACY_UNSIGNED_STAFF_SCANS === 'true';
 
     if (parsed.signature) {
-      this.validateStaffSignature(technician, orgId, parsed.signature);
+      this.validateStaffSignature(technician, orgId, parsed.signature, options);
     } else if (!isManualEntry && !allowLegacyUnsigned) {
       throw new HttpError(
         401,
@@ -140,12 +140,14 @@ class StaffAttendanceService {
     }
     const parsed = this.parseScanPayload(scannedPayload);
     const technician = await this.resolveTechnician(parsed, orgId, { allowInactive: true });
-    this.assertScanAuthenticity(parsed, technician, orgId, false);
+    // Authenticity first (no database work for forged passes); validity is checked once we know if they are inside.
+    this.assertScanAuthenticity(parsed, technician, orgId, false, { allowOutsideValidity: true });
 
     const [associatedUnits, openSession] = await Promise.all([
       this.resolveAssociatedUnits(technician._id, orgId),
       staffAttendanceRepository.findActiveSession(orgId, technician._id),
     ]);
+    if (parsed.signature && !openSession) assertStaffQrWithinValidity(technician);
 
     const isActive = technician.status === 'Active';
     return {
@@ -259,16 +261,18 @@ class StaffAttendanceService {
     // Scanned QR payloads MUST contain a valid cryptographic signature.
     // Unsigned payloads (raw IDs, codes, legacy 4-part barcodes) are strictly rejected
     // unless submitted via an explicitly authorized manual override.
-    this.assertScanAuthenticity(parsed, technician, orgId, isManualEntry);
+    this.assertScanAuthenticity(parsed, technician, orgId, isManualEntry, { allowOutsideValidity: true });
+
+    const requestedAction = typeof action === 'string' && action.trim() ? action.toUpperCase().trim() : 'AUTO';
+    let openSession = await staffAttendanceRepository.findActiveSession(orgId, technician._id);
+    // Only getting in needs a pass inside its validity window; an expired pass can still check its holder out.
+    if (parsed.signature && (requestedAction === 'ENTRY' || !openSession)) assertStaffQrWithinValidity(technician);
 
     // 3. Resolve active unit associations (cross-feature call to staffUnitAssociationService)
     const associatedUnits = await this.resolveAssociatedUnits(technician._id, orgId);
 
-    // 4. Query current open session for this technician in this organization
-    let openSession = await staffAttendanceRepository.findActiveSession(orgId, technician._id);
-
     const now = new Date();
-    const cleanAction = action ? action.toUpperCase().trim() : 'AUTO';
+    const cleanAction = requestedAction;
     if (!['AUTO', 'ENTRY', 'EXIT'].includes(cleanAction)) {
       throw new HttpError(400, `Unsupported attendance action '${action}'.`);
     }
@@ -437,14 +441,17 @@ class StaffAttendanceService {
    */
   async getAttendanceHistory(orgId, query = {}) {
     const filter = {};
-    if (query.technicianId) filter.technicianId = query.technicianId;
-    if (query.status) filter.status = query.status;
-    if (query.gateId) filter.gateId = query.gateId;
-    if (query.startDate) filter.startDate = query.startDate;
-    if (query.endDate) filter.endDate = query.endDate;
-    if (query.department) filter.department = query.department;
-    if (query.type) filter.type = query.type;
-    if (query.search) filter.search = query.search;
+    // Query-string objects (?status[$ne]=x) must never reach Mongo as operators.
+    const text = (value) => (typeof value === 'string' && value ? value : undefined);
+    const set = (key, value) => { if (text(value)) filter[key] = value; };
+    set('technicianId', query.technicianId);
+    set('status', query.status);
+    set('gateId', query.gateId);
+    set('startDate', query.startDate);
+    set('endDate', query.endDate);
+    set('department', query.department);
+    set('type', query.type);
+    set('search', query.search);
 
     const pagination = {
       page: query.page || 1,

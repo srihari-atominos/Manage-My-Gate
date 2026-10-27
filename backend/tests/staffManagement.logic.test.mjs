@@ -529,3 +529,43 @@ test('exports and labels show the typed trade for Others', () => {
   assert.equal(departmentLabel({ department: 'Others' }), 'Others');
   assert.equal(departmentLabel({ department: 'Plumbing', departmentOther: 'stale' }), 'Plumbing');
 });
+
+test('role sync on an existing staff member keeps their department, type, designation and deactivated status', async () => {
+  let updateData = null;
+  const restore = stub(technicianRepo, {
+    findAnyByContactOrUserId: async () => ({ _id: TECH, userId: 'u1', isDeleted: false, status: 'Inactive', department: 'Plumbing', type: 'External Vendor', designation: 'Lead' }),
+    update: async (_id, _org, data) => { updateData = data; return { _id: TECH, ...data }; },
+  });
+  try {
+    await technicianService.syncOrUpsertTechnicianFromUser({ userId: 'u1', orgId: ORG, name: 'Ali', email: 'ali@example.com', phone: '+919876543210', status: 'Active', defaultDesignation: 'Plumber' });
+    assert.equal(updateData.status, 'Inactive');
+    assert.equal('department' in updateData, false);
+    assert.equal('type' in updateData, false);
+    assert.equal('designation' in updateData, false);
+  } finally { restore(); }
+});
+
+test('a new staff row created by a role sync still gets the default department, type and role-name designation', async () => {
+  let created = null;
+  const restore = stub(technicianRepo, {
+    findAnyByContactOrUserId: async () => null,
+    existsDeletedByUserIdOrContact: async () => false,
+    create: async (doc) => { created = doc; return { _id: TECH, ...doc }; },
+  });
+  try {
+    await technicianService.syncOrUpsertTechnicianFromUser({ userId: 'u1', orgId: ORG, name: 'Ali', email: 'ali@example.com', phone: '+919876543210', defaultDesignation: 'Plumber' });
+    assert.equal(created.department, 'Others');
+    assert.equal(created.type, 'In-House Staff');
+    assert.equal(created.designation, 'Plumber');
+  } finally { restore(); }
+});
+
+test('an expired pass is rejected for check-in but its signature still verifies for check-out', async () => {
+  const { signStaffQr, verifyStaffQrSignature, assertStaffQrWithinValidity } = await import('../src/utils/staffQr.utils.js');
+  const expired = { ...activeTech, qrValidUntil: new Date(Date.now() - HOUR) };
+  const signature = signStaffQr(ORG, expired);
+  assert.throws(() => verifyStaffQrSignature(ORG, expired, signature), (e) => e.statusCode === 403 || e.status === 403);
+  assert.equal(verifyStaffQrSignature(ORG, expired, signature, { allowOutsideValidity: true }), true);
+  assert.throws(() => assertStaffQrWithinValidity(expired), (e) => e.statusCode === 403 || e.status === 403);
+  assert.throws(() => verifyStaffQrSignature(ORG, expired, 'deadbeefdeadbeef', { allowOutsideValidity: true }), (e) => e.statusCode === 401 || e.status === 401);
+});

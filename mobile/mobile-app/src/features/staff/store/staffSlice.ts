@@ -30,6 +30,7 @@ export interface StaffState {
   myProfile: StaffMember | null;
   isProfileLoading: boolean;
   profileError: string | null;
+  isProfileFetched: boolean;
   // Resident Staff Associations
   myUnits: AuthorizedUnit[];
   eligibleStaff: EligibleStaff[];
@@ -62,6 +63,7 @@ const initialState: StaffState = {
   myProfile: null,
   isProfileLoading: false,
   profileError: null,
+  isProfileFetched: false,
   myUnits: [],
   eligibleStaff: [],
   associations: [],
@@ -298,6 +300,7 @@ export const staffSlice = createSlice({
       state.myProfile = null;
       state.isProfileLoading = false;
       state.profileError = null;
+      state.isProfileFetched = false;
       state.myUnits = [];
       state.eligibleStaff = [];
       state.associations = [];
@@ -336,10 +339,12 @@ export const staffSlice = createSlice({
       })
       .addCase(fetchMyProfileThunk.fulfilled, (state, action) => {
         state.isProfileLoading = false;
+        state.isProfileFetched = true;
         state.myProfile = action.payload;
       })
       .addCase(fetchMyProfileThunk.rejected, (state, action) => {
         state.isProfileLoading = false;
+        state.isProfileFetched = true;
         state.profileError = visibleStaffError(action.payload);
       })
       // Create

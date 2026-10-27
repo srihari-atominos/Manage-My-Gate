@@ -37,7 +37,7 @@
   },
   {
     "feature": "billing",
-    "actions": ["assessments", "ledger", "my_invoices", "action_center", "view_expense", "create_expense", "record_expense_payment", "reconcile_expense_payment"]
+    "actions": ["dashboard", "billing_hub", "my_dues", "assessments", "assessment_manager", "ledger", "financial_ledger", "reconciliation_manage", "my_invoices", "action_center", "view_expense", "create_expense", "record_expense_payment", "reconcile_expense_payment", "pay_online_expense"]
   },
   {
     "feature": "workspaces",

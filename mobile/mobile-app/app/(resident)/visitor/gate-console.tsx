@@ -433,10 +433,56 @@ export default function GateConsoleScreen() {
         idempotencyKey: `${staffScan.key}-${action}`,
       });
       const name = res.technician?.name || staffScan.lookup.technician?.name || 'Staff member';
-      setScanResultSheetOpen(false);
-      setStaffScan(null);
-      setPassCode('');
-      setStatusMessage(`${name} ${action === 'ENTRY' ? 'checked in' : 'checked out'} successfully.`);
+
+      if (action === 'ENTRY') {
+        const checkedInAt = res.session?.checkInTime || new Date().toISOString();
+        const checkInGate = res.session?.checkInGate || t('default_gate_name', 'Main gate');
+        setStaffScan((current) =>
+          current
+            ? {
+                ...current,
+                lookup: {
+                  ...current.lookup,
+                  isInside: true,
+                  canCheckIn: false,
+                  canCheckOut: true,
+                  openSession: {
+                    _id: res.session?._id || current.lookup.openSession?._id || '',
+                    checkInTime: checkedInAt,
+                    checkInGate,
+                  },
+                },
+              }
+            : current,
+        );
+        setScanResult((current) =>
+          current
+            ? {
+                ...current,
+                status: 'PENDING',
+                statusLabel: 'INSIDE',
+                message: `${name} is checked in. Tap Check Out to record exit.`,
+                details: current.details?.map((detail) =>
+                  detail.label === 'Current Status'
+                    ? {
+                        ...detail,
+                        value: `Inside since ${new Date(checkedInAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })} via ${checkInGate}`,
+                      }
+                    : detail,
+                ),
+              }
+            : current,
+        );
+        setStatusMessage(`${name} checked in successfully.`);
+      } else {
+        setScanResultSheetOpen(false);
+        setStaffScan(null);
+        setPassCode('');
+        setStatusMessage(`${name} checked out successfully.`);
+      }
       await loadData();
     } catch (err: any) {
       setScanResultSheetOpen(false);

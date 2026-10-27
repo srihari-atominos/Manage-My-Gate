@@ -63,12 +63,20 @@ export const outstandingOf = (invoice) => round2(invoice.outstandingAmount ?? in
 
 /**
  * Link state for an invoice right now.
- * @returns {Promise<{ state: 'ACTIVE'|'PAID'|'CANCELLED'|'VERIFICATION_PENDING'|'NOT_FOUND', url?: string, invoice?: object }>}
+ * @returns {Promise<{ state: 'ACTIVE'|'PAID'|'CANCELLED'|'VERIFICATION_PENDING'|'CARRIED_FORWARD'|'NOT_FOUND', url?: string, invoice?: object }>}
  */
 export async function ensureFreshPaymentLink(invoiceId) {
   const invoice = await Invoice.findById(invoiceId);
   if (!invoice) return { state: 'NOT_FOUND' };
   if (invoice.status === 'CANCELLED') return { state: 'CANCELLED', invoice };
+
+  if (await Invoice.exists({
+    'carryForwardHistory.invoiceId': invoice._id,
+    status: { $ne: 'CANCELLED' },
+    isDeleted: { $ne: true },
+  })) {
+    return { state: 'CARRIED_FORWARD', invoice };
+  }
 
   const outstanding = outstandingOf(invoice);
   if (invoice.status === 'PAID' || outstanding <= 0) return { state: 'PAID', invoice };
