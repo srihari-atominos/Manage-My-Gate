@@ -24,6 +24,7 @@ import directoryMessagingReducer from '../features/directory/store/directoryMess
 import communityEngagementReducer from '../features/communityEngagement/store/communityEngagementSlice';
 import issueReportReducer from '../features/issueReport/store/issueReportSlice';
 import appUpdateReducer from '../features/appUpdate/store/appUpdateSlice';
+import communityFinanceReducer from '../features/communityFinance/store/communityFinanceSlice';
 
 import { injectStore, cancelInFlightRequests } from '../services/apiClient';
 import { isConnectivityErrorMessage } from '../services/networkStatus';
@@ -80,6 +81,7 @@ const appReducer = combineReducers({
   communityEngagement: communityEngagementReducer,
   issueReport: issueReportReducer,
   appUpdate: appUpdateReducer,
+  communityFinance: communityFinanceReducer,
   visitor: visitorReducer,
   staff: staffReducer,
   automation: automationReducer,

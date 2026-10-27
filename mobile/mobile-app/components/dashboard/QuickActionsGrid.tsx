@@ -40,12 +40,16 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     }
 
     const defaultIds = getDefaultQuickActionsForUser(user);
-    const candidateIds = activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : defaultIds;
+    const candidateIds =
+      activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : defaultIds;
 
     // 2. Filter candidate IDs strictly to permitted features only
     const allowedItems = candidateIds
       .map((id) => ALL_AVAILABLE_FEATURES.find((item) => item.id === id))
-      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item) && isFeatureAllowedForUser(item!, user));
+      .filter(
+        (item): item is (typeof ALL_AVAILABLE_FEATURES)[0] =>
+          Boolean(item) && isFeatureAllowedForUser(item!, user)
+      );
 
     if (allowedItems.length > 0) {
       return allowedItems.slice(0, 7);
@@ -54,34 +58,33 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     // 3. Fallback strictly to default permitted items for this persona
     return defaultIds
       .map((id) => ALL_AVAILABLE_FEATURES.find((item) => item.id === id))
-      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item) && isFeatureAllowedForUser(item!, user))
+      .filter(
+        (item): item is (typeof ALL_AVAILABLE_FEATURES)[0] =>
+          Boolean(item) && isFeatureAllowedForUser(item!, user)
+      )
       .slice(0, 7);
   }, [propEquippedFeatures, activeFeatureIds, user, language]);
 
   return (
-    <View className="gap-5 my-3">
+    <View className="my-3 gap-5">
       {/* Section Header with Customise Button */}
       <View className="flex-row items-center justify-between px-1">
         <Text
           style={{ fontFamily: 'HankenGrotesk_700Bold' }}
-          className="text-[20px] font-bold text-foreground tracking-tight"
-        >
+          className="font-bold text-lg phone-md:text-xl tracking-tight text-foreground">
           {t('quick_actions', 'Quick Actions')}
         </Text>
 
         <TouchableOpacity
           onPress={onOpenCustomise}
           activeOpacity={0.75}
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(31, 41, 55, 0.12)',
-          }}
-          className="flex-row min-h-11 items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs"
+          className="shadow-2xs min-h-11 flex-row items-center gap-1.5 rounded-full border border-border/80 bg-card px-3.5 py-1.5"
           accessibilityRole="button"
-          accessibilityLabel={t('customise', 'Customise')}
-        >
-          <SlidersHorizontal size={14} color="#111827" strokeWidth={2.6} />
-          <Text className="text-[13px] font-extrabold text-black">{t('customise', 'Customise')}</Text>
+          accessibilityLabel={t('customise', 'Customise')}>
+          <SlidersHorizontal size={14} color={isDark ? '#E5E7EB' : '#111827'} strokeWidth={2.4} />
+          <Text className="font-extrabold text-[13px] text-foreground">
+            {t('customise', 'Customise')}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -95,7 +98,9 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
             <ActionTile
               key={tile.id}
               containerClassName="w-[23.5%]"
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={30} strokeWidth={2.0} />}
+              icon={
+                <FeatureIcon iconName={iconName} color={colorIcon} size={26} strokeWidth={2.0} />
+              }
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
@@ -103,7 +108,6 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
             />
           );
         })}
-
       </View>
     </View>
   );

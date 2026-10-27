@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, ScrollView, RefreshControl, Share, TouchableOpacity, Image as RNImage, Modal, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -120,6 +121,7 @@ const isImageProof = (url?: string | null) => {
 
 export function InvoiceDetailsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ id: string }>();
   const invoiceId = params?.id || '';
@@ -349,6 +351,7 @@ export function InvoiceDetailsScreen() {
       title={`Invoice #${invNo}`}
       subtitle={`${unitStr} • ${periodStr}`}
       iconName="Receipt"
+      hideBottomNav={true}
       headerRight={
         invoice ? (
           <View className="flex-row items-center gap-1.5">
@@ -357,25 +360,12 @@ export function InvoiceDetailsScreen() {
               size="sm"
               leftIcon={QrCode}
               onPress={() => setShowQR(true)}
-              className="border-border bg-card px-2.5 h-8"
+              className="border-border bg-card px-2.5 h-8 shrink-0 shadow-2xs"
               textClassName="text-xs font-bold text-primary"
               accessibilityRole="button"
               accessibilityLabel="Show Invoice QR Pass"
             >
-              QR
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={isExporting ? FileText : Download}
-              onPress={() => handleExportPdf('download')}
-              disabled={isExporting}
-              className="border-border bg-card px-2.5 h-8"
-              textClassName="text-xs font-bold text-foreground"
-              accessibilityRole="button"
-              accessibilityLabel="Export or Download PDF Invoice"
-            >
-              {isExporting ? 'Exporting...' : 'PDF'}
+              QR Pass
             </Button>
           </View>
         ) : null
@@ -396,8 +386,10 @@ export function InvoiceDetailsScreen() {
         ) : (
           <ScrollView
             className="flex-1 px-4 pt-2"
-            contentContainerClassName="gap-4 pb-28"
-            contentContainerStyle={{ paddingBottom: 120 }}
+            contentContainerClassName="gap-4"
+            contentContainerStyle={{
+              paddingBottom: !isPaid && !isCancelled && !isPendingVerification && remainingDue > 0 ? 96 + Math.max(insets.bottom, 16) : 40,
+            }}
             refreshControl={
               <RefreshControl
                 refreshing={loadingStates.fetchDues || fallbackLoading}
@@ -406,17 +398,17 @@ export function InvoiceDetailsScreen() {
             }
           >
             {/* Hero Invoice Summary Card using canonical Card */}
-            <Card className="p-5 shadow-sm mb-0">
+            <Card className="p-4 sm:p-5 shadow-sm mb-0">
               <View className="flex-row items-center justify-between mb-4">
-                <View className="flex-row items-center flex-1 me-2">
-                  <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-3">
+                <View className="flex-row items-center flex-1 me-2 min-w-0">
+                  <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-3 shrink-0">
                     <Icon as={Receipt} size={20} className="text-primary" />
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-foreground font-bold text-base truncate">
+                  <View className="flex-1 min-w-0">
+                    <Text className="text-foreground font-bold text-base truncate" numberOfLines={1}>
                       {snapshot.assessmentName || (invoice as any)?.assessmentName || 'Maintenance Assessment'}
                     </Text>
-                    <Text className="text-muted-foreground text-xs">{unitStr} • {periodStr}</Text>
+                    <Text className="text-muted-foreground text-xs truncate" numberOfLines={1}>{unitStr} • {periodStr}</Text>
                   </View>
                 </View>
 
@@ -431,14 +423,14 @@ export function InvoiceDetailsScreen() {
                 <Text className="text-3xl font-extrabold text-foreground tracking-tight">
                   ₹{(isPaid ? totalDue : remainingDue).toLocaleString('en-IN')}
                 </Text>
-                <View className="flex-row items-center justify-between mt-3 pt-2 border-t border-border/40">
-                  <View className="flex-row items-center">
-                    <Icon as={Calendar} size={12} className="text-muted-foreground me-1" />
-                    <Text className="text-xs text-muted-foreground">Due: {dueDateStr}</Text>
+                <View className="flex-row items-center justify-between flex-wrap gap-2 mt-3 pt-2.5 border-t border-border/40">
+                  <View className="flex-row items-center min-w-0">
+                    <Icon as={Calendar} size={13} className="text-muted-foreground me-1.5 shrink-0" />
+                    <Text className="text-xs text-muted-foreground font-medium">Due: {dueDateStr}</Text>
                   </View>
-                  <View className="flex-row items-center">
-                    <Icon as={Clock} size={12} className="text-muted-foreground me-1" />
-                    <Text className="text-xs text-muted-foreground">Billed: {invoiceDateStr}</Text>
+                  <View className="flex-row items-center min-w-0">
+                    <Icon as={Clock} size={13} className="text-muted-foreground me-1.5 shrink-0" />
+                    <Text className="text-xs text-muted-foreground font-medium">Billed: {invoiceDateStr}</Text>
                   </View>
                 </View>
               </View>
@@ -459,27 +451,29 @@ export function InvoiceDetailsScreen() {
                 </View>
               ) : null}
 
-              {/* Action Buttons: View PDF & Download PDF */}
-              <View className="flex-row items-center gap-2 pt-1 border-t border-border/40">
+              {/* Action Buttons: Share & Download PDF */}
+              <View className="flex-row items-center gap-2.5 pt-3 border-t border-border/40">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="default"
                   leftIcon={Share2}
                   onPress={() => handleExportPdf('print')}
-                  className="flex-1"
+                  className="flex-1 h-10 border-border bg-card px-2 min-w-0"
                   textClassName="text-xs font-semibold text-foreground"
                   accessibilityLabel="Share Statement"
                 >
-                  Share Statement
+                  Share
                 </Button>
                 <Button
                   variant="default"
-                  size="sm"
-                  leftIcon={Download}
+                  size="default"
+                  leftIcon={isExporting ? FileText : Download}
                   onPress={() => handleExportPdf('download')}
-                  className="flex-1"
+                  disabled={isExporting}
+                  loading={isExporting}
+                  className="flex-1 h-10 px-2 min-w-0 shadow-2xs"
                   textClassName="text-xs font-semibold text-primary-foreground"
-                  accessibilityLabel="Download PDF Statement"
+                  accessibilityLabel="Download PDF Invoice"
                 >
                   Download PDF
                 </Button>
@@ -669,11 +663,14 @@ export function InvoiceDetailsScreen() {
 
         {/* Sticky Bottom Payment Action Bar */}
         {!isPaid && !isCancelled && !isPendingVerification && remainingDue > 0 && !['Community Admin', 'Super Admin', 'Platform Super Admin', 'Finance Admin'].includes((user as any)?.role) ? (
-          <View className="absolute bottom-0 left-0 right-0 bg-card/95 border-t border-border p-4 shadow-lg">
+          <View
+            className="absolute bottom-0 left-0 right-0 bg-card/95 border-t border-border px-4 pt-3 shadow-lg"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+          >
             <Button
               variant="default"
               size="lg"
-              className="w-full"
+              className="w-full h-12 shadow-md"
               rightIcon={ChevronRight}
               onPress={() => setShowCheckout(true)}
               accessibilityRole="button"

@@ -166,6 +166,19 @@ app.use('/api/v1', apiRouter);
 // Mount Amenity Management Subsystem v2 API (supports both aliases)
 app.use(['/api/v2/amenity-management', '/api/v2/amenities'], amenityManagementRouter);
 
+// Public fallback route for invoice deep links when testing against backend server directly
+app.use('/billing', (req, res, next) => {
+  if (req.path.startsWith('/invoice/')) {
+    const invoiceId = req.path.split('/invoice/')[1]?.split('?')[0];
+    const token = req.query.t;
+    const redirectUrl = token
+      ? `/api/billing-links/invoice/${encodeURIComponent(invoiceId)}?t=${encodeURIComponent(token)}`
+      : `/api/billing-links/invoice/${encodeURIComponent(invoiceId)}`;
+    return res.redirect(redirectUrl);
+  }
+  next();
+});
+
 // Health check routes
 app.get(['/health', '/api/health'], (req, res) => {
   res.status(200).json({

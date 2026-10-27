@@ -30,6 +30,7 @@ jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock');
   return {
     ...Reanimated,
+    useReducedMotion: () => false,
     useAnimatedStyle: (fn: any) => (typeof fn === 'function' ? fn() : {}),
     useSharedValue: (val: any) => ({ value: val }),
     withTiming: (val: any) => val,

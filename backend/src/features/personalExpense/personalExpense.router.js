@@ -18,6 +18,7 @@ router.put('/budgets', validate(budgetRules), controller.saveBudget);
 router.delete('/budgets', validate(periodQueryRules), controller.removeBudget);
 router.get('/transactions', validate(listRules), controller.list);
 router.post('/transactions', validate(createTransactionRules), controller.create);
+router.post('/receipts/preview', receiptUpload.single('receipt'), receiptSignatureValidator, controller.previewReceipt);
 router.post('/transactions/:id/receipt', validate(idRules), receiptUpload.single('receipt'), receiptSignatureValidator, controller.uploadReceipt);
 router.post('/transactions/:id/receipt/ocr', validate(idRules), controller.retryReceipt);
 router.patch('/transactions/:id/receipt', validate(receiptReviewRules), controller.updateReceipt);

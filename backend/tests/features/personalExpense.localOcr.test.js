@@ -23,7 +23,8 @@ test('local receipt parser prefers an explicitly labelled final total', () => {
   assert.equal(result.totalMinor, 13650);
   assert.equal(result.items.length, 2);
   assert.equal(result.items[0].quantity, 2);
-  assert.equal(result.items[0].amountMinor, 5000);
+  assert.equal(result.items[0].unitPriceMinor, 5000);
+  assert.equal(result.items[0].amountMinor, 10000);
 });
 
 test('ambiguous day/month dates are left for manual review', () => {
@@ -131,7 +132,7 @@ test('PDFs are stored but never sent to the local image OCR engine', () => {
 });
 
 test('local OCR configuration has no Google or cloud dependency', () => {
-  const result = tesseractConfiguration({ PERSONAL_EXPENSE_OCR_PROVIDER: 'tesseract-local', PERSONAL_EXPENSE_OCR_LANGUAGES: 'eng+tam' });
+  const result = tesseractConfiguration({ PERSONAL_EXPENSE_OCR_PROVIDER: 'tesseract-local', PERSONAL_EXPENSE_OCR_LANGUAGES: 'eng+tam', TESSERACT_COMMAND: 'tesseract' });
   assert.equal(result.configured, true);
   assert.deepEqual(result.languages, ['eng', 'tam']);
   assert.equal(result.command, 'tesseract');
@@ -155,4 +156,52 @@ test('local OCR verifies its language data before capturing receipt text', async
   const result = await runTesseract({ path: 'receipt.jpg' }, config, fakeSpawn);
   assert.equal(result.status, 'COMPLETED');
   assert.match(result.text, /Grand Total/);
+});
+test('local OCR keeps recognised text when the optional TSV config is unavailable', async () => {
+  const fakeSpawn = (_command, args) => args.includes('--list-langs')
+    ? fakeProcess('List of available languages in "tessdata" (1):\neng\n')
+    : fakeProcess('English Store\nGrand Total 99.00', 0, "read_params_file: Can't open tsv");
+  const result = await runTesseract({ path: 'receipt.jpg' }, { ...config, withConfidence: true }, fakeSpawn);
+  assert.equal(result.status, 'COMPLETED');
+  assert.match(result.text, /Grand Total 99.00/);
+  assert.equal(result.confidence, null);
+});
+
+test('keeps a payment reference separate from an invoice or receipt number', () => {
+  const parsed = parseReceiptText(`Google Pay
+Paid to
+Apex Plumbing Supplies
+₹1,500
+Completed
+Oct 21, 2026
+UPI transaction ID: 429512345678`);
+
+  assert.equal(parsed.documentType, 'PAYMENT_CONFIRMATION');
+  assert.equal(parsed.receiptNumber, null);
+  assert.equal(parsed.invoiceNumber, null);
+  assert.equal(parsed.transactionId, '429512345678');
+  assert.equal(parsed.transactionReference, '429512345678');
+  assert.equal(parsed.suggestedExpenseName, 'Payment to Apex Plumbing Supplies');
+});
+
+test('classifies and extracts an English utility payment receipt without using account values as the receipt number', () => {
+  const parsed = parseReceiptText(`TANGEDCO PAYMENT PORTAL
+Payment Receipt
+Consumer No: 031200095434
+Receipt No: PGCICI708814179
+Date: 20/01/2025
+CC Charges 3719.00
+CC Deposit 824.00
+BPSC 32.75
+R Charges 130.00
+Rounding Off 0.25
+Total 4706.00`);
+
+  assert.equal(parsed.documentType, 'UTILITY_BILL');
+  assert.equal(parsed.merchant, 'TANGEDCO PAYMENT PORTAL');
+  assert.equal(parsed.receiptNumber, 'PGCICI708814179');
+  assert.equal(parsed.transactionId, null);
+  assert.equal(parsed.receiptDate, '2025-01-20');
+  assert.equal(parsed.totalMinor, 470600);
+  assert.equal(parsed.suggestedExpenseName, 'Utility Bill - TANGEDCO PAYMENT PORTAL');
 });

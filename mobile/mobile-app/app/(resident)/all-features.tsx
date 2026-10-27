@@ -52,7 +52,7 @@ export default function AllFeaturesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ category?: string }>();
-  const { t, tCategoryName, tFeatureName, tFeatureSubtitle, translateText, language } = useTranslation();
+  const { t, tCategoryName, tFeatureName, tFeatureSubtitle, translateText } = useTranslation();
   const { scrollHandlerProps } = useBottomNavScroll();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -286,24 +286,19 @@ export default function AllFeaturesScreen() {
                       className="px-0 py-1"
                     />
 
-                    <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3.5">
+                    <View className="flex-row flex-wrap justify-start gap-x-[2.6%] gap-y-3">
                       {displayedItems.map((item) => {
                         const meta = FEATURES_BY_ID.get(item.id);
                         const iconName = meta?.iconName || item.iconName;
                         const colorIcon = meta?.colorIcon || item.colorIcon || '#245FA8';
-                        const badge = meta?.badge || item.badge;
-                        const badgeColor = meta?.badgeColor || item.badgeColor;
-
                         return (
                           <ActionTile
                             key={item.id}
-                            containerClassName="w-[23%]"
+                            containerClassName="w-[31.6%]"
                             icon={<FeatureIcon iconName={iconName} color={colorIcon} size={25} strokeWidth={1.9} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
-                            badge={badge}
-                            badgeColor={badgeColor}
                             onPress={() => handleTileClick(item.id)}
                           />
                         );

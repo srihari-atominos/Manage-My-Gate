@@ -7,6 +7,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -41,6 +42,10 @@ import {
   buildGenericUpiUri,
   launchUpi,
 } from '../services/upiService';
+import {
+  getReceiptOcrAmount,
+  getReceiptOcrTransactionReference,
+} from '../utils/receiptOcrMapping';
 import ReceiptCameraCaptureModal, { ReceiptCaptureFile } from '../components/ReceiptCameraCaptureModal';
 
 type Page = 'details' | 'receipt';
@@ -76,7 +81,9 @@ interface ExtractedItem {
 
 export default function PayOnlineExpenseScreen() {
   const router = useRouter();
+  const { width: viewportWidth } = useWindowDimensions();
   const [page, setPage] = useState<Page>('details');
+  const shouldStackReceiptActions = viewportWidth < 430;
 
   // Page 1: Intake (Name & Type only)
   const [form, setForm] = useState({
@@ -97,6 +104,7 @@ export default function PayOnlineExpenseScreen() {
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [payee, setPayee] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'BANK_TRANSFER'>('UPI');
   const [detectedApp, setDetectedApp] = useState<string | null>(null);
   const [items, setItems] = useState<ExtractedItem[]>([]);
   const [ocrDescription, setOcrDescription] = useState('');
@@ -187,13 +195,10 @@ export default function PayOnlineExpenseScreen() {
       const data = response.result;
       const extracted: string[] = [];
 
-      // Extract Accurate Total Amount from OCR
-      if (data.totalAmount != null) {
-        const parsedAmount = Number(data.totalAmount).toFixed(2);
-        setAmount(parsedAmount);
-        extracted.push(`Amount: ${rupee}${parsedAmount}`);
-      } else if (data.totalMinor != null) {
-        const parsedAmount = (data.totalMinor / 100).toFixed(2);
+      // Prefer the canonical minor-unit total and never treat OCR zero as a paid amount.
+      const ocrAmount = getReceiptOcrAmount(data);
+      if (ocrAmount) {
+        const parsedAmount = ocrAmount;
         setAmount(parsedAmount);
         extracted.push(`Amount: ${rupee}${parsedAmount}`);
       }
@@ -204,10 +209,11 @@ export default function PayOnlineExpenseScreen() {
         extracted.push(`Invoice: ${data.receiptNumber}`);
       }
 
-      // Extract Transaction Reference / UTR from OCR
-      if (data.transactionReference) {
-        setReference(data.transactionReference);
-        extracted.push(`UTR: ${data.transactionReference}`);
+      // OCR providers use different explicit names for the same transaction ID.
+      const transactionReference = getReceiptOcrTransactionReference(data);
+      if (transactionReference) {
+        setReference(transactionReference);
+        extracted.push(`UTR: ${transactionReference}`);
       }
 
       // Extract Date from OCR
@@ -234,6 +240,12 @@ export default function PayOnlineExpenseScreen() {
       // If suggested name is available and current name is empty or placeholder
       if (data.suggestedExpenseName && (!form.name.trim() || form.name === 'Online Expense')) {
         setField('name', data.suggestedExpenseName);
+      }
+
+      if (data.paymentMethod === 'BANK_TRANSFER') {
+        setPaymentMethod('BANK_TRANSFER');
+      } else {
+        setPaymentMethod('UPI');
       }
 
       if (data.paymentApplication) {
@@ -325,8 +337,8 @@ export default function PayOnlineExpenseScreen() {
         initialPayment: {
           idempotencyKey: operationId.current + ':PAYMENT',
           amount: finalAmount,
-          paymentMethod: 'UPI',
-          paymentApplication: detectedApp || 'NOT_SPECIFIED',
+          paymentMethod: paymentMethod,
+          paymentApplication: detectedApp || (paymentMethod === 'BANK_TRANSFER' ? 'NETBANKING' : 'NOT_SPECIFIED'),
           fundingSource: 'COMMUNITY_BANK_ACCOUNT',
           paymentDate: isoDate,
           transactionReference: reference.trim() || undefined,
@@ -367,20 +379,38 @@ export default function PayOnlineExpenseScreen() {
         else router.back();
       }}
     >
+      {/* 2-Step Flow Indicator */}
+      <View className="px-4 py-2.5 bg-card/90 border-b border-border shadow-2xs">
+        <View className="flex-row items-center gap-2 mb-1.5">
+          <View className="h-1.5 flex-1 rounded-full bg-primary" />
+          <View className={`h-1.5 flex-1 rounded-full ${page === 'receipt' ? 'bg-primary' : 'bg-muted'}`} />
+        </View>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-xs font-bold text-foreground">
+            {page === 'details' ? '1. Expense Details' : '2. Receipt Proof & Confirm'}
+          </Text>
+          <Text className="text-[11px] font-medium text-muted-foreground">
+            Step {page === 'details' ? '1' : '2'} of 2
+          </Text>
+        </View>
+      </View>
+
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           className="flex-1"
-          contentContainerClassName="gap-4 px-4 pb-28 pt-2"
+          contentContainerClassName="gap-4 px-4 pb-32 pt-3"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* PAGE 1: Details (Expense Name & Type only) */}
           {page === 'details' && (
             <>
-              <View className="gap-3.5 rounded-2xl border border-border bg-card p-4">
-                <View className="flex-row items-center gap-2">
-                  <CreditCard size={18} className="text-primary" />
-                  <Text className="text-base font-bold text-foreground">Expense Details</Text>
+              <View className="gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-2xs">
+                <View className="flex-row items-center gap-2 border-b border-border/60 pb-2.5">
+                  <View className="h-7 w-7 rounded-lg bg-primary/10 items-center justify-center">
+                    <CreditCard size={15} className="text-primary" />
+                  </View>
+                  <Text className="text-sm font-bold text-foreground">Expense Details</Text>
                 </View>
 
                 <TextInput
@@ -427,25 +457,46 @@ export default function PayOnlineExpenseScreen() {
           {/* PAGE 2: Receipt & Confirm (Live Camera Capture & Image Upload with OCR Auto-Extraction) */}
           {page === 'receipt' && (
             <>
-              {/* Summary Card with editable Expense Name */}
-              <View className="gap-2.5 rounded-2xl border border-border bg-card p-4">
-                <Text className="text-xs text-muted-foreground">Paying For</Text>
+              {/* Summary Card with Expense Name & Category */}
+              <View className="gap-3 rounded-2xl border border-border bg-card p-4 shadow-2xs">
+                <View className="flex-row items-center justify-between pb-2.5 border-b border-border/60">
+                  <View className="flex-row items-center gap-2 flex-1 min-w-0">
+                    <View className="h-7 w-7 rounded-lg bg-primary/10 items-center justify-center">
+                      <CreditCard size={15} className="text-primary" />
+                    </View>
+                    <Text className="text-sm font-bold text-foreground">Expense Details</Text>
+                  </View>
+                  <View className="rounded-full bg-primary/10 px-2.5 py-0.5 shrink-0">
+                    <Text className="text-[11px] font-bold text-primary">
+                      {categoryMap[form.expenseType] || 'Other'}
+                    </Text>
+                  </View>
+                </View>
+
                 <TextInput
+                  label="Paying For"
                   value={form.name}
                   placeholder="Expense name"
                   onChangeText={(v) => setField('name', v)}
                 />
-                <Text className="text-xs text-muted-foreground">{categoryMap[form.expenseType] || 'Other'}</Text>
               </View>
 
               {/* Receipt Upload & Live Photo Capture Card */}
-              <View className="gap-3.5 rounded-2xl border border-border bg-card p-4">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <Scan size={18} className="text-primary" />
-                    <Text className="text-base font-bold text-foreground">Payment Proof / Receipt</Text>
+              <View className="gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-2xs">
+                <View className="flex-row items-center justify-between pb-2.5 border-b border-border/60">
+                  <View className="flex-row items-center gap-2 flex-1 min-w-0">
+                    <View className="h-7 w-7 rounded-lg bg-primary/10 items-center justify-center">
+                      <Scan size={15} className="text-primary" />
+                    </View>
+                    <Text
+                      className="flex-1 min-w-0 text-sm font-bold text-foreground"
+                      numberOfLines={1}
+                      minimumFontScale={0.8}
+                    >
+                      Payment Proof / Receipt
+                    </Text>
                   </View>
-                  <View className="flex-row items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5">
+                  <View className="flex-row items-center gap-1 rounded bg-primary/10 px-2 py-0.5 shrink-0">
                     <Sparkles size={11} className="text-primary" />
                     <Text className="text-[10px] font-bold text-primary">OCR AUTO-EXTRACT</Text>
                   </View>
@@ -481,17 +532,23 @@ export default function PayOnlineExpenseScreen() {
 
                     {/* Change options */}
                     <View className="flex-row gap-2 pt-1 border-t border-border">
-                      <Button variant="outline" onPress={handlePickDocument} className="flex-1 py-2">
-                        <View className="flex-row items-center justify-center gap-1.5">
-                          <UploadCloud size={14} className="text-foreground" />
-                          <Text className="text-xs font-semibold">Change File</Text>
-                        </View>
+                      <Button
+                        variant="outline"
+                        leftIcon={UploadCloud}
+                        onPress={handlePickDocument}
+                        className="flex-1 py-2"
+                        textClassName="text-xs font-semibold"
+                      >
+                        Change File
                       </Button>
-                      <Button variant="outline" onPress={() => setCameraVisible(true)} className="flex-1 py-2">
-                        <View className="flex-row items-center justify-center gap-1.5">
-                          <Camera size={14} className="text-foreground" />
-                          <Text className="text-xs font-semibold">Take New Photo</Text>
-                        </View>
+                      <Button
+                        variant="outline"
+                        leftIcon={Camera}
+                        onPress={() => setCameraVisible(true)}
+                        className="flex-1 py-2"
+                        textClassName="text-xs font-semibold"
+                      >
+                        Take New Photo
                       </Button>
                     </View>
                   </View>
@@ -501,19 +558,25 @@ export default function PayOnlineExpenseScreen() {
                       Capture a live photo of your receipt/payment screen or upload a screenshot to auto-fill the transaction details:
                     </Text>
 
-                    <View className="flex-row gap-2.5">
-                      <Button variant="outline" onPress={handlePickDocument} className="flex-1 border-primary/30 bg-primary/5 py-3">
-                        <View className="flex-row items-center justify-center gap-2">
-                          <UploadCloud size={16} className="text-primary" />
-                          <Text className="text-xs font-bold text-primary">Upload Receipt</Text>
-                        </View>
+                    <View className={shouldStackReceiptActions ? 'flex-col gap-2.5' : 'flex-row gap-2.5'}>
+                      <Button
+                        variant="outline"
+                        leftIcon={UploadCloud}
+                        onPress={handlePickDocument}
+                        className={`${shouldStackReceiptActions ? 'w-full' : 'flex-1'} border-primary/30 bg-primary/5 py-3`}
+                        textClassName="text-xs font-bold text-primary"
+                      >
+                        Upload Receipt
                       </Button>
 
-                      <Button variant="outline" onPress={() => setCameraVisible(true)} className="flex-1 border-primary/30 bg-primary/5 py-3">
-                        <View className="flex-row items-center justify-center gap-2">
-                          <Camera size={16} className="text-primary" />
-                          <Text className="text-xs font-bold text-primary">Capture Live Photo</Text>
-                        </View>
+                      <Button
+                        variant="outline"
+                        leftIcon={Camera}
+                        onPress={() => setCameraVisible(true)}
+                        className={`${shouldStackReceiptActions ? 'w-full' : 'flex-1'} border-primary/30 bg-primary/5 py-3`}
+                        textClassName="text-xs font-bold text-primary"
+                      >
+                        Take Live Photo
                       </Button>
                     </View>
                   </View>
@@ -572,14 +635,41 @@ export default function PayOnlineExpenseScreen() {
                 <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />
               )}
 
-              <View className="gap-3.5 rounded-2xl border border-border bg-card p-4">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-base font-bold text-foreground">Extracted Details</Text>
-                  <View className="flex-row items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5">
-                    <Check size={12} className="text-emerald-700 dark:text-emerald-300" />
-                    <Text className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Status: PAID</Text>
+              <View className="gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-2xs">
+                <View className="flex-row items-center justify-between pb-2.5 border-b border-border/60">
+                  <View className="flex-row items-center gap-2 flex-1 min-w-0">
+                    <View className="h-7 w-7 rounded-lg bg-primary/10 items-center justify-center">
+                      <FileText size={15} className="text-primary" />
+                    </View>
+                    <Text
+                      className="flex-1 min-w-0 text-sm font-bold text-foreground"
+                      numberOfLines={1}
+                      minimumFontScale={0.8}
+                    >
+                      Extracted Details
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-1.5 shrink-0">
+                    <View className="rounded-full bg-primary/10 px-2 py-0.5">
+                      <Text className="text-[10px] font-bold text-primary">
+                        {paymentMethod === 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI'}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5">
+                      <Check size={11} className="text-emerald-700 dark:text-emerald-300" />
+                      <Text className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">Status: PAID</Text>
+                    </View>
                   </View>
                 </View>
+
+                <TextInput
+                  label="Paid To / Payee"
+                  value={payee}
+                  placeholder="Merchant or beneficiary name"
+                  autoCapitalize="words"
+                  helperText={payee ? 'Beneficiary or vendor extracted from proof' : 'Auto-filled from screenshot or enter manually'}
+                  onChangeText={setPayee}
+                />
 
                 <TextInput
                   label="Amount Paid (₹)"
@@ -591,25 +681,6 @@ export default function PayOnlineExpenseScreen() {
                   onChangeText={setAmount}
                 />
 
-                <TextInput
-                  label="Invoice / Bill Number"
-                  value={invoiceNumber}
-                  placeholder="e.g. INV-001"
-                  autoCapitalize="characters"
-                  helperText="Extracted invoice number from receipt"
-                  onChangeText={setInvoiceNumber}
-                />
-
-                <TextInput
-                  label="UPI Transaction ID / UTR"
-                  value={reference}
-                  placeholder="12-digit UTR or reference"
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  helperText="Extracted from image / screenshot"
-                  onChangeText={setReference}
-                />
-
                 <DatePicker
                   label="Payment Date"
                   value={paymentDate}
@@ -617,11 +688,22 @@ export default function PayOnlineExpenseScreen() {
                 />
 
                 <TextInput
-                  label="Paid To / Payee"
-                  value={payee}
-                  placeholder="Merchant or recipient name"
-                  autoCapitalize="words"
-                  onChangeText={setPayee}
+                  label="Transaction Reference / UTR"
+                  value={reference}
+                  placeholder="12-digit UTR, IMPS ref, or UPI ID"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  helperText="Extracted from bank transfer advice or UPI screenshot"
+                  onChangeText={setReference}
+                />
+
+                <TextInput
+                  label="Invoice / Bill Number"
+                  value={invoiceNumber}
+                  placeholder="e.g. INV-001"
+                  autoCapitalize="characters"
+                  helperText="Extracted invoice number from receipt"
+                  onChangeText={setInvoiceNumber}
                 />
               </View>
 

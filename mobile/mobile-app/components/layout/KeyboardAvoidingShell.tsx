@@ -1,11 +1,11 @@
 import React from 'react';
 import {
   KeyboardAvoidingView,
+  Pressable,
   Platform,
   KeyboardAvoidingViewProps,
   ScrollViewProps,
   View,
-  TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
 import { cn } from '../../lib/utils';
@@ -67,11 +67,11 @@ export const KeyboardAvoidingShell = ({
           {children}
         </View>
       ) : (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <Pressable onPress={Keyboard.dismiss} accessible={false} className={cn('flex-1', contentContainerClassName)}>
           <View className={cn('flex-1', contentContainerClassName)}>
             {children}
           </View>
-        </TouchableWithoutFeedback>
+        </Pressable>
       )}
     </KeyboardAvoidingView>
   );

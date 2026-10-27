@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import CommunityNote from './communityNote.model.js';
 import OrgMembership from '../orgMembership/orgMembership.model.js';
 
@@ -117,13 +118,15 @@ export const communityNoteRepository = {
   },
 
   async deactivateById(noteId, userId, orgId = null, session = null) {
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      throw new Error('Organization context (orgId) is required');
+    }
     const options = session ? { session } : {};
-    const query = { _id: noteId, userId };
-    if (orgId) query.orgId = orgId;
+    const query = { _id: noteId, userId, orgId };
     return CommunityNote.findOneAndUpdate(
       query,
       { $set: { isActive: false } },
-      { new: true, ...options }
+      { returnDocument: 'after', ...options }
     );
   },
 };

@@ -82,6 +82,31 @@ describe('Expense foundation', () => {
     assert.equal(retry.confirmedPaidAmount, 1000); assert.equal(await FinancialLedgerEntry.countDocuments({ orgId, referenceType: 'ExpensePayment', referenceId: payment.payments[0]._id }), 1);
   });
 
+  it('supports mark as paid with autoReconcile: true to immediately record and reconcile disbursement', async () => {
+    const orgId = org(); const user = actor(orgId);
+    const expense = await expenseService.create({ idempotencyKey: user.idempotencyKey, name: 'Plumber Repair', expenseType: 'REPAIRS_MAINTENANCE', category: 'Plumbing', expenseDate: new Date(), subtotal: 1500 }, user);
+    assert.equal(expense.settlementStatus, 'UNPAID');
+    assert.equal(expense.confirmedPaidAmount, 0);
+
+    const paidResult = await expenseService.recordPayment(expense._id, {
+      idempotencyKey: 'direct-mark-paid',
+      amount: 1500,
+      paymentMethod: 'CASH',
+      fundingSource: 'PETTY_CASH',
+      paymentDate: new Date(),
+      autoReconcile: true,
+      reconciliationNote: 'Marked as paid in cash'
+    }, user);
+
+    assert.equal(paidResult.settlementStatus, 'PAID');
+    assert.equal(paidResult.outstandingAmount, 0);
+    assert.equal(paidResult.recordedPaidAmount, 1500);
+    assert.equal(paidResult.confirmedPaidAmount, 1500);
+    assert.equal(paidResult.payments[0].verificationStatus, 'RECONCILED');
+    assert.equal(paidResult.payments[0].reconciliationNote, 'Marked as paid in cash');
+    assert.equal(await FinancialLedgerEntry.countDocuments({ orgId, referenceType: 'ExpensePayment', referenceId: paidResult.payments[0]._id }), 1);
+  });
+
   it('protects attachment access by organization and serves stored files', async () => {
     const orgA = org(); const orgB = org(); const user = actor(orgA); const expense = await expenseService.create({ idempotencyKey: user.idempotencyKey, name: 'Invoice attachment', expenseType: 'PURCHASE', category: 'Office', expenseDate: new Date(), subtotal: 100 }, user);
     const filename = `expense-test-${new mongoose.Types.ObjectId()}.png`; const filePath = path.join(uploadDir, filename); await fs.writeFile(filePath, Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));

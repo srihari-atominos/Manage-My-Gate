@@ -8,7 +8,7 @@ const invoiceSchema = new mongoose.Schema(
       type: String,
       unique: true,
       required: [true, 'Invoice number is required'],
-      default: uuidv4,
+      default: () => `INV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
     },
     communityId: {
       type: mongoose.Schema.Types.ObjectId,

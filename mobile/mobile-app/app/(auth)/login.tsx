@@ -28,7 +28,6 @@ import {
   KeyboardAvoidingView,
   Image,
   Keyboard,
-  TouchableWithoutFeedback,
   AccessibilityInfo,
   Text as RNText,
 } from 'react-native';

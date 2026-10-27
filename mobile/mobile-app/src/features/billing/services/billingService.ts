@@ -58,12 +58,21 @@ export const billingService = {
    * @param billingPeriodString
    */
   async triggerManualBilling(assessmentId: string, billingPeriodString: string): Promise<any> {
-    const response: any = await apiClient.post('/invoices/trigger-manual', {
-      assessmentId,
-      billingPeriodString,
-    });
-    const body = response?.success !== undefined ? response : response?.data;
-    return body?.data || body;
+    try {
+      const response: any = await apiClient.post(`/assessments/${assessmentId}/run`, {
+        billingPeriodString,
+      });
+      const body = response?.success !== undefined ? response : response?.data;
+      return body?.data || body;
+    } catch (err) {
+      // Fallback to /invoices/trigger-manual
+      const response: any = await apiClient.post('/invoices/trigger-manual', {
+        assessmentId,
+        billingPeriodString,
+      });
+      const body = response?.success !== undefined ? response : response?.data;
+      return body?.data || body;
+    }
   },
 
   /**

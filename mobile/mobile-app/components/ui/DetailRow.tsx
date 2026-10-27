@@ -90,7 +90,7 @@ const DetailRow = React.forwardRef<View, DetailRowProps>(
         ) : null}
 
         {/* Label */}
-        <Text variant="muted" className="text-sm flex-1 mr-2" numberOfLines={1}>
+        <Text variant="muted" className="text-sm flex-1 me-2" numberOfLines={2}>
           {translateText(label)}
         </Text>
 

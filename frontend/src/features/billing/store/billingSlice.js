@@ -15,6 +15,23 @@ export const fetchAdminKPIs = createAsyncThunk(
   },
 )
 
+export const fetchCommunityFinanceDashboard = createAsyncThunk(
+  'billing/fetchCommunityFinanceDashboard',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await billingService.getCommunityFinanceDashboard(params)
+      const body = response?.success !== undefined ? response : response?.data
+      return body?.data || body
+    } catch (error) {
+      return rejectWithValue(
+        error?.response?.data?.message ||
+          error.message ||
+          'Unable to load community finance dashboard.',
+      )
+    }
+  },
+)
+
 export const fetchMyDues = createAsyncThunk(
   'billing/fetchMyDues',
   async (_, { rejectWithValue }) => {
@@ -389,6 +406,11 @@ const initialState = {
     triggerRun: false,
     settleInvoice: false,
   },
+  communityFinance: {
+    data: null,
+    loading: false,
+    error: null,
+  },
   error: null,
 }
 
@@ -564,6 +586,21 @@ export const billingSlice = createSlice({
       .addCase(verifyRazorpaySignature.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false
         state.error = action.payload
+      })
+
+      // fetchCommunityFinanceDashboard
+      .addCase(fetchCommunityFinanceDashboard.pending, (state) => {
+        state.communityFinance.loading = true
+        state.communityFinance.error = null
+      })
+      .addCase(fetchCommunityFinanceDashboard.fulfilled, (state, action) => {
+        state.communityFinance.loading = false
+        state.communityFinance.data = action.payload
+        state.communityFinance.error = null
+      })
+      .addCase(fetchCommunityFinanceDashboard.rejected, (state, action) => {
+        state.communityFinance.loading = false
+        state.communityFinance.error = action.payload
       })
   },
 })

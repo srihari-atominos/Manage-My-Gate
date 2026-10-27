@@ -77,6 +77,8 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
     return null;
   }
 
+  const displayTitle = period === 'ALL_TIME' ? 'Category Spending' : `${periodLabel} Spending`;
+
   return (
     <Card className="p-3.5 border border-border/80 shadow-xs mb-1">
       {/* Header Row: Whole card header is clickable */}
@@ -84,15 +86,15 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
         onPress={() => setExpanded(!expanded)}
         accessibilityRole="button"
         accessibilityLabel={expanded ? 'Collapse spending analysis' : 'Expand spending analysis'}
-        className="flex-row items-center justify-between"
+        className="flex-row items-center justify-between gap-2"
       >
         <View className="flex-row items-center gap-2.5 flex-1 min-w-0">
           <View className="size-8 rounded-xl bg-primary/10 items-center justify-center shrink-0">
             <PieChart size={17} className="text-primary" />
           </View>
           <View className="flex-1 min-w-0">
-            <Text className="text-xs font-bold text-foreground">
-              {periodLabel} Category Analysis
+            <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
+              {displayTitle}
             </Text>
             <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
               {topCategory && !expanded
@@ -102,7 +104,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
           </View>
         </View>
 
-        <View className="flex-row items-center gap-2 shrink-0">
+        <View className="flex-row items-center gap-1.5 shrink-0">
           {hasComparison && (
             <View
               className={`flex-row items-center gap-1 rounded-full px-2 py-0.5 ${
@@ -129,7 +131,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
                     : 'text-muted-foreground'
                 }`}
               >
-                {Math.abs(comparison.percentageChange || 0)}% vs {benchmarkLabel}
+                {Math.abs(comparison.percentageChange || 0)}%
               </Text>
             </View>
           )}

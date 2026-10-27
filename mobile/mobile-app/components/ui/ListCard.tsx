@@ -150,18 +150,18 @@ const ListCard = React.forwardRef<View, ListCardProps>(
 
         {/* Middle Details */}
         <View className="flex-1 shrink min-w-0 justify-center">
-          <Text variant="default" className={cn("font-bold text-[16px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={titleLines}>
+          <Text variant="default" className={cn("font-bold text-[16px] font-sans tracking-tight shrink", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={titleLines}>
             {translateText(title)}
           </Text>
           {subtitle ? (
-            <Text variant="muted" numberOfLines={subtitleLines} className={cn("mt-1 text-[13px] font-sans font-normal shrink truncate", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
+            <Text variant="muted" numberOfLines={subtitleLines} className={cn("mt-1 text-[13px] font-sans font-normal shrink", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
               {translateText(subtitle)}
             </Text>
           ) : null}
           {timestamp ? (
             <Text
               variant="muted"
-              className={cn("text-[11.5px] font-sans mt-0.5 shrink truncate", backgroundImage ? "text-white/60" : "text-muted-foreground/80")}
+              className={cn("text-[11.5px] font-sans mt-0.5 shrink", backgroundImage ? "text-white/60" : "text-muted-foreground/80")}
               numberOfLines={1}
             >
               {disableRelativeTime

@@ -79,7 +79,10 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
     setScopeType,
     handleScopeTypeChange,
     checkedRoles,
+    setCheckedRoles,
     handleToggleRole,
+    handleSelectAllRoles,
+    handleClearRoles,
     roles,
     roleNamesMap,
     selectedIds,
@@ -222,11 +225,23 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
     // Step 4 Validation
     if (currentStepIndex === 3) {
       if (checkedRoles.length === 0) {
-        setFormError('Please select at least one resident role to receive invoices.');
-        return;
+        if (roles.length > 0) {
+          // Auto-select available roles so user is not blocked
+          const allRoleIds = roles.map((r) => String(r._id || r.id));
+          setCheckedRoles(allRoleIds);
+        } else if (scopeType === 'SPECIFIC_USERS' && selectedIds.length > 0) {
+          // When specific users are explicitly targeted, proceed smoothly
+        } else {
+          setFormError('Please select at least one resident role to receive invoices.');
+          return;
+        }
       }
       if (['VILLA_BLOCK', 'SPECIFIC_UNITS', 'SPECIFIC_USERS'].includes(scopeType) && selectedIds.length === 0) {
-        setFormError('Please select at least one item from the target scope checklist.');
+        setFormError(
+          scopeType === 'SPECIFIC_USERS'
+            ? 'Please select at least one resident from the checklist.'
+            : 'Please select at least one item from the target scope checklist.'
+        );
         return;
       }
     }
@@ -400,6 +415,8 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
                 roles={roles}
                 checkedRoles={checkedRoles}
                 onToggleRole={handleToggleRole}
+                onSelectAllRoles={handleSelectAllRoles}
+                onClearRoles={handleClearRoles}
                 scopeRows={
                   scopeType === 'SPECIFIC_UNITS'
                     ? filteredUnits

@@ -152,8 +152,8 @@ export const CommunityFinanceDashboardScreen: React.FC = () => {
         <>
           <ScrollView
             className="flex-1 bg-background"
-            contentContainerClassName="px-4 pt-2 pb-6"
-            contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+            contentContainerClassName="px-5 pt-2"
+            contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Assessment from './assessment.model.js';
 
 export class AssessmentRepository {
@@ -17,7 +18,10 @@ export class AssessmentRepository {
    * @returns {Promise<import('mongoose').Document | null>}
    */
   async findById(id, communityId = null) {
-    const query = { _id: id }; if (communityId) query.communityId = communityId; return await Assessment.findOne(query);
+    if (!communityId || !mongoose.Types.ObjectId.isValid(communityId)) {
+      throw new Error('Community context (communityId) is required');
+    }
+    return await Assessment.findOne({ _id: id, communityId });
   }
 
   /**
@@ -57,7 +61,11 @@ export class AssessmentRepository {
    * @returns {Promise<import('mongoose').Document | null>}
    */
   async updateTemplate(id, updateData, session, communityId = null) {
-    const query = { _id: id }; if (communityId) query.communityId = communityId; return await Assessment.findOneAndUpdate(query, updateData, {
+    if (!communityId || !mongoose.Types.ObjectId.isValid(communityId)) {
+      throw new Error('Community context (communityId) is required');
+    }
+    const query = { _id: id, communityId };
+    return await Assessment.findOneAndUpdate(query, updateData, {
       returnDocument: 'after',
       runValidators: true,
       ...(session ? { session } : {}),
@@ -71,7 +79,11 @@ export class AssessmentRepository {
    * @returns {Promise<import('mongoose').Document | null>}
    */
   async delete(id, session, communityId = null) {
-    const query = { _id: id }; if (communityId) query.communityId = communityId; return await Assessment.findOneAndDelete(query, session ? { session } : undefined);
+    if (!communityId || !mongoose.Types.ObjectId.isValid(communityId)) {
+      throw new Error('Community context (communityId) is required');
+    }
+    const query = { _id: id, communityId };
+    return await Assessment.findOneAndDelete(query, session ? { session } : undefined);
   }
 }
 

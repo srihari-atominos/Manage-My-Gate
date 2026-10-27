@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { writeHeaderBand } from '../personalExpense/ocr/headerBand.js';
 
 const TARGET_WIDTH = 2000;
 const DARK_MEAN_LUMINANCE = 110;
@@ -34,6 +35,8 @@ export async function buildOcrVariants(filePath) {
   try {
     const meta = await sharp(filePath, { failOn: 'none' }).rotate().metadata();
     const currentWidth = meta.autoOrient?.width || meta.width || TARGET_WIDTH;
+    const currentHeight = meta.autoOrient?.height || meta.height || 0;
+    const isScreenshot = currentHeight >= currentWidth * 1.35;
     const targetWidth = Math.min(3000, Math.max(1800, currentWidth < 1800 ? TARGET_WIDTH : currentWidth));
 
     const base = () =>
@@ -43,8 +46,7 @@ export async function buildOcrVariants(filePath) {
         .grayscale()
         .resize({ width: targetWidth, withoutEnlargement: false })
         .normalize()
-        .median(1)
-        .sharpen();
+        .sharpen({ sigma: 1, m1: 1.2, m2: 0.5 });
 
     const { channels } = await base().stats();
     const dark = (channels[0]?.mean ?? 255) < DARK_MEAN_LUMINANCE;
@@ -54,10 +56,16 @@ export async function buildOcrVariants(filePath) {
     if (dark) pipeline = pipeline.negate();
     await pipeline.png().toFile(enhanced);
 
-    const binary = path.join(dir, 'binary.png');
-    let binaryPipeline = base();
-    if (dark) binaryPipeline = binaryPipeline.negate();
-    await binaryPipeline.threshold(150).png().toFile(binary);
+    const grayscaleClean = path.join(dir, 'clean-grayscale.png');
+    let cleanPipe = sharp(filePath, { failOn: 'none' })
+      .rotate()
+      .flatten({ background: '#ffffff' })
+      .grayscale();
+    if (!isScreenshot) {
+      cleanPipe = cleanPipe.resize({ width: targetWidth, withoutEnlargement: false }).sharpen();
+    }
+    if (dark) cleanPipe = cleanPipe.negate();
+    await cleanPipe.png().toFile(grayscaleClean);
 
     // Light documents often have a white-on-black band (e.g. a TOTAL bar) that Tesseract skips.
     let inverted = null;
@@ -67,10 +75,48 @@ export async function buildOcrVariants(filePath) {
       inverted = { label: 'inverted', path: invertedPath };
     }
 
+    const header = await writeHeaderBand(sharp, dark ? base().negate() : base(), dir);
+
+    // Shared screenshots often include a messaging-app viewer above and below the
+    // actual payment proof. A focused pass avoids those controls competing with
+    // the prominent amount and payee in the centre of a tall phone screenshot.
+    let contentCrop = null;
+    let paymentAmountCrop = null;
+    if (isScreenshot) {
+      const cropPath = path.join(dir, 'screen-content.png');
+      const cropTop = Math.round(currentHeight * 0.05);
+      const cropHeight = Math.round(currentHeight * 0.90);
+      let cropPipe = sharp(filePath, { failOn: 'none' })
+        .rotate()
+        .extract({ left: 0, top: cropTop, width: currentWidth, height: cropHeight })
+        .flatten({ background: '#ffffff' })
+        .grayscale()
+        .sharpen({ sigma: 0.5 });
+      if (dark) cropPipe = cropPipe.negate();
+      await cropPipe.png().toFile(cropPath);
+      contentCrop = { label: 'screen-content', path: cropPath };
+
+      const amountPath = path.join(dir, 'payment-amount.png');
+      const amountTop = Math.round(currentHeight * 0.22);
+      const amountHeight = Math.round(currentHeight * 0.35);
+      let amountPipe = sharp(filePath, { failOn: 'none' })
+        .rotate()
+        .extract({ left: 0, top: amountTop, width: currentWidth, height: amountHeight })
+        .flatten({ background: '#ffffff' })
+        .grayscale()
+        .sharpen({ sigma: 0.5 });
+      if (dark) amountPipe = amountPipe.negate();
+      await amountPipe.png().toFile(amountPath);
+      paymentAmountCrop = { label: 'payment-amount', path: amountPath };
+    }
+
     return {
+      header,
       variants: [
         { label: dark ? 'enhanced-inverted' : 'enhanced', path: enhanced },
-        { label: 'binary', path: binary },
+        { label: 'clean-grayscale', path: grayscaleClean },
+        ...(contentCrop ? [contentCrop] : []),
+        ...(paymentAmountCrop ? [paymentAmountCrop] : []),
       ],
       inverted,
       cleanup,

@@ -309,9 +309,10 @@ class TechnicianService {
   }
 
   generateStaffQrPayload(technician, orgId) {
-    const rawStaffCode = technician.staffCode || String(technician._id);
+    // ':' separates the barcode fields, so it must not appear inside the name or code or the scan would mis-split.
+    const rawStaffCode = (technician.staffCode || String(technician._id)).replace(/:/g, '-');
     const techId = String(technician._id);
-    const safeName = (technician.name || 'Staff').trim().replace(/\s+/g, '_');
+    const safeName = (technician.name || 'Staff').trim().replace(/:/g, ' ').replace(/\s+/g, '_');
 
     // Cryptographic signature using HMAC-SHA256 for tamper resistance (shared signer)
     const validUntilIso = technician.qrValidUntil ? new Date(technician.qrValidUntil).toISOString() : '';
@@ -586,12 +587,18 @@ class TechnicianService {
 
       summary.assignedComplaints += t.assignedComplaintsCount || 0;
       summary.completedToday += t.completedTodayCount || 0;
+      summary.totalResolved += t.resolvedCount || 0;
+      summary.totalSlaCompliant += t.slaCompliantCount || 0;
       
       // We estimate global SLA compliance by accumulating compliant and resolved
       // However, we didn't project the raw resolved count. Let's rely on technician level stats,
       // or just re-calculate from raw arrays if needed. Since we don't have global SLA here easily,
       // we'll approximate or calculate from complaint stats in the future.
     });
+
+    summary.slaCompliancePercent = summary.totalResolved > 0
+      ? Math.round((summary.totalSlaCompliant / summary.totalResolved) * 1000) / 10
+      : 0;
 
     return {
       technicians,

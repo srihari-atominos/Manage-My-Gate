@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, TouchableOpacity, Pressable, Animated, Easing } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
@@ -22,6 +22,115 @@ interface FinancialSummaryCardsProps {
   onViewOutflows?: () => void;
   onOpenSimulator?: () => void;
 }
+
+/**
+ * Card with a staggered 3D entrance (tilts up from the back) and a
+ * press-down tilt when tappable.
+ */
+const Card3D: React.FC<{
+  index: number;
+  className?: string;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+  children: React.ReactNode;
+}> = ({ index, className, onPress, accessibilityLabel, children }) => {
+  const enter = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 520,
+      delay: index * 110,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [enter, index]);
+
+  const animatePress = (to: number) =>
+    Animated.spring(press, { toValue: to, friction: 6, tension: 160, useNativeDriver: true }).start();
+
+  const style = {
+    opacity: enter,
+    transform: [
+      { perspective: 900 },
+      { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) },
+      { rotateX: enter.interpolate({ inputRange: [0, 1], outputRange: ['28deg', '0deg'] }) },
+      { rotateX: press.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '6deg'] }) },
+      { scale: press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.97] }) },
+    ],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 5,
+  };
+
+  const body = <View className={className}>{children}</View>;
+
+  return (
+    <Animated.View style={[style, onPress ? { flex: 1 } : null]}>
+      {onPress ? (
+        <Pressable
+          onPress={onPress}
+          onPressIn={() => animatePress(1)}
+          onPressOut={() => animatePress(0)}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}>
+          {body}
+        </Pressable>
+      ) : (
+        body
+      )}
+    </Animated.View>
+  );
+};
+
+const RUNWAY_MAX_MONTHS = 12;
+
+/** Extruded 3D progress bar that grows in; full bar = 12+ months of runway. */
+const RunwayBar: React.FC<{ months: number }> = ({ months }) => {
+  const grow = useRef(new Animated.Value(0)).current;
+  const pct = Math.max(0, Math.min(1, months / RUNWAY_MAX_MONTHS));
+  const barColor = months >= 6 ? '#10B981' : months >= 3 ? '#F59E0B' : '#F43F5E';
+  const edgeColor = months >= 6 ? '#047857' : months >= 3 ? '#B45309' : '#BE123C';
+  const topColor = months >= 6 ? '#6EE7B7' : months >= 3 ? '#FCD34D' : '#FDA4AF';
+
+  useEffect(() => {
+    grow.setValue(0);
+    Animated.timing(grow, {
+      toValue: pct,
+      duration: 900,
+      delay: 400,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [grow, pct]);
+
+  return (
+    <View>
+      <View className="h-3 rounded-full bg-border/50 overflow-hidden">
+        <Animated.View
+          style={{
+            height: '100%',
+            width: grow.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+            backgroundColor: barColor,
+            borderTopWidth: 3,
+            borderTopColor: topColor,
+            borderBottomWidth: 2,
+            borderBottomColor: edgeColor,
+            borderRadius: 999,
+          }}
+        />
+      </View>
+      <View className="flex-row justify-between mt-1.5">
+        <Text className="text-[11px] text-muted-foreground">0</Text>
+        <Text className="text-[11px] text-muted-foreground">6</Text>
+        <Text className="text-[11px] text-muted-foreground">12+ months</Text>
+      </View>
+    </View>
+  );
+};
 
 export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
   overview,
@@ -84,26 +193,15 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
 
   const statusLabel = isDeficit ? 'Deficit' : isZero ? 'Balanced' : 'Surplus';
 
-  const displayMonthlyIn =
-    activeRunway && activeRunway.averageMonthlyCollections > 0
-      ? Math.round(activeRunway.averageMonthlyCollections)
-      : Math.round(totalIncome);
-  const displayMonthlyOut =
-    activeRunway && activeRunway.averageMonthlyExpenses > 0
-      ? Math.round(activeRunway.averageMonthlyExpenses)
-      : Math.round(totalExpenses);
-  const displayNetMonthly = displayMonthlyIn - displayMonthlyOut;
-
   return (
-    <View className="mb-3.5 gap-2.5">
-      {/* ── Unified Net Balance Card ── */}
-      <View className="p-3.5 bg-card border border-border/60 rounded-2xl shadow-md">
-        {/* Top Row: Icon + Balance + Status Badge */}
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center flex-1 me-2">
+    <View className="mb-5 gap-4">
+      {/* ── 1. Net Balance + Runway ── */}
+      <Card3D index={0} className="p-5 bg-card border border-border/50 rounded-3xl">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center gap-2.5 flex-1 me-2">
             <View
-              className={`w-10 h-10 rounded-2xl items-center justify-center me-3 shrink-0 shadow-xs ${
-                isDeficit ? 'bg-rose-500/15 border border-rose-500/20' : 'bg-primary/15 border border-primary/20'
+              className={`w-10 h-10 rounded-full items-center justify-center ${
+                isDeficit ? 'bg-rose-500/15' : 'bg-primary/15'
               }`}>
               <Icon
                 as={isDeficit ? TrendingDown : Wallet}
@@ -111,157 +209,118 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
                 className={isDeficit ? 'text-rose-600 dark:text-rose-400' : 'text-primary'}
               />
             </View>
-            <View className="flex-1">
-              <Text className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                {isDeficit ? 'Net Deficit' : 'Net Balance'}
-              </Text>
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                className={`text-2xl font-extrabold tracking-tight mt-0.5 ${
-                  isDeficit ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'
-                }`}>
-                {formatINR(netSurplus)}
-              </Text>
-            </View>
+            <Text className="text-sm font-semibold text-muted-foreground">
+              {isDeficit ? 'Net Deficit' : 'Net Balance'}
+            </Text>
           </View>
           <StatusBadge
             label={statusLabel}
             variant={statusVariant}
-            className="py-0.5 px-2.5 rounded-full shrink-0"
+            className="py-1 px-3 rounded-full shrink-0"
           />
         </View>
 
-        {/* Divider */}
-        <View className="mt-3 pt-2.5 border-t border-border/40">
-          {/* Collections | Expenses inline row */}
-          <View className="flex-row items-stretch gap-2 mb-2.5">
-            {/* Collections */}
-            <TouchableOpacity
-              onPress={onViewInflows}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="View Collections Ledger"
-              className="flex-1 flex-row items-center gap-1.5 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-2.5 py-2">
-              <View className="w-6 h-6 rounded-full bg-emerald-500/15 items-center justify-center shrink-0">
-                <Icon as={ArrowDownLeft} size={12} className="text-emerald-600 dark:text-emerald-400" />
-              </View>
-              <View className="flex-1 min-w-0">
-                <Text className="text-[10px] text-muted-foreground font-medium">Collections</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit className="text-xs font-bold text-foreground">
-                  {formatINR(totalIncome)}
-                </Text>
-              </View>
-              <Icon as={ChevronRight} size={12} className="text-muted-foreground/40 shrink-0" />
-            </TouchableOpacity>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          className={`text-4xl font-extrabold tracking-tight ${
+            isDeficit ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'
+          }`}>
+          {formatINR(netSurplus)}
+        </Text>
 
-            {/* Expenses */}
-            <TouchableOpacity
-              onPress={onViewOutflows}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="View Expenses Ledger"
-              className="flex-1 flex-row items-center gap-1.5 bg-rose-500/8 border border-rose-500/20 rounded-xl px-2.5 py-2">
-              <View className="w-6 h-6 rounded-full bg-rose-500/15 items-center justify-center shrink-0">
-                <Icon as={ArrowUpRight} size={12} className="text-rose-600 dark:text-rose-400" />
-              </View>
-              <View className="flex-1 min-w-0">
-                <Text className="text-[10px] text-muted-foreground font-medium">Expenses</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit className="text-xs font-bold text-foreground">
-                  {formatINR(totalExpenses)}
-                </Text>
-                {overview.outstandingVendorLiabilities > 0 && (overview.reconciledExpensePayments ?? 0) === 0 && (
-                  <Text className="text-[9px] text-amber-600 dark:text-amber-400 font-medium" numberOfLines={1}>
-                    Pending payout
-                  </Text>
-                )}
-              </View>
-              <Icon as={ChevronRight} size={12} className="text-muted-foreground/40 shrink-0" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Runway Row */}
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-2 flex-1 me-2">
-              <View className="w-6 h-6 rounded-xl bg-emerald-500/15 border border-emerald-500/30 items-center justify-center shrink-0">
-                <Icon as={ShieldCheck} size={12} className="text-emerald-600 dark:text-emerald-400" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-[11px] font-semibold text-foreground" numberOfLines={1}>
-                  Runway · {exactRunwayText}
-                </Text>
-                <Text className="text-[10px] text-muted-foreground" numberOfLines={1}>
-                  {isSelfSustaining
-                    ? 'Collections exceed operational expenses.'
-                    : `Sustains ~${exactRunwayText} of operational expenses`}
-                </Text>
-              </View>
+        {/* Runway strip */}
+        <View className="mt-5 p-4 rounded-2xl bg-muted/40 border border-border/40">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center gap-2">
+              <Icon as={ShieldCheck} size={16} className="text-emerald-600 dark:text-emerald-400" />
+              <Text className="text-sm font-semibold text-foreground">Runway</Text>
             </View>
-
             {onOpenSimulator && (
               <TouchableOpacity
                 onPress={onOpenSimulator}
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="View Reserve & Cash Flow Details"
-                className="flex-row items-center gap-0.5 px-2 py-1 rounded-lg bg-muted/60 border border-border/50 shrink-0">
-                <Text className="text-[11px] font-semibold text-foreground">Details</Text>
-                <Icon as={ChevronRight} size={12} className="text-muted-foreground" />
+                hitSlop={8}
+                className="flex-row items-center">
+                <Text className="text-xs font-semibold text-primary">Details</Text>
+                <Icon as={ChevronRight} size={14} className="text-primary" />
               </TouchableOpacity>
             )}
           </View>
 
-          {/* Monthly Metrics Row (only when data > 0) */}
-          {(displayMonthlyIn > 0 || displayMonthlyOut > 0) && (
-            <View className="flex-row items-center justify-between mt-2.5 p-2 bg-muted/30 rounded-xl border border-border/30">
-              <View className="flex-1 items-center">
-                <Text className="text-[10px] text-muted-foreground font-medium mb-0.5">Monthly In</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit className="text-xs font-bold text-foreground">
-                  {formatINR(displayMonthlyIn)}
-                </Text>
-              </View>
-              <View className="h-5 w-px bg-border/40" />
-              <View className="flex-1 items-center">
-                <Text className="text-[10px] text-muted-foreground font-medium mb-0.5">Monthly Out</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit className="text-xs font-bold text-foreground">
-                  {formatINR(displayMonthlyOut)}
-                </Text>
-              </View>
-              <View className="h-5 w-px bg-border/40" />
-              <View className="flex-1 items-center">
-                <Text className="text-[10px] text-muted-foreground font-medium mb-0.5">Net Monthly</Text>
-                <Text
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  className={`text-xs font-bold ${
-                    displayNetMonthly >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-rose-600 dark:text-rose-400'
-                  }`}>
-                  {displayNetMonthly >= 0
-                    ? `+${formatINR(displayNetMonthly)}`
-                    : `-${formatINR(Math.abs(displayNetMonthly))}`}
-                </Text>
-              </View>
-            </View>
-          )}
+          <Text className="text-2xl font-extrabold text-foreground mb-3">{exactRunwayText}</Text>
+
+          <RunwayBar months={Number(rawMonths) || 0} />
+
+          <Text className="text-xs text-muted-foreground mt-3">
+            {isSelfSustaining
+              ? 'Collections exceed expenses'
+              : `Funds cover about ${exactRunwayText} of expenses`}
+          </Text>
         </View>
+      </Card3D>
+
+      {/* ── 2 & 3. Collections | Expenses ── */}
+      <View className="flex-row gap-4">
+        <Card3D
+          index={1}
+          onPress={onViewInflows}
+          accessibilityLabel="View Collections Ledger"
+          className="flex-1 p-4 bg-card border border-border/50 rounded-2xl">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="w-9 h-9 rounded-full bg-emerald-500/15 items-center justify-center">
+              <Icon as={ArrowDownLeft} size={18} className="text-emerald-600 dark:text-emerald-400" />
+            </View>
+            <Icon as={ChevronRight} size={16} className="text-muted-foreground/50" />
+          </View>
+          <Text className="text-xs font-medium text-muted-foreground">Collections</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit className="text-xl font-bold text-foreground mt-0.5">
+            {formatINR(totalIncome)}
+          </Text>
+        </Card3D>
+
+        <Card3D
+          index={2}
+          onPress={onViewOutflows}
+          accessibilityLabel="View Expenses Ledger"
+          className="flex-1 p-4 bg-card border border-border/50 rounded-2xl">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="w-9 h-9 rounded-full bg-rose-500/15 items-center justify-center">
+              <Icon as={ArrowUpRight} size={18} className="text-rose-600 dark:text-rose-400" />
+            </View>
+            <Icon as={ChevronRight} size={16} className="text-muted-foreground/50" />
+          </View>
+          <Text className="text-xs font-medium text-muted-foreground">Expenses</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit className="text-xl font-bold text-foreground mt-0.5">
+            {formatINR(totalExpenses)}
+          </Text>
+          {overview.outstandingVendorLiabilities > 0 && (overview.reconciledExpensePayments ?? 0) === 0 && (
+            <Text className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+              Pending payout
+            </Text>
+          )}
+        </Card3D>
       </View>
 
-      {/* ── Pending Dues Alert ── */}
-      {outstandingDues > 0 && (
-        <View className="px-3 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex-row items-center justify-between">
-          <View className="flex-row items-center gap-2 flex-1 me-2">
-            <Icon as={AlertCircle} size={15} className="text-amber-700 dark:text-amber-400 shrink-0" />
-            <Text className="text-xs font-medium text-foreground" numberOfLines={1}>
-              Pending Dues
-            </Text>
+      {/* ── 4. Pending Dues ── */}
+      <Card3D
+        index={3}
+        className="px-4 py-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-2.5 flex-1 me-3">
+            <Icon as={AlertCircle} size={20} className="text-amber-700 dark:text-amber-400" />
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-foreground">Pending Dues</Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">Yet to be collected</Text>
+            </View>
           </View>
-          <Text numberOfLines={1} className="text-sm font-bold text-amber-800 dark:text-amber-300">
+          <Text className="text-lg font-bold text-amber-800 dark:text-amber-300">
             {formatINR(outstandingDues)}
           </Text>
         </View>
-      )}
+      </Card3D>
     </View>
   );
 };

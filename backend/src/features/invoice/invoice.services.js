@@ -9,6 +9,7 @@ import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
 import paymentService from '../payment/payment.service.js';
 import { buildInvoiceLinks } from './invoicePayLink.service.js';
+import { generateUnitPeriodInvoiceNumber } from './invoice.utils.js';
 import notificationService from '../notification/notification.service.js';
 import { paymentEventEmitter, PAYMENT_SUCCESS } from '../payment/payment.events.js';
 
@@ -47,10 +48,11 @@ export class InvoiceService {
 
     // 2.5 Fetch Organization Billing Settings for Carry Forward isolation
     const Organization = (await import('../organization/organization.model.js')).default;
-    const org = await Organization.findById(assessment.communityId).select('billingSettings').lean();
+    const org = await Organization.findById(assessment.communityId).select('name billingSettings financialSettings').lean();
     const combineOutstanding = org?.billingSettings?.combineOutstandingInvoices || false;
 
     const invoicesToCreate = [];
+    const existingInBatch = new Set();
 
     // Calculate billing period string (e.g. YYYY-MM, YYYY-Wxx, or YYYY-Qx)
     const now = new Date();
@@ -77,27 +79,65 @@ export class InvoiceService {
       }
     }
 
-    for (const unit of units) {
-      // Find tenant and owner resident assignments
-      const tenantResident = (unit.residents || []).find((r) => r.residencyType === 'Tenant');
-      const ownerResident = (unit.residents || []).find((r) =>
-        ['Resident Owner', 'Non-Resident Owner'].includes(r.residencyType)
-      ) || { userId: unit.primaryResidentId };
+    // Build targeted billing pairs: { unit, targetUserId }
+    const billingTargets = [];
 
-      let targetUserId = null;
-      
-      // Occupancy Fallback Logic
-      const targetsTenant = targetRoleNames.some(name => name.includes('tenant'));
-      if (targetsTenant && tenantResident && tenantResident.userId) {
-        targetUserId = tenantResident.userId;
-      } else if (ownerResident && ownerResident.userId) {
-        targetUserId = ownerResident.userId;
+    if (scopeType === 'SPECIFIC_USERS') {
+      const scopeUserIds = scopeIds.map(String);
+      for (const userId of scopeUserIds) {
+        const matchingUnit = units.find(
+          (u) =>
+            (u.residents || []).some((r) => String(r.userId) === userId) ||
+            String(u.primaryResidentId) === userId ||
+            String(u.ownerId) === userId
+        );
+        if (matchingUnit) {
+          billingTargets.push({ unit: matchingUnit, targetUserId: userId });
+        } else {
+          logger.warn(`Skipping user ${userId} - No matching unit found in candidate units.`);
+        }
       }
+    } else {
+      for (const unit of units) {
+        // Find tenant and owner resident assignments with primary resident precedence
+        const primaryTenant = (unit.residents || []).find(
+          (r) =>
+            r.residencyType === 'Tenant' &&
+            (r.isPrimary === true || String(r.userId) === String(unit.primaryResidentId))
+        );
+        const fallbackTenant = (unit.residents || []).find((r) => r.residencyType === 'Tenant');
+        const tenantResident = primaryTenant || fallbackTenant;
 
-      if (!targetUserId) {
-        logger.warn(`Skipping unit ${unit.unitNumber} - No target resident user found.`);
-        continue;
+        const primaryOwner = (unit.residents || []).find(
+          (r) =>
+            ['Resident Owner', 'Non-Resident Owner'].includes(r.residencyType) &&
+            (r.isPrimary === true || String(r.userId) === String(unit.primaryResidentId))
+        );
+        const fallbackOwner =
+          (unit.residents || []).find((r) =>
+            ['Resident Owner', 'Non-Resident Owner'].includes(r.residencyType)
+          ) || { userId: unit.primaryResidentId };
+        const ownerResident = primaryOwner || fallbackOwner;
+
+        let targetUserId = null;
+
+        // Occupancy Fallback Logic
+        const targetsTenant = targetRoleNames.some((name) => name.includes('tenant'));
+        if (targetsTenant && tenantResident && tenantResident.userId) {
+          targetUserId = tenantResident.userId;
+        } else if (ownerResident && ownerResident.userId) {
+          targetUserId = ownerResident.userId;
+        }
+
+        if (targetUserId) {
+          billingTargets.push({ unit, targetUserId });
+        } else {
+          logger.warn(`Skipping unit ${unit.unitNumber} - No target resident user found.`);
+        }
       }
+    }
+
+    for (const { unit, targetUserId } of billingTargets) {
 
       // Calculate totalDue based on calculationMethod
       let baseAmount = 0;
@@ -189,8 +229,17 @@ export class InvoiceService {
       const dueDate = new Date();
       dueDate.setUTCDate(dueDate.getUTCDate() + 10);
 
+      // Generate Unit & Period Identified invoice number (e.g. IVA-A102-202610)
+      const invoiceNumber = await generateUnitPeriodInvoiceNumber({
+        org,
+        unitNumber: unit.unitNumber,
+        billingPeriodString: defaultPeriodString,
+        existingInBatch,
+      });
+
       // Create snapshot object for invoice immutability
       const snapshot = {
+        invoiceNumber,
         assessmentName: assessment.name,
         assessmentType: assessment.type,
         calculationMethod: assessment.calculationMethod,
@@ -208,6 +257,7 @@ export class InvoiceService {
       };
 
       invoicesToCreate.push({
+        invoiceNumber,
         communityId: assessment.communityId,
         orgId: assessment.communityId,
         assessmentId: assessment._id,
@@ -273,6 +323,7 @@ export class InvoiceService {
           invoiceEventEmitter.emit(INVOICE_GENERATED, {
             _id: invoiceObj._id,
             invoiceId: invoiceObj._id,
+            invoiceNumber: invoiceObj.invoiceNumber,
             targetUserId: invoiceObj.targetUserId,
             unitId: invoiceObj.unitId,
             communityId: assessment.communityId,

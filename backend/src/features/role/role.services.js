@@ -44,6 +44,9 @@ export class RoleService {
    * - Shared roles (no community) are read-only for communities; only platform admins change them.
    */
   assertRoleAccess(role, actor, { write = false } = {}) {
+    if (typeof actor === 'string' || (actor && actor._bsontype === 'ObjectID') || (actor && mongoose.Types.ObjectId.isValid(actor) && typeof actor !== 'object')) {
+      actor = { orgId: String(actor) };
+    }
     if (!actor || actor.isPlatform) return;
     const roleOrg = role.orgId ? String(role.orgId) : null;
     if (roleOrg && roleOrg !== String(actor.orgId)) {

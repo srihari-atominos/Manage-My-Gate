@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { Shield, Lock, Plug, MoreVertical, Users } from 'lucide-react-native';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { useTranslation, i18n } from '@/src/utils/i18n';
@@ -101,7 +102,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
           <View className="flex-row items-start flex-1 me-2">
             {/* Circular Avatar */}
             <View className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0 mt-0.5">
-              <Text className="text-xs font-bold text-primary font-sans">
+              <Text className="text-xs font-bold text-primary">
                 {getInitials(role?.name)}
               </Text>
             </View>
@@ -109,14 +110,14 @@ export const RoleCard: React.FC<RoleCardProps> = ({
             {/* Title & Description */}
             <View className="flex-1">
               <Text
-                className="text-[14px] font-bold text-foreground font-sans tracking-tight"
+                className="text-sm phone-md:text-base font-bold text-foreground tracking-tight"
                 numberOfLines={1}
               >
                 {i18n.tRole(role?.name, role?.name || t('unnamed_role', 'Unnamed Role'))}
               </Text>
 
               <Text
-                className="text-xs text-muted-foreground font-sans mt-0.5"
+                className="text-2xs phone-md:text-xs text-muted-foreground mt-0.5"
                 numberOfLines={2}
               >
                 {role?.description || t('no_description_provided', 'No description provided.')}
@@ -158,7 +159,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
             {/* Permissions Badge */}
             <View className="flex-row items-center gap-1 bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
               <Lock size={10} className="text-primary" />
-              <Text className="text-[10px] font-bold text-primary font-sans">
+              <Text className="text-micro font-bold text-primary">
                 {permissionsCount} {permissionsCount === 1 ? t('permission_singular', 'Permission') : t('permissions_plural', 'Permissions')}
               </Text>
             </View>
@@ -166,7 +167,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
             {/* Staff Role Badge (only if role is actually staff scoped) */}
             {isStaff ? (
               <View className="flex-row items-center gap-1 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400 font-sans">
+                <Text className="text-micro font-bold text-amber-600 dark:text-amber-400">
                   {t('staff_role_badge', 'Staff Member')}
                 </Text>
               </View>
@@ -176,7 +177,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
             {role?.isShared ? (
               <View className="flex-row items-center gap-1 bg-slate-500/10 border border-slate-500/20 px-2 py-0.5 rounded-full">
                 <Lock size={10} className="text-muted-foreground" />
-                <Text className="text-[10px] font-bold text-muted-foreground font-sans">
+                <Text className="text-micro font-bold text-muted-foreground">
                   {t('shared_role_badge', 'Shared')}
                 </Text>
               </View>
@@ -186,7 +187,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
             {mappingsCount > 0 ? (
               <View className="flex-row items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                 <Plug size={10} color="#10b981" />
-                <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-sans">
+                <Text className="text-micro font-bold text-emerald-600 dark:text-emerald-400">
                   {mappingsCount} {mappingsCount === 1 ? t('integration_singular', 'Integration') : t('integrations_plural', 'Integrations')}
                 </Text>
               </View>
@@ -196,7 +197,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
             {typeof usersCount === 'number' ? (
               <View className="flex-row items-center gap-1 bg-muted/60 border border-border/60 px-2 py-0.5 rounded-full">
                 <Users size={10} className="text-muted-foreground" />
-                <Text className="text-[10px] font-semibold text-muted-foreground font-sans">
+                <Text className="text-micro font-semibold text-muted-foreground">
                   {usersCount} {usersCount === 1 ? t('user_singular', 'User') : t('users_plural', 'Users')}
                 </Text>
               </View>

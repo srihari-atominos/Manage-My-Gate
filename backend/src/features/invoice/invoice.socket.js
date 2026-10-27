@@ -81,14 +81,22 @@ export const setupInvoiceSocketListeners = async () => {
       try {
         const notificationService = (await import('../notification/notification.service.js')).default;
         const amountStr = populatedPayload.totalDue ? populatedPayload.totalDue.toLocaleString('en-IN') : '0';
+        const invoiceIdStr = populatedPayload._id ? String(populatedPayload._id) : (populatedPayload.invoiceId ? String(populatedPayload.invoiceId) : '');
         await notificationService.createNotification({
           recipientId: targetUserId,
           orgId: populatedPayload.communityId || populatedPayload.orgId || null,
           senderId: null,
           title: 'New Maintenance & Assessment Bill',
           body: `A new assessment invoice of ₹${amountStr} has been generated for unit ${populatedPayload.unitId?.unitNumber || '—'} for period ${populatedPayload.billingPeriodString || '—'}.`,
-          actionUrl: '/billing?tab=action-center',
+          actionUrl: invoiceIdStr ? `/(resident)/billing/invoice/${invoiceIdStr}` : '/(resident)/billing',
           type: 'INFO',
+          metadata: {
+            entityId: invoiceIdStr,
+            invoiceId: invoiceIdStr,
+            invoiceNumber: populatedPayload.invoiceNumber,
+            amount: populatedPayload.totalDue,
+            type: 'BILLING',
+          },
         });
       } catch (err) {
         logger.error('Failed to create user notification for generated invoice:', err);

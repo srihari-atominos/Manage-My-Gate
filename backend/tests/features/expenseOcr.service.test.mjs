@@ -35,14 +35,53 @@ test('previewReceiptOcr chooses a more useful alternate Tesseract layout result'
     modes.push(config.pageSegmentationMode);
     return config.pageSegmentationMode === 6
       ? { status: 'COMPLETED', text: 'Store Invoice' }
-      : { status: 'COMPLETED', text: 'Store\n21 October 2026\nRice 120.00\nGrand Total 120.00' };
+      : { status: 'COMPLETED', text: 'Store\n21 October 2026\nInvoice No: INV-12\nRice 120.00\nGrand Total 120.00' };
   };
   const result = await previewReceiptOcr({ mimetype: 'image/jpeg', path: 'receipt.jpg' }, { env: localEnv, run });
   assert.equal(result.status, 'COMPLETED');
   assert.equal(result.result.receiptDate, '2026-10-21');
   assert.equal(result.result.totalMinor, 12000);
   assert.equal(result.result.items[0].itemName, 'Rice');
-  assert.deepEqual(modes, [6, 11]);
+  // Community Finance must map parser field scores to the form-facing field names.
+  assert.ok(result.result.fieldProvenance.totalMinor.confidence >= 80);
+  assert.ok(result.result.fieldProvenance.receiptDate.confidence >= 80);
+  assert.ok(result.result.fieldProvenance.receiptNumber.confidence >= 80);
+  assert.deepEqual(modes, [6, 3]);
+});
+
+test('previewReceiptOcr prioritizes the focused payment amount over a stray screen digit', async () => {
+  const calls = [];
+  const run = async (file, config) => {
+    calls.push({ path: file.path, mode: config.pageSegmentationMode, whitelist: config.characterWhitelist });
+    if (file.path === 'amount.png') {
+      return { status: 'COMPLETED', text: '₹57,658.00', confidence: 94 };
+    }
+    return {
+      status: 'COMPLETED',
+      text: 'Paid to\nNAVEENKUMAR A\n13 September 2026\n₹3.00',
+      confidence: 88,
+    };
+  };
+  const result = await previewReceiptOcr(
+    { mimetype: 'image/jpeg', path: 'shared-proof.jpg' },
+    {
+      env: localEnv,
+      run,
+      preprocess: async () => ({
+        variants: [
+          { label: 'payment-amount', path: 'amount.png' },
+          { label: 'enhanced', path: 'full.png' },
+        ],
+        cleanup: async () => {},
+      }),
+    }
+  );
+
+  assert.equal(result.status, 'COMPLETED');
+  assert.equal(result.result.totalMinor, 5765800);
+  assert.equal(result.result.totalAmount, 57658);
+  assert.equal(calls[0].mode, 7);
+  assert.equal(calls[0].whitelist, '₹0123456789,.');
 });
 
 test('previewReceiptOcr returns a manual fallback when Tesseract is unavailable', async () => {
@@ -79,9 +118,58 @@ test('payment screenshots expose the UPI app, payee UPI id, reference and failed
   assert.equal(paid.payeeUpiId, 'ramesh@okaxis');
   assert.equal(paid.settlement, 'PAID');
   assert.equal(paid.transactionReference, '412345678901');
+  assert.equal(paid.receiptNumber, null);
   const failed = analyzeExtraction(extractReceiptData('PhonePe\nPaid to Ramesh\n₹500\nPayment failed\n21 Oct 2026'));
   assert.equal(failed.settlement, 'FAILED');
   assert.ok(failed.warnings.some((w) => w.code === 'PAYMENT_NOT_COMPLETED'));
+});
+
+test('bank transfer screenshot extracts beneficiary vendor name, transfer amount, date, and IMPS/NEFT reference', () => {
+  const text = [
+    'HDFC Bank NetBanking',
+    'Funds Transfer Confirmation (IMPS)',
+    'Status: Transaction Successful',
+    'Beneficiary Name: Apex Plumbing & Sanitation Services',
+    'Beneficiary A/c No: 50100456789012',
+    'Transfer Amount: Rs. 45,000.00',
+    'Date & Time: 21-Oct-2026 11:30 AM',
+    'IMPS Ref No: 431912345678',
+    'Debited from A/c: XX4321',
+  ].join('\n');
+
+  const data = extractReceiptData(text);
+  assert.equal(data.merchant, 'Apex Plumbing & Sanitation Services');
+  assert.equal(data.totalMinor, 4500000);
+  assert.equal(data.totalAmount, 45000);
+  assert.equal(data.receiptDate, '2026-10-21');
+  assert.equal(data.paymentMethod, 'BANK_TRANSFER');
+  assert.equal(data.paymentApplication, 'NETBANKING');
+  assert.equal(data.transactionReference, '431912345678');
+  assert.equal(data.settlement, 'PAID');
+  assert.equal(data.items.length, 0);
+});
+
+test('Google Pay (GPay) screenshot extracts vendor name, amount, date, and UPI reference', () => {
+  const text = [
+    'Google Pay',
+    'Payment to Chennai Hardware Stores',
+    'chennaihardware@okaxis',
+    '₹ 8,750.00',
+    'Completed',
+    '22 Oct 2026, 3:45 PM',
+    'UPI transaction ID: 429512345678',
+  ].join('\n');
+
+  const data = extractReceiptData(text);
+  assert.equal(data.merchant, 'Chennai Hardware Stores');
+  assert.equal(data.totalMinor, 875000);
+  assert.equal(data.totalAmount, 8750);
+  assert.equal(data.receiptDate, '2026-10-22');
+  assert.equal(data.paymentMethod, 'UPI');
+  assert.equal(data.paymentApplication, 'GOOGLE_PAY');
+  assert.equal(data.transactionReference, '429512345678');
+  assert.equal(data.settlement, 'PAID');
+  assert.equal(data.receiptNumber, null);
 });
 
 test('analyzeExtraction flags arithmetic that does not add up and derives a missing total', () => {
@@ -91,6 +179,8 @@ test('analyzeExtraction flags arithmetic that does not add up and derives a miss
   const derived = analyzeExtraction({ receiptDate: '2026-10-21', merchant: 'Shop', subtotalMinor: 10000, taxMinor: 1800, totalMinor: null, items: [], isPaymentScreenshot: false }, { now: new Date('2026-10-22') });
   assert.equal(derived.totalMinor, 11800);
   assert.ok(derived.warnings.some((w) => w.code === 'TOTAL_DERIVED'));
+  const future = analyzeExtraction({ receiptDate: '2028-10-27', merchant: 'Shop', totalMinor: 10000, items: [], isPaymentScreenshot: false }, { now: new Date('2026-10-27T00:00:00Z') });
+  assert.match(future.warnings.find((w) => w.code === 'DATE_IN_FUTURE').message, /2028-10-27/);
 });
 
 test('parseTsv rebuilds lines and averages word confidence', () => {
@@ -192,6 +282,8 @@ test('Pattern A (Columns): parses tabular items with Description Qty UnitPrice L
   assert.equal(data.expenseDate, '2026-10-22');
   assert.equal(data.totalAmount, 294.00);
   assert.equal(data.totalMinor, 29400);
+  assert.equal(data.cgstAmount, 7.00);
+  assert.equal(data.sgstAmount, 7.00);
   assert.equal(data.items.length, 2);
 
   assert.equal(data.items[0].description, 'Ghee Roast');
@@ -327,4 +419,67 @@ test('Vertical total amount layout extracts accurate grand total across line bre
   assert.equal(data.items.length, 2);
   assert.equal(data.items[0].description, 'Coffee Beans');
   assert.equal(data.items[1].description, 'Almond Milk');
+});
+
+test('extractReceiptData recognises a bilingual TANGEDCO utility payment table without confusing the consumer number for the receipt number', () => {
+  const text = [
+    'TANGEDCO PAYMENT PORTAL',
+    'Consumer No: 031200095434',
+    'Receipt No: PGCICI708814179',
+    'Date: 20/01/2025 09:53:34',
+    'CC Charges 3719.00',
+    'CC Deposit 824.00',
+    'BPSC 32.75',
+    'R Charges 130.00',
+    'Rounding Off 0.25',
+    'மொத்தம் 4706.00',
+  ].join('\n');
+
+  const data = extractReceiptData(text);
+  assert.equal(data.documentType, 'UTILITY_PAYMENT_RECEIPT');
+  assert.equal(data.merchant, 'TANGEDCO PAYMENT PORTAL');
+  assert.equal(data.receiptNumber, 'PGCICI708814179');
+  assert.equal(data.transactionReference, null);
+  assert.equal(data.utilityAccountNumber, '031200095434');
+  assert.equal(data.receiptDate, '2025-01-20');
+  assert.equal(data.totalMinor, 470600);
+  assert.deepEqual(data.items.map((item) => item.description), ['CC Charges', 'CC Deposit', 'BPSC', 'R Charges', 'Rounding Off']);
+  assert.equal(data.items.reduce((sum, item) => sum + item.amountMinor, 0), data.totalMinor);
+});
+
+test('community OCR uses self-hosted structured OCR when local OCR misses a table-heavy utility receipt', async () => {
+  const localText = 'TANGEDCO PAYMENT PORTAL\nReceipt No: PGCICI708814179\nDate: 20/01/2025';
+  const oxrText = [
+    'TANGEDCO PAYMENT PORTAL', 'Consumer No: 031200095434', 'Receipt No: PGCICI708814179', 'Date: 20/01/2025',
+    'CC Charges 3719.00', 'CC Deposit 824.00', 'BPSC 32.75', 'R Charges 130.00', 'Rounding Off 0.25', 'Total 4706.00',
+  ].join('\n');
+  const result = await previewReceiptOcr(
+    { mimetype: 'image/png', path: 'receipt.png', originalname: 'receipt.png' },
+    {
+      env: { ...localEnv, EXPENSE_OCR_OXR_ENABLED: 'true' },
+      preprocess: async () => ({ variants: [], cleanup: async () => {} }),
+      run: async () => ({ status: 'COMPLETED', text: localText, confidence: 91 }),
+      oxr: { process: async () => ({ status: 'COMPLETED', rawText: oxrText, confidence: 94, extractedFields: extractReceiptData(oxrText) }) },
+    }
+  );
+  assert.equal(result.status, 'COMPLETED');
+  assert.equal(result.result.ocrEngine, 'oxr');
+  assert.equal(result.result.totalMinor, 470600);
+  assert.equal(result.result.fieldProvenance.totalMinor.source, 'table-reconciled');
+  assert.ok(result.result.warnings.some((warning) => warning.code === 'FALLBACK_TO_OXR'));
+});
+
+test('scanned PDFs use self-hosted structured OCR when no text layer exists', async () => {
+  const oxrText = 'TANGEDCO PAYMENT PORTAL\nReceipt No: PGCICI708814179\nDate: 20/01/2025\nTotal 4706.00';
+  const result = await previewReceiptOcr(
+    { mimetype: 'application/pdf', path: 'scanned.pdf', originalname: 'scanned.pdf' },
+    {
+      env: { ...localEnv, EXPENSE_OCR_OXR_ENABLED: 'true' },
+      readPdfText: async () => '',
+      oxr: { process: async () => ({ status: 'COMPLETED', rawText: oxrText, confidence: 94, extractedFields: extractReceiptData(oxrText) }) },
+    }
+  );
+  assert.equal(result.status, 'COMPLETED');
+  assert.equal(result.result.source, 'PDF_OXR');
+  assert.equal(result.result.totalMinor, 470600);
 });

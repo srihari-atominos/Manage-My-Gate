@@ -12,6 +12,8 @@ import { LucideIcon, CheckCircle2, AlertCircle, XCircle, X } from 'lucide-react-
 import { ValidationStatus } from '../../src/utils/validation';
 import { useTranslation } from '../../src/utils/i18n';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { DEFAULT_MAX_FONT_SIZE_MULTIPLIER } from '../../src/utils/responsiveTypography';
+import { useColorScheme } from 'nativewind';
 
 export interface TextInputProps extends RNTextInputProps {
   label?: string;
@@ -65,12 +67,15 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
       value,
       onFocus,
       onBlur,
+      maxFontSizeMultiplier = DEFAULT_MAX_FONT_SIZE_MULTIPLIER,
       ...props
     },
     ref
   ) => {
     const { translateText, t } = useTranslation();
+    const { colorScheme } = useColorScheme();
     const [isFocused, setIsFocused] = useState(false);
+    const placeholderColor = colorScheme === 'dark' ? '#AAB4C4' : '#5F6B7A';
 
     const handleFocus = (e: any) => {
       setIsFocused(true);
@@ -162,9 +167,12 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
     return (
       <View className={cn('w-full', containerClassName)}>
         {Boolean(translatedLabel) && (
-          <View className="flex-row items-center justify-between mb-1.5">
+          <View className="flex-row items-center justify-between gap-2 mb-1.5">
             <Text
-              className={cn('text-[13.5px] font-bold font-sans text-foreground', labelClassName)}
+              className={cn('flex-1 min-w-0 text-xs font-bold text-foreground', labelClassName)}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
               style={{ fontWeight: 'bold' }}
             >
               {translatedLabel}
@@ -175,7 +183,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             {effectiveStatus === 'valid' && !error && (
               <View className="flex-row items-center gap-1">
                 <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
-                <Text className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                <Text className="text-caption font-bold text-emerald-600 dark:text-emerald-400">
                   {t('valid', 'Valid')}
                 </Text>
               </View>
@@ -212,9 +220,9 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             onFocus={handleFocus}
             onBlur={handleBlur}
             className={cn(
-              'flex-1 text-[13.5px] text-foreground self-stretch outline-none focus:outline-none focus-visible:outline-none',
+              'min-w-0 flex-1 text-[13.5px] text-foreground self-stretch outline-none focus:outline-none focus-visible:outline-none',
               !hasFontFamily && 'font-sans',
-              props.multiline ? 'py-0 min-h-[50px]' : 'py-1.5 min-h-[38px]',
+              props.multiline ? 'py-0 min-h-[88px]' : 'py-1.5 min-h-[38px]',
               inputClassName
             )}
             style={[
@@ -232,7 +240,8 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
               } as any,
               props.style,
             ]}
-            placeholderTextColor="#737c88"
+            placeholderTextColor={placeholderColor}
+            maxFontSizeMultiplier={maxFontSizeMultiplier}
             accessibilityLabel={translatedLabel || translatedPlaceholder}
             accessibilityState={{
               disabled: props.editable === false,
@@ -291,7 +300,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             )}
             <Text
               className={cn(
-                'text-xs font-medium',
+                'flex-1 min-w-0 text-xs font-medium',
                 feedbackType === 'error' && 'text-destructive font-semibold',
                 feedbackType === 'incomplete' && 'text-amber-600 dark:text-amber-400',
                 feedbackType === 'success' && 'text-emerald-600 dark:text-emerald-400 font-semibold',

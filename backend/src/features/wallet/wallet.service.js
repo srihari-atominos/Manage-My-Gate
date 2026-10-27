@@ -69,11 +69,7 @@ class WalletService {
     const numericAmount = Number(amount);
     let targetOrgId = orgId;
     if (!targetOrgId) {
-      const wallet = await walletRepository.getWallet(userId, null);
-      targetOrgId = wallet?.orgId;
-    }
-    if (!targetOrgId) {
-      throw new HttpError(400, 'Organization context is required for wallet recharge');
+      throw new HttpError(400, 'Valid Organization ID is required to process wallet transactions.');
     }
 
     const transactionData = {
@@ -1376,6 +1372,10 @@ class WalletService {
     });
 
     return { updatedWallet, walletTxn };
+  }
+
+  async getWalletTransactions(userId, orgId) {
+    return walletRepository.getTransactions(userId, orgId);
   }
 
   async getWallet(userId, orgId, session = null) {

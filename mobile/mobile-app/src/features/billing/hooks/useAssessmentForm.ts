@@ -4,6 +4,11 @@ import billingService from '../services/billingService';
 import { fetchVillas, fetchVillaBlocks } from '../../villa/services/villaService';
 import apiClient from '../../../services/apiClient';
 
+export const FALLBACK_BILLABLE_ROLES = [
+  { _id: '6ac77acd5a8b365df008a39a', id: '6ac77acd5a8b365df008a39a', name: 'Resident Owner' },
+  { _id: '6ac77acd5a8b365df008a3a0', id: '6ac77acd5a8b365df008a3a0', name: 'Resident Tenant' },
+];
+
 interface UseAssessmentFormProps {
   communityId?: string;
   assessment?: any;
@@ -52,13 +57,15 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
 
   // ── Step 4: Target Scope & Resident Roles ──────────────────────────────
   const [scopeType, setScopeType] = useState('ALL_COMMUNITY');
-  const [checkedRoles, setCheckedRoles] = useState<string[]>([]);
+  const [checkedRoles, setCheckedRoles] = useState<string[]>(() =>
+    FALLBACK_BILLABLE_ROLES.map((r) => r._id)
+  );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedUnitTypes, setSelectedUnitTypes] = useState<string[]>([]);
 
   // Search & Dynamic List State
   const [searchQuery, setSearchQuery] = useState('');
-  const [roles, setRoles] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>(FALLBACK_BILLABLE_ROLES);
   const [rawVillas, setRawVillas] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
   const [blocks, setBlocks] = useState<any[]>([]);
@@ -185,21 +192,28 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
           : [];
 
         if (active) {
-          let billableRoles = rolesList.filter((r: any) =>
-            ['Resident Owner', 'Resident Tenant', 'Non-Resident Owner', 'Owner', 'Tenant'].some((name) =>
-              (r.name || '').toLowerCase().trim() === name.toLowerCase()
-            )
-          );
+          let billableRoles = rolesList.filter((r: any) => {
+            const roleName = (r.name || '').toLowerCase().trim();
+            return (
+              roleName.includes('owner') ||
+              roleName.includes('tenant') ||
+              roleName.includes('resident')
+            );
+          });
           if (billableRoles.length === 0) {
             billableRoles = rolesList.filter(
               (r: any) =>
                 !(r.name || '').toLowerCase().includes('family') &&
                 !(r.name || '').toLowerCase().includes('guard') &&
-                !(r.name || '').toLowerCase().includes('admin')
+                !(r.name || '').toLowerCase().includes('admin') &&
+                !(r.name || '').toLowerCase().includes('staff')
             );
           }
-          if (billableRoles.length === 0) {
+          if (billableRoles.length === 0 && rolesList.length > 0) {
             billableRoles = rolesList;
+          }
+          if (billableRoles.length === 0) {
+            billableRoles = FALLBACK_BILLABLE_ROLES;
           }
 
           const normalizedRoles = billableRoles.map((r: any) => ({
@@ -215,7 +229,13 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
           }
         }
       } catch (err) {
-        console.warn('Failed to fetch dynamic roles in mobile form:', err);
+        console.warn('Failed to fetch dynamic roles in mobile form, using fallback roles:', err);
+        if (active) {
+          setRoles((prev) => (prev.length > 0 ? prev : FALLBACK_BILLABLE_ROLES));
+          setCheckedRoles((prev) =>
+            prev.length > 0 ? prev : FALLBACK_BILLABLE_ROLES.map((r) => r._id)
+          );
+        }
       }
 
       try {
@@ -496,6 +516,15 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     );
   }, []);
 
+  const handleSelectAllRoles = useCallback(() => {
+    const allRoleIds = roles.map((r) => String(r._id || r.id));
+    setCheckedRoles(allRoleIds);
+  }, [roles]);
+
+  const handleClearRoles = useCallback(() => {
+    setCheckedRoles([]);
+  }, []);
+
   const handleToggleId = useCallback((id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -594,7 +623,12 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
       }
 
       // Filter targetRoleIds to ensure only valid Mongo ObjectIds are sent
-      const validTargetRoleIds = checkedRoles.filter((id) => /^[0-9a-fA-F]{24}$/.test(id));
+      let validTargetRoleIds = checkedRoles.filter((id) => /^[0-9a-fA-F]{24}$/.test(id));
+      if (validTargetRoleIds.length === 0 && roles.length > 0) {
+        validTargetRoleIds = roles
+          .map((r) => String(r._id || r.id))
+          .filter((id) => /^[0-9a-fA-F]{24}$/.test(id));
+      }
 
       const hasTenantRole = checkedRoles.some((id) =>
         (roleNamesMap[id] || '').toLowerCase().includes('tenant')
@@ -722,7 +756,10 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     setScopeType,
     handleScopeTypeChange,
     checkedRoles,
+    setCheckedRoles,
     handleToggleRole,
+    handleSelectAllRoles,
+    handleClearRoles,
     roles,
     roleNamesMap,
     selectedIds,

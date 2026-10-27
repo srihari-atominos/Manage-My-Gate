@@ -7,8 +7,17 @@ module.exports = {
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
+      screens: {
+        'phone-xs': '340px',
+        'phone-sm': '360px',
+        'phone-md': '390px',
+        'phone-lg': '414px',
+      },
       fontSize: {
-        // Readable mobile scale: standard text is intentionally 8–12% larger
+        // Micro scale tokens for compact badges, timestamps, and secondary tags
+        micro: ['10px', { lineHeight: '14px' }],
+        caption: ['11.5px', { lineHeight: '15px' }],
+        // Readable mobile scale: standard text is intentionally 8-12% larger
         // than the browser defaults while retaining space for touch controls.
         '2xs': ['12px', { lineHeight: '16px' }],
         xs: ['13.5px', { lineHeight: '18px' }],

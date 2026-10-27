@@ -2,7 +2,20 @@ import React, { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
-import { Plus, Receipt, Trash2, FileText } from 'lucide-react-native';
+import {
+  Receipt,
+  FileText,
+  FileEdit,
+  CheckCircle2,
+  AlertTriangle,
+  UploadCloud,
+  Camera,
+  Check,
+  CreditCard,
+  DollarSign,
+  ArrowRight,
+  ArrowLeft,
+} from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/common/Button';
@@ -45,11 +58,10 @@ const funding = (m: string) =>
     ? 'COMMUNITY_BANK_ACCOUNT'
     : 'OTHER';
 
-const createEmptyItem = () => ({ name: '', qty: '1', price: '' });
-
 export default function RecordExpenseScreen() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
+  const [currentSlide, setCurrentSlide] = useState<0 | 1>(0);
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [receipt, setReceipt] = useState<any>(null);
@@ -58,16 +70,19 @@ export default function RecordExpenseScreen() {
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; amount?: string; category?: string }>({});
   const [cameraVisible, setCameraVisible] = useState(false);
   const [replacingReceipt, setReplacingReceipt] = useState(false);
-  const [items, setItems] = useState<Array<{ name: string; qty: string; price: string }>>([]);
+  const [reviewFields, setReviewFields] = useState<Record<string, boolean>>({});
+
   const [f, setF] = useState({
     name: '',
+    vendor: '',
+    invoiceNumber: '',
+    transactionReference: '',
     type: 'PURCHASE',
     category: categoryMap.PURCHASE,
     method: 'UPI',
     settlement: 'UNPAID' as 'PAID' | 'UNPAID',
     date: new Date(),
     amount: '',
-    notes: '',
   });
 
   const set = (k: string, v: any) => setF((x) => ({ ...x, [k]: v }));
@@ -101,6 +116,7 @@ export default function RecordExpenseScreen() {
       setReceipt({ uri: a.uri, name: a.name, type: a.mimeType, file: a.file });
       setOcr(null);
       setOcrFeedback(null);
+      setReviewFields({});
       setReplacingReceipt(false);
     }
   };
@@ -109,6 +125,7 @@ export default function RecordExpenseScreen() {
     setReceipt(file);
     setOcr(null);
     setOcrFeedback(null);
+    setReviewFields({});
     setReplacingReceipt(false);
     setCameraVisible(false);
   };
@@ -118,35 +135,83 @@ export default function RecordExpenseScreen() {
     try {
       setScanning(true);
       setOcr(null);
-      setOcrFeedback({ tone: 'info', message: 'Scanning receipt…' });
+      setOcrFeedback({ tone: 'info', message: 'Scanning receipt with OCR…' });
       const result = await expenseService.previewReceiptOcr(receipt);
       if (result.status !== 'COMPLETED') {
-        setOcrFeedback({ tone: 'error', message: result.error || 'Receipt data could not be extracted. Enter the details manually.' });
+        setOcrFeedback({ tone: 'error', message: result.error || 'Receipt data could not be extracted. Enter details manually.' });
         return;
       }
 
       const data = result.result;
       setOcr(data);
 
-      // Automatically populate respective form fields with extracted OCR data
       const updates: Partial<typeof f> = {};
-      const newItems: Array<{ name: string; qty: string; price: string }> = [];
+      const confidenceFor = (field: string, aliases: string[] = []) => {
+        const names = [field, ...aliases];
+        for (const name of names) {
+          const details = data?.fieldProvenance?.[name] || data?.fieldConfidence?.[name];
+          const score = details?.confidence ?? details?.score;
+          if (score != null) return score;
+        }
+        return null;
+      };
+      const needsReview = (field: string, aliases: string[] = []) => {
+        const confidence = confidenceFor(field, aliases);
+        const hasConflict = data?.warnings?.some((warning: any) => warning?.code === 'OCR_FIELD_CONFLICT');
+        return (confidence != null && confidence < 80) || Boolean(hasConflict);
+      };
 
-      // 1. Expense Name: Preserve user-entered name if already typed
-      if (!f.name.trim() && (data?.suggestedExpenseName || data?.merchant)) {
-        updates.name = data.suggestedExpenseName || data.merchant;
+      // 1. Expense Name: Populate if genuine purpose is known
+      const genericFallbacks = [
+        'Receipt Expense',
+        'UPI Payment',
+        'Bank Transfer',
+        'Other Expense',
+        'Payment Screenshot',
+      ];
+      const rawName =
+        data?.expenseName ||
+        data?.explicitNotes ||
+        data?.suggestedExpenseName;
+      const isGeneric =
+        !rawName ||
+        genericFallbacks.some((g) => rawName.toLowerCase().includes(g.toLowerCase())) ||
+        rawName.toLowerCase().startsWith('expense -') ||
+        rawName.toLowerCase().startsWith('expense_');
+      const isJustVendor =
+        rawName && data?.merchant && rawName.trim().toLowerCase() === data.merchant.trim().toLowerCase();
+
+      if (!f.name.trim() && rawName && !isGeneric && !isJustVendor) {
+        updates.name = rawName;
       }
-      // 2. Receipt / Expense Date
-      if (data?.expenseDate || data?.receiptDate) {
+
+      // 2. Vendor / Payee Name (Header, Signature block or Payee)
+      if (data?.merchant || data?.payeeUpiId) {
+        updates.vendor = data.merchant || data.payeeUpiId;
+      }
+
+      // 3. Keep document and payment identifiers separate.
+      if (data?.receiptNumber || data?.invoiceNumber || data?.billNumber || data?.orderId) {
+        updates.invoiceNumber = data.receiptNumber || data.invoiceNumber || data.billNumber || data.orderId;
+      }
+      if (data?.transactionReference || data?.transactionId) {
+        updates.transactionReference = data.transactionReference || data.transactionId;
+      }
+
+      // 4. Receipt / Expense Date
+      if ((data?.expenseDate || data?.receiptDate) && /^\d{4}-\d{2}-\d{2}$/.test(data.expenseDate || data.receiptDate || '')) {
         const dStr = data.expenseDate || data.receiptDate;
         updates.date = new Date(`${dStr}T00:00:00`);
       }
-      // 3. Accurate Total Amount
+
+      // 5. Total Amount
       if (data?.totalAmount != null) {
         updates.amount = String(data.totalAmount);
       } else if (data?.totalMinor != null) {
         updates.amount = String(data.totalMinor / 100);
       }
+
+      // 6. Category & Type
       if (data?.suggestedExpenseType && types.some((t) => t.value === data.suggestedExpenseType)) {
         updates.type = data.suggestedExpenseType;
         updates.category = data.suggestedCategory || categoryMap[data.suggestedExpenseType] || 'Other';
@@ -154,130 +219,67 @@ export default function RecordExpenseScreen() {
         updates.category = data.suggestedCategory;
       }
 
-      // If a payment screenshot (GPay, PhonePe, Paytm, etc.) was detected, set method to UPI and settlement to PAID
+      // 7. Payment Method
       if (data?.paymentMethod && methods.some((m) => m.value === data.paymentMethod)) {
         updates.method = data.paymentMethod;
       } else if (data?.isPaymentScreenshot) {
         updates.method = 'UPI';
       }
 
-      // Only a screenshot that shows a completed payment may mark the expense as paid.
+      // 8. Payment Settlement Status
       if (data?.settlement === 'PAID') {
         updates.settlement = 'PAID';
       }
 
-      // 4. Description / Notes: Extract & autofill Description / Notes
-      const extractedNotes = data?.notes || data?.suggestedNotes || data?.description || '';
-      if (extractedNotes) {
-        updates.notes = f.notes.trim() ? `${f.notes}\n\n${extractedNotes}` : extractedNotes;
-      } else if (data?.transactionReference) {
-        const upiNote = `UPI Ref: ${data.transactionReference}${data.merchant ? ` | Paid to ${data.merchant}` : ''}`;
-        updates.notes = f.notes ? `${f.notes}\n${upiNote}` : upiNote;
-      } else if (data?.receiptNumber) {
-        const billNote = `Invoice/Bill #${data.receiptNumber}${data.merchant ? ` from ${data.merchant}` : ''}`;
-        updates.notes = f.notes ? `${f.notes}\n${billNote}` : billNote;
-      }
-
-      // Populate item rows ONLY if legitimate itemized rows exist (e.g. supermarket/grocery receipt)
-      // Payment app screenshots (GPay, PhonePe, Paytm) and non-itemized repair bills have 0 items
-      if (data?.items?.length) {
-        data.items.forEach((x: any) => {
-          const unitPriceVal =
-            x.unitPrice != null
-              ? x.unitPrice
-              : (x.unitPriceMinor || x.amountMinor || 0) / 100;
-          newItems.push({
-            name: x.description || x.itemName || '',
-            qty: String(x.quantity != null ? x.quantity : 1),
-            price: String(unitPriceVal),
-          });
-        });
-        setItems(newItems);
-        if (data.totalAmount == null && data.totalMinor == null) {
-          const itemSum = newItems.reduce(
-            (acc, curr) => acc + (Number(curr.qty) || 1) * (Number(curr.price) || 0),
-            0
-          );
-          if (itemSum > 0) {
-            updates.amount = String(itemSum);
-          }
-        }
-      } else {
-        setItems([]);
-      }
-
       setF((prev) => ({ ...prev, ...updates }));
+      setReviewFields({
+        vendor: needsReview('merchant'),
+        invoiceNumber: needsReview('receiptNumber', ['reference']),
+        transactionReference: needsReview('transactionReference', ['reference']),
+        date: needsReview('receiptDate', ['date']),
+        amount: needsReview('totalMinor', ['total']),
+      });
       setFieldErrors({});
 
       const entered: string[] = [];
-      if (updates.name) entered.push('Expense Name');
+      if (updates.vendor) entered.push(`Vendor (${updates.vendor})`);
+      if (updates.invoiceNumber) entered.push(`Bill #${updates.invoiceNumber}`);
+      if (updates.transactionReference) entered.push(`Transaction #${updates.transactionReference}`);
+      if (updates.amount) entered.push(`Amount (₹${updates.amount})`);
       if (updates.date) entered.push('Date');
-      if (updates.amount) entered.push('Amount');
-      if (newItems.length) entered.push(`${newItems.length} Items`);
-      if (updates.notes) entered.push('Description / Notes');
-      if (updates.type) entered.push('Expense Type');
-      if (updates.method === 'UPI') entered.push('Payment (UPI - Paid)');
+      if (updates.name) entered.push(`Name (${updates.name})`);
 
-      const isUPI = data?.isPaymentScreenshot || data?.paymentMethod === 'UPI';
-      const warnings: Array<{ code: string; message: string }> = Array.isArray(data?.warnings) ? data.warnings : [];
-      if (warnings.length) {
-        setOcrFeedback({
-          tone: 'info',
-          message: `Scanned, but please check these before saving:\n• ${warnings.map((w) => w.message).join('\n• ')}`,
-        });
-        return;
+      // Successful scans advance directly to the review step. OCR warnings remain attached to the
+      // extraction for audit purposes, but must not interrupt users with an upload-time banner.
+      setOcrFeedback(null);
+
+      if (entered.length > 0) {
+        if (data.merchant) {
+          setF((prev) => ({ ...prev, name: prev.name || data.merchant }));
+        }
+        setTimeout(() => {
+          setCurrentSlide(1);
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }, 500);
       }
-      setOcrFeedback({
-        tone: 'success',
-        message: isUPI
-          ? `UPI Payment screenshot detected! Automatically entered: ${entered.join(', ')}. Review the details below before saving.`
-          : entered.length
-          ? `Receipt scanned! Automatically entered ${entered.join(', ')}. Review the details below before saving.`
-          : 'Receipt scanned, but specific fields could not be recognized. Please enter details manually.',
-      });
     } catch (error: any) {
-      setOcrFeedback({ tone: 'error', message: error?.message || 'Unable to scan this receipt. Enter the details manually.' });
+      setOcrFeedback({ tone: 'error', message: error?.message || 'Unable to scan this receipt. Enter details manually.' });
     } finally {
       setScanning(false);
     }
   };
 
-  const addItem = () => {
-    setItems((prev) => [...prev, createEmptyItem()]);
+  const handleNextSlide = () => {
+    setCurrentSlide(1);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
-
-  const updateItem = (index: number, field: 'name' | 'qty' | 'price', value: string) => {
-    setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
-    );
-  };
-
-  const removeItem = (index: number) => {
-    setItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const itemsTotal = items.reduce(
-    (sum, x) => sum + (Number(x.qty) || 0) * (Number(x.price) || 0),
-    0
-  );
 
   const save = async () => {
     const errors: { name?: string; amount?: string; category?: string } = {};
 
-    if (!f.name.trim()) {
-      errors.name = 'Please enter an Expense Name.';
-    }
+    const resolvedName = f.name.trim() || f.vendor.trim() || categoryMap[f.type] || 'Expense';
 
-    const validItems = items.filter(
-      (x) => x.name.trim() && Number(x.price) > 0
-    );
-    const computedItemsTotal = validItems.reduce(
-      (sum, x) => sum + (Number(x.qty) || 1) * (Number(x.price) || 0),
-      0
-    );
-
-    // If itemized rows are provided with valid prices, use their calculated total; otherwise fallback to typed amount
-    const finalAmount = validItems.length > 0 ? computedItemsTotal : (Number(f.amount) || 0);
+    const finalAmount = Number(f.amount) || 0;
 
     if (finalAmount <= 0) {
       errors.amount = 'Total amount must be greater than zero.';
@@ -297,38 +299,33 @@ export default function RecordExpenseScreen() {
     try {
       setSaving(true);
       const id = createOperationId();
-      const subtotal = finalAmount;
       const effectiveCategory =
         f.type === 'OTHER' ? f.category.trim() : categoryMap[f.type] || 'Other';
 
       const r: any = await expenseService.create({
         idempotencyKey: id,
-        name: f.name.trim(),
+        name: resolvedName,
         expenseType: f.type,
         category: effectiveCategory,
-        description: f.notes.trim() || undefined,
         expenseDate: f.date.toISOString(),
-        subtotal,
+        subtotal: finalAmount,
+        cgst: 0,
+        sgst: 0,
         taxAmount: 0,
         additionalCharges: 0,
-        invoiceNumber: ocr?.receiptNumber || undefined,
-        vendor: ocr?.merchant ? { name: ocr.merchant } : undefined,
-        items: validItems.map((x) => ({
-          itemName: x.name.trim(),
-          quantity: Number(x.qty) || 1,
-          unit: 'Unit',
-          unitPrice: Number(x.price) || 0,
-        })),
+        invoiceNumber: f.invoiceNumber.trim() || undefined,
+        vendor: (f.vendor.trim() || ocr?.merchant) ? { name: f.vendor.trim() || ocr?.merchant } : undefined,
+        items: [],
         initialPayment:
           f.settlement === 'PAID'
             ? {
                 idempotencyKey: id + ':PAYMENT',
                 amount: finalAmount,
                 paymentMethod: f.method,
-                paymentApplication: 'NOT_SPECIFIED',
+                paymentApplication: ocr?.paymentApplication || (f.method === 'BANK_TRANSFER' ? 'NETBANKING' : 'NOT_SPECIFIED'),
                 fundingSource: funding(f.method),
                 paymentDate: f.date.toISOString(),
-                transactionReference: ocr?.transactionReference || undefined,
+                transactionReference: f.transactionReference.trim() || undefined,
               }
             : undefined,
       });
@@ -346,7 +343,7 @@ export default function RecordExpenseScreen() {
       if (uploadFailed) {
         Alert.alert(
           'Expense Saved',
-          'Expense was recorded successfully, but the receipt attachment could not be uploaded. You can re-upload it later from the expense details.',
+          'Expense was recorded successfully, but the receipt attachment could not be uploaded. You can re-upload it later from expense details.',
           [{ text: 'OK', onPress: () => router.replace({ pathname: '/(resident)/admin/billing/expenses', params: { refresh: String(Date.now()) } } as any) }]
         );
       } else {
@@ -359,324 +356,459 @@ export default function RecordExpenseScreen() {
     }
   };
 
+  const hasReviewFields = Object.values(reviewFields).some(Boolean);
+
   return (
     <ScreenShell
-      title="Expense"
-      subtitle="Record a community expense"
+      title="Record Expense"
+      subtitle="Record a community bill, invoice, or purchase"
       iconName="Receipt"
       showBackButton
       hideBottomNav={true}
     >
+      {/* =========================================================================
+          TWO-SLIDE PAGE INDICATOR
+         ========================================================================= */}
+      <View className="px-4 pt-2.5 pb-2.5 bg-card border-b border-border shadow-2xs">
+        <View className="flex-row items-center gap-2 mb-2">
+          {[0, 1].map((idx) => {
+            const isActive = idx === currentSlide;
+            const isCompleted = idx < currentSlide;
+            return (
+              <Pressable
+                key={idx}
+                onPress={() => {
+                  setCurrentSlide(idx as 0 | 1);
+                }}
+                className={`h-2 flex-1 rounded-full ${
+                  isCompleted || isActive ? 'bg-primary' : 'bg-muted'
+                }`}
+                accessibilityRole="button"
+                accessibilityLabel={`Go to Slide ${idx + 1}`}
+              />
+            );
+          })}
+        </View>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-xs font-extrabold text-foreground">
+            {currentSlide === 0 ? '1. Upload Receipt & Scan' : '2. Extracted Details & Save'}
+          </Text>
+          <Text className="text-[11px] font-bold text-muted-foreground">
+            Step {currentSlide + 1} of 2
+          </Text>
+        </View>
+      </View>
+
       <ScrollView
         ref={scrollViewRef}
         className="flex-1 px-4"
-        contentContainerClassName="gap-3.5 pb-20 pt-2"
+        contentContainerClassName="gap-4 pb-28 pt-3"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Card 1: Expense Details & Payment */}
-        <View className="gap-3 rounded-2xl border border-border bg-card p-3.5">
-          <View>
-            <Text className="text-base font-bold text-foreground">Expense Details</Text>
-            <Text className="text-xs text-muted-foreground mt-0.5">
-              Enter the basic information for this expense.
-            </Text>
-          </View>
-
-          <TextInput
-            label="Expense Name"
-            required
-            value={f.name}
-            error={fieldErrors.name}
-            placeholder="e.g. Generator Diesel Refill"
-            onChangeText={(v) => {
-              set('name', v);
-              if (fieldErrors.name) setFieldErrors((e) => ({ ...e, name: undefined }));
-            }}
-          />
-
-          <DropdownSelect
-            label="Expense Type"
-            required
-            options={types}
-            value={f.type}
-            onValueChange={handleTypeChange}
-          />
-
-          {f.type === 'OTHER' ? (
-            <TextInput
-              label="Category"
-              required
-              value={f.category}
-              error={fieldErrors.category}
-              placeholder="e.g. Landscaping, Legal, Community Event"
-              helperText="Specify the custom category for this expense"
-              onChangeText={(v) => {
-                set('category', v);
-                if (fieldErrors.category) setFieldErrors((e) => ({ ...e, category: undefined }));
-              }}
-            />
-          ) : null}
-
-          <View className="border-t border-border/60 pt-3 gap-2.5">
-            <Text className="text-base font-bold text-foreground">Payment</Text>
-
-            <DropdownSelect
-              label="Payment Method"
-              required
-              options={methods}
-              value={f.method}
-              onValueChange={(v) => set('method', v)}
-            />
-
-            <View className="gap-1.5">
-              <Text className="text-sm font-medium text-foreground">Payment Settlement</Text>
-              <View className="flex-row gap-2">
-                {(['PAID', 'UNPAID'] as const).map((v) => {
-                  const isSelected = f.settlement === v;
-                  return (
-                    <Pressable
-                      key={v}
-                      onPress={() => set('settlement', v)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Set payment settlement to ${v}`}
-                      className={`flex-1 rounded-xl py-2.5 px-3 items-center justify-center border transition-colors ${
-                        isSelected
-                          ? 'bg-primary border-primary shadow-xs'
-                          : 'bg-muted/60 border-border/70'
-                      }`}
-                    >
-                      <Text
-                        className={`text-sm font-bold ${
-                          isSelected ? 'text-primary-foreground' : 'text-foreground'
-                        }`}
-                      >
-                        {v === 'PAID' ? 'Paid' : 'Unpaid'}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-
-          <TextInput
-            label="Description / Notes"
-            value={f.notes}
-            placeholder="Optional notes or reference information"
-            multiline
-            numberOfLines={3}
-            inputClassName="min-h-[64px] py-2"
-            onChangeText={(v) => set('notes', v)}
-          />
-        </View>
-
-        {/* Optional Receipt Card */}
-        <View className="gap-2.5 rounded-2xl border border-border bg-card p-3.5">
-          <View className="flex-row items-center gap-2">
-            <FileText size={16} className="text-primary" />
-            <Text className="font-bold text-foreground">Receipt / Payment Screenshot</Text>
-          </View>
-          <Text className="text-xs text-muted-foreground">
-            Upload a store receipt, utility bill, or UPI payment screenshot (GPay, PhonePe, Paytm, etc.).
-          </Text>
-
-          {receipt ? (
-            <View className="gap-2 rounded-xl border border-border/60 bg-muted/40 p-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="me-2 flex-1 text-xs font-semibold text-foreground" numberOfLines={1}>{receipt.name}</Text>
-                <View className="flex-row gap-3">
-                  <Pressable onPress={() => setReplacingReceipt((value) => !value)} hitSlop={8}><Text className="text-xs font-bold text-primary">Replace</Text></Pressable>
-                  <Pressable onPress={() => { setReceipt(null); setOcr(null); setOcrFeedback(null); setReplacingReceipt(false); }} hitSlop={8}><Text className="text-xs font-bold text-destructive">Remove</Text></Pressable>
+        {/* =========================================================================
+            SLIDE 1: RECEIPT UPLOAD ONLY (PAGE 1)
+           ========================================================================= */}
+        {currentSlide === 0 && (
+          <>
+            {/* RECEIPT PROOF & OCR SCAN */}
+            <View className="rounded-2xl border border-border bg-card p-4 gap-4 shadow-2xs">
+              <View className="flex-row items-center gap-2 border-b border-border/60 pb-2.5">
+                <View className="h-7 w-7 rounded-lg bg-primary/10 items-center justify-center">
+                  <FileText size={16} className="text-primary" />
+                </View>
+                <View className="flex-1 min-w-0">
+                  <Text className="text-sm font-bold text-foreground">Receipt / Proof (Optional)</Text>
+                  <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
+                    Upload or capture a bill to auto-fill details via OCR
+                  </Text>
                 </View>
               </View>
 
-              {replacingReceipt ? (
-                <View className="flex-row gap-2">
-                  <Button variant="outline" onPress={pick} className="flex-1"><Text className="text-xs font-bold">Upload File</Text></Button>
-                  <Button variant="outline" onPress={() => setCameraVisible(true)} className="flex-1"><Text className="text-xs font-bold">Take Photo</Text></Button>
+              {receipt ? (
+                <View className="gap-2.5 rounded-xl border border-border/60 bg-muted/40 p-3">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="me-2 flex-1 text-xs font-semibold text-foreground" numberOfLines={1}>
+                      {receipt.name}
+                    </Text>
+                    <View className="flex-row gap-3">
+                      <Pressable onPress={() => setReplacingReceipt((value) => !value)} hitSlop={8}>
+                        <Text className="text-xs font-bold text-primary">Replace</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => {
+                          setReceipt(null);
+                          setOcr(null);
+                          setOcrFeedback(null);
+                          setReplacingReceipt(false);
+                        }}
+                        hitSlop={8}
+                      >
+                        <Text className="text-xs font-bold text-destructive">Remove</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {replacingReceipt ? (
+                    <View className="flex-row gap-2 pt-1">
+                      <Button variant="outline" onPress={pick} className="flex-1 py-2.5">
+                        <View className="flex-row items-center justify-center gap-1.5">
+                          <UploadCloud size={14} className="text-foreground" />
+                          <Text className="text-xs font-bold text-foreground">Upload File</Text>
+                        </View>
+                      </Button>
+                      <Button variant="outline" onPress={() => setCameraVisible(true)} className="flex-1 py-2.5">
+                        <View className="flex-row items-center justify-center gap-1.5">
+                          <Camera size={14} className="text-foreground" />
+                          <Text className="text-xs font-bold text-foreground">Take Photo</Text>
+                        </View>
+                      </Button>
+                    </View>
+                  ) : null}
+
+                  <Button
+                    loading={scanning}
+                    disabled={scanning}
+                    onPress={scan}
+                    className="mt-1 bg-primary"
+                  >
+                    <Text className="text-xs font-bold text-primary-foreground">
+                      {scanning ? 'Scanning & Extracting Data…' : 'Scan & Auto-Extract Details'}
+                    </Text>
+                  </Button>
+                </View>
+              ) : (
+                <View className="flex-row gap-2.5">
+                  <Button variant="outline" onPress={pick} className="flex-1 border-primary/30 bg-primary/5 py-3">
+                    <View className="flex-row items-center justify-center gap-2">
+                      <UploadCloud size={16} className="text-primary" />
+                      <Text className="text-xs font-bold text-primary">Upload Receipt</Text>
+                    </View>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onPress={() => setCameraVisible(true)}
+                    className="flex-1 border-primary/30 bg-primary/5 py-3"
+                  >
+                    <View className="flex-row items-center justify-center gap-2">
+                      <Camera size={16} className="text-primary" />
+                      <Text className="text-xs font-bold text-primary">Take Photo</Text>
+                    </View>
+                  </Button>
+                </View>
+              )}
+
+              {/* OCR Feedback Message */}
+              {ocrFeedback ? (
+                <View
+                  className={`rounded-xl border p-3 gap-2 ${
+                    ocrFeedback.tone === 'error'
+                      ? 'border-destructive/30 bg-destructive/5'
+                      : ocrFeedback.tone === 'success'
+                      ? 'border-emerald-500/30 bg-emerald-500/10'
+                      : 'border-amber-500/30 bg-amber-500/10'
+                  }`}
+                >
+                  <View className="flex-row items-start gap-2">
+                    {ocrFeedback.tone === 'success' ? (
+                      <CheckCircle2 size={16} className="text-emerald-600 mt-0.5 shrink-0" />
+                    ) : (
+                      <AlertTriangle
+                        size={16}
+                        className={
+                          ocrFeedback.tone === 'error' ? 'text-destructive mt-0.5 shrink-0' : 'text-amber-600 mt-0.5 shrink-0'
+                        }
+                      />
+                    )}
+                    <Text
+                      className={`flex-1 text-xs font-medium leading-relaxed ${
+                        ocrFeedback.tone === 'error'
+                          ? 'text-destructive'
+                          : ocrFeedback.tone === 'success'
+                          ? 'text-emerald-800 dark:text-emerald-300 font-semibold'
+                          : 'text-amber-800 dark:text-amber-300'
+                      }`}
+                    >
+                      {ocrFeedback.message}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+
+            {/* SLIDE 1 ACTION: NEXT STEP */}
+            <View className="pt-2 pb-6">
+              <Button
+                variant="default"
+                onPress={handleNextSlide}
+                className="w-full bg-primary h-12 shadow-sm"
+              >
+                <View className="flex-row items-center justify-center gap-2">
+                  <Text className="text-white font-bold text-base">
+                    {receipt ? 'Next: Review Extracted Details' : 'Skip Receipt & Enter Manually'}
+                  </Text>
+                  <ArrowRight size={18} className="text-white" />
+                </View>
+              </Button>
+            </View>
+          </>
+        )}
+
+        {/* =========================================================================
+            SLIDE 2: ALL EXTRACTED & NECESSARY DETAILS (PAGE 2)
+           ========================================================================= */}
+        {currentSlide === 1 && (
+          <>
+            {/* SECTION 1: EXTRACTED BILL SPECIFICATIONS */}
+            <View className="rounded-2xl border border-border bg-card p-4 gap-4 shadow-2xs">
+              <View className="flex-row items-center gap-2 border-b border-border/60 pb-2.5">
+                <View className="h-7 w-7 rounded-lg bg-primary/10 items-center justify-center">
+                  <DollarSign size={16} className="text-primary" />
+                </View>
+                <View className="flex-1 min-w-0">
+                  <Text className="text-sm font-bold text-foreground">Bill Specifications</Text>
+                  <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
+                    Vendor, document number, payment reference, date, and total
+                  </Text>
+                </View>
+              </View>
+
+              {hasReviewFields && (
+                <View className="flex-row items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
+                  <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-600" />
+                  <Text className="flex-1 text-[11px] leading-4 text-amber-800 dark:text-amber-300">
+                    OCR values are pre-filled. Please confirm fields highlighted in amber before saving.
+                  </Text>
+                </View>
+              )}
+
+              {/* Vendor / Payee */}
+              <TextInput
+                label="Vendor / Payee Name"
+                value={f.vendor}
+                placeholder="Enter vendor or payee name"
+                status={reviewFields.vendor ? 'incomplete' : 'idle'}
+                helperText={reviewFields.vendor ? 'OCR detected this value. Please verify it.' : undefined}
+                onChangeText={(v) => set('vendor', v)}
+              />
+
+              <TextInput
+                label="Invoice # / Bill # / Order ID"
+                value={f.invoiceNumber}
+                placeholder="Enter invoice or bill number"
+                status={reviewFields.invoiceNumber ? 'incomplete' : 'idle'}
+                helperText={reviewFields.invoiceNumber ? 'OCR detected this document number. Please verify it.' : undefined}
+                onChangeText={(v) => set('invoiceNumber', v)}
+              />
+
+              {(Boolean(f.transactionReference) || Boolean(ocr?.isPaymentScreenshot) || Boolean(ocr?.transactionReference)) && (
+                <TextInput
+                  label="Transaction ID / UTR / RRN"
+                  value={f.transactionReference}
+                  placeholder="Enter UPI, bank, or payment reference"
+                  status={reviewFields.transactionReference ? 'incomplete' : 'idle'}
+                  helperText={reviewFields.transactionReference ? 'OCR detected this payment reference. Please verify it.' : undefined}
+                  onChangeText={(v) => set('transactionReference', v)}
+                />
+              )}
+
+              {/* Expense Date */}
+              <View className="gap-1.5">
+                <DatePicker
+                  label="Bill / Expense Date"
+                  value={f.date}
+                  onChange={(v) => v && set('date', v)}
+                />
+                {reviewFields.date && <Text className="text-[11px] leading-4 text-amber-700 dark:text-amber-300">OCR date detected — please verify.</Text>}
+              </View>
+              {/* Total Amount (Required) */}
+              <TextInput
+                label="Total Amount (₹)"
+                required
+                keyboardType="decimal-pad"
+                value={f.amount}
+                error={fieldErrors.amount}
+                status={reviewFields.amount ? 'incomplete' : 'idle'}
+                placeholder="0.00"
+                helperText={
+                  reviewFields.amount
+                    ? 'OCR detected this total. Please verify it.'
+                    : f.amount
+                    ? `Recorded as ₹${Number(f.amount || 0).toFixed(2)}`
+                    : undefined
+                }
+                onChangeText={(v) => {
+                  set('amount', v);
+                  if (fieldErrors.amount) setFieldErrors((e) => ({ ...e, amount: undefined }));
+                }}
+              />
+            </View>
+
+            {/* SECTION 2: CLASSIFICATION & PURPOSE */}
+            <View className="rounded-2xl border border-border bg-card p-4 gap-4 shadow-2xs">
+              <View className="flex-row items-center gap-2 border-b border-border/60 pb-2.5">
+                <View className="h-7 w-7 rounded-lg bg-primary/10 items-center justify-center">
+                  <FileEdit size={16} className="text-primary" />
+                </View>
+                <View className="flex-1 min-w-0">
+                  <Text className="text-sm font-bold text-foreground">Classification</Text>
+                  <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
+                    Name and category for community accounting
+                  </Text>
+                </View>
+              </View>
+
+              {/* Expense Name (Required) */}
+              <TextInput
+                label="Expense Name"
+                required
+                value={f.name}
+                error={fieldErrors.name}
+                placeholder="Enter expense name or purpose"
+                onChangeText={(v) => {
+                  set('name', v);
+                  if (fieldErrors.name) setFieldErrors((e) => ({ ...e, name: undefined }));
+                }}
+              />
+
+              {/* Expense Type */}
+              <DropdownSelect
+                label="Expense Type"
+                required
+                options={types}
+                value={f.type}
+                onValueChange={handleTypeChange}
+              />
+
+              {/* Custom Category if OTHER */}
+              {f.type === 'OTHER' ? (
+                <TextInput
+                  label="Custom Category"
+                  required
+                  value={f.category}
+                  error={fieldErrors.category}
+                  placeholder="Enter custom category"
+                  onChangeText={(v) => {
+                    set('category', v);
+                    if (fieldErrors.category) setFieldErrors((e) => ({ ...e, category: undefined }));
+                  }}
+                />
+              ) : null}
+            </View>
+
+            {/* SECTION 3: PAYMENT & SETTLEMENT */}
+            <View className="rounded-2xl border border-border bg-card p-4 gap-4 shadow-2xs">
+              <View className="flex-row items-center gap-2 border-b border-border/60 pb-2.5">
+                <View className="h-7 w-7 rounded-lg bg-primary/10 items-center justify-center">
+                  <CreditCard size={16} className="text-primary" />
+                </View>
+                <View className="flex-1 min-w-0">
+                  <Text className="text-sm font-bold text-foreground">Payment & Settlement</Text>
+                  <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
+                    Method of transaction and payment status
+                  </Text>
+                </View>
+              </View>
+
+              {/* Responsive 50/50 Grid: Payment Method & Settlement */}
+              <View className="flex-row gap-2.5 items-start">
+                <View className="flex-1 min-w-0">
+                  <DropdownSelect
+                    label="Payment Method"
+                    required
+                    options={methods}
+                    value={f.method}
+                    onValueChange={(v) => set('method', v)}
+                  />
+                </View>
+
+                <View className="flex-1 min-w-0">
+                  <Text className="text-xs font-bold text-foreground mb-1.5">Payment Status</Text>
+                  <View className="flex-row rounded-xl border border-border/80 bg-muted/40 p-1">
+                    <Pressable
+                      onPress={() => set('settlement', 'PAID')}
+                      className={`flex-1 flex-row items-center justify-center gap-1 rounded-lg py-2.5 transition-colors ${
+                        f.settlement === 'PAID'
+                          ? 'bg-emerald-600 shadow-2xs'
+                          : 'bg-transparent'
+                      }`}
+                      accessibilityRole="button"
+                      accessibilityLabel="Mark as Paid"
+                    >
+                      <Check size={12} className={f.settlement === 'PAID' ? 'text-white' : 'text-muted-foreground'} />
+                      <Text
+                        className={`text-xs font-bold ${
+                          f.settlement === 'PAID' ? 'text-white' : 'text-muted-foreground'
+                        }`}
+                      >
+                        Paid
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => set('settlement', 'UNPAID')}
+                      className={`flex-1 flex-row items-center justify-center gap-1 rounded-lg py-2.5 transition-colors ${
+                        f.settlement === 'UNPAID'
+                          ? 'bg-amber-600 shadow-2xs'
+                          : 'bg-transparent'
+                      }`}
+                      accessibilityRole="button"
+                      accessibilityLabel="Mark as Unpaid"
+                    >
+                      <Text
+                        className={`text-xs font-bold ${
+                          f.settlement === 'UNPAID' ? 'text-white' : 'text-muted-foreground'
+                        }`}
+                      >
+                        Unpaid
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* SLIDE 2 ACTIONS: BACK & SAVE */}
+            <View className="pt-2 pb-6 gap-2">
+              {Object.keys(fieldErrors).length > 0 ? (
+                <View className="flex-row items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 p-3 mb-1">
+                  <AlertTriangle size={16} className="text-destructive shrink-0" />
+                  <Text className="text-xs font-semibold text-destructive flex-1">
+                    {Object.values(fieldErrors)[0]}
+                  </Text>
                 </View>
               ) : null}
 
-              <Button loading={scanning} onPress={scan} variant="outline" className="mt-1">
-                <Text className="text-xs font-bold">{scanning ? 'Scanning Receipt…' : 'Scan & Extract Receipt Data'}</Text>
-              </Button>
-            </View>
-          ) : (
-            <View className="flex-row gap-2">
-              <Button variant="outline" onPress={pick} className="flex-1"><Text className="text-sm font-semibold">Upload Receipt</Text></Button>
-              <Button variant="outline" onPress={() => setCameraVisible(true)} className="flex-1"><Text className="text-sm font-semibold">Take Photo</Text></Button>
-            </View>
-          )}
-
-          {ocrFeedback ? (
-            <View className={`rounded-xl border p-3 ${ocrFeedback.tone === 'error' ? 'border-destructive/30 bg-destructive/5' : ocrFeedback.tone === 'success' ? 'border-primary/25 bg-primary/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
-              <Text className={`text-xs font-medium ${ocrFeedback.tone === 'error' ? 'text-destructive' : ocrFeedback.tone === 'success' ? 'text-primary' : 'text-amber-700 dark:text-amber-400'}`}>{ocrFeedback.message}</Text>
-            </View>
-          ) : null}
-        </View>
-        {/* Card 2: Amount & Items */}
-        <View className="gap-3 rounded-2xl border border-border bg-card p-3.5">
-          <View>
-            <Text className="text-base font-bold text-foreground">Amount & Items</Text>
-            <Text className="text-xs text-muted-foreground mt-0.5">
-              Add the date, total amount, and item details if available.
-            </Text>
-          </View>
-
-          <DatePicker
-            label="Expense Date"
-            value={f.date}
-            onChange={(v) => set('date', v)}
-          />
-
-          <TextInput
-            label="Amount (₹)"
-            required
-            keyboardType="decimal-pad"
-            value={f.amount}
-            error={fieldErrors.amount}
-            placeholder={itemsTotal > 0 ? itemsTotal.toFixed(2) : '0.00'}
-            helperText={
-              itemsTotal > 0 && !f.amount
-                ? `Calculated from itemized total: ₹${itemsTotal.toFixed(2)}`
-                : undefined
-            }
-            onChangeText={(v) => {
-              set('amount', v);
-              if (fieldErrors.amount) setFieldErrors((e) => ({ ...e, amount: undefined }));
-            }}
-          />
-
-          {/* Items Header */}
-          <View className="border-t border-border/60 pt-3">
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-1 pe-2">
-                <Text className="text-sm font-bold text-foreground">Items (Optional)</Text>
-                <Text className="text-xs text-muted-foreground">
-                  Add only when you want an itemized record.
-                </Text>
-              </View>
-              <Pressable
-                onPress={addItem}
-                hitSlop={8}
-                className="flex-row items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 active:opacity-70 shrink-0"
-                accessibilityRole="button"
-                accessibilityLabel="Add item"
-              >
-                <Plus size={14} className="text-primary" />
-                <Text className="text-xs font-bold text-primary">Add Item</Text>
-              </Pressable>
-            </View>
-
-            {items.length === 0 ? (
-              <View className="rounded-xl border border-dashed border-border py-2.5 items-center">
-                <Text className="text-xs text-muted-foreground">No itemized entries added</Text>
-              </View>
-            ) : null}
-
-            {/* Responsive Item Cards */}
-            <View className="gap-2.5">
-              {items.map((x, i) => {
-                const lineTotal = (Number(x.qty) || 0) * (Number(x.price) || 0);
-                return (
-                  <View
-                    key={i}
-                    className="rounded-xl border border-border/80 bg-muted/20 p-2.5 gap-2"
-                  >
-                    {/* Header Row: Item Number, Line Total Preview, and Accessible Remove Button */}
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center gap-1.5 min-w-0 flex-1">
-                        <View className="h-5 w-5 rounded-full bg-primary/10 items-center justify-center shrink-0">
-                          <Text className="text-[10px] font-bold text-primary">{i + 1}</Text>
-                        </View>
-                        <Text className="text-xs font-bold text-foreground">Item #{i + 1}</Text>
-                        {lineTotal > 0 && (
-                          <Text className="text-xs text-muted-foreground font-semibold">
-                            · ₹{lineTotal.toFixed(2)}
-                          </Text>
-                        )}
-                      </View>
-
-                      <Pressable
-                        onPress={() => removeItem(i)}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                        className="flex-row items-center gap-1 rounded-md px-2 py-1 bg-rose-500/10 active:opacity-60 shrink-0"
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remove item ${i + 1}`}
-                      >
-                        <Trash2 size={13} className="text-rose-600 dark:text-rose-400" />
-                        <Text className="text-[11px] font-semibold text-rose-600 dark:text-rose-400">
-                          Remove
-                        </Text>
-                      </Pressable>
-                    </View>
-
-                    {/* Full-width Item Description */}
-                    <TextInput
-                      label="Item Description"
-                      placeholder="e.g. LED bulb 10W, cement bag"
-                      value={x.name}
-                      labelClassName="text-xs mb-0.5"
-                      onChangeText={(v) => updateItem(i, 'name', v)}
-                    />
-
-                    {/* Responsive 50/50 Grid for Qty & Unit Price */}
-                    <View className="flex-row gap-2">
-                      <View className="min-w-0 flex-1">
-                        <TextInput
-                          label="Quantity"
-                          keyboardType="decimal-pad"
-                          value={x.qty}
-                          placeholder="1"
-                          labelClassName="text-xs mb-0.5"
-                          onChangeText={(v) => updateItem(i, 'qty', v)}
-                        />
-                      </View>
-                      <View className="min-w-0 flex-1">
-                        <TextInput
-                          label="Unit Price (₹)"
-                          keyboardType="decimal-pad"
-                          value={x.price}
-                          placeholder="0.00"
-                          labelClassName="text-xs mb-0.5"
-                          onChangeText={(v) => updateItem(i, 'price', v)}
-                        />
-                      </View>
-                    </View>
+              <View className="flex-row gap-3">
+                <Button
+                  variant="outline"
+                  onPress={() => setCurrentSlide(0)}
+                  className="flex-1 border-border h-12"
+                >
+                  <View className="flex-row items-center justify-center gap-1.5">
+                    <ArrowLeft size={16} className="text-foreground" />
+                    <Text className="text-foreground font-bold text-sm">Back</Text>
                   </View>
-                );
-              })}
-            </View>
+                </Button>
 
-            {items.length > 0 && itemsTotal > 0 ? (
-              <View className="flex-row justify-between items-center rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 mt-2">
-                <Text className="text-xs font-medium text-muted-foreground">
-                  Itemized Total ({items.length} item{items.length === 1 ? '' : 's'}):
-                </Text>
-                <Text className="text-xs font-bold text-primary">₹{itemsTotal.toFixed(2)}</Text>
+                <Button
+                  loading={saving}
+                  disabled={saving}
+                  onPress={save}
+                  leftIcon={Receipt}
+                  className="flex-[2] bg-emerald-600 h-12 shadow-sm"
+                >
+                  <Text className="text-white font-bold text-sm">
+                    Save Expense {Number(f.amount) > 0 ? `(₹${Number(f.amount).toFixed(2)})` : ''}
+                  </Text>
+                </Button>
               </View>
-            ) : null}
-          </View>
-        </View>
-
-        {/* Save Button */}
-        <View className="pt-2 pb-6">
-          <Button
-            loading={saving}
-            onPress={save}
-            leftIcon={Receipt}
-            className="w-full"
-          >
-            <Text className="text-white font-bold text-base">Save Expense</Text>
-          </Button>
-          {Object.keys(fieldErrors).length > 0 ? (
-            <Text className="text-destructive text-xs font-semibold text-center mt-2">
-              Please fix the highlighted fields above to save this expense.
-            </Text>
-          ) : null}
-        </View>
+            </View>
+          </>
+        )}
       </ScrollView>
+
+      {/* Live Camera Modal */}
       <ReceiptCameraCaptureModal
         visible={cameraVisible}
         onClose={() => setCameraVisible(false)}

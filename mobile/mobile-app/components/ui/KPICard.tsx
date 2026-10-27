@@ -70,7 +70,7 @@ const variantStyles: Record<string, { card: string; iconContainer: string; iconC
 
 const kpiCardVariants = cva(
   cn(
-    'w-[150px] rounded-2xl p-4 border justify-between active:bg-secondary/70 shadow-2xs',
+    'w-[150px] rounded-2xl p-3 phone-md:p-3.5 border justify-between active:bg-secondary/70 shadow-2xs min-h-[118px] phone-md:min-h-[124px]',
     Platform.select({
       web: 'transition-all duration-200 hover:border-border cursor-pointer select-none',
     })
@@ -132,7 +132,7 @@ const KPICard = React.forwardRef<View, KPICardProps>(
         )}
       >
         {/* Top Section: Icon Circle & Trend Indicator */}
-        <View className="flex-row items-center justify-between mb-1.5">
+        <View className="flex-row items-center justify-between mb-1">
           {IconComponent ? (
             <View
               className={cn(
@@ -155,7 +155,7 @@ const KPICard = React.forwardRef<View, KPICardProps>(
               )}
               <Text
                 className={cn(
-                  'text-[11px] font-semibold font-sans',
+                  'text-micro font-semibold',
                   trend.direction === 'up'
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-red-600 dark:text-red-400'
@@ -167,33 +167,44 @@ const KPICard = React.forwardRef<View, KPICardProps>(
           ) : null}
         </View>
 
-        {/* Middle Section: Value */}
-        <Text
-          className="text-[18px] font-bold font-sans text-foreground tracking-tight"
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.7}
-        >
-          {value}
-        </Text>
-
-        {/* Bottom Section: Title */}
-        <Text
-          className="text-[12px] text-muted-foreground mt-0.5 font-medium font-sans"
-          numberOfLines={1}
-        >
-          {translateText(title)}
-        </Text>
-
-        {/* Optional Subtitle */}
-        {subtitle ? (
+        {/* Middle & Bottom Info Container */}
+        <View className="justify-end min-h-[58px]">
+          {/* Metric Value */}
           <Text
-            className="text-[11px] text-muted-foreground/80 mt-0.5 font-sans"
+            className="text-base phone-md:text-lg font-bold text-foreground tracking-tight"
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
           >
-            {translateText(subtitle)}
+            {value}
           </Text>
-        ) : null}
+
+          {/* Metric Title (fitted cleanly on 1 line without breaking) */}
+          <Text
+            className="text-2xs phone-md:text-xs text-muted-foreground mt-0.5 font-medium leading-[14px]"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            style={Platform.OS === 'web' ? ({ wordBreak: 'keep-all' } as any) : undefined}
+          >
+            {translateText(title)}
+          </Text>
+
+          {/* Subtitle Line (fitted cleanly on 1 line without breaking) */}
+          {subtitle ? (
+            <Text
+              className="text-micro text-muted-foreground/80 mt-0.5"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+              style={Platform.OS === 'web' ? ({ wordBreak: 'keep-all' } as any) : undefined}
+            >
+              {translateText(subtitle)}
+            </Text>
+          ) : (
+            <View className="h-3" />
+          )}
+        </View>
       </Pressable>
     );
   }

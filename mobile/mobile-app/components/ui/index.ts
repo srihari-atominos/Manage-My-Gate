@@ -28,3 +28,5 @@ export * from './input';
 export * from './text';
 export * from './GlobalFilterPanel';
 export * from './RowsPerPageDropdown';
+
+export * from './DraggableSpeedDial';

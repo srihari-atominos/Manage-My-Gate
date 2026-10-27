@@ -31,8 +31,10 @@ class PlatformSubscriptionRepository {
    * @param {ClientSession} [session=null]
    */
   async findByOrganisationId(organisationId, session = null) {
-    const query = PlatformSubscription.findOne({ organisationId })
-      .populate('organisationId', 'name email code')
+    const query = PlatformSubscription.findOne({
+      $or: [{ organizationId: organisationId }, { organisationId: organisationId }]
+    })
+      .populate('organizationId', 'name email code')
       .populate('orderId');
     if (session) query.session(session);
     return await query.exec();
@@ -55,7 +57,10 @@ class PlatformSubscriptionRepository {
     }
 
     if (organisationId) {
-      matchStage.organisationId = new PlatformSubscription.base.Types.ObjectId(organisationId);
+      matchStage.$or = [
+        { organizationId: new PlatformSubscription.base.Types.ObjectId(organisationId) },
+        { organisationId: new PlatformSubscription.base.Types.ObjectId(organisationId) }
+      ];
     }
 
     if (search && search.trim() !== '') {

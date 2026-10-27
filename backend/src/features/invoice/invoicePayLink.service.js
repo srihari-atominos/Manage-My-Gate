@@ -29,7 +29,21 @@ const tokenSecret = () => {
 const round2 = (n) => Math.round(Number(n || 0) * 100) / 100;
 
 export const publicBaseUrl = () =>
-  (process.env.PUBLIC_APP_URL || `https://${config.mobile?.universalLinkDomain || 'app.managemygate.com'}`).replace(/\/+$/, '');
+  {
+  if (process.env.PUBLIC_APP_URL && !process.env.PUBLIC_APP_URL.includes('app.managemygate.com')) {
+    return process.env.PUBLIC_APP_URL.trim().replace(/\/+$/, '');
+  }
+  const domain = config.mobile?.universalLinkDomain;
+  if (domain && domain !== 'app.managemygate.com') {
+    return `https://${domain}`.replace(/\/+$/, '');
+  }
+  const isLocalhost = (url) => !url || /localhost|127\.0\.0\.1|::1/i.test(url);
+  const clientUrl = process.env.CLIENT_URL || process.env.WEB_CLIENT_URL;
+  if (clientUrl && !isLocalhost(clientUrl)) {
+    return clientUrl.trim().replace(/\/+$/, '');
+  }
+  return 'https://managemygate.e3esg.com';
+};
 
 export const signPayToken = (invoice) =>
   jwt.sign(

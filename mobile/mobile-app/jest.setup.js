@@ -32,9 +32,25 @@ jest.mock('react-native-worklets', () => ({
   runOnUI: jest.fn((fn) => fn),
   scheduleOnUI: jest.fn((fn) => fn),
   createSerializable: jest.fn((val) => val),
+  makeShareable: jest.fn((val) => val),
+  makeShareableCloneRecursive: jest.fn((val) => val),
   serializableMappingCache: new Map(),
 }));
-require('react-native-reanimated/mock');
+jest.mock('react-native-reanimated', () => {
+  const Reanimated = require('react-native-reanimated/mock');
+  return {
+    ...Reanimated,
+    withTiming: (toValue, _, cb) => {
+      if (cb) cb(true);
+      return toValue;
+    },
+    withSpring: (toValue, _, cb) => {
+      if (cb) cb(true);
+      return toValue;
+    },
+    useReducedMotion: jest.fn(() => false),
+  };
+});
 
 jest.mock('expo-constants', () => ({
   expoConfig: {

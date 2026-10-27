@@ -71,7 +71,7 @@ invoiceEventEmitter.on(SEND_WHATSAPP_LINK, async (payload) => {
         .format(Number(payload.amount || 0));
 
       await client.messages.create({
-        body: `Hello ${payload.userName},\nYour invoice for ${amountText} is ready. Pay securely here: ${payload.paymentLink}\nOr open the app to pay with your wallet.`,
+        body: `Hello ${payload.userName},\nYour invoice${payload.invoiceNumber ? ` (${payload.invoiceNumber})` : ''} for ${amountText} is ready. Pay securely here: ${payload.paymentLink}\nOr open the app to pay with your wallet.`,
         from: twilioWhatsAppNumber,
         to: `whatsapp:${formattedPhone}`
       });

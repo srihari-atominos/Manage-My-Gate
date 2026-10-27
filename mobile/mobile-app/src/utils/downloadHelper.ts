@@ -12,6 +12,9 @@ try {
   }
 }
 
+/** Strips path separators and unsafe characters so a server-supplied name cannot escape the cache directory. */
+const safeFileName = (name: string) => String(name || 'export').replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '');
+
 export const downloadCSVFile = async (content: string | Blob, fileName: string) => {
   try {
     let textContent = '';
@@ -37,8 +40,8 @@ export const downloadCSVFile = async (content: string | Blob, fileName: string) 
       }, 200);
     } else {
       const fs = LegacyFileSystem || {};
-      const docDir = fs.documentDirectory || fs.cacheDirectory || '';
-      const fileUri = `${docDir}${fileName}`;
+      const docDir = fs.cacheDirectory || fs.documentDirectory || '';
+      const fileUri = `${docDir}${safeFileName(fileName)}`;
       if (fs.writeAsStringAsync) {
         await fs.writeAsStringAsync(fileUri, textContent, {
           encoding: 'utf8',
@@ -98,8 +101,8 @@ export const downloadExcelFile = async (data: Blob | string | Uint8Array, fileNa
       }, 200);
     } else {
       const fs = LegacyFileSystem || {};
-      const docDir = fs.documentDirectory || fs.cacheDirectory || '';
-      const fileUri = `${docDir}${fileName}`;
+      const docDir = fs.cacheDirectory || fs.documentDirectory || '';
+      const fileUri = `${docDir}${safeFileName(fileName)}`;
       
       let base64Data = '';
       if (typeof data === 'string') {
@@ -154,7 +157,7 @@ export const downloadPDFFile = async (data: Blob, fileName: string) => {
     }
 
     const fs = LegacyFileSystem || {};
-    const fileUri = `${fs.documentDirectory || fs.cacheDirectory || ''}${fileName}`;
+    const fileUri = `${fs.cacheDirectory || fs.documentDirectory || ''}${safeFileName(fileName)}`;
     const reader = new FileReader();
     const base64Data = await new Promise<string>((resolve, reject) => {
       reader.onload = () => {

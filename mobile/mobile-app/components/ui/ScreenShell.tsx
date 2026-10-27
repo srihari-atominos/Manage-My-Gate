@@ -7,7 +7,6 @@ import {
   BackHandler,
   Keyboard,
   Platform,
-  TouchableWithoutFeedback,
   KeyboardAvoidingView,
 } from 'react-native';
 import Animated, {
@@ -16,7 +15,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter, usePathname, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { openSupportMail, useSupportEmail } from '@/src/services/supportContact';
 import * as LucideIcons from 'lucide-react-native';
@@ -161,25 +160,49 @@ export function ScreenShell({
 
   const lastTapRef = useRef<number>(0);
 
+  let navigation: any = null;
+  try {
+    navigation = useNavigation();
+  } catch {
+    navigation = null;
+  }
+
+  // Universal Hierarchy-Aware Back Navigation (handles sub-stacks & parent stacks safely)
+  const executeBackNavigation = React.useCallback(() => {
+    if (onBackPress) {
+      onBackPress();
+      return true;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return true;
+    }
+    // Walk up React Navigation hierarchy if a nested stack root cannot go back locally
+    let parentNav = navigation?.getParent ? navigation.getParent() : null;
+    while (parentNav) {
+      if (parentNav.canGoBack && parentNav.canGoBack()) {
+        parentNav.goBack();
+        return true;
+      }
+      parentNav = parentNav.getParent ? parentNav.getParent() : null;
+    }
+    // Safe fallback if no history exists in any ancestor navigator
+    router.replace('/(resident)/dashboard' as any);
+    return true;
+  }, [onBackPress, router, navigation]);
+
   // Hardware Back Button Handler for Android / Mobile devices
   React.useEffect(() => {
     if (!showBackButton) return;
 
     const onHardwareBack = () => {
-      if (onBackPress) {
-        onBackPress();
-        return true;
-      }
-      if (router.canGoBack()) {
-        router.back();
-        return true;
-      }
-      return false;
+      executeBackNavigation();
+      return true;
     };
 
     const subscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
     return () => subscription.remove();
-  }, [showBackButton, onBackPress, router]);
+  }, [showBackButton, executeBackNavigation]);
 
   // Mobile Gesture Shortcut: Double Tap Header Title to Switch Role / Villa Unit Context
   const handleHeaderPress = () => {
@@ -232,15 +255,7 @@ export function ScreenShell({
             <View className={`flex-row items-center flex-1 min-w-0 ${(headerRight || showGlobalNavButton) ? 'me-1' : ''}`}>
               {showBackButton && (
                 <Pressable
-                  onPress={() => {
-                    if (onBackPress) {
-                      onBackPress();
-                    } else if (router.canGoBack()) {
-                      router.back();
-                    } else {
-                      router.replace('/(resident)/dashboard' as any);
-                    }
-                  }}
+                  onPress={executeBackNavigation}
                   className="me-2.5 p-2 rounded-xl bg-secondary/80 active:bg-secondary shrink-0 border border-border/60 shadow-2xs"
                   hitSlop={8}
                   accessibilityRole="button"
@@ -263,7 +278,8 @@ export function ScreenShell({
                 accessibilityHint="Double tap header title to switch active Role or Villa Unit"
               >
                 <Text
-                  numberOfLines={subtitle ? 1 : 2}
+                  numberOfLines={1}
+                  minimumFontScale={0.65}
                   className="text-foreground text-[22px] sm:text-[24px] font-extrabold tracking-tight leading-tight shrink"
                   style={{ fontWeight: '800' }}
                 >
@@ -271,8 +287,9 @@ export function ScreenShell({
                 </Text>
                 {subtitle ? (
                   <Text
-                    numberOfLines={2}
-                    className="text-[14.5px] sm:text-[15.5px] text-muted-foreground mt-1 font-medium leading-snug shrink"
+                    numberOfLines={1}
+                    minimumFontScale={0.65}
+                    className="text-[13px] sm:text-[14px] text-muted-foreground mt-1 font-medium leading-snug shrink"
                   >
                     {translateText(subtitle)}
                   </Text>
@@ -374,11 +391,11 @@ Time: ${new Date().toISOString()}`
               {children}
             </View>
           ) : (
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <Pressable onPress={Keyboard.dismiss} accessible={false} className="flex-1 bg-transparent">
               <View className="flex-1 bg-transparent">
                 {children}
               </View>
-            </TouchableWithoutFeedback>
+            </Pressable>
           )}
         </KeyboardAvoidingView>
       )}

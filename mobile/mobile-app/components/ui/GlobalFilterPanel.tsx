@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   Pressable,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
   Switch,
@@ -69,6 +69,7 @@ export const GlobalFilterPanel: React.FC<GlobalFilterPanelProps> = ({
   clearLabel = 'Clear all',
 }) => {
   const { t, translateText } = useTranslation();
+  const { height: screenHeight } = useWindowDimensions();
 
   // Internal category selection state if not controlled externally
   const [internalSelectedCat, setInternalSelectedCat] = useState<string>(
@@ -93,7 +94,6 @@ export const GlobalFilterPanel: React.FC<GlobalFilterPanelProps> = ({
     onSelectCategory?.(catId);
   };
 
-  const screenHeight = Dimensions.get('window').height;
   const panelMaxHeight = Platform.OS === 'web'
     ? Math.min(Math.round(screenHeight * 0.85), 620)
     : Math.round(screenHeight * 0.82);
@@ -124,8 +124,12 @@ export const GlobalFilterPanel: React.FC<GlobalFilterPanelProps> = ({
 
           {/* 1. Header */}
           <View className="w-full pb-3 border-b border-border/80 items-center justify-between flex-row px-5 py-3 bg-card">
-            <View className="flex-row items-center gap-2">
-              <Text className="text-[17px] font-bold font-sans text-foreground tracking-tight">
+            <View className="flex-row items-center gap-2 flex-1 min-w-0 me-2">
+              <Text
+                className="text-[17px] font-bold font-sans text-foreground tracking-tight shrink"
+                numberOfLines={1}
+                minimumFontScale={0.75}
+              >
                 {translateText(title)}
               </Text>
               {totalActiveCount > 0 && (
@@ -447,17 +451,21 @@ export const GlobalFilterPanel: React.FC<GlobalFilterPanelProps> = ({
           </View>
 
           {/* 3. Bottom Action Footer */}
-          <View className="flex-row items-center justify-between px-5 py-3.5 border-t border-border/80 bg-card">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-3.5 border-t border-border/80 bg-card">
             {/* Clear All Action */}
             <TouchableOpacity
               onPress={onClearAll}
               activeOpacity={0.7}
-              className="py-2 px-1 flex-row items-center gap-1.5"
+              className="flex-1 min-w-0 py-2 px-1 flex-row items-center gap-1.5"
               accessibilityRole="button"
               accessibilityLabel="Clear all filters"
             >
               <RotateCcw size={14} className="text-muted-foreground" />
-              <Text className="font-semibold text-foreground/80 text-sm font-sans hover:text-primary">
+              <Text
+                className="shrink font-semibold text-foreground/80 text-sm font-sans hover:text-primary"
+                numberOfLines={1}
+                minimumFontScale={0.75}
+              >
                 {translateText(clearLabel)}
               </Text>
             </TouchableOpacity>
@@ -465,13 +473,17 @@ export const GlobalFilterPanel: React.FC<GlobalFilterPanelProps> = ({
             {/* Apply Action Button */}
             <Button
               variant="default"
-              className="bg-primary px-7 h-11 rounded-xl shadow-xs flex-row items-center justify-center gap-2 min-w-[130px]"
+              className="h-11 min-w-[108px] max-w-[152px] shrink px-4 rounded-xl shadow-xs flex-row items-center justify-center gap-2"
               onPress={onApply}
               accessibilityRole="button"
               accessibilityLabel="Apply filters"
             >
               <Check size={16} className="text-primary-foreground" />
-              <Text className="font-bold text-primary-foreground text-sm font-sans">
+              <Text
+                className="shrink font-bold text-primary-foreground text-sm font-sans"
+                numberOfLines={1}
+                minimumFontScale={0.75}
+              >
                 {applyLabel ||
                   (totalActiveCount > 0
                     ? `${t('apply', 'Apply')} (${totalActiveCount})`

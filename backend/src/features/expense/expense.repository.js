@@ -22,7 +22,8 @@ class ExpenseRepository {
   async reserveAttempt(expenseId, orgId, amount, session = null) { const q = Expense.findOneAndUpdate({ _id: expenseId, orgId, $expr: { $gte: [{ $subtract: ['$totalAmount', { $add: ['$recordedPaidAmount', '$upiAttemptReservedAmount'] }] }, amount] } }, { $inc: { upiAttemptReservedAmount: amount } }, { returnDocument: 'after', session }); return q; }
   async releaseAttemptReservation(expenseId, orgId, amount, session = null) { return Expense.findOneAndUpdate({ _id: expenseId, orgId, upiAttemptReservedAmount: { $gte: amount } }, { $inc: { upiAttemptReservedAmount: -amount } }, { returnDocument: 'after', session }); }
   async findStaleAttempts(cutoff, limit = 200) { return ExpensePayment.find({ recordType: 'ATTEMPT', attemptStatus: { $in: ['CREATED', 'LAUNCHED', 'PENDING'] }, createdAt: { $lt: cutoff } }).sort({ createdAt: 1 }).limit(limit).select('_id expenseId orgId').lean(); }
-  async countOpenAttempts(expenseId, orgId, session = null) { const q = ExpensePayment.countDocuments({ expenseId, orgId, recordType: 'ATTEMPT' }); const s = activeSession(session); if (s) q.session(s); return q; }
+  // Only attempts that can still turn into a payment hold the amounts; failed or expired ones must not freeze the expense forever.
+  async countOpenAttempts(expenseId, orgId, session = null) { const q = ExpensePayment.countDocuments({ expenseId, orgId, recordType: 'ATTEMPT', attemptStatus: { $in: ['CREATED', 'LAUNCHED', 'PENDING', 'USER_REPORTED_SUCCESS', 'UNKNOWN'] } }); const s = activeSession(session); if (s) q.session(s); return q; }
   async createPayment(data, session = null) { const record = new ExpensePayment(data); const s = activeSession(session); return record.save(s ? { session: s } : undefined); }
   async summary(orgId, match = {}, options = {}) {
     const orgObjectId = toObjectId(orgId);
@@ -33,9 +34,9 @@ class ExpenseRepository {
 
     // Isolate date-specific match to allow 'today' facet to always reflect calendar today
     const rootMatch = { ...match };
-    const dateMatch = rootMatch.createdAt ? { createdAt: rootMatch.createdAt } : null;
+    const dateMatch = rootMatch.expenseDate ? { expenseDate: rootMatch.expenseDate } : null;
     if (dateMatch) {
-      delete rootMatch.createdAt;
+      delete rootMatch.expenseDate;
     }
     const periodStages = dateMatch ? [{ $match: dateMatch }] : [];
 
@@ -53,7 +54,7 @@ class ExpenseRepository {
         },
       ],
       today: [
-        { $match: { createdAt: { $gte: todayStart, $lte: todayEnd } } },
+        { $match: { expenseDate: { $gte: todayStart, $lte: todayEnd } } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } },
       ],
       categoryBreakdown: [

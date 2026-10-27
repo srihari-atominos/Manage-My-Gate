@@ -336,7 +336,17 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       )}
 
       {/* Country Selection Modal */}
-      <Modal visible={isPickerVisible} transparent statusBarTranslucent={true} animationType="fade">
+      <Modal
+        visible={isPickerVisible}
+        transparent
+        statusBarTranslucent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setIsPickerVisible(false);
+          setSearchQuery('');
+        }}
+        testID="country-picker-modal"
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}

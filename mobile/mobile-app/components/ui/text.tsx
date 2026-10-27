@@ -2,12 +2,16 @@ import { cn } from '../../lib/utils';
 import { Slot } from '@rn-primitives/slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-import { Platform, Text as RNText, type Role } from 'react-native';
+import { Platform, StyleSheet, Text as RNText, TextStyle, type Role } from 'react-native';
 import i18n, { I18nContext } from '../../src/utils/i18n';
+import {
+  DEFAULT_MAX_FONT_SIZE_MULTIPLIER,
+  scaleFontSize,
+} from '../../src/utils/responsiveTypography';
 
 const textVariants = cva(
   cn(
-    'text-foreground text-base font-medium text-left',
+    'text-foreground text-sm phone-md:text-base font-medium text-left',
     Platform.select({
       web: 'select-text',
     })
@@ -17,24 +21,30 @@ const textVariants = cva(
       variant: {
         default: '',
         h1: cn(
-          'text-center text-3xl font-extrabold tracking-tight text-left',
+          'text-center text-2xl phone-md:text-3xl font-extrabold tracking-tight text-left',
           Platform.select({ web: 'scroll-m-20 text-balance' })
         ),
         h2: cn(
-          'border-border border-b pb-1.5 text-2xl font-bold tracking-tight text-left',
+          'border-border border-b pb-1.5 text-xl phone-md:text-2xl font-bold tracking-tight text-left',
           Platform.select({ web: 'scroll-m-20 first:mt-0' })
         ),
-        h3: cn('text-xl font-bold tracking-tight text-left', Platform.select({ web: 'scroll-m-20' })),
-        h4: cn('text-lg font-bold tracking-tight text-left', Platform.select({ web: 'scroll-m-20' })),
-        p: 'mt-2 text-sm leading-relaxed text-left',
+        h3: cn(
+          'text-lg phone-md:text-xl font-bold tracking-tight text-left',
+          Platform.select({ web: 'scroll-m-20' })
+        ),
+        h4: cn(
+          'text-base phone-md:text-lg font-bold tracking-tight text-left',
+          Platform.select({ web: 'scroll-m-20' })
+        ),
+        p: 'mt-2 text-xs phone-md:text-sm leading-relaxed text-left',
         blockquote: 'mt-3 border-l-2 pl-3 italic sm:pl-6 text-left',
         code: cn(
-          'bg-muted relative rounded px-[0.35rem] py-[0.2rem] font-mono text-xs font-semibold'
+          'bg-muted relative rounded px-[0.35rem] py-[0.2rem] font-mono text-micro phone-md:text-xs font-semibold'
         ),
-        lead: 'text-muted-foreground text-base leading-relaxed text-left',
-        large: 'text-base font-semibold tracking-tight text-left',
-        small: 'text-xs font-medium leading-tight text-left',
-        muted: 'text-muted-foreground text-xs leading-normal text-left',
+        lead: 'text-muted-foreground text-sm phone-md:text-base leading-relaxed text-left',
+        large: 'text-sm phone-md:text-base font-semibold tracking-tight text-left',
+        small: 'text-caption phone-md:text-xs font-medium leading-tight text-left',
+        muted: 'text-muted-foreground text-caption phone-md:text-xs leading-normal text-left',
       },
     },
     defaultVariants: {
@@ -80,6 +90,15 @@ function translateChildren(node: React.ReactNode): React.ReactNode {
   return node;
 }
 
+export type TextProps = React.ComponentProps<typeof RNText> &
+  React.RefAttributes<typeof RNText> &
+  TextVariantProps & {
+    asChild?: boolean;
+    skipTranslate?: boolean;
+    noTranslate?: boolean;
+    adaptive?: boolean;
+  };
+
 function Text({
   className,
   asChild = false,
@@ -87,14 +106,13 @@ function Text({
   children,
   style,
   skipTranslate,
+  numberOfLines,
+  adjustsFontSizeToFit,
+  minimumFontScale,
+  adaptive = false,
+  maxFontSizeMultiplier = DEFAULT_MAX_FONT_SIZE_MULTIPLIER,
   ...props
-}: React.ComponentProps<typeof RNText> &
-  React.RefAttributes<typeof RNText> &
-  TextVariantProps & {
-    asChild?: boolean;
-    skipTranslate?: boolean;
-    noTranslate?: boolean;
-  }) {
+}: TextProps) {
   const textClass = React.useContext(TextClassContext);
   const Component = asChild ? Slot : RNText;
 
@@ -119,12 +137,30 @@ function Text({
   const shouldSkipTranslate =
     skipTranslate || (props as any).noTranslate || (props as any).translate === false;
 
+  // Compact controls reserve a fixed number of lines. Scale their text to the
+  // available width first, so translated labels and resident-provided values
+  // remain visible on small devices instead of being truncated.
+  const shouldAdaptToAvailableLines = !asChild && typeof numberOfLines === 'number';
+
   const translatedChildren = React.useMemo(() => {
     if (shouldSkipTranslate) {
       return children;
     }
     return translateChildren(children);
   }, [children, currentLang, shouldSkipTranslate]);
+
+  const resolvedStyle = React.useMemo(() => {
+    if (!adaptive || !style) return style;
+    const flat = StyleSheet.flatten(style) as TextStyle;
+    if (flat && typeof flat.fontSize === 'number') {
+      return {
+        ...flat,
+        fontSize: scaleFontSize(flat.fontSize),
+        lineHeight: flat.lineHeight ? scaleFontSize(flat.lineHeight) : undefined,
+      };
+    }
+    return style;
+  }, [adaptive, style]);
 
   return (
     <Component
@@ -140,7 +176,15 @@ function Text({
       )}
       role={variant ? ROLE[variant] : undefined}
       aria-level={variant ? ARIA_LEVEL[variant] : undefined}
-      style={style}
+      style={resolvedStyle}
+      numberOfLines={numberOfLines}
+      adjustsFontSizeToFit={
+        shouldAdaptToAvailableLines ? adjustsFontSizeToFit ?? true : adjustsFontSizeToFit
+      }
+      minimumFontScale={
+        shouldAdaptToAvailableLines ? minimumFontScale ?? 0.65 : minimumFontScale
+      }
+      maxFontSizeMultiplier={maxFontSizeMultiplier}
       {...(props as any)}
     >
       {translatedChildren}

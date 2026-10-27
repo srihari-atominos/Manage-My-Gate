@@ -46,8 +46,8 @@ class TechnicianController {
       }
       const and = buildStaffCategoryConditions(req.query);
 
-      const search = req.query.search;
-      if (search && search.trim()) {
+      const search = typeof req.query.search === 'string' ? req.query.search : '';
+      if (search.trim()) {
         const q = escapeRegex(search.trim());
         filter.$or = [
           { name: { $regex: q, $options: 'i' } },

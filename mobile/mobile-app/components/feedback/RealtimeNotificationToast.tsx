@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
-import { View, Pressable, TouchableOpacity } from 'react-native';
+import { View, Pressable } from 'react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import { Text } from '@/components/ui/text';
 import {
-  Bell,
   X,
   QrCode,
   CreditCard,
@@ -76,21 +75,21 @@ export const RealtimeNotificationToast: React.FC<RealtimeNotificationToastProps>
       )}
     >
       <View className="p-3.5 flex-row items-center gap-3 bg-card">
-        {/* Clickable notification banner content */}
-        <TouchableOpacity
+        {/* Clickable Banner Content */}
+        <Pressable
           onPress={() => {
             if (onPressBanner) {
               onPressBanner(notification);
             }
             onDismiss();
           }}
-          activeOpacity={0.9}
           accessibilityRole="button"
-          className="flex-1 flex-row items-center gap-3"
+          accessibilityLabel={notification.title || 'Notification'}
+          className="flex-1 flex-row items-center gap-3 active:opacity-80"
         >
           {/* Type Icon Badge Container */}
           <View className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center shrink-0">
-            {getIcon(notification.type)}
+            {getIcon(notification.metadata?.type || notification.type)}
           </View>
 
           {/* Text Content */}
@@ -114,9 +113,9 @@ export const RealtimeNotificationToast: React.FC<RealtimeNotificationToastProps>
               {notification.body || ''}
             </Text>
           </View>
-        </TouchableOpacity>
+        </Pressable>
 
-        {/* Close Button - sibling to TouchableOpacity, avoiding nested HTML button error */}
+        {/* Close Button */}
         <Pressable
           onPress={onDismiss}
           accessibilityRole="button"
