@@ -151,7 +151,8 @@ class TechnicianRepository {
           let: { userId: '$userId' },
           pipeline: [
             { $match: { 
-                $expr: { $eq: ['$assignedTechnicianId', '$$userId'] },
+                // Staff without a login (userId null) must not pick up every complaint whose assignee is also null.
+                $expr: { $and: [{ $ne: ['$$userId', null] }, { $eq: ['$assignedTechnicianId', '$$userId'] }] },
                 orgId: new mongoose.Types.ObjectId(orgId)
             }}
           ],
@@ -225,6 +226,8 @@ class TechnicianRepository {
       },
       {
         $addFields: {
+          resolvedCount: { $size: '$resolvedComplaints' },
+          slaCompliantCount: { $size: '$slaCompliantComplaints' },
           averageResolutionTime: {
             $cond: [
               { $gt: [{ $size: '$resolvedComplaints' }, 0] },

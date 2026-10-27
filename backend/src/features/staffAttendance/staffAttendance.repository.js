@@ -223,7 +223,8 @@ class StaffAttendanceRepository {
       if (normStart) dateRange.$gte = normStart;
       if (normEnd) dateRange.$lte = normEnd;
       if (Object.keys(dateRange).length > 0) {
-        matchConditions.checkInTime = dateRange;
+        // Merge, don't replace: the "Missing Checkout" status above already set a checkInTime cutoff.
+        matchConditions.checkInTime = { ...(matchConditions.checkInTime || {}), ...dateRange };
       }
     }
 

@@ -126,7 +126,8 @@ test(
     const buffer = await exp.reportToXlsxBuffer(report);
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer);
-    assert.deepEqual(wb.worksheets.map((w) => w.name), ['Summary', 'Attendance', 'Staff Summary']);
+    assert.deepEqual(wb.worksheets.map((w) => w.name), ['Summary', 'Charts', 'Attendance', 'Staff Summary']);
+    assert.equal(wb.getWorksheet('Charts').getImages().length, 3, 'Charts sheet should hold the three charts');
     const att = wb.getWorksheet('Attendance');
     assert.equal(att.getRow(1).getCell(2).value, 'Staff Name');
     assert.equal(att.getRow(2).getCell(2).value, 'Ali Ahmed');

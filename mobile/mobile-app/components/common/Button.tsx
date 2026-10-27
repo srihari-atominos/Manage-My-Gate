@@ -123,30 +123,50 @@ export const Button = forwardRef<View, ButtonProps>(
           ref={ref}
           disabled={isDisabled}
           className={cn(
-            'flex-row items-center justify-center min-w-0',
+            'flex-row items-center justify-center min-w-0 overflow-hidden',
             variantClasses[variant],
             sizeClasses[size],
             isDisabled && 'opacity-50',
             className,
             minimumTouchTarget
           )}
+          role="button"
+          accessibilityRole="button"
+          accessibilityState={{
+            ...(props.accessibilityState || {}),
+            disabled: isDisabled,
+            ...(loading ? { busy: true } : {}),
+          }}
           {...props}
         >
           {({ pressed }) => (
-            <View className={cn('flex-row items-center justify-center min-w-0', pressed && variant !== 'link' && 'opacity-80')}>
+            <View className={cn('flex-row items-center justify-center min-w-0 max-w-full overflow-hidden px-1', pressed && variant !== 'link' && 'opacity-80')}>
               {LeftIcon && !loading && (
-                <LeftIcon size={16} className={cn('me-1.5', textClasses[variant])} />
+                <LeftIcon size={16} className={cn('me-1.5 shrink-0', textClasses[variant])} />
               )}
-              <Text
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}
-                numberOfLines={1}
-                className={cn('text-center leading-tight flex-shrink text-sm font-semibold', foregroundClass)}
-              >
-                {loading ? 'Loading...' : children}
-              </Text>
+              {loading ? (
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  numberOfLines={1}
+                  className={cn('text-center leading-tight shrink min-w-0 text-sm font-semibold', foregroundClass)}
+                >
+                  Loading...
+                </Text>
+              ) : typeof children === 'string' ? (
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  numberOfLines={1}
+                  className={cn('text-center leading-tight shrink min-w-0 text-sm font-semibold', foregroundClass)}
+                >
+                  {children}
+                </Text>
+              ) : (
+                children
+              )}
               {RightIcon && !loading && (
-                <RightIcon size={16} className={cn('ms-1.5', textClasses[variant])} />
+                <RightIcon size={16} className={cn('ms-1.5 shrink-0', textClasses[variant])} />
               )}
             </View>
           )}

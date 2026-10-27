@@ -1,11 +1,16 @@
-﻿import React, { useEffect, useState } from 'react'
-import apiClient from '../../../services/apiClient.js'
+import React, { useEffect, useState } from 'react'
+import { useBilling } from '../hooks/useBilling'
+import FinanceRunwayCard from './FinanceRunwayCard.jsx'
+import FinanceRunwaySimulatorModal from './FinanceRunwaySimulatorModal.jsx'
+import InflowBreakdownCard from './InflowBreakdownCard.jsx'
+
 const money = (value) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
     maximumFractionDigits: 2,
   }).format(Number(value || 0))
+
 const Metric = ({ label, value, note }) => (
   <div className="card shadow-sm h-100">
     <div className="card-body">
@@ -15,48 +20,63 @@ const Metric = ({ label, value, note }) => (
     </div>
   </div>
 )
+
 export default function CommunityFinancePanel() {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const { communityFinance, loadCommunityFinance } = useBilling()
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false)
+
   useEffect(() => {
-    let active = true
-    apiClient
-      .get('/community-finance/dashboard')
-      .then((r) => active && setData(r?.data?.data || r?.data))
-      .catch(
-        (err) =>
-          active &&
-          setError(
-            err?.response?.data?.message ||
-              err.message ||
-              'Unable to load community finance dashboard.',
-          ),
-      )
-      .finally(() => active && setLoading(false))
-    return () => {
-      active = false
-    }
-  }, [])
-  if (loading)
+    loadCommunityFinance()
+  }, [loadCommunityFinance])
+
+  const { data, loading, error } = communityFinance || {}
+
+  if (loading && !data) {
     return (
       <div className="card mt-4">
         <div className="card-body text-muted">Loading community finance overview…</div>
       </div>
     )
-  if (error)
+  }
+
+  if (error && !data) {
     return (
       <div className="alert alert-warning mt-4 mb-0" role="alert">
         {error}
       </div>
     )
+  }
+
   const o = data?.overview || {}
+  const runway = data?.runway || o?.runway || null
+
   return (
     <section className="mt-4" aria-label="Community finance overview">
-      <h5>Community Finance Overview</h5>
-      <p className="text-muted small">
-        Recorded financial movement only — not an actual bank balance.
-      </p>
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <h5 className="mb-1">Community Finance Overview</h5>
+          <p className="text-muted small mb-0">
+            Recorded financial movement and operating balance projection.
+          </p>
+        </div>
+      </div>
+
+      {/* ── 1. Operating Runway & Balance Coverage Card ── */}
+      <FinanceRunwayCard
+        runway={runway}
+        overview={o}
+        onOpenSimulator={() => setIsSimulatorOpen(true)}
+      />
+
+      {/* ── 2. Interactive Runtime Simulator Modal ── */}
+      <FinanceRunwaySimulatorModal
+        visible={isSimulatorOpen}
+        onClose={() => setIsSimulatorOpen(false)}
+        initialRunway={runway}
+        overview={o}
+      />
+
+      {/* ── 3. Operational Financial Metrics Grid ── */}
       <div className="row g-3">
         <div className="col-12 col-sm-6 col-xl-3">
           <Metric label="Current-period charges" value={o.currentPeriodCharges} />
@@ -91,6 +111,13 @@ export default function CommunityFinancePanel() {
           <Metric label="Reconciled expense payments" value={o.reconciledExpensePayments} />
         </div>
       </div>
+
+      {/* ── 4. Inflows & Revenue Streams Section ── */}
+      <InflowBreakdownCard
+        incomeBreakdown={data?.breakdowns?.income || []}
+        receipts={data?.receipts || []}
+        grossTotal={o.grossSuccessfulCollections || 0}
+      />
     </section>
   )
 }

@@ -102,7 +102,8 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
         visible={visible}
         transparent={true}
         animationType="fade"
-        onRequestClose={loading ? undefined : onCancel}
+        onRequestClose={loading ? () => {} : onCancel}
+        testID="confirmation-modal"
       >
         <View className="flex-1 justify-center items-center bg-black/50 p-4">
           <View

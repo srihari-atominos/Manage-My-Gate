@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal as RNModal, View, Pressable, TouchableWithoutFeedback, ModalProps as RNModalProps } from 'react-native';
+import { Modal as RNModal, View, Pressable, ModalProps as RNModalProps } from 'react-native';
 import { Text } from '../ui/text';
 import { X } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
@@ -29,12 +29,14 @@ export const Modal = ({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      testID={props.testID || 'app-modal'}
       {...props}
     >
       <View className={cn('flex-1 items-center justify-center p-4', className)}>
         <Pressable 
           className="absolute inset-0 bg-black/50" 
-          onPress={onClose} 
+          onPress={onClose}
+          testID="modal-backdrop"
         />
         <View
           className={cn(
@@ -52,6 +54,7 @@ export const Modal = ({
                 size="sm"
                 variant="ghost"
                 onPress={onClose}
+                testID="modal-close-button"
                 accessibilityLabel="Close modal"
               />
             </View>

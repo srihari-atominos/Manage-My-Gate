@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Animated, TouchableWithoutFeedback } from 'react-native';
+import { View, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { HeaderActionButton } from '@/components/ui/HeaderActionButton';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { Text } from '@/components/ui/text';
+import { DraggableSpeedDial, SpeedDialAction } from '@/components/ui/DraggableSpeedDial';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { FileSpreadsheet, Zap, Plus, Building2, UserPlus, Filter } from 'lucide-react-native';
 import { useVilla } from '@/src/features/villa/hooks/useVilla';
@@ -53,42 +54,34 @@ export default function VillaManagementScreen() {
   const [bulkUploadModalVisible, setBulkUploadModalVisible] = useState(false);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
 
-  // Speed Dial UI State & Animation
-  const [isDialOpen, setIsDialOpen] = useState(false);
-  const dialAnimation = useRef(new Animated.Value(0)).current;
+  // Speed Dial Actions for DraggableSpeedDial
+  const speedDialActions: SpeedDialAction[] = [
+    {
+      id: 'create_unit',
+      label: t('create_unit', 'Create Unit'),
+      icon: <Plus size={22} className="text-primary" />,
+      accessibilityLabel: t('create_unit', 'Create Unit'),
+      onPress: () => {
+        setEditingVilla(null);
+        setFormModalVisible(true);
+      },
+    },
+    {
+      id: 'bulk_upload',
+      label: t('bulk_upload', 'Bulk Upload'),
+      icon: <FileSpreadsheet size={22} className="text-primary" />,
+      accessibilityLabel: t('bulk_upload', 'Bulk Upload'),
+      onPress: () => setBulkUploadModalVisible(true),
+    },
+    {
+      id: 'batch_generate',
+      label: t('batch_generate', 'Batch Generate'),
+      icon: <Zap size={22} className="text-primary" />,
+      accessibilityLabel: t('batch_generate', 'Batch Generate'),
+      onPress: () => setBatchModalVisible(true),
+    },
+  ];
 
-  const toggleDial = () => {
-    const toValue = isDialOpen ? 0 : 1;
-    Animated.spring(dialAnimation, {
-      toValue,
-      friction: 5,
-      useNativeDriver: true,
-    }).start();
-    setIsDialOpen(!isDialOpen);
-  };
-
-  const closeDialAndOpen = (setter: (v: boolean) => void) => {
-    toggleDial();
-    setTimeout(() => setter(true), 300);
-  };
-
-  const rotation = dialAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg']
-  });
-
-  const transX1 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
-  const transY1 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -145] });
-  const transX2 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -75] });
-  const transY2 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -85] });
-  const transX3 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -115] });
-  const transY3 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -15] });
-  
-  const scale1 = dialAnimation.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.5, 1.1, 1], extrapolate: 'clamp' });
-  const scale2 = dialAnimation.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.5, 1.1, 1], extrapolate: 'clamp' });
-  const scale3 = dialAnimation.interpolate({ inputRange: [0, 0.9, 1], outputRange: [0.5, 1.1, 1], extrapolate: 'clamp' });
-
-  const dialOpacity = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   useEffect(() => {
     fetchVillas();
@@ -247,117 +240,13 @@ export default function VillaManagementScreen() {
         )}
       </View>
 
-      {/* Animated Speed Dial Overlay */}
-      {isDialOpen && (
-        <TouchableWithoutFeedback onPress={toggleDial}>
-          <Animated.View 
-            style={{ opacity: dialOpacity }}
-            className="absolute inset-0 bg-black/60 z-[9990] elevation-5" 
-          />
-        </TouchableWithoutFeedback>
-      )}
-
-      {/* Speed Dial Action 3: Batch Generate (Left) */}
-      <Animated.View 
-        className="z-[9998]"
-        style={{ 
-          position: 'absolute', bottom: 135, right: 25,
-          width: 50, height: 50,
-          alignItems: 'center', justifyContent: 'center',
-          transform: [{ translateX: transX3 }, { translateY: transY3 }, { scale: scale3 }], 
-          opacity: dialOpacity,
-          overflow: 'visible'
-        }}
-        pointerEvents={isDialOpen ? 'auto' : 'none'}
-      >
-        <View style={{ position: 'absolute', right: 55, width: 125, alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
-          <View className="bg-card px-3 py-1.5 rounded-lg border border-border/60 shadow-sm" style={{ elevation: 2 }}>
-            <Text className="text-foreground text-[11px] font-bold tracking-tight text-right" numberOfLines={1}>
-              {t('batch_generate', 'Batch Generate')}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          activeOpacity={0.7}
-          onPress={() => closeDialAndOpen(setBatchModalVisible)}
-          className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
-        >
-          <Zap size={22} className="text-primary" />
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* Speed Dial Action 2: Bulk Upload (Top-Left) */}
-      <Animated.View 
-        className="z-[9998]"
-        style={{ 
-          position: 'absolute', bottom: 135, right: 25,
-          width: 50, height: 50,
-          alignItems: 'center', justifyContent: 'center',
-          transform: [{ translateX: transX2 }, { translateY: transY2 }, { scale: scale2 }], 
-          opacity: dialOpacity,
-          overflow: 'visible'
-        }}
-        pointerEvents={isDialOpen ? 'auto' : 'none'}
-      >
-        <View style={{ position: 'absolute', right: 55, width: 125, alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
-          <View className="bg-card px-3 py-1.5 rounded-lg border border-border/60 shadow-sm" style={{ elevation: 2 }}>
-            <Text className="text-foreground text-[11px] font-bold tracking-tight text-right" numberOfLines={1}>
-              {t('bulk_upload', 'Bulk Upload')}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          activeOpacity={0.7}
-          onPress={() => closeDialAndOpen(setBulkUploadModalVisible)}
-          className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
-        >
-          <FileSpreadsheet size={22} className="text-primary" />
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* Speed Dial Action 1: Create Unit (Top) */}
-      <Animated.View 
-        className="z-[9998]"
-        style={{ 
-          position: 'absolute', bottom: 135, right: 25,
-          width: 50, height: 50,
-          alignItems: 'center', justifyContent: 'center',
-          transform: [{ translateX: transX1 }, { translateY: transY1 }, { scale: scale1 }], 
-          opacity: dialOpacity,
-          overflow: 'visible'
-        }}
-        pointerEvents={isDialOpen ? 'auto' : 'none'}
-      >
-        <View style={{ position: 'absolute', right: 55, width: 125, alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
-          <View className="bg-card px-3 py-1.5 rounded-lg border border-border/60 shadow-sm" style={{ elevation: 2 }}>
-            <Text className="text-foreground text-[11px] font-bold tracking-tight text-right" numberOfLines={1}>
-              {t('create_unit', 'Create Unit')}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          activeOpacity={0.7}
-          onPress={() => {
-            setEditingVilla(null);
-            closeDialAndOpen(setFormModalVisible);
-          }}
-          className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
-        >
-          <Plus size={22} className="text-primary" />
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* Main Animated FAB */}
-      <TouchableOpacity
-        className="rounded-full bg-primary/90 items-center justify-center shadow-xl border border-primary/50"
-        style={{ position: 'absolute', bottom: 130, right: 20, width: 60, height: 60, elevation: 8, zIndex: 9999 }}
-        activeOpacity={0.7}
-        onPress={toggleDial}
-      >
-        <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-          <Plus size={28} className="text-white" />
-        </Animated.View>
-      </TouchableOpacity>
+      {/* Physics-based Draggable Speed Dial FAB */}
+      <DraggableSpeedDial
+        actions={speedDialActions}
+        initialBottom={24}
+        initialRight={20}
+        accessibilityLabel={t('villa_actions', 'Villa Actions')}
+      />
 
       {/* Details Dialog */}
       <VillaDetailsModal

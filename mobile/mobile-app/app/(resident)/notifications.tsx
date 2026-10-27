@@ -265,7 +265,7 @@ export default function NotificationsScreen() {
           {isInvite ? (
             <Building2 size={20} color="#FF6A00" />
           ) : (
-            getNotificationIcon(notification.type)
+            getNotificationIcon(notification.metadata?.type || notification.type)
           )}
         </View>
 

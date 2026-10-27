@@ -108,7 +108,7 @@ export class PersonalExpenseService {
     const scope = this.scope(user);
     const transaction = await this.repo.findTransaction({ ...scope, isDeleted: false }, id);
     if (!transaction?.receipt) throw new HttpError(404, 'Receipt not found.');
-    const ocr = { ...(transaction.receipt.ocr?.toObject?.() || transaction.receipt.ocr || {}), ...Object.fromEntries(Object.entries({ merchant: body.merchant, merchantAddress: body.merchantAddress, receiptNumber: body.receiptNumber, receiptDate: body.receiptDate, currency: body.currency, subtotalMinor: body.subtotalMinor, taxMinor: body.taxMinor, discountMinor: body.discountMinor, additionalChargesMinor: body.additionalChargesMinor, totalMinor: body.totalMinor, items: body.items }).filter(([, value]) => value !== undefined)), ...(body.confirmed ? { confirmedAt: new Date() } : {}) };
+    const ocr = { ...(transaction.receipt.ocr?.toObject?.() || transaction.receipt.ocr || {}), ...Object.fromEntries(Object.entries({ merchant: body.merchant, merchantAddress: body.merchantAddress, receiptNumber: body.receiptNumber, invoiceNumber: body.invoiceNumber, billNumber: body.billNumber, transactionId: body.transactionId, orderId: body.orderId, documentType: body.documentType, receiptDate: body.receiptDate, currency: body.currency, subtotalMinor: body.subtotalMinor, taxMinor: body.taxMinor, discountMinor: body.discountMinor, additionalChargesMinor: body.additionalChargesMinor, totalMinor: body.totalMinor, items: body.items }).filter(([, value]) => value !== undefined)), ...(body.confirmed ? { confirmedAt: new Date() } : {}) };
     return this.repo.updateTransaction({ ...scope, isDeleted: false }, id, { 'receipt.ocr': ocr, 'receipt.ocrStatus': 'COMPLETED', 'receipt.ocrEngineStatus': 'REVIEWED', 'receipt.ocrError': null });
   }
 
@@ -126,6 +126,15 @@ export class PersonalExpenseService {
     const transaction = await this.repo.findTransaction({ ...this.scope(user), isDeleted: false }, id);
     if (!transaction?.receipt?.storageName) throw new HttpError(404, 'Receipt not found.');
     return { transaction, path: resolveSecureFilePath(receiptUploadDir, transaction.receipt.storageName) };
+  }
+
+  async previewReceipt(user, file) {
+    try {
+      const outcome = await extractReceipt(file);
+      return outcome;
+    } finally {
+      try { unlinkSafe(file?.path); } catch {}
+    }
   }
   async listTransactions(user, query) {
     const scope = this.scope(user);

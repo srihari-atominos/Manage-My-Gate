@@ -22,8 +22,9 @@ export const IconButton = ({
   ...props
 }: IconButtonProps) => {
   const sizeClasses = {
-    sm: 'h-8 w-8',
-    md: 'h-10 w-10',
+    // Icon-only controls keep the same 44pt minimum target as other mobile actions.
+    sm: 'h-11 w-11',
+    md: 'h-11 w-11',
     lg: 'h-12 w-12',
   };
 
@@ -62,6 +63,11 @@ export const IconButton = ({
       )}
       disabled={disabled}
       {...props}
+      accessibilityRole={"button"}
+      accessibilityState={{
+        ...(props.accessibilityState || {}),
+        disabled,
+      }}
     >
       {({ pressed }) => (
         <View className={cn(pressed && 'opacity-70')}>

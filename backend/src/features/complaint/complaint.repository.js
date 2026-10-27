@@ -12,8 +12,9 @@ class ComplaintRepository {
       .populate('assignedTechnicianId', 'name phone email avatar');
   }
 
-  async findAll(orgId, filter, pagination, sort) {
-    const { skip, limit } = pagination;
+  async findAll(orgId, filter = {}, pagination = {}, sort = { createdAt: -1 }) {
+    if (!orgId) throw new Error('Tenant context (orgId) is required');
+    const { skip = 0, limit = 10 } = pagination || {};
     const query = { ...filter, orgId: new mongoose.Types.ObjectId(orgId) };
     
     if (query.residentId && typeof query.residentId === 'string') {

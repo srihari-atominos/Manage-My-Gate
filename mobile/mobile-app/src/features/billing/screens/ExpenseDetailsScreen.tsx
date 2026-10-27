@@ -34,6 +34,7 @@ import { Button } from '@/components/common/Button';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { DatePicker } from '@/components/common/DatePicker';
+import { MarkExpensePaidSheet } from '../components/MarkExpensePaidSheet';
 import expenseService from '../services/expenseService';
 import { createOperationId } from '@/src/utils/idempotency';
 import {
@@ -83,6 +84,7 @@ export default function ExpenseDetailsScreen() {
   const [expense, setExpense] = useState<any>(null);
   const [error, setError] = useState('');
   const [showPayment, setShowPayment] = useState(false);
+  const [showMarkPaidSheet, setShowMarkPaidSheet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [attachmentLoading, setAttachmentLoading] = useState<string | null>(null);
 
@@ -502,6 +504,38 @@ export default function ExpenseDetailsScreen() {
               </Text>
             </View>
 
+            {(expense.cgst > 0 || expense.sgst > 0 || (expense.taxAmount > 0)) && (
+              <View className="rounded-xl border border-border/70 bg-muted/20 p-2.5 gap-1.5">
+                <Text className="text-[11px] font-bold text-muted-foreground uppercase">
+                  Tax Breakdown
+                </Text>
+                {expense.subtotal != null && (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs text-muted-foreground">Net Subtotal</Text>
+                    <Text className="text-xs font-semibold text-foreground">{formatCurrency(expense.subtotal)}</Text>
+                  </View>
+                )}
+                {expense.cgst > 0 && (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs text-muted-foreground">CGST</Text>
+                    <Text className="text-xs font-semibold text-foreground">{formatCurrency(expense.cgst)}</Text>
+                  </View>
+                )}
+                {expense.sgst > 0 && (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs text-muted-foreground">SGST</Text>
+                    <Text className="text-xs font-semibold text-foreground">{formatCurrency(expense.sgst)}</Text>
+                  </View>
+                )}
+                {expense.taxAmount > 0 && !(expense.cgst > 0 && expense.sgst > 0) && (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs text-muted-foreground">Tax Amount</Text>
+                    <Text className="text-xs font-semibold text-foreground">{formatCurrency(expense.taxAmount)}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             <View className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
               <View className="rounded-xl bg-muted/30 p-2.5">
                 <Text className="text-[11px] text-muted-foreground font-medium">
@@ -549,11 +583,11 @@ export default function ExpenseDetailsScreen() {
                   </Button>
                 ) : null}
                 <Button
-                  variant="outline"
-                  onPress={() => setShowPayment(true)}
-                  className="flex-1"
+                  onPress={() => setShowMarkPaidSheet(true)}
+                  leftIcon={CheckCircle2}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 shadow-xs"
                 >
-                  <Text className="font-bold text-sm">Record Payment</Text>
+                  <Text className="text-white font-bold text-sm">Mark as Paid</Text>
                 </Button>
               </View>
             ) : null}
@@ -971,6 +1005,14 @@ export default function ExpenseDetailsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modern Standardized Mark Expense Paid Sheet */}
+      <MarkExpensePaidSheet
+        visible={showMarkPaidSheet}
+        onClose={() => setShowMarkPaidSheet(false)}
+        expense={expense}
+        onSuccess={load}
+      />
     </ScreenShell>
   );
 }

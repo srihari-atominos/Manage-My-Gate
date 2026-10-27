@@ -160,7 +160,7 @@ const AndroidTabButton = React.memo(function AndroidTabButton({
           textAlign: 'center',
         }}
         numberOfLines={1}
-        ellipsizeMode="tail"
+        minimumFontScale={0.65}
       >
         {translatedLabel}
       </Text>
@@ -243,7 +243,7 @@ const InsetTabButton = React.memo(function InsetTabButton({
               isActive ? 'font-bold' : 'font-medium'
             )}
             numberOfLines={1}
-            ellipsizeMode="tail"
+            minimumFontScale={0.65}
           >
             {translatedLabel}
           </Text>

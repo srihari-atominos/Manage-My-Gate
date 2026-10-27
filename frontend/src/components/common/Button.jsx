@@ -1,29 +1,73 @@
 import React from 'react'
+import PropTypes from 'prop-types'
 
 const variants = {
-  primary: 'bg-blue-500 text-white shadow-[0_4px_14px_rgba(0,132,255,0.28)] hover:bg-blue-600',
-  success:
-    'bg-emerald-500 text-white shadow-[0_4px_14px_rgba(16,185,129,0.28)] hover:bg-emerald-600',
-  danger: 'bg-red-500 text-white shadow-[0_4px_14px_rgba(239,68,68,0.28)] hover:bg-red-600',
-  outline: 'bg-transparent border border-slate-300 text-slate-700 hover:bg-slate-50',
+  primary: 'btn btn-primary text-white fw-semibold shadow-sm',
+  secondary: 'btn btn-secondary text-white fw-semibold shadow-sm',
+  success: 'btn btn-success text-white fw-semibold shadow-sm',
+  danger: 'btn btn-danger text-white fw-semibold shadow-sm',
+  warning: 'btn btn-warning text-dark fw-semibold shadow-sm',
+  outline: 'btn btn-outline-primary fw-semibold',
+  ghost: 'btn btn-link text-decoration-none fw-semibold',
 }
 
 const sizes = {
-  small: 'px-3 py-1.5 text-xs',
-  default: 'px-4 py-2 text-sm',
+  small: 'btn-sm py-1 px-3 fs-7',
+  default: 'py-2 px-4',
+  large: 'btn-lg py-3 px-5 fs-6',
 }
 
-const Button = ({ variant = 'primary', size = 'default', children, className = '', ...props }) => {
-  const baseClasses =
-    'inline-flex justify-center items-center font-medium rounded-lg transition-all duration-200 hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none cursor-pointer'
-  const variantClasses = variants[variant] || variants.primary
-  const sizeClasses = sizes[size] || sizes.default
+const Button = ({
+  variant = 'primary',
+  size = 'default',
+  children,
+  className = '',
+  loading = false,
+  disabled = false,
+  type = 'button',
+  icon,
+  ...props
+}) => {
+  const variantClass = variants[variant] || variants.primary
+  const sizeClass = sizes[size] || sizes.default
 
   return (
-    <button className={`${baseClasses} ${variantClasses} ${sizeClasses} ${className}`} {...props}>
-      {children}
+    <button
+      type={type}
+      disabled={disabled || loading}
+      className={`d-inline-flex align-items-center justify-content-center gap-2 rounded-3 transition-all ${variantClass} ${sizeClass} ${className}`}
+      style={{
+        transition: 'all 180ms cubic-bezier(0.16, 1, 0.3, 1)',
+        cursor: disabled || loading ? 'not-allowed' : 'pointer',
+      }}
+      {...props}
+    >
+      {loading && (
+        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
+      )}
+      {!loading && icon && <span className="d-inline-flex align-items-center">{icon}</span>}
+      <span>{children}</span>
     </button>
   )
+}
+
+Button.propTypes = {
+  variant: PropTypes.oneOf([
+    'primary',
+    'secondary',
+    'success',
+    'danger',
+    'warning',
+    'outline',
+    'ghost',
+  ]),
+  size: PropTypes.oneOf(['small', 'default', 'large']),
+  children: PropTypes.node,
+  className: PropTypes.string,
+  loading: PropTypes.bool,
+  disabled: PropTypes.bool,
+  type: PropTypes.string,
+  icon: PropTypes.node,
 }
 
 export default Button

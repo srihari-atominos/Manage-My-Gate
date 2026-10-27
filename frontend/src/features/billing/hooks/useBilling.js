@@ -15,6 +15,7 @@ import {
   payWithWallet,
   createRazorpayOrder,
   verifyRazorpaySignature,
+  fetchCommunityFinanceDashboard,
   clearBillingError,
 } from '../store/billingSlice.js'
 import { fetchWalletBalance } from '../store/walletSlice.js'
@@ -29,13 +30,18 @@ export const useBilling = () => {
   const dispatch = useDispatch()
 
   // 1. Selector mapping
-  const { kpis, activeDues, invoicesList, pagination, loadingStates, error } = useSelector(
-    (state) => state.billing,
-  )
+  const { kpis, activeDues, invoicesList, pagination, loadingStates, communityFinance, error } =
+    useSelector((state) => state.billing)
   const walletBalance = useSelector((state) => state.wallet?.balance || 0)
   const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId)
 
   // 2. Action dispatchers wrapped in useCallback to prevent unnecessary UI re-renders
+  const loadCommunityFinance = useCallback(
+    (params = {}) => {
+      return dispatch(fetchCommunityFinanceDashboard(params))
+    },
+    [dispatch],
+  )
   const loadAdminDashboard = useCallback(
     (communityId) => {
       const orgId = communityId || activeOrgId
@@ -172,12 +178,14 @@ export const useBilling = () => {
     invoicesList,
     pagination,
     loadingStates,
+    communityFinance,
     error,
     walletBalance,
     activeOrgId,
 
     // Dispatcher methods
     loadAdminDashboard,
+    loadCommunityFinance,
     loadResidentDues,
     loadWalletBalance,
     changeTablePage,

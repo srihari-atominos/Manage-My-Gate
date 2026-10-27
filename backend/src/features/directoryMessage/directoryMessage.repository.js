@@ -15,8 +15,10 @@ export const directoryMessageRepository = {
     return convs[0];
   },
 
-  async findConversationById(id) {
-    return Conversation.findById(id).populate('participants', 'name avatar role villaId').lean();
+  async findConversationById(id, orgId = null) {
+    const query = { _id: id };
+    if (orgId) query.orgId = orgId;
+    return Conversation.findOne(query).populate('participants', 'name avatar role villaId').lean();
   },
 
   async findUserConversations(orgId, userId) {

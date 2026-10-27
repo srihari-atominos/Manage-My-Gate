@@ -53,8 +53,13 @@ trigger: always_on
 * **Custom Hooks as Controllers:** UI Components and Screens must remain purely visual. All interaction logic, `useDispatch` calls, and `useSelector` mapping MUST be extracted into a custom hook (e.g., `useUserFeature.js`). This hook acts as the sole bridge between the UI and Redux.
 * **Data Utilities:** Complex data transformations or heavy formatting must be offloaded to isolated utility files in the feature's `/utils` directory.
 
-## VI. Routing & Performance
+## VI. Routing & Performance (Forward & Backward Navigation Standard)
 * **Centralized Navigation:** All routing must be handled through Expo Router (or React Navigation) inside `app/` or `src/navigation/`. Do not define standalone navigator instances scattered inside feature folders.
+* **Explicit Stack Layout Registration:** Every feature directory in `app/` hosting multiple routes MUST define a `_layout.tsx` explicitly declaring each `<Stack.Screen name="..." />` with standard screen transitions (`screenOptions={{ headerShown: false, ...premiumScreenTransition }}`). Do not mount bare `<Stack />` without registered screens.
+* **Push vs. Navigate Forward Navigation Contract:** When navigating forward into deeper detail views, record creation forms, or sub-flows (e.g. `community-finance-transactions`, `add-expense`, `transactions/[id]`), use `router.push()` to allocate a new stack frame with clean route parameters. Never use `router.navigate()` for pushing detail screens, as it merges parameters or navigates to existing stack instances unpredictably.
+* **Hierarchy-Aware Back Navigation:** Never hardcode blind `router.replace('/(resident)/dashboard')` on back actions. Always use `<ScreenShell showBackButton>` which automatically handles hierarchy-aware back navigation (popping child sub-stacks and ancestor parent stacks safely on both UI press and Android hardware back button).
+* **Edit vs. Detail Screen Flow Contract:** When a detail view supports an edit form, either provide a dedicated route or toggle an edit state with `router.setParams({ edit: '1' })` and provide an `onDone` callback that resets `edit: ''`, ensuring save or cancel cleanly returns to the detail view without prematurely popping the entire stack to the list.
+* **Catalog Route Consistency:** Every feature accessible in the app must be registered in `src/features/dashboard/dashboardCatalog.ts` with its canonical route, category key, and RBAC permission string.
 * **Route Protection:** Secure routes must be protected logically in the navigation tree. Verify the Redux session state and user roles before rendering protected navigators (e.g., rendering `AppNavigator` vs `AuthNavigator`).
 * **List Performance:** Always use `PaginatedList`, `VirtualizedList`, or `FlatList` for rendering data arrays. Never use `ScrollView` with `.map()` for large datasets.
 

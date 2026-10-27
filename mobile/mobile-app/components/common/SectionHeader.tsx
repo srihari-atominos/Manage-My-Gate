@@ -183,8 +183,9 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         <View className="flex-1 min-w-0 justify-center">
           <Text
             numberOfLines={1}
+            minimumFontScale={0.65}
             style={{ fontFamily: 'HankenGrotesk_700Bold' }}
-            className="text-[20px] sm:text-[21.5px] font-bold text-foreground tracking-tight"
+            className="text-base phone-md:text-lg font-bold text-foreground tracking-tight"
           >
             {localizedTitle}
           </Text>
@@ -192,7 +193,8 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           {displaySubtitle ? (
             <Text
               numberOfLines={1}
-              className="text-[13.5px] sm:text-[14px] font-normal text-muted-foreground mt-0.5 tracking-normal"
+              minimumFontScale={0.65}
+              className="text-2xs phone-md:text-xs font-normal text-muted-foreground mt-0.5 tracking-normal"
             >
               {localizedSubtitle}
             </Text>
@@ -208,7 +210,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           accessibilityRole="button"
           accessibilityLabel={localizedActionLabel}
         >
-          <Text className="text-[13px] font-extrabold text-black">
+          <Text numberOfLines={1} minimumFontScale={0.7} className="text-[11px] font-extrabold text-black">
             {localizedActionLabel}
           </Text>
           {isExpanded !== undefined ? (

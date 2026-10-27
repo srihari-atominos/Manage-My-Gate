@@ -15,7 +15,7 @@ import ExpensePayment from '../src/features/expense/expensePayment.model.js';
 import FinancialLedgerEntry from '../src/features/ledger/financialLedgerEntry.model.js';
 import ReconciliationException from '../src/features/ledger/reconciliation/models/reconciliationException.model.js';
 
-const paths = ['dashboard', 'collections', 'outstanding', 'expenses', 'receipts', 'exceptions'];
+const paths = ['dashboard', 'collections', 'outstanding', 'expenses', 'receipts', 'exceptions', 'transactions'];
 const counts = async () => Promise.all([Invoice.countDocuments(), Payment.countDocuments(), Expense.countDocuments(), ExpensePayment.countDocuments(), FinancialLedgerEntry.countDocuments(), ReconciliationException.countDocuments()]);
 
 describe('Community Finance HTTP API security', () => {

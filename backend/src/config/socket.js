@@ -16,6 +16,7 @@ import { initStaffUnitAssociationSocket } from '../features/staffUnitAssociation
 import { initTechnicianSocket } from '../features/technician/technician.socket.js';
 import { initStaffAttendanceSocket } from '../features/staffAttendance/staffAttendance.socket.js';
 import { initExpenseSockets } from '../features/expense/expense.socket.js';
+import { setupInvoiceSocketListeners } from '../features/invoice/invoice.socket.js';
 
 let io = null;
 let redisAdapterActive = false;
@@ -229,6 +230,7 @@ export const initSocket = async (httpServer) => {
   initExpenseSockets();
   setupPaymentSocketListeners().catch((err) => logger.error('Failed to init payment socket listeners', err));
   setupWalletSocketListeners().catch((err) => logger.error('Failed to init wallet socket listeners', err));
+  setupInvoiceSocketListeners().catch((err) => logger.error('Failed to init invoice socket listeners', err));
 
   return io;
 };

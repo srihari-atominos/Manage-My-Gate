@@ -2,8 +2,15 @@ import React from 'react';
 import { View, Pressable, Platform, useWindowDimensions } from 'react-native';
 import { Text } from '../ui/text';
 import { ArrowUpRight } from 'lucide-react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { useTranslation, default as i18n } from '../../src/utils/i18n';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { useTranslation } from '../../src/utils/i18n';
 import { useColorScheme } from 'nativewind';
 
 export type SmartCardStatusVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
@@ -51,25 +58,73 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   const isDark = colorScheme === 'dark';
   const isAndroid = Platform.OS === 'android';
   const { width: screenWidth } = useWindowDimensions();
-  const isNarrowScreen = screenWidth <= 350;
-  const iconBoxSize = isNarrowScreen ? 64 : 70;
-  const scale = useSharedValue(1);
+
+  // Detect grid density (4-column vs 3-column)
+  const isFourColumn =
+    containerClassName.includes('23') ||
+    containerClassName.includes('24') ||
+    containerClassName.includes('w-1/4');
+
+  // Adaptive squircle dimensions based on screen width and column density
+  const isNarrowScreen = screenWidth <= 375;
+  const isLargeScreen = screenWidth >= 420;
+
+  const iconBoxSize = isFourColumn
+    ? isNarrowScreen
+      ? 54
+      : isLargeScreen
+        ? 62
+        : 58
+    : isNarrowScreen
+      ? 62
+      : isLargeScreen
+        ? 70
+        : 66;
+
+  // Single UI-thread shared value (0 = raised, 1 = pressed) drives both the tile
+  // and its icon using transform-only styles; no layout or shadow animation.
+  const pressed = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [
+      { translateY: interpolate(pressed.value, [0, 1], [0, 1], Extrapolation.CLAMP) },
+      { scale: interpolate(pressed.value, [0, 1], [1, 0.95], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  const iconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(pressed.value, [0, 1], [1, 0.92], Extrapolation.CLAMP) }],
   }));
 
   const handlePressIn = () => {
-    scale.value = withTiming(0.94, { duration: 90 });
+    if (!reduceMotion) {
+      pressed.value = withTiming(1, { duration: 80 });
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withTiming(1, { duration: 120 });
+    if (!reduceMotion) {
+      pressed.value = withTiming(0, { duration: 140 });
+    }
   };
 
   const displaySubtitle = metaValue || subtitle;
   const translatedLabel = translateText(label);
   const translatedSubtitle = displaySubtitle ? translateText(displaySubtitle) : '';
+
+  // Responsive single-line font size computation so all titles fit on the exact same line
+  const isLong = translatedLabel.length > 12;
+  const isMedium = translatedLabel.length > 9;
+  const singleLineFontSize = isFourColumn
+    ? isLong
+      ? 10
+      : isMedium
+        ? 10.5
+        : 11.5
+    : isLong
+      ? 11.5
+      : 12.5;
 
   return (
     <View className={`items-center justify-start ${containerClassName}`}>
@@ -86,7 +141,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             style={{
               width: iconBoxSize,
               height: iconBoxSize,
-              borderRadius: 18,
+              borderRadius: isFourColumn ? 16 : 18,
               backgroundColor: isAccent
                 ? accentBg || (isDark ? '#FF7B3D' : '#FF7A3D')
                 : isDark
@@ -100,6 +155,8 @@ export const ActionTile: React.FC<ActionTileProps> = ({
                   ? 'rgba(255, 255, 255, 0.12)'
                   : 'rgba(234, 88, 12, 0.12)',
               borderWidth: 1,
+              // Subtle raised lip; fixed-size box so layout is unchanged.
+              borderBottomWidth: 2,
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
@@ -121,23 +178,37 @@ export const ActionTile: React.FC<ActionTileProps> = ({
               </View>
             ) : null}
 
-            {/* Centered Line Icon */}
-            <View className="items-center justify-center">{icon}</View>
+            {/* Centered Line Icon with proportional sizing */}
+            <Animated.View className="items-center justify-center" style={iconAnimatedStyle}>
+              {icon}
+            </Animated.View>
           </View>
 
-          {/* Clean Label Container Below Squircle */}
-          <View
-            className={`mt-2 w-full ${isNarrowScreen ? 'min-h-[36px]' : 'min-h-[38px]'} items-center justify-start px-0.5`}>
+          {/* Label Container: Strictly 1 line without wrapping to the next line */}
+          <View className="mt-1.5 w-full items-center justify-center px-0.5">
             <Text
-              numberOfLines={2}
-              style={
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={isFourColumn ? 0.65 : 0.62}
+              style={[
+                {
+                  fontSize: singleLineFontSize,
+                  lineHeight: singleLineFontSize + 3,
+                  textAlign: 'center',
+                  ...(Platform.OS === 'web'
+                    ? {
+                        whiteSpace: 'nowrap' as any,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        wordBreak: 'keep-all',
+                      }
+                    : {}),
+                },
                 language === 'ar'
-                  ? { fontSize: isNarrowScreen ? 12 : 12.5, lineHeight: isNarrowScreen ? 16 : 17 }
-                  : isNarrowScreen
-                    ? { fontSize: 13, lineHeight: 17 }
-                    : undefined
-              }
-              className="text-center font-extrabold font-sans text-[14px] leading-[18px] tracking-tight text-foreground">
+                  ? { fontSize: Math.max(singleLineFontSize, 10.5) }
+                  : undefined,
+              ]}
+              className="w-full text-center font-bold tracking-tight text-foreground">
               {translatedLabel}
             </Text>
           </View>

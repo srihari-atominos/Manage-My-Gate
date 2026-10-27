@@ -60,7 +60,7 @@ router.get(
 router.post(
   '/trigger-manual',
   tenantContext,
-  authorizePermission('billing', 'assessment_manager'),
+  authorizePermission('billing', ['assessments', 'assessment_manager']),
   validate(manualTriggerSchema),
   invoiceController.triggerManual
 );
@@ -68,7 +68,7 @@ router.post(
 router.post(
   '/trigger-whatsapp',
   tenantContext,
-  authorizePermission('billing', 'assessment_manager'),
+  authorizePermission('billing', ['assessments', 'assessment_manager']),
   validate(manualTriggerSchema),
   invoiceController.triggerWhatsApp
 );

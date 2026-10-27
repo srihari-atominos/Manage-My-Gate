@@ -35,6 +35,8 @@ interface AssessmentTargetScopeStepProps {
   roles: RoleItem[];
   checkedRoles: string[];
   onToggleRole: (roleId: string) => void;
+  onSelectAllRoles?: () => void;
+  onClearRoles?: () => void;
   scopeRows: ScopeRowItem[];
   selectedIds: string[];
   onToggleId: (id: string) => void;
@@ -61,6 +63,8 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
   roles,
   checkedRoles,
   onToggleRole,
+  onSelectAllRoles,
+  onClearRoles,
   scopeRows,
   selectedIds,
   onToggleId,
@@ -84,6 +88,11 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
   const isSpecificUsers = scopeType === 'SPECIFIC_USERS';
   const showScopeTable = isSpecificUnits || isSpecificUsers;
 
+  const displayRoles = roles && roles.length > 0 ? roles : [
+    { _id: '6ac77acd5a8b365df008a39a', id: '6ac77acd5a8b365df008a39a', name: 'Resident Owner' },
+    { _id: '6ac77acd5a8b365df008a3a0', id: '6ac77acd5a8b365df008a3a0', name: 'Resident Tenant' },
+  ];
+
   const allSelected = scopeRows.length > 0 && scopeRows.every((r) => selectedIds.includes(r._id));
 
   return (
@@ -103,24 +112,32 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
           <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
             Charge To Resident Roles * ({checkedRoles.length} selected)
           </Text>
-          {roles.length > 0 && (
+          {displayRoles.length > 0 && (
             <TouchableOpacity
               onPress={() => {
-                const allRoleIds = roles.map((r) => String(r._id || r.id));
+                const allRoleIds = displayRoles.map((r) => String(r._id || r.id));
                 const allChecked = allRoleIds.every((id) => checkedRoles.includes(id));
                 if (allChecked) {
-                  allRoleIds.forEach((id) => {
-                    if (checkedRoles.includes(id)) onToggleRole(id);
-                  });
+                  if (onClearRoles) {
+                    onClearRoles();
+                  } else {
+                    allRoleIds.forEach((id) => {
+                      if (checkedRoles.includes(id)) onToggleRole(id);
+                    });
+                  }
                 } else {
-                  allRoleIds.forEach((id) => {
-                    if (!checkedRoles.includes(id)) onToggleRole(id);
-                  });
+                  if (onSelectAllRoles) {
+                    onSelectAllRoles();
+                  } else {
+                    allRoleIds.forEach((id) => {
+                      if (!checkedRoles.includes(id)) onToggleRole(id);
+                    });
+                  }
                 }
               }}
             >
               <Text className="text-xs font-bold text-primary">
-                {roles.length > 0 && roles.every((r) => checkedRoles.includes(String(r._id || r.id)))
+                {displayRoles.length > 0 && displayRoles.every((r) => checkedRoles.includes(String(r._id || r.id)))
                   ? 'Deselect All'
                   : 'Select All'}
               </Text>
@@ -133,7 +150,7 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
         </Text>
 
         <View className="flex-row flex-wrap gap-2 mt-1">
-          {roles.map((role) => {
+          {displayRoles.map((role) => {
             const roleId = String(role._id || role.id);
             const isChecked = checkedRoles.includes(roleId);
             return (
@@ -165,9 +182,25 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
         </View>
 
         {checkedRoles.length === 0 && (
-          <Text className="text-xs font-bold text-destructive mt-1">
-            ⚠️ Please select at least one resident role.
-          </Text>
+          <View className="flex-row items-center justify-between mt-1">
+            <Text className="text-xs font-bold text-destructive">
+              ⚠️ Please select at least one resident role.
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (onSelectAllRoles) {
+                  onSelectAllRoles();
+                } else {
+                  displayRoles.forEach((r) => {
+                    const id = String(r._id || r.id);
+                    if (!checkedRoles.includes(id)) onToggleRole(id);
+                  });
+                }
+              }}
+            >
+              <Text className="text-xs font-bold text-primary underline">Select All</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 

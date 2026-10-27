@@ -275,7 +275,7 @@ export class AssessmentService {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('runBilling manually triggered', { id, orgId, billingPeriodString, correlationId });
 
-    const assessment = await assessmentRepository.findById(id);
+    const assessment = await assessmentRepository.findById(id, orgId);
     if (!assessment) {
       throw new HttpError(404, `Assessment template with ID ${id} not found`);
     }

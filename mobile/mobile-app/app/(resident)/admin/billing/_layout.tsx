@@ -8,8 +8,8 @@ export default function AdminBillingLayout() {
       <Stack.Screen name="assessments" />
       <Stack.Screen name="ledger" />
       <Stack.Screen name="expenses" />
+      <Stack.Screen name="community-finance" />
+      <Stack.Screen name="community-finance-transactions" />
     </Stack>
   );
 }
-
-

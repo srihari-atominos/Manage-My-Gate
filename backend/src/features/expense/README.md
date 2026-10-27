@@ -9,6 +9,11 @@ EXPENSE_OCR_PROVIDER=tesseract-local
 # TESSERACT_COMMAND=tesseract
 # EXPENSE_OCR_LANGUAGES=eng
 # EXPENSE_OCR_TIMEOUT_MS=20000
+# Optional: self-hosted OXR fallback for complex tables and scanned PDFs.
+# It is attempted only when local OCR cannot confidently recover the core fields.
+EXPENSE_OCR_OXR_ENABLED=false
+# OXR_API_URL=http://localhost:8000/v1/parse/sync
+# OXR_API_KEY=
 ```
 
 Install Tesseract and its language data in the same environment that runs the backend. Verify both before use:

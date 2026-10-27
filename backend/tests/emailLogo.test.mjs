@@ -8,6 +8,9 @@ describe('Email App Logo URL Resolution', () => {
   it('safely falls back to public production domain when CLIENT_URL is localhost', () => {
     delete process.env.APP_LOGO_URL;
     delete process.env.PUBLIC_APP_URL;
+    delete process.env.WEB_APP_URL;
+    delete process.env.WEB_CLIENT_URL;
+    delete process.env.APP_CLIENT_URL;
     process.env.CLIENT_URL = 'http://localhost:3004';
 
     const logoUrl = getAppLogoUrl();
@@ -32,6 +35,10 @@ describe('Email App Logo URL Resolution', () => {
 
   it('renders clean HTML markup with alt text and dimensions', () => {
     delete process.env.APP_LOGO_URL;
+    delete process.env.PUBLIC_APP_URL;
+    delete process.env.WEB_APP_URL;
+    delete process.env.WEB_CLIENT_URL;
+    delete process.env.APP_CLIENT_URL;
     process.env.CLIENT_URL = 'https://custom-community.com';
 
     const html = getEmailLogoHtml();

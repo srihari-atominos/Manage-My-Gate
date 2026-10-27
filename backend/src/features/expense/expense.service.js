@@ -23,7 +23,10 @@ const numberFor = () => `EXP-${new Date().getFullYear()}-${new mongoose.Types.Ob
 const normalizeItems = (items = []) => items.map((item) => {
   const quantity = Number(item.quantity); const unitPrice = Number(item.unitPrice);
   if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) throw new HttpError(400, 'Each item must have a valid quantity and unit price.');
-  return { ...item, quantity, unitPrice, lineTotal: round(quantity * unitPrice) };
+  // OCR-prefilled rows carry only a description; the model requires itemName and unit, so default them instead of failing at save time.
+  const itemName = String(item.itemName || item.description || '').trim();
+  if (!itemName) throw new HttpError(400, 'Each item must have a name.');
+  return { ...item, itemName, unit: String(item.unit || '').trim() || 'nos', quantity, unitPrice, lineTotal: round(quantity * unitPrice) };
 });
 const normalizeExternalResponse = (response) => {
   if (!response || typeof response !== 'object' || Array.isArray(response)) return null;
@@ -98,9 +101,10 @@ const filtersFor = (query = {}) => {
   const effectiveEnd = query.endDate ? parseDate(query.endDate, true) : periodBounds.end;
 
   if (effectiveStart || effectiveEnd) {
-    match.createdAt = {};
-    if (effectiveStart) match.createdAt.$gte = effectiveStart;
-    if (effectiveEnd) match.createdAt.$lte = effectiveEnd;
+    // Filter on the date the expense happened, not when it was keyed in: a bill dated last month and entered today belongs to last month.
+    match.expenseDate = {};
+    if (effectiveStart) match.expenseDate.$gte = effectiveStart;
+    if (effectiveEnd) match.expenseDate.$lte = effectiveEnd;
   }
   return match;
 };
@@ -120,13 +124,13 @@ class ExpenseService {
     payload = { ...payload, idempotencyKey: payload.idempotencyKey || actor.idempotencyKey };
     const items = normalizeItems(payload.items || []); const itemSubtotal = round(items.reduce((sum, item) => sum + item.lineTotal, 0));
     const suppliedSubtotal = round(payload.subtotal || 0); if (items.length && suppliedSubtotal !== itemSubtotal) throw new HttpError(400, 'Subtotal must equal recalculated item total.'); const subtotal = items.length ? itemSubtotal : suppliedSubtotal;
-    const taxAmount = round(payload.taxAmount || 0); const additionalCharges = round(payload.additionalCharges || 0); const totalAmount = round(subtotal + taxAmount + additionalCharges);
+    const cgst = round(payload.cgst || 0); const sgst = round(payload.sgst || 0); const calculatedTax = round(cgst + sgst); const taxAmount = round(payload.taxAmount !== undefined ? payload.taxAmount : calculatedTax); const additionalCharges = round(payload.additionalCharges || 0); const totalAmount = round(subtotal + taxAmount + additionalCharges);
     if (totalAmount <= 0) throw new HttpError(400, 'Expense total must be greater than zero.');
     const session = await mongoose.startSession();
     try {
       session.startTransaction(); const existing = await expenseRepository.findByIdempotencyKey(actor.orgId, payload.idempotencyKey, session);
       if (existing) { await session.abortTransaction(); return this.getById(existing._id, actor.orgId); }
-      const expense = await expenseRepository.create({ orgId: actor.orgId, expenseNumber: numberFor(), name: payload.name, description: payload.description || '', expenseType: payload.expenseType, category: payload.category, vendor: payload.vendor || {}, expenseDate: payload.expenseDate, invoiceNumber: payload.invoiceNumber, invoiceDate: payload.invoiceDate, dueDate: payload.dueDate, items, subtotal, taxAmount, additionalCharges, totalAmount, outstandingAmount: totalAmount, attachments: payload.attachments || [], recordedBy: actor.userId, idempotencyKey: payload.idempotencyKey }, session);
+      const expense = await expenseRepository.create({ orgId: actor.orgId, expenseNumber: numberFor(), name: payload.name, description: payload.description || '', expenseType: payload.expenseType, category: payload.category, vendor: payload.vendor || {}, expenseDate: payload.expenseDate, invoiceNumber: payload.invoiceNumber, invoiceDate: payload.invoiceDate, dueDate: payload.dueDate, items, subtotal, cgst, sgst, taxAmount, additionalCharges, totalAmount, outstandingAmount: totalAmount, attachments: payload.attachments || [], recordedBy: actor.userId, idempotencyKey: payload.idempotencyKey }, session);
       await financialLedgerService.recordExpenseIncurredEntry({ ...expense.toObject(), fundingSource: payload.initialPayment?.fundingSource }, session);
       if (payload.initialPayment) await this._recordPayment(expense, payload.initialPayment, actor, session);
       await session.commitTransaction();
@@ -144,7 +148,27 @@ class ExpenseService {
     if (!(amount > 0) || amount + paid > round(expense.totalAmount)) throw new HttpError(400, 'Payment must be positive and cannot exceed outstanding amount.');
     if (amount + paid + reserved > round(expense.totalAmount)) throw new HttpError(409, 'Part of the outstanding balance is held by a pending UPI payment attempt.');
     if (transactionReference) { const duplicateReference = await expenseRepository.findPaymentByReference(actor.orgId, transactionReference, session); if (duplicateReference) throw new HttpError(409, 'This transaction reference has already been recorded.'); }
-    const payment = await expenseRepository.createPayment({ orgId: actor.orgId, expenseId: expense._id, amount, paymentMethod: payload.paymentMethod, paymentApplication: payload.paymentApplication || 'NOT_SPECIFIED', fundingSource: payload.fundingSource, paymentDate: payload.paymentDate, transactionReference, attachmentUrl: payload.attachmentUrl || null, verificationStatus: 'RECORDED', recordedBy: actor.userId, idempotencyKey: payload.idempotencyKey }, session);
+    const isAutoReconcile = Boolean(payload.autoReconcile);
+    const initialVerificationStatus = isAutoReconcile ? 'RECONCILED' : 'RECORDED';
+    const now = new Date();
+    const payment = await expenseRepository.createPayment({
+      orgId: actor.orgId,
+      expenseId: expense._id,
+      amount,
+      paymentMethod: payload.paymentMethod,
+      paymentApplication: payload.paymentApplication || 'NOT_SPECIFIED',
+      fundingSource: payload.fundingSource,
+      paymentDate: payload.paymentDate,
+      transactionReference,
+      attachmentUrl: payload.attachmentUrl || null,
+      verificationStatus: initialVerificationStatus,
+      reconciledAt: isAutoReconcile ? now : null,
+      reconciledBy: isAutoReconcile ? actor.userId : null,
+      reconciliationNote: isAutoReconcile ? (payload.reconciliationNote || 'Direct settlement confirmed by user') : '',
+      verificationHistory: isAutoReconcile ? [{ fromStatus: 'RECORDED', toStatus: 'RECONCILED', changedBy: actor.userId, changedAt: now, note: payload.reconciliationNote || 'Direct settlement confirmed by user' }] : [],
+      recordedBy: actor.userId,
+      idempotencyKey: payload.idempotencyKey
+    }, session);
     expense.recordedPaidAmount = round(paid + amount); if (payment.verificationStatus === 'RECONCILED') { expense.confirmedPaidAmount = round((expense.confirmedPaidAmount || 0) + amount); await financialLedgerService.recordExpensePaymentEntry(expense, payment, session); }
     expense.outstandingAmount = round(expense.totalAmount - expense.recordedPaidAmount); expense.settlementStatus = statusFor(expense.totalAmount, expense.recordedPaidAmount); await expenseRepository.save(expense, session); return payment;
   }
@@ -249,7 +273,7 @@ class ExpenseService {
     let prevMatch = null;
     if (periodInfo.prevStart && periodInfo.prevEnd) {
       prevMatch = { ...match };
-      prevMatch.createdAt = {
+      prevMatch.expenseDate = {
         $gte: periodInfo.prevStart,
         $lte: periodInfo.prevEnd,
       };
@@ -343,19 +367,22 @@ class ExpenseService {
       assertActive(expense);
       ['name', 'description', 'expenseType', 'category', 'invoiceNumber', 'invoiceDate', 'dueDate', 'expenseDate'].forEach((key) => { if (payload[key] !== undefined) expense[key] = payload[key]; });
       if (payload.vendor && typeof payload.vendor === 'object') expense.vendor = { ...(expense.vendor?.toObject?.() || expense.vendor || {}), ...payload.vendor };
-      const financial = ['items', 'subtotal', 'taxAmount', 'additionalCharges'].some((key) => payload[key] !== undefined);
+      const financial = ['items', 'subtotal', 'cgst', 'sgst', 'taxAmount', 'additionalCharges'].some((key) => payload[key] !== undefined);
       if (financial) {
         if (round(expense.recordedPaidAmount || 0) > 0 || round(expense.upiAttemptReservedAmount || 0) > 0 || await expenseRepository.countOpenAttempts(expense._id, actor.orgId, session)) throw new HttpError(409, 'Amounts cannot be changed once a payment or payment attempt exists. Void the payments first.');
         const items = payload.items !== undefined ? normalizeItems(payload.items) : expense.items.map((item) => item.toObject());
         const itemSubtotal = round(items.reduce((sum, item) => sum + item.lineTotal, 0));
         if (payload.items !== undefined && items.length && payload.subtotal !== undefined && round(payload.subtotal) !== itemSubtotal) throw new HttpError(400, 'Subtotal must equal recalculated item total.');
         const subtotal = items.length ? itemSubtotal : round(payload.subtotal !== undefined ? payload.subtotal : expense.subtotal);
-        const taxAmount = round(payload.taxAmount !== undefined ? payload.taxAmount : expense.taxAmount);
+        const cgst = round(payload.cgst !== undefined ? payload.cgst : (expense.cgst || 0));
+        const sgst = round(payload.sgst !== undefined ? payload.sgst : (expense.sgst || 0));
+        const calculatedTax = (payload.cgst !== undefined || payload.sgst !== undefined) ? round(cgst + sgst) : undefined;
+        const taxAmount = round(payload.taxAmount !== undefined ? payload.taxAmount : (calculatedTax !== undefined ? calculatedTax : expense.taxAmount));
         const additionalCharges = round(payload.additionalCharges !== undefined ? payload.additionalCharges : expense.additionalCharges);
         const totalAmount = round(subtotal + taxAmount + additionalCharges);
         if (totalAmount <= 0) throw new HttpError(400, 'Expense total must be greater than zero.');
         const delta = round(totalAmount - expense.totalAmount);
-        expense.items = items; expense.subtotal = subtotal; expense.taxAmount = taxAmount; expense.additionalCharges = additionalCharges;
+        expense.items = items; expense.subtotal = subtotal; expense.cgst = cgst; expense.sgst = sgst; expense.taxAmount = taxAmount; expense.additionalCharges = additionalCharges;
         if (delta !== 0) {
           expense.revision = (expense.revision || 0) + 1;
           expense.totalAmount = totalAmount; expense.outstandingAmount = totalAmount;

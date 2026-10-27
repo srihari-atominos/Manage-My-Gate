@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { Home, User, Edit2, Search, MoreVertical } from 'lucide-react-native';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Villa } from '../store/villaSlice';
@@ -68,14 +69,14 @@ export const VillaCard: React.FC<VillaCardProps> = ({
           {/* Unit Number, Block, Type */}
           <View className="flex-1 mt-0.5">
             <Text
-              className="text-[15px] font-bold text-foreground font-sans tracking-tight"
+              className="text-sm phone-md:text-base font-bold text-foreground tracking-tight"
               numberOfLines={1}
             >
               {t('unit_label', 'Unit')} {villa.unitNumber}
             </Text>
 
             <Text
-              className="text-[13px] text-muted-foreground font-sans mt-0.5"
+              className="text-2xs phone-md:text-xs text-muted-foreground mt-0.5"
               numberOfLines={1}
             >
               {subtitleText}
@@ -84,7 +85,7 @@ export const VillaCard: React.FC<VillaCardProps> = ({
             {/* Tags Row */}
             <View className="flex-row items-center flex-wrap gap-2 mt-2">
               <View className="bg-secondary px-2.5 py-1 rounded-full border border-border/50">
-                <Text className="text-[10px] font-bold text-secondary-foreground uppercase tracking-wider font-sans">
+                <Text className="text-micro font-bold text-secondary-foreground uppercase tracking-wider">
                   {villa.type || 'Apartment'}
                 </Text>
               </View>
@@ -112,13 +113,13 @@ export const VillaCard: React.FC<VillaCardProps> = ({
               </View>
               <View className="flex-row items-center flex-1 shrink">
                 <Text 
-                  className="text-xs font-bold text-emerald-800 dark:text-emerald-300 font-sans shrink"
+                  className="text-2xs phone-md:text-xs font-bold text-emerald-800 dark:text-emerald-300 shrink"
                   numberOfLines={1}
                 >
                   {primaryResName}
                 </Text>
                 <Text 
-                  className="text-[11px] text-muted-foreground font-sans font-medium shrink-0 ms-1"
+                  className="text-micro text-muted-foreground font-medium shrink-0 ms-1"
                 >
                   | {t('resident', 'Resident')}
                 </Text>
@@ -127,7 +128,7 @@ export const VillaCard: React.FC<VillaCardProps> = ({
 
             <View className="bg-card border border-border/60 px-2 py-1 rounded-lg shadow-sm shrink">
               <Text 
-                className="text-[10px] font-bold text-foreground font-sans tracking-wide text-center"
+                className="text-micro font-bold text-foreground tracking-wide text-center"
                 numberOfLines={2}
               >
                 {t('primary', 'Primary')}
@@ -147,7 +148,7 @@ export const VillaCard: React.FC<VillaCardProps> = ({
           <View className="w-6 h-6 rounded-full bg-foreground/5 items-center justify-center shrink-0 me-2">
             <Search size={13} className="text-foreground" />
           </View>
-          <Text className="text-[13px] font-extrabold text-foreground tracking-wide shrink" numberOfLines={1}>{t('view_details', 'View Details')}</Text>
+          <Text className="text-xs phone-md:text-sm font-extrabold text-foreground tracking-wide shrink" numberOfLines={1}>{t('view_details', 'View Details')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -158,7 +159,7 @@ export const VillaCard: React.FC<VillaCardProps> = ({
           <View className="w-6 h-6 rounded-full bg-primary/10 items-center justify-center shrink-0 me-2">
             <Edit2 size={13} className="text-primary" />
           </View>
-          <Text className="text-[13px] font-extrabold text-primary tracking-wide shrink" numberOfLines={1}>{t('edit_unit', 'Edit Unit')}</Text>
+          <Text className="text-xs phone-md:text-sm font-extrabold text-primary tracking-wide shrink" numberOfLines={1}>{t('edit_unit', 'Edit Unit')}</Text>
         </TouchableOpacity>
       </View>
     </View>

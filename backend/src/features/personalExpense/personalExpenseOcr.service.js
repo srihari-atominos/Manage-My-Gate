@@ -1,26 +1,16 @@
-import { parseReceiptText } from './ocr/receiptParser.js';
-import { runTesseract, tesseractConfiguration, validateOcrFile } from './ocr/tesseractLocal.provider.js';
+import orchestrator from './ocr/ocr-orchestrator.js';
+import { tesseractConfiguration } from './ocr/tesseractLocal.provider.js';
 
-export const ocrConfiguration = () => tesseractConfiguration();
+export const ocrConfiguration = (env = process.env) => tesseractConfiguration(env);
 
-export async function extractReceipt(file) {
-  const validFile = validateOcrFile(file);
-  if (!validFile.valid) return { status: 'FAILED', engineStatus: validFile.status, error: validFile.error, result: null };
-
-  const config = ocrConfiguration();
-  if (!config.configured) {
-    return {
-      status: 'FAILED',
-      engineStatus: 'NOT_CONFIGURED',
-      error: 'Local receipt OCR is not enabled. Enter the transaction details manually.',
-      result: null,
-    };
-  }
-
-  const outcome = await runTesseract(file, config);
-  if (outcome.status !== 'COMPLETED') {
-    return { status: 'FAILED', engineStatus: outcome.status, error: outcome.error, result: null };
-  }
-
-  return { status: 'COMPLETED', engineStatus: 'COMPLETED', error: null, result: parseReceiptText(outcome.text) };
+/**
+ * Extracts structured transaction details from a personal expense receipt image.
+ * Uses provider-based OCR architecture supporting Tesseract, OXR, Dual, and Fallback modes.
+ *
+ * @param {Object} file - Multer file object or { path, mimetype, size, originalname }
+ * @param {Object} [options] - Optional dependency overrides for testing
+ * @returns {Promise<{ status: string, engineStatus: string, error: string|null, result: Object|null }>}
+ */
+export async function extractReceipt(file, options = {}) {
+  return orchestrator.processReceipt(file, options);
 }

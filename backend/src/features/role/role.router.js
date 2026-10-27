@@ -23,7 +23,7 @@ router.use(isAuthenticated);
 router.get(
   '/', 
   tenantContext,
-  authorizePermission('roles', 'read'), 
+  authorizePermission(['roles', 'billing', 'assessments'], ['read', 'view', 'assessments', 'assessment_manager']), 
   roleController.getAllRoles
 );
 
@@ -76,7 +76,7 @@ router.post(
 router.get(
   '/permissions',
   tenantContext,
-  authorizePermission('roles', 'read'), 
+  authorizePermission(['roles', 'billing', 'assessments'], ['read', 'view', 'assessments', 'assessment_manager']), 
   roleController.getAllPermissions
 );
 
@@ -99,7 +99,7 @@ router.get(
 router.get(
   '/:id/permissions', 
   tenantContext,
-  authorizePermission('roles', 'read'), 
+  authorizePermission(['roles', 'billing', 'assessments'], ['read', 'view', 'assessments', 'assessment_manager']), 
   roleController.getRolePermissions
 );
 

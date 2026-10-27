@@ -13,6 +13,7 @@ import { cva } from 'class-variance-authority';
 
 import { SheetGrabHandle } from './SheetGrabHandle';
 import { KeyboardAwareScrollView } from '../layout/KeyboardAwareScrollView';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface AppBottomSheetProps {
   visible: boolean;
@@ -23,6 +24,7 @@ export interface AppBottomSheetProps {
   footer?: React.ReactNode;
   enableDynamicSizing?: boolean;
   contentContainerStyle?: any;
+  testID?: string;
 }
 
 const bottomSheetHeaderVariants = cva(
@@ -42,8 +44,10 @@ function BottomSheet({
   children,
   contentContainerStyle,
   footer,
+  testID,
 }: AppBottomSheetProps) {
   const { height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   if (!visible) return null;
 
   const sheetMaxHeight = Platform.OS === 'web'
@@ -66,6 +70,7 @@ function BottomSheet({
       statusBarTranslucent={true}
       animationType="slide"
       onRequestClose={handleClose}
+      testID={testID || 'bottom-sheet-modal'}
     >
       <View
         style={{ flex: 1 }}
@@ -84,12 +89,18 @@ function BottomSheet({
           className="bg-card border-t border-border/80 rounded-t-3xl sm:rounded-3xl sm:border sm:mb-4 shadow-2xl overflow-hidden flex-col w-full max-w-md mx-auto"
         >
           {/* Top grab handle */}
-          <SheetGrabHandle onClose={onClose} />
+          <SheetGrabHandle onClose={handleClose} />
 
           {/* Title Header with Close X */}
           {Boolean(title) && (
             <View className={bottomSheetHeaderVariants()}>
-              <Text className={bottomSheetTitleVariants()}>{title}</Text>
+              <Text
+                className={`${bottomSheetTitleVariants()} flex-1 min-w-0 me-3`}
+                numberOfLines={1}
+                minimumFontScale={0.75}
+              >
+                {title}
+              </Text>
               <TouchableOpacity
                 onPress={handleClose}
                 activeOpacity={0.7}
@@ -122,7 +133,10 @@ function BottomSheet({
             {children}
           </KeyboardAwareScrollView>
           {footer && (
-            <View className="pb-8 pt-3 px-4 border-t border-border/80 bg-card">
+            <View
+              className="pt-3 px-4 border-t border-border/80 bg-card"
+              style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+            >
               {footer}
             </View>
           )}

@@ -453,9 +453,13 @@ class StaffUnitAssociationService {
       return h * 60 + (m || 0);
     };
 
-    const propStartMin = toMinutes(propStart);
-    const propEndMin = toMinutes(propEnd);
-    if (propStartMin === null || propEndMin === null || propStartMin >= propEndMin) {
+    // A window that ends before it starts runs overnight (e.g. 22:00-06:00): split it at midnight so night shifts are compared too.
+    const segmentsOf = (startMin, endMin) => {
+      if (startMin === null || endMin === null || startMin === endMin) return [];
+      return startMin < endMin ? [[startMin, endMin]] : [[startMin, 1440], [0, endMin]];
+    };
+    const propSegments = segmentsOf(toMinutes(propStart), toMinutes(propEnd));
+    if (propSegments.length === 0) {
       return { hasConflict: false };
     }
 
@@ -470,9 +474,8 @@ class StaffUnitAssociationService {
 
       const existStart = existingSched.timeWindow.start;
       const existEnd = existingSched.timeWindow.end;
-      const existStartMin = toMinutes(existStart);
-      const existEndMin = toMinutes(existEnd);
-      if (existStartMin === null || existEndMin === null) continue;
+      const existSegments = segmentsOf(toMinutes(existStart), toMinutes(existEnd));
+      if (existSegments.length === 0) continue;
 
       // Check day intersection
       const existDays = Array.isArray(existingSched.days) ? existingSched.days.map((d) => d.toLowerCase().trim()) : [];
@@ -480,7 +483,7 @@ class StaffUnitAssociationService {
 
       if (hasCommonDay) {
         // Check time interval overlap: (StartA < EndB) && (EndA > StartB)
-        const overlaps = propStartMin < existEndMin && propEndMin > existStartMin;
+        const overlaps = propSegments.some(([aStart, aEnd]) => existSegments.some(([bStart, bEnd]) => aStart < bEnd && aEnd > bStart));
         if (overlaps) {
           const unitNumber = assoc.villaId?.unitNumber || 'another unit';
           return {

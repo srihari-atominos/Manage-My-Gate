@@ -1,5 +1,5 @@
 import React, { useState, useRef, Suspense, lazy } from 'react';
-import { View, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, Modal, KeyboardAvoidingView, Platform, Animated, TouchableWithoutFeedback } from 'react-native';
+import { View, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Filter, Users, Mail, Users2, Plus, UserPlus, X } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -20,6 +20,7 @@ import {
 } from '@/src/features/userManagement';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { Text } from '@/components/ui/text';
+import { DraggableSpeedDial, SpeedDialAction } from '@/components/ui/DraggableSpeedDial';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 
 // Lazy Load Heavy Modals for Performance Optimization
@@ -72,46 +73,43 @@ export default function UserManagementScreen() {
   } = useUserList();
 
   // Local UI State
-  // Speed Dial UI State & Animation
-  const [isDialOpen, setIsDialOpen] = useState(false);
-  const dialAnimation = useRef(new Animated.Value(0)).current;
+  // Speed Dial Actions for DraggableSpeedDial
+  const speedDialActions: SpeedDialAction[] = [
+    {
+      id: 'invite_user',
+      label: t('invite_user', 'Invite User'),
+      icon: <UserPlus size={22} className="text-primary" />,
+      accessibilityLabel: t('invite_user', 'Invite User'),
+      onPress: () => {
+        if (canInviteUsers) {
+          setShowInviteModal(true);
+        } else {
+          Alert.alert('Permission required', 'Your role cannot invite users.');
+        }
+      },
+    },
+    {
+      id: 'bulk_create',
+      label: t('bulk_create', 'Bulk Create'),
+      icon: <Users size={22} className="text-primary" />,
+      accessibilityLabel: t('bulk_create', 'Bulk Create'),
+      onPress: () => {
+        if (canInviteUsers) {
+          setShowBulkInviteModal(true);
+        } else {
+          Alert.alert('Permission required', 'Your role cannot invite users.');
+        }
+      },
+    },
+    {
+      id: 'email_template',
+      label: t('email_template', 'Email Template'),
+      icon: <Mail size={22} className="text-primary" />,
+      accessibilityLabel: t('email_template', 'Email Template'),
+      onPress: () => setShowTemplateModal(true),
+    },
+  ];
 
-  const toggleDial = () => {
-    const toValue = isDialOpen ? 0 : 1;
-    Animated.spring(dialAnimation, {
-      toValue,
-      friction: 5,
-      useNativeDriver: true,
-    }).start();
-    setIsDialOpen(!isDialOpen);
-  };
-
-  const closeDialAndOpen = (setter: (v: boolean) => void) => {
-    toggleDial();
-    setTimeout(() => setter(true), 300);
-  };
-
-  const rotation = dialAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg']
-  });
-
-  // Elliptical entering pop-out animation to prevent left-aligned text collisions
-  const transX1 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 0] });
-  const transY1 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -145] });
-
-  const transX2 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -75] });
-  const transY2 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -85] });
-
-  const transX3 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -115] });
-  const transY3 = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, -15] });
-  
-  // Staggered entering pop-out scale animation
-  const scale1 = dialAnimation.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.5, 1.1, 1], extrapolate: 'clamp' });
-  const scale2 = dialAnimation.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.5, 1.1, 1], extrapolate: 'clamp' });
-  const scale3 = dialAnimation.interpolate({ inputRange: [0, 0.9, 1], outputRange: [0.5, 1.1, 1], extrapolate: 'clamp' });
-
-  const dialOpacity = dialAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showBulkInviteModal, setShowBulkInviteModal] = useState(false);
@@ -302,118 +300,13 @@ export default function UserManagementScreen() {
         )}
       </View>
 
-      {/* Animated Speed Dial Overlay */}
-      {isDialOpen && (
-        <TouchableWithoutFeedback onPress={toggleDial}>
-          <Animated.View 
-            style={{ opacity: dialOpacity }}
-            className="absolute inset-0 bg-black/60 z-[9990] elevation-5" 
-          />
-        </TouchableWithoutFeedback>
-      )}
-
-      {/* Speed Dial Action 1: Invite User (Top) */}
-      <Animated.View
-        className="z-[9998]"
-        style={{
-          position: 'absolute', bottom: 135, right: 25,
-          width: 50, height: 50,
-          alignItems: 'center', justifyContent: 'center',
-          transform: [{ translateX: transX1 }, { translateY: transY1 }, { scale: scale1 }],
-          opacity: dialOpacity,
-          overflow: 'visible'
-        }}
-        pointerEvents={isDialOpen ? 'auto' : 'none'}
-      >
-        <View style={{ position: 'absolute', right: 55, width: 125, alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
-          <View className="bg-card px-3 py-1.5 rounded-lg border border-border/60 shadow-sm" style={{ elevation: 2 }}>
-            <Text className="text-foreground text-[11px] font-bold tracking-tight text-right" numberOfLines={1}>
-              {t('invite_user', 'Invite User')}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => canInviteUsers ? closeDialAndOpen(setShowInviteModal) : Alert.alert('Permission required', 'Your role cannot invite users.')}
-          className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
-          accessibilityRole="button"
-          accessibilityLabel={t('invite_user', 'Invite User')}
-        >
-          <UserPlus size={22} className="text-primary" />
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* Speed Dial Action 3: Email Template (Left) */}
-      <Animated.View 
-        className="z-[9998]"
-        style={{ 
-          position: 'absolute', bottom: 135, right: 25,
-          width: 50, height: 50,
-          alignItems: 'center', justifyContent: 'center',
-          transform: [{ translateX: transX3 }, { translateY: transY3 }, { scale: scale3 }], 
-          opacity: dialOpacity,
-          overflow: 'visible'
-        }}
-        pointerEvents={isDialOpen ? 'auto' : 'none'}
-      >
-        <View style={{ position: 'absolute', right: 55, width: 125, alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
-          <View className="bg-card px-3 py-1.5 rounded-lg border border-border/60 shadow-sm" style={{ elevation: 2 }}>
-            <Text className="text-foreground text-[11px] font-bold tracking-tight text-right" numberOfLines={1}>
-              {t('email_template', 'Email Template')}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          activeOpacity={0.7}
-          onPress={() => closeDialAndOpen(setShowTemplateModal)}
-          className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
-        >
-          <Mail size={22} className="text-primary" />
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* Speed Dial Action 2: Bulk Invite (Top-Left) */}
-      <Animated.View 
-        className="z-[9998]"
-        style={{ 
-          position: 'absolute', bottom: 135, right: 25,
-          width: 50, height: 50,
-          alignItems: 'center', justifyContent: 'center',
-          transform: [{ translateX: transX2 }, { translateY: transY2 }, { scale: scale2 }], 
-          opacity: dialOpacity,
-          overflow: 'visible'
-        }}
-        pointerEvents={isDialOpen ? 'auto' : 'none'}
-      >
-        <View style={{ position: 'absolute', right: 55, width: 125, alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
-          <View className="bg-card px-3 py-1.5 rounded-lg border border-border/60 shadow-sm" style={{ elevation: 2 }}>
-            <Text className="text-foreground text-[11px] font-bold tracking-tight text-right" numberOfLines={1}>
-              {t('bulk_create', 'Bulk Create')}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          activeOpacity={0.7}
-          onPress={() => canInviteUsers ? closeDialAndOpen(setShowBulkInviteModal) : Alert.alert('Permission required', 'Your role cannot invite users.')}
-          className="w-[50px] h-[50px] rounded-full bg-secondary border border-border/50 items-center justify-center shadow-lg"
-        >
-          <Users size={22} className="text-primary" />
-        </TouchableOpacity>
-      </Animated.View>
-
-      
-
-      {/* Main Animated FAB */}
-      <TouchableOpacity
-        className="rounded-full bg-primary/90 items-center justify-center shadow-xl border border-primary/50"
-        style={{ position: 'absolute', bottom: 130, right: 20, width: 60, height: 60, elevation: 8, zIndex: 9999 }}
-        activeOpacity={0.7}
-        onPress={toggleDial}
-      >
-        <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-          <Plus size={28} className="text-white" />
-        </Animated.View>
-      </TouchableOpacity>
+      {/* Physics-based Draggable Speed Dial FAB */}
+      <DraggableSpeedDial
+        actions={speedDialActions}
+        initialBottom={24}
+        initialRight={20}
+        accessibilityLabel={t('user_actions', 'User Actions')}
+      />
 
       {/* Modals & Bottom Sheets */}
       {/* Lazy Loaded Heavy Modals & Bottom Sheets */}

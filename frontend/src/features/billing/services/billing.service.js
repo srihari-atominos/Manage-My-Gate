@@ -2,6 +2,14 @@ import apiClient from '../../../services/apiClient.js'
 
 export const billingService = {
   /**
+   * Fetch community finance dashboard overview and runway analytics.
+   * @param {Object} [params]
+   */
+  async getCommunityFinanceDashboard(params = {}) {
+    return await apiClient.get('/community-finance/dashboard', { params })
+  },
+
+  /**
    * Fetch community billing dashboard statistics/KPIs.
    * @param {string} communityId
    */

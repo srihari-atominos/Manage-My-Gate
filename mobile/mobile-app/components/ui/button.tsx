@@ -3,6 +3,7 @@ import { Text, TextClassContext } from './text';
 import { cn } from '../../lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Platform, Pressable } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 import { AppLoader } from '@/components/ui/AppLoader';
 
 const buttonVariants = cva(
@@ -154,6 +155,8 @@ const buttonTextVariants = cva(
   }
 );
 
+const PRESSED_STYLE = { transform: [{ scale: 0.97 }] } as const;
+
 const SOLID_LOADING_VARIANTS = new Set([
   'default',
   'continue',
@@ -214,6 +217,8 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
     },
     ref
   ) => {
+    const reduceMotion = useReducedMotion();
+    const [pressed, setPressed] = React.useState(false);
     const loading = loadingProp || isLoading || false;
     const isDisabled = disabled || loading;
     const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
@@ -236,8 +241,28 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
             className,
             minimumTouchTarget
           )}
-          role="button"
           {...props}
+          onPressIn={(e) => {
+            setPressed(true);
+            props.onPressIn?.(e);
+          }}
+          onPressOut={(e) => {
+            setPressed(false);
+            props.onPressOut?.(e);
+          }}
+          // Plain object styles (not a style function) so NativeWind className interop keeps working.
+          style={[
+            typeof props.style === 'function' ? props.style({ pressed } as any) : props.style,
+            // Immediate, transform-only press feedback; no effect when disabled/loading/link.
+            pressed && !isDisabled && !reduceMotion && variant !== 'link' ? PRESSED_STYLE : null,
+          ] as any}
+          role={"button"}
+          accessibilityRole={"button"}
+          accessibilityState={{
+            ...(props.accessibilityState || {}),
+            disabled: isDisabled,
+            ...(loading ? { busy: true } : {}),
+          }}
         >
           {(state) => (
             <>
@@ -252,14 +277,14 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
                     if (typeof child === 'string') {
                       if (!child.trim()) return null;
                       return (
-                        <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1}>
+                        <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1}>
                           {child}
                         </Text>
                       );
                     }
                     if (typeof child === 'number') {
                       return (
-                        <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1}>
+                        <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1}>
                           {child}
                         </Text>
                       );

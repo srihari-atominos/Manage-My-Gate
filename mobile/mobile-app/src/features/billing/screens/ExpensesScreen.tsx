@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSelector } from 'react-redux';
 import { useRouter, useFocusEffect, useLocalSearchParams, usePathname } from 'expo-router';
-import { Receipt, RotateCcw, Plus, CreditCard, ChevronRight, FileDown, FileSpreadsheet, FileText } from 'lucide-react-native';
+import { Receipt, RotateCcw, Plus, CreditCard, ChevronRight, FileDown, FileSpreadsheet, FileText, X, CheckCircle2 } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
@@ -11,19 +11,21 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/common/Button';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+import { EmptyState } from '@/components/feedback/EmptyState';
 import expenseService from '../services/expenseService';
 import { ExpenseFilterDrawer, ExpenseFilterValues } from '../components/ExpenseFilterDrawer';
 import { ExpensePeriodAnalysisCard } from '../components/ExpensePeriodAnalysisCard';
+import { MarkExpensePaidSheet } from '../components/MarkExpensePaidSheet';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 import { useAppSocket } from '../../../hooks/useAppSocket';
 import { downloadCSVFile, downloadExcelFile, downloadPDFFile } from '@/src/utils/downloadHelper';
 
 const statuses = [
-  { label: 'All Statuses', value: '' },
-  { label: 'Unpaid', value: 'UNPAID' },
-  { label: 'Partially Paid', value: 'PARTIALLY_PAID' },
-  { label: 'Paid', value: 'PAID' },
+  { label: 'All', value: '' },
+  { label: 'Unpaid', value: 'UNPAID', dotColor: 'bg-rose-500' },
+  { label: 'Partially Paid', value: 'PARTIALLY_PAID', dotColor: 'bg-amber-500' },
+  { label: 'Paid', value: 'PAID', dotColor: 'bg-emerald-500' },
 ];
 
 const periodDisplayNames: Record<string, string> = {
@@ -58,7 +60,7 @@ export default function ExpensesScreen() {
     { id: 'billing_pay_online_expense', permission: 'billing:pay_online_expense' },
     user
   );
-  const [period, setPeriod] = useState('ALL_TIME');
+  const [period, setPeriod] = useState('TODAY');
   const [data, setData] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -69,19 +71,20 @@ export default function ExpensesScreen() {
   const [category, setCategory] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [datePreset, setDatePreset] = useState('ALL_TIME');
+  const [datePreset, setDatePreset] = useState('TODAY');
 
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [showExportSheet, setShowExportSheet] = useState(false);
+  const [selectedExpenseForMarkPaid, setSelectedExpenseForMarkPaid] = useState<any>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const periodSegments = useMemo(
     () => [
-      { key: 'ALL_TIME', label: 'All Time' },
       { key: 'TODAY', label: 'Today' },
       { key: 'WEEKLY', label: 'This Week' },
       { key: 'MONTHLY', label: 'This Month' },
       { key: 'YEARLY', label: 'This Year' },
+      { key: 'ALL_TIME', label: 'All Time' },
     ],
     []
   );
@@ -187,10 +190,13 @@ export default function ExpensesScreen() {
         expenseService.list(params()),
         expenseService.summary(summaryParams),
       ]);
-      setData(list.records || []);
-      setSummary(totals || {});
+      const records = list?.records || [];
+      const totalsData = totals || null;
+      setData(records);
+      setSummary(totalsData);
     } catch (e: any) {
-      setError(e?.message || 'Unable to load expenses');
+      setData([]);
+      setSummary(null);
     } finally {
       setLoading(false);
     }
@@ -279,15 +285,15 @@ export default function ExpensesScreen() {
     setCategory('');
     setStartDate('');
     setEndDate('');
-    setDatePreset('ALL_TIME');
-    setPeriod('ALL_TIME');
+    setDatePreset('TODAY');
+    setPeriod('TODAY');
   };
 
   const totalActiveFilterCount =
     (status ? 1 : 0) +
     (expenseType ? 1 : 0) +
     (category.trim() ? 1 : 0) +
-    (period !== 'ALL_TIME' || datePreset !== 'ALL_TIME' || startDate || endDate ? 1 : 0);
+    (period !== 'TODAY' || datePreset !== 'TODAY' || startDate || endDate ? 1 : 0);
 
   const periodKpiTitles: Record<string, string> = {
     ALL_TIME: 'Total Expenses',
@@ -382,26 +388,26 @@ export default function ExpensesScreen() {
         <View className="flex-row gap-2.5">
           <View className="min-w-0 flex-1">
             <Button
+              leftIcon={Plus}
               onPress={() =>
                 router.push('/(resident)/admin/billing/expenses/record' as any)
               }
-              className="w-full flex-row items-center justify-center gap-1.5"
+              className="w-full shadow-xs"
             >
-              <Plus size={16} color="#ffffff" />
-              <Text className="text-center font-bold text-white text-xs">Record Expense</Text>
+              Record Expense
             </Button>
           </View>
           {canPayOnline ? (
             <View className="min-w-0 flex-1">
               <Button
                 variant="outline"
+                leftIcon={CreditCard}
                 onPress={() =>
                   router.push('/(resident)/admin/billing/expenses/pay-online' as any)
                 }
-                className="w-full flex-row items-center justify-center gap-1.5"
+                className="w-full shadow-xs"
               >
-                <CreditCard size={15} className="text-foreground" />
-                <Text className="text-center font-bold text-xs">Pay Online</Text>
+                Pay Online
               </Button>
             </View>
           ) : null}
@@ -421,70 +427,140 @@ export default function ExpensesScreen() {
           searchPlaceholder="Search expense, vendor, category..."
           onFilterPress={() => setShowFilterDrawer(true)}
           activeFilterCount={totalActiveFilterCount}
-          className="px-0 pt-1 pb-0"
+          className="px-0 pt-0 pb-0"
         />
 
-        {/* Quick Status Filter Pills & Reset Action */}
-        <View className="flex-row items-center justify-between px-0.5">
-          <View className="flex-row gap-1.5 flex-wrap flex-1">
-            {statuses.map((s) => {
-              const isSelected = status === s.value;
-              return (
-                <Pressable
-                  key={s.value}
-                  onPress={() => setStatus(s.value)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Filter by ${s.label}`}
-                  className={`rounded-xl px-3 py-1.5 border transition-colors ${
+        {/* Quick Status Filter Pills & Reset Action in Responsive Horizontal Scroll */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="flex-row -mx-4 px-4 py-0.5"
+          contentContainerClassName="gap-2 items-center pe-6"
+        >
+          {statuses.map((s) => {
+            const isSelected = status === s.value;
+            return (
+              <Pressable
+                key={s.value}
+                onPress={() => setStatus(s.value)}
+                accessibilityRole="button"
+                accessibilityLabel={`Filter by ${s.label}`}
+                className={`flex-row items-center gap-1.5 rounded-full px-3.5 py-1.5 border transition-all ${
+                  isSelected
+                    ? 'border-primary bg-primary shadow-xs'
+                    : 'border-border/80 bg-card active:bg-muted/60'
+                }`}
+              >
+                {s.dotColor && !isSelected ? (
+                  <View className={`size-1.5 rounded-full ${s.dotColor}`} />
+                ) : null}
+                <Text
+                  className={`text-xs ${
                     isSelected
-                      ? 'border-primary bg-primary shadow-xs'
-                      : 'border-border/80 bg-card'
+                      ? 'font-bold text-primary-foreground'
+                      : 'font-semibold text-muted-foreground'
                   }`}
                 >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      isSelected ? 'text-primary-foreground font-bold' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {s.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                  {s.label}
+                </Text>
+              </Pressable>
+            );
+          })}
 
           {(search || expenseType || status || category || startDate || endDate) ? (
             <Pressable
               onPress={clearFilters}
               accessibilityRole="button"
               accessibilityLabel="Reset all filters"
-              className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-xl bg-card border border-border/80 active:opacity-70 ms-2 shrink-0"
+              className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5 bg-card border border-border/80 active:opacity-70 ms-1 shadow-2xs"
             >
               <RotateCcw size={12} className="text-muted-foreground" />
-              <Text className="text-[11px] font-semibold text-muted-foreground">Reset</Text>
+              <Text className="text-xs font-semibold text-muted-foreground">Reset</Text>
             </Pressable>
           ) : null}
-        </View>
+        </ScrollView>
+
+        {/* Active Filter Chips with One-Tap Clear Action */}
+        {(search || expenseType || category || (startDate && endDate)) ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="flex-row -mx-4 px-4 py-0.5"
+            contentContainerClassName="gap-1.5 items-center pe-6"
+          >
+            {search ? (
+              <Pressable
+                onPress={() => setSearch('')}
+                accessibilityRole="button"
+                accessibilityLabel={`Clear search ${search}`}
+                className="flex-row items-center gap-1 rounded-lg bg-primary/10 border border-primary/20 px-2 py-1 active:opacity-75"
+              >
+                <Text className="text-[11px] font-medium text-primary">Search: "{search}"</Text>
+                <X size={12} className="text-primary" />
+              </Pressable>
+            ) : null}
+            {category ? (
+              <Pressable
+                onPress={() => setCategory('')}
+                accessibilityRole="button"
+                accessibilityLabel={`Clear category ${category}`}
+                className="flex-row items-center gap-1 rounded-lg bg-primary/10 border border-primary/20 px-2 py-1 active:opacity-75"
+              >
+                <Text className="text-[11px] font-medium text-primary">Category: {category}</Text>
+                <X size={12} className="text-primary" />
+              </Pressable>
+            ) : null}
+            {expenseType ? (
+              <Pressable
+                onPress={() => setExpenseType('')}
+                accessibilityRole="button"
+                accessibilityLabel={`Clear type ${readable(expenseType)}`}
+                className="flex-row items-center gap-1 rounded-lg bg-primary/10 border border-primary/20 px-2 py-1 active:opacity-75"
+              >
+                <Text className="text-[11px] font-medium text-primary">Type: {readable(expenseType)}</Text>
+                <X size={12} className="text-primary" />
+              </Pressable>
+            ) : null}
+            {startDate && endDate ? (
+              <Pressable
+                onPress={() => {
+                  setStartDate('');
+                  setEndDate('');
+                  setDatePreset('ALL_TIME');
+                  setPeriod('ALL_TIME');
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear custom date filter"
+                className="flex-row items-center gap-1 rounded-lg bg-primary/10 border border-primary/20 px-2 py-1 active:opacity-75"
+              >
+                <Text className="text-[11px] font-medium text-primary">{startDate} to {endDate}</Text>
+                <X size={12} className="text-primary" />
+              </Pressable>
+            ) : null}
+          </ScrollView>
+        ) : null}
 
         {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
-        <View className="flex-row items-center justify-between px-1 pt-1">
+        <View className="flex-row items-center justify-between px-0.5 pt-1">
           <View className="flex-row items-center gap-1.5">
             <Text className="text-sm font-bold text-foreground">
               Expense Records
             </Text>
-            <Text className="text-xs font-medium text-muted-foreground">
-              ({data.length})
-            </Text>
+            <View className="rounded-full bg-muted px-2 py-0.5">
+              <Text className="text-[11px] font-bold text-muted-foreground">
+                {data.length}
+              </Text>
+            </View>
           </View>
 
-          {/* Export Action Button (Reference: Staff Attendance) */}
+          {/* Export Action Button */}
           <Pressable
             onPress={() => setShowExportSheet(true)}
             disabled={isExporting}
             accessibilityRole="button"
             accessibilityLabel="Export Expense Records"
-            className="h-8 px-2.5 rounded-xl border border-border bg-card flex-row items-center justify-center gap-1.5 active:opacity-70"
+            className="h-8 px-2.5 rounded-xl border border-border bg-card flex-row items-center justify-center gap-1.5 active:opacity-70 shadow-2xs"
           >
             {isExporting ? (
               <ActivityIndicator size="small" color="#5B5CE2" />
@@ -539,13 +615,21 @@ export default function ExpensesScreen() {
         ListHeaderComponent={header}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         ListEmptyComponent={
-          <View className="items-center rounded-2xl border border-dashed border-border bg-card p-8">
-            <Receipt size={32} className="text-muted-foreground mb-2 opacity-50" />
-            <Text className="text-center font-bold text-foreground">No Expenses Found</Text>
-            <Text className="mt-1 text-center text-xs text-muted-foreground">
-              Try adjusting your filters or record a new community expense.
-            </Text>
-          </View>
+          <EmptyState
+            icon={Receipt}
+            title={totalActiveFilterCount > 0 ? 'No Matching Expenses' : 'No Expenses Found'}
+            description={
+              totalActiveFilterCount > 0
+                ? 'Try adjusting your filters or search query to find expense records.'
+                : 'No community expenses recorded for this period. Tap Record Expense to track a new expense.'
+            }
+            actionLabel={totalActiveFilterCount > 0 ? 'Reset All Filters' : 'Record Expense'}
+            onAction={
+              totalActiveFilterCount > 0
+                ? clearFilters
+                : () => router.push('/(resident)/admin/billing/expenses/record' as any)
+            }
+          />
         }
         renderItem={({ item }: any) => {
           const isPaid = item.settlementStatus === 'PAID';
@@ -560,61 +644,65 @@ export default function ExpensesScreen() {
               })
             : null;
 
+          const goToDetails = () =>
+            router.push({
+              pathname: '/(resident)/admin/billing/expenses/[id]',
+              params: { id: item._id },
+            } as any);
+
           return (
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: '/(resident)/admin/billing/expenses/[id]',
-                  params: { id: item._id },
-                } as any)
-              }
-              accessibilityRole="button"
-              accessibilityLabel={`View expense ${item.name}`}
-              className="rounded-2xl border border-border/80 bg-card p-4 active:opacity-80 shadow-xs mb-1"
-            >
-              {/* Top Row: Status Badge, Category Tag & Date */}
-              <View className="flex-row items-center justify-between mb-2">
-                <View className="flex-row items-center gap-2 flex-1">
-                  <StatusBadge label={badgeLabel} variant={badgeVariant} size="sm" dot />
-                  {item.category ? (
-                    <View className="rounded-md bg-muted px-2 py-0.5">
-                      <Text className="text-[11px] font-medium text-muted-foreground">
-                        {item.category}
-                      </Text>
-                    </View>
-                  ) : null}
+            <View className="rounded-2xl border border-border/80 bg-card p-4 shadow-2xs mb-1">
+              {/* Clickable Card Body leading to Details */}
+              <Pressable
+                onPress={goToDetails}
+                accessibilityRole="button"
+                accessibilityLabel={`View expense ${item.name}`}
+                className="active:opacity-80"
+              >
+                {/* Top Row: Status Badge, Category Tag & Date */}
+                <View className="flex-row items-center justify-between gap-2 mb-2">
+                  <View className="flex-row items-center gap-1.5 flex-1 min-w-0">
+                    <StatusBadge label={badgeLabel} variant={badgeVariant} size="sm" dot />
+                    {item.category ? (
+                      <View className="rounded-md bg-muted px-2 py-0.5 shrink min-w-0">
+                        <Text className="text-[11px] font-medium text-muted-foreground" numberOfLines={1}>
+                          {item.category}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {formattedDate && (
+                    <Text className="text-[11px] text-muted-foreground shrink-0 font-medium">
+                      {formattedDate}
+                    </Text>
+                  )}
                 </View>
-                {formattedDate && (
-                  <Text className="text-[11px] text-muted-foreground">
-                    {formattedDate}
-                  </Text>
-                )}
-              </View>
 
-              {/* Middle Row: Expense Name, Subtitle, and Amount */}
-              <View className="flex-row items-start justify-between gap-3 mb-1.5">
-                <View className="flex-1">
-                  <Text className="font-bold text-foreground text-sm" numberOfLines={2}>
-                    {item.name}
-                  </Text>
-                  <Text className="mt-0.5 text-xs text-muted-foreground capitalize" numberOfLines={1}>
-                    {readable(item.expenseType)}
-                    {item.vendor?.name ? ` · Vendor: ${item.vendor.name}` : ''}
-                  </Text>
+                {/* Middle Row: Expense Name, Subtitle, and Amount */}
+                <View className="flex-row items-start justify-between gap-3 mb-1.5">
+                  <View className="flex-1 min-w-0">
+                    <Text className="font-bold text-foreground text-sm leading-snug" numberOfLines={2}>
+                      {item.name}
+                    </Text>
+                    <Text className="mt-0.5 text-xs text-muted-foreground capitalize" numberOfLines={1}>
+                      {readable(item.expenseType)}
+                      {item.vendor?.name ? ` · Vendor: ${item.vendor.name}` : ''}
+                    </Text>
+                  </View>
+                  <View className="items-end shrink-0">
+                    <Text className="font-extrabold text-foreground text-base tracking-tight">
+                      {formatCurrency(item.totalAmount)}
+                    </Text>
+                    <Text className="text-[10px] text-muted-foreground font-mono">
+                      {item.expenseNumber}
+                    </Text>
+                  </View>
                 </View>
-                <View className="items-end">
-                  <Text className="font-extrabold text-foreground text-base">
-                    {formatCurrency(item.totalAmount)}
-                  </Text>
-                  <Text className="text-[10px] text-muted-foreground font-mono">
-                    {item.expenseNumber}
-                  </Text>
-                </View>
-              </View>
+              </Pressable>
 
-              {/* Bottom Row: Settlement Breakdown & Details Affordance */}
+              {/* Bottom Row: Settlement Breakdown & Details Affordance (Sibling View, NOT nested in button) */}
               <View className="mt-2.5 flex-row items-center justify-between border-t border-border/60 pt-2.5">
-                <View className="flex-row items-center gap-3">
+                <View className="flex-row items-center gap-3 flex-wrap flex-1 min-w-0 pe-2">
                   <Text className="text-xs text-muted-foreground">
                     Paid: <Text className="font-semibold text-foreground">{formatCurrency(item.recordedPaidAmount)}</Text>
                   </Text>
@@ -624,12 +712,32 @@ export default function ExpensesScreen() {
                     </Text>
                   )}
                 </View>
-                <View className="flex-row items-center gap-1">
-                  <Text className="text-xs font-semibold text-primary">Details</Text>
-                  <ChevronRight size={14} className="text-primary" />
+                <View className="flex-row items-center gap-2 shrink-0">
+                  {Number(item.outstandingAmount || 0) > 0 ? (
+                    <Pressable
+                      onPress={() => setSelectedExpenseForMarkPaid(item)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Mark expense ${item.name} as paid`}
+                      className="flex-row items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600/10 border border-emerald-600/25 active:opacity-75"
+                    >
+                      <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400" />
+                      <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        Mark Paid
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    onPress={goToDetails}
+                    accessibilityRole="button"
+                    accessibilityLabel="View Details"
+                    className="flex-row items-center gap-1 active:opacity-70"
+                  >
+                    <Text className="text-xs font-semibold text-primary">Details</Text>
+                    <ChevronRight size={14} className="text-primary" />
+                  </Pressable>
                 </View>
               </View>
-            </Pressable>
+            </View>
           );
         }}
       />
@@ -796,6 +904,17 @@ export default function ExpensesScreen() {
           </Button>
         </View>
       </BottomSheet>
+
+      {/* Modern Mark Expense Paid Sheet */}
+      <MarkExpensePaidSheet
+        visible={Boolean(selectedExpenseForMarkPaid)}
+        onClose={() => setSelectedExpenseForMarkPaid(null)}
+        expense={selectedExpenseForMarkPaid}
+        onSuccess={() => {
+          setSelectedExpenseForMarkPaid(null);
+          load();
+        }}
+      />
     </ScreenShell>
   );
 }

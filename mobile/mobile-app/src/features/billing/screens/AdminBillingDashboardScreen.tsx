@@ -117,6 +117,14 @@ export function AdminBillingDashboardScreen() {
   // Quick Navigation Hub ActionGrid Items
   const navItems: ActionGridItem[] = [
     {
+      id: 'community-finance',
+      name: 'Community Finance',
+      route: '/(resident)/admin/billing/community-finance',
+      iconName: 'LineChart',
+      colorBg: 'bg-emerald-500/10',
+      colorIcon: '#059669',
+    },
+    {
       id: 'expenses',
       name: 'Expenses',
       route: '/(resident)/admin/billing/expenses',
@@ -201,7 +209,8 @@ export function AdminBillingDashboardScreen() {
         <ScrollView
           className="flex-1 bg-background"
           showsVerticalScrollIndicator={false}
-          contentContainerClassName="gap-5 px-4 pb-36 pt-4"
+          contentContainerClassName="gap-5 px-4 pb-40 pt-4"
+          contentContainerStyle={{ paddingBottom: 140 }}
           refreshControl={
             <RefreshControl
               refreshing={loadingStates.fetchKPIs}
@@ -221,14 +230,19 @@ export function AdminBillingDashboardScreen() {
 
           {/* 2. Collection Target Progress Widget */}
           <Card className="rounded-2xl border border-border bg-card p-4">
-            <View className="mb-2 flex-row items-center justify-between">
-              <View className="flex-row items-center">
-                <Icon as={Target} size={18} className="me-2 text-primary" />
-                <Text className="font-bold text-sm text-foreground">
+            <View className="mb-2 flex-row items-center justify-between gap-2">
+              <View className="flex-row items-center flex-1 min-w-0">
+                <Icon as={Target} size={18} className="me-2 text-primary shrink-0" />
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  className="font-bold text-xs phone-md:text-sm text-foreground shrink"
+                >
                   Current Month Collection Progress
                 </Text>
               </View>
-              <Text className="font-extrabold text-sm text-primary">{collectionRate}%</Text>
+              <Text className="font-extrabold text-sm text-primary shrink-0">{collectionRate}%</Text>
             </View>
             <ProgressBar progress={collectionRate} className="mb-3 h-2 rounded-full" />
             <View className="flex-row items-center justify-between">

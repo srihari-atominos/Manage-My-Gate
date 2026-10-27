@@ -4,6 +4,17 @@ import moment from 'moment-timezone';
 import staffAttendanceRepository from './staffAttendance.repository.js';
 import technicianService from '../technician/technician.service.js';
 import HttpError from '../../utils/httpError.utils.js';
+import {
+  buildChartData,
+  statusChartPng,
+  dailyChartPng,
+  staffOverviewChartPng,
+  STAFF_CHART_WIDTH,
+  statusDonutPng,
+  hoursLinePng,
+  DASH_W,
+} from './staffAttendance.charts.js';
+import sharp from 'sharp';
 
 // Same community timezone the rest of the backend assumes (see amenity services).
 const TIMEZONE = 'Asia/Kolkata';
@@ -356,6 +367,32 @@ export async function reportToXlsxBuffer(report) {
       row.getCell(2).alignment = { horizontal: 'left', wrapText: true };
     }
   });
+  summarySheet.addRow([]);
+  summarySheet.addRow(['Charts', "See the 'Charts' sheet for a quick visual summary."]).getCell(1).font = { bold: true };
+
+  // ---- Charts: three plain-language pictures of the same filtered records ----
+  const chartData = buildChartData(report);
+  const chartsSheet = workbook.addWorksheet('Charts', { views: [{ showGridLines: false }] });
+  chartsSheet.getColumn(1).width = 3;
+  chartsSheet.getCell('B1').value = 'Attendance at a glance';
+  chartsSheet.getCell('B1').font = { bold: true, size: 16, color: { argb: 'FF1F3A5F' } };
+  chartsSheet.getCell('B2').value = `Period: ${report.summary?.[1]?.[1] || 'All dates'}`;
+  chartsSheet.getCell('B2').font = { color: { argb: 'FF475569' } };
+
+  const [statusPng, dailyPng, staffPng] = await Promise.all([
+    statusChartPng(chartData),
+    dailyChartPng(chartData),
+    staffOverviewChartPng(chartData),
+  ]);
+  const staffMeta = await sharp(staffPng).metadata();
+  [
+    { png: statusPng, tl: { col: 1, row: 3 }, ext: { width: 640, height: 300 } },
+    { png: dailyPng, tl: { col: 11, row: 3 }, ext: { width: 640, height: 300 } },
+    { png: staffPng, tl: { col: 1, row: 19 }, ext: { width: STAFF_CHART_WIDTH, height: staffMeta.height } },
+  ].forEach(({ png, tl, ext }) => {
+    const id = workbook.addImage({ buffer: png, extension: 'png' });
+    chartsSheet.addImage(id, { tl, ext });
+  });
 
   // ---- Attendance ----
   const sheet = workbook.addWorksheet('Attendance', { views: [{ state: 'frozen', ySplit: 1 }] });
@@ -396,50 +433,178 @@ export async function reportToXlsxBuffer(report) {
   ['totalHours', 'avgHoursPerDay'].forEach((k) => {
     staffSheet.getColumn(k).numFmt = '0.00';
   });
+  // In-cell bars make the busiest / least present staff visible without opening the Charts sheet
+  if (report.staffSummary.length > 0) {
+    const last = report.staffSummary.length + 1;
+    [['F', 'FF1F3A5F'], ['D', 'FF15803D']].forEach(([col, argb]) => {
+      staffSheet.addConditionalFormatting({
+        ref: `${col}2:${col}${last}`,
+        rules: [{ type: 'dataBar', gradient: false, cfvo: [{ type: 'num', value: 0 }, { type: 'max' }], color: { argb } }],
+      });
+    });
+  }
 
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
 
-/** A compact, printable version of the same filtered attendance data. */
-export function reportToPdfBuffer(report) {
+/** Printable report: summary cards, the same three charts as the workbook, then every matching record. */
+export async function reportToPdfBuffer(report) {
+  const chartData = buildChartData(report);
+  const [donutPng, columnsPng, linePng, staffPng] = await Promise.all([
+    statusDonutPng(chartData),
+    dailyChartPng(chartData, DASH_W),
+    hoursLinePng(chartData),
+    staffOverviewChartPng(chartData),
+  ]);
+  const summary = new Map((report.summary || []).map(([k, v]) => [k, v]));
+  const period = summary.get('Period') || 'All dates';
+  const filters = summary.get('Filters') || 'None';
+
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 32 });
+    const MARGIN = 32;
+    const doc = new PDFDocument({
+      size: 'A4',
+      layout: 'landscape',
+      margin: MARGIN,
+      bufferPages: true,
+      info: { Title: `Staff Attendance Report - ${period}`, Author: 'Nahom' },
+    });
     const chunks = [];
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const columns = [
-      ['Date', 'date', 74], ['Staff Name', 'name', 106], ['Role', 'role', 96],
-      ['Status', 'status', 76], ['Check-In', 'checkIn', 58], ['Check-Out', 'checkOut', 62],
-    ];
-    const drawHeader = () => {
-      doc.font('Helvetica-Bold').fontSize(15).fillColor('#1F3A5F').text('Staff Attendance Report');
-      doc.font('Helvetica').fontSize(8).fillColor('#4B5563').text(`Period: ${report.summary?.[1]?.[1] || 'All dates'}`);
-      doc.moveDown(0.8);
-      let x = 32;
-      doc.font('Helvetica-Bold').fontSize(7).fillColor('#FFFFFF');
-      columns.forEach(([header, , width]) => { doc.rect(x, doc.y, width, 16).fill('#1F3A5F'); doc.fillColor('#FFFFFF').text(header, x + 3, doc.y + 4, { width: width - 6, lineBreak: false }); x += width; });
-      doc.moveDown(1.5);
-    };
-    const drawRow = (row, index) => {
-      const y = doc.y;
-      const rowHeight = 22;
-      if (y + rowHeight > doc.page.height - 38) { doc.addPage(); drawHeader(); return drawRow(row, index); }
-      let x = 32;
-      if (index % 2) doc.rect(32, y - 2, 720, rowHeight).fill('#F3F4F6');
-      doc.font('Helvetica').fontSize(6.5).fillColor('#111827');
-      columns.forEach(([, key, width]) => { doc.text(String(row[key] ?? EM_DASH), x + 3, y + 3, { width: width - 6, height: 15, ellipsis: true }); x += width; });
-      doc.y = y + rowHeight;
+    const contentW = doc.page.width - MARGIN * 2;
+    const bottomLimit = () => doc.page.height - 44;
+    const ensureSpace = (needed) => {
+      if (doc.y + needed > bottomLimit()) doc.addPage();
     };
 
+    // ---- Header ----
+    doc.rect(MARGIN, MARGIN, contentW, 44).fill('#1F3A5F');
+    doc.font('Helvetica-Bold').fontSize(15).fillColor('#FFFFFF').text('Staff Attendance Report', MARGIN + 12, MARGIN + 9, { lineBreak: false });
+    doc.font('Helvetica').fontSize(9).fillColor('#CBD5E1').text(
+      `${period}  |  Generated ${summary.get('Generated on') || ''}${summary.get('Generated by') ? `  |  By ${summary.get('Generated by')}` : ''}`,
+      MARGIN + 12, MARGIN + 28, { width: contentW - 24, lineBreak: false }
+    );
+    doc.y = MARGIN + 54;
+    doc.font('Helvetica').fontSize(8.5).fillColor('#475569').text(`Filters: ${filters}`, MARGIN, doc.y, { width: contentW });
+    doc.moveDown(0.6);
+    if (report.truncated) {
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#B91C1C').text(
+        `Only the newest ${MAX_EXPORT_ROWS} records are included. Narrow the dates to see all.`, MARGIN, doc.y, { width: contentW }
+      );
+      doc.moveDown(0.6);
+    }
+
+    // ---- Summary cards ----
+    const total = chartData.statusCounts.reduce((n, x) => n + x.count, 0);
+    const absent = chartData.statusCounts.find((x) => x.status === 'Absent')?.count || 0;
+    const rate = total ? Math.round(((total - absent) / total) * 100) : 0;
+    const cards = [
+      { label: 'Attendance rate', value: total ? `${rate}%` : '-', color: rate >= 90 ? '#15803D' : rate >= 70 ? '#B45309' : '#B91C1C' },
+      { label: 'Different staff present', value: String(summary.get('Different staff present') ?? 0), color: '#1F3A5F' },
+      { label: 'Total hours on site', value: String(summary.get('Total hours on site') ?? 0), color: '#1F3A5F' },
+      { label: 'Absent (staff-days)', value: String(summary.get('Absent entries (staff-days)') ?? 0), color: '#B91C1C' },
+      { label: 'Missing check-outs', value: String((summary.get('Missing check-outs') ?? 0) + (summary.get('Auto-closed visits') ?? 0)), color: '#B45309' },
+      { label: 'Inside now', value: String(summary.get('Currently inside') ?? 0), color: '#1D4ED8' },
+    ];
+    const gap = 8;
+    const cardW = (contentW - gap * (cards.length - 1)) / cards.length;
+    const cardH = 46;
+    const cardsTop = doc.y;
+    cards.forEach((c, i) => {
+      const x = MARGIN + i * (cardW + gap);
+      doc.rect(x, cardsTop, cardW, cardH).fill('#FFFFFF');
+      doc.rect(x, cardsTop, cardW, cardH).stroke('#E2E8F0');
+      doc.rect(x, cardsTop, 4, cardH).fill(c.color);
+      doc.font('Helvetica').fontSize(7.5).fillColor('#64748B').text(c.label, x + 12, cardsTop + 9, { width: cardW - 16, lineBreak: false });
+      doc.font('Helvetica-Bold').fontSize(16).fillColor(c.color).text(c.value, x + 12, cardsTop + 22, { width: cardW - 16, lineBreak: false });
+    });
+    doc.y = cardsTop + cardH + 14;
+
+    // ---- Dashboard: round chart, vertical columns, line graph in one row ----
+    const third = (contentW - gap * 2) / 3;
+    const thirdH = (third * 300) / DASH_W;
+    ensureSpace(thirdH + 10);
+    const chartsTop = doc.y;
+    [donutPng, columnsPng, linePng].forEach((png, i) => {
+      const x = MARGIN + i * (third + gap);
+      doc.rect(x, chartsTop, third, thirdH).stroke('#E2E8F0');
+      doc.image(png, x, chartsTop, { width: third });
+    });
+    doc.y = chartsTop + thirdH + 12;
+    doc.x = MARGIN;
+    const staffScale = contentW / STAFF_CHART_WIDTH;
+    // Height of the staff chart in points, from its pixel height
+    const staffPxHeight = Buffer.from(staffPng).readUInt32BE(20); // PNG IHDR height
+    const staffH = staffPxHeight * staffScale;
+    ensureSpace(staffH + 10);
+    doc.image(staffPng, MARGIN, doc.y, { width: contentW });
+    doc.y += staffH + 12;
+
+    // ---- Records table (repeats header on every page) ----
+    const columns = [
+      { header: 'Date', key: 'date', width: 92 },
+      { header: 'Staff Name', key: 'name', width: 150 },
+      { header: 'Role', key: 'role', width: 120 },
+      { header: 'Status', key: 'status', width: 130 },
+      { header: 'Check-In', key: 'checkIn', width: 70 },
+      { header: 'Check-Out', key: 'checkOut', width: 70 },
+      { header: 'Time on Site', key: 'timeOnSite', width: contentW - 632 },
+    ];
+    const rowHeight = 17;
+    const drawHeader = () => {
+      const y = doc.y;
+      let x = MARGIN;
+      columns.forEach((col) => {
+        doc.rect(x, y, col.width, 17).fill('#1F3A5F');
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF').text(col.header, x + 4, y + 5, { width: col.width - 8, lineBreak: false });
+        x += col.width;
+      });
+      doc.y = y + 19;
+    };
+    doc.addPage();
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#1F3A5F').text('Attendance records', MARGIN, doc.y);
+    doc.font('Helvetica').fontSize(8).fillColor('#64748B').text(`${report.rows.length} record${report.rows.length === 1 ? '' : 's'} matching the filters.`);
+    doc.moveDown(0.6);
     drawHeader();
-    report.rows.forEach(drawRow);
-    if (!report.rows.length) doc.font('Helvetica').fontSize(10).fillColor('#4B5563').text('No attendance records match the selected filters.');
+    if (report.rows.length === 0) {
+      doc.font('Helvetica').fontSize(10).fillColor('#4B5563').text('No attendance records match the selected filters.', MARGIN, doc.y + 4);
+    }
+    report.rows.forEach((row, index) => {
+      if (doc.y + rowHeight > bottomLimit()) {
+        doc.addPage();
+        drawHeader();
+      }
+      const y = doc.y;
+      if (index % 2) doc.rect(MARGIN, y - 1, contentW, rowHeight).fill('#F3F4F6');
+      let x = MARGIN;
+      columns.forEach((col) => {
+        const isStatus = col.key === 'status';
+        doc.font(isStatus ? 'Helvetica-Bold' : 'Helvetica').fontSize(8)
+          .fillColor(isStatus ? `#${(STATUS_COLORS[row.status] || 'FF111827').slice(-6)}` : '#1F2937')
+          .text(String(row[col.key] ?? EM_DASH), x + 4, y + 4, { width: col.width - 8, height: 11, ellipsis: true, lineBreak: false });
+        x += col.width;
+      });
+      doc.y = y + rowHeight;
+    });
+
+    // ---- Footer on every page: report name and page x of y ----
+    const range = doc.bufferedPageRange();
+    for (let i = range.start; i < range.start + range.count; i++) {
+      doc.switchToPage(i);
+      doc.page.margins.bottom = 0; // let the footer sit below the content area without spawning a page
+      doc.font('Helvetica').fontSize(7.5).fillColor('#94A3B8').text(
+        `Staff Attendance Report  |  ${period}  |  Page ${i + 1} of ${range.count}`,
+        MARGIN, doc.page.height - 26, { align: 'center', width: contentW, lineBreak: false }
+      );
+    }
     doc.end();
   });
 }
+
 export function exportFileName(format, query = {}) {
   const stamp = moment.tz(TIMEZONE).format('YYYY-MM-DD');
   const period =

@@ -646,3 +646,20 @@ test('18. Permission isolation: staff:view and staff:view_own cannot access asso
   assert.equal(errB.statusCode, 403);
 });
 
+
+test('checkScheduleConflict detects overlap with overnight shifts and ignores adjacent windows', async () => {
+  const original = staffUnitAssociationRepository.findActiveOrPendingByTechnician;
+  staffUnitAssociationRepository.findActiveOrPendingByTechnician = async () => [
+    { villaId: { _id: 'v1', unitNumber: 'A-1' }, accessSchedule: { days: ['mon'], timeWindow: { start: '22:00', end: '06:00' } } },
+  ];
+  try {
+    const night = await staffUnitAssociationService.checkScheduleConflict('t1', 'o1', { days: ['mon'], timeWindow: { start: '05:00', end: '07:00' } }, 'v2');
+    assert.equal(night.hasConflict, true, 'early-morning part of an overnight shift must conflict');
+    const adjacent = await staffUnitAssociationService.checkScheduleConflict('t1', 'o1', { days: ['mon'], timeWindow: { start: '06:00', end: '10:00' } }, 'v2');
+    assert.equal(adjacent.hasConflict, false, 'back-to-back windows do not overlap');
+    const otherDay = await staffUnitAssociationService.checkScheduleConflict('t1', 'o1', { days: ['tue'], timeWindow: { start: '23:00', end: '23:30' } }, 'v2');
+    assert.equal(otherDay.hasConflict, false);
+  } finally {
+    staffUnitAssociationRepository.findActiveOrPendingByTechnician = original;
+  }
+});

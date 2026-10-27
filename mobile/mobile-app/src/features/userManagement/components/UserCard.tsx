@@ -7,6 +7,7 @@ import { useTranslation, i18n } from '@/src/utils/i18n';
 import { UserData, AssignedUnit } from '../services/userService';
 import { UserOverflowMenu } from './UserOverflowMenu';
 import { Button } from '@/components/common/Button';
+import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 
 export interface UserCardProps {
   user: UserData;
@@ -33,6 +34,7 @@ export const UserCard: React.FC<UserCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   const isPending = user.status === 'Pending' || user.status === 'Pending Verification';
   const isRejected = user.status === 'Rejected';
@@ -76,7 +78,8 @@ export const UserCard: React.FC<UserCardProps> = ({
 
   return (
     <>
-      <View
+      <Animated.View
+        entering={reduceMotion ? undefined : FadeInDown.duration(220)}
         className={`mb-4 p-4 bg-card border border-border/40 rounded-3xl shadow-sm ${className}`}
       >
         {/* Top Section: Avatar + Details (Left) and Status + Menu Button (Right) */}
@@ -221,7 +224,7 @@ export const UserCard: React.FC<UserCardProps> = ({
             <Text className="text-[13px] font-extrabold text-primary tracking-wide shrink" numberOfLines={1}>Permissions</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Internal Overflow Menu fallback if not controlled externally */}
       {!onOpenMenu && (

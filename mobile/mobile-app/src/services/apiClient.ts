@@ -381,6 +381,8 @@ apiClient.interceptors.response.use(
       return { success: true, message: 'Not Modified', data: null, notModified: true };
     }
     reportApiSuccess();
+    // Opt-in for binary downloads that need response headers (filename, row counts)
+    if ((response.config as any)?.rawResponse) return response as any;
     // Return the backend's standard { success, message, data } envelope
     return response.data;
   },

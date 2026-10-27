@@ -14,6 +14,7 @@ export default {
   update: run((req) => service.updateTransaction(req.user, req.params.id, req.body)),
   remove: run((req) => service.deleteTransaction(req.user, req.params.id)),
   uploadReceipt: async (req, res, next) => { try { if (!req.file) throw new HttpError(400, 'Receipt file is required.'); res.success(await service.uploadReceipt(req.user, req.params.id, req.file), 'Receipt uploaded', 201); } catch (error) { cleanUploadedFiles(req); next(error); } },
+  previewReceipt: async (req, res, next) => { try { if (!req.file) throw new HttpError(400, 'Receipt file is required.'); res.success(await service.previewReceipt(req.user, req.file), 'Receipt scanned', 200); } catch (error) { cleanUploadedFiles(req); next(error); } },
   retryReceipt: run((req) => service.retryReceiptOcr(req.user, req.params.id)),
   updateReceipt: run((req) => service.updateReceiptReview(req.user, req.params.id, req.body)),
   removeReceipt: run((req) => service.removeReceipt(req.user, req.params.id)),

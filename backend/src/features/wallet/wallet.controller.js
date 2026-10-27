@@ -2,7 +2,8 @@ import walletService from './wallet.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 
 const resolveTargetUserAndOrg = async (req, requestedUserId = null) => {
-  const orgId = req.tenant?.isPlatform && (req.query?.orgId || req.body?.orgId)
+  const isPlatformUser = req.tenant?.isPlatform || req.user?.isPlatform;
+  const orgId = isPlatformUser && (req.query?.orgId || req.body?.orgId)
     ? (req.query?.orgId || req.body?.orgId)
     : (req.tenant?.orgId || req.user?.orgId);
   if (!orgId) {
