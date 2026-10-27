@@ -16,6 +16,7 @@ const IGNORED_WARNINGS = [
   'validateDOMNesting',
   'Download the React DevTools for a better development experience',
   'Added non-passive event listener to a scroll-blocking',
+  'Expected static flag was missing',
 ];
 
 LogBox.ignoreLogs(IGNORED_WARNINGS);
