@@ -1365,7 +1365,6 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           },
         };
       }
-      }
 
       // 2. Personal Expense Summary (Resident Utility)
       case 'get_personal_expense_summary': {
