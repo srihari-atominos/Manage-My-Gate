@@ -208,44 +208,36 @@ export default function ExpensesScreen() {
     }
   }, [params, period, search, expenseType, status, category, startDate, endDate]);
 
-  // Force re-fetch when returning from create/pay flows via search params or path change
+  // Stable ref for load to prevent effect loops across render cycles
+  const loadRef = React.useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  });
+
+  // Force re-fetch when returning from create/pay flows via search params
   useEffect(() => {
     if (refresh) {
-      load();
+      loadRef.current();
     }
-  }, [refresh, load]);
+  }, [refresh]);
 
-  useEffect(() => {
-    if (pathname && pathname.includes('/expenses')) {
-      load();
-    }
-  }, [pathname, load]);
-
-  // Real-time update: Reload whenever screen comes into focus
+  // Real-time update: Reload once whenever screen gains focus
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      loadRef.current();
+    }, [])
   );
 
-  // Web window focus listener (refreshes data when returning to browser tab)
+  // Debounced auto-reload when search or any filter changes (skips initial mount)
+  const isInitialMount = React.useRef(true);
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.addEventListener) {
-      const handleWindowFocus = () => {
-        load();
-      };
-      window.addEventListener('focus', handleWindowFocus);
-      return () => {
-        window.removeEventListener('focus', handleWindowFocus);
-      };
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
     }
-  }, [load]);
-
-  // Debounced auto-reload when search or any filter changes
-  useEffect(() => {
     const timer = setTimeout(() => {
-      load();
-    }, 250);
+      loadRef.current();
+    }, 300);
     return () => clearTimeout(timer);
   }, [period, search, expenseType, status, category, startDate, endDate]);
 

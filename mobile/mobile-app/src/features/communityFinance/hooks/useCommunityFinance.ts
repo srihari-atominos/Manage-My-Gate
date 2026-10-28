@@ -81,7 +81,7 @@ export const useCommunityFinance = (): UseCommunityFinanceReturn => {
     return false;
   });
 
-  const lastOrgRef = useRef<string | null>(null);
+  const lastFetchedKeyRef = useRef<string | null>(null);
 
   const loadData = useCallback(
     (period: ReportingPeriod) => {
@@ -92,26 +92,29 @@ export const useCommunityFinance = (): UseCommunityFinanceReturn => {
     [dispatch, hasPermission, activeOrgId]
   );
 
-  // Trigger initial fetch when authorized and org is ready
+  // Trigger fetch only once per (activeOrgId, selectedPeriod) - prevents infinite retry storms
   useEffect(() => {
-    if (hasPermission && activeOrgId) {
-      if (lastOrgRef.current !== activeOrgId || !dashboard) {
-        lastOrgRef.current = activeOrgId;
+    if (hasPermission && activeOrgId && !loading && !refreshing) {
+      const fetchKey = `${activeOrgId}_${selectedPeriod}`;
+      if (lastFetchedKeyRef.current !== fetchKey) {
+        lastFetchedKeyRef.current = fetchKey;
         loadData(selectedPeriod);
       }
     }
-  }, [hasPermission, activeOrgId, selectedPeriod, dashboard, loadData]);
+  }, [hasPermission, activeOrgId, selectedPeriod, loading, refreshing, loadData]);
 
   // Handle changing reporting period with duplicate prevention
   const changePeriod = useCallback(
     (newPeriod: ReportingPeriod) => {
-      if (newPeriod === selectedPeriod && dashboard && lastFetchedPeriod === newPeriod) {
+      const fetchKey = `${activeOrgId}_${newPeriod}`;
+      if (fetchKey === lastFetchedKeyRef.current && dashboard) {
         return; // Prevent duplicate network calls for same period
       }
+      lastFetchedKeyRef.current = fetchKey;
       dispatch(setPeriod(newPeriod));
       loadData(newPeriod);
     },
-    [dispatch, selectedPeriod, dashboard, lastFetchedPeriod, loadData]
+    [dispatch, activeOrgId, dashboard, loadData]
   );
 
   // Pull-to-refresh action
