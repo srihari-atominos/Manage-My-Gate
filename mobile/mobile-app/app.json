@@ -47,6 +47,8 @@
         "NSCameraUsageDescription": "Nahom requires camera access to capture receipt photos, scan visitor QR passes, and capture maintenance attachments.",
         "NSLocationWhenInUseUsageDescription": "Nahom uses your precise location only when you tap Current Location in your Profile to suggest your city and state, for example Hyderabad, Telangana. Nahom does not use your location for advertising, tracking, or in the background.",
         "NSPhotoLibraryUsageDescription": "Nahom requires photo library access to upload receipt images and other supported attachments.",
+        "NSMicrophoneUsageDescription": "Nahom requires microphone access to enable real-time voice conversation with the AI assistant.",
+        "NSSpeechRecognitionUsageDescription": "Nahom requires speech recognition access to transcribe your voice requests.",
         "LSApplicationQueriesSchemes": [
           "tel",
           "whatsapp",
@@ -64,10 +66,11 @@
         "backgroundColor": "#0D1015"
       },
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
+
         "android.permission.WRITE_CONTACTS"
       ],
       "permissions": [
+        "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.READ_CONTACTS"
@@ -170,6 +173,7 @@
     },
     "plugins": [
       "./plugins/withNahomUpi",
+      "./plugins/withNahomAudioStream",
       "expo-router",
       [
         "expo-splash-screen",
@@ -208,6 +212,13 @@
       "expo-font",
       "expo-web-browser",
       "expo-apple-authentication",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Nahom requires microphone access to enable real-time voice conversation with the AI assistant.",
+          "speechRecognitionPermission": "Nahom requires speech recognition access to transcribe your voice requests."
+        }
+      ],
       [
         "expo-contacts",
         {

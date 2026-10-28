@@ -213,7 +213,8 @@ export const recordVote = async (
   selectedOptions,
   unitId = null,
   votingMode = 'ONE_PER_USER',
-  session = null
+  session = null,
+  options = {}
 ) => {
   const activeSession = (session && typeof session.inTransaction === 'function' && session.inTransaction()) ? session : null;
 
@@ -251,6 +252,12 @@ export const recordVote = async (
     const newOptionsSorted = [...optionsToRecord].sort().join(',');
 
     if (oldOptionsSorted === newOptionsSorted) {
+      if (options && options.allowUnvote === false) {
+        // Idempotent vote cast: exact same vote already exists, do not toggle/unvote
+        const poll = await Poll.findOne({ _id: pollId, orgId }).session(activeSession || null);
+        return { poll, action: 'already_voted', vote: existingVote };
+      }
+
       // EXACT same options selected: Treat as Unvote (Revoke)
       const decOps = { totalVotes: -1 };
       oldOptions.forEach((idx) => {

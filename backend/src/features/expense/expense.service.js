@@ -290,6 +290,8 @@ class ExpenseService {
     const unpaidBalance = result.totals?.[0]?.unpaidBalance || 0;
     const expenseCount = result.totals?.[0]?.count || 0;
     const todayExpenses = result.today?.[0]?.total || 0;
+    const allTimeExpenses = result.allTime?.[0]?.totalExpenses || totalExpenses;
+    const allTimeCount = result.allTime?.[0]?.count || expenseCount;
 
     const categories = (result.categoryBreakdown || []).map((cat) => ({
       category: cat._id,
@@ -326,6 +328,8 @@ class ExpenseService {
       recordedPaid,
       unpaidBalance,
       todayExpenses,
+      allTimeExpenses,
+      allTimeCount,
       expenseCount,
       categoryBreakdown: categories,
       typeBreakdown: types,

@@ -65,6 +65,17 @@ class ComplaintService {
     return dueDate;
   }
 
+  async getComplaintByAiStatus(orgId, residentId, aiStatus) {
+    if (!orgId || !residentId || !aiStatus) return null;
+    const res = await complaintRepository.findAll(
+      orgId,
+      { residentId, 'aiAnalysisMetadata.aiStatus': aiStatus },
+      { skip: 0, limit: 1 },
+      { createdAt: -1 }
+    );
+    return res.data?.[0] || null;
+  }
+
   async createComplaint(orgId, residentId, residentName, data, metaData = {}) {
     if (!orgId || !residentId) throw new HttpError(400, 'Missing required orgId or residentId');
 
@@ -1152,7 +1163,11 @@ class ComplaintService {
         },
         statusHistory: { status: 'Cancelled', timestamp: now }
       }
-    });
+    }, null, { status: { $ne: 'Cancelled' } });
+
+    if (!updated) {
+      return await this.getComplaintById(id, orgId);
+    }
 
     if (auditLogService && auditLogService.logAction) {
       await auditLogService.logAction({

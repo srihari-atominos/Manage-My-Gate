@@ -19,8 +19,10 @@ export const communityNoteApi = {
         return data;
       }
       return null;
-    } catch (e) {
-      console.error('Failed to fetch my active note:', e);
+    } catch (e: any) {
+      if (e?.response?.status !== 401) {
+        console.warn('Failed to fetch my active note:', e?.message || e);
+      }
       return null;
     }
   },
@@ -36,8 +38,10 @@ export const communityNoteApi = {
         return res;
       }
       return [];
-    } catch (e) {
-      console.error('Failed to fetch active community notes:', e);
+    } catch (e: any) {
+      if (e?.response?.status !== 401) {
+        console.warn('Failed to fetch active community notes:', e?.message || e);
+      }
       return [];
     }
   },

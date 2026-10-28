@@ -32,6 +32,7 @@ import { isConnectivityErrorMessage } from '../services/networkStatus';
 import visitorReducer from '../modules/visitor-management/visitorSlice';
 import staffReducer from '../features/staff/store/staffSlice';
 import automationReducer from '../modules/automation-engine/automationSlice';
+import voiceAssistantReducer from '../features/voiceAssistant/store/voiceAssistantSlice';
 
 /**
  * A lost connection is already communicated by NetworkRecoveryProvider. Redux features used to
@@ -85,6 +86,7 @@ const appReducer = combineReducers({
   visitor: visitorReducer,
   staff: staffReducer,
   automation: automationReducer,
+  voiceAssistant: voiceAssistantReducer,
 });
 
 type AppState = ReturnType<typeof appReducer>;

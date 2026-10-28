@@ -21,13 +21,6 @@ import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 import { useAppSocket } from '../../../hooks/useAppSocket';
 import { downloadCSVFile, downloadExcelFile, downloadPDFFile } from '@/src/utils/downloadHelper';
 
-const statuses = [
-  { label: 'All', value: '' },
-  { label: 'Unpaid', value: 'UNPAID', dotColor: 'bg-rose-500' },
-  { label: 'Partially Paid', value: 'PARTIALLY_PAID', dotColor: 'bg-amber-500' },
-  { label: 'Paid', value: 'PAID', dotColor: 'bg-emerald-500' },
-];
-
 const periodDisplayNames: Record<string, string> = {
   ALL_TIME: 'All Time',
   TODAY: 'Today',
@@ -43,7 +36,7 @@ const readable = (value: unknown) => String(value || '').replace(/_/g, ' ');
 
 export default function ExpensesScreen() {
   const router = useRouter();
-  const { refresh } = useLocalSearchParams<{ refresh?: string }>();
+  const { refresh, period: routePeriod } = useLocalSearchParams<{ refresh?: string; period?: string }>();
   const pathname = usePathname();
   const { user } = useAuth();
   const activeOrgId = useSelector(
@@ -60,7 +53,8 @@ export default function ExpensesScreen() {
     { id: 'billing_pay_online_expense', permission: 'billing:pay_online_expense' },
     user
   );
-  const [period, setPeriod] = useState('TODAY');
+  const initialPeriod = routePeriod || 'MONTHLY';
+  const [period, setPeriod] = useState(initialPeriod);
   const [data, setData] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -71,23 +65,22 @@ export default function ExpensesScreen() {
   const [category, setCategory] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [datePreset, setDatePreset] = useState('TODAY');
+  const [datePreset, setDatePreset] = useState(
+    initialPeriod === 'ALL_TIME'
+      ? 'ALL_TIME'
+      : initialPeriod === 'TODAY'
+      ? 'TODAY'
+      : initialPeriod === 'WEEKLY'
+      ? 'THIS_WEEK'
+      : initialPeriod === 'YEARLY'
+      ? 'THIS_YEAR'
+      : 'THIS_MONTH'
+  );
 
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [showExportSheet, setShowExportSheet] = useState(false);
   const [selectedExpenseForMarkPaid, setSelectedExpenseForMarkPaid] = useState<any>(null);
   const [isExporting, setIsExporting] = useState(false);
-
-  const periodSegments = useMemo(
-    () => [
-      { key: 'TODAY', label: 'Today' },
-      { key: 'WEEKLY', label: 'This Week' },
-      { key: 'MONTHLY', label: 'This Month' },
-      { key: 'YEARLY', label: 'This Year' },
-      { key: 'ALL_TIME', label: 'All Time' },
-    ],
-    []
-  );
 
   const handlePeriodChange = useCallback((newPeriod: string) => {
     setPeriod(newPeriod);
@@ -99,6 +92,12 @@ export default function ExpensesScreen() {
     else if (newPeriod === 'MONTHLY') setDatePreset('THIS_MONTH');
     else if (newPeriod === 'YEARLY') setDatePreset('THIS_YEAR');
   }, []);
+
+  useEffect(() => {
+    if (routePeriod && routePeriod !== period) {
+      handlePeriodChange(routePeriod);
+    }
+  }, [routePeriod, handlePeriodChange, period]);
 
   const buildExportQuery = useCallback(() => {
     const query: Record<string, string> = {};
@@ -285,15 +284,15 @@ export default function ExpensesScreen() {
     setCategory('');
     setStartDate('');
     setEndDate('');
-    setDatePreset('TODAY');
-    setPeriod('TODAY');
+    setDatePreset('THIS_MONTH');
+    setPeriod('MONTHLY');
   };
 
   const totalActiveFilterCount =
     (status ? 1 : 0) +
     (expenseType ? 1 : 0) +
     (category.trim() ? 1 : 0) +
-    (period !== 'TODAY' || datePreset !== 'TODAY' || startDate || endDate ? 1 : 0);
+    (period !== 'MONTHLY' || datePreset !== 'THIS_MONTH' || startDate || endDate ? 1 : 0);
 
   const periodKpiTitles: Record<string, string> = {
     ALL_TIME: 'Total Expenses',
@@ -304,61 +303,15 @@ export default function ExpensesScreen() {
   };
   const primaryKpiTitle = periodKpiTitles[period] || 'Total Expenses';
 
-  const fourthKpiCard =
-    period === 'ALL_TIME'
-      ? {
-          title: "Today's Expenses",
-          value: formatCurrency(summary.todayExpenses),
-          iconName: 'Calendar' as const,
-        }
-      : {
-          title: 'Period Bills',
-          value: `${summary.expenseCount ?? data.length ?? 0} bills`,
-          iconName: 'Calendar' as const,
-          subtitle:
-            summary.comparison?.percentageChange != null
-              ? `${summary.comparison.trendDirection === 'up' ? '▲ ' : summary.comparison.trendDirection === 'down' ? '▼ ' : ''}${Math.abs(summary.comparison.percentageChange)}% vs prior`
-              : undefined,
-        };
+  const fourthKpiCard = {
+    title: 'Total Expense',
+    value: formatCurrency(summary.allTimeExpenses ?? summary.totalExpenses),
+    iconName: 'Receipt' as const,
+  };
 
   const header = useMemo(
     () => (
       <View className="gap-3 pb-2">
-        {/* Modern Horizontal Scrollable Period Pills */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="flex-row -mx-4 px-4 py-0.5"
-          contentContainerClassName="gap-2 items-center pe-4"
-        >
-          {periodSegments.map((seg) => {
-            const isSelected = period === seg.key;
-            return (
-              <Pressable
-                key={seg.key}
-                onPress={() => handlePeriodChange(seg.key)}
-                accessibilityRole="button"
-                accessibilityLabel={`Filter by ${seg.label}`}
-                className={`rounded-full px-3.5 py-1.5 border transition-all ${
-                  isSelected
-                    ? 'border-primary bg-primary shadow-xs'
-                    : 'border-border/80 bg-card active:bg-muted/60'
-                }`}
-              >
-                <Text
-                  className={`text-xs ${
-                    isSelected
-                      ? 'font-bold text-primary-foreground'
-                      : 'font-medium text-muted-foreground'
-                  }`}
-                >
-                  {seg.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
         <KPIDashboardStrip
           layout="grid2x2"
           loading={loading && summary.totalExpenses == null}
@@ -429,56 +382,6 @@ export default function ExpensesScreen() {
           activeFilterCount={totalActiveFilterCount}
           className="px-0 pt-0 pb-0"
         />
-
-        {/* Quick Status Filter Pills & Reset Action in Responsive Horizontal Scroll */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="flex-row -mx-4 px-4 py-0.5"
-          contentContainerClassName="gap-2 items-center pe-6"
-        >
-          {statuses.map((s) => {
-            const isSelected = status === s.value;
-            return (
-              <Pressable
-                key={s.value}
-                onPress={() => setStatus(s.value)}
-                accessibilityRole="button"
-                accessibilityLabel={`Filter by ${s.label}`}
-                className={`flex-row items-center gap-1.5 rounded-full px-3.5 py-1.5 border transition-all ${
-                  isSelected
-                    ? 'border-primary bg-primary shadow-xs'
-                    : 'border-border/80 bg-card active:bg-muted/60'
-                }`}
-              >
-                {s.dotColor && !isSelected ? (
-                  <View className={`size-1.5 rounded-full ${s.dotColor}`} />
-                ) : null}
-                <Text
-                  className={`text-xs ${
-                    isSelected
-                      ? 'font-bold text-primary-foreground'
-                      : 'font-semibold text-muted-foreground'
-                  }`}
-                >
-                  {s.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-
-          {(search || expenseType || status || category || startDate || endDate) ? (
-            <Pressable
-              onPress={clearFilters}
-              accessibilityRole="button"
-              accessibilityLabel="Reset all filters"
-              className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5 bg-card border border-border/80 active:opacity-70 ms-1 shadow-2xs"
-            >
-              <RotateCcw size={12} className="text-muted-foreground" />
-              <Text className="text-xs font-semibold text-muted-foreground">Reset</Text>
-            </Pressable>
-          ) : null}
-        </ScrollView>
 
         {/* Active Filter Chips with One-Tap Clear Action */}
         {(search || expenseType || category || (startDate && endDate)) ? (
@@ -576,7 +479,6 @@ export default function ExpensesScreen() {
     ),
     [
       period,
-      periodSegments,
       handlePeriodChange,
       primaryKpiTitle,
       fourthKpiCard,

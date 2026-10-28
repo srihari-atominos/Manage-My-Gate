@@ -36,6 +36,19 @@ export class VisitorPassRepository {
   }
 
   /**
+   * Find a VisitorPass by unique client reference (idempotency key).
+   * @param {string} orgId
+   * @param {string} createdById
+   * @param {string} clientReference
+   * @param {import('mongoose').ClientSession} [session]
+   * @returns {Promise<Object|null>}
+   */
+  async findByClientReference(orgId, createdById, clientReference, session = null) {
+    if (!orgId || !createdById || !clientReference) return null;
+    return await VisitorPass.findOne({ orgId, createdById, clientReference }).session(session || null);
+  }
+
+  /**
    * Find a VisitorPass with the unit and host resolved, for screens that show who is visiting whom.
    * @param {string} id - The ID of the pass.
    * @param {string} orgId - The organization ID.
@@ -66,7 +79,7 @@ export class VisitorPassRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The updated pass document.
    */
-  async updateStatus(id, orgId = null, status, session = null) {
+  async updateStatus(id, orgId = null, status, session = null, currentStatusCondition = null) {
     let resolvedOrgId = orgId;
     let resolvedStatus = status;
     let resolvedSession = session;
@@ -77,6 +90,7 @@ export class VisitorPassRepository {
     }
     const query = { _id: id };
     if (resolvedOrgId) query.orgId = resolvedOrgId;
+    if (currentStatusCondition) query.status = currentStatusCondition;
     return await VisitorPass.findOneAndUpdate(
       query,
       { status: resolvedStatus },

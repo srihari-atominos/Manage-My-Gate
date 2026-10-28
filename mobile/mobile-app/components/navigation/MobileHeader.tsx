@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Image, Platform } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, Home, Building2, ChevronDown, Sun, Moon, User } from 'lucide-react-native';
+import { Bell, Home, Building2, ChevronDown, Sun, Moon, User, Sparkles } from 'lucide-react-native';
+import { useVoiceAssistant, VoiceAssistantModal } from '@/src/features/voiceAssistant';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import storage from '../../src/utils/storage';
@@ -37,6 +38,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   transparent,
 }) => {
   const { user } = useAuth();
+  const { startSession } = useVoiceAssistant();
   const router = useRouter();
   const { t, translateText, language } = useTranslation();
   
@@ -311,6 +313,17 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             )}
           </TouchableOpacity>
 
+          {/* AI Assistant Trigger Icon Button */}
+          <TouchableOpacity
+            onPress={startSession}
+            activeOpacity={0.7}
+            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center active:bg-neutral-100 dark:active:bg-muted shadow-xs"
+            accessibilityRole="button"
+            accessibilityLabel="Open AI Assistant"
+          >
+            <Sparkles size={18} color="#6366F1" strokeWidth={2.4} />
+          </TouchableOpacity>
+
           {/* Notification Bell Icon Button */}
           <TouchableOpacity
             onPress={handleBellPress}
@@ -424,6 +437,8 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           onClose={() => setNotifModalVisible(false)}
         />
       )}
+      {/* Real-Time AI Voice Assistant Modal */}
+      <VoiceAssistantModal />
     </>
   );
 };

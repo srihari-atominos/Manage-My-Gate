@@ -22,6 +22,7 @@ export const ProviderConnectionsModal = ({
   onPageChange,
   onUpdateLabel,
   onDeleteConnection,
+  onTestConnection,
   isLoading,
 }) => {
   const { t } = useTranslation()
@@ -94,6 +95,7 @@ export const ProviderConnectionsModal = ({
           onPageChange={onPageChange}
           onUpdateLabel={onUpdateLabel}
           onDelete={onDeleteConnection}
+          onTest={onTestConnection}
           isActionLoading={isLoading}
         />
       </CModalBody>

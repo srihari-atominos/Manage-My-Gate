@@ -49,6 +49,18 @@ export class VisitorPassService {
   }
 
   /**
+   * Find a VisitorPass by unique client reference (idempotency key).
+   * @param {string} orgId
+   * @param {string} createdById
+   * @param {string} clientReference
+   * @param {import('mongoose').ClientSession} [session]
+   * @returns {Promise<Object|null>}
+   */
+  async getPassByClientReference(orgId, createdById, clientReference, session = null) {
+    return await visitorPassRepository.findByClientReference(orgId, createdById, clientReference, session);
+  }
+
+  /**
    * Revoke an active or pending VisitorPass.
    * @param {string} passId - The ID of the pass to revoke.
    * @param {string} orgId - The organization ID.
@@ -76,7 +88,32 @@ export class VisitorPassService {
       throw new HttpError(400, `Visitor pass is already ${pass.status.toLowerCase()}.`);
     }
 
-    const updatedPass = await this.updatePassStatus(passId, 'REVOKED', actualOrgId, actualSession, actualMetadata);
+    if (actualMetadata?.actorId) {
+      const isCreator = String(pass.createdById?._id || pass.createdById) === String(actualMetadata.actorId);
+      const isManager = actualMetadata.actor
+        ? (actualMetadata.actor.role === 'Community Admin' || actualMetadata.actor.role === 'Super Admin' || actualMetadata.actor.role === 'admin')
+        : ['Community Admin', 'admin', 'Super Admin'].includes(actualMetadata.role);
+      if (!isCreator && !isManager) {
+        throw new HttpError(403, 'Forbidden. This visitor pass belongs to another resident.');
+      }
+    }
+
+    const updatedPass = await visitorPassRepository.updateStatus(
+      passId,
+      actualOrgId,
+      'REVOKED',
+      actualSession,
+      { $nin: ['REVOKED', 'EXPIRED'] }
+    );
+
+    if (!updatedPass) {
+      const current = await visitorPassRepository.findById(passId, actualOrgId, actualSession);
+      if (current && current.status === 'REVOKED') {
+        return current;
+      }
+      throw new HttpError(400, 'Visitor pass is already revoked or expired.');
+    }
+
     await visitorPassTokenService.deleteTokenByPassId(passId, actualSession, actualOrgId);
 
     visitorPassEvents.emit('pass_revoked', updatedPass);

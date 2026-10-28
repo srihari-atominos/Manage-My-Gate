@@ -453,7 +453,7 @@ class CommunityFinanceService {
 
       // Expenses for the period
       Expense.find(expenseFilter)
-        .select('_id expenseNumber totalAmount recordedPaidAmount confirmedPaidAmount outstandingAmount settlementStatus expenseDate')
+        .select('_id expenseNumber name category vendor totalAmount recordedPaidAmount confirmedPaidAmount outstandingAmount settlementStatus expenseDate createdAt')
         .lean(),
 
       // Complete database aggregation of Expenses

@@ -25,12 +25,17 @@ export const ProviderCard = ({ provider, onClick }) => {
       case 'messageCentral':
       case 'messagecentral':
         return '#1565C0'
+      case 'gemini':
+        return '#1a73e8'
       default:
         return 'var(--cui-primary, #4f46e5)'
     }
   }
 
   const getDefaultDescription = (provider) => {
+    if (provider.description) {
+      return provider.description
+    }
     if (String(provider.id).toLowerCase() === 'messagecentral') {
       return 'Configure Message Central for SMS OTP and Transactional SMS.'
     }
@@ -53,7 +58,7 @@ export const ProviderCard = ({ provider, onClick }) => {
               fontSize: '1.25rem',
             }}
           >
-            {provider.name.charAt(0).toUpperCase()}
+            {provider.icon ? <span>{provider.icon}</span> : provider.name.charAt(0).toUpperCase()}
           </div>
           <div>
             <h5 className="provider-name mb-1 fw-semibold">{provider.name}</h5>

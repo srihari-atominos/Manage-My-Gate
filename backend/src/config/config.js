@@ -144,6 +144,14 @@ export const config = {
     androidPackageName: process.env.MOBILE_ANDROID_PACKAGE_NAME || 'com.atominosconsulting.nahom',
     iosAppStoreId: process.env.MOBILE_IOS_APP_STORE_ID || '6746501635',
   },
+  aiAssistant: {
+    enabled: process.env.VOICE_ASSISTANT_ENABLED !== 'false',
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
+    geminiModel: process.env.GEMINI_LIVE_MODEL || 'gemini-2.0-flash',
+    geminiChatModel: process.env.GEMINI_CHAT_MODEL || 'gemini-2.0-flash',
+    maxDailySessions: Math.max(1, parseInt(process.env.AI_ASSISTANT_MAX_DAILY_SESSIONS || '5', 10) || 5),
+    sessionDurationSec: Math.min(3600, Math.max(30, parseInt(process.env.AI_ASSISTANT_SESSION_DURATION_SEC || '600', 10) || 600)),
+  },
 };
 
 export default config;

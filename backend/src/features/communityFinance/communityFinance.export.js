@@ -507,6 +507,52 @@ export async function reportToXlsxBuffer(report) {
 
 const PDF_MARGIN = 32;
 
+const STATUS_PILL_STYLES = {
+  SUCCESS: { bg: '#DCFCE7', text: '#15803D', label: 'SUCCESS' },
+  PAID: { bg: '#DCFCE7', text: '#15803D', label: 'PAID' },
+  RECONCILED: { bg: '#DCFCE7', text: '#15803D', label: 'RECONCILED' },
+  RECORDED: { bg: '#DBEAFE', text: '#1D4ED8', label: 'RECORDED' },
+  PENDING: { bg: '#FEF3C7', text: '#B45309', label: 'PENDING' },
+  PENDING_VERIFICATION: { bg: '#FEF3C7', text: '#B45309', label: 'VERIFY' },
+  VERIFICATION_PENDING: { bg: '#FEF3C7', text: '#B45309', label: 'VERIFY' },
+  UNPAID: { bg: '#FEE2E2', text: '#B91C1C', label: 'UNPAID' },
+  PARTIALLY_PAID: { bg: '#FFEDD5', text: '#C2410C', label: 'PARTIAL' },
+  REFUNDED: { bg: '#EFF6FF', text: '#2563EB', label: 'REFUNDED' },
+  FAILED: { bg: '#FEE2E2', text: '#B91C1C', label: 'FAILED' },
+  VOIDED: { bg: '#F1F5F9', text: '#64748B', label: 'VOIDED' },
+};
+
+const formatShortVoucher = (r) => {
+  if (r.receiptNumber && r.receiptNumber !== EM_DASH) {
+    return String(r.receiptNumber);
+  }
+  if (r.referenceId && r.referenceId !== EM_DASH && !/^[0-9a-f]{24}$/i.test(r.referenceId)) {
+    return String(r.referenceId);
+  }
+  if (r.id && r.id !== EM_DASH) {
+    const s = String(r.id);
+    if (/^[0-9a-f]{24}$/i.test(s)) {
+      return '#' + s.slice(-8).toUpperCase();
+    }
+    return s.length > 12 ? s.slice(0, 4) + '...' + s.slice(-4) : s;
+  }
+  return EM_DASH;
+};
+
+const formatDisplayDate = (dStr) => {
+  if (!dStr || dStr === EM_DASH) return EM_DASH;
+  const m = moment(dStr);
+  return m.isValid() ? m.format('DD MMM YYYY') : dStr;
+};
+
+const formatCleanCurrency = (val, { absolute = false } = {}) => {
+  const num = Number(val || 0);
+  const absFormatted = Math.abs(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (absolute) return 'INR ' + absFormatted;
+  if (num < 0) return '- INR ' + absFormatted;
+  return 'INR ' + absFormatted;
+};
+
 export async function reportToPdfBuffer(report) {
   const [donutPng, columnsPng, linePng] = await Promise.all([
     donutChartPng(report.expenseByCategory, { title: 'Where the money went', noun: 'cost' }),
@@ -524,195 +570,375 @@ export async function reportToPdfBuffer(report) {
 
     const chunks = [];
     const contentW = doc.page.width - PDF_MARGIN * 2;
-    const bottomLimit = () => doc.page.height - 44;
+    const bottomLimit = () => doc.page.height - 40;
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const ensureSpace = (needed) => {
-      if (doc.y + needed > bottomLimit()) doc.addPage();
-    };
-    const heading = (text, sub) => {
-      doc.font('Helvetica-Bold').fontSize(12).fillColor('#1E293B').text(text, PDF_MARGIN, doc.y);
-      if (sub) doc.font('Helvetica').fontSize(8).fillColor('#64748B').text(sub);
-      doc.moveDown(0.6);
-    };
-    const image = (png, height) => {
-      if (!png) return;
-      ensureSpace(height + 10);
-      doc.image(png, PDF_MARGIN, doc.y, { fit: [contentW, height] });
-      doc.y += height + 10;
+    const fMap = new Map(report.filterLines);
+    const dateRangeStr = fMap.get('Date range') || 'All dates';
+
+    const drawRunningHeader = () => {
+      const topY = 18;
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#64748B')
+        .text(`${report.communityName.toUpperCase()} · COMMUNITY FINANCIAL REPORT`, PDF_MARGIN, topY, { lineBreak: false });
+      doc.font('Helvetica').fontSize(7.5).fillColor('#94A3B8')
+        .text(`Statement Period: ${dateRangeStr}`, PDF_MARGIN + 200, topY, { width: contentW - 200, align: 'right', lineBreak: false });
+      doc.rect(PDF_MARGIN, topY + 13, contentW, 0.75).fill('#E2E8F0');
+      doc.y = topY + 24;
     };
 
-    // Generic table with repeated header on page breaks
-    const drawTable = (columns, dataRows, { fontSize = 8, rowHeight = 16, emptyText, title } = {}) => {
+    const ensureSpace = (needed) => {
+      if (doc.y + needed > bottomLimit()) {
+        doc.addPage();
+        drawRunningHeader();
+      }
+    };
+
+    // Generic styled table with repeated headers and optional summary footer
+    const drawTable = (columns, dataRows, { fontSize = 7.5, rowHeight = 18, emptyText, title, summaryRow } = {}) => {
       const header = () => {
         const y = doc.y;
         let x = PDF_MARGIN;
         columns.forEach((col) => {
-          doc.rect(x, y, col.width, 16).fill('#1E293B');
+          doc.rect(x, y, col.width, 18).fill('#0F172A');
           doc.font('Helvetica-Bold').fontSize(fontSize).fillColor('#FFFFFF')
-            .text(col.header, x + 3, y + 4, { width: col.width - 6, lineBreak: false, align: col.align || 'left' });
+            .text(col.header, x + 4, y + 5, { width: col.width - 8, lineBreak: false, align: col.align || 'left' });
           x += col.width;
         });
         doc.y = y + 18;
       };
-      ensureSpace(title ? 90 : 60);
+
+      ensureSpace(title ? 70 : 45);
       if (title) {
-        doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#1E293B').text(title, PDF_MARGIN, doc.y);
-        doc.moveDown(0.4);
+        doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B').text(title, PDF_MARGIN, doc.y);
+        doc.moveDown(0.3);
       }
       header();
-      if (dataRows.length === 0) {
-        doc.font('Helvetica').fontSize(9).fillColor('#64748B').text(emptyText || 'No data.', PDF_MARGIN, doc.y + 4);
-        doc.moveDown(1);
+
+      if (!dataRows || dataRows.length === 0) {
+        doc.font('Helvetica').fontSize(8).fillColor('#64748B').text(emptyText || 'No data.', PDF_MARGIN + 4, doc.y + 6);
+        doc.moveDown(0.8);
         return;
       }
+
       dataRows.forEach((row, idx) => {
         if (doc.y + rowHeight > bottomLimit()) {
           doc.addPage();
+          drawRunningHeader();
           header();
         }
         const y = doc.y;
-        if (idx % 2 === 1) doc.rect(PDF_MARGIN, y - 1, contentW, rowHeight).fill('#F8FAFC');
+        if (idx % 2 === 1) {
+          doc.rect(PDF_MARGIN, y, contentW, rowHeight).fill('#F8FAFC');
+        }
+        doc.rect(PDF_MARGIN, y + rowHeight - 0.5, contentW, 0.5).fill('#F1F5F9');
+
         let x = PDF_MARGIN;
         columns.forEach((col) => {
           const cell = col.render(row);
-          doc.font(cell.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(fontSize).fillColor(cell.color || '#334155')
-            .text(cell.text, x + 3, y + 3, { width: col.width - 6, height: rowHeight - 4, ellipsis: true, lineBreak: false, align: col.align || 'left' });
+          if (cell.badge) {
+            const bStyle = STATUS_PILL_STYLES[cell.badge] || { bg: '#F1F5F9', text: '#64748B', label: cell.badge };
+            const bw = col.width - 12;
+            const bh = 12;
+            const bx = x + 6;
+            const by = y + (rowHeight - bh) / 2;
+            doc.roundedRect(bx, by, bw, bh, 3).fill(bStyle.bg);
+            doc.font('Helvetica-Bold').fontSize(6).fillColor(bStyle.text)
+              .text(bStyle.label || cell.text, bx, by + 2.5, { width: bw, align: 'center', lineBreak: false });
+          } else {
+            doc.font(cell.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(fontSize).fillColor(cell.color || '#334155')
+              .text(cell.text, x + 4, y + 4.5, {
+                width: col.width - 8,
+                height: rowHeight - 4,
+                ellipsis: true,
+                lineBreak: false,
+                align: col.align || 'left',
+              });
+          }
           x += col.width;
         });
         doc.y = y + rowHeight;
       });
-      doc.moveDown(0.8);
+
+      if (summaryRow) {
+        if (doc.y + rowHeight > bottomLimit()) {
+          doc.addPage();
+          drawRunningHeader();
+          header();
+        }
+        const y = doc.y;
+        doc.rect(PDF_MARGIN, y, contentW, rowHeight).fill('#F1F5F9');
+        doc.rect(PDF_MARGIN, y, contentW, 1).fill('#CBD5E1');
+        let x = PDF_MARGIN;
+        columns.forEach((col, cIdx) => {
+          const val = summaryRow[cIdx];
+          if (val) {
+            doc.font('Helvetica-Bold').fontSize(fontSize).fillColor(val.color || '#0F172A')
+              .text(val.text, x + 4, y + 4.5, { width: col.width - 8, align: col.align || 'left', lineBreak: false });
+          }
+          x += col.width;
+        });
+        doc.y = y + rowHeight;
+      }
+      doc.moveDown(0.6);
     };
 
-    const plain = (text) => ({ text: String(text ?? '') });
+    // ==========================================
+    // PAGE 1: Executive Overview & Visual Analytics
+    // ==========================================
 
-    // ---------------- PAGE 1: Overview ----------------
-    doc.rect(PDF_MARGIN, PDF_MARGIN, contentW, 44).fill('#1E293B');
-    doc.font('Helvetica-Bold').fontSize(14).fillColor('#FFFFFF').text(report.communityName, PDF_MARGIN + 12, PDF_MARGIN + 9, { width: contentW - 24, ellipsis: true, lineBreak: false });
-    doc.font('Helvetica').fontSize(8.5).fillColor('#CBD5E1').text(`Community Finance Report  |  Generated ${report.generatedAt}  |  Currency: INR`, PDF_MARGIN + 12, PDF_MARGIN + 28, { width: contentW - 24, lineBreak: false });
-    doc.y = PDF_MARGIN + 58;
+    // 1. Executive Header Banner
+    const bannerH = 48;
+    doc.rect(PDF_MARGIN, PDF_MARGIN, contentW, bannerH).fill('#0F172A');
+    doc.rect(PDF_MARGIN, PDF_MARGIN, 4, bannerH).fill('#0EA5E9');
 
-    const filterText = report.filterLines.map(([k, v]) => `${k}: ${v}`).join('   |   ');
-    const filterBoxY = doc.y;
-    doc.font('Helvetica').fontSize(8);
-    const filterH = doc.heightOfString(filterText, { width: contentW - 20 }) + 26;
-    doc.rect(PDF_MARGIN, filterBoxY, contentW, filterH).fill('#F8FAFC');
-    doc.rect(PDF_MARGIN, filterBoxY, contentW, filterH).stroke('#E2E8F0');
-    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155').text('Applied filters', PDF_MARGIN + 10, filterBoxY + 7);
-    doc.font('Helvetica').fontSize(8).fillColor('#475569').text(filterText, PDF_MARGIN + 10, filterBoxY + 20, { width: contentW - 20 });
-    doc.y = filterBoxY + filterH + 10;
+    doc.font('Helvetica-Bold').fontSize(14).fillColor('#FFFFFF')
+      .text(report.communityName.toUpperCase(), PDF_MARGIN + 12, PDF_MARGIN + 10, { width: contentW - 200, ellipsis: true });
+    doc.font('Helvetica').fontSize(7.5).fillColor('#94A3B8')
+      .text('OFFICIAL COMMUNITY FINANCIAL STATEMENT & AUDIT LEDGER', PDF_MARGIN + 12, PDF_MARGIN + 28);
 
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#F1F5F9')
+      .text('CURRENCY: INR', PDF_MARGIN + contentW - 190, PDF_MARGIN + 10, { width: 180, align: 'right' });
+    doc.font('Helvetica').fontSize(7.5).fillColor('#94A3B8')
+      .text(`Generated: ${report.generatedAt}`, PDF_MARGIN + contentW - 220, PDF_MARGIN + 26, { width: 210, align: 'right' });
+
+    doc.y = PDF_MARGIN + bannerH + 8;
+
+    // 2. Statement Scope Strip
+    const scopeH = 34;
+    const scopeY = doc.y;
+    doc.roundedRect(PDF_MARGIN, scopeY, contentW, scopeH, 4).fill('#F8FAFC');
+    doc.roundedRect(PDF_MARGIN, scopeY, contentW, scopeH, 4).stroke('#E2E8F0');
+
+    const scopeItems = [
+      { label: 'STATEMENT PERIOD', val: fMap.get('Date range') || 'All dates' },
+      { label: 'TRANSACTION TYPE', val: fMap.get('Transaction type') || 'All types' },
+      { label: 'FINANCIAL DOMAIN', val: fMap.get('Financial domain') || 'All domains' },
+      { label: 'RECONCILIATION STATUS', val: fMap.get('Payment status') || 'All statuses' },
+    ];
+    const sColW = contentW / 4;
+    scopeItems.forEach((item, i) => {
+      const sx = PDF_MARGIN + i * sColW + 8;
+      doc.font('Helvetica-Bold').fontSize(6).fillColor('#64748B').text(item.label, sx, scopeY + 6);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#1E293B').text(item.val, sx, scopeY + 17, { width: sColW - 14, ellipsis: true });
+    });
+    doc.y = scopeY + scopeH + 8;
+
+    // Truncation Notice (if limit reached)
     if (report.truncated) {
-      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#B91C1C').text(
-        `Export limit reached: showing ${report.rows.length} of ${report.totalMatching} matching transactions. Narrow the filters, or use the CSV/Excel export, to obtain the remainder.`,
-        PDF_MARGIN, doc.y, { width: contentW }
+      doc.roundedRect(PDF_MARGIN, doc.y, contentW, 26, 4).fill('#FEF2F2');
+      doc.roundedRect(PDF_MARGIN, doc.y, contentW, 26, 4).stroke('#FCA5A5');
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#B91C1C').text(
+        `Export limit reached: Showing first ${report.rows.length} of ${report.totalMatching} transactions. Narrow filter range or use Excel/CSV for full dataset.`,
+        PDF_MARGIN + 8,
+        doc.y + 8,
+        { width: contentW - 16 }
       );
-      doc.moveDown(0.6);
+      doc.y += 32;
     }
 
-    const kpis = [
-      { label: 'Cash Received', val: formatCurrency(report.totalIncome), color: '#047857' },
-      { label: 'Cash Paid', val: formatCurrency(report.totalExpense), color: '#B91C1C' },
-      { label: report.netCashMovement >= 0 ? 'Net Surplus' : 'Net Deficit', val: formatCurrency(report.netCashMovement), color: report.netCashMovement >= 0 ? '#047857' : '#B91C1C' },
-      { label: 'Matching Transactions', val: String(report.rows.length), color: '#1E293B' },
-      { label: 'Pending Receipts', val: formatCurrency(report.pendingIncome), color: '#B45309' },
-      { label: 'Outstanding Payables', val: formatCurrency(report.pendingExpense), color: '#B45309' },
-    ];
-    const cols = 3;
-    const gap = 8;
-    const cardW = (contentW - gap * (cols - 1)) / cols;
-    const cardH = 46;
-    const kpiTop = doc.y;
-    kpis.forEach((kpi, idx) => {
-      const kx = PDF_MARGIN + (idx % cols) * (cardW + gap);
-      const ky = kpiTop + Math.floor(idx / cols) * (cardH + gap);
-      doc.rect(kx, ky, cardW, cardH).fill('#FFFFFF');
-      doc.rect(kx, ky, cardW, cardH).stroke('#E2E8F0');
-      doc.font('Helvetica').fontSize(7.5).fillColor('#64748B').text(kpi.label, kx + 8, ky + 9, { lineBreak: false });
-      doc.font('Helvetica-Bold').fontSize(11).fillColor(kpi.color).text(kpi.val, kx + 8, ky + 23, { width: cardW - 16, ellipsis: true, lineBreak: false });
-    });
-    doc.y = kpiTop + 2 * (cardH + gap) + 4;
+    // 3. Executive Summary Highlight Callout
+    const isSurplus = report.netCashMovement >= 0;
+    const calloutBg = isSurplus ? '#F0FDF4' : '#FFF1F2';
+    const calloutBorder = isSurplus ? '#10B981' : '#F43F5E';
+    const calloutTitle = isSurplus ? 'EXECUTIVE SUMMARY  ·  NET SURPLUS PERIOD' : 'EXECUTIVE SUMMARY  ·  NET DEFICIT PERIOD';
+    const calloutColor = isSurplus ? '#047857' : '#B91C1C';
 
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1E293B').text('Summary', PDF_MARGIN, doc.y);
-    doc.moveDown(0.3);
-    const topExpense = report.expenseByCategory[0];
-    const topIncome = report.incomeByCategory[0];
     const sentences = [
-      `${report.rows.length} transaction${report.rows.length === 1 ? '' : 's'} match the applied filters.`,
-      `Cash received was ${formatCurrency(report.totalIncome)} and cash paid was ${formatCurrency(report.totalExpense)}, a net ${report.netCashMovement >= 0 ? 'surplus' : 'deficit'} of ${formatCurrency(Math.abs(report.netCashMovement))}.`,
-      topIncome ? `Largest income category: ${topIncome.name} (${formatCurrency(topIncome.amount)}, ${topIncome.percentage}%).` : null,
-      topExpense ? `Largest expense category: ${topExpense.name} (${formatCurrency(topExpense.amount)}, ${topExpense.percentage}%).` : null,
-      report.pendingIncome > 0 || report.pendingExpense > 0
-        ? `Not yet settled and excluded from the cash figures: ${formatCurrency(report.pendingIncome)} pending receipts and ${formatCurrency(report.pendingExpense)} outstanding payables.`
+      `During this statement period, ${report.rows.length} transaction${report.rows.length === 1 ? '' : 's'} were recorded.`,
+      `Total cash received was ${formatCleanCurrency(report.totalIncome)} and cash paid out was ${formatCleanCurrency(report.totalExpense)}, resulting in a net cash ${isSurplus ? 'surplus' : 'deficit'} of ${formatCleanCurrency(report.netCashMovement, { absolute: true })}.`,
+      report.expenseByCategory[0]
+        ? `Primary expenditure driver: ${report.expenseByCategory[0].name} (${formatCleanCurrency(report.expenseByCategory[0].amount)}, ${report.expenseByCategory[0].percentage}% of total outflows).`
         : null,
-    ].filter(Boolean);
-    doc.font('Helvetica').fontSize(8.5).fillColor('#475569').text(sentences.join(' '), { width: contentW });
-    doc.moveDown(0.8);
+      report.pendingIncome > 0 || report.pendingExpense > 0
+        ? `Unsettled pipeline (excluded from cash totals): ${formatCleanCurrency(report.pendingIncome)} in pending collections and ${formatCleanCurrency(report.pendingExpense)} in outstanding payables.`
+        : null,
+    ].filter(Boolean).join(' ');
 
-    // ---------------- Dashboard: round chart, vertical columns, line graph on one page ----------------
+    const calloutY = doc.y;
+    doc.font('Helvetica').fontSize(8);
+    const textH = doc.heightOfString(sentences, { width: contentW - 24 });
+    const calloutH = Math.max(38, textH + 18);
+
+    doc.roundedRect(PDF_MARGIN, calloutY, contentW, calloutH, 4).fill(calloutBg);
+    doc.roundedRect(PDF_MARGIN, calloutY, contentW, calloutH, 4).stroke(isSurplus ? '#BBF7D0' : '#FECDD3');
+    doc.rect(PDF_MARGIN, calloutY, 3.5, calloutH).fill(calloutBorder);
+
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(calloutColor).text(calloutTitle, PDF_MARGIN + 10, calloutY + 6);
+    doc.font('Helvetica').fontSize(7.5).fillColor('#334155').text(sentences, PDF_MARGIN + 10, calloutY + 18, { width: contentW - 20, lineGap: 1.5 });
+    doc.y = calloutY + calloutH + 8;
+
+    // 4. Six Financial Health Cards (KPIs)
+    const kpis = [
+      { label: 'CASH RECEIVED (INFLOW)', val: formatCleanCurrency(report.totalIncome), color: '#047857', sub: 'Completed collections', border: '#10B981' },
+      { label: 'CASH PAID (OUTFLOW)', val: formatCleanCurrency(report.totalExpense), color: '#DC2626', sub: 'Completed disbursements', border: '#EF4444' },
+      {
+        label: isSurplus ? 'NET CASH SURPLUS' : 'NET CASH DEFICIT',
+        val: formatCleanCurrency(report.netCashMovement, { absolute: true }),
+        color: isSurplus ? '#047857' : '#DC2626',
+        sub: isSurplus ? 'Collections exceeded outflows' : 'Outflows exceeded collections',
+        border: isSurplus ? '#10B981' : '#EF4444',
+      },
+      { label: 'AUDITED TRANSACTIONS', val: `${report.rows.length} Records`, color: '#1E293B', sub: 'Matching scope criteria', border: '#64748B' },
+      { label: 'PENDING RECEIPTS', val: formatCleanCurrency(report.pendingIncome), color: '#D97706', sub: 'Unsettled incoming dues', border: '#F59E0B' },
+      { label: 'OUTSTANDING PAYABLES', val: formatCleanCurrency(report.pendingExpense), color: '#D97706', sub: 'Approved unpaid bills', border: '#F59E0B' },
+    ];
+
+    const kpiCols = 3;
+    const kpiGap = 6;
+    const kpiCardW = (contentW - kpiGap * (kpiCols - 1)) / kpiCols;
+    const kpiCardH = 42;
+    const kpiTop = doc.y;
+
+    kpis.forEach((kpi, idx) => {
+      const kx = PDF_MARGIN + (idx % kpiCols) * (kpiCardW + kpiGap);
+      const ky = kpiTop + Math.floor(idx / kpiCols) * (kpiCardH + kpiGap);
+      doc.roundedRect(kx, ky, kpiCardW, kpiCardH, 4).fill('#FFFFFF');
+      doc.roundedRect(kx, ky, kpiCardW, kpiCardH, 4).stroke('#E2E8F0');
+      doc.rect(kx, ky, kpiCardW, 2.5).fill(kpi.border);
+
+      doc.font('Helvetica-Bold').fontSize(6).fillColor('#64748B').text(kpi.label, kx + 8, ky + 6);
+      doc.font('Helvetica-Bold').fontSize(10.5).fillColor(kpi.color).text(kpi.val, kx + 8, ky + 17, { width: kpiCardW - 16, ellipsis: true });
+      doc.font('Helvetica').fontSize(6.5).fillColor('#94A3B8').text(kpi.sub, kx + 8, ky + 30, { width: kpiCardW - 16, ellipsis: true });
+    });
+    doc.y = kpiTop + 2 * (kpiCardH + kpiGap) + 6;
+
+    // 5. Visual Analytics Section (Donut & Column side-by-side)
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B').text('FINANCIAL DASHBOARD & ANALYTICS', PDF_MARGIN, doc.y);
+    doc.moveDown(0.3);
+
     const half = (contentW - 8) / 2;
-    const halfH = (half * 300) / 420;
-    const lineH = (contentW * 280) / 900;
-    ensureSpace(14 + halfH + 8 + lineH + 8);
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1E293B').text('Dashboard', PDF_MARGIN, doc.y);
-    doc.moveDown(0.4);
+    const halfH = 155;
     const dashTop = doc.y;
-    doc.rect(PDF_MARGIN, dashTop, half, halfH).stroke('#E2E8F0');
-    doc.rect(PDF_MARGIN + half + 8, dashTop, half, halfH).stroke('#E2E8F0');
-    doc.image(donutPng, PDF_MARGIN, dashTop, { width: half });
-    doc.image(columnsPng, PDF_MARGIN + half + 8, dashTop, { width: half });
-    doc.rect(PDF_MARGIN, dashTop + halfH + 8, contentW, lineH).stroke('#E2E8F0');
-    doc.image(linePng, PDF_MARGIN, dashTop + halfH + 8, { width: contentW });
-    doc.y = dashTop + halfH + 8 + lineH + 14;
-    doc.x = PDF_MARGIN;
+    doc.roundedRect(PDF_MARGIN, dashTop, half, halfH, 4).stroke('#E2E8F0');
+    doc.roundedRect(PDF_MARGIN + half + 8, dashTop, half, halfH, 4).stroke('#E2E8F0');
+    doc.image(donutPng, PDF_MARGIN + 2, dashTop + 2, { width: half - 4, height: halfH - 4 });
+    doc.image(columnsPng, PDF_MARGIN + half + 10, dashTop + 2, { width: half - 4, height: halfH - 4 });
+    doc.y = dashTop + halfH + 10;
 
-    // ---------------- Period breakdown (table only; the line graph above shows the shape) ----------------
-    ensureSpace(120);
-    heading('Period breakdown', `Completed income and expenses by ${report.trendGranularity === 'monthly' ? 'month' : 'day'}.`);
-    drawTable(
-      [
-        { header: 'Period', width: 100, render: (r) => plain(r.period) },
-        { header: 'Income (INR)', width: 130, align: 'right', render: (r) => plain(formatCurrency(r.income)) },
-        { header: 'Expenses (INR)', width: 130, align: 'right', render: (r) => plain(formatCurrency(r.expense)) },
-        { header: 'Net (INR)', width: contentW - 360, align: 'right', render: (r) => ({ text: formatCurrency(r.net), bold: true, color: r.net >= 0 ? '#047857' : '#B91C1C' }) },
-      ],
-      report.timeSeries,
-      { emptyText: 'No completed income or expenses in the selected period.' }
-    );
+    // ==========================================
+    // SECTION: Trend & Period Analysis (if multi-period)
+    // ==========================================
+    const hasMultiplePeriods = report.timeSeries.length > 1;
 
-    // ---------------- PAGE 5+: Transactions ----------------
-    doc.addPage();
-    heading('Filtered Transactions', `${report.rows.length} record${report.rows.length === 1 ? '' : 's'} matching the applied filters${report.truncated ? ` (limited from ${report.totalMatching})` : ''}.`);
-    drawTable(
-      [
-        { header: 'Date', width: 56, render: (r) => plain(r.date) },
-        { header: 'Reference', width: 92, render: (r) => plain(r.receiptNumber !== EM_DASH ? r.receiptNumber : r.id) },
-        { header: 'Type', width: 44, render: (r) => plain(r.typeLabel) },
-        { header: 'Domain', width: 82, render: (r) => plain(r.domainLabel) },
-        { header: 'Description', width: 120, render: (r) => plain(r.description) },
-        { header: 'Amount (INR)', width: 66, align: 'right', render: (r) => ({ text: formatCurrency(r.amount).replace('INR ', ''), bold: true, color: r.type === 'income' ? '#047857' : '#B91C1C' }) },
-        { header: 'Status', width: contentW - 460, render: (r) => ({ text: readable(r.status), bold: true, color: '#' + (STATUS_COLORS[r.status] || 'FF1E293B').slice(-6) }) },
-      ],
-      report.rows,
-      { fontSize: 7, rowHeight: 15, emptyText: 'No transactions match the selected filters.' }
-    );
+    if (hasMultiplePeriods) {
+      doc.addPage();
+      drawRunningHeader();
 
-    // Header-independent footer on every page: community, report name, page x of y
+      const lineH = Math.min(145, (contentW * 260) / 900);
+      doc.font('Helvetica-Bold').fontSize(9).fillColor('#1E293B').text('FINANCIAL TREND OVER TIME', PDF_MARGIN, doc.y);
+      doc.moveDown(0.3);
+      const lineTop = doc.y;
+      doc.roundedRect(PDF_MARGIN, lineTop, contentW, lineH, 4).stroke('#E2E8F0');
+      doc.image(linePng, PDF_MARGIN + 2, lineTop + 2, { width: contentW - 4, height: lineH - 4 });
+      doc.y = lineTop + lineH + 10;
+
+      drawTable(
+        [
+          { header: 'PERIOD', width: 100, render: (r) => ({ text: formatDisplayDate(r.period) }) },
+          { header: 'INCOME (INR)', width: 130, align: 'right', render: (r) => ({ text: formatCleanCurrency(r.income), color: '#047857' }) },
+          { header: 'EXPENSES (INR)', width: 130, align: 'right', render: (r) => ({ text: formatCleanCurrency(r.expense), color: '#DC2626' }) },
+          {
+            header: 'NET (INR)',
+            width: contentW - 360,
+            align: 'right',
+            render: (r) => ({
+              text: (r.net >= 0 ? '+ ' : '- ') + formatCleanCurrency(r.net, { absolute: true }),
+              bold: true,
+              color: r.net >= 0 ? '#047857' : '#DC2626',
+            }),
+          },
+        ],
+        report.timeSeries,
+        {
+          title: `PERIOD BREAKDOWN (${report.timeSeries.length} ${report.trendGranularity === 'monthly' ? 'Months' : 'Days'})`,
+          emptyText: 'No periodic activity recorded.',
+        }
+      );
+    } else if (report.categoryBreakdown.length > 0) {
+      drawTable(
+        [
+          { header: 'CATEGORY', width: 160, render: (r) => ({ text: r.category, bold: true }) },
+          { header: 'FLOW TYPE', width: 90, render: (r) => ({ text: r.type.toUpperCase(), color: r.type === 'income' ? '#047857' : '#DC2626' }) },
+          { header: 'AMOUNT (INR)', width: 120, align: 'right', render: (r) => ({ text: formatCleanCurrency(r.amount), bold: true }) },
+          { header: 'SHARE', width: 80, align: 'right', render: (r) => ({ text: `${r.percentage.toFixed(1)}%` }) },
+          { header: 'TXN COUNT', width: contentW - 450, align: 'right', render: (r) => ({ text: String(r.count) }) },
+        ],
+        report.categoryBreakdown,
+        {
+          title: `CATEGORY ALLOCATION SUMMARY (${report.categoryBreakdown.length} Categories)`,
+          emptyText: 'No categorized records.',
+        }
+      );
+    }
+
+    // ==========================================
+    // SECTION: Filtered Transaction Ledger
+    // ==========================================
+    const spaceLeft = bottomLimit() - doc.y;
+    const neededForTxn = 20 + report.rows.length * 18 + 24;
+
+    if (spaceLeft < neededForTxn && (report.rows.length > 5 || hasMultiplePeriods)) {
+      doc.addPage();
+      drawRunningHeader();
+    }
+
+    const txColumns = [
+      { header: 'DATE', width: 62, render: (r) => ({ text: formatDisplayDate(r.date) }) },
+      { header: 'REF #', width: 66, render: (r) => ({ text: formatShortVoucher(r), color: '#475569' }) },
+      { header: 'TYPE', width: 48, align: 'center', render: (r) => ({ text: r.typeLabel.toUpperCase(), bold: true, color: r.type === 'income' ? '#047857' : '#DC2626' }) },
+      { header: 'CATEGORY / DOMAIN', width: 110, render: (r) => ({ text: `${r.category} · ${r.domainLabel}`, color: '#1E293B' }) },
+      { header: 'DESCRIPTION', width: 120, render: (r) => ({ text: r.description }) },
+      {
+        header: 'AMOUNT (INR)',
+        width: 65,
+        align: 'right',
+        render: (r) => ({
+          text: (r.type === 'income' ? '+ ₹' : '- ₹') + Math.abs(Number(r.amount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+          bold: true,
+          color: r.type === 'income' ? '#047857' : '#DC2626',
+        }),
+      },
+      { header: 'STATUS', width: 60, align: 'center', render: (r) => ({ text: r.status, badge: r.status }) },
+    ];
+
+    const netFormatted = (report.netCashMovement >= 0 ? '+' : '-') + ' ₹' + Math.abs(report.netCashMovement).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const ledgerSummaryRow = {
+      0: { text: `TOTALS (${report.rows.length})`, color: '#0F172A' },
+      5: { text: netFormatted, color: report.netCashMovement >= 0 ? '#047857' : '#DC2626' },
+    };
+
+    drawTable(txColumns, report.rows, {
+      title: `TRANSACTION AUDIT LEDGER (${report.rows.length} Records)`,
+      summaryRow: ledgerSummaryRow,
+      emptyText: 'No transactions match the selected filters.',
+    });
+
+    // ==========================================
+    // Running Footers on All Pages
+    // ==========================================
     const range = doc.bufferedPageRange();
     for (let i = range.start; i < range.start + range.count; i++) {
       doc.switchToPage(i);
-      doc.page.margins.bottom = 0; // allow footer below content area without spawning a page
-      doc.font('Helvetica').fontSize(7.5).fillColor('#94A3B8');
+      doc.page.margins.bottom = 0;
+      const footerY = doc.page.height - 24;
+      doc.rect(PDF_MARGIN, footerY - 6, contentW, 0.5).fill('#E2E8F0');
+      doc.font('Helvetica').fontSize(6.5).fillColor('#94A3B8');
       doc.text(
-        `${report.communityName}  |  Community Finance Report  |  Page ${i + 1} of ${range.count}`,
+        `${report.communityName.toUpperCase()}  |  COMMUNITY FINANCE AUDIT REPORT  |  CONFIDENTIAL`,
         PDF_MARGIN,
-        doc.page.height - 26,
-        { align: 'center', width: contentW, lineBreak: false }
+        footerY,
+        { lineBreak: false, width: 280 }
+      );
+      doc.text(
+        `Page ${i + 1} of ${range.count}`,
+        PDF_MARGIN + contentW - 80,
+        footerY,
+        { align: 'right', lineBreak: false, width: 80 }
       );
     }
+
     doc.end();
   });
 }

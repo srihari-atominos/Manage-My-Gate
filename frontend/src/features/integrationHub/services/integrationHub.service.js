@@ -42,6 +42,23 @@ export const updateConnectionLabel = async (id, accountLabel) => {
 }
 
 /**
+ * Update connection label and/or rotate credentials.
+ * @param {string} id - Connection ObjectId
+ * @param {object} payload - { accountLabel, credentials }
+ */
+export const updateConnection = async (id, payload) => {
+  return await apiClient.put(`/integrations/${id}`, payload)
+}
+
+/**
+ * Re-verify / test stored credentials with provider.
+ * @param {string} id - Connection ObjectId to test
+ */
+export const testConnection = async (id) => {
+  return await apiClient.post(`/integrations/${id}/test`)
+}
+
+/**
  * Disconnect (delete) an integration connection.
  * @param {string} id - Connection ObjectId to delete
  */
@@ -69,6 +86,8 @@ export default {
   fetchConnections,
   createConnection,
   updateConnectionLabel,
+  updateConnection,
+  testConnection,
   deleteConnection,
   fetchBankDetails,
   saveBankDetails,

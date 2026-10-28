@@ -151,4 +151,9 @@ router.use('/platform/reports', platformReportRouter);
 // App Update feature routes
 router.use('/app-updates', appUpdateRouter);
 
+import aiAssistantRouter from '../features/aiAssistant/aiAssistant.routes.js';
+
+// AI Voice Assistant feature routes
+router.use('/ai-assistant', aiAssistantRouter);
+
 export default router;

@@ -6,6 +6,7 @@ import {
   connectIntegration as createConnection,
   updateLabel,
   disconnectIntegration as deleteConnection,
+  testConnection as testConnectionAction,
   getBankDetails as fetchBankDetails,
   saveBankDetails as saveBankDetailsAction,
   clearError,
@@ -113,6 +114,22 @@ export const useIntegrationHub = () => {
   )
 
   /**
+   * Handle testing an existing connection with its upstream provider
+   */
+  const handleTestConnection = useCallback(
+    async (id) => {
+      try {
+        const result = await dispatch(testConnectionAction(id)).unwrap()
+        return { success: true, data: result }
+      } catch (err) {
+        console.error('Test connection error:', err)
+        return { success: false, error: err }
+      }
+    },
+    [dispatch],
+  )
+
+  /**
    * Handle deleting/disconnecting a connection
    */
   const handleDeleteConnection = useCallback(
@@ -189,6 +206,7 @@ export const useIntegrationHub = () => {
     handlePageChange,
     handleCreateConnection,
     handleUpdateLabel,
+    handleTestConnection,
     handleDeleteConnection,
     handleSaveBankDetails,
     handleClearError,

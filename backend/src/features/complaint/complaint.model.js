@@ -145,6 +145,10 @@ complaintSchema.index({ orgId: 1, category: 1 });
 complaintSchema.index({ title: 'text', category: 'text' });
 
 complaintSchema.index({ orgId: 1, complaintNumber: 1 }, { unique: true });
+complaintSchema.index(
+  { orgId: 1, residentId: 1, 'aiAnalysisMetadata.aiStatus': 1 },
+  { unique: true, partialFilterExpression: { 'aiAnalysisMetadata.aiStatus': { $type: 'string' } } }
+);
 
 const Complaint = mongoose.model('Complaint', complaintSchema);
 

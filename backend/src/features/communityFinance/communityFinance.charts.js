@@ -209,12 +209,12 @@ export async function donutChartPng(items, { title, noun, colors = PALETTE }) {
   const rest = positive.slice(4);
   if (rest.length) shown.push({ name: `Other (${rest.length})`, amount: rest.reduce((s, i) => s + i.amount, 0), other: true });
   const lead = shown[0];
-  const headline = shown.length === 1 ? `All of it is ${lead.name}.` : `${lead.name} is the biggest ${noun} — ${Math.round((lead.amount / total) * 100)}%.`;
+  const headline = shown.length === 1 ? `100% allocated to ${lead.name}.` : `${lead.name} is the biggest ${noun} — ${Math.round((lead.amount / total) * 100)}%.`;
 
   const cx = 110;
-  const cy = 170;
-  const R = 82;
-  const r = 50;
+  const cy = 165;
+  const R = 78;
+  const r = 48;
   let angle = -Math.PI / 2;
   let arcs = '';
   shown.forEach((s, i) => {
@@ -230,15 +230,15 @@ export async function donutChartPng(items, { title, noun, colors = PALETTE }) {
     arcs += `<path d="M ${pt(R, angle)} A ${R} ${R} 0 ${large} 1 ${pt(R, a2)} L ${pt(r, a2)} A ${r} ${r} 0 ${large} 0 ${pt(r, angle)} Z" fill="${color}" stroke="#FFFFFF" stroke-width="2"/>`;
     angle = a2;
   });
-  const centre = `<text x="${cx}" y="${cy + 2}" ${FONT} font-size="18" font-weight="bold" fill="${NAVY}" text-anchor="middle">${shortAmount(total)}</text>
-    <text x="${cx}" y="${cy + 17}" ${FONT} font-size="9.5" fill="${MUTED}" text-anchor="middle">total</text>`;
+  const centre = `<text x="${cx}" y="${cy + 2}" ${FONT} font-size="17" font-weight="bold" fill="${NAVY}" text-anchor="middle">₹${shortAmount(total)}</text>
+    <text x="${cx}" y="${cy + 17}" ${FONT} font-size="9" font-weight="bold" fill="${MUTED}" text-anchor="middle">TOTAL</text>`;
   const legend = shown
     .map((s, i) => {
       const y = 92 + i * 34;
       const color = s.other ? '#94A3B8' : colors[i % colors.length];
-      return `<rect x="218" y="${y}" width="12" height="12" rx="3" fill="${color}"/>
-        <text x="238" y="${y + 10}" ${FONT} font-size="11.5" fill="#1E293B">${esc(clip(s.name, 14))}</text>
-        <text x="238" y="${y + 24}" ${FONT} font-size="10" fill="${MUTED}">${shortAmount(s.amount)} · ${Math.round((s.amount / total) * 100)}%</text>`;
+      return `<rect x="218" y="${y + 2}" width="12" height="12" rx="3" fill="${color}"/>
+        <text x="238" y="${y + 11}" ${FONT} font-size="11.5" font-weight="bold" fill="#1E293B">${esc(clip(s.name, 14))}</text>
+        <text x="238" y="${y + 25}" ${FONT} font-size="10" fill="${MUTED}">₹${shortAmount(s.amount)} · ${Math.round((s.amount / total) * 100)}%</text>`;
     })
     .join('');
   return toPng(frameAt(HW, HH, title, headline, NAVY, arcs + centre + legend));
@@ -247,35 +247,53 @@ export async function donutChartPng(items, { title, noun, colors = PALETTE }) {
 /** Vertical columns: received, paid, net, and what is still waiting to settle. */
 export async function columnChartPng(report) {
   const title = 'Money in vs money out';
+  const hasPendingIn = (report.pendingIncome || 0) > 0;
+  const hasPendingOut = (report.pendingExpense || 0) > 0;
+
   const cols = [
     { label: 'Received', value: Math.max(0, report.totalIncome || 0), color: GREEN },
     { label: 'Paid out', value: Math.max(0, report.totalExpense || 0), color: RED },
-    { label: report.netCashMovement >= 0 ? 'Surplus' : 'Deficit', value: Math.abs(report.netCashMovement || 0), color: report.netCashMovement >= 0 ? '#1D4ED8' : RED, signed: report.netCashMovement < 0 },
-    { label: 'To receive', value: report.pendingIncome || 0, color: AMBER, soft: true },
-    { label: 'To pay', value: report.pendingExpense || 0, color: AMBER, soft: true },
+    { label: report.netCashMovement >= 0 ? 'Surplus' : 'Deficit', value: Math.abs(report.netCashMovement || 0), color: report.netCashMovement >= 0 ? '#1D4ED8' : RED, signed: false },
   ];
+  if (hasPendingIn) {
+    cols.push({ label: 'To receive', value: report.pendingIncome, color: AMBER, soft: true });
+  }
+  if (hasPendingOut) {
+    cols.push({ label: 'To pay', value: report.pendingExpense, color: AMBER, soft: true });
+  }
+
   if (cols.every((c) => !c.value)) return emptyAt(HW, HH, title, 'No completed payments in this period.');
 
-  const headline = (report.totalIncome || 0) > 0
-    ? `Paid out ${Math.round(((report.totalExpense || 0) / report.totalIncome) * 100)}% of what came in.`
-    : 'No money received in this period.';
+  let headline;
+  const inc = report.totalIncome || 0;
+  const exp = report.totalExpense || 0;
+  if (inc > 0 && exp > 0) {
+    headline = `Paid out ${Math.round((exp / inc) * 100)}% of total receipts.`;
+  } else if (exp > 0) {
+    headline = `Paid out ₹${shortAmount(exp)} with zero receipts.`;
+  } else if (inc > 0) {
+    headline = `Received ₹${shortAmount(inc)} with zero disbursements.`;
+  } else {
+    headline = 'No cash movements in this period.';
+  }
+
   const left = 16;
   const top = 80;
   const bottom = 40;
   const plotH = HH - top - bottom;
   const plotW = HW - left * 2;
   const slot = plotW / cols.length;
-  const barW = slot - 16;
+  const barW = Math.min(56, slot - 18);
   const max = Math.max(...cols.map((c) => c.value), 1);
   let body = `<line x1="${left}" y1="${top + plotH}" x2="${HW - left}" y2="${top + plotH}" stroke="#CBD5E1"/>`;
   cols.forEach((c, i) => {
-    const h = Math.max(c.value ? 3 : 0, (c.value / max) * plotH);
-    const x = left + i * slot + 8;
+    const h = Math.max(c.value ? 4 : 0, (c.value / max) * plotH);
+    const x = left + i * slot + (slot - barW) / 2;
     body += `<rect x="${x}" y="${top + plotH - h}" width="${barW}" height="${h}" rx="4" fill="${c.color}" ${c.soft ? `fill-opacity="0.35" stroke="${c.color}" stroke-dasharray="4 3"` : ''}/>
-      <text x="${x + barW / 2}" y="${top + plotH - h - 5}" ${FONT} font-size="11" font-weight="bold" fill="#1E293B" text-anchor="middle">${c.signed ? '-' : ''}${shortAmount(c.value)}</text>
-      <text x="${x + barW / 2}" y="${HH - 20}" ${FONT} font-size="10" fill="#475569" text-anchor="middle">${c.label}</text>`;
+      <text x="${x + barW / 2}" y="${top + plotH - h - 5}" ${FONT} font-size="11" font-weight="bold" fill="#1E293B" text-anchor="middle">₹${shortAmount(c.value)}</text>
+      <text x="${x + barW / 2}" y="${HH - 20}" ${FONT} font-size="10" font-weight="bold" fill="#475569" text-anchor="middle">${c.label}</text>`;
   });
-  body += `<text x="${HW - 16}" y="${HH - 5}" ${FONT} font-size="8.5" fill="#94A3B8" text-anchor="end">Dashed = not yet settled. Amounts in INR.</text>`;
+  body += `<text x="${HW - 16}" y="${HH - 5}" ${FONT} font-size="8.5" fill="#94A3B8" text-anchor="end">Amounts in INR${hasPendingIn || hasPendingOut ? ' · Dashed = unsettled' : ''}</text>`;
   return toPng(frameAt(HW, HH, title, headline, (report.netCashMovement || 0) >= 0 ? GREEN : RED, body));
 }
 

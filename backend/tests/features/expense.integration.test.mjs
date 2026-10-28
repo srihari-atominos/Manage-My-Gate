@@ -38,6 +38,31 @@ describe('Expense foundation', () => {
     assert.equal(await FinancialLedgerEntry.countDocuments({ orgId, referenceType: 'Expense' }), 1);
   });
 
+  it('creates an expense with initial payment via NETBANKING and marks it paid', async () => {
+    const orgId = org(); const user = actor(orgId);
+    const created = await expenseService.create({
+      idempotencyKey: user.idempotencyKey,
+      name: 'Diesel generator maintenance',
+      expenseType: 'REPAIRS_MAINTENANCE',
+      category: 'Generator',
+      expenseDate: new Date(),
+      subtotal: 5500,
+      initialPayment: {
+        idempotencyKey: `${user.idempotencyKey}:PAYMENT`,
+        amount: 5500,
+        paymentMethod: 'BANK_TRANSFER',
+        paymentApplication: 'NETBANKING',
+        fundingSource: 'COMMUNITY_BANK_ACCOUNT',
+        paymentDate: new Date().toISOString(),
+        transactionReference: 'NEFT-889900',
+      },
+    }, user);
+    assert.equal(created.totalAmount, 5500);
+    assert.equal(created.settlementStatus, 'PAID');
+    assert.equal(created.payments.length, 1);
+    assert.equal(created.payments[0].paymentApplication, 'NETBANKING');
+  });
+
   it('records unpaid, partial, and completed payments against one expense', async () => {
     const orgId = org(); const user = actor(orgId);
     const created = await expenseService.create({ idempotencyKey: user.idempotencyKey, name: 'Pump repair', expenseType: 'REPAIRS_MAINTENANCE', category: 'Plumbing Repairs', expenseDate: new Date(), subtotal: 20000 }, user);

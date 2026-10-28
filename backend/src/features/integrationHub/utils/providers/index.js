@@ -7,6 +7,7 @@ import { verify as verifyMessageCentral } from './messageCentral.handler.js';
 import { verify as verifyMsg91 } from './msg91.handler.js';
 import { verify as verifyBanking } from './banking.handler.js';
 import { verify as verifyRazorpay } from './razorpay.handler.js';
+import { verify as verifyGemini } from './gemini.handler.js';
 
 const providerHandlers = {
   openai: verifyOpenAI,
@@ -18,6 +19,7 @@ const providerHandlers = {
   msg91: verifyMsg91,
   banking: verifyBanking,
   razorpay: verifyRazorpay,
+  gemini: verifyGemini,
 };
 
 /**
@@ -33,7 +35,7 @@ export async function verifyProviderConnection(provider, credentials) {
 
   const handler = providerHandlers[provider.toLowerCase()];
   if (!handler) {
-    throw new Error(`Unsupported provider: ${provider}. Supported providers are: openai, twilio, resend, smtp, firebase, messagecentral, banking, razorpay`);
+    throw new Error(`Unsupported provider: ${provider}. Supported providers are: openai, twilio, resend, smtp, firebase, messagecentral, banking, razorpay, gemini`);
   }
 
   return await handler(credentials);

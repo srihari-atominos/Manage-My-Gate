@@ -497,8 +497,9 @@ export class AmenityService {
     // Standard Slot Generation logic
     const openTime = amenity.bookingRules?.openTime || '06:00';
     const closeTime = amenity.bookingRules?.closeTime || '22:00';
-    const slotDuration = amenity.slotDuration || 60; // minutes
-    const bufferMins = amenity.bookingRules?.bufferTimeBetweenBookings || 0;
+    const slotDuration = amenity.slotDuration || amenity.bookingRules?.slotDurationMinutes || 60; // minutes
+    const durationMins = slotDuration;
+    const bufferMins = amenity.bookingRules?.bufferTimeMinutes || amenity.bookingRules?.bufferTimeBetweenBookings || 0;
 
     const startDateTime = moment.tz(`${dateStr}T${openTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
     let endDateTime = moment.tz(`${dateStr}T${closeTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);

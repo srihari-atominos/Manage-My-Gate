@@ -62,6 +62,20 @@ export const updateLabel = createAsyncThunk(
   },
 )
 
+export const testConnection = createAsyncThunk(
+  'integrationHub/testConnection',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await integrationHubService.testConnection(id)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to test connection',
+      )
+    }
+  },
+)
+
 export const disconnectIntegration = createAsyncThunk(
   'integrationHub/disconnectIntegration',
   async (id, { rejectWithValue }) => {
@@ -197,6 +211,27 @@ export const integrationHubSlice = createSlice({
         }
       })
       .addCase(updateLabel.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload
+      })
+
+      // testConnection
+      .addCase(testConnection.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(testConnection.fulfilled, (state, action) => {
+        state.isLoading = false
+        const index = state.connections.findIndex((c) => c.id === action.payload.id)
+        if (index !== -1) {
+          state.connections[index].lastCheck = {
+            ok: action.payload.ok,
+            at: action.payload.at,
+            message: action.payload.message,
+          }
+        }
+      })
+      .addCase(testConnection.rejected, (state, action) => {
         state.isLoading = false
         state.error = action.payload
       })

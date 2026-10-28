@@ -76,7 +76,8 @@ export const ConnectionForm = ({ selectedProvider, onSubmit, isSubmitting, submi
             <CFormInput
               type={field.type || 'text'}
               id={`credentials.${field.name}`}
-              placeholder={t('integrationHub.form.credentialPlaceholder', {
+              autoComplete={field.type === 'password' ? 'new-password' : 'off'}
+              placeholder={field.placeholder || t('integrationHub.form.credentialPlaceholder', {
                 defaultValue: `Enter ${field.label}`,
                 fieldName: field.label,
               })}

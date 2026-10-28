@@ -58,6 +58,7 @@ export const IntegrationHubView = () => {
     handlePageChange,
     handleCreateConnection,
     handleUpdateLabel,
+    handleTestConnection,
     handleDeleteConnection,
     handleSaveBankDetails,
     handleClearError,
@@ -113,10 +114,37 @@ export const IntegrationHubView = () => {
     }
   }
 
+  const handleConnectionTest = async (id) => {
+    setActionLoading(true)
+    setActionError(null)
+    const result = await handleTestConnection(id)
+    setActionLoading(false)
+    if (result.success) {
+      if (result.data?.ok) {
+        showToast(
+          t('integrationHub.toast.testSuccess', 'Connection verified successfully!'),
+          'success',
+        )
+      } else {
+        showToast(
+          t('integrationHub.toast.testFailed', {
+            defaultValue: `Connection verification failed: ${result.data?.message || 'Upstream service error'}`,
+            message: result.data?.message,
+          }),
+          'danger',
+        )
+      }
+      return true
+    } else {
+      showToast(result.error || 'Connection verification failed', 'danger')
+      return false
+    }
+  }
+
   const handleConnectionDelete = async (id) => {
     if (
       !window.confirm(
-        t('integrationHub.confirm.delete', 'Are you sure you want to disconnect this account?'),
+        t('integrationHub.confirm.delete', 'Are you sure you want to disconnect this account? Disabling or removing this integration will immediately stop voice assistant and related platform services for active users.'),
       )
     ) {
       return
@@ -212,6 +240,7 @@ export const IntegrationHubView = () => {
         onPageChange={handlePageChange}
         onUpdateLabel={handleLabelUpdate}
         onDeleteConnection={handleConnectionDelete}
+        onTestConnection={handleConnectionTest}
         isLoading={actionLoading || isLoading}
       />
 

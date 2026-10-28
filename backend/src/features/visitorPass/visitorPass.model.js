@@ -190,11 +190,22 @@ const visitorPassSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Complaint',
       index: true,
-    }
+    },
+    clientReference: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 128,
+    },
   },
   {
     timestamps: true,
   }
+);
+
+visitorPassSchema.index(
+  { orgId: 1, createdById: 1, clientReference: 1 },
+  { unique: true, partialFilterExpression: { clientReference: { $type: 'string' } } }
 );
 
 export const VisitorPass = mongoose.model('VisitorPass', visitorPassSchema);

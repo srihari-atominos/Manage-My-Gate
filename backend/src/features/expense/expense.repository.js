@@ -53,6 +53,17 @@ class ExpenseRepository {
           },
         },
       ],
+      allTime: [
+        {
+          $group: {
+            _id: null,
+            totalExpenses: { $sum: '$totalAmount' },
+            recordedPaid: { $sum: '$recordedPaidAmount' },
+            unpaidBalance: { $sum: '$outstandingAmount' },
+            count: { $sum: 1 },
+          },
+        },
+      ],
       today: [
         { $match: { expenseDate: { $gte: todayStart, $lte: todayEnd } } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } },

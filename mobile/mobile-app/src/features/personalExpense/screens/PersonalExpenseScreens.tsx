@@ -531,7 +531,16 @@ function TransactionForm({
   useEffect(() => {
     service
       .categories()
-      .then(setCategories)
+      .then((cats) => {
+        setCategories(cats);
+        const defaults = cats.filter((category) => category.type === type);
+        if (defaults.length > 0) {
+          setForm((c) => ({
+            ...c,
+            categoryId: c.categoryId || defaults[0].id,
+          }));
+        }
+      })
       .catch((reason) => setError(reason?.message || 'Unable to load categories.'));
 
     if (!id) return;
@@ -552,7 +561,7 @@ function TransactionForm({
         setReview(transaction.receipt?.ocr || null);
       })
       .catch((reason) => setError(reason?.message || 'Unable to load transaction.'));
-  }, [id]);
+  }, [id, type]);
 
   const choices = categories.filter((category) => category.type === type);
 
@@ -655,6 +664,8 @@ function TransactionForm({
       setReceipt(newReceipt);
       setReview(null);
       setError(null);
+      // Attaching receipt implies paid settlement
+      setForm((current) => ({ ...current, paymentSettlement: 'PAID' }));
       // Auto-scan on upload
       scanReceipt(newReceipt);
     } catch {
@@ -689,7 +700,10 @@ function TransactionForm({
 
   const submit = async () => {
     const invalid = validateTransaction(form);
-    if (invalid) return setError(invalid);
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -699,7 +713,7 @@ function TransactionForm({
         categoryId: form.categoryId,
         transactionDate: form.transactionDate,
         paymentMethod: form.paymentMethod as any,
-        paymentSettlement: form.paymentSettlement,
+        paymentSettlement: receipt ? 'PAID' : form.paymentSettlement,
         merchantOrSource: form.merchantOrSource.trim(),
         reference: form.reference ? form.reference.trim() : null,
         notes: form.notes,
@@ -714,12 +728,21 @@ function TransactionForm({
         transaction = await service.deleteReceipt(transaction._id);
       }
 
-      if (form.paymentSettlement === 'PAID' && receipt) {
+      if (receipt) {
         setProcessing(true);
-        transaction = await service.uploadReceipt(transaction._id, receipt);
-        setSavedReceipt(transaction.receipt || null);
-        setReview(transaction.receipt?.ocr || null);
-        setReceipt(null);
+        try {
+          transaction = await service.uploadReceipt(transaction._id, receipt);
+          setSavedReceipt(transaction.receipt || null);
+          setReview(transaction.receipt?.ocr || null);
+          setReceipt(null);
+        } catch (uploadErr: any) {
+          console.warn('Receipt upload warning:', uploadErr);
+          Alert.alert(
+            'Receipt Attachment Note',
+            'Transaction recorded, but receipt attachment could not be uploaded: ' +
+              (uploadErr?.message || 'Upload failed')
+          );
+        }
       }
 
       if (write.duplicateWarning) {
@@ -1109,6 +1132,7 @@ function TransactionForm({
 
             {/* Slide 1 Navigation & Submit Row */}
             <View className="pt-2 pb-6 gap-3">
+              {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
               <View className="flex-row gap-3">
                 <Button
                   variant="outline"

@@ -123,6 +123,21 @@ export const INTEGRATION_CATALOG = [
     description: 'AI assistance (for example complaint triage) using your own OpenAI key.',
     fields: [{ name: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'sk-…' }],
   },
+  {
+    id: 'gemini',
+    name: 'Google Gemini AI',
+    category: 'AI',
+    icon: '🎙️',
+    scope: 'platform',
+    description: 'Unified conversational text chat and real-time voice assistant powered by Google Gemini.',
+    fields: [
+      { name: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'AIzaSy…' },
+      { name: 'model', label: 'Voice Model Identifier', type: 'text', required: false, placeholder: 'gemini-3.8-live' },
+      { name: 'chatModel', label: 'Chat Model Identifier', type: 'text', required: false, placeholder: 'gemini-3.5-flash-lite' },
+      { name: 'sessionDurationSec', label: 'Session Duration (seconds)', type: 'number', required: false, placeholder: '600' },
+      { name: 'maxDailySessions', label: 'Max Daily Sessions per User', type: 'number', required: false, placeholder: '5' },
+    ],
+  },
 ];
 
 export const PLATFORM_ONLY_PROVIDERS = INTEGRATION_CATALOG.filter((p) => p.scope === 'platform').map((p) => p.id);

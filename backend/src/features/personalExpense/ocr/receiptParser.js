@@ -1483,15 +1483,17 @@ export function parseReceiptText(text = '', options = {}) {
     billNumber: !isPaymentScreenshot ? documentNumber : null,
     transactionId: transactionReference || null,
     documentType,
-    currency: String(text).match(/\b(NZD|AUD|CAD|SGD|AED|SAR|USD|EUR|GBP|INR)\b/i)?.[1]?.toUpperCase() || (/\u20b9|\b(?:inr|rs\.?)\b/i.test(text)
+    currency: isPaymentScreenshot
       ? 'INR'
-      : /\$|\busd\b/i.test(text)
-      ? 'USD'
-      : /€|\beur\b/i.test(text)
-      ? 'EUR'
-      : /£|\bgbp\b/i.test(text)
-      ? 'GBP'
-      : 'INR'),
+      : (String(text).match(/\b(NZD|AUD|CAD|SGD|AED|SAR|USD|EUR|GBP|INR)\b/i)?.[1]?.toUpperCase() || (/\u20b9|\b(?:inr|rs\.?)\b/i.test(text)
+        ? 'INR'
+        : /\$|\busd\b/i.test(text)
+        ? 'USD'
+        : /€|\beur\b/i.test(text)
+        ? 'EUR'
+        : /£|\bgbp\b/i.test(text)
+        ? 'GBP'
+        : 'INR')),
     items,
     isPaymentScreenshot,
     paymentMethod,
