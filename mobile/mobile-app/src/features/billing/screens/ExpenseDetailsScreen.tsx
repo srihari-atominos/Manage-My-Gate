@@ -652,7 +652,7 @@ export default function ExpenseDetailsScreen() {
             <View className="flex-row items-center gap-2">
               <CreditCard size={16} className="text-primary" />
               <Text className="text-sm font-bold text-foreground">
-                Payment History ({expense.payments?.length || 0})
+                {`Payment History (${expense.payments?.length || 0})`}
               </Text>
             </View>
 
@@ -682,8 +682,8 @@ export default function ExpenseDetailsScreen() {
                         </View>
 
                         <StatusBadge
-                          label={isReconciled ? 'Verified' : 'Recorded'}
-                          variant={isReconciled ? 'success' : 'info'}
+                          label={isReconciled ? 'Verified' : 'Verification Pending'}
+                          variant={isReconciled ? 'success' : 'warning'}
                           size="sm"
                         />
                       </View>

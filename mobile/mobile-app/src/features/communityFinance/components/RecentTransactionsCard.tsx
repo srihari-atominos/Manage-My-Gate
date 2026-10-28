@@ -145,13 +145,12 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
                     variant={
                       tx.status === 'SUCCESS' || tx.status === 'PAID' || tx.status === 'RECONCILED'
                         ? 'success'
-                        : tx.status === 'PENDING'
-                        ? 'warning'
+                        : (tx.status === 'PENDING' || tx.status === 'RECORDED' || !tx.status) ? 'warning'
                         : tx.status === 'FAILED'
                         ? 'danger'
                         : 'neutral'
                     }
-                    label={(tx.status === 'RECONCILED' ? 'VERIFIED' : tx.status) || 'RECORDED'}
+                    label={tx.status === 'RECONCILED' ? 'VERIFIED' : (tx.status === 'RECORDED' || !tx.status ? 'VERIFICATION PENDING' : tx.status)}
                     size="sm"
                     className="py-0.2 px-2 rounded-full"
                   />
