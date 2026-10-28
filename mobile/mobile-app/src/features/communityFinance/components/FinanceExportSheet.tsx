@@ -80,8 +80,15 @@ export const FinanceExportSheet: React.FC<FinanceExportSheetProps> = ({
 
   const effectiveIsExporting = Boolean(isExporting || isLoading);
 
+  const hasCustomFilters = Boolean(
+    safeFilters.search ||
+    (safeFilters.type && safeFilters.type !== 'all') ||
+    (safeFilters.domain && safeFilters.domain !== 'ALL') ||
+    (safeFilters.status && safeFilters.status !== 'ALL')
+  );
+
   const handleGenerate = async () => {
-    if (effectiveIsExporting || totalRecords === 0) return;
+    if (effectiveIsExporting) return;
     await onGenerateExport(selectedFormat);
   };
 
@@ -95,9 +102,9 @@ export const FinanceExportSheet: React.FC<FinanceExportSheetProps> = ({
         <View className="p-3.5 rounded-2xl bg-muted/40 border border-border/60">
           <View className="flex-row items-center justify-between mb-2">
             <View className="flex-row items-center gap-1.5">
-              <Icon as={Filter} size={13} className="text-primary" />
+              <Icon as={hasCustomFilters ? Filter : Layers} size={13} className="text-primary" />
               <Text className="text-xs font-bold text-foreground">
-                Active Filter Scope
+                {hasCustomFilters ? 'Active Filter Scope' : 'Export Scope'}
               </Text>
             </View>
             {totalRecords !== undefined ? (
@@ -236,9 +243,11 @@ export const FinanceExportSheet: React.FC<FinanceExportSheetProps> = ({
 
         {/* 3. Empty data notice if 0 records */}
         {totalRecords === 0 && (
-          <View className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
-            <Text className="text-xs text-amber-800 dark:text-amber-300 font-medium">
-              No transactions match your current active filters. Adjust your filters or reset to export data.
+          <View className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40">
+            <Text className="text-xs text-blue-900 dark:text-blue-300 font-medium">
+              {hasCustomFilters
+                ? 'No transactions match the selected filters. Export will generate a statement for this scope.'
+                : 'No cash transactions recorded for this period. Export will generate a statement showing opening balance, dues, and financial summary.'}
             </Text>
           </View>
         )}
@@ -248,7 +257,7 @@ export const FinanceExportSheet: React.FC<FinanceExportSheetProps> = ({
           <Button
             variant="default"
             onPress={handleGenerate}
-            disabled={effectiveIsExporting || totalRecords === 0}
+            disabled={effectiveIsExporting}
             className="w-full h-12 rounded-xl flex-row items-center justify-center gap-2">
             {effectiveIsExporting ? (
               <>

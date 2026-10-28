@@ -113,11 +113,13 @@ export default function RecordExpenseScreen() {
       if (a.size && a.size > 10 * 1024 * 1024) {
         return Alert.alert('Receipt too large', 'Maximum allowed file size is 10 MB.');
       }
-      setReceipt({ uri: a.uri, name: a.name, type: a.mimeType, file: a.file });
+      const captured: ReceiptCaptureFile = { uri: a.uri, name: a.name, type: a.mimeType, file: a.file };
+      setReceipt(captured);
       setOcr(null);
       setOcrFeedback(null);
       setReviewFields({});
       setReplacingReceipt(false);
+      scan(captured);
     }
   };
 
@@ -128,15 +130,17 @@ export default function RecordExpenseScreen() {
     setReviewFields({});
     setReplacingReceipt(false);
     setCameraVisible(false);
+    scan(file);
   };
 
-  const scan = async () => {
-    if (!receipt || scanning) return;
+  const scan = async (targetReceipt?: ReceiptCaptureFile) => {
+    const fileToScan = targetReceipt || receipt;
+    if (!fileToScan || scanning) return;
     try {
       setScanning(true);
       setOcr(null);
       setOcrFeedback({ tone: 'info', message: 'Scanning receipt with OCR…' });
-      const result = await expenseService.previewReceiptOcr(receipt);
+      const result = await expenseService.previewReceiptOcr(fileToScan);
       if (result.status !== 'COMPLETED') {
         setOcrFeedback({ tone: 'error', message: result.error || 'Receipt data could not be extracted. Enter details manually.' });
         return;
@@ -302,6 +306,10 @@ export default function RecordExpenseScreen() {
       const effectiveCategory =
         f.type === 'OTHER' ? f.category.trim() : categoryMap[f.type] || 'Other';
 
+      const ALLOWED_PAYMENT_APPS = ['GOOGLE_PAY', 'PHONEPE', 'BHIM', 'PAYTM', 'OTHER_UPI_APP', 'NETBANKING', 'NOT_SPECIFIED'];
+      const rawApp = ocr?.paymentApplication || (f.method === 'BANK_TRANSFER' ? 'NETBANKING' : 'NOT_SPECIFIED');
+      const safePaymentApp = ALLOWED_PAYMENT_APPS.includes(rawApp) ? rawApp : 'NOT_SPECIFIED';
+
       const r: any = await expenseService.create({
         idempotencyKey: id,
         name: resolvedName,
@@ -322,13 +330,41 @@ export default function RecordExpenseScreen() {
                 idempotencyKey: id + ':PAYMENT',
                 amount: finalAmount,
                 paymentMethod: f.method,
-                paymentApplication: ocr?.paymentApplication || (f.method === 'BANK_TRANSFER' ? 'NETBANKING' : 'NOT_SPECIFIED'),
+                paymentApplication: safePaymentApp,
                 fundingSource: funding(f.method),
                 paymentDate: f.date.toISOString(),
                 transactionReference: f.transactionReference.trim() || undefined,
               }
             : undefined,
       });
+
+      const getPeriodForDate = (date: Date): string => {
+        const now = new Date();
+        const d = new Date(date);
+        if (
+          d.getFullYear() === now.getFullYear() &&
+          d.getMonth() === now.getMonth() &&
+          d.getDate() === now.getDate()
+        ) {
+          return 'TODAY';
+        }
+        const day = now.getDay();
+        const diff = (day === 0 ? -6 : 1) - day;
+        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff, 0, 0, 0, 0);
+        const endOfWeek = new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+        if (d >= startOfWeek && d <= endOfWeek) {
+          return 'WEEKLY';
+        }
+        if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
+          return 'MONTHLY';
+        }
+        if (d.getFullYear() === now.getFullYear()) {
+          return 'YEARLY';
+        }
+        return 'ALL_TIME';
+      };
+
+      const targetPeriod = getPeriodForDate(f.date);
 
       let uploadFailed = false;
       if (receipt) {
@@ -344,10 +380,10 @@ export default function RecordExpenseScreen() {
         Alert.alert(
           'Expense Saved',
           'Expense was recorded successfully, but the receipt attachment could not be uploaded. You can re-upload it later from expense details.',
-          [{ text: 'OK', onPress: () => router.replace({ pathname: '/(resident)/admin/billing/expenses', params: { refresh: String(Date.now()) } } as any) }]
+          [{ text: 'OK', onPress: () => router.replace({ pathname: '/(resident)/admin/billing/expenses', params: { refresh: String(Date.now()), period: targetPeriod } } as any) }]
         );
       } else {
-        router.replace({ pathname: '/(resident)/admin/billing/expenses', params: { refresh: String(Date.now()) } } as any);
+        router.replace({ pathname: '/(resident)/admin/billing/expenses', params: { refresh: String(Date.now()), period: targetPeriod } } as any);
       }
     } catch (e: any) {
       Alert.alert('Cannot save expense', e.message || 'Please try again.');
@@ -469,7 +505,9 @@ export default function RecordExpenseScreen() {
                   <Button
                     loading={scanning}
                     disabled={scanning}
-                    onPress={scan}
+                    onPress={() => {
+                      scan();
+                    }}
                     className="mt-1 bg-primary"
                   >
                     <Text className="text-xs font-bold text-primary-foreground">

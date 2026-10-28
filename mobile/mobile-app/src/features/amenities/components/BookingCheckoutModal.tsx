@@ -124,10 +124,10 @@ export function BookingCheckoutModal({
             )}
           >
             <Text className={cn('font-semibold text-sm', paymentMethod === 'ONLINE' ? 'text-primary' : 'text-foreground')}>
-              Razorpay Online
+              Online Payment (UPI / Cards)
             </Text>
             <Text variant="muted" className="text-xs mt-1 text-muted-foreground">
-              UPI / Card / Netbank
+              GPay / PhonePe / Cards
             </Text>
           </Pressable>
         </View>
@@ -136,7 +136,7 @@ export function BookingCheckoutModal({
         {paymentMethod === 'WALLET' && !isBalanceSufficient && (
           <View className="bg-red-500/10 border border-red-500/30 p-2.5 rounded-xl mb-4">
             <Text className="text-xs text-red-600 dark:text-red-400 font-medium">
-              Insufficient wallet balance (₹{(walletBalance || 0).toFixed(2)}). Please tap "Top Up Wallet" below to add funds.
+              Insufficient wallet balance (₹{(walletBalance || 0).toFixed(2)}). Please switch to Online Payment or tap "Top Up Wallet" below.
             </Text>
           </View>
         )}

@@ -984,7 +984,33 @@ export class AmenityBookingService {
         refundAmount = applyRefundPercentage(refundPercentage);
       }
 
-      // 3. Process Refund logic if payment was success
+      // 3. Atomically claim cancellation state to prevent duplicate concurrent refund executions
+      if (typeof amenityBookingRepository.claimCancellation === 'function') {
+        const initialPaymentStatus = isPaidStatus
+          ? 'refund_pending'
+          : (['pending', 'payment_due'].includes(String(booking.paymentStatus || '').toLowerCase()) ? 'failed' : booking.paymentStatus);
+
+        const claim = await amenityBookingRepository.claimCancellation(bookingId, orgId, {
+          status: 'cancelled',
+          paymentStatus: initialPaymentStatus,
+          qrStatus: 'expired',
+          cancellationReason: reason,
+          cancelledAt: new Date(),
+          cancelledBy: userId,
+          refundPercentage,
+          refundAmount,
+        });
+
+        if (!claim) {
+          const current = await amenityBookingRepository.findById(bookingId, orgId);
+          if (current && current.status === 'cancelled') {
+            return current;
+          }
+          throw new HttpError(400, 'Booking cannot be cancelled in its current state');
+        }
+      }
+
+      // 4. Process Refund logic if payment was success
       let newPaymentStatus = booking.paymentStatus;
       if (isPaidStatus) {
         const isWallet = booking.paymentMethod && booking.paymentMethod.toUpperCase() === 'WALLET';
@@ -1006,7 +1032,7 @@ export class AmenityBookingService {
             if (!isValidObjectId) {
               console.warn(`[CANCEL BOOKING] Warning: booking.paymentId '${booking.paymentId}' is not a valid ObjectId. Refund may fail.`);
             }
-            await paymentService.processRefund(booking.paymentId, refundAmount);
+            await paymentService.processRefund(booking.paymentId, refundAmount, { reason: 'Amenity booking cancellation' }, { orgId: booking.orgId || orgId });
             newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
           } catch (refundError) {
              console.error(`[CANCEL BOOKING] Refund failed for booking ${bookingId}, crediting to digital wallet:`, refundError.message);
@@ -1034,7 +1060,7 @@ export class AmenityBookingService {
          refundPercentage = 0;
       }
 
-      // 4. Update the AmenityBooking status
+      // 5. Update the AmenityBooking status and emit event (once)
       const cancelUpdateData = {
         status: 'cancelled',
         paymentStatus: newPaymentStatus,

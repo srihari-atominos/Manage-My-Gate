@@ -98,7 +98,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
             </Text>
             <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
               {topCategory && !expanded
-                ? `Top: ${topCategory.category} (${topCategory.percentage}%)`
+                ? `Top: ${topCategory.category}`
                 : `${categories.length} ${categories.length === 1 ? 'category' : 'categories'} recorded`}
             </Text>
           </View>
@@ -131,7 +131,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
                     : 'text-muted-foreground'
                 }`}
               >
-                {Math.abs(comparison.percentageChange || 0)}%
+                {Math.abs(comparison.percentageChange || 0)}
               </Text>
             </View>
           )}
@@ -161,7 +161,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
                 </Text>
               </View>
               <StatusBadge
-                label={`${topCategory.percentage}%`}
+                label={`${topCategory.percentage}`}
                 variant="info"
                 size="sm"
               />
@@ -192,7 +192,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
                         {formatCurrency(item.amount)}
                       </Text>
                       <Text className="text-[11px] font-bold text-muted-foreground w-11 text-right">
-                        {item.percentage}%
+                        {item.percentage}
                       </Text>
                     </View>
                   </View>

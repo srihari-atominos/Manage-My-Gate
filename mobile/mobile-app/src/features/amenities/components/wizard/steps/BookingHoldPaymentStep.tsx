@@ -79,8 +79,8 @@ export function BookingHoldPaymentStep({
       ? [
           {
             value: 'RAZORPAY',
-            label: t('amenity_booking_pay_online', 'Pay online'),
-            description: t('amenity_booking_pay_online_sub', 'Card, UPI or net banking'),
+            label: t('amenity_booking_pay_online', 'Online Payment (UPI, Cards)'),
+            description: t('amenity_booking_pay_online_sub', 'Google Pay, PhonePe, Paytm, UPI, Cards'),
           },
         ]
       : []),
@@ -91,7 +91,7 @@ export function BookingHoldPaymentStep({
     : !mustPayNow
       ? t('amenity_booking_confirm_cta', 'Confirm booking')
       : paymentMethod === 'RAZORPAY'
-        ? t('amenity_booking_pay_online_cta', 'Pay {amount} online', { amount: money(dueNow, currency) })
+        ? t('amenity_booking_pay_online_cta', 'Click to Pay {amount} Online (GPay / PhonePe / UPI)', { amount: money(dueNow, currency) })
         : t('amenity_booking_pay_wallet_cta', 'Pay {amount} from wallet', { amount: money(dueNow, currency) });
 
   return (
@@ -192,7 +192,7 @@ export function BookingHoldPaymentStep({
           {walletShort ? (
             <View className="flex-row items-center justify-between pt-2 border-t border-border/50">
               <Text className="text-xs text-destructive font-medium flex-1 me-2">
-                {t('amenity_booking_wallet_short', 'Add {amount} to your wallet to pay.', { amount: money(dueNow - balance, currency) })}
+                {t('amenity_booking_wallet_short', 'Wallet balance is insufficient. Switch to Online Payment (GPay, PhonePe, UPI) or Top Up.', { amount: money(dueNow - balance, currency) })}
               </Text>
               <Button variant="outline" size="sm" onPress={onOpenTopUp} accessibilityLabel={t('amenity_booking_top_up', 'Top up wallet')}>
                 <Text className="text-xs font-semibold text-foreground">{t('amenity_booking_top_up', 'Top up wallet')}</Text>

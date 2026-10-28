@@ -15,7 +15,8 @@ import {
   CFormInput,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilPencil, cilTrash, cilCheck, cilX } from '@coreui/icons'
+import { cilPencil, cilTrash, cilCheck, cilX, cilReload } from '@coreui/icons'
+import { CSpinner } from '@coreui/react'
 import '../styles/_integrationHub.scss'
 
 /**
@@ -27,11 +28,23 @@ export const ConnectionTable = ({
   onPageChange,
   onUpdateLabel,
   onDelete,
+  onTest,
   isActionLoading,
 }) => {
   const { t } = useTranslation()
   const [editingId, setEditingId] = useState(null)
   const [editValue, setEditValue] = useState('')
+  const [testingId, setTestingId] = useState(null)
+
+  const handleTest = async (id) => {
+    if (!onTest) return
+    setTestingId(id)
+    try {
+      await onTest(id)
+    } finally {
+      setTestingId(null)
+    }
+  }
 
   const startEditing = (id, currentLabel) => {
     setEditingId(id)
@@ -90,6 +103,9 @@ export const ConnectionTable = ({
                     {t('integrationHub.table.status', 'Status')}
                   </CTableHeaderCell>
                   <CTableHeaderCell className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
+                    {t('integrationHub.table.verification', 'Verification')}
+                  </CTableHeaderCell>
+                  <CTableHeaderCell className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
                     {t('integrationHub.table.createdAt', 'Connected At')}
                   </CTableHeaderCell>
                   <CTableHeaderCell className="text-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
@@ -141,12 +157,46 @@ export const ConnectionTable = ({
                           {t(`integrationHub.status.${conn.status}`, { defaultValue: conn.status })}
                         </CBadge>
                       </CTableDataCell>
+                      <CTableDataCell className="py-3">
+                        {conn.lastCheck?.ok === true && (
+                          <CBadge color="success" className="d-inline-flex align-items-center gap-1">
+                            ✓ {t('integrationHub.table.verified', 'Verified')}
+                          </CBadge>
+                        )}
+                        {conn.lastCheck?.ok === false && (
+                          <CBadge color="danger" className="d-inline-flex align-items-center gap-1" title={conn.lastCheck.message}>
+                            ✕ {t('integrationHub.table.failed', 'Failed')}
+                          </CBadge>
+                        )}
+                        {!conn.lastCheck && (
+                          <CBadge color="secondary">
+                            {t('integrationHub.table.untested', 'Untested')}
+                          </CBadge>
+                        )}
+                      </CTableDataCell>
                       <CTableDataCell className="py-3 text-slate-500 dark:text-slate-400">
                         {conn.createdAt ? new Date(conn.createdAt).toLocaleString() : 'N/A'}
                       </CTableDataCell>
                       <CTableDataCell className="text-center py-3">
                         {!isEditing && (
                           <>
+                            {onTest && (
+                              <CButton
+                                color="primary"
+                                variant="outline"
+                                size="sm"
+                                className="me-2"
+                                title={t('integrationHub.table.testTooltip', 'Test Connection')}
+                                onClick={() => handleTest(conn.id)}
+                                disabled={isActionLoading || testingId === conn.id}
+                              >
+                                {testingId === conn.id ? (
+                                  <CSpinner size="sm" />
+                                ) : (
+                                  <CIcon icon={cilReload} />
+                                )}
+                              </CButton>
+                            )}
                             <CButton
                               color="info"
                               variant="outline"
@@ -240,6 +290,7 @@ ConnectionTable.propTypes = {
   onPageChange: PropTypes.func.isRequired,
   onUpdateLabel: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
+  onTest: PropTypes.func,
   isActionLoading: PropTypes.bool,
 }
 

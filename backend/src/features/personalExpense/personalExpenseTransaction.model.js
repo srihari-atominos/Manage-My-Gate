@@ -98,6 +98,6 @@ const schema = new mongoose.Schema({
 
 schema.index({ orgId: 1, userId: 1, transactionDate: -1, createdAt: -1 });
 schema.index({ orgId: 1, userId: 1, categoryId: 1, transactionDate: -1 });
-schema.index({ orgId: 1, userId: 1, reference: 1 }, { sparse: true });
+schema.index({ orgId: 1, userId: 1, reference: 1 }, { unique: true, partialFilterExpression: { reference: { $type: 'string' } } });
 
 export default mongoose.model('PersonalExpenseTransaction', schema);

@@ -290,7 +290,7 @@ export const CommunityFinanceTransactionsScreen: React.FC = () => {
             {/* Single Export Button that opens Download Options Sheet (Matching Staff Attendance) */}
             <TouchableOpacity
               onPress={() => setShowExportSheet(true)}
-              disabled={isExporting || pagination.totalRecords === 0}
+              disabled={isExporting}
               className="h-8 px-3 rounded-xl border border-border bg-card flex-row items-center justify-center gap-1.5 active:opacity-80"
               accessibilityRole="button"
               accessibilityLabel="Export Transaction Records">

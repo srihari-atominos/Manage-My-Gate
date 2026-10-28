@@ -420,6 +420,13 @@ export function useAmenityBookingWizard(
   // ─── Payment ────────────────────────────────────────────────────────────
   const amountSchedule: AmenityAmountSchedule | null = activeHold?.amountSchedule || null;
   const dueNow = Number(amountSchedule?.dueNowAmount ?? 0);
+
+  // When amount is due and wallet balance is insufficient, default to Online Payment (Razorpay / UPI / Cards)
+  useEffect(() => {
+    if (dueNow > 0 && balance < dueNow && isRazorpayConfigured) {
+      setPaymentMethod('RAZORPAY');
+    }
+  }, [dueNow, balance, isRazorpayConfigured]);
   const currency = pricingSnapshot?.currency || activeHold?.pricingSnapshot?.currency || 'INR';
 
   const goToResult = useCallback(() => {

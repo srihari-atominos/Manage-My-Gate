@@ -692,11 +692,23 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
       selected,
       unitId,
       poll.votingMode,
-      useTransaction ? session : null
+      useTransaction ? session : null,
+      { allowUnvote: payload?.allowUnvote !== false }
     );
 
     if (useTransaction && session) {
       await session.commitTransaction();
+    }
+
+    if (action === 'already_voted') {
+      const updatedPollObj = typeof updatedPoll?.toObject === 'function' ? updatedPoll.toObject() : updatedPoll;
+      return {
+        ...updatedPollObj,
+        hasVoted: true,
+        votedOptions: selected,
+        votedOptionIndex: selected[0],
+        action: 'already_voted'
+      };
     }
 
     if (action === 'unvoted') {

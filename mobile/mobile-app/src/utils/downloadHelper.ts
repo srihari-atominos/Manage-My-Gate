@@ -1,5 +1,17 @@
 import { Platform, Alert } from 'react-native';
 import * as Sharing from 'expo-sharing';
+import { Buffer } from 'buffer';
+
+let ModernFile: any = null;
+let ModernPaths: any = null;
+try {
+  const expoFs = require('expo-file-system');
+  ModernFile = expoFs.File;
+  ModernPaths = expoFs.Paths;
+} catch (e) {
+  ModernFile = null;
+  ModernPaths = null;
+}
 
 let LegacyFileSystem: any = null;
 try {
@@ -13,9 +25,187 @@ try {
 }
 
 /** Strips path separators and unsafe characters so a server-supplied name cannot escape the cache directory. */
-const safeFileName = (name: string) => String(name || 'export').replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '');
+export const safeFileName = (name: string) =>
+  String(name || 'export')
+    .replace(/[^A-Za-z0-9._-]/g, '_')
+    .replace(/^\.+/, '');
 
-export const downloadCSVFile = async (content: string | Blob, fileName: string) => {
+export async function toUint8Array(data: any): Promise<Uint8Array> {
+  if (!data) return new Uint8Array(0);
+  if (data instanceof Uint8Array) return data;
+  if (data instanceof ArrayBuffer) return new Uint8Array(data);
+  if (ArrayBuffer.isView(data)) {
+    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  }
+
+  // Blob or File with .arrayBuffer()
+  if (typeof data === 'object' && typeof data.arrayBuffer === 'function') {
+    try {
+      const ab = await data.arrayBuffer();
+      return new Uint8Array(ab);
+    } catch (e) {
+      // continue to other strategies
+    }
+  }
+
+  // String
+  if (typeof data === 'string') {
+    const clean = data.replace(/^data:.*?,/, '').trim();
+    // Check if it's base64 encoded
+    if (/^[A-Za-z0-9+/=\r\n]+$/.test(clean) && clean.length % 4 === 0) {
+      try {
+        return new Uint8Array(Buffer.from(clean, 'base64'));
+      } catch {}
+    }
+    return new Uint8Array(Buffer.from(clean, 'binary'));
+  }
+
+  // React Native FileReader fallback
+  if (typeof FileReader !== 'undefined') {
+    try {
+      const b64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = String(reader.result || '');
+          resolve(res.includes(',') ? res.split(',')[1] : res);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(data);
+      });
+      return new Uint8Array(Buffer.from(b64, 'base64'));
+    } catch {}
+  }
+
+  return new Uint8Array(0);
+}
+
+export async function toBase64(data: any): Promise<string> {
+  if (!data) return '';
+  if (typeof data === 'string') {
+    const clean = data.replace(/^data:.*?,/, '').trim();
+    if (/^[A-Za-z0-9+/=\r\n]+$/.test(clean) && clean.length % 4 === 0) {
+      return clean;
+    }
+    return Buffer.from(clean, 'binary').toString('base64');
+  }
+
+  if (data instanceof ArrayBuffer) {
+    return Buffer.from(data).toString('base64');
+  }
+
+  if (ArrayBuffer.isView(data)) {
+    return Buffer.from(data.buffer, data.byteOffset, data.byteLength).toString('base64');
+  }
+
+  if (typeof data === 'object' && typeof data.arrayBuffer === 'function') {
+    try {
+      const ab = await data.arrayBuffer();
+      return Buffer.from(ab).toString('base64');
+    } catch {}
+  }
+
+  if (typeof FileReader !== 'undefined') {
+    try {
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = String(reader.result || '');
+          resolve(res.includes(',') ? res.split(',')[1] : res);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(data);
+      });
+    } catch {}
+  }
+
+  return '';
+}
+
+async function saveAndShareNativeFile(
+  data: any,
+  fileName: string,
+  mimeType: string,
+  dialogTitle: string,
+  uti: string
+): Promise<string> {
+  const safeName = safeFileName(fileName);
+  let targetUri = '';
+
+  // 1. Modern Expo 52+ File API
+  try {
+    if (ModernFile && ModernPaths && ModernPaths.cache) {
+      const file = new ModernFile(ModernPaths.cache, safeName);
+      if (!file.exists) {
+        file.create();
+      }
+      const bytes = await toUint8Array(data);
+      file.write(bytes);
+      targetUri = file.uri;
+    }
+  } catch (err) {
+    // Modern file API write failed, fallback to legacy
+  }
+
+  // 2. Legacy FileSystem fallback
+  if (!targetUri) {
+    const fs = LegacyFileSystem || {};
+    const docDir = fs.cacheDirectory || fs.documentDirectory || '';
+    if (docDir) {
+      const baseDir = docDir.endsWith('/') ? docDir : `${docDir}/`;
+      const fileUri = `${baseDir}${safeName}`;
+      const base64Data = await toBase64(data);
+      if (fs.writeAsStringAsync) {
+        await fs.writeAsStringAsync(fileUri, base64Data, {
+          encoding: fs.EncodingType?.Base64 || 'base64',
+        });
+        targetUri = fileUri;
+      }
+    }
+  }
+
+  if (!targetUri) {
+    throw new Error(`Device storage unavailable to save ${fileName}`);
+  }
+
+  // 3. Share or notify
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(targetUri, {
+      mimeType,
+      dialogTitle,
+      UTI: uti,
+    });
+  } else {
+    Alert.alert('File Saved', `File saved at:\n${targetUri}`);
+  }
+
+  return targetUri;
+}
+
+async function downloadWebBlob(
+  data: any,
+  fileName: string,
+  mimeType: string
+): Promise<void> {
+  let blob: Blob;
+  if (data instanceof Blob) {
+    blob = data;
+  } else {
+    const bytes = await toUint8Array(data);
+    blob = new Blob([bytes.buffer as ArrayBuffer], { type: mimeType });
+  }
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', fileName);
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 300);
+}
+
+export const downloadCSVFile = async (content: string | Blob | any, fileName: string) => {
   try {
     let textContent = '';
     if (typeof content === 'string') {
@@ -37,144 +227,97 @@ export const downloadCSVFile = async (content: string | Blob, fileName: string) 
       setTimeout(() => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-      }, 200);
-    } else {
+      }, 300);
+      return;
+    }
+
+    const safeName = safeFileName(fileName);
+    let targetUri = '';
+
+    try {
+      if (ModernFile && ModernPaths && ModernPaths.cache) {
+        const file = new ModernFile(ModernPaths.cache, safeName);
+        if (!file.exists) file.create();
+        file.write(textContent);
+        targetUri = file.uri;
+      }
+    } catch (e) {}
+
+    if (!targetUri) {
       const fs = LegacyFileSystem || {};
       const docDir = fs.cacheDirectory || fs.documentDirectory || '';
-      const fileUri = `${docDir}${safeFileName(fileName)}`;
-      if (fs.writeAsStringAsync) {
-        await fs.writeAsStringAsync(fileUri, textContent, {
-          encoding: 'utf8',
-        });
+      if (docDir) {
+        const baseDir = docDir.endsWith('/') ? docDir : `${docDir}/`;
+        const fileUri = `${baseDir}${safeName}`;
+        if (fs.writeAsStringAsync) {
+          await fs.writeAsStringAsync(fileUri, textContent, {
+            encoding: 'utf8',
+          });
+          targetUri = fileUri;
+        }
       }
+    }
 
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/csv',
-          dialogTitle: `Save or Share ${fileName}`,
-          UTI: 'public.comma-separated-values-text',
-        });
-      } else {
-        Alert.alert('File Saved', `CSV file saved at:\n${fileUri}`);
-      }
+    if (!targetUri) {
+      throw new Error(`Device storage unavailable to save ${fileName}`);
+    }
+
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(targetUri, {
+        mimeType: 'text/csv',
+        dialogTitle: `Save or Share ${fileName}`,
+        UTI: 'public.comma-separated-values-text',
+      });
+    } else {
+      Alert.alert('File Saved', `CSV file saved at:\n${targetUri}`);
     }
   } catch (err: any) {
     console.error('Download CSV error:', err);
     Alert.alert('Download Error', err?.message || 'Could not generate or save CSV file.');
+    throw err;
   }
 };
 
-export const downloadExcelFile = async (data: Blob | string | Uint8Array, fileName: string) => {
+export const downloadExcelFile = async (data: any, fileName: string) => {
   try {
-    let excelBlob: Blob;
-
-    if (typeof data === 'string') {
-      // Base64 string from XLSX.write
-      const cleanB64 = data.replace(/^data:.*,/, '');
-      const binaryString = atob(cleanB64);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      excelBlob = new Blob([bytes.buffer as ArrayBuffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-    } else if (data instanceof Uint8Array) {
-      excelBlob = new Blob([data.buffer as ArrayBuffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-    } else {
-      excelBlob = data as Blob;
-    }
-
+    const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     if (Platform.OS === 'web') {
-      const url = URL.createObjectURL(excelBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 200);
-    } else {
-      const fs = LegacyFileSystem || {};
-      const docDir = fs.cacheDirectory || fs.documentDirectory || '';
-      const fileUri = `${docDir}${safeFileName(fileName)}`;
-      
-      let base64Data = '';
-      if (typeof data === 'string') {
-        base64Data = data.replace(/^data:.*,/, '');
-      } else {
-        const reader = new FileReader();
-        base64Data = await new Promise((resolve, reject) => {
-          reader.onload = () => {
-            const res = reader.result as string;
-            resolve(res.split(',')[1] || res);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(excelBlob);
-        });
-      }
-
-      if (fs.writeAsStringAsync) {
-        await fs.writeAsStringAsync(fileUri, base64Data, {
-          encoding: 'base64',
-        });
-      }
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          dialogTitle: `Save or Share ${fileName}`,
-          UTI: 'com.microsoft.excel.xls',
-        });
-      } else {
-        Alert.alert('File Saved', `Excel file saved at:\n${fileUri}`);
-      }
+      await downloadWebBlob(data, fileName, mimeType);
+      return;
     }
+
+    await saveAndShareNativeFile(
+      data,
+      fileName,
+      mimeType,
+      `Save or Share ${fileName}`,
+      'com.microsoft.excel.xlsx'
+    );
   } catch (err: any) {
     console.error('Download Excel error:', err);
     Alert.alert('Download Error', err?.message || 'Could not generate or save Excel file.');
+    throw err;
   }
 };
 
 /** Downloads a server-generated PDF on web or opens the native share sheet on mobile. */
-export const downloadPDFFile = async (data: Blob, fileName: string) => {
+export const downloadPDFFile = async (data: any, fileName: string) => {
   try {
-    const pdfBlob = data as Blob;
     if (Platform.OS === 'web') {
-      const url = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 200);
+      await downloadWebBlob(data, fileName, 'application/pdf');
       return;
     }
 
-    const fs = LegacyFileSystem || {};
-    const fileUri = `${fs.cacheDirectory || fs.documentDirectory || ''}${safeFileName(fileName)}`;
-    const reader = new FileReader();
-    const base64Data = await new Promise<string>((resolve, reject) => {
-      reader.onload = () => {
-        const result = String(reader.result || '');
-        resolve(result.split(',')[1] || result);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(pdfBlob);
-    });
-    if (fs.writeAsStringAsync) await fs.writeAsStringAsync(fileUri, base64Data, { encoding: 'base64' });
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(fileUri, { mimeType: 'application/pdf', dialogTitle: `Save or Share ${fileName}`, UTI: 'com.adobe.pdf' });
-    } else {
-      Alert.alert('File Saved', `PDF file saved at:\n${fileUri}`);
-    }
+    await saveAndShareNativeFile(
+      data,
+      fileName,
+      'application/pdf',
+      `Save or Share ${fileName}`,
+      'com.adobe.pdf'
+    );
   } catch (err: any) {
     console.error('Download PDF error:', err);
     Alert.alert('Download Error', err?.message || 'Could not generate or save PDF file.');
+    throw err;
   }
 };

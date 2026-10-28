@@ -755,6 +755,27 @@ export class AmenityBookingRepository {
     return await booking.save(session ? { session } : undefined);
   }
 
+  async claimCancellation(id, orgId, updateData = {}, session = null) {
+    if (this.updateStatus !== AmenityBookingRepository.prototype.updateStatus) {
+      return await this.updateStatus(id, orgId, updateData.status || 'cancelled', updateData, session);
+    }
+    const query = {
+      orgId,
+      status: { $nin: ['rejected', 'cancelled', 'checked-in', 'completed'] },
+    };
+    const cleanId = String(id || '').trim();
+    if (mongoose.Types.ObjectId.isValid(cleanId)) {
+      query.$or = [{ _id: new mongoose.Types.ObjectId(cleanId) }, { bookingId: cleanId }];
+    } else {
+      query.bookingId = cleanId;
+    }
+    return await AmenityBooking.findOneAndUpdate(
+      query,
+      { $set: updateData },
+      { returnDocument: 'after', session }
+    ).populate('amenityId userId');
+  }
+
   async updateStatus(id, orgId, status, reviewData = {}, session = null) {
     const query = { orgId };
     const cleanId = String(id || '').trim();

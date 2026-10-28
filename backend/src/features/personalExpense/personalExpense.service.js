@@ -51,6 +51,12 @@ export class PersonalExpenseService {
     return { transaction: await this.repo.createTransaction(transaction), ...warning };
   }
 
+  async getTransactionByReference(user, reference) {
+    if (!reference) return null;
+    const scope = this.scope(user);
+    return await this.repo.findTransactionByReference({ ...scope, isDeleted: false }, reference);
+  }
+
   async updateTransaction(user, id, body) {
     const scope = this.scope(user);
     const existing = await this.repo.findTransaction({ ...scope, isDeleted: false }, id);
@@ -85,7 +91,12 @@ export class PersonalExpenseService {
     const receipt = { storageName: file.filename, originalName: String(file.originalname || 'receipt').slice(0, 180), mimeType: file.mimetype, size: file.size, uploadedAt: new Date(), ocrStatus: 'PROCESSING', ocrEngineStatus: 'PROCESSING', ocrError: null, ocr: null };
     await this.repo.updateTransaction({ ...scope, isDeleted: false }, id, { receipt });
     if (previous) { try { unlinkSafe(resolveSecureFilePath(receiptUploadDir, previous)); } catch {} }
-    const outcome = await extractReceipt(file);
+    let outcome = { status: 'COMPLETED', engineStatus: 'COMPLETED', error: null, result: null };
+    try {
+      outcome = await extractReceipt(file);
+    } catch (ocrErr) {
+      outcome = { status: 'FAILED', engineStatus: 'FAILED', error: String(ocrErr?.message || 'OCR processing failed').slice(0, 240), result: null };
+    }
     const updated = await this.repo.updateTransaction({ ...scope, isDeleted: false }, id, { receipt: { ...receipt, ocrStatus: outcome.status, ocrEngineStatus: outcome.engineStatus || outcome.status, ocrError: outcome.error, ocr: outcome.result } });
     return updated;
   }

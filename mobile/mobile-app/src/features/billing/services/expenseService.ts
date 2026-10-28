@@ -61,6 +61,8 @@ export interface ExpenseSummaryData {
   recordedPaid?: number;
   unpaidBalance?: number;
   todayExpenses?: number;
+  allTimeExpenses?: number;
+  allTimeCount?: number;
   expenseCount?: number;
   categoryBreakdown?: ExpenseCategoryBreakdown[];
   typeBreakdown?: Array<{ type: string; amount: number; count: number }>;

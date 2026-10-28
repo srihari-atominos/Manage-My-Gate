@@ -10,8 +10,8 @@ export const connectRules = [
     .notEmpty()
     .withMessage('Provider is required')
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'msg91', 'banking', 'razorpay'])
-    .withMessage('Invalid provider. Allowed values: openai, twilio, resend, smtp, firebase, messagecentral, banking, razorpay'),
+    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'msg91', 'banking', 'razorpay', 'gemini'])
+    .withMessage('Invalid provider. Allowed values: openai, twilio, resend, smtp, firebase, messagecentral, msg91, banking, razorpay, gemini'),
 
 
   body('accountLabel')
@@ -175,6 +175,20 @@ export const connectRules = [
     .isString()
     .withMessage('Environment must be a valid string'),
 
+  // Google Gemini AI Voice Assistant validation rules
+  body('credentials.apiKey')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'gemini')
+    .trim().notEmpty().withMessage('API Key (apiKey) is required for Gemini AI integration').isString(),
+  body('credentials.model')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'gemini' && value !== undefined && value !== '')
+    .trim().isString().withMessage('Model must be a valid string'),
+  body('credentials.sessionDurationSec')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'gemini' && value !== undefined && value !== '')
+    .isInt({ min: 30, max: 600 }).withMessage('Session duration must be between 30 and 600 seconds'),
+  body('credentials.maxDailySessions')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'gemini' && value !== undefined && value !== '')
+    .isInt({ min: 1, max: 100 }).withMessage('Max daily sessions must be between 1 and 100'),
+
   // MSG91 Send OTP validation rules
   body('credentials.authKey')
     .if((value, { req }) => req.body.provider?.toLowerCase() === 'msg91')
@@ -299,7 +313,7 @@ export const listRules = [
     .optional()
     .trim()
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'msg91', 'banking', 'razorpay'])
+    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'msg91', 'banking', 'razorpay', 'gemini'])
     .withMessage('Invalid provider filter'),
 
 ];

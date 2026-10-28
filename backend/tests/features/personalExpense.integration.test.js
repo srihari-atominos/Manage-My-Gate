@@ -46,3 +46,20 @@ test('persists explicit settlement status and isolates receipt operations', asyn
   const unpaid = await service.createTransaction(user, { type: 'EXPENSE', amount: '5.00', categoryId: 'food_dining', transactionDate: '2026-10-22', paymentMethod: 'CASH', paymentSettlement: 'UNPAID' });
   await assert.rejects(service.uploadReceipt(user, String(unpaid.transaction._id), { filename: 'receipt-unpaid.jpg', originalname: 'receipt.jpg', mimetype: 'image/jpeg', size: 10, path: '' }), /only be attached to a paid transaction/);
 });
+test('computes dashboard metrics and category breakdown with workspace isolation', async () => {
+  await service.createTransaction(user, { type: 'EXPENSE', amount: '50.00', categoryId: 'food_dining', transactionDate: '2026-10-15', paymentMethod: 'UPI', paymentSettlement: 'PAID' });
+  await service.createTransaction(user, { type: 'INCOME', amount: '200.00', categoryId: 'salary', transactionDate: '2026-10-01', paymentMethod: 'BANK_TRANSFER', paymentSettlement: 'PAID' });
+  const dashboard = await service.dashboard(user, '2026-10');
+  assert.equal(dashboard.incomeMinor, 20000);
+  assert.equal(dashboard.expenseMinor, 5000);
+  assert.equal(dashboard.balanceMinor, 15000);
+  assert.equal(dashboard.categoryBreakdown.length, 1);
+  assert.equal(dashboard.categoryBreakdown[0]._id.categoryId, 'food_dining');
+  assert.equal(dashboard.categoryBreakdown[0].amountMinor, 5000);
+  assert.equal(dashboard.recentTransactions.length, 2);
+
+  const otherDashboard = await service.dashboard(otherUser, '2026-10');
+  assert.equal(otherDashboard.incomeMinor, 0);
+  assert.equal(otherDashboard.expenseMinor, 0);
+  assert.equal(otherDashboard.categoryBreakdown.length, 0);
+});
