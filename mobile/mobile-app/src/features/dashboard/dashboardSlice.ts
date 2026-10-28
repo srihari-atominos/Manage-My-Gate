@@ -8,7 +8,7 @@ import type { RootState } from '../../store/store';
 
 export const DEFAULT_QUICK_ACTIONS = [
   'visitor_passes',
-  'billing_dashboard',
+  'billing_my_invoices',
   'complaints_track_requests',
   'amenities_discover',
   'community_engagement',

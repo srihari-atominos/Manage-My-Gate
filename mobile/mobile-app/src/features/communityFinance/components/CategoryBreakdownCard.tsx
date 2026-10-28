@@ -135,11 +135,7 @@ export const CategoryBreakdownCard: React.FC<CategoryBreakdownCardProps> = ({
                       }`}>
                       {formatINR(amount)}
                     </Text>
-                    <View className="bg-muted/60 border border-border/50 px-1.5 py-0.2 rounded-full">
-                      <Text className="text-[10px] font-medium text-muted-foreground">
-                        {percentage}%
-                      </Text>
-                    </View>
+
                   </View>
                 </View>
                 <ProgressBar

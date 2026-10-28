@@ -56,8 +56,6 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   { id: 'financial_history', name: 'Financial History', subtitle: 'Receipts & Transactions', iconName: 'Receipt', colorBg: 'bg-teal-50 dark:bg-teal-950/40', colorIcon: '#0D9488', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/history', permission: 'billing:action_center', categoryKey: 'digital_wallet', categoryName: 'Digital Wallet & Ledger' },
 
   // 6. Financial Suite & Billing
-  { id: 'personal_expense_manager', name: 'Personal Expense Manager', subtitle: 'Your income, expenses & budgets', iconName: 'ChartNoAxesCombined', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', colorIcon: '#059669', iconShapeClass: 'rounded-[18px]', route: '/(resident)/expense-manager', categoryKey: 'personal_finance', categoryName: 'Personal Finance' },
-
 
   { id: 'billing_dashboard', name: 'Billing & Invoice Dashboard', subtitle: 'Income, invoices, payments & expenses', iconName: 'Receipt', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', colorIcon: '#6366F1', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing', permission: 'billing:billing_hub', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
   { id: 'billing_my_dues', name: 'My Dues', subtitle: 'Pending Invoices', dashboardVisible: false, iconName: 'FileText', colorBg: 'bg-amber-50 dark:bg-amber-950/40', colorIcon: '#D97706', iconShapeClass: 'rounded-[18px]', route: '/(resident)/billing/my-dues', permission: 'billing:my_dues', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },

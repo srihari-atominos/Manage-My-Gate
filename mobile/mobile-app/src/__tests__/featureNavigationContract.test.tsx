@@ -4,11 +4,9 @@ import { isFeatureAllowedForUser } from '../utils/rbac';
 
 describe('Feature Navigation & Routing Contract Test Suite', () => {
   describe('1. Canonical Route Registrations in Catalog', () => {
-    it('registers personal_expense_manager with canonical route /(resident)/expense-manager', () => {
+    it('ensures personal_expense_manager is omitted from active community catalog', () => {
       const item = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'personal_expense_manager');
-      expect(item).toBeDefined();
-      expect(item?.route).toBe('/(resident)/expense-manager');
-      expect(item?.categoryKey).toBe('personal_finance');
+      expect(item).toBeUndefined();
     });
 
     it('registers community_finance with canonical route /(resident)/admin/billing/community-finance', () => {
@@ -31,9 +29,9 @@ describe('Feature Navigation & Routing Contract Test Suite', () => {
       permissions: ['billing:dashboard', 'billing:ledger', 'visitor:admin'],
     };
 
-    it('allows resident to access personal_expense_manager', () => {
-      const item = ALL_AVAILABLE_FEATURES.find((f) => f.id === 'personal_expense_manager')!;
-      expect(isFeatureAllowedForUser(item, residentUser)).toBe(true);
+    it('disallows resident owner/tenant from accessing personal_expense_manager', () => {
+      const item = { id: 'personal_expense_manager' };
+      expect(isFeatureAllowedForUser(item, residentUser)).toBe(false);
     });
 
     it('disallows resident from accessing administrative community_finance', () => {

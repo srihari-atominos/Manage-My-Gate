@@ -130,7 +130,7 @@ export const TransactionDetailSheet: React.FC<TransactionDetailSheetProps> = ({
           {/* Status badge */}
           <StatusBadge
             variant={statusVariant}
-            label={transaction.status || 'RECORDED'}
+            label={(transaction.status === 'RECONCILED' ? 'VERIFIED' : transaction.status) || 'RECORDED'}
             size="md"
             className="py-1 px-3 rounded-full shadow-sm"
           />
@@ -193,7 +193,7 @@ export const TransactionDetailSheet: React.FC<TransactionDetailSheetProps> = ({
           ) : null}
           {formattedUpdatedAt ? (
             <DetailRow
-              label="Reconciled At"
+              label="Verified At"
               value={formattedUpdatedAt}
               isLast
               iconName="Clock"

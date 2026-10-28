@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Pressable, Animated, Easing } from 'react-native';
+import { View, TouchableOpacity, Pressable, Animated, Easing, Platform } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
@@ -33,57 +33,22 @@ const Card3D: React.FC<{
   onPress?: () => void;
   accessibilityLabel?: string;
   children: React.ReactNode;
-}> = ({ index, className, onPress, accessibilityLabel, children }) => {
-  const enter = useRef(new Animated.Value(0)).current;
-  const press = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(enter, {
-      toValue: 1,
-      duration: 520,
-      delay: index * 110,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [enter, index]);
-
-  const animatePress = (to: number) =>
-    Animated.spring(press, { toValue: to, friction: 6, tension: 160, useNativeDriver: true }).start();
-
-  const style = {
-    opacity: enter,
-    transform: [
-      { perspective: 900 },
-      { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) },
-      { rotateX: enter.interpolate({ inputRange: [0, 1], outputRange: ['28deg', '0deg'] }) },
-      { rotateX: press.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '6deg'] }) },
-      { scale: press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.97] }) },
-    ],
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 5,
-  };
-
+}> = ({ className, onPress, accessibilityLabel, children }) => {
   const body = <View className={className}>{children}</View>;
 
-  return (
-    <Animated.View style={[style, onPress ? { flex: 1 } : null]}>
-      {onPress ? (
-        <Pressable
-          onPress={onPress}
-          onPressIn={() => animatePress(1)}
-          onPressOut={() => animatePress(0)}
-          accessibilityRole="button"
-          accessibilityLabel={accessibilityLabel}>
-          {body}
-        </Pressable>
-      ) : (
-        body
-      )}
-    </Animated.View>
-  );
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        className="flex-1 active:opacity-80"
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}>
+        {body}
+      </Pressable>
+    );
+  }
+
+  return body;
 };
 
 const RUNWAY_MAX_MONTHS = 12;
@@ -196,7 +161,7 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
   return (
     <View className="mb-5 gap-4">
       {/* ── 1. Net Balance + Runway ── */}
-      <Card3D index={0} className="p-5 bg-card border border-border/50 rounded-3xl">
+      <Card3D index={0} className="p-5 bg-card bg-white dark:bg-card border border-border/80 rounded-3xl shadow-sm">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-2.5 flex-1 me-2">
             <View
@@ -209,7 +174,7 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
                 className={isDeficit ? 'text-rose-600 dark:text-rose-400' : 'text-primary'}
               />
             </View>
-            <Text className="text-sm font-semibold text-muted-foreground">
+            <Text className="text-base font-bold text-foreground font-sans tracking-tight">
               {isDeficit ? 'Net Deficit' : 'Net Balance'}
             </Text>
           </View>
@@ -230,31 +195,20 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
         </Text>
 
         {/* Runway strip */}
-        <View className="mt-5 p-4 rounded-2xl bg-muted/40 border border-border/40">
+        <View className="mt-5 p-4 rounded-2xl bg-muted/20 dark:bg-muted/40 border border-border/70">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2">
               <Icon as={ShieldCheck} size={16} className="text-emerald-600 dark:text-emerald-400" />
-              <Text className="text-sm font-semibold text-foreground">Runway</Text>
+              <Text className="text-sm font-bold text-foreground font-sans">Runway</Text>
             </View>
-            {onOpenSimulator && (
-              <TouchableOpacity
-                onPress={onOpenSimulator}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="View Reserve & Cash Flow Details"
-                hitSlop={8}
-                className="flex-row items-center">
-                <Text className="text-xs font-semibold text-primary">Details</Text>
-                <Icon as={ChevronRight} size={14} className="text-primary" />
-              </TouchableOpacity>
-            )}
+            
           </View>
 
-          <Text className="text-2xl font-extrabold text-foreground mb-3">{exactRunwayText}</Text>
+          <Text className="text-2xl font-black text-foreground font-sans mb-3">{exactRunwayText}</Text>
 
           <RunwayBar months={Number(rawMonths) || 0} />
 
-          <Text className="text-xs text-muted-foreground mt-3">
+          <Text className="text-xs font-medium text-foreground/80 mt-3">
             {isSelfSustaining
               ? 'Collections exceed expenses'
               : `Funds cover about ${exactRunwayText} of expenses`}
@@ -268,7 +222,7 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
           index={1}
           onPress={onViewInflows}
           accessibilityLabel="View Collections Ledger"
-          className="flex-1 p-4 bg-card border border-border/50 rounded-2xl">
+          className="flex-1 p-4 bg-card bg-white dark:bg-card border border-border/80 rounded-2xl shadow-sm">
           <View className="flex-row items-center justify-between mb-3">
             <View className="w-9 h-9 rounded-full bg-emerald-500/15 items-center justify-center">
               <Icon as={ArrowDownLeft} size={18} className="text-emerald-600 dark:text-emerald-400" />
@@ -285,7 +239,7 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
           index={2}
           onPress={onViewOutflows}
           accessibilityLabel="View Expenses Ledger"
-          className="flex-1 p-4 bg-card border border-border/50 rounded-2xl">
+          className="flex-1 p-4 bg-card bg-white dark:bg-card border border-border/80 rounded-2xl shadow-sm">
           <View className="flex-row items-center justify-between mb-3">
             <View className="w-9 h-9 rounded-full bg-rose-500/15 items-center justify-center">
               <Icon as={ArrowUpRight} size={18} className="text-rose-600 dark:text-rose-400" />
@@ -307,16 +261,18 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
       {/* ── 4. Pending Dues ── */}
       <Card3D
         index={3}
-        className="px-4 py-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+        className="px-4 py-4 bg-card bg-white dark:bg-card border border-border/80 rounded-2xl shadow-sm">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2.5 flex-1 me-3">
-            <Icon as={AlertCircle} size={20} className="text-amber-700 dark:text-amber-400" />
+            <View className="w-9 h-9 rounded-full bg-amber-500/15 items-center justify-center">
+              <Icon as={AlertCircle} size={18} className="text-amber-600 dark:text-amber-400" />
+            </View>
             <View className="flex-1">
-              <Text className="text-sm font-semibold text-foreground">Pending Dues</Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">Yet to be collected</Text>
+              <Text className="text-xs font-medium text-muted-foreground">Pending Dues</Text>
+              <Text className="text-xs text-muted-foreground/80 mt-0.5">Yet to be collected</Text>
             </View>
           </View>
-          <Text className="text-lg font-bold text-amber-800 dark:text-amber-300">
+          <Text numberOfLines={1} adjustsFontSizeToFit className="text-xl font-bold text-foreground">
             {formatINR(outstandingDues)}
           </Text>
         </View>

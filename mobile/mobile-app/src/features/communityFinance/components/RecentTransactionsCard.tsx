@@ -123,13 +123,7 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
 
                     <View className="flex-row items-center flex-wrap gap-1.5 mt-0.5">
                       <Text className="text-[10px] text-muted-foreground font-sans">{dateStr}</Text>
-                      {tx.domain ? (
-                        <View className="bg-primary/10 border border-primary/20 px-1.5 py-0.2 rounded-full">
-                          <Text className="text-[9px] font-bold text-primary uppercase font-sans">
-                            {tx.domain}
-                          </Text>
-                        </View>
-                      ) : null}
+                      
                     </View>
                   </View>
                 </View>
@@ -157,7 +151,7 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
                         ? 'danger'
                         : 'neutral'
                     }
-                    label={tx.status || 'RECORDED'}
+                    label={(tx.status === 'RECONCILED' ? 'VERIFIED' : tx.status) || 'RECORDED'}
                     size="sm"
                     className="py-0.2 px-2 rounded-full"
                   />
