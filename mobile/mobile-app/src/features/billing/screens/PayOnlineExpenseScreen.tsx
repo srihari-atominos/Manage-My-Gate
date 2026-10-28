@@ -18,6 +18,7 @@ import {
   Camera,
   Check,
   CheckCircle2,
+  ShieldCheck,
   CreditCard,
   ExternalLink,
   FileCheck2,
@@ -107,6 +108,7 @@ export default function PayOnlineExpenseScreen() {
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'BANK_TRANSFER'>('UPI');
   const [detectedApp, setDetectedApp] = useState<string | null>(null);
   const [items, setItems] = useState<ExtractedItem[]>([]);
+  const [receiptOcrAmount, setReceiptOcrAmount] = useState<number | null>(null);
   const [ocrDescription, setOcrDescription] = useState('');
   const [ocrFeedback, setOcrFeedback] = useState<{ tone: 'info' | 'success' | 'warning' | 'error'; message: string } | null>(null);
 
@@ -200,6 +202,7 @@ export default function PayOnlineExpenseScreen() {
       if (ocrAmount) {
         const parsedAmount = ocrAmount;
         setAmount(parsedAmount);
+        setReceiptOcrAmount(Number(parsedAmount));
         extracted.push(`Amount: ${rupee}${parsedAmount}`);
       }
 
@@ -298,6 +301,19 @@ export default function PayOnlineExpenseScreen() {
       Alert.alert('Valid amount required', 'Enter the amount paid before saving.');
       return;
     }
+
+    // Receipt verification check: If a receipt was provided with an extracted paid amount,
+    // the admin must ensure the receipt paid amount and manually entered amount match before accepting as verified.
+    if (receiptOcrAmount !== null && Number.isFinite(receiptOcrAmount) && receiptOcrAmount > 0) {
+      const diff = Math.abs(numAmount - receiptOcrAmount);
+      if (diff > 0.01) {
+        Alert.alert(
+          'Receipt Amount Mismatch',
+          `The manually entered amount (${formatCurrency(numAmount)}) does not match the receipt paid amount (${formatCurrency(receiptOcrAmount)}).\n\nBoth amounts must be identical to be accepted as verified.`
+        );
+        return;
+      }
+    }
     try {
       setSaving(true);
       setSaveError(null);
@@ -342,6 +358,10 @@ export default function PayOnlineExpenseScreen() {
           fundingSource: 'COMMUNITY_BANK_ACCOUNT',
           paymentDate: isoDate,
           transactionReference: reference.trim() || undefined,
+          autoReconcile: receiptOcrAmount !== null && Math.abs(numAmount - receiptOcrAmount) <= 0.01,
+          reconciliationNote: receiptOcrAmount !== null && Math.abs(numAmount - receiptOcrAmount) <= 0.01
+            ? 'Verified by matching receipt paid amount with entered amount'
+            : undefined,
         },
       });
 
@@ -522,6 +542,7 @@ export default function PayOnlineExpenseScreen() {
                       <Pressable
                         onPress={() => {
                           setReceiptFile(null);
+                          setReceiptOcrAmount(null);
                           setOcrFeedback(null);
                         }}
                         className="rounded-full p-2 hover:bg-destructive/10 active:opacity-70"
@@ -680,6 +701,35 @@ export default function PayOnlineExpenseScreen() {
                   helperText={amount ? `Recorded as ${formatCurrency(amount)}` : 'Auto-filled from screenshot or enter manually'}
                   onChangeText={setAmount}
                 />
+
+                {/* Receipt vs Manually Entered Money Verification Check */}
+                {receiptOcrAmount !== null && Number.isFinite(receiptOcrAmount) && receiptOcrAmount > 0 && (
+                  <View
+                    className={`flex-row items-center gap-2 rounded-xl p-3 border ${
+                      Number.isFinite(numAmount) && Math.abs(numAmount - receiptOcrAmount) <= 0.01
+                        ? 'border-emerald-500/30 bg-emerald-500/10'
+                        : 'border-amber-500/30 bg-amber-500/10'
+                    }`}
+                  >
+                    {Number.isFinite(numAmount) && Math.abs(numAmount - receiptOcrAmount) <= 0.01 ? (
+                      <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+                    )}
+                    <View className="flex-1">
+                      <Text className="text-xs font-bold text-foreground">
+                        {Number.isFinite(numAmount) && Math.abs(numAmount - receiptOcrAmount) <= 0.01
+                          ? 'Receipt Match: Verified'
+                          : 'Receipt Match: Amount Mismatch'}
+                      </Text>
+                      <Text className="text-[11px] text-muted-foreground mt-0.5">
+                        {Number.isFinite(numAmount) && Math.abs(numAmount - receiptOcrAmount) <= 0.01
+                          ? `Receipt paid money (${formatCurrency(receiptOcrAmount)}) matches manually entered money. Ready to accept as verified.`
+                          : `Receipt paid money is ${formatCurrency(receiptOcrAmount)}. Both amounts must be identical to accept as verified.`}
+                      </Text>
+                    </View>
+                  </View>
+                )}
 
                 <DatePicker
                   label="Payment Date"

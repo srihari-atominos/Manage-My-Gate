@@ -134,7 +134,7 @@ export const TransactionItemCard: React.FC<TransactionItemCardProps> = ({
 
           <StatusBadge
             variant={statusVariant}
-            label={(transaction.status === 'RECONCILED' ? 'VERIFIED' : transaction.status) || 'RECORDED'}
+            label={transaction.status === 'RECONCILED' ? 'VERIFIED' : (transaction.status === 'RECORDED' || !transaction.status ? 'VERIFICATION PENDING' : transaction.status)}
             size="sm"
             className="py-1 px-2.5 rounded-full shadow-sm"
           />
