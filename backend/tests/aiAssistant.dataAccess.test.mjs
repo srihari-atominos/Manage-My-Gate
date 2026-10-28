@@ -217,6 +217,72 @@ test('4. Community Finance: Authorized admin receives verified community totals,
   assert.equal(res.action.route, '/(resident)/admin/billing/community-finance');
 });
 
+test('4b. Community Finance: Canonical getDashboard structure correctly yields expenses, collections, categories, and recent records', async () => {
+  setTestServices({
+    communityFinanceService: {
+      getDashboard: async (orgId, params) => {
+        return {
+          overview: {
+            totalExpensesIncurred: 5708,
+            grossSuccessfulCollections: 2500,
+            netCollectionsAfterRefunds: 2500,
+            netSurplusOrDeficit: -3208,
+            maintenanceCollections: 2500,
+            amenityCollections: 0,
+            outstandingDues: 31500,
+          },
+          breakdowns: {
+            expense: [
+              { category: 'Repairs & Maintenance', amount: 5708, count: 1, percentage: 100 },
+            ],
+            income: [
+              { source: 'Maintenance Collections', amount: 2500, percentage: 100 },
+            ],
+          },
+          expenses: {
+            records: [
+              {
+                _id: '6ae1ea6c9bf64f6da1c74372',
+                expenseNumber: 'EXP-2026-A1C74371',
+                name: 'Repairs & Maintenance - SANE REE MUTHUARUL ENTERPR',
+                category: 'Repairs & Maintenance',
+                totalAmount: 5708,
+                expenseDate: '2026-10-14T18:30:00.000Z',
+                settlementStatus: 'PAID',
+              },
+            ],
+          },
+          allTimeSeries: [
+            { periodKey: '2026-10', income: 2500, expense: 9752.6 },
+          ],
+        };
+      },
+    },
+  });
+
+  const res = await executeAssistantTool(mockAdminUser, mockTenant, 'get_community_finance_summary', {
+    period: 'October 2026',
+  });
+
+  assert.equal(res.success, true);
+  assert.equal(res.data.authorized, true);
+  assert.equal(res.data.period, 'October 2026');
+  assert.equal(res.data.totalCommunityExpenses, 5708);
+  assert.equal(res.data.allTimeTotalCommunityExpenses, 9752.6);
+  assert.equal(res.data.totalCollections, 2500);
+  assert.equal(res.data.netSurplusOrDeficit, -3208);
+  assert.equal(res.data.isSurplus, false);
+  assert.equal(res.data.maintenanceCollections, 2500);
+  assert.equal(res.data.cumulativeArrears, 31500);
+  assert.equal(res.data.topExpenseCategories.length, 1);
+  assert.equal(res.data.topExpenseCategories[0].category, 'Repairs & Maintenance');
+  assert.equal(res.data.topExpenseCategories[0].amount, 5708);
+  assert.equal(res.data.recentCommunityExpenses.length, 1);
+  assert.equal(res.data.recentCommunityExpenses[0].expenseNumber, 'EXP-2026-A1C74371');
+  assert.equal(res.data.recentCommunityExpenses[0].name, 'Repairs & Maintenance - SANE REE MUTHUARUL ENTERPR');
+  assert.equal(res.data.recentCommunityExpenses[0].amount, 5708);
+});
+
 test('5. Community Finance: Unauthorized resident is rejected and redirected to personal dues', async () => {
   const res = await executeAssistantTool(mockResidentUser, mockTenant, 'get_community_finance_summary', {
     period: '2026-10',

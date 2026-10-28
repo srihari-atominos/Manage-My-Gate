@@ -64,6 +64,9 @@ test('2. NLU: Recognizes community finance & society expenses across phrasings',
     'What is our total community expenses?',
     'How much was spent by society in October 2026?',
     'Community budget and balance',
+    'what is our current month community expesnses',
+    'out community have expense but it does not taken the data properly',
+    'show all community expenses',
   ];
 
   for (const q of financeQueries) {
