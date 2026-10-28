@@ -197,12 +197,12 @@ export default function ExpensesScreen() {
         expenseService.summary(summaryParams),
       ]);
       const records = list?.records || [];
-      const totalsData = totals || null;
+      const totalsData = totals || {};
       setData(records);
       setSummary(totalsData);
     } catch (e: any) {
       setData([]);
-      setSummary(null);
+      setSummary({});
     } finally {
       setLoading(false);
     }
@@ -312,7 +312,7 @@ export default function ExpensesScreen() {
 
   const fourthKpiCard = {
     title: 'Total Expense',
-    value: formatCurrency(summary.allTimeExpenses ?? summary.totalExpenses),
+    value: formatCurrency(summary?.allTimeExpenses ?? summary?.totalExpenses),
     iconName: 'Receipt' as const,
   };
 
@@ -321,22 +321,22 @@ export default function ExpensesScreen() {
       <View className="gap-3 pb-2">
         <KPIDashboardStrip
           layout="grid2x2"
-          loading={loading && summary.totalExpenses == null}
+          loading={loading && summary?.totalExpenses == null}
           cards={[
             {
               title: primaryKpiTitle,
-              value: formatCurrency(summary.totalExpenses),
+              value: formatCurrency(summary?.totalExpenses),
               iconName: 'Receipt',
             },
             {
               title: 'Recorded as Paid',
-              value: formatCurrency(summary.recordedPaid),
+              value: formatCurrency(summary?.recordedPaid),
               iconName: 'CreditCard',
               variant: 'success',
             },
             {
               title: 'Unpaid Balance',
-              value: formatCurrency(summary.unpaidBalance),
+              value: formatCurrency(summary?.unpaidBalance),
               iconName: 'AlertCircle',
               variant: 'warning',
             },
