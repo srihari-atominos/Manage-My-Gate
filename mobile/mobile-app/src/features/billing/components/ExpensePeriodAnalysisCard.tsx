@@ -160,12 +160,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
                   {topCategory.category}
                 </Text>
               </View>
-              <StatusBadge
-                label={`${topCategory.percentage}`}
-                variant="info"
-                size="sm"
-              />
-            </View>
+              </View>
           )}
 
           {/* Category Progress Bars */}
@@ -191,10 +186,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
                       <Text className="text-xs font-bold text-foreground">
                         {formatCurrency(item.amount)}
                       </Text>
-                      <Text className="text-[11px] font-bold text-muted-foreground w-11 text-right">
-                        {item.percentage}
-                      </Text>
-                    </View>
+                      </View>
                   </View>
 
                   <ProgressBar

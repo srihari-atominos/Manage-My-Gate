@@ -81,6 +81,7 @@ export default function ExpensesScreen() {
   const [showExportSheet, setShowExportSheet] = useState(false);
   const [selectedExpenseForMarkPaid, setSelectedExpenseForMarkPaid] = useState<any>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportScope, setExportScope] = useState<'CURRENT_FILTER' | 'ALL_TIME'>('ALL_TIME');
 
   const handlePeriodChange = useCallback((newPeriod: string) => {
     setPeriod(newPeriod);
@@ -100,6 +101,9 @@ export default function ExpensesScreen() {
   }, [routePeriod, handlePeriodChange, period]);
 
   const buildExportQuery = useCallback(() => {
+    if (exportScope === 'ALL_TIME') {
+      return { period: 'ALL_TIME' };
+    }
     const query: Record<string, string> = {};
     if (period && period !== 'ALL_TIME') query.period = period;
     if (status) query.settlementStatus = status;
@@ -109,10 +113,13 @@ export default function ExpensesScreen() {
     if (endDate) query.endDate = new Date(`${endDate}T23:59:59.999`).toISOString();
     if (search.trim()) query.search = search.trim();
     return query;
-  }, [period, status, expenseType, category, startDate, endDate, search]);
+  }, [exportScope, period, status, expenseType, category, startDate, endDate, search]);
 
   const exportFileName = (ext: 'csv' | 'xlsx' | 'pdf') => {
     const today = new Date().toISOString().split('T')[0];
+    if (exportScope === 'ALL_TIME') {
+      return `community_expenses_all_time_${today}.${ext}`;
+    }
     const dateRange = startDate && endDate && startDate !== endDate
       ? `${startDate}_to_${endDate}`
       : startDate || today;
@@ -681,47 +688,83 @@ export default function ExpensesScreen() {
         title="Export Expenses"
       >
         <View className="p-4 gap-3">
+          {/* Export Scope Selector (All Time vs Current Filter) */}
+          <View className="flex-row rounded-xl bg-muted/60 p-1">
+            <Pressable
+              onPress={() => setExportScope('ALL_TIME')}
+              className={`flex-1 py-2 items-center justify-center rounded-lg ${
+                exportScope === 'ALL_TIME' ? 'bg-card shadow-sm border border-border' : ''
+              }`}
+            >
+              <Text
+                className={`text-xs font-semibold ${
+                  exportScope === 'ALL_TIME' ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                All Expenses (All Time)
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setExportScope('CURRENT_FILTER')}
+              className={`flex-1 py-2 items-center justify-center rounded-lg ${
+                exportScope === 'CURRENT_FILTER' ? 'bg-card shadow-sm border border-border' : ''
+              }`}
+            >
+              <Text
+                className={`text-xs font-semibold ${
+                  exportScope === 'CURRENT_FILTER' ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                Current View Filter
+              </Text>
+            </Pressable>
+          </View>
+
           {/* Active Filter Parameters Summary Card */}
           <View className="rounded-2xl border border-border/80 bg-muted/40 p-3.5 gap-2">
             <View className="flex-row items-center justify-between">
-              <Text className="text-xs font-bold text-foreground">Active Filter Parameters</Text>
-              <Text className="text-xs font-semibold text-primary">{data.length} records</Text>
+              <Text className="text-xs font-bold text-foreground">
+                {exportScope === 'ALL_TIME' ? 'Export Scope' : 'Active Filter Parameters'}
+              </Text>
+              <Text className="text-xs font-semibold text-primary">
+                {exportScope === 'ALL_TIME' ? 'All Community Records' : `${data.length} records in view`}
+              </Text>
             </View>
             <View className="flex-row flex-wrap gap-1.5">
               <View className="rounded-md bg-card px-2 py-1 border border-border/60">
                 <Text className="text-[11px] font-medium text-muted-foreground">
-                  Period: <Text className="font-bold text-foreground">{periodDisplayNames[period] || period}</Text>
+                  Scope: <Text className="font-bold text-foreground">{exportScope === 'ALL_TIME' ? 'All Time (Every Expense)' : periodDisplayNames[period] || period}</Text>
                 </Text>
               </View>
-              {status ? (
+              {exportScope === 'CURRENT_FILTER' && status ? (
                 <View className="rounded-md bg-card px-2 py-1 border border-border/60">
                   <Text className="text-[11px] font-medium text-muted-foreground">
                     Status: <Text className="font-bold text-foreground">{readable(status)}</Text>
                   </Text>
                 </View>
               ) : null}
-              {category ? (
+              {exportScope === 'CURRENT_FILTER' && category ? (
                 <View className="rounded-md bg-card px-2 py-1 border border-border/60">
                   <Text className="text-[11px] font-medium text-muted-foreground">
                     Category: <Text className="font-bold text-foreground">{category}</Text>
                   </Text>
                 </View>
               ) : null}
-              {expenseType ? (
+              {exportScope === 'CURRENT_FILTER' && expenseType ? (
                 <View className="rounded-md bg-card px-2 py-1 border border-border/60">
                   <Text className="text-[11px] font-medium text-muted-foreground">
                     Type: <Text className="font-bold text-foreground">{readable(expenseType)}</Text>
                   </Text>
                 </View>
               ) : null}
-              {startDate || endDate ? (
+              {exportScope === 'CURRENT_FILTER' && (startDate || endDate) ? (
                 <View className="rounded-md bg-card px-2 py-1 border border-border/60">
                   <Text className="text-[11px] font-medium text-muted-foreground">
                     Dates: <Text className="font-bold text-foreground">{startDate || 'Start'} to {endDate || 'End'}</Text>
                   </Text>
                 </View>
               ) : null}
-              {search ? (
+              {exportScope === 'CURRENT_FILTER' && search ? (
                 <View className="rounded-md bg-card px-2 py-1 border border-border/60">
                   <Text className="text-[11px] font-medium text-muted-foreground">
                     Search: <Text className="font-bold text-foreground">"{search}"</Text>

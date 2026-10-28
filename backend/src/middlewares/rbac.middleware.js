@@ -288,7 +288,7 @@ export const isVerifiedCommunityAdmin = (req, targetOrgId) => {
  * The exact role names mirror the repository's existing wallet self-service policy.
  */
 const RESIDENT_SELF_SERVICE_ROLES = new Set([
-  'Resident', 'Resident Owner', 'Resident Tenant', 'Family Member', 'Family', 'Tenant', 'Owner',
+  'Family Member', 'Family',
 ]);
 
 export const authorizeResidentSelfService = () => (req, res, next) => {

@@ -401,13 +401,26 @@ export const routes = [
     path: '/admin/complaints/staff',
     name: 'Staff & Vendors',
     element: StaffAndVendor,
-    requiredPermission: 'complaints:staff',
+    requiredPermission: [
+      'complaints:staff',
+      'staff:view',
+      'staff:manage',
+      'staff:attendance',
+      'staff:assign_unit',
+      'staff:view_own',
+    ],
   },
   {
     path: '/admin/complaints/staff-attendance',
     name: 'Staff Attendance',
     element: StaffAttendanceView,
-    requiredPermission: 'complaints:staff',
+    requiredPermission: [
+      'complaints:staff',
+      'staff:attendance',
+      'staff:manage',
+      'staff:view',
+      'staff:view_own',
+    ],
   },
   {
     path: '/admin/complaints/assignee',

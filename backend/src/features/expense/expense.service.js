@@ -466,7 +466,30 @@ class ExpenseService {
     const total = await expenseRepository.count(orgId, match);
     if (total > EXPORT_ROW_LIMIT) throw new HttpError(413, `Export has ${total} rows, above the ${EXPORT_ROW_LIMIT} row limit. Narrow the date range or filters.`);
     const records = [];
-    for (let skip = 0; skip < total; skip += EXPORT_PAGE_SIZE) records.push(...await expenseRepository.list(orgId, match, { skip, limit: EXPORT_PAGE_SIZE }));
+    for (let skip = 0; skip < total; skip += EXPORT_PAGE_SIZE) {
+      records.push(...await expenseRepository.list(orgId, match, { skip, limit: EXPORT_PAGE_SIZE }));
+    }
+
+    if (records.length > 0) {
+      const expenseIds = records.map((r) => r._id);
+      const ExpensePayment = (await import('./expensePayment.model.js')).default;
+      const payments = await ExpensePayment.find({
+        expenseId: { $in: expenseIds },
+        verificationStatus: { $ne: 'VOIDED' },
+      }).sort({ paymentDate: -1, createdAt: -1 }).lean();
+
+      const paymentMap = new Map();
+      payments.forEach((p) => {
+        const idStr = String(p.expenseId);
+        if (!paymentMap.has(idStr)) paymentMap.set(idStr, []);
+        paymentMap.get(idStr).push(p);
+      });
+
+      records.forEach((r) => {
+        r.payments = paymentMap.get(String(r._id)) || [];
+      });
+    }
+
     return buildExpenseReport(records, query, meta);
   }
 }

@@ -1753,18 +1753,32 @@ emitInvitationAccepted(user._id, orgId);
 
       const tokenRes = await tokenService.validateInvitationToken(rawToken, session);
       const userId = tokenRes.userId;
-      const orgId = tokenRes.orgId;
       if (!orgId) {
         throw new HttpError(400, 'This invitation is not linked to a community. Please ask for a new invitation.');
       }
 
-      const user = await userService.getUserById(userId, session).catch(() => null);
+      let user = null;
+      if (userId) {
+        user = await userService.getUserById(userId, session).catch(() => null);
+      }
+
+      if (!user && email) {
+        user = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
+      }
+
       if (!user) {
         throw new HttpError(404, 'No pending user account found to activate.');
       }
 
       if (authenticatedUserId && user._id.toString() !== authenticatedUserId.toString()) {
-        throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
+        const authUser = await userService.getUserById(authenticatedUserId).catch(() => null);
+        if (authUser && authUser.email && user.email && authUser.email.trim().toLowerCase() === user.email.trim().toLowerCase()) {
+          const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+          await OrgMembership.updateMany({ userId: user._id }, { $set: { userId: authUser._id } }).session(session).catch(() => null);
+          user = authUser;
+        } else {
+          throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
+        }
       }
 
       if (email && user.email && user.email.toLowerCase() !== email.trim().toLowerCase()) {
@@ -2607,6 +2621,8 @@ emitInvitationAccepted(user._id, orgId);
     // Encapsulate email OTP validation, user activation verification, and session setup.
     session.startTransaction();
     try {
+      await otpService.verifyOTP(email, code, 'LOGIN', session);
+
       const user = await userService.getUserByEmail(email, session);
       if (!user) {
         throw new HttpError(400, 'This code has expired or is no longer valid. Please request a new OTP.', { code: 'OTP_EXPIRED' });
@@ -2620,8 +2636,6 @@ emitInvitationAccepted(user._id, orgId);
       if (user.status !== 'Active' && !['Pending Verification', 'Pending'].includes(user.status)) {
         throw new HttpError(403, `Account is ${user.status}`);
       }
-
-      await otpService.verifyOTP(email, code, 'LOGIN', session);
 
       if (!user.emailVerified) {
         await userService.updateUser(user._id, { emailVerified: true }, session);

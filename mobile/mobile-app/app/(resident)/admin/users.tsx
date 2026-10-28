@@ -17,6 +17,7 @@ import {
   UserFilterSheet,
   UserData,
   AssignedUnit,
+  InviteUserData,
 } from '@/src/features/userManagement';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { Text } from '@/components/ui/text';
@@ -119,33 +120,12 @@ export default function UserManagementScreen() {
   const [userToEdit, setUserToEdit] = useState<UserData | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Toast / Alert helper
-  const handleSendInvite = async (inviteData: any) => {
-    try {
-      const result = await inviteUser(inviteData);
-      Alert.alert(
-        'Invitation Sent',
-        result?.invitationToken
-          ? `Invitation issued successfully.\nToken: ${result.invitationToken}`
-          : 'User invited successfully!'
-      );
-      // The invite modal needs the created user (id, invite link), e.g. to attach an optional staff photo.
-      return result;
-    } catch (err: any) {
-      Alert.alert('Invite Error', err?.message || 'Failed to invite user');
-      throw err;
-    }
-  };
 
-  const handleResendInvite = (user: UserData) => {
-    handleSendInvite({
-      name: user.name || '',
-      email: user.email,
-      phone: (user as any).phone || '',
-      villaId: (user as any).villaId || null,
-      residentType: (user as any).residentType || 'None',
-      roleName: user.role || null,
-    });
+
+  const handleSendInvite = async (inviteData: InviteUserData) => {
+    const res = await inviteUser(inviteData);
+    refreshUsers();
+    return res;
   };
 
   const confirmDeleteUser = async () => {

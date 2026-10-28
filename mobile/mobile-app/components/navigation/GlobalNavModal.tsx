@@ -109,14 +109,13 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       items: [
         { id: 'billing_wallet', labelKey: 'feature_billing_wallet_name', defaultLabel: 'Digital Wallet', route: '/(resident)/billing/wallet', icon: Wallet, color: '#10b981', permission: 'billing:action_center' },
         { id: 'financial_history', labelKey: 'financial_history', defaultLabel: 'Financial History', route: '/(resident)/billing/history', icon: Receipt, color: '#0d9488', permission: 'billing:action_center' },
-        { id: 'personal_expense_manager', labelKey: 'personal_expense_manager', defaultLabel: 'Personal Expense Manager', route: '/(resident)/expense-manager', icon: WalletCards, color: '#059669' },
       ],
     },
     {
       titleKey: 'nav_billing_invoices',
       defaultTitle: 'BILLING & INVOICES',
       items: [
-        { id: 'b-main', labelKey: 'feature_billing_dashboard_name', defaultLabel: 'Billing Center', route: '/(resident)/billing', icon: Receipt, color: '#10b981' },
+        { id: 'b-main', labelKey: 'feature_billing_dashboard_name', defaultLabel: 'Billing Center', route: '/(resident)/billing', icon: Receipt, color: '#10b981', permission: 'billing:billing_hub' },
         { id: 'b-dues', labelKey: 'feature_billing_my_dues_name', defaultLabel: 'My Outstanding Dues', route: '/(resident)/billing/my-dues', icon: Receipt, color: '#f43f5e' },
         { id: 'community_finance', labelKey: 'community_finance', defaultLabel: 'Community Finance', route: '/(resident)/admin/billing/community-finance', icon: LineChart, color: '#059669', permission: 'billing:dashboard' },
       ],

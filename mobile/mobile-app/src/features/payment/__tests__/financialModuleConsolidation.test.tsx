@@ -108,7 +108,8 @@ describe('Financial Module Consolidation & All Features Integration', () => {
       expect(isFeatureAllowedForUser(walletFeature, residentUser)).toBe(true);
       expect(isFeatureAllowedForUser(historyFeature, residentUser)).toBe(true);
       expect(isFeatureAllowedForUser(duesFeature, residentUser)).toBe(true);
-      expect(isFeatureAllowedForUser(hubFeature, residentUser)).toBe(true);
+      // Billing Hub is strictly reserved for Admin/Accountant roles and barred from Resident persona
+      expect(isFeatureAllowedForUser(hubFeature, residentUser)).toBe(false);
     });
 
     it('grants seeded Resident Owner (amenities:wallet only) access to the Digital Wallet', () => {

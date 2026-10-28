@@ -5,8 +5,12 @@ import { authorizeResidentSelfService } from '../../src/middlewares/rbac.middlew
 const run = (req) => new Promise((resolve) => authorizeResidentSelfService()(req, {}, (error) => resolve(error || null)));
 
 test('personal expense authorization allows only the verified active resident role', async () => {
-  const error = await run({ user: { id: 'u1', isPlatform: false }, tenant: { orgId: 'o1', isPlatform: false }, tenantRole: 'Resident Owner' });
+  const error = await run({ user: { id: 'u1', isPlatform: false }, tenant: { orgId: 'o1', isPlatform: false }, tenantRole: 'Family Member' });
   assert.equal(error, null);
+  const residentOwnerError = await run({ user: { id: 'u1', isPlatform: false }, tenant: { orgId: 'o1', isPlatform: false }, tenantRole: 'Resident Owner' });
+  assert.equal(residentOwnerError?.statusCode, 403);
+  const residentTenantError = await run({ user: { id: 'u1', isPlatform: false }, tenant: { orgId: 'o1', isPlatform: false }, tenantRole: 'Resident Tenant' });
+  assert.equal(residentTenantError?.statusCode, 403);
 });
 test('personal expense authorization rejects unauthenticated, staff, guard, admin and platform callers', async () => {
   const cases = [

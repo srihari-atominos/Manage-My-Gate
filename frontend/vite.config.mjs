@@ -1,11 +1,16 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
 import autoprefixer from 'autoprefixer'
 
 import { fileURLToPath, URL } from 'node:url'
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const proxyTarget = (env.VITE_PROXY_TARGET || env.VITE_API_URL || 'http://127.0.0.1:5002')
+    .replace(/\/api\/?$/, '')
+    .replace(/\/+$/, '')
+
   return {
     base: '/',
     build: {
@@ -57,7 +62,7 @@ export default defineConfig(() => {
       },
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:5006',
+          target: proxyTarget,
           changeOrigin: true,
           configure: (proxy) => {
             proxy.on('error', (err) => {
@@ -67,7 +72,7 @@ export default defineConfig(() => {
           },
         },
         '/socket.io': {
-          target: 'http://127.0.0.1:5006',
+          target: proxyTarget,
           ws: true,
           changeOrigin: true,
           configure: (proxy) => {
@@ -78,15 +83,14 @@ export default defineConfig(() => {
           },
         },
         '/public': {
-          target: 'http://127.0.0.1:5006',
+          target: proxyTarget,
           changeOrigin: true,
         },
         '/uploads': {
-          target: 'http://127.0.0.1:5006',
+          target: proxyTarget,
           changeOrigin: true,
         },
       },
     },
   }
 })
-// trigger restart

@@ -425,6 +425,11 @@ export const staffService = {
     return Array.isArray(data) ? data : [];
   },
 
+  checkoutStaffSession: async (sessionId: string, payload: { gateId?: string; notes?: string } = {}): Promise<any> => {
+    const res: any = await apiClient.post(`${ATTENDANCE_BASE_URL}/${sessionId}/checkout`, payload);
+    return res?.data?.data || res?.data || res;
+  },
+
   getMyAttendance: async (params?: any): Promise<{ records: StaffAttendanceRecord[]; pagination: any }> => {
     const res: any = await apiClient.get(`${ATTENDANCE_BASE_URL}/me`, { params });
     return res?.data?.data || res?.data || { records: [], pagination: {} };

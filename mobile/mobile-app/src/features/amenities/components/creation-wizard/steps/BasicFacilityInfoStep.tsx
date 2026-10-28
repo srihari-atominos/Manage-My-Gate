@@ -1,6 +1,7 @@
 import React from 'react';
 import { confirmPickerDisclosure } from '@/src/utils/pickerDisclosure';
-import { View, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Image, Alert, Platform } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
@@ -57,7 +58,26 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
     });
   };
 
+  const pickFromWeb = () => {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp,image/jpg';
+    input.onchange = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      const objectUrl = URL.createObjectURL(file);
+      updateField('imageUrl', objectUrl);
+    };
+    input.click();
+  };
+
   const handlePickImage = async () => {
+    if (Platform.OS === 'web') {
+      pickFromWeb();
+      return;
+    }
+
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
@@ -69,8 +89,9 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
       }
 
       if (!(await confirmPickerDisclosure('photo'))) return;
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions?.Images || ['images'],
         allowsEditing: true,
         quality: 0.8,
       });
@@ -80,7 +101,20 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
         updateField('imageUrl', image.uri);
       }
     } catch (err: any) {
-      Alert.alert('Image Picker Error', err?.message || 'Failed to select image.');
+      console.warn('[BasicFacilityInfoStep] launchImageLibraryAsync failed, falling back to document picker:', err);
+      // Fallback to DocumentPicker if ImagePicker fails on device/web
+      try {
+        const docResult = await DocumentPicker.getDocumentAsync({
+          type: ['image/*'],
+          copyToCacheDirectory: true,
+        });
+        if (!docResult.canceled && docResult.assets && docResult.assets.length > 0) {
+          updateField('imageUrl', docResult.assets[0].uri);
+          return;
+        }
+      } catch (fallbackErr: any) {
+        Alert.alert('Image Picker Error', err?.message || 'Failed to select image.');
+      }
     }
   };
 
@@ -159,37 +193,45 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
           Facility Cover Photo (Optional)
         </Text>
 
-        <TouchableOpacity
-          onPress={handlePickImage}
-          activeOpacity={0.7}
-          className="h-36 w-full rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 items-center justify-center p-3 overflow-hidden active:bg-primary/10"
-          accessibilityRole="button"
-          accessibilityLabel="Upload facility cover photo"
-        >
-          {data.imageUrl ? (
-            <View className="w-full h-full relative items-center justify-center">
-              <Image
-                source={{ uri: data.imageUrl }}
-                className="w-full h-full rounded-xl"
-                resizeMode="cover"
-              />
-              <View className="absolute bg-black/60 px-3 py-1.5 rounded-full flex-row items-center gap-1.5">
+        {data.imageUrl ? (
+          <View className="h-36 w-full rounded-2xl border-2 border-primary/20 bg-muted/10 relative overflow-hidden">
+            <Image
+              source={{ uri: data.imageUrl }}
+              className="w-full h-full rounded-2xl"
+              resizeMode="cover"
+            />
+            <View className="absolute inset-0 bg-black/20 items-center justify-center">
+              <TouchableOpacity
+                onPress={handlePickImage}
+                activeOpacity={0.8}
+                className="bg-black/60 px-3.5 py-1.5 rounded-full flex-row items-center gap-1.5"
+                accessibilityRole="button"
+                accessibilityLabel="Change photo"
+              >
                 <Icon as={UploadCloud} size={14} className="text-white" />
                 <Text className="text-white text-xs font-bold">Change Photo</Text>
-              </View>
-              <Button
-                variant="destructive"
-                size="icon"
-                onPress={(e) => {
-                  e.stopPropagation();
-                  updateField('imageUrl', '');
-                }}
-                className="absolute top-2 end-2 h-7 w-7 rounded-full"
-              >
-                <Icon as={X} size={14} className="text-destructive-foreground" />
-              </Button>
+              </TouchableOpacity>
             </View>
-          ) : (
+
+            <Button
+              variant="destructive"
+              size="icon"
+              onPress={() => updateField('imageUrl', '')}
+              className="absolute top-2 end-2 h-7 w-7 rounded-full z-10"
+              accessibilityRole="button"
+              accessibilityLabel="Remove photo"
+            >
+              <Icon as={X} size={14} className="text-destructive-foreground" />
+            </Button>
+          </View>
+        ) : (
+          <TouchableOpacity
+            onPress={handlePickImage}
+            activeOpacity={0.7}
+            className="h-36 w-full rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 items-center justify-center p-3 overflow-hidden active:bg-primary/10"
+            accessibilityRole="button"
+            accessibilityLabel="Upload facility cover photo"
+          >
             <View className="items-center justify-center">
               <View className="w-11 h-11 rounded-full bg-primary/10 items-center justify-center mb-1.5">
                 <Icon as={UploadCloud} size={22} className="text-primary" />
@@ -201,8 +243,8 @@ export const BasicFacilityInfoStep: React.FC<BasicFacilityInfoStepProps> = ({
                 JPG, PNG supported (Displayed on resident card)
               </Text>
             </View>
-          )}
-        </TouchableOpacity>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   );

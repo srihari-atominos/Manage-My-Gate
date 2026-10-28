@@ -283,14 +283,16 @@ export function ResidentMyDuesScreen() {
                   } as Invoice;
 
                   return (
-                    <Pressable
+                    <View
                       key={invoiceId}
-                      onPress={() => handleViewInvoiceDetails(invoiceId)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`View Invoice ${invNo} for ${unitStr}`}
-                      className="bg-card border border-border rounded-xl p-4 active:bg-muted/40"
+                      className="bg-card border border-border rounded-xl p-4"
                     >
-                      <View className="flex-row items-start justify-between mb-3 gap-2">
+                      <Pressable
+                        onPress={() => handleViewInvoiceDetails(invoiceId)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`View Invoice ${invNo} for ${unitStr}`}
+                        className="flex-row items-start justify-between mb-3 gap-2 active:opacity-75"
+                      >
                         <View className="flex-row items-center flex-1 min-w-0 me-2">
                           <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-3 shrink-0">
                             <Icon as={Receipt} size={20} className="text-primary" />
@@ -306,15 +308,20 @@ export function ResidentMyDuesScreen() {
                         </View>
 
                         <StatusBadge label={statusLabel} variant={statusVariant} dot className="shrink-0" />
-                      </View>
+                      </Pressable>
 
                       <View className="border-t border-border/50 pt-3 gap-3">
-                        <View>
+                        <Pressable
+                          onPress={() => handleViewInvoiceDetails(invoiceId)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`View Liability Details for invoice ${invNo}`}
+                          className="active:opacity-75"
+                        >
                           <Text className="text-xs text-muted-foreground">{t('remaining_liability', 'Remaining Liability')}</Text>
                           <Text className="text-lg font-extrabold text-foreground">
                             {formattedDue}
                           </Text>
-                        </View>
+                        </Pressable>
 
                         <View className="flex-row items-center gap-2">
                           <Button
@@ -355,7 +362,7 @@ export function ResidentMyDuesScreen() {
                           )}
                         </View>
                       </View>
-                    </Pressable>
+                    </View>
                   );
                 })}
               </View>

@@ -45,13 +45,26 @@ const navItems = [
     name: 'Staff',
     to: '/admin/complaints/staff',
     icon: cilPeople,
-    requiredPermission: 'complaints:staff',
+    requiredPermission: [
+      'complaints:staff',
+      'staff:view',
+      'staff:manage',
+      'staff:attendance',
+      'staff:assign_unit',
+      'staff:view_own',
+    ],
   },
   {
     name: 'Attendance',
     to: '/admin/complaints/staff-attendance',
     icon: cilPeople,
-    requiredPermission: 'complaints:staff',
+    requiredPermission: [
+      'complaints:staff',
+      'staff:attendance',
+      'staff:manage',
+      'staff:view',
+      'staff:view_own',
+    ],
   },
   {
     name: 'Assignee',

@@ -492,7 +492,7 @@ const Router = [
       {
         path: '/admin/complaints/staff',
         element: (
-          <PermissionGuard requiredPermission="complaints:staff">
+          <PermissionGuard requiredPermission={['complaints:staff', 'staff:view', 'staff:manage', 'staff:attendance', 'staff:assign_unit', 'staff:view_own']}>
             <StaffAndVendor />
           </PermissionGuard>
         ),

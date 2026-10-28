@@ -101,6 +101,20 @@ const SidebarContent: MenuItem[] = [
         requiredPermission: 'users:read',
       },
       {
+        name: 'Staff Management',
+        icon: 'solar:user-check-rounded-linear',
+        id: uniqueId(),
+        url: '/admin/complaints/staff',
+        requiredPermission: [
+          'staff:view',
+          'staff:manage',
+          'staff:attendance',
+          'staff:assign_unit',
+          'staff:view_own',
+          'complaints:staff',
+        ],
+      },
+      {
         name: 'Role Builder',
         icon: 'solar:shield-keyhole-linear',
         id: uniqueId(),

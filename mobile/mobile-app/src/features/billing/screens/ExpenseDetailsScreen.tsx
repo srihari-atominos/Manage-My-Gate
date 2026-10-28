@@ -548,7 +548,7 @@ export default function ExpenseDetailsScreen() {
 
               <View className="rounded-xl bg-muted/30 p-2.5">
                 <Text className="text-[11px] text-muted-foreground font-medium">
-                  Confirmed Reconciled
+                  Confirmed Verified
                 </Text>
                 <Text className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-0.5">
                   {formatCurrency(expense.confirmedPaidAmount)}
@@ -591,44 +591,6 @@ export default function ExpenseDetailsScreen() {
                 </Button>
               </View>
             ) : null}
-          </View>
-
-          {/* Card 3: Items / Itemized Purchases */}
-          <View className="gap-2.5 rounded-2xl border border-border bg-card p-4">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-bold text-foreground">
-                Purchased Items ({expense.items?.length || 0})
-              </Text>
-            </View>
-
-            {expense.items?.length ? (
-              <View className="gap-2">
-                {expense.items.map((item: any, i: number) => (
-                  <View
-                    key={item._id || i}
-                    className="flex-row items-center justify-between rounded-xl bg-muted/20 border border-border/60 p-2.5"
-                  >
-                    <View className="flex-1 pe-2">
-                      <Text className="text-xs font-bold text-foreground">
-                        {item.itemName}
-                      </Text>
-                      <Text className="text-[11px] text-muted-foreground">
-                        {item.quantity} {item.unit} × {formatCurrency(item.unitPrice)}
-                      </Text>
-                    </View>
-                    <Text className="text-xs font-extrabold text-foreground">
-                      {formatCurrency(item.lineTotal)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View className="rounded-xl border border-dashed border-border py-3 items-center">
-                <Text className="text-xs text-muted-foreground">
-                  Non-itemized expense (Recorded as single amount).
-                </Text>
-              </View>
-            )}
           </View>
 
           {/* Card 4: Attachments */}
@@ -690,7 +652,7 @@ export default function ExpenseDetailsScreen() {
             <View className="flex-row items-center gap-2">
               <CreditCard size={16} className="text-primary" />
               <Text className="text-sm font-bold text-foreground">
-                Payment History ({expense.payments?.length || 0})
+                {`Payment History (${expense.payments?.length || 0})`}
               </Text>
             </View>
 
@@ -720,8 +682,8 @@ export default function ExpenseDetailsScreen() {
                         </View>
 
                         <StatusBadge
-                          label={isReconciled ? 'Reconciled' : 'Recorded'}
-                          variant={isReconciled ? 'success' : 'info'}
+                          label={isReconciled ? 'Verified' : 'Verification Pending'}
+                          variant={isReconciled ? 'success' : 'warning'}
                           size="sm"
                         />
                       </View>

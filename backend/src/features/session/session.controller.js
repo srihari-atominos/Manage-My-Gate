@@ -4,6 +4,7 @@ import { asyncHandler } from '../../utils/asyncHandler.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import authService from '../auth/auth.services.js';
 import { setAuthCookie, setRefreshTokenCookie } from '../../utils/cookie.utils.js';
+import { signToken } from '../../utils/jwt.utils.js';
 
 export const getUserSessions = asyncHandler(async (req, res) => {
   const userId = req.user.id || req.user._id;
@@ -52,7 +53,6 @@ export const refreshToken = asyncHandler(async (req, res) => {
 
   const validSession = await sessionService.validateRefreshToken(token);
   const user = await authService.getUserById(validSession.userId);
-  
   if (!user) {
     throw new HttpError(401, 'User account not found');
   }
@@ -65,22 +65,19 @@ export const refreshToken = asyncHandler(async (req, res) => {
     throw new HttpError(403, `User account is ${user.status.toLowerCase()}.`);
   }
 
-  // A refresh token identifies the account, not a workspace. Resolve the requested
-  // workspace again from current memberships so a token cannot preserve access to a
-  // community the user has since left. If that workspace is no longer valid, issue a
-  // token for the user's normal active workspace instead.
-  let newAccessToken;
-  try {
-    newAccessToken = await authService.generateToken(user, targetOrgId);
-  } catch (error) {
-    if (!targetOrgId || error?.statusCode !== 403) throw error;
-    newAccessToken = await authService.generateToken(user);
-  }
+  // Rotate: every refresh token is single-use (a racing duplicate within the grace
+  // window gets an access token but no new refresh token)
+  const newRefreshToken = validSession.status === 'Active' ? await sessionService.rotateToken(validSession) : null;
 
-  // Rotate the refresh token after successful validation. A concurrent request that
-  // arrives during the grace period receives an access token but does not create an
-  // additional session.
-  const newRefreshToken = await sessionService.rotateToken(validSession);
+  // Keep the community/role/unit the app is using. Membership is re-checked server-side;
+  // if it is no longer active, fall back to the user's default context.
+  let scoped;
+  try {
+    scoped = await authService.getScopedTokenPayload(user, targetOrgId, targetRole, targetVillaId);
+  } catch (_) {
+    scoped = await authService.getScopedTokenPayload(user);
+  }
+  const newAccessToken = signToken(scoped.tokenPayload);
   setAuthCookie(res, newAccessToken);
   if (newRefreshToken) setRefreshTokenCookie(res, newRefreshToken);
 

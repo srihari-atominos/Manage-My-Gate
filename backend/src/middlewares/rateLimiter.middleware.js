@@ -91,7 +91,17 @@ export function getOtpKey(req) {
  */
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1500,
+  max: process.env.NODE_ENV === 'production' ? 1500 : 50000,
+  skip: (req) => {
+    if (process.env.DISABLE_RATE_LIMIT === 'true') return true;
+    if (
+      (process.env.NODE_ENV || 'development') === 'development' &&
+      (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1')
+    ) {
+      return true;
+    }
+    return false;
+  },
   standardHeaders: true,
   legacyHeaders: false,
   store: createRateLimitStore('api'),

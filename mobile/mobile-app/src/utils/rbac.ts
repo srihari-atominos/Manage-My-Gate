@@ -127,12 +127,12 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'amenities:ledgers': ['amenities:ledgers', 'amenities.ledgers', 'amenities:admin', 'amenities.admin'],
 
   // Billing & Invoices
-  'billing:billing_hub': ['billing:billing_hub', 'billing:action_center', 'billing:dashboard', 'billing:view', 'billing:read', 'billing'],
+  'billing:billing_hub': ['billing:billing_hub', 'billing:dashboard', 'billing:view', 'billing:read', 'billing'],
   'billing:my_dues': ['billing:my_dues', 'billing:action_center', 'billing:view', 'billing'],
   'billing:assessments': ['billing:assessments', 'billing:assessment_manager', 'billing:view', 'billing'],
-  'billing:ledger': ['billing:ledger', 'billing:action_center', 'billing:dashboard', 'billing:view', 'billing'],
+  'billing:ledger': ['billing:ledger', 'billing:dashboard', 'billing:view', 'billing'],
   'billing:my_invoices': ['billing:my_invoices', 'billing:action_center', 'billing:view', 'billing'],
-  'billing:action_center': ['billing:action_center', 'billing:billing_hub', 'billing:my_dues', 'billing:my_invoices', 'billing:ledger', 'billing:assessments', 'billing:view', 'billing:read', 'billing'],
+  'billing:action_center': ['billing:action_center', 'billing:my_dues', 'billing:my_invoices', 'billing:view', 'billing:read', 'billing'],
   'billing:assessment_manager': ['billing:assessment_manager', 'billing:assessments', 'billing:view', 'billing'],
   'billing:dashboard': ['billing:dashboard', 'billing:billing_hub', 'billing:ledger', 'billing:view', 'billing'],
 
@@ -269,7 +269,6 @@ const FALLBACK_SECURITY_PERMISSIONS = new Set([
 const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'visitor_resident_passes',
   'visitor_invite',
-  'billing_dashboard',
   'billing_my_dues',
   'billing_my_invoices',
   'billing_wallet',
@@ -287,7 +286,6 @@ const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
 const FALLBACK_RESIDENT_PERMISSIONS = new Set([
   'visitor:resident',
   'billing:my_dues',
-  'billing:billing_hub',
   'billing:my_invoices',
   'amenities:discover',
   'amenities:my_booking',
@@ -315,11 +313,19 @@ export const isFeatureAllowedForUser = (
 
   const permissions = Array.isArray(effectiveUser.permissions) ? effectiveUser.permissions : [];
 
-  // Personal finances are private resident self-service and must never appear in staff, guard, facility, or platform consoles.
+  // Personal finances (expense manager) are disabled for Resident Owner, Resident Tenant, staff, guard, admin, and platform users.
   if (item.id === 'personal_expense_manager') {
-    if (effectiveUser.isPlatform === true || checkIsAdmin(effectiveUser) || checkIsSecurityRole(effectiveUser)) return false;
-    const roleName = getUserRoleName(effectiveUser).toLowerCase();
-    return !roleName || roleName.includes('resident') || roleName.includes('tenant') || roleName.includes('member') || roleName.includes('owner');
+    return false;
+  }
+
+  // Billing Hub and Billing Ledger consoles are strictly reserved for Admins/Accountants/Managers.
+  // Resident personas (Resident Owner, Resident Tenant, Resident) are strictly barred from billing_dashboard and billing_action_center (Billing Ledger).
+  const roleNameLower = getUserRoleName(effectiveUser).toLowerCase();
+  const isResidentPersona = !roleNameLower || roleNameLower.includes('resident') || roleNameLower.includes('owner') || roleNameLower.includes('tenant') || roleNameLower.includes('member');
+  if (isResidentPersona && !checkIsAdmin(effectiveUser)) {
+    if (item.id === 'billing_dashboard' || item.id === 'billing_action_center' || item.id === 'b-main' || item.permission === 'billing:billing_hub' || item.permission === 'billing:ledger') {
+      return false;
+    }
   }
 
   // Super Admin / Platform bypass (full system visibility)
@@ -501,7 +507,7 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
   // Default Resident Quick Actions (6 slots)
   return [
     'visitor_resident_passes',
-    'billing_dashboard',
+    'billing_my_invoices',
     'complaints_track_requests',
     'amenities_discover',
     'community_engagement',

@@ -104,10 +104,8 @@ export const MarkExpensePaidSheet: React.FC<MarkExpensePaidSheetProps> = ({
   expense,
   onSuccess,
 }) => {
-  if (!expense) return null;
-
-  const outstanding = Number(expense.outstandingAmount || 0);
-  const total = Number(expense.totalAmount || 0);
+  const outstanding = Number(expense?.outstandingAmount || 0);
+  const total = Number(expense?.totalAmount || 0);
 
   const [amount, setAmount] = useState<string>('');
   const [method, setMethod] = useState<ExpensePaymentMethod>('CASH');
@@ -130,6 +128,8 @@ export const MarkExpensePaidSheet: React.FC<MarkExpensePaidSheetProps> = ({
       setError('');
     }
   }, [visible, expense, outstanding, total]);
+
+  if (!expense) return null;
 
   const handleMethodSelect = (opt: PaymentMethodOption) => {
     setMethod(opt.key);

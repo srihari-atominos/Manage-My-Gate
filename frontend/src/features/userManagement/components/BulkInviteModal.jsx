@@ -79,6 +79,7 @@ const parseCSV = (text) => {
       else if (header === 'phone' || header === 'phone number' || header === 'phone no' || header === 'mobile' || header === 'contact') key = 'phone'
       else if (['name', 'fullname', 'full name', 'username', 'user name', 'resident name', 'staff name', 'member name'].includes(header)) key = 'name'
       else if (header === 'role') key = 'roleName'
+      else if (header === 'password') key = 'password'
       else if (header === 'department' || header === 'trade') key = 'department'
       else if (header === 'staff type' || header === 'employment type') key = 'staffType'
       else if (header === 'designation' || header === 'title') key = 'designation'
@@ -295,23 +296,24 @@ export const BulkInviteModal = ({
     setErrorMsg('')
     try {
       const invitations = validRows.map((r) => {
-          let residentType = 'None'
-          if (r.roleName) {
-            const lowerName = r.roleName.toLowerCase()
-            if (lowerName.includes('owner')) residentType = 'Owner'
-            else if (lowerName.includes('tenant')) residentType = 'Tenant'
-            else if (lowerName.includes('family')) residentType = 'Family'
-            else residentType = 'Guest'
-          }
-          return {
-            email: r.email || undefined,
-            phone: r.phone || undefined,
-            name: r.name || undefined,
-            roleName: r.roleName,
-            villaNumber: (r.villaNumber && r.villaNumber.trim().toLowerCase() !== 'none') ? r.villaNumber.trim() : undefined,
-            residentType,
-          }
-        })
+        let residentType = 'None'
+        if (r.roleName) {
+          const lowerName = r.roleName.toLowerCase()
+          if (lowerName.includes('owner')) residentType = 'Owner'
+          else if (lowerName.includes('tenant')) residentType = 'Tenant'
+          else if (lowerName.includes('family')) residentType = 'Family'
+          else residentType = 'Guest'
+        }
+        return {
+          email: r.email || undefined,
+          phone: r.phone || undefined,
+          name: r.name || undefined,
+          roleName: r.roleName,
+          password: r.password || undefined,
+          villaNumber: (r.villaNumber && r.villaNumber.trim().toLowerCase() !== 'none') ? r.villaNumber.trim() : undefined,
+          residentType,
+        }
+      })
       const res = await onBulkInvite(invitations)
       setResults(res)
       setParsedRows([])

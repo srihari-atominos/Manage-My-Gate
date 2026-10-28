@@ -17,6 +17,7 @@ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { Clock, ShieldAlert, Target, FileText, CreditCard } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
+import { checkIsAdmin } from '@/src/utils/rbac';
 
 const formatCurrency = (value: number | string | null | undefined) => String.fromCharCode(0x20b9) + Number(value || 0).toLocaleString('en-IN');
 
@@ -37,14 +38,27 @@ export function AdminBillingDashboardScreen() {
 
   // Permission check from auth state accommodating admin roles and permissions
   const hasDashboardPermission = useSelector((state: any) => {
-    const permissions = state.auth?.user?.permissions;
-    if (Array.isArray(permissions)) {
-      return permissions.some((p: any) => {
-        const name = typeof p === 'string' ? p : p?.name;
-        return name === 'billing:dashboard' || name === 'billing' || name === '*';
-      });
+    const user = state.auth?.user;
+    if (!user) return false;
+
+    // 1. Role-based admin privilege check (Platform Super Admin, Community Admin, Administrator)
+    if (user.isPlatform === true || checkIsAdmin(user)) {
+      return true;
     }
-    return false;
+
+    // 2. Explicit Role Builder permission grants & synonyms
+    const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+    return permissions.some((p: any) => {
+      const name = typeof p === 'string' ? p : p?.name;
+      return (
+        name === 'billing:dashboard' ||
+        name === 'billing:billing_hub' ||
+        name === 'billing:action_center' ||
+        name === 'billing:ledger' ||
+        name === 'billing' ||
+        name === '*'
+      );
+    });
   });
 
   const fetchDashboardData = useCallback(() => {

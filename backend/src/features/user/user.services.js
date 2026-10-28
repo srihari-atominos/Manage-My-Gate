@@ -334,6 +334,19 @@ export class UserService {
     isBulk = false,
     rawPassword = null
   ) {
+    if (typeof onboardingMode === 'boolean') {
+      isBulk = onboardingMode;
+      rawPassword = staffData;
+      staffData = {};
+      onboardingMode = 'INVITATION';
+    } else if (typeof staffData === 'boolean') {
+      rawPassword = isBulk;
+      isBulk = staffData;
+      staffData = {};
+    } else if (staffData && typeof staffData === 'object') {
+      if (staffData.isBulk !== undefined) isBulk = !!staffData.isBulk;
+      if (staffData.rawPassword !== undefined) rawPassword = staffData.rawPassword;
+    }
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -406,7 +419,7 @@ export class UserService {
         const userData = {
           email: emailToUse,
           username: username,
-          name: name || username,
+          name: cleanedName || name || username,
           status: (rawPassword || mode === 'ADMIN_ANNOUNCEMENT') ? 'Active' : 'Pending Verification',
           credentialStatus: 'NOT_INITIALIZED',
           appAccessStatus: 'NOT_YET_ACCESSED',
@@ -423,7 +436,7 @@ export class UserService {
       } else {
         const updates = {};
         if (phoneToAssign && !user.phone) updates.phone = phoneToAssign;
-        if (name && !user.name) updates.name = name;
+        if (name && (!user.name || user.name === user.username)) updates.name = name.trim();
         if (rawPassword) {
           const { hashPassword } = await import('../../utils/crypto.utils.js');
           updates.password = await hashPassword(rawPassword);
@@ -496,7 +509,7 @@ export class UserService {
       }
 
       // Step 4: Membership status based on onboardingMode
-      const targetMembershipStatus = (rawPassword || mode === 'ADMIN_ANNOUNCEMENT') ? 'Active' : 'Pending';
+      const targetMembershipStatus = (rawPassword || mode === 'ADMIN_ANNOUNCEMENT' || isAlreadyActiveMemberAssigningUnit) ? 'Active' : 'Pending';
 
       let membership = null;
       if (existingMembership) {

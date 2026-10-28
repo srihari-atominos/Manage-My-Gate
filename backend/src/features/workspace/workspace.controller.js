@@ -4,10 +4,12 @@ export class WorkspaceController {
   async create(req, res, next) {
     try {
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const payload = {
         ...req.body,
-        organizationId: (req.tenant?.isPlatform && req.body.organizationId) ? req.body.organizationId : req.tenant?.orgId,
+        // Only platform admins may create a workspace for another community
+        organizationId: isPlatform ? req.body.organizationId || orgId : orgId,
       };
       const data = await workspaceService.createWorkspace(payload, actorId);
       res.success(data, 'Workspace created successfully', 201);
@@ -18,8 +20,8 @@ export class WorkspaceController {
 
   async getAll(req, res, next) {
     try {
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.getWorkspaces(orgId, isPlatform);
       res.success(data, 'Workspaces retrieved successfully');
     } catch (error) {
@@ -30,8 +32,8 @@ export class WorkspaceController {
   async getById(req, res, next) {
     try {
       const { id } = req.params;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.getWorkspaceById(id, orgId, isPlatform);
       res.success(data, 'Workspace retrieved successfully');
     } catch (error) {
@@ -43,8 +45,8 @@ export class WorkspaceController {
     try {
       const { id } = req.params;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.updateWorkspace(id, req.body, orgId, isPlatform, actorId);
       res.success(data, 'Workspace updated successfully');
     } catch (error) {
@@ -56,8 +58,8 @@ export class WorkspaceController {
     try {
       const { id } = req.params;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.deleteWorkspace(id, orgId, isPlatform, actorId);
       res.success(data, 'Workspace deleted successfully');
     } catch (error) {
@@ -70,8 +72,8 @@ export class WorkspaceController {
   async getModules(req, res, next) {
     try {
       const { workspaceId } = req.params;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.getWorkspaceModules(workspaceId, orgId, isPlatform);
       res.success(data, 'Modules retrieved successfully');
     } catch (error) {
@@ -83,8 +85,8 @@ export class WorkspaceController {
     try {
       const { workspaceId } = req.params;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.addModule(workspaceId, orgId, isPlatform, req.body, actorId);
       res.success(data, 'Module added successfully', 201);
     } catch (error) {
@@ -96,8 +98,8 @@ export class WorkspaceController {
     try {
       const { workspaceId, moduleId } = req.params;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.updateModule(workspaceId, orgId, isPlatform, moduleId, req.body, actorId);
       res.success(data, 'Module updated successfully');
     } catch (error) {
@@ -110,8 +112,8 @@ export class WorkspaceController {
       const { workspaceId, moduleId } = req.params;
       const { enabled } = req.body;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.toggleModule(workspaceId, orgId, isPlatform, moduleId, enabled, actorId);
       res.success(data, 'Module toggled successfully');
     } catch (error) {
@@ -124,8 +126,8 @@ export class WorkspaceController {
       const { workspaceId } = req.params;
       const { orders } = req.body;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.reorderModules(workspaceId, orgId, isPlatform, orders, actorId);
       res.success(data, 'Modules reordered successfully');
     } catch (error) {
@@ -137,8 +139,8 @@ export class WorkspaceController {
     try {
       const { workspaceId, moduleId } = req.params;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.deleteModule(workspaceId, orgId, isPlatform, moduleId, actorId);
       res.success(data, 'Module deleted successfully');
     } catch (error) {
@@ -146,14 +148,13 @@ export class WorkspaceController {
     }
   }
 
-
   // --- Members ---
 
   async getMembers(req, res, next) {
     try {
       const { workspaceId } = req.params;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.getWorkspaceMembers(workspaceId, orgId, isPlatform);
       res.success(data, 'Workspace members retrieved successfully');
     } catch (error) {
@@ -166,8 +167,8 @@ export class WorkspaceController {
       const { workspaceId } = req.params;
       const { identifier } = req.body;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.addMember(workspaceId, orgId, isPlatform, identifier, actorId);
       res.success(data, 'Member added to workspace successfully');
     } catch (error) {
@@ -179,8 +180,8 @@ export class WorkspaceController {
     try {
       const { workspaceId, userId } = req.params;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.removeMember(workspaceId, orgId, isPlatform, userId, actorId);
       res.success(data, 'Member removed from workspace successfully');
     } catch (error) {
@@ -193,8 +194,8 @@ export class WorkspaceController {
   async getSettings(req, res, next) {
     try {
       const { workspaceId } = req.params;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.getSettings(workspaceId, orgId, isPlatform);
       res.success(data, 'Workspace settings retrieved successfully');
     } catch (error) {
@@ -206,8 +207,8 @@ export class WorkspaceController {
     try {
       const { workspaceId } = req.params;
       const actorId = req.user.id || req.user._id;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.updateSettings(workspaceId, orgId, isPlatform, req.body, actorId);
       res.success(data, 'Workspace settings updated successfully');
     } catch (error) {
@@ -220,8 +221,8 @@ export class WorkspaceController {
   async getActivityLogs(req, res, next) {
     try {
       const { workspaceId } = req.params;
-      const orgId = req.tenant?.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
+      const isPlatform = req.user?.role === 'Platform Super Admin' || req.user?.isPlatform === true || req.tenant?.isPlatform === true;
       const data = await workspaceService.getActivityLogs(workspaceId, orgId, isPlatform);
       res.success(data, 'Workspace activity logs retrieved successfully');
     } catch (error) {
@@ -233,7 +234,7 @@ export class WorkspaceController {
 
   async getCurrentModules(req, res, next) {
     try {
-      const orgId = req.tenant?.orgId;
+      const orgId = req.tenant?.orgId || req.user?.orgId;
       const actorId = req.user.id || req.user._id;
       const data = await workspaceService.getCurrentWorkspaceModules(orgId, actorId);
       res.success(data, 'Current workspace modules retrieved successfully');
@@ -244,4 +245,3 @@ export class WorkspaceController {
 }
 
 export default new WorkspaceController();
-

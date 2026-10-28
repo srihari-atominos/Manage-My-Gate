@@ -39,6 +39,7 @@ class Controller {
       const orgId = req.tenant.orgId;
       const format = req.body?.format || req.query?.format || 'xlsx';
       const filters = {
+        status: 'ALL',
         ...req.query,
         ...(req.body?.filters || {}),
         format,
@@ -47,6 +48,7 @@ class Controller {
       ['startDate', 'endDate', 'type', 'domain', 'status', 'search', 'timezone', 'period', 'includeLiabilities'].forEach((k) => {
         if (req.body?.[k] !== undefined) filters[k] = req.body[k];
       });
+      if (!filters.status) filters.status = 'ALL';
 
       if (typeof filters.includeLiabilities === 'boolean') filters.includeLiabilities = String(filters.includeLiabilities);
 

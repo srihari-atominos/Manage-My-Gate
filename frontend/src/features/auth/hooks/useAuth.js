@@ -230,10 +230,11 @@ export const useAuth = () => {
         )
       }
 
-      if (['villas', 'users', 'roles', 'integrations'].includes(featurePart)) {
+      if (['villas', 'users', 'roles', 'integrations', 'staff'].includes(featurePart)) {
         return (
           isModuleEnabled('administration_security') ||
           isModuleEnabled(featurePart) ||
+          isModuleEnabled('staff') ||
           allowedFeatures.includes(perm)
         )
       }

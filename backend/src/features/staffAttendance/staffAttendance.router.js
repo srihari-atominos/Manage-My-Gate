@@ -81,7 +81,7 @@ router.get(
 // Manual administrative checkout for stuck/open sessions
 router.post(
   '/:id/checkout',
-  authorizeAnyPermission(['staff:manage']),
+  authorizeAnyPermission(['staff:manage', 'visitor:guard', 'staff:attendance']),
   validateManualCheckout,
   staffAttendanceController.manualCheckout
 );

@@ -104,11 +104,7 @@ export const TransactionItemCard: React.FC<TransactionItemCardProps> = ({
 
             {/* Tags row */}
             <View className="flex-row items-center flex-wrap gap-1.5 mt-2">
-              <View className="bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
-                <Text className="text-[10px] font-bold text-primary font-sans uppercase">
-                  {transaction.domain || (isIncome ? 'INVOICE' : 'EXPENSE')}
-                </Text>
-              </View>
+              
 
               {transaction.receiptNumber ? (
                 <View className="flex-row items-center gap-1 rounded-full px-2 py-0.5 bg-muted/60 border border-border/50">
@@ -138,7 +134,7 @@ export const TransactionItemCard: React.FC<TransactionItemCardProps> = ({
 
           <StatusBadge
             variant={statusVariant}
-            label={transaction.status || 'RECORDED'}
+            label={transaction.status === 'RECONCILED' ? 'VERIFIED' : (transaction.status === 'RECORDED' || !transaction.status ? 'VERIFICATION PENDING' : transaction.status)}
             size="sm"
             className="py-1 px-2.5 rounded-full shadow-sm"
           />

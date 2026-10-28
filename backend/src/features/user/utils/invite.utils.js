@@ -70,9 +70,11 @@ export const generateInviteLink = (invitationToken, invitationSource = 'WEB') =>
   const isLocalhost = (url) => !url || /localhost|127\.0\.0\.1|::1/i.test(url);
 
   let rawUrl =
+    (invitationSource === 'APP' || invitationSource === 'MOBILE' ? process.env.APP_CLIENT_URL : null) ||
+    process.env.APP_CLIENT_URL ||
+    process.env.CLIENT_URL ||
     process.env.WEB_APP_URL ||
-    process.env.WEB_CLIENT_URL ||
-    process.env.CLIENT_URL;
+    process.env.WEB_CLIENT_URL;
 
   if (!rawUrl || (process.env.NODE_ENV === 'production' && isLocalhost(rawUrl))) {
     rawUrl = defaultProductionBaseUrl;

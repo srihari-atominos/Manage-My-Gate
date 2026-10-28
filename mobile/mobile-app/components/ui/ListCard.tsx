@@ -222,6 +222,25 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         );
       }
 
+      if (onPress) {
+        return (
+          <Pressable
+            onPress={onPress}
+            onLongPress={onLongPress}
+            className="flex-row items-center w-full active:opacity-75"
+            accessibilityRole="button"
+            accessibilityLabel={props.accessibilityLabel || title}
+          >
+            {renderHeaderMainContent()}
+            {showDefaultChevron ? (
+              <View className="items-end justify-center ms-2 shrink-0">
+                <Icon as={ChevronRight} size={16} className={backgroundImage ? "text-white/70" : "text-muted-foreground"} />
+              </View>
+            ) : null}
+          </Pressable>
+        );
+      }
+
       return (
         <View className="flex-row items-center w-full">
           {renderHeaderMainContent()}
@@ -235,41 +254,25 @@ const ListCard = React.forwardRef<View, ListCardProps>(
     };
 
     if (children || rightContent !== undefined) {
-      if (onPress) {
-        return (
-          <Pressable
-            ref={ref as any}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            unstable_pressDelay={40}
-            delayLongPress={300}
-            className={cn("bg-card rounded-2xl border border-border/70 mb-3 p-3.5 overflow-hidden shadow-2xs active:bg-secondary/70", className)}
-            style={[{ touchAction: 'pan-y' } as any, style as any]}
-            testID={(props as any).testID}
-            accessibilityRole="button"
-            accessibilityLabel={(props as any).accessibilityLabel || title}
-            accessibilityHint={(props as any).accessibilityHint}
-          >
-            <View className="flex-row items-center w-full">
-              {renderHeaderMainContent()}
-              <View className="items-end justify-center ms-2 shrink-0">
-                {rightContent}
-              </View>
-            </View>
-            {typeof children === 'function' ? (children as any)({ pressed: false }) : children}
-          </Pressable>
-        );
-      }
-
       return (
         <View
           ref={ref}
-          className={cn("bg-card rounded-2xl border border-border/70 mb-3 p-3.5 overflow-hidden shadow-2xs", className)}
-          style={style as any}
+          className={cn("bg-card rounded-[18px] border border-border/70 mb-3 p-3.5 overflow-hidden shadow-2xs", className)}
+          style={[{ touchAction: 'pan-y' } as any, style as any]}
           testID={(props as any).testID}
           accessibilityLabel={(props as any).accessibilityLabel}
           accessibilityHint={(props as any).accessibilityHint}
         >
+          {backgroundImage ? (
+            <>
+              <Image
+                source={{ uri: backgroundImage }}
+                className="absolute inset-0 w-full h-full"
+                resizeMode="cover"
+              />
+              <View className="absolute inset-0 bg-black/60" />
+            </>
+          ) : null}
           {renderCardHeaderRow()}
           {typeof children === 'function' ? (children as any)({ pressed: false }) : children}
         </View>
