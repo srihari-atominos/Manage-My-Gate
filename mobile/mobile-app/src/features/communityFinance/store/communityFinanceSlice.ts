@@ -182,13 +182,13 @@ export const fetchTransactionsList = createAsyncThunk(
       });
 
       return {
-        transactions: response.transactions || [],
+        transactions: response?.transactions || [],
         pagination: {
-          currentPage: response.page || page,
-          totalPages: response.totalPages || 0,
-          totalRecords: response.total || 0,
-          limit: response.limit || 15,
-          hasNextPage: (response.page || page) < (response.totalPages || 0),
+          currentPage: response?.page || page,
+          totalPages: response?.totalPages || 0,
+          totalRecords: response?.total || 0,
+          limit: response?.limit || 15,
+          hasNextPage: (response?.page || page) < (response?.totalPages || 0),
         },
         isLoadMore,
       };
@@ -224,13 +224,13 @@ export const refreshTransactionsList = createAsyncThunk(
       });
 
       return {
-        transactions: response.transactions || [],
+        transactions: response?.transactions || [],
         pagination: {
-          currentPage: response.page || 1,
-          totalPages: response.totalPages || 0,
-          totalRecords: response.total || 0,
-          limit: response.limit || 15,
-          hasNextPage: (response.page || 1) < (response.totalPages || 0),
+          currentPage: response?.page || 1,
+          totalPages: response?.totalPages || 0,
+          totalRecords: response?.total || 0,
+          limit: response?.limit || 15,
+          hasNextPage: (response?.page || 1) < (response?.totalPages || 0),
         },
       };
     } catch (err: any) {
@@ -339,15 +339,16 @@ const communityFinanceSlice = createSlice({
         state.transactionsLoadingMore = false;
         if (!action.payload) return;
 
+        const txList = action.payload.transactions || [];
         if (action.payload.isLoadMore) {
           // Append unique transactions by ID to prevent duplicates
           const existingIds = new Set(state.transactionsList.map((tx) => tx.id));
-          const newItems = action.payload.transactions.filter((tx) => !existingIds.has(tx.id));
+          const newItems = txList.filter((tx) => !existingIds.has(tx.id));
           state.transactionsList = [...state.transactionsList, ...newItems];
         } else {
-          state.transactionsList = action.payload.transactions;
+          state.transactionsList = txList;
         }
-        state.transactionsPagination = action.payload.pagination;
+        state.transactionsPagination = action.payload.pagination || state.transactionsPagination;
         state.transactionsError = null;
       })
       .addCase(fetchTransactionsList.rejected, (state, action) => {
@@ -364,8 +365,8 @@ const communityFinanceSlice = createSlice({
       })
       .addCase(refreshTransactionsList.fulfilled, (state, action) => {
         state.transactionsRefreshing = false;
-        state.transactionsList = action.payload.transactions;
-        state.transactionsPagination = action.payload.pagination;
+        state.transactionsList = action.payload?.transactions || [];
+        state.transactionsPagination = action.payload?.pagination || state.transactionsPagination;
         state.transactionsError = null;
       })
       .addCase(refreshTransactionsList.rejected, (state, action) => {

@@ -1,3 +1,5 @@
+import { checkIsAdmin, getUserRoleName } from '../../utils/rbac';
+
 export type RoleAction = 'read' | 'create' | 'update' | 'delete';
 
 /**
@@ -5,12 +7,28 @@ export type RoleAction = 'read' | 'create' | 'update' | 'delete';
  * roles inside that community. Other users need an explicit roles:* grant.
  */
 export const hasRolePermission = (user: any, action: RoleAction): boolean => {
-  const normalizedRole = String(user?.role || '').trim().toLowerCase().replace(/[_-]/g, ' ');
-  const isCommunityAdmin = normalizedRole === 'community admin' || normalizedRole === 'admin';
+  if (!user) return false;
+  if (checkIsAdmin(user)) return true;
+
+  const normalizedRole = getUserRoleName(user).toLowerCase().replace(/[_-]/g, ' ');
+  const isCommunityAdmin =
+    normalizedRole === 'community admin' ||
+    normalizedRole === 'admin' ||
+    normalizedRole === 'super admin' ||
+    normalizedRole === 'superadmin' ||
+    normalizedRole === 'platform super admin' ||
+    normalizedRole.includes('admin');
+
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+
   return Boolean(
     user?.isPlatform ||
       isCommunityAdmin ||
-      user?.permissions?.includes('*') ||
-      user?.permissions?.includes(`roles:${action}`)
+      permissions.includes('*') ||
+      permissions.includes('all') ||
+      permissions.includes('roles:*') ||
+      permissions.includes('roles:manage') ||
+      permissions.includes(`roles:${action}`) ||
+      permissions.includes('roles:read')
   );
 };

@@ -21,10 +21,16 @@ class CommunityFinanceService {
     if (params.startDate) cleanParams.startDate = params.startDate;
     if (params.endDate) cleanParams.endDate = params.endDate;
 
-    const response = await apiClient.get('/community-finance/dashboard', {
+    const response: any = await apiClient.get('/community-finance/dashboard', {
       params: cleanParams,
     });
-    return response.data?.data || response.data;
+    const payload =
+      response?.data?.kpis !== undefined || response?.data?.overview !== undefined
+        ? response.data
+        : (response?.kpis !== undefined || response?.overview !== undefined
+          ? response
+          : (response?.data !== undefined ? response.data : response));
+    return (payload || {}) as DashboardData;
   }
 
   /**
@@ -55,10 +61,32 @@ class CommunityFinanceService {
     if (params.search && params.search.trim()) cleanParams.search = params.search.trim();
     if (params.includeLiabilities) cleanParams.includeLiabilities = 'true';
 
-    const response = await apiClient.get('/community-finance/transactions', {
+    const response: any = await apiClient.get('/community-finance/transactions', {
       params: cleanParams,
     });
-    return response.data?.data || response.data;
+
+    let payload: any =
+      response?.data?.transactions !== undefined
+        ? response.data
+        : (response?.transactions !== undefined
+          ? response
+          : (response?.data !== undefined ? response.data : response));
+
+    if (!payload || typeof payload !== 'object') {
+      payload = {};
+    }
+
+    const transactions: NormalizedTransaction[] = Array.isArray(payload.transactions)
+      ? payload.transactions
+      : (Array.isArray(payload.data) ? payload.data : (Array.isArray(payload) ? payload : []));
+
+    return {
+      transactions,
+      page: payload.page || params.page || 1,
+      limit: payload.limit || params.limit || 15,
+      total: payload.total ?? transactions.length,
+      totalPages: payload.totalPages ?? (payload.total ? Math.ceil(payload.total / (payload.limit || 15)) : 1),
+    };
   }
 
   /**

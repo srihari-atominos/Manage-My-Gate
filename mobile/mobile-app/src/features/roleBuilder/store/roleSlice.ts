@@ -124,21 +124,34 @@ const roleSlice = createSlice({
       })
       .addCase(fetchRolesAsync.fulfilled, (state, action: any) => {
         state.isLoading = false;
-        const payloadData = action.payload?.data || action.payload;
+        const payloadData = action.payload?.data !== undefined ? action.payload.data : action.payload;
         let list: roleService.RoleData[] = [];
         if (Array.isArray(payloadData)) {
           list = payloadData;
         } else if (Array.isArray(payloadData?.data)) {
           list = payloadData.data;
+        } else if (Array.isArray(payloadData?.roles)) {
+          list = payloadData.roles;
+        } else if (Array.isArray(action.payload?.roles)) {
+          list = action.payload.roles;
+        } else if (Array.isArray(action.payload?.data?.data)) {
+          list = action.payload.data.data;
         }
 
         state.roles = list;
 
-        const pagination = action.payload?.pagination || payloadData?.pagination;
-        state.totalRecords = pagination?.totalRecords || list.length;
-        state.currentPage = pagination?.currentPage || state.currentPage;
-        state.totalPages = pagination?.totalPages || Math.ceil(state.totalRecords / state.rowsPerPage) || 1;
-        state.scopeCounts = action.payload?.scopeCounts || payloadData?.scopeCounts || state.scopeCounts;
+        const pagination =
+          action.payload?.pagination ||
+          payloadData?.pagination ||
+          action.payload?.data?.pagination;
+        state.totalRecords = pagination?.totalRecords ?? list.length;
+        state.currentPage = pagination?.currentPage ?? state.currentPage;
+        state.totalPages = pagination?.totalPages ?? (Math.ceil(state.totalRecords / state.rowsPerPage) || 1);
+        state.scopeCounts =
+          action.payload?.scopeCounts ||
+          payloadData?.scopeCounts ||
+          action.payload?.data?.scopeCounts ||
+          state.scopeCounts;
       })
       .addCase(fetchRolesAsync.rejected, (state, action: any) => {
         state.isLoading = false;
@@ -151,7 +164,7 @@ const roleSlice = createSlice({
       })
       .addCase(fetchPermissionsAsync.fulfilled, (state, action: any) => {
         state.isPermissionsLoading = false;
-        state.permissionsList = action.payload || {};
+        state.permissionsList = action.payload?.data || action.payload || {};
       })
       .addCase(fetchPermissionsAsync.rejected, (state, action: any) => {
         state.isPermissionsLoading = false;
