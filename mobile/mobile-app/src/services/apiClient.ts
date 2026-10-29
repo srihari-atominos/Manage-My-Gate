@@ -27,16 +27,24 @@ export const getApiBaseUrl = () => {
     return url;
   }
 
-  // 1. Web browser development: align with the browser's hostname and local backend port.
+  // 1. Web browser development: route through Metro proxy when running locally to eliminate browser CORS blocks
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
-    if (url) return url;
-    const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
-    if (isLocalHostName) {
-      return `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
+    const isLocalBrowser = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
+    if (isLocalBrowser) {
+      if (url && (url.includes(':5006') || url.includes('localhost') || url.includes('127.0.0.1'))) {
+        return url;
+      }
+      return `${window.location.origin}/api/v1`;
     }
+    if (url) return url;
   }
 
-  // 2. Native mobile development (Expo Go / Dev Client): connect to developer's local machine running backend
+  // 2. Native mobile development: if explicit remote API URL provided, prioritize it
+  if (url && !url.includes('localhost') && !url.includes('127.0.0.1')) {
+    return url;
+  }
+
+  // 3. Native mobile development (Expo Go / Dev Client): connect to developer's local machine running backend
   const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
   if (hostUri) {
     const ip = hostUri.split(':')[0];
@@ -45,14 +53,14 @@ export const getApiBaseUrl = () => {
     }
   }
 
-  // 3. Android Emulator fallback
+  // 4. Android Emulator fallback
   if (Platform.OS === 'android') {
     if (!url || url.includes('localhost') || url.includes('127.0.0.1')) {
       return 'http://10.0.2.2:5006/api/v1';
     }
   }
 
-  // 4. Default fallback
+  // 5. Default fallback
   return url || 'http://localhost:5006/api/v1';
 };
 
@@ -99,16 +107,24 @@ export const getSocketBaseUrl = () => {
     return socketUrl;
   }
 
-  // 1. Web browser development: align socket with browser's hostname
+  // 1. Web browser development: align socket with browser's origin for Metro proxy
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
-    if (socketUrl) return socketUrl;
-    const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
-    if (isLocalHostName) {
-      return `${window.location.protocol}//${window.location.hostname}:5006`;
+    const isLocalBrowser = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
+    if (isLocalBrowser) {
+      if (socketUrl && (socketUrl.includes(':5006') || socketUrl.includes('localhost') || socketUrl.includes('127.0.0.1'))) {
+        return socketUrl;
+      }
+      return window.location.origin;
     }
+    if (socketUrl) return socketUrl;
   }
 
-  // 2. Native mobile development: connect socket to developer's local machine
+  // 2. Native mobile development: if explicit remote socket URL provided, prioritize it
+  if (socketUrl && !socketUrl.includes('localhost') && !socketUrl.includes('127.0.0.1')) {
+    return socketUrl;
+  }
+
+  // 3. Native mobile development: connect socket to developer's local machine
   const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
   if (hostUri) {
     const ip = hostUri.split(':')[0];
@@ -117,14 +133,14 @@ export const getSocketBaseUrl = () => {
     }
   }
 
-  // 3. Android Emulator fallback
+  // 4. Android Emulator fallback
   if (Platform.OS === 'android') {
     if (!socketUrl || socketUrl.includes('localhost') || socketUrl.includes('127.0.0.1')) {
       return 'http://10.0.2.2:5006';
     }
   }
 
-  // 4. Default fallback
+  // 5. Default fallback
   return socketUrl || 'http://localhost:5006';
 };
 

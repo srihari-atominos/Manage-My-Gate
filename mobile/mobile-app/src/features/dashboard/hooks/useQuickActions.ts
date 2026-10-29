@@ -61,35 +61,49 @@ export const useQuickActions = () => {
   const activeVillaId = authUser?.activeVillaId || authUser?.villaId;
   const activeVillaNum = authUser?.activeVillaNumber || authUser?.villaNumber || authUser?.unitNumber;
 
-  const lastFetchedOrgRef = useRef<string | null>(null);
+  const lastFetchedCatalogOrgRef = useRef<string | null>(null);
+  const lastFetchedModulesOrgRef = useRef<string | null>(null);
+  const isFetchingCatalogRef = useRef<boolean>(false);
+  const isFetchingModulesRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (isAuthenticated && currentUserId) {
       const orgKey = activeOrgId || 'default';
-      const orgChanged = lastFetchedOrgRef.current !== orgKey;
-      const needsCatalog = (!rawCatalog || rawCatalog.length === 0) || orgChanged;
-      const needsModules = (!modules || modules.length === 0) || orgChanged;
+      const needsCatalog = lastFetchedCatalogOrgRef.current !== orgKey;
+      const needsModules = lastFetchedModulesOrgRef.current !== orgKey;
+
+      if (!needsCatalog && !needsModules) return;
 
       const task = InteractionManager.runAfterInteractions(() => {
-          if (needsCatalog && !loading) {
-            dispatch(
-              fetchQuickActionsThunk({
-                orgId: activeOrgId,
-                villaId: activeVillaId,
-                villaNumber: activeVillaNum,
-              })
-            );
-          }
-          if (needsModules) {
-            loadWorkspaceModules('current');
-          }
-        });
-      lastFetchedOrgRef.current = orgKey;
+        if (needsCatalog && !isFetchingCatalogRef.current) {
+          lastFetchedCatalogOrgRef.current = orgKey;
+          isFetchingCatalogRef.current = true;
+          dispatch(
+            fetchQuickActionsThunk({
+              orgId: activeOrgId,
+              villaId: activeVillaId,
+              villaNumber: activeVillaNum,
+            })
+          ).finally(() => {
+            isFetchingCatalogRef.current = false;
+          });
+        }
+        if (needsModules && !isFetchingModulesRef.current) {
+          lastFetchedModulesOrgRef.current = orgKey;
+          isFetchingModulesRef.current = true;
+          loadWorkspaceModules('current')
+            .catch(() => {})
+            .finally(() => {
+              isFetchingModulesRef.current = false;
+            });
+        }
+      });
+
       return () => {
         task.cancel();
       };
     }
-  }, [dispatch, isAuthenticated, currentUserId, activeOrgId, activeVillaId, activeVillaNum, loadWorkspaceModules, rawCatalog, modules, loading]);
+  }, [dispatch, isAuthenticated, currentUserId, activeOrgId, activeVillaId, activeVillaNum, loadWorkspaceModules]);
 
   const loadQuickActions = useCallback(() => {
     if (isAuthenticated) {
