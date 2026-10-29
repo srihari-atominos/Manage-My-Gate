@@ -116,19 +116,20 @@ export const VoiceAssistantModal: React.FC = () => {
     }
   };
 
+  const isVoiceMode =
+    mode === 'voice' ||
+    status === 'permission_denied' ||
+    status === 'connecting' ||
+    status === 'listening' ||
+    status === 'transcribing' ||
+    status === 'speaking' ||
+    status === 'muted';
+
   const isConnectedVoice =
     status === 'listening' ||
     status === 'transcribing' ||
-    status === 'processing' ||
     status === 'speaking' ||
-    status === 'thinking' ||
     status === 'muted';
-  const isVoiceMode =
-    mode === 'voice' ||
-    isConnectedVoice ||
-    status === 'permission_denied' ||
-    status === 'connecting' ||
-    status === 'awaiting_confirmation';
 
   return (
     <BottomSheet

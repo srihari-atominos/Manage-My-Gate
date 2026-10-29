@@ -23,8 +23,15 @@ export const billingService = {
    * @param communityId - Optional active community ID
    */
   async getMyDues(communityId?: string): Promise<any> {
+    const validCommunityId =
+      communityId &&
+      typeof communityId === 'string' &&
+      /^[0-9a-fA-F]{24}$/.test(communityId.trim())
+        ? communityId.trim()
+        : undefined;
+
     const response: any = await apiClient.get('/invoices/my-dues', {
-      params: communityId ? { communityId } : undefined,
+      params: validCommunityId ? { communityId: validCommunityId } : undefined,
     });
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;

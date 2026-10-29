@@ -391,7 +391,7 @@ export const authorizePermission = (feature, action) => {
           // Note: Some core modules like 'users', 'roles', 'workspaces' might be implicitly allowed
           // but if it's a domain feature like 'visitor', 'amenities', it must be explicitly allowed.
           const isCoreFeature = features.some((f) =>
-            ["users", "roles", "workspaces", "dashboard"].includes(f),
+            ["users", "roles", "workspaces", "dashboard", "billing"].includes(f),
           );
 
           if (!isCoreFeature) {

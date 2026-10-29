@@ -25,6 +25,7 @@ import { DatePicker } from '@/components/common/DatePicker';
 import expenseService from '../services/expenseService';
 import { createOperationId } from '@/src/utils/idempotency';
 import ReceiptCameraCaptureModal, { ReceiptCaptureFile } from '../components/ReceiptCameraCaptureModal';
+import { inferReceiptDetailsFromFilename } from '../utils/receiptOcrMapping';
 
 const types = [
   { label: 'Purchase', value: 'PURCHASE' },
@@ -66,7 +67,7 @@ export default function RecordExpenseScreen() {
   const [scanning, setScanning] = useState(false);
   const [receipt, setReceipt] = useState<any>(null);
   const [ocr, setOcr] = useState<any>(null);
-  const [ocrFeedback, setOcrFeedback] = useState<{ tone: 'info' | 'success' | 'error'; message: string } | null>(null);
+  const [ocrFeedback, setOcrFeedback] = useState<{ tone: 'info' | 'success' | 'warning' | 'error'; message: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; amount?: string; category?: string }>({});
   const [cameraVisible, setCameraVisible] = useState(false);
   const [replacingReceipt, setReplacingReceipt] = useState(false);
@@ -142,7 +143,29 @@ export default function RecordExpenseScreen() {
       setOcrFeedback({ tone: 'info', message: 'Scanning receipt with OCR…' });
       const result = await expenseService.previewReceiptOcr(fileToScan);
       if (result.status !== 'COMPLETED') {
-        setOcrFeedback({ tone: 'error', message: result.error || 'Receipt data could not be extracted. Enter details manually.' });
+        const isNotConfigured = result.status === 'NOT_CONFIGURED';
+        const inferred = inferReceiptDetailsFromFilename(fileToScan.name);
+
+        const updates: Partial<typeof f> = {};
+        if (inferred.vendor && !f.vendor) updates.vendor = inferred.vendor;
+        if (inferred.amount && !f.amount) updates.amount = inferred.amount;
+        if (inferred.suggestedName && !f.name) updates.name = inferred.suggestedName;
+        if (inferred.invoiceNumber && !f.invoiceNumber) updates.invoiceNumber = inferred.invoiceNumber;
+        if (inferred.date) {
+          try {
+            updates.date = new Date(`${inferred.date}T00:00:00`);
+          } catch {}
+        }
+        if (Object.keys(updates).length > 0) {
+          setF((prev) => ({ ...prev, ...updates }));
+        }
+
+        setOcrFeedback({
+          tone: isNotConfigured ? 'warning' : 'error',
+          message: isNotConfigured
+            ? 'Local receipt OCR is not configured on this server. Receipt is attached — please enter or review the bill details on the next step.'
+            : (result.error || 'Receipt data could not be extracted. Enter details manually.'),
+        });
         return;
       }
 
@@ -506,12 +529,20 @@ export default function RecordExpenseScreen() {
                     loading={scanning}
                     disabled={scanning}
                     onPress={() => {
+                      if (ocrFeedback?.tone === 'warning' && ocrFeedback?.message?.includes('not configured')) {
+                        handleNextSlide();
+                        return;
+                      }
                       scan();
                     }}
                     className="mt-1 bg-primary"
                   >
                     <Text className="text-xs font-bold text-primary-foreground">
-                      {scanning ? 'Scanning & Extracting Data…' : 'Scan & Auto-Extract Details'}
+                      {scanning
+                        ? 'Scanning & Extracting Data…'
+                        : ocrFeedback?.tone === 'warning' && ocrFeedback?.message?.includes('not configured')
+                        ? 'Proceed to Enter Details'
+                        : 'Scan & Auto-Extract Details'}
                     </Text>
                   </Button>
                 </View>
@@ -558,17 +589,30 @@ export default function RecordExpenseScreen() {
                         }
                       />
                     )}
-                    <Text
-                      className={`flex-1 text-xs font-medium leading-relaxed ${
-                        ocrFeedback.tone === 'error'
-                          ? 'text-destructive'
-                          : ocrFeedback.tone === 'success'
-                          ? 'text-emerald-800 dark:text-emerald-300 font-semibold'
-                          : 'text-amber-800 dark:text-amber-300'
-                      }`}
-                    >
-                      {ocrFeedback.message}
-                    </Text>
+                    <View className="flex-1 gap-1.5">
+                      <Text
+                        className={`text-xs font-medium leading-relaxed ${
+                          ocrFeedback.tone === 'error'
+                            ? 'text-destructive'
+                            : ocrFeedback.tone === 'success'
+                            ? 'text-emerald-800 dark:text-emerald-300 font-semibold'
+                            : 'text-amber-800 dark:text-amber-300'
+                        }`}
+                      >
+                        {ocrFeedback.message}
+                      </Text>
+                      {ocrFeedback.tone === 'warning' && (
+                        <Pressable
+                          onPress={handleNextSlide}
+                          className="flex-row items-center gap-1.5 pt-0.5"
+                          hitSlop={8}
+                        >
+                          <Text className="text-xs font-bold text-amber-900 dark:text-amber-200 underline">
+                            Enter details on Next Step →
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
                 </View>
               ) : null}
@@ -583,7 +627,11 @@ export default function RecordExpenseScreen() {
               >
                 <View className="flex-row items-center justify-center gap-2">
                   <Text className="text-white font-bold text-base">
-                    {receipt ? 'Next: Review Extracted Details' : 'Skip Receipt & Enter Manually'}
+                    {ocr
+                      ? 'Next: Review Extracted Details'
+                      : receipt
+                      ? 'Next: Enter Bill Details Manually'
+                      : 'Skip Receipt & Enter Manually'}
                   </Text>
                   <ArrowRight size={18} className="text-white" />
                 </View>

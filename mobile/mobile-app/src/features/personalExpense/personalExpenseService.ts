@@ -105,9 +105,34 @@ export const personalExpenseService = {
   },
   previewReceipt: async (receipt: ReceiptUpload) => {
     const data = await buildReceiptFormData(receipt);
-    return unwrap<{ status: string; engineStatus?: string; error?: string | null; result: any }>(
-      await apiClient.post('/personal-expenses/receipts/preview', data)
-    );
+    try {
+      const res: any = unwrap<{ status: string; engineStatus?: string; error?: string | null; result: any }>(
+        await apiClient.post('/personal-expenses/receipts/preview', data)
+      );
+      if (res?.status === 'NOT_CONFIGURED' && Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          const localData = await buildReceiptFormData(receipt);
+          const localOrigin = `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
+          const localRes: any = unwrap(await apiClient.post(`${localOrigin}/personal-expenses/receipts/preview`, localData));
+          if (localRes?.status === 'COMPLETED' || localRes?.result) {
+            return localRes;
+          }
+        } catch {}
+      }
+      return res;
+    } catch (err: any) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          const localData = await buildReceiptFormData(receipt);
+          const localOrigin = `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
+          const localRes: any = unwrap(await apiClient.post(`${localOrigin}/personal-expenses/receipts/preview`, localData));
+          if (localRes?.status === 'COMPLETED' || localRes?.result) {
+            return localRes;
+          }
+        } catch {}
+      }
+      throw err;
+    }
   },
   retryReceiptOcr: async (id: string) =>
     unwrap<PersonalExpenseTransaction>(await apiClient.post(`/personal-expenses/transactions/${id}/receipt/ocr`)),

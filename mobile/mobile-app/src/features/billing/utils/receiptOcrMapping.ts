@@ -51,3 +51,107 @@ export const getReceiptOcrTransactionReference = (result: ReceiptOcrResult): str
     ? reference.replace(/\s+/g, '').trim()
     : referenceFromRecognizedText(result.recognizedText);
 };
+
+export interface InferredReceiptDetails {
+  suggestedName?: string;
+  vendor?: string;
+  amount?: string;
+  date?: string;
+  invoiceNumber?: string;
+  transactionReference?: string;
+}
+
+/**
+ * Heuristically extracts tentative bill fields from receipt filename when OCR is
+ * unconfigured or returns incomplete data.
+ */
+export const inferReceiptDetailsFromFilename = (filename?: string): InferredReceiptDetails => {
+  if (!filename || typeof filename !== 'string') return {};
+
+  const cleanBase = filename
+    .replace(/\.[a-zA-Z0-9]{2,5}$/, '') // Strip extension (.jpg, .pdf, .png)
+    .trim();
+
+  if (!cleanBase) return {};
+
+  const details: InferredReceiptDetails = {};
+
+  // 1. Detect Date (e.g., 2026-10-25 or 25-10-2026)
+  const isoDateMatch = cleanBase.match(/(?:^|[^0-9a-zA-Z])(20\d{2})[-_/.](0[1-9]|1[0-2])[-_/.](0[1-9]|[12]\d|3[01])(?:$|[^0-9a-zA-Z])/);
+  if (isoDateMatch) {
+    details.date = `${isoDateMatch[1]}-${isoDateMatch[2]}-${isoDateMatch[3]}`;
+  } else {
+    const dmyDateMatch = cleanBase.match(/(?:^|[^0-9a-zA-Z])(0[1-9]|[12]\d|3[01])[-_/.](0[1-9]|1[0-2])[-_/.](20\d{2})(?:$|[^0-9a-zA-Z])/);
+    if (dmyDateMatch) {
+      details.date = `${dmyDateMatch[3]}-${dmyDateMatch[2]}-${dmyDateMatch[1]}`;
+    }
+  }
+
+  // 2. Detect Amount (e.g., rs-450, inr_1200, or trailing numeric token _500)
+  const explicitAmtMatch = cleanBase.match(/(?:₹|rs\.?|inr|amt|pay)[-_ ]*([0-9]+(?:\.[0-9]{1,2})?)(?:$|[^0-9a-zA-Z])/i);
+  if (explicitAmtMatch?.[1]) {
+    const amt = positiveFiniteNumber(explicitAmtMatch[1]);
+    if (amt != null) details.amount = amt.toFixed(2);
+  } else {
+    const trailingAmtMatch = cleanBase.match(/[-_ ]([1-9][0-9]{1,6}(?:\.[0-9]{1,2})?)$/);
+    if (trailingAmtMatch?.[1]) {
+      const amt = positiveFiniteNumber(trailingAmtMatch[1]);
+      if (amt != null) details.amount = amt.toFixed(2);
+    }
+  }
+
+  // 3. Detect Reference / Invoice # (e.g., INV-1002, UTR9876543)
+  const refMatch = cleanBase.match(/(?:^|[^0-9a-zA-Z])(?:inv(?:oice)?|bill|utr|rrn|txn)[-_ ]*([a-zA-Z0-9]{4,24})(?:$|[^0-9a-zA-Z])/i);
+  if (refMatch?.[1]) {
+    details.invoiceNumber = refMatch[1].toUpperCase();
+  }
+
+  // 4. Derive Vendor / Meaningful Name from non-noise tokens
+  const tokens = cleanBase
+    .replace(/(?:^|[^0-9a-zA-Z])(20\d{2}[-_/.](?:0[1-9]|1[0-2])[-_/.](?:0[1-9]|[12]\d|3[01]))/g, '')
+    .replace(/(?:₹|rs\.?|inr|amt|pay)[-_ ]*[0-9]+(?:\.[0-9]{1,2})?/gi, '')
+    .split(/[-_.\s]+/)
+    .filter((token) => {
+      const lower = token.toLowerCase();
+      const isNoise = [
+        'payment',
+        'receipt',
+        'bill',
+        'invoice',
+        'inv',
+        'invo',
+        'ref',
+        'utr',
+        'rrn',
+        'txn',
+        'scan',
+        'scanned',
+        'img',
+        'image',
+        'screenshot',
+        'proof',
+        'doc',
+        'file',
+        'temp',
+        'test',
+        'final',
+        'new',
+      ].includes(lower);
+      const isPureDigits = /^\d+$/.test(token);
+      return !isNoise && !isPureDigits && token.length >= 2;
+    });
+
+  if (tokens.length > 0) {
+    const candidate = tokens
+      .map((t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase())
+      .join(' ')
+      .trim();
+
+    if (candidate.length >= 2 && candidate.length <= 50) {
+      details.vendor = candidate;
+      details.suggestedName = candidate;
+    }
+  }
+
+  return details;
+};

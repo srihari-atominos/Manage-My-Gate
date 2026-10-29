@@ -81,7 +81,35 @@ export const expenseService = {
   },
   async getOnlinePayee() { return unwrap(await apiClient.get('/expenses/online-payee')); },
   async create(payload:any) { return unwrap(await apiClient.post('/expenses', payload)); },
-  async previewReceiptOcr(file:any) { return unwrap(await apiClient.post('/expenses/receipt-ocr/preview', await receiptFormData('receipt', file))); },
+  async previewReceiptOcr(file: any) {
+    const formData = await receiptFormData('receipt', file);
+    try {
+      const res: any = unwrap(await apiClient.post('/expenses/receipt-ocr/preview', formData));
+      if (res?.status === 'NOT_CONFIGURED' && Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          const localFormData = await receiptFormData('receipt', file);
+          const localOrigin = `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
+          const localRes: any = unwrap(await apiClient.post(`${localOrigin}/expenses/receipt-ocr/preview`, localFormData));
+          if (localRes?.status === 'COMPLETED' || localRes?.result) {
+            return localRes;
+          }
+        } catch {}
+      }
+      return res;
+    } catch (err: any) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          const localFormData = await receiptFormData('receipt', file);
+          const localOrigin = `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
+          const localRes: any = unwrap(await apiClient.post(`${localOrigin}/expenses/receipt-ocr/preview`, localFormData));
+          if (localRes?.status === 'COMPLETED' || localRes?.result) {
+            return localRes;
+          }
+        } catch {}
+      }
+      throw err;
+    }
+  },
   async get(id:string) { return unwrap(await apiClient.get(`/expenses/${id}`)); },
   async uploadAttachment(id:string, file:any) { return unwrap(await apiClient.post(`/expenses/${id}/attachments`, await receiptFormData('attachment', file))); },
   async recordPayment(id:string, payload:any) { return unwrap(await apiClient.post(`/expenses/${id}/payments`, payload)); },

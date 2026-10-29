@@ -444,6 +444,34 @@ apiClient.interceptors.response.use(
 
     const isAuthEndpoint = isAuthenticationRequest(originalRequest?.url);
 
+    // Web development fallback: If Metro proxy or remote backend returns 404 for newly developed features
+    // (such as /ai-assistant), retry directly against the active local backend port (5006).
+    if (
+      Platform.OS === 'web' &&
+      error.response?.status === 404 &&
+      originalRequest &&
+      !(originalRequest as any)._fallbackTried &&
+      typeof window !== 'undefined' &&
+      window.location
+    ) {
+      const requestUrl = originalRequest.url || '';
+      const isFeatureRoute =
+        requestUrl.includes('/ai-assistant') ||
+        requestUrl.includes('/amenities') ||
+        requestUrl.includes('/polls') ||
+        requestUrl.includes('/notices') ||
+        requestUrl.includes('/community-finance');
+
+      if (isFeatureRoute) {
+        (originalRequest as any)._fallbackTried = true;
+        const localOrigin = `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
+        if (originalRequest.baseURL !== localOrigin) {
+          originalRequest.baseURL = localOrigin;
+          return apiClient(originalRequest);
+        }
+      }
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {

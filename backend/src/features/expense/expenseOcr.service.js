@@ -32,8 +32,16 @@ export function expenseOcrConfiguration(env = process.env) {
   const timeout = Number(env.EXPENSE_OCR_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
   const command = resolveTesseractCommand(env);
   const tessdataDir = resolveTessdataDir(env);
+  const explicitProvider = String(
+    env.EXPENSE_OCR_PROVIDER || env.PERSONAL_EXPENSE_OCR_PROVIDER || env.OCR_PROVIDER || ''
+  ).toLowerCase();
+  const configured =
+    explicitProvider === 'tesseract-local' ||
+    explicitProvider === 'tesseract' ||
+    explicitProvider === 'dual' ||
+    explicitProvider === 'fallback';
   return {
-    configured: env.EXPENSE_OCR_PROVIDER === 'tesseract-local',
+    configured,
     command,
     tessdataDir,
     languages,

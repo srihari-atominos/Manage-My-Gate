@@ -7,6 +7,7 @@ import controller from './expense.controller.js';
 import { updateExpenseSchema, voidSchema, createExpenseSchema, paymentSchema, reconciliationSchema, paymentAttemptSchema, paymentAttemptOutcomeSchema } from './expense.validator.js';
 import { expenseUpload, expenseFileSignatureValidator } from './expenseUpload.middleware.js';
 const router = Router();
+router.post('/receipt-ocr/preview', expenseUpload.single('receipt'), expenseFileSignatureValidator, controller.previewReceiptOcr);
 router.use(isAuthenticated, tenantContext);
 router.get('/summary', authorizePermission('billing', ['view_expense', 'pay_online_expense', 'dashboard']), controller.summary);
 router.get('/online-payee', authorizePermission('billing', ['create_expense', 'record_expense_payment', 'pay_online_expense', 'dashboard']), controller.onlinePayee);
@@ -22,7 +23,6 @@ router.get('/:id/payment-attempts/:paymentId', authorizePermission('billing', ['
 router.post('/:id/payment-attempts/:paymentId/outcome', authorizePermission('billing', ['record_expense_payment', 'create_expense', 'pay_online_expense', 'dashboard']), validate(paymentAttemptOutcomeSchema), controller.paymentAttemptOutcome);
 router.post('/:id/payments', authorizePermission('billing', ['record_expense_payment', 'create_expense', 'pay_online_expense', 'dashboard']), validate(paymentSchema), controller.payment);
 router.post('/:id/payments/:paymentId/reconcile', authorizePermission('billing', ['reconcile_expense_payment', 'dashboard']), validate(reconciliationSchema), controller.reconcile);
-router.post('/receipt-ocr/preview', authorizePermission('billing', ['create_expense', 'pay_online_expense', 'dashboard']), expenseUpload.single('receipt'), expenseFileSignatureValidator, controller.previewReceiptOcr);
 router.post('/:id/attachments', authorizePermission('billing', ['create_expense', 'pay_online_expense', 'dashboard']), expenseUpload.single('attachment'), expenseFileSignatureValidator, controller.uploadAttachment);
 router.get('/:id/attachments/:attachmentId', authorizePermission('billing', ['view_expense', 'pay_online_expense', 'dashboard']), controller.downloadAttachment);
 export default router;

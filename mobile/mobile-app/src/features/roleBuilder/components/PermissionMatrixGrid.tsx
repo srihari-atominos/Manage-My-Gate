@@ -207,6 +207,27 @@ const PermissionMatrixGrid = ({
 
     const result: Record<string, any[]> = {};
     Object.entries(rawGrouped).forEach(([categoryKey, perms]) => {
+      // If a category key is purely numeric (array index), extract the items and group by item feature
+      if (/^\d+$/.test(categoryKey)) {
+        (perms || []).forEach((perm: any) => {
+          if (!perm) return;
+          let feature = (
+            perm.feature ||
+            perm.category ||
+            String(perm.name || '').split(/[:.]/)[0] ||
+            'other'
+          ).toLowerCase();
+          if (
+            feature === 'billing' &&
+            (perm.action === 'action_center' || String(perm.name || '').includes('action_center'))
+          ) {
+            feature = 'digital_wallet';
+          }
+          if (!result[feature]) result[feature] = [];
+          result[feature].push(perm);
+        });
+        return;
+      }
       const lowerKey = categoryKey.toLowerCase();
       if (lowerKey === 'polls') {
         result.notices = [...(result.notices || []), ...(perms || [])];
@@ -261,7 +282,9 @@ const PermissionMatrixGrid = ({
   }, [groupedPermissions]);
 
   const categories = React.useMemo(() => {
-    return Object.keys(normalizedGroupedPermissions).sort((a, b) => {
+    return Object.keys(normalizedGroupedPermissions)
+      .filter((k) => !/^\d+$/.test(k)) // Strictly exclude numeric index keys from category headers
+      .sort((a, b) => {
       const orderA = CATEGORY_ORDER[a] || 99;
       const orderB = CATEGORY_ORDER[b] || 99;
       if (orderA === orderB) return a.localeCompare(b);

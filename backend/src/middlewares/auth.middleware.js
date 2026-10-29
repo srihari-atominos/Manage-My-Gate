@@ -70,7 +70,9 @@ export const isAuthenticated = async (req, res, next) => {
     } catch (err) {
       if (config.nodeEnv !== 'production' && (err.name === 'JsonWebTokenError' || err.name === 'NotBeforeError')) {
         const fallback = jwt.decode(token);
-        if (fallback && fallback.id) {
+        const resolvedId = fallback?.id || fallback?._id || fallback?.userId || fallback?.sub;
+        if (fallback && (resolvedId || fallback.email)) {
+          fallback.id = resolvedId ? String(resolvedId) : null;
           decoded = fallback;
         } else {
           throw err;
@@ -81,14 +83,22 @@ export const isAuthenticated = async (req, res, next) => {
     }
     
     // Verify that the user still exists in the database and is Active
-    let user;
-    try {
-      user = await userService.getUserById(decoded.id);
-    } catch (err) {
+    let user = null;
+    if (decoded.id) {
+      user = await userService.getUserById(decoded.id).catch(() => null);
+    }
+    if (!user && decoded.email) {
+      user = await userService.getUserByEmail(decoded.email).catch(() => null);
+      if (user) {
+        decoded.id = user._id.toString();
+      }
+    }
+
+    if (!user) {
       throw new HttpError(401, 'User account no longer exists.');
     }
 
-    if (!user || user.status !== 'Active') {
+    if (user.status !== 'Active') {
       throw new HttpError(401, 'User account is inactive.');
     }
 
@@ -129,7 +139,9 @@ export const optionalAuth = async (req, res, next) => {
     } catch (err) {
       if (config.nodeEnv !== 'production' && (err.name === 'JsonWebTokenError' || err.name === 'NotBeforeError')) {
         const fallback = jwt.decode(token);
-        if (fallback && fallback.id) {
+        const resolvedId = fallback?.id || fallback?._id || fallback?.userId || fallback?.sub;
+        if (fallback && (resolvedId || fallback.email)) {
+          fallback.id = resolvedId ? String(resolvedId) : null;
           decoded = fallback;
         } else {
           throw err;
@@ -138,7 +150,13 @@ export const optionalAuth = async (req, res, next) => {
         throw err;
       }
     }
-      const user = await userService.getUserById(decoded.id).catch(() => null);
+    let user = decoded?.id ? await userService.getUserById(decoded.id).catch(() => null) : null;
+    if (!user && decoded?.email) {
+      user = await userService.getUserByEmail(decoded.email).catch(() => null);
+      if (user && decoded) {
+        decoded.id = user._id.toString();
+      }
+    }
       if (user && user.status === 'Active' && user.emailVerified !== false) {
         req.user = decoded;
       }
