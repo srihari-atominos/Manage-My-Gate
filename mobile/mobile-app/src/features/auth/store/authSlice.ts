@@ -202,7 +202,19 @@ export const bootstrapAuth = createAsyncThunk(
         // Sync latest profile & availableWorkspaces asynchronously in background without blocking bootstrap
         (async () => {
           try {
-            const savedOrgId = user?.orgId || user?.activeOrgId || user?.organizationId;
+            let savedOrgId = user?.orgId || user?.activeOrgId || user?.organizationId;
+            const availableWorkspaces = user?.availableWorkspaces;
+            if (Array.isArray(availableWorkspaces) && availableWorkspaces.length > 0) {
+              const isSavedOrgValid = availableWorkspaces.some(
+                (w: any) => String(w?.orgId || w?._id || w?.id || '') === String(savedOrgId)
+              );
+              if (!isSavedOrgValid) {
+                savedOrgId =
+                  availableWorkspaces[0]?.orgId ||
+                  availableWorkspaces[0]?._id ||
+                  availableWorkspaces[0]?.id;
+              }
+            }
             const savedVillaId = user?.activeVillaId || user?.villaId || user?.unitNumber;
             const savedRole = user?.role || user?.activeRole;
 

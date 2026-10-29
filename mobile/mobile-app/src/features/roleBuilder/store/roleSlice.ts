@@ -164,7 +164,37 @@ const roleSlice = createSlice({
       })
       .addCase(fetchPermissionsAsync.fulfilled, (state, action: any) => {
         state.isPermissionsLoading = false;
-        state.permissionsList = action.payload?.data || action.payload || {};
+        const payloadData = action.payload?.data !== undefined ? action.payload.data : action.payload;
+        let permsMap: PermissionGroupMap = {};
+        if (Array.isArray(payloadData)) {
+          payloadData.forEach((perm: any) => {
+            if (!perm) return;
+            const category = (
+              perm.feature ||
+              perm.category ||
+              (perm.name ? String(perm.name).split(/[:.]/)[0] : 'other')
+            ).toLowerCase();
+            if (!permsMap[category]) permsMap[category] = [];
+            permsMap[category].push(perm);
+          });
+        } else if (payloadData && typeof payloadData === 'object') {
+          const keys = Object.keys(payloadData);
+          if (keys.length > 0 && keys.every((k) => /^\d+$/.test(k))) {
+            Object.values(payloadData).forEach((perm: any) => {
+              if (!perm) return;
+              const category = (
+                perm.feature ||
+                perm.category ||
+                (perm.name ? String(perm.name).split(/[:.]/)[0] : 'other')
+              ).toLowerCase();
+              if (!permsMap[category]) permsMap[category] = [];
+              permsMap[category].push(perm);
+            });
+          } else {
+            permsMap = payloadData;
+          }
+        }
+        state.permissionsList = permsMap;
       })
       .addCase(fetchPermissionsAsync.rejected, (state, action: any) => {
         state.isPermissionsLoading = false;

@@ -689,7 +689,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                     className="bg-white border-neutral-300"
                     textClassName="text-black font-bold"
                   >
-                    Send ({validCount}) Invites
+                    {`Send (${validCount}) Invites`}
                   </Button>
                 </View>
               </View>

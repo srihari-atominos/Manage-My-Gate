@@ -154,14 +154,10 @@ export const getPermissionsForUser = async (user, targetOrgId = null) => {
     }
   }
 
-  const orgId = targetOrgId || user.orgId;
+  let orgId = targetOrgId || user.orgId;
 
   // Live Database OrgMembership verification for active organization context
   if (mongoose.connection?.readyState === 1) {
-    if (!orgId || !mongoose.isValidObjectId(orgId)) {
-      return []; // Fail closed: tenant permissions require a valid target organization
-    }
-
     const userId = user.id || user._id;
     if (!userId || !mongoose.isValidObjectId(userId)) {
       return [];
@@ -169,13 +165,28 @@ export const getPermissionsForUser = async (user, targetOrgId = null) => {
 
     try {
       const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
-      const membership = await OrgMembership.findOne({
-        userId,
-        orgId,
-        status: 'Active',
-      }).lean();
+      let membership = null;
+      if (orgId && mongoose.isValidObjectId(orgId)) {
+        membership = await OrgMembership.findOne({
+          userId,
+          orgId,
+          status: 'Active',
+        }).lean();
+      }
 
-      // Fails closed if user has no active membership in the target organization
+      // If no valid membership found for requested orgId (e.g. targetOrgId was null on personal route),
+      // resolve permissions from the user's active membership
+      if (!membership && !targetOrgId) {
+        membership = await OrgMembership.findOne({
+          userId,
+          status: 'Active',
+        }).lean();
+        if (membership) {
+          orgId = membership.orgId;
+        }
+      }
+
+      // Fails closed if user has no active membership
       if (!membership) {
         return [];
       }
@@ -428,6 +439,12 @@ export const authorizePermission = (feature, action) => {
         permissions = req.tenantPermissions;
       } else {
         permissions = await getPermissionsForUser(req.user, targetOrgId);
+        // Fallback for personal non-tenant routes (where tenantContext did not run)
+        // If client passed a mismatched or stale x-organization-id header, resolve user's permissions
+        // from their active membership rather than rejecting their personal dues
+        if ((!permissions || permissions.length === 0) && !req.tenant?.orgId) {
+          permissions = await getPermissionsForUser(req.user, null);
+        }
       }
       const userPermissions = expandUserPermissions(permissions.map(mapPermission));
 

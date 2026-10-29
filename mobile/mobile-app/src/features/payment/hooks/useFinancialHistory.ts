@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
+import { selectActiveOrgId } from '../../auth/store/authSelectors';
 import financialHistoryService from '../services/financialHistoryService';
 import {
   FinancialHistoryItem,
@@ -18,17 +19,7 @@ export function useFinancialHistory() {
   // Listen for realtime socket updates (invoice/payment updates)
   useBillingSocket();
 
-  const user = useSelector((state: RootState) => state.auth?.user);
-  const activeOrgId = useSelector((state: any) =>
-    state.workspace?.activeOrganizationId ||
-    state.auth?.activeOrganizationId ||
-    state.auth?.user?.orgId ||
-    state.auth?.user?.organizationId ||
-    state.auth?.user?.org?._id ||
-    state.auth?.user?.activeOrgId ||
-    state.auth?.user?.activeOrganizationId
-  );
-  const communityId = activeOrgId || user?.activeOrganizationId || user?.orgId || user?.communityId;
+  const communityId = useSelector((state: RootState) => selectActiveOrgId(state));
 
   const [domainState, setDomainState] = useState<FinancialHistoryDomainState>({
     invoices: { data: [], status: 'idle' },

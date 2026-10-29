@@ -85,6 +85,8 @@ export interface DashboardData {
   monthlyTimeSeries?: TimeSeriesPoint[];
   yearlyTimeSeries?: TimeSeriesPoint[];
   allTimeSeries?: TimeSeriesPoint[];
+  collections?: any[];
+  expenses?: any;
 }
 
 export interface NormalizedTransaction {
@@ -98,10 +100,13 @@ export interface NormalizedTransaction {
   status: string;
   referenceId: string | null;
   referenceType: string;
-  paymentMethod: string;
+  paymentMethod: string | null;
   receiptNumber: string | null;
-  createdAt: string | null;
-  updatedAt: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  vendorName?: string | null;
+  category?: string | null;
+  isDeposit?: boolean;
 }
 
 export interface TransactionsResponse {

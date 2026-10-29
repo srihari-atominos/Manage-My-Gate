@@ -88,4 +88,27 @@ describe('Button (Common)', () => {
     expect(getByTestId('custom-child-view')).toBeTruthy();
     expect(getByTestId('custom-child-text')).toBeTruthy();
   });
+
+  it('safely wraps interpolated text array children (like Send ({count}) Invites) in Text', async () => {
+    const count = 5;
+    const { getByText } = await render(
+      <Button>
+        Send ({count}) Invites
+      </Button>
+    );
+
+    const textElement = getByText(/Send.*5.*Invites/);
+    expect(textElement).toBeTruthy();
+    expect(textElement.props.numberOfLines).toBe(1);
+  });
+
+  it('safely wraps numeric children in Text', async () => {
+    const { getByText } = await render(
+      <Button>
+        {42}
+      </Button>
+    );
+
+    expect(getByText('42')).toBeTruthy();
+  });
 });

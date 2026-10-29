@@ -171,8 +171,42 @@ const PermissionMatrixGrid = ({
 }: PermissionMatrixGridProps) => {
   const normalizedGroupedPermissions = React.useMemo(() => {
     if (!groupedPermissions) return {};
+
+    // Normalization: detect if groupedPermissions is an Array or array-like object with numeric keys
+    let rawGrouped: Record<string, any[]> = {};
+    const isArrayLike =
+      Array.isArray(groupedPermissions) ||
+      (typeof groupedPermissions === 'object' &&
+        Object.keys(groupedPermissions).length > 0 &&
+        Object.keys(groupedPermissions).every((k) => /^\d+$/.test(k)));
+
+    if (isArrayLike) {
+      const items = Array.isArray(groupedPermissions)
+        ? groupedPermissions
+        : Object.values(groupedPermissions);
+      items.forEach((perm: any) => {
+        if (!perm) return;
+        let feature = (
+          perm.feature ||
+          perm.category ||
+          String(perm.name || '').split(/[:.]/)[0] ||
+          'other'
+        ).toLowerCase();
+        if (
+          feature === 'billing' &&
+          (perm.action === 'action_center' || String(perm.name || '').includes('action_center'))
+        ) {
+          feature = 'digital_wallet';
+        }
+        if (!rawGrouped[feature]) rawGrouped[feature] = [];
+        rawGrouped[feature].push(perm);
+      });
+    } else {
+      rawGrouped = groupedPermissions;
+    }
+
     const result: Record<string, any[]> = {};
-    Object.entries(groupedPermissions).forEach(([categoryKey, perms]) => {
+    Object.entries(rawGrouped).forEach(([categoryKey, perms]) => {
       const lowerKey = categoryKey.toLowerCase();
       if (lowerKey === 'polls') {
         result.notices = [...(result.notices || []), ...(perms || [])];

@@ -54,7 +54,9 @@ export class RoleRepository {
     // resolved by auth/onboarding flows, but are not configurable community roles.
 
     const term = String(search || '').trim();
-    const matchQuery = orgId ? { orgId: new mongoose.Types.ObjectId(orgId) } : { orgId: null };
+    const matchQuery = orgId
+      ? { $or: [{ orgId: new mongoose.Types.ObjectId(orgId) }, { orgId: null, isShared: true }] }
+      : { orgId: null };
     if (term) {
       const regex = new RegExp(escapeRegex(term), 'i');
       matchQuery.$and = [{ $or: [{ name: regex }, { description: regex }] }];

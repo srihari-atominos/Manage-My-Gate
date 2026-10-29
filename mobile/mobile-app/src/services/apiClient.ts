@@ -276,21 +276,22 @@ apiClient.interceptors.request.use(
         (Array.isArray(state?.auth?.user?.availableWorkspaces) && state?.auth?.user?.availableWorkspaces[0]?.orgId) ||
         (Array.isArray(state?.auth?.user?.availableWorkspaces) && state?.auth?.user?.availableWorkspaces[0]?._id);
 
+      let storedUser: any = null;
       if (!rawOrgId) {
         const userStr = await storage.getItem('user');
         if (userStr) {
           try {
-            const user = JSON.parse(userStr);
+            storedUser = JSON.parse(userStr);
             rawOrgId =
-              user?.orgId ||
-              user?.communityId ||
-              user?.organizationId ||
-              user?.org?._id ||
-              user?.org ||
-              user?.activeOrgId ||
-              user?.activeOrganizationId ||
-              (Array.isArray(user?.availableWorkspaces) && user?.availableWorkspaces[0]?.orgId) ||
-              (Array.isArray(user?.availableWorkspaces) && user?.availableWorkspaces[0]?._id);
+              storedUser?.orgId ||
+              storedUser?.communityId ||
+              storedUser?.organizationId ||
+              storedUser?.org?._id ||
+              storedUser?.org ||
+              storedUser?.activeOrgId ||
+              storedUser?.activeOrganizationId ||
+              (Array.isArray(storedUser?.availableWorkspaces) && storedUser?.availableWorkspaces[0]?.orgId) ||
+              (Array.isArray(storedUser?.availableWorkspaces) && storedUser?.availableWorkspaces[0]?._id);
           } catch (e) {}
         }
       }
@@ -309,11 +310,36 @@ apiClient.interceptors.request.use(
       const urlOrgMatch = config.url ? config.url.match(/\/organizations\/([a-fA-F0-9]{24})/) : null;
       const targetUrlOrgId = urlOrgMatch ? urlOrgMatch[1] : null;
 
-      const activeOrgId =
+      let activeOrgId =
         targetUrlOrgId ||
         (typeof rawOrgId === 'object' && rawOrgId !== null
           ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
           : rawOrgId);
+
+      // Validate against availableWorkspaces so a stale or deleted workspace context is never sent
+      const availableWorkspaces =
+        state?.auth?.user?.availableWorkspaces ||
+        (storedUser && storedUser.availableWorkspaces);
+      if (
+        !targetUrlOrgId &&
+        Array.isArray(availableWorkspaces) &&
+        availableWorkspaces.length > 0 &&
+        activeOrgId
+      ) {
+        const isValid = availableWorkspaces.some(
+          (w: any) =>
+            String(w?.orgId || w?._id || w?.id || '') === String(activeOrgId)
+        );
+        if (!isValid) {
+          const fallback =
+            availableWorkspaces[0]?.orgId ||
+            availableWorkspaces[0]?._id ||
+            availableWorkspaces[0]?.id;
+          if (fallback) {
+            activeOrgId = String(fallback);
+          }
+        }
+      }
 
       if (activeOrgId && activeOrgId !== '[object Object]') {
         config.headers['x-organization-id'] = activeOrgId;

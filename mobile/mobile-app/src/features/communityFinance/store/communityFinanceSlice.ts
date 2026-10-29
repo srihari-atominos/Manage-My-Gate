@@ -79,13 +79,21 @@ export const fetchDashboardData = createAsyncThunk(
       const { startDate, endDate } = getPeriodDateRange(period);
       const [dashboard, transactionsResponse] = await Promise.all([
         communityFinanceService.fetchDashboard({ startDate, endDate }),
-        communityFinanceService.fetchTransactions({
-          startDate,
-          endDate,
-          page: 1,
-          limit: 3, // Strict 3-item preview limit per mobile rule
-          includeLiabilities: true,
-        }),
+        communityFinanceService
+          .fetchTransactions({
+            startDate,
+            endDate,
+            page: 1,
+            limit: 3, // Strict 3-item preview limit per mobile rule
+            includeLiabilities: true,
+          })
+          .catch(() => ({
+            transactions: [],
+            page: 1,
+            limit: 3,
+            total: 0,
+            totalPages: 1,
+          })),
       ]);
 
       return {
@@ -111,13 +119,21 @@ export const refreshDashboardData = createAsyncThunk(
       const { startDate, endDate } = getPeriodDateRange(period);
       const [dashboard, transactionsResponse] = await Promise.all([
         communityFinanceService.fetchDashboard({ startDate, endDate }),
-        communityFinanceService.fetchTransactions({
-          startDate,
-          endDate,
-          page: 1,
-          limit: 3,
-          includeLiabilities: true,
-        }),
+        communityFinanceService
+          .fetchTransactions({
+            startDate,
+            endDate,
+            page: 1,
+            limit: 3,
+            includeLiabilities: true,
+          })
+          .catch(() => ({
+            transactions: [],
+            page: 1,
+            limit: 3,
+            total: 0,
+            totalPages: 1,
+          })),
       ]);
 
       return {

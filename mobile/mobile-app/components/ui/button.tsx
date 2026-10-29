@@ -273,16 +273,19 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
               )}
               {typeof children === 'function'
                 ? children(state)
+                : typeof children === 'string' ||
+                  typeof children === 'number' ||
+                  (Array.isArray(children) &&
+                    children.every(
+                      (c) => c == null || typeof c === 'string' || typeof c === 'number' || typeof c === 'boolean'
+                    ))
+                ? (
+                  <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1}>
+                    {children}
+                  </Text>
+                )
                 : React.Children.map(children, (child) => {
-                    if (typeof child === 'string') {
-                      if (!child.trim()) return null;
-                      return (
-                        <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1}>
-                          {child}
-                        </Text>
-                      );
-                    }
-                    if (typeof child === 'number') {
+                    if (typeof child === 'string' || typeof child === 'number') {
                       return (
                         <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1}>
                           {child}

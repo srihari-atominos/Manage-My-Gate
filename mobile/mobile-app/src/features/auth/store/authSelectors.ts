@@ -30,7 +30,7 @@ export const selectActiveOrgId = (state: RootState): string => {
   const auth = (state as any).auth;
   const user = selectAuthUser(state);
   
-  return (
+  let orgId =
     auth?.activeOrgId ||
     auth?.organizationId ||
     user?.activeOrgId ||
@@ -41,7 +41,17 @@ export const selectActiveOrgId = (state: RootState): string => {
     user?.organization?._id ||
     user?.organization?.id ||
     user?.activeOrganizationId ||
-    (Array.isArray(user?.availableWorkspaces) && (user.availableWorkspaces[0]?.orgId || user.availableWorkspaces[0]?._id || user.availableWorkspaces[0]?.id)) ||
-    ''
-  );
+    '';
+
+  const available = user?.availableWorkspaces;
+  if (Array.isArray(available) && available.length > 0) {
+    const isValid = available.some(
+      (w: any) => String(w?.orgId || w?._id || w?.id || '') === String(orgId)
+    );
+    if (!isValid) {
+      orgId = available[0]?.orgId || available[0]?._id || available[0]?.id || '';
+    }
+  }
+
+  return orgId ? String(orgId) : '';
 };

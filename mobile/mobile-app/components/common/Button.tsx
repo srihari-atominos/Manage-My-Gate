@@ -139,37 +139,78 @@ export const Button = forwardRef<View, ButtonProps>(
           }}
           {...props}
         >
-          {({ pressed }) => (
-            <View className={cn('flex-row items-center justify-center min-w-0 max-w-full overflow-hidden px-1', pressed && variant !== 'link' && 'opacity-80')}>
-              {LeftIcon && !loading && (
-                <LeftIcon size={16} className={cn('me-1.5 shrink-0', textClasses[variant])} />
-              )}
-              {loading ? (
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                  numberOfLines={1}
-                  className={cn('text-center leading-tight shrink min-w-0 text-sm font-semibold', foregroundClass)}
-                >
-                  Loading...
-                </Text>
-              ) : typeof children === 'string' ? (
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                  numberOfLines={1}
-                  className={cn('text-center leading-tight shrink min-w-0 text-sm font-semibold', foregroundClass)}
-                >
-                  {children}
-                </Text>
-              ) : (
-                children
-              )}
-              {RightIcon && !loading && (
-                <RightIcon size={16} className={cn('ms-1.5 shrink-0', textClasses[variant])} />
-              )}
-            </View>
-          )}
+          {({ pressed }) => {
+            const renderChildren = () => {
+              if (loading) {
+                return (
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                    numberOfLines={1}
+                    className={cn('text-center leading-tight shrink min-w-0 text-sm font-semibold', foregroundClass)}
+                  >
+                    Loading...
+                  </Text>
+                );
+              }
+
+              if (typeof children === 'function') {
+                return (children as any)({ pressed });
+              }
+
+              if (
+                typeof children === 'string' ||
+                typeof children === 'number' ||
+                (Array.isArray(children) &&
+                  children.every(
+                    (c) => c == null || typeof c === 'string' || typeof c === 'number' || typeof c === 'boolean'
+                  ))
+              ) {
+                return (
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                    numberOfLines={1}
+                    className={cn('text-center leading-tight shrink min-w-0 text-sm font-semibold', foregroundClass)}
+                  >
+                    {children}
+                  </Text>
+                );
+              }
+
+              if (Array.isArray(children)) {
+                return React.Children.map(children, (child) => {
+                  if (typeof child === 'string' || typeof child === 'number') {
+                    return (
+                      <Text
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                        numberOfLines={1}
+                        className={cn('text-center leading-tight shrink min-w-0 text-sm font-semibold', foregroundClass)}
+                      >
+                        {child}
+                      </Text>
+                    );
+                  }
+                  return child;
+                });
+              }
+
+              return children;
+            };
+
+            return (
+              <View className={cn('flex-row items-center justify-center min-w-0 max-w-full overflow-hidden px-1', pressed && variant !== 'link' && 'opacity-80')}>
+                {LeftIcon && !loading && (
+                  <LeftIcon size={16} className={cn('me-1.5 shrink-0', textClasses[variant])} />
+                )}
+                {renderChildren()}
+                {RightIcon && !loading && (
+                  <RightIcon size={16} className={cn('ms-1.5 shrink-0', textClasses[variant])} />
+                )}
+              </View>
+            );
+          }}
         </Pressable>
       </TextClassContext.Provider>
     );
