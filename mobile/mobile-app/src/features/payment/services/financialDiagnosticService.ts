@@ -341,7 +341,7 @@ export class FinancialDiagnosticService {
    */
   async checkDomainHealth(communityId?: string): Promise<DomainHealthReport> {
     const [invRes, walRes, amRes] = await Promise.allSettled([
-      billingService.getMyDues(communityId),
+      billingService.getMyDues(communityId).catch(() => billingService.getMyDues()),
       walletService.getWalletBalance({ limit: 1 }),
       amenityService.getMyBookings({ limit: 1 }),
     ]);

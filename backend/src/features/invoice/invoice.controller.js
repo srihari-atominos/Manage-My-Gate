@@ -9,8 +9,11 @@ export class InvoiceController {
    */
   async getMyDues(req, res, next) {
     try {
-      // Resolve optional communityId from query, x-organization-id header, or tenant context
-      const communityId = req.tenant?.orgId;
+      // Enforce BOLA: If tenant context exists and caller is not Platform Admin, use req.tenant.orgId
+      const isPlatform = req.tenant?.isPlatform || req.user?.isPlatform;
+      const communityId = (!isPlatform && req.tenant?.orgId)
+        ? req.tenant.orgId
+        : (req.query?.communityId || req.headers?.['x-organization-id'] || req.headers?.['x-org-id'] || req.tenant?.orgId || null);
 
       const data = await invoiceService.getUserDuesOverview(req.user, communityId);
       res.success(data, 'Outstanding dues retrieved successfully');

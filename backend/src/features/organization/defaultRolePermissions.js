@@ -12,6 +12,7 @@ export const DEFAULT_ROLE_PERMISSIONS = Object.freeze({
     'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
     'notices:read',
     'billing:action_center',
+    'billing:my_invoices',
     'staff:assign_unit',
   ],
   'Resident Tenant': [
@@ -19,6 +20,7 @@ export const DEFAULT_ROLE_PERMISSIONS = Object.freeze({
     'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
     'notices:read',
     'billing:action_center',
+    'billing:my_invoices',
     'staff:assign_unit',
   ],
   'Family Member': [
@@ -28,6 +30,7 @@ export const DEFAULT_ROLE_PERMISSIONS = Object.freeze({
     'complaints:raise_ticket', 'complaints:track_requests',
     'visitor:resident',
     'billing:action_center',
+    'billing:my_invoices',
     'billing:dashboard',
     'staff:assign_unit',
   ],

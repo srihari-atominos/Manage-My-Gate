@@ -35,7 +35,7 @@ interface CommunityFinanceState {
 }
 
 const initialTransactionFilters: TransactionFilters = {
-  period: 'Today',
+  period: 'This Month',
   type: 'all',
   domain: 'ALL',
   status: 'ALL',
@@ -53,7 +53,7 @@ const initialPagination: TransactionsPagination = {
 };
 
 const initialState: CommunityFinanceState = {
-  selectedPeriod: 'Today',
+  selectedPeriod: 'This Month',
   dashboardData: null,
   recentTransactions: [],
   recentTransactionsTotal: 0,
@@ -311,10 +311,10 @@ const communityFinanceSlice = createSlice({
       })
       .addCase(fetchDashboardData.fulfilled, (state, action) => {
         state.loading = false;
-        state.dashboardData = action.payload.dashboard;
-        state.recentTransactions = action.payload.transactions;
+        state.dashboardData = action.payload?.dashboard ?? null;
+        state.recentTransactions = action.payload?.transactions || [];
         state.recentTransactionsTotal =
-          action.payload.recentTransactionsTotal ?? action.payload.transactions.length;
+          action.payload?.recentTransactionsTotal ?? action.payload?.transactions?.length ?? 0;
         state.lastFetchedPeriod = action.payload.period;
         state.error = null;
       })
@@ -329,10 +329,10 @@ const communityFinanceSlice = createSlice({
       })
       .addCase(refreshDashboardData.fulfilled, (state, action) => {
         state.refreshing = false;
-        state.dashboardData = action.payload.dashboard;
-        state.recentTransactions = action.payload.transactions;
+        state.dashboardData = action.payload?.dashboard ?? null;
+        state.recentTransactions = action.payload?.transactions || [];
         state.recentTransactionsTotal =
-          action.payload.recentTransactionsTotal ?? action.payload.transactions.length;
+          action.payload?.recentTransactionsTotal ?? action.payload?.transactions?.length ?? 0;
         state.lastFetchedPeriod = action.payload.period;
         state.error = null;
       })
@@ -355,8 +355,8 @@ const communityFinanceSlice = createSlice({
         state.transactionsLoadingMore = false;
         if (!action.payload) return;
 
-        const txList = action.payload.transactions || [];
-        if (action.payload.isLoadMore) {
+        const txList = action.payload?.transactions || [];
+        if (action.payload?.isLoadMore) {
           // Append unique transactions by ID to prevent duplicates
           const existingIds = new Set(state.transactionsList.map((tx) => tx.id));
           const newItems = txList.filter((tx) => !existingIds.has(tx.id));

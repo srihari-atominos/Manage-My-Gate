@@ -33,7 +33,7 @@ export class FinancialHistoryService {
     amenities: { data: any[]; status: 'success' | 'error'; error?: string };
   }> {
     const [invoicesResult, walletResult, amenitiesResult] = await Promise.allSettled([
-      billingService.getMyDues(communityId),
+      billingService.getMyDues(communityId).catch(() => billingService.getMyDues()),
       walletService.getWalletBalance({ limit: 50 }),
       amenityService.getMyBookings({ limit: 50 }),
     ]);
@@ -118,7 +118,7 @@ export class FinancialHistoryService {
 
     if (options?.fetchInvoices || options?.fetchWalletTransactions || options?.fetchAmenityBookings) {
       const [invRes, walRes, amRes] = await Promise.allSettled([
-        options.fetchInvoices ? options.fetchInvoices() : billingService.getMyDues(options?.communityId),
+        options.fetchInvoices ? options.fetchInvoices() : billingService.getMyDues(options?.communityId).catch(() => billingService.getMyDues()),
         options.fetchWalletTransactions ? options.fetchWalletTransactions() : walletService.getWalletBalance({ limit: 50 }),
         options.fetchAmenityBookings ? options.fetchAmenityBookings() : amenityService.getMyBookings({ limit: 50 }),
       ]);

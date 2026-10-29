@@ -79,8 +79,8 @@ const startServer = async () => {
 
     // 5. Start the app on the designated port
     const port = config.port;
-    const host = config.host;
-    server.listen(port, () => {
+    const host = process.env.HOST || '0.0.0.0';
+    server.listen(port, host, () => {
       logger.info(`🚀 Server is running on http://${host}:${port}`);
     });
 

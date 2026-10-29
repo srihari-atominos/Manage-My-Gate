@@ -342,8 +342,18 @@ apiClient.interceptors.request.use(
       }
 
       if (activeOrgId && activeOrgId !== '[object Object]') {
-        config.headers['x-organization-id'] = activeOrgId;
-        (config as any)._tenantId = activeOrgId;
+        const explicitOrgId = config.headers['x-organization-id'] ?? config.headers['X-Organization-ID'];
+        if (explicitOrgId === '' || explicitOrgId === null) {
+          delete config.headers['x-organization-id'];
+          delete config.headers['X-Organization-ID'];
+        } else {
+          config.headers['x-organization-id'] = activeOrgId;
+        }
+        if (explicitOrgId === '' || explicitOrgId === null) {
+          delete (config as any)._tenantId;
+        } else {
+          (config as any)._tenantId = activeOrgId;
+        }
       }
 
       let rawUserId =
@@ -589,6 +599,8 @@ apiClient.interceptors.response.use(
       (error.response?.status === 403 || error.response?.status === 404) &&
       error.response?.data?.message &&
       (
+        error.response.data.message.includes('Active workspace context does not match') ||
+        error.response.data.message.includes('not a member of the requested community') ||
         error.response.data.message.includes('do not have an active membership') ||
         error.response.data.message.includes('Organization not found') ||
         error.response.data.message.includes('Workspace not found')

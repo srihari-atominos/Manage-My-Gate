@@ -147,8 +147,8 @@ export const config = {
   aiAssistant: {
     enabled: process.env.VOICE_ASSISTANT_ENABLED !== 'false',
     geminiApiKey: process.env.GEMINI_API_KEY || '',
-    geminiModel: process.env.GEMINI_LIVE_MODEL || 'gemini-2.0-flash',
-    geminiChatModel: process.env.GEMINI_CHAT_MODEL || 'gemini-2.0-flash',
+    geminiModel: process.env.GEMINI_LIVE_MODEL || 'gemini-3.8-flash',
+    geminiChatModel: process.env.GEMINI_CHAT_MODEL || 'gemini-3.8-flash',
     maxDailySessions: Math.max(1, parseInt(process.env.AI_ASSISTANT_MAX_DAILY_SESSIONS || '5', 10) || 5),
     sessionDurationSec: Math.min(3600, Math.max(30, parseInt(process.env.AI_ASSISTANT_SESSION_DURATION_SEC || '600', 10) || 600)),
   },

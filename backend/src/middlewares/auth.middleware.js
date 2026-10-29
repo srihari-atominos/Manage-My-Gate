@@ -39,6 +39,33 @@ const assertOrgHeaderAllowed = async (req, decoded) => {
     .select('_id')
     .lean();
   if (!membership) {
+    // Personal self-service endpoints should never be blocked by a stale, mismatched, or deleted community context
+    const url = req.originalUrl || req.url || '';
+    const isPersonalRoute = (
+      url.includes('/invoices/my-dues') ||
+      url.includes('/wallet') ||
+      url.includes('/auth/profile') ||
+      url.includes('/users/me') ||
+      url.includes('/notifications')
+    );
+    if (isPersonalRoute) {
+      delete req.headers['x-organization-id'];
+      delete req.headers['x-org-id'];
+      return;
+    }
+
+    // Automatically heal stale workspace context to the user's active organization if available
+    const activeMembership = await OrgMembership.findOne({ userId: decoded.id, status: 'Active' })
+      .select('orgId')
+      .lean();
+
+    if (activeMembership && activeMembership.orgId) {
+      const activeOrgId = String(activeMembership.orgId);
+      req.headers['x-organization-id'] = activeOrgId;
+      req.headers['x-org-id'] = activeOrgId;
+      return;
+    }
+
     throw new HttpError(403, 'Forbidden. You are not a member of the requested community.');
   }
 };

@@ -51,7 +51,7 @@ function forwardRequest(targetUrl, req, res, bodyBuffer, onFallback) {
     },
     (proxyRes) => {
       // If target returned 404, 502, 503, 504 and a fallback handler is provided, retry with fallback
-      if ((proxyRes.statusCode === 404 || proxyRes.statusCode >= 502) && typeof onFallback === 'function') {
+      if ((proxyRes.statusCode === 403 || proxyRes.statusCode === 404 || proxyRes.statusCode >= 502) && typeof onFallback === 'function') {
         proxyRes.resume();
         return onFallback();
       }
@@ -98,22 +98,10 @@ function handleProxy(req, res) {
   }
 
   const dispatch = (bodyBuffer) => {
-    // AI Assistant routes always route directly to local backend where models & tools reside
-    const isAiAssistantRoute = req.url && /\/ai-assistant(\/|\?|$)/.test(req.url);
-    // OCR preview routes route to local backend where local Tesseract engine and tessdata are installed
-    const isOcrPreviewRoute = req.url && /\/(receipt-ocr\/preview|receipts\/preview)(\/|\?|$)/.test(req.url);
-    // Community Finance routes route directly to local backend where aggregation pipelines reside
-    const isCommunityFinanceRoute = req.url && /\/community-finance(\/|\?|$)/.test(req.url);
-
-    if (isAiAssistantRoute || isOcrPreviewRoute || isCommunityFinanceRoute || targetBackend.origin === localBackend.origin) {
-      return forwardRequest(LOCAL_BACKEND_URL, req, res, bodyBuffer, () => {
-        forwardRequest(TARGET_BACKEND_URL, req, res, bodyBuffer);
-      });
-    }
-
-    // Forward to remote target with automatic fallback to local backend on 404 or connection failure
-    forwardRequest(TARGET_BACKEND_URL, req, res, bodyBuffer, () => {
-      forwardRequest(LOCAL_BACKEND_URL, req, res, bodyBuffer);
+    // Prioritize local backend (port 5006) for development so local database, roles, and routes
+    // are always served, with automatic fallback to remote target on 404, 502, or connection drops.
+    forwardRequest(LOCAL_BACKEND_URL, req, res, bodyBuffer, () => {
+      forwardRequest(TARGET_BACKEND_URL, req, res, bodyBuffer);
     });
   };
 

@@ -89,15 +89,15 @@ describe('Community Finance Mobile Module', () => {
   describe('3. Redux Slice and Reducers', () => {
     const initialState = communityFinanceReducer(undefined, { type: '@@INIT' });
 
-    it('initial state has default period Today and clean values', () => {
-      expect(initialState.selectedPeriod).toBe('Today');
+    it('initial state has default period This Month and clean values', () => {
+      expect(initialState.selectedPeriod).toBe('This Month');
       expect(initialState.dashboardData).toBeNull();
       expect(initialState.recentTransactions).toEqual([]);
       expect(initialState.recentTransactionsTotal).toBe(0);
       expect(initialState.loading).toBe(false);
       expect(initialState.error).toBeNull();
       expect(initialState.transactionsList).toEqual([]);
-      expect(initialState.transactionFilters.period).toBe('Today');
+      expect(initialState.transactionFilters.period).toBe('This Month');
     });
 
     it('setPeriod updates selected period', () => {
@@ -123,7 +123,7 @@ describe('Community Finance Mobile Module', () => {
         lastFetchedPeriod: 'This Month' as ReportingPeriod,
       };
       const state = communityFinanceReducer(dirtyState, resetCommunityFinanceState());
-      expect(state.selectedPeriod).toBe('Today');
+      expect(state.selectedPeriod).toBe('This Month');
       expect(state.dashboardData).toBeNull();
       expect(state.error).toBeNull();
     });
@@ -326,7 +326,7 @@ describe('Community Finance Mobile Module', () => {
       let state = communityFinanceReducer(baseState, setTransactionPeriod('Last Month'));
       expect(state.transactionFilters.period).toBe('Last Month');
       // Dashboard selectedPeriod must remain untouched
-      expect(state.selectedPeriod).toBe('Today');
+      expect(state.selectedPeriod).toBe('This Month');
     });
 
     it('setTransactionTypeFilter updates type filter correctly', () => {

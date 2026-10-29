@@ -202,11 +202,17 @@ export const CommunityFinanceDashboardScreen: React.FC = () => {
             <CategoryBreakdownCard
               incomeBreakdown={dashboard?.breakdowns?.income || []}
               expenseBreakdown={dashboard?.breakdowns?.expense || []}
-              totalIncome={dashboard?.overview?.netCollectionsAfterRefunds || 0}
+              totalIncome={
+                dashboard?.overview?.netCollectionsAfterRefunds ??
+                dashboard?.overview?.grossSuccessfulCollections ??
+                0
+              }
               totalExpenses={
-                (dashboard?.overview?.reconciledExpensePayments ?? 0) > 0
-                  ? (dashboard?.overview?.reconciledExpensePayments ?? 0)
-                  : (dashboard?.overview?.totalExpensesIncurred ?? 0)
+                (dashboard?.overview?.totalExpensesIncurred ?? 0) > 0
+                  ? (dashboard?.overview?.totalExpensesIncurred ?? 0)
+                  : (dashboard?.overview?.recordedExpensePayments ?? 0) > 0
+                  ? (dashboard?.overview?.recordedExpensePayments ?? 0)
+                  : (dashboard?.overview?.reconciledExpensePayments ?? 0)
               }
             />
 

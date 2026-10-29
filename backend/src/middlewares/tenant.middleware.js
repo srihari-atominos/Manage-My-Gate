@@ -54,7 +54,7 @@ export const tenantContext = (optionsOrReq, res, next) => {
           throw new HttpError(400, 'Workspace context is required.');
         }
 
-        const requestedOrgIdStr = String(orgIdHeader);
+        let requestedOrgIdStr = String(orgIdHeader);
         let targetRoleName = req.user.role;
         let targetPermissions = req.user.permissions || [];
         let targetMembership = null;
@@ -68,12 +68,30 @@ export const tenantContext = (optionsOrReq, res, next) => {
           }).lean();
 
           if (!targetMembership || (targetMembership.status && targetMembership.status !== 'Active')) {
-            logger.warn(`Tenant access rejected: User ${userId} has no active membership in target organization ${requestedOrgIdStr}`, {
+            const fallbackMembership = await OrgMembership.findOne({
               userId,
-              targetOrgId: requestedOrgIdStr,
-              requestId: req.id,
-            });
-            throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
+              status: 'Active',
+            }).sort({ createdAt: -1 }).lean();
+
+            if (fallbackMembership && fallbackMembership.orgId) {
+              logger.info(`Self-healing stale workspace context: user ${userId} routed from stale [${requestedOrgIdStr}] to active [${fallbackMembership.orgId}]`, {
+                userId,
+                staleOrgId: requestedOrgIdStr,
+                fallbackOrgId: fallbackMembership.orgId,
+                requestId: req.id,
+              });
+              targetMembership = fallbackMembership;
+              requestedOrgIdStr = String(fallbackMembership.orgId);
+              req.headers['x-organization-id'] = requestedOrgIdStr;
+              req.headers['x-org-id'] = requestedOrgIdStr;
+            } else {
+              logger.warn(`Tenant access rejected: User ${userId} has no active membership in target organization ${requestedOrgIdStr}`, {
+                userId,
+                targetOrgId: requestedOrgIdStr,
+                requestId: req.id,
+              });
+              throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested community.');
+            }
           }
 
           // Resolve target organization role name and permissions

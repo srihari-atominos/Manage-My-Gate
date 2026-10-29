@@ -353,6 +353,8 @@ class CommunityFinanceService {
 
     // 2. Expenses filter for incurred expenses (checks expenseDate with fallback to createdAt)
     const expenseDateRange = buildDateRange(query, 'expenseDate', targetTimezone);
+    const createdAtRange = buildDateRange(query, 'createdAt', targetTimezone);
+    const nowBoundary = new Date(Date.now() + 86400000);
     const expenseFilter = {
       orgId: orgMatch,
       lifecycleStatus: { $ne: 'CANCELLED' },
@@ -360,8 +362,9 @@ class CommunityFinanceService {
     if (expenseDateRange.expenseDate) {
       expenseFilter.$or = [
         { expenseDate: expenseDateRange.expenseDate },
-        { expenseDate: null, createdAt: expenseDateRange.expenseDate },
-        { expenseDate: { $exists: false }, createdAt: expenseDateRange.expenseDate },
+        { expenseDate: null, createdAt: createdAtRange.createdAt },
+        { expenseDate: { $exists: false }, createdAt: createdAtRange.createdAt },
+        { expenseDate: { $gt: nowBoundary }, createdAt: createdAtRange.createdAt },
       ];
     }
 
@@ -371,8 +374,9 @@ class CommunityFinanceService {
     if (paymentDateRange.paymentDate) {
       paymentFilter.$or = [
         { paymentDate: paymentDateRange.paymentDate },
-        { paymentDate: null, createdAt: paymentDateRange.paymentDate },
-        { paymentDate: { $exists: false }, createdAt: paymentDateRange.paymentDate },
+        { paymentDate: null, createdAt: createdAtRange.createdAt },
+        { paymentDate: { $exists: false }, createdAt: createdAtRange.createdAt },
+        { paymentDate: { $gt: nowBoundary }, createdAt: createdAtRange.createdAt },
       ];
     }
 
@@ -385,8 +389,9 @@ class CommunityFinanceService {
     if (expPaymentDateRange.paymentDate) {
       expensePaymentFilter.$or = [
         { paymentDate: expPaymentDateRange.paymentDate },
-        { paymentDate: null, createdAt: expPaymentDateRange.paymentDate },
-        { paymentDate: { $exists: false }, createdAt: expPaymentDateRange.paymentDate },
+        { paymentDate: null, createdAt: createdAtRange.createdAt },
+        { paymentDate: { $exists: false }, createdAt: createdAtRange.createdAt },
+        { paymentDate: { $gt: nowBoundary }, createdAt: createdAtRange.createdAt },
       ];
     }
 
@@ -790,7 +795,12 @@ class CommunityFinanceService {
     const recordedExpensePayments = round(expAgg.recordedExpensePayments || 0);
     // Use actual reconciled disbursements for cash basis, fallback to confirmedPaidAmount
     const reconciledExpensePayments = round(aggReconciledDisbursements || expAgg.confirmedPaidAmount || 0);
-    const effectiveExpenseDisbursements = reconciledExpensePayments > 0 ? reconciledExpensePayments : totalExpensesIncurred;
+    const effectiveExpenseDisbursements =
+      reconciledExpensePayments > 0
+        ? reconciledExpensePayments
+        : totalExpensesIncurred > 0
+        ? totalExpensesIncurred
+        : recordedExpensePayments;
 
     // Cash-basis Net Surplus/Deficit = Eligible Confirmed Receipts - Effective Disbursements/Liabilities
     const netSurplusOrDeficit = round(netCollectionsAfterRefunds - effectiveExpenseDisbursements);
@@ -812,7 +822,7 @@ class CommunityFinanceService {
       outstandingVendorLiabilities,
       pendingExpenseVerification: round(aggPendingExpenseVerification),
       expensePaymentsExcludedWithoutActiveParent: excludedExpensePayments.length,
-      confirmedExpenseDisbursements: reconciledExpensePayments,
+      confirmedExpenseDisbursements: effectiveExpenseDisbursements,
     };
 
     const samplePaymentIds = collectionSummary.successfulCollections.map((payment) => payment._id);
@@ -1139,11 +1149,14 @@ class CommunityFinanceService {
     };
 
     const expDateRange = buildDateRange(query, 'paymentDate', targetTimezone);
+    const txCreatedAtRange = buildDateRange(query, 'createdAt', targetTimezone);
+    const txNowBoundary = new Date(Date.now() + 86400000);
     if (expDateRange.paymentDate) {
       expensePaymentMatch.$or = [
         { paymentDate: expDateRange.paymentDate },
-        { paymentDate: null, createdAt: expDateRange.paymentDate },
-        { paymentDate: { $exists: false }, createdAt: expDateRange.paymentDate },
+        { paymentDate: null, createdAt: txCreatedAtRange.createdAt },
+        { paymentDate: { $exists: false }, createdAt: txCreatedAtRange.createdAt },
+        { paymentDate: { $gt: txNowBoundary }, createdAt: txCreatedAtRange.createdAt },
       ];
     }
 
@@ -1186,8 +1199,9 @@ class CommunityFinanceService {
             {
               $or: [
                 { expenseDate: directExpenseDateRange.expenseDate },
-                { expenseDate: null, createdAt: directExpenseDateRange.expenseDate },
-                { expenseDate: { $exists: false }, createdAt: directExpenseDateRange.expenseDate },
+                { expenseDate: null, createdAt: txCreatedAtRange.createdAt },
+                { expenseDate: { $exists: false }, createdAt: txCreatedAtRange.createdAt },
+                { expenseDate: { $gt: txNowBoundary }, createdAt: txCreatedAtRange.createdAt },
               ],
             },
           ]
@@ -1536,17 +1550,19 @@ class CommunityFinanceService {
 
   async getAllFilteredTransactions(orgId, query = {}, safetyLimit = EXPORT_ROW_LIMIT) {
     const res = await this._queryTransactions(orgId, query, { unpaginated: true, maxLimit: safetyLimit });
-    return res.transactions;
+    return res?.transactions || [];
   }
 
   async _loadExportDataset(orgId, query = {}, meta = {}) {
     const res = await this._queryTransactions(orgId, query, { unpaginated: true, maxLimit: EXPORT_ROW_LIMIT });
+    const transactions = res?.transactions || [];
+    const total = res?.total || transactions.length;
     return {
-      transactions: res.transactions,
+      transactions,
       meta: {
         ...meta,
-        totalMatching: res.total,
-        truncated: res.total > res.transactions.length,
+        totalMatching: total,
+        truncated: total > transactions.length,
         exportLimit: EXPORT_ROW_LIMIT,
       },
     };

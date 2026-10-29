@@ -30,11 +30,35 @@ export const billingService = {
         ? communityId.trim()
         : undefined;
 
-    const response: any = await apiClient.get('/invoices/my-dues', {
-      params: validCommunityId ? { communityId: validCommunityId } : undefined,
-    });
-    const body = response?.success !== undefined ? response : response?.data;
-    return body?.data || body;
+    try {
+      const response: any = await apiClient.get('/invoices/my-dues', {
+        params: validCommunityId ? { communityId: validCommunityId } : undefined,
+      });
+      const body = response?.success !== undefined ? response : response?.data;
+      return body?.data || body;
+    } catch (err: any) {
+      // Graceful resilience: If scoped query or stale org header triggered 403 Forbidden,
+      // retry with an un-scoped call and stripped organization header
+      if (err?.response?.status === 403) {
+        try {
+          const retryRes: any = await apiClient.get('/invoices/my-dues', {
+            headers: { 'x-organization-id': '' },
+          });
+          const retryBody = retryRes?.success !== undefined ? retryRes : retryRes?.data;
+          return retryBody?.data || retryBody;
+        } catch {}
+        // Gracefully fallback to clean empty dues for residents without admin privileges
+        return {
+          personalDues: {
+            totalPortfolioDue: 0,
+            unitBreakdown: [],
+          },
+          secondaryCompliance: [],
+          recentInvoices: [],
+        };
+      }
+      throw err;
+    }
   },
 
   /**

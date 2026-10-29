@@ -106,14 +106,16 @@ export const FinancialSummaryCards: React.FC<FinancialSummaryCardsProps> = ({
 }) => {
   if (!overview) return null;
 
-  const totalIncome = overview.netCollectionsAfterRefunds ?? 0;
+  const totalIncome = overview.netCollectionsAfterRefunds ?? overview.grossSuccessfulCollections ?? (overview as any).totalIncome ?? 0;
   const totalExpenses =
-    (overview.reconciledExpensePayments ?? 0) > 0
-      ? overview.reconciledExpensePayments
-      : (overview.totalExpensesIncurred ?? 0);
+    ((overview as any).totalExpensesIncurred ?? 0) > 0
+      ? (overview as any).totalExpensesIncurred
+      : (overview.recordedExpensePayments ?? 0) > 0
+      ? overview.recordedExpensePayments
+      : (overview.reconciledExpensePayments ?? (overview as any).totalExpenses ?? 0);
   const netSurplus =
-    overview.reconciledExpensePayments > 0
-      ? (overview.netSurplusOrDeficit ?? (totalIncome - totalExpenses))
+    overview.netSurplusOrDeficit !== undefined && overview.netSurplusOrDeficit !== null
+      ? overview.netSurplusOrDeficit
       : (totalIncome - totalExpenses);
   const outstandingDues = overview.outstandingDues ?? 0;
   const isDeficit = netSurplus < 0;

@@ -292,8 +292,8 @@ class AIAssistantService {
    * @returns {Promise<object>} Resolved runtime configuration
    */
   async resolveRuntimeConfig() {
-    const defaultModel = config.aiAssistant?.geminiModel || 'gemini-2.0-flash';
-    const defaultChatModel = config.aiAssistant?.geminiChatModel || 'gemini-2.0-flash';
+    const defaultModel = config.aiAssistant?.geminiModel || 'gemini-3.8-flash';
+    const defaultChatModel = config.aiAssistant?.geminiChatModel || 'gemini-3.8-flash';
     const defaultDuration = config.aiAssistant?.sessionDurationSec || 600;
     const defaultMaxSessions = config.aiAssistant?.maxDailySessions || 5;
 
@@ -922,7 +922,17 @@ ${featureDescriptions}`,
       }
     }
 
-    throw lastError || new HttpError(502, 'Failed to generate assistant response.');
+    // If upstream cloud LLM failed (e.g. 403 quota/billing, 404 deprecated models, timeout, or network down),
+    // execute deterministic domain tools and synthesize a conversational response so resident chat never fails with an error bubble.
+    logger.info(`[AIAssistant] Upstream cloud model generation unavailable (${lastError?.message || 'all models exhausted'}); invoking deterministic domain fallback engine.`);
+    return await this.generateDeterministicFallbackResponse(
+      user,
+      tenant,
+      message,
+      conversationState,
+      authorizedFeatures,
+      correlationId
+    );
   }
 
   /**
@@ -1290,6 +1300,303 @@ ${featureDescriptions}`,
    * @param {object} toolArgs - Tool arguments
    * @returns {Promise<object>}
    */
+
+  /**
+   * Deterministic local fallback generator.
+   * Invoked seamlessly when upstream cloud LLM (e.g. Gemini) is unavailable, quota-restricted (403),
+   * model-deprecated (404), or network timed out.
+   */
+  async generateDeterministicFallbackResponse(user, tenant, message, conversationState, authorizedFeatures, correlationId) {
+    const text = (message || '').trim().toLowerCase();
+
+    // 1. Clarification question if required details are missing
+    if (conversationState?.interactionType === 'clarification' && conversationState.nextQuestion) {
+      return {
+        message: conversationState.nextQuestion,
+        reply: conversationState.nextQuestion,
+        actions: [],
+        toolCall: null,
+        data: null,
+        status: 'clarification',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
+    }
+
+    // 2. Pending Action Confirmation or Cancellation
+    if (conversationState?.actionConfirmed && conversationState.pendingAction?.id) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'confirm_pending_action',
+        {
+          actionId: conversationState.pendingAction.id,
+          confirmationToken: conversationState.pendingAction.confirmationToken,
+        },
+        authorizedFeatures
+      );
+      const actionData = toolRes?.data || {};
+      const summaryMsg = actionData.message || 'Action executed successfully.';
+      return {
+        message: summaryMsg,
+        reply: summaryMsg,
+        actions: toolRes?.action ? [toolRes.action] : [],
+        toolCall: toolRes?.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+        data: actionData,
+        status: 'success',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
+    }
+
+    if (conversationState?.actionCancelled && conversationState.pendingAction?.id) {
+      await executeAssistantTool(
+        user,
+        tenant,
+        'cancel_pending_action',
+        { actionId: conversationState.pendingAction.id },
+        authorizedFeatures
+      );
+      return {
+        message: 'I have cancelled that request for you. Is there anything else I can help with?',
+        reply: 'I have cancelled that request for you. Is there anything else I can help with?',
+        actions: [],
+        toolCall: null,
+        data: null,
+        status: 'success',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
+    }
+
+    // 3. Action Proposal ready
+    if (conversationState?.awaitingConfirmation && conversationState.pendingAction) {
+      const pa = conversationState.pendingAction;
+      const prompt = `I've prepared ${pa.summary || 'your request'} for you. Please review the details and tap Confirm to proceed.`;
+      return {
+        message: prompt,
+        reply: prompt,
+        actions: [
+          {
+            type: 'confirmation',
+            actionId: pa.id,
+            actionType: pa.actionType,
+            title: pa.summary || 'Confirm Action',
+            route: pa.route || '',
+          },
+        ],
+        toolCall: null,
+        data: { proposalReady: true, ...pa },
+        status: 'confirmation',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
+    }
+
+    // 4. Intent-specific tool execution and conversational synthesis
+    const intent = conversationState?.activeIntent;
+
+    // A. Community Finance / Community Expenses
+    if (intent === 'community_finance' || text.includes('community expense') || text.includes('expenses of community') || text.includes('finance')) {
+      const period = conversationState?.collectedDetails?.period || 'current_month';
+      const summaryRes = await executeAssistantTool(user, tenant, 'get_community_finance_summary', { period }, authorizedFeatures);
+
+      if (summaryRes?.success && summaryRes.data?.authorized) {
+        const d = summaryRes.data;
+        const expStr = Number(d.totalCommunityExpenses || 0).toLocaleString('en-IN');
+        const colStr = Number(d.totalCollections || 0).toLocaleString('en-IN');
+        const netStr = Number(d.netSurplusOrDeficit || 0).toLocaleString('en-IN');
+        const sign = Number(d.netSurplusOrDeficit || 0) >= 0 ? '+' : '';
+
+        let reply = `Here is the community financial overview for ${d.period || 'the current period'}:\n` +
+          `• Total Incurred Community Expenses: ₹${expStr}\n` +
+          `• Total Collections: ₹${colStr}\n` +
+          `• Net Position: ₹${sign}${netStr}`;
+
+        if (Array.isArray(d.topExpenseCategories) && d.topExpenseCategories.length > 0) {
+          reply += '\n\nTop Expense Categories:\n' +
+            d.topExpenseCategories.slice(0, 3).map((c) => `• ${c.category}: ₹${Number(c.amount || 0).toLocaleString('en-IN')}`).join('\n');
+        }
+
+        if (Array.isArray(d.recentCommunityExpenses) && d.recentCommunityExpenses.length > 0) {
+          reply += '\n\nRecent Expenses:\n' +
+            d.recentCommunityExpenses.slice(0, 3).map((e) => `• ${e.name} (${e.category}): ₹${Number(e.amount || 0).toLocaleString('en-IN')}`).join('\n');
+        }
+
+        reply += '\n\nYou can review all transactions in the Community Finance screen.';
+
+        return {
+          message: reply,
+          reply,
+          actions: summaryRes.action ? [summaryRes.action] : [],
+          toolCall: summaryRes.action ? { targetRoute: summaryRes.action.route, targetName: summaryRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      } else if (summaryRes?.data && !summaryRes.data.authorized) {
+        return {
+          message: summaryRes.data.message || 'Community financial overviews are restricted to community administrators. Would you like to check your personal dues instead?',
+          reply: summaryRes.data.message || 'Community financial overviews are restricted to community administrators.',
+          actions: summaryRes.action ? [summaryRes.action] : [],
+          toolCall: summaryRes.action ? { targetRoute: summaryRes.action.route, targetName: summaryRes.action.targetName } : null,
+          data: summaryRes.data,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // B. Resident Dues / Maintenance
+    if (intent === 'resident_dues' || text.includes('maintenance') || text.includes('due') || text.includes('bill') || text.includes('invoice') || text.includes('owe')) {
+      const duesRes = await executeAssistantTool(user, tenant, 'get_resident_dues_and_invoices', {}, authorizedFeatures);
+      if (duesRes?.success) {
+        const d = duesRes.data;
+        const totalDue = Number(d.totalOutstandingDues || 0).toLocaleString('en-IN');
+        let reply = `You currently have ₹${totalDue} in outstanding maintenance dues.`;
+        if (d.overdueAmount > 0) {
+          reply += ` (₹${Number(d.overdueAmount).toLocaleString('en-IN')} is overdue).`;
+        }
+        if (Array.isArray(d.unpaidInvoices) && d.unpaidInvoices.length > 0) {
+          reply += '\n\nUnpaid Invoices:\n' +
+            d.unpaidInvoices.slice(0, 3).map((inv) => `• ${inv.invoiceNumber} (${inv.billingPeriod || 'Maintenance'}): ₹${Number(inv.outstandingAmount || inv.totalDue || 0).toLocaleString('en-IN')} (Due: ${inv.dueDate})`).join('\n');
+        }
+        reply += '\n\nTap below to pay or view invoice details.';
+
+        return {
+          message: reply,
+          reply,
+          actions: duesRes.action ? [duesRes.action] : [],
+          toolCall: duesRes.action ? { targetRoute: duesRes.action.route, targetName: duesRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // C. Amenity Booking / Availability
+    if (intent === 'amenity_booking' || intent === 'amenity_availability' || intent === 'amenity_inquiry' || text.includes('amenity') || text.includes('amenities') || text.includes('court') || text.includes('pool') || text.includes('gym')) {
+      const amenityRes = await executeAssistantTool(user, tenant, 'check_amenity_availability', conversationState?.collectedDetails || {}, authorizedFeatures);
+      if (amenityRes?.success) {
+        const d = amenityRes.data;
+        let reply = 'Here are the available community amenities you can book:\n';
+        if (Array.isArray(d.amenities) && d.amenities.length > 0) {
+          reply += d.amenities.slice(0, 4).map((a) => `• ${a.name} (${a.type || 'Facility'})`).join('\n');
+        } else {
+          reply += 'Amenities are active in your community.';
+        }
+        reply += '\n\nTap below to check slots and reserve your booking.';
+
+        return {
+          message: reply,
+          reply,
+          actions: amenityRes.action ? [amenityRes.action] : [],
+          toolCall: amenityRes.action ? { targetRoute: amenityRes.action.route, targetName: amenityRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // D. Visitor Management
+    if (intent === 'visitor_management' || intent === 'visitor_pass_create' || text.includes('visitor') || text.includes('guest') || text.includes('pass')) {
+      const visitorRes = await executeAssistantTool(user, tenant, 'get_my_visitor_passes', {}, authorizedFeatures);
+      if (visitorRes?.success) {
+        const d = visitorRes.data;
+        const count = d.totalPassesCount ?? (Array.isArray(d.passes) ? d.passes.length : 0);
+        let reply = `You have ${count} active visitor pass(es).`;
+        if (Array.isArray(d.passes) && d.passes.length > 0) {
+          reply += '\n' + d.passes.slice(0, 3).map((p) => `• ${p.visitorName} (${p.status || 'Active'}, Key: ${p.shortKey || p.passId || 'N/A'})`).join('\n');
+        }
+        reply += '\n\nTap below to invite visitors or generate guest passes.';
+
+        return {
+          message: reply,
+          reply,
+          actions: visitorRes.action ? [visitorRes.action] : [],
+          toolCall: visitorRes.action ? { targetRoute: visitorRes.action.route, targetName: visitorRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // E. Complaints / Helpdesk
+    if (intent === 'complaints_helpdesk' || text.includes('complaint') || text.includes('ticket') || text.includes('issue') || text.includes('leak') || text.includes('repair')) {
+      const compRes = await executeAssistantTool(user, tenant, 'get_my_complaints', {}, authorizedFeatures);
+      if (compRes?.success) {
+        const d = compRes.data;
+        const count = d.totalComplaintsCount ?? (Array.isArray(d.complaints) ? d.complaints.length : 0);
+        let reply = `You have ${count} maintenance ticket(s).`;
+        if (Array.isArray(d.complaints) && d.complaints.length > 0) {
+          reply += '\n' + d.complaints.slice(0, 3).map((c) => `• ${c.title} (${c.status || 'Open'})`).join('\n');
+        }
+        reply += '\n\nTap below to track or log maintenance requests.';
+
+        return {
+          message: reply,
+          reply,
+          actions: compRes.action ? [compRes.action] : [],
+          toolCall: compRes.action ? { targetRoute: compRes.action.route, targetName: compRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // F. Direct navigation matching
+    const matchedFeature = authorizedFeatures.find((f) => {
+      const name = (f.name || '').toLowerCase();
+      const id = (f.id || '').toLowerCase();
+      return text.includes(name) || text.includes(id) || (f.route && text.includes(f.route.replace(/[()/_]/g, ' ')));
+    });
+
+    if (matchedFeature) {
+      const reply = `I found ${matchedFeature.name} for you. Tap the card below to open it.`;
+      const navAction = {
+        type: 'navigation',
+        label: `Open ${matchedFeature.name}`,
+        route: matchedFeature.route,
+        targetName: matchedFeature.name,
+        category: matchedFeature.category,
+      };
+      return {
+        message: reply,
+        reply,
+        actions: [navAction],
+        toolCall: { targetRoute: matchedFeature.route, targetName: matchedFeature.name, category: matchedFeature.category },
+        data: null,
+        status: 'success',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
+    }
+
+    // G. Default Conversational Greeting / General Assistance
+    const defaultReply = 'Hello! I am your NAHOM Community Assistant. How can I assist you with your community today? You can ask me to check community expenses, view maintenance dues, book amenities, invite visitors, or raise maintenance tickets.';
+
+    return {
+      message: defaultReply,
+      reply: defaultReply,
+      actions: [],
+      toolCall: null,
+      data: null,
+      status: 'success',
+      conversationState: sanitizeConversationState(conversationState),
+      requestId: correlationId,
+    };
+  }
+
   async executeTool(user, tenant, toolName, toolArgs = {}) {
     const authorizedFeatures = this.filterAuthorizedFeatures(user, tenant);
     return await executeAssistantTool(user, tenant, toolName, toolArgs, authorizedFeatures);
