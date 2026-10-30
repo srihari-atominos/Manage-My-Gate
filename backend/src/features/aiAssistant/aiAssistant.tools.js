@@ -2115,11 +2115,12 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
         }
 
         const rawList = await amenityService.getAllAmenities(orgId, { status: 'active' });
-        const list = Array.isArray(rawList) && rawList.length > 0
-          ? rawList
-          : await amenityService.getAllAmenities(orgId, {}).catch(() => []);
+        const list = Array.isArray(rawList) ? rawList : [];
 
-        const catalog = (Array.isArray(list) ? list : []).filter(a => !a.isDeleted).slice(0, 6).map((a) => {
+        const catalog = list
+          .filter(a => !a.isDeleted && (a.status === 'active' || !a.status))
+          .slice(0, 10)
+          .map((a) => {
           const rate = a.pricing?.baseRate || 0;
           const pType = a.pricing?.pricingType || 'hourly';
           const priceDisplay = rate === 0 ? 'Free' : `₹${rate}/${pType}`;
@@ -2178,11 +2179,16 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
         });
 
         if (!targetAmenity) {
+          const createdNames = (Array.isArray(allAmenities) ? allAmenities : [])
+            .filter(a => !a.isDeleted && (a.status === 'active' || !a.status))
+            .map(a => a.name);
           return {
             success: true,
             data: {
               found: false,
-              message: `Could not find an amenity matching "${amenityKeyword}". Available amenities: ${(allAmenities || []).map(a => a.name).join(', ') || 'None'}.`,
+              message: createdNames.length > 0
+                ? `Could not find an amenity matching "${amenityKeyword}". Available community amenities: ${createdNames.join(', ')}.`
+                : 'There are currently no active amenities created in your community.',
             },
             action: {
               type: 'navigation',
