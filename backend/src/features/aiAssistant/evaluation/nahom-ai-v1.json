@@ -1,0 +1,34 @@
+{
+  "version": "nahom-ai-v1",
+  "locale": ["en-IN", "Indian English"],
+  "policy": "Curated data only. No production conversation or feedback ingestion.",
+  "operationCoverage": [
+    "get_community_finance_summary", "get_personal_expense_summary", "prepare_personal_expense", "preview_receipt_ocr", "get_resident_dues_and_invoices", "prepare_assessment_creation",
+    "get_amenities_catalog", "check_amenity_availability", "get_my_bookings", "prepare_amenity_booking", "prepare_amenity_booking_cancellation", "prepare_amenity_creation",
+    "get_my_complaints", "prepare_complaint", "prepare_complaint_cancellation", "prepare_maintenance_request", "escalate_complaint", "reopen_complaint", "add_complaint_comment", "get_my_visitor_passes", "get_visitor_history", "get_pending_gate_approvals", "prepare_visitor_pass", "prepare_visitor_pass_revocation",
+    "get_community_notices", "get_notice_details", "prepare_notice_acknowledgement", "prepare_notice_creation", "get_active_polls", "get_poll_details", "prepare_poll_vote", "prepare_poll_creation",
+    "search_staff_directory", "get_my_unit_staff", "get_active_staff_attendance", "get_my_household_members", "get_my_vehicles_and_parking", "get_my_settings_and_preferences", "get_admin_analytics_summary",
+    "get_wallet_balance", "get_wallet_transactions", "get_my_notifications", "prepare_notifications_mark_read", "get_issue_reports", "prepare_issue_report", "get_emergency_contacts", "confirm_pending_action", "cancel_pending_action", "navigate_to_screen"
+  ],
+  "examples": [
+    { "id": "ex-dues-01", "input": "How much maintenance is pending for my flat?", "intent": "resident_dues", "tool": "get_resident_dues_and_invoices", "role": "resident", "resultCategory": "answer" },
+    { "id": "ex-amenity-01", "input": "Book badminton tomorrow at 6 pm for two people", "intent": "amenity_booking", "tool": "prepare_amenity_booking", "role": "resident", "entities": { "amenityName": "Badminton", "slotTime": "18:00" }, "resultCategory": "confirmation" },
+    { "id": "ex-visitor-01", "input": "Make visitor passes for Rahul and Priya tomorrow at 5", "intent": "visitor_management", "tool": "prepare_visitor_pass", "role": "resident", "resultCategory": "confirmation" },
+    { "id": "ex-complaint-01", "input": "Lift is not working in Tower A, raise a high priority ticket", "intent": "complaint_create", "tool": "prepare_complaint", "role": "resident", "resultCategory": "confirmation" },
+    { "id": "ex-expense-01", "input": "Add Rs 450 grocery expense from Big Bazaar", "intent": "personal_expense_create", "tool": "prepare_personal_expense", "role": "resident", "entities": { "amount": 450 }, "resultCategory": "confirmation" },
+    { "id": "ex-indian-01", "input": "Pool kal evening available aa?", "intent": "amenity_availability", "tool": "check_amenity_availability", "role": "resident", "resultCategory": "clarification" },
+    { "id": "ex-admin-01", "input": "Create a society poll for new gym timings", "intent": "poll_create", "tool": "prepare_poll_creation", "role": "admin", "resultCategory": "confirmation" },
+    { "id": "ex-unauthorized-01", "input": "Create an amenity called Rooftop Lounge", "intent": "amenity_create", "tool": "prepare_amenity_creation", "role": "resident", "resultCategory": "permission_denied" },
+    { "id": "ex-correction-01", "input": "Actually make it Sunday at 7 pm", "intent": "amenity_booking", "tool": "prepare_amenity_booking", "role": "resident", "resultCategory": "context_update" },
+    { "id": "ex-multi-01", "input": "Show my dues and check pool availability tomorrow", "intents": ["resident_dues", "amenity_availability"], "tools": ["get_resident_dues_and_invoices", "check_amenity_availability"], "role": "resident", "resultCategory": "multi_intent" }
+  ],
+  "evaluation": [
+    { "id": "eval-dues", "input": "My pending maintanance bill please", "expectedIntent": "resident_dues", "expectedTool": "get_resident_dues_and_invoices", "role": "resident" },
+    { "id": "eval-booking", "input": "Need badminton court tomorrow 6 pm", "expectedIntent": "amenity_booking", "expectedTool": "prepare_amenity_booking", "role": "resident" },
+    { "id": "eval-visitor-count", "input": "Create passes for two visitors today between 6 and 7:30 pm", "expectedIntent": "visitor_management", "expectedTool": "prepare_visitor_pass", "role": "resident", "expectedMissing": ["visitorName"] },
+    { "id": "eval-complaint", "input": "Register water leakage complaint", "expectedIntent": "complaint_create", "expectedTool": "prepare_complaint", "role": "resident" },
+    { "id": "eval-finance-denied", "input": "Show all society expenses", "expectedIntent": "community_finance", "expectedTool": "get_community_finance_summary", "role": "resident", "expectedAuthorized": false },
+    { "id": "eval-finance-admin", "input": "Show all society expenses", "expectedIntent": "community_finance", "expectedTool": "get_community_finance_summary", "role": "admin", "expectedAuthorized": true },
+    { "id": "eval-admin-denied", "input": "Create a new amenity", "expectedIntent": "amenity_create", "expectedTool": "prepare_amenity_creation", "role": "resident", "expectedAuthorized": false }
+  ]
+}

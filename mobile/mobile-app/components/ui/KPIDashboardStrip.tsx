@@ -35,21 +35,32 @@ export function KPIDashboardStrip({
   if (loading) {
     if (effectiveLayout === 'grid2x2') {
       return (
-        <View className={cn('flex-row flex-wrap gap-3', className)}>
-          {Array.from({ length: count }).map((_, idx) => (
-            <View key={idx} className="w-[48%] min-w-[140px]">
+        <View className={cn('gap-2.5', className)}>
+          <View className="flex-row gap-2.5">
+            <View className="flex-1 min-w-0">
               <Skeleton variant="kpi" className="w-full h-28 rounded-xl" />
             </View>
-          ))}
+            <View className="flex-1 min-w-0">
+              <Skeleton variant="kpi" className="w-full h-28 rounded-xl" />
+            </View>
+          </View>
+          <View className="flex-row gap-2.5">
+            <View className="flex-1 min-w-0">
+              <Skeleton variant="kpi" className="w-full h-28 rounded-xl" />
+            </View>
+            <View className="flex-1 min-w-0">
+              <Skeleton variant="kpi" className="w-full h-28 rounded-xl" />
+            </View>
+          </View>
         </View>
       );
     }
 
     if (effectiveLayout === 'row') {
       return (
-        <View className={cn('flex-row gap-3', className)}>
+        <View className={cn('flex-row gap-2.5', className)}>
           {Array.from({ length: count }).map((_, idx) => (
-            <View key={idx} className="flex-1 min-w-[140px]">
+            <View key={idx} className="flex-1 min-w-0">
               <Skeleton variant="kpi" className="w-full h-28 rounded-xl" />
             </View>
           ))}
@@ -74,15 +85,30 @@ export function KPIDashboardStrip({
     );
   }
 
-  // 1. 2x2 Grid Layout (for exactly 4 metrics)
+  // 1. 2x2 Grid Layout (for up to 4 metrics arranged in two 2-column flex rows)
   if (effectiveLayout === 'grid2x2') {
+    const row1 = cards.slice(0, 2);
+    const row2 = cards.slice(2, 4);
     return (
-      <View className={cn('flex-row flex-wrap justify-between gap-y-3', className)}>
-        {cards.map((card, idx) => (
-          <View key={card.title || idx} className="w-[48.5%]">
-            <KPICard {...card} className={cn('w-full min-w-0', card.className)} />
+      <View className={cn('gap-2.5', className)}>
+        <View className="flex-row gap-2.5">
+          {row1.map((card, idx) => (
+            <View key={card.title || idx} className="flex-1 min-w-0">
+              <KPICard {...card} className={cn('w-full min-w-0', card.className)} />
+            </View>
+          ))}
+          {row1.length === 1 && <View className="flex-1 min-w-0" />}
+        </View>
+        {row2.length > 0 && (
+          <View className="flex-row gap-2.5">
+            {row2.map((card, idx) => (
+              <View key={card.title || idx + 2} className="flex-1 min-w-0">
+                <KPICard {...card} className={cn('w-full min-w-0', card.className)} />
+              </View>
+            ))}
+            {row2.length === 1 && <View className="flex-1 min-w-0" />}
           </View>
-        ))}
+        )}
       </View>
     );
   }
@@ -90,10 +116,10 @@ export function KPIDashboardStrip({
   // 2. 2-Column Balanced Row Layout (for 2 metrics)
   if (effectiveLayout === 'row') {
     return (
-      <View className={cn('flex-row gap-3', className)}>
+      <View className={cn('flex-row gap-2.5', className)}>
         {cards.map((card, idx) => (
-          <View key={card.title || idx} className="flex-1 min-w-[140px]">
-            <KPICard {...card} className={cn('w-full', card.className)} />
+          <View key={card.title || idx} className="flex-1 min-w-0">
+            <KPICard {...card} className={cn('w-full min-w-0', card.className)} />
           </View>
         ))}
       </View>

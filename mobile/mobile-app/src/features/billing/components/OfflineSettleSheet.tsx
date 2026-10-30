@@ -285,7 +285,7 @@ export function OfflineSettleSheet({
         onClose={onClose}
         title={submittedResult ? `Request Submitted • #${invNo}` : `Offline Settlement • #${invNo}`}
       >
-        <ScrollView showsVerticalScrollIndicator={false} className="py-2 pb-6">
+        <View className="py-2 pb-6">
           {/* Post Submission Success View */}
           {submittedResult ? (
             <View className="gap-4">
@@ -501,7 +501,7 @@ export function OfflineSettleSheet({
               </Button>
             </View>
           )}
-        </ScrollView>
+        </View>
       </BottomSheet>
 
       {/* Confirmation Modal */}

@@ -76,7 +76,7 @@ export const CompleteWorkSheet: React.FC<CompleteWorkSheetProps> = ({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={`Mark Work Completed #${complaint.complaintNumber}`}>
-      <ScrollView className="px-4 py-2" contentContainerStyle={{ paddingBottom: 60 }}>
+      <View className="px-1 py-1">
         <Text className="text-xs text-muted-foreground mb-3">
           Tell the resident what you did. They will check it and confirm the ticket is fixed.
         </Text>
@@ -129,7 +129,7 @@ export const CompleteWorkSheet: React.FC<CompleteWorkSheetProps> = ({
             {isSubmitting ? 'Sending...' : 'Mark as completed'}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 };

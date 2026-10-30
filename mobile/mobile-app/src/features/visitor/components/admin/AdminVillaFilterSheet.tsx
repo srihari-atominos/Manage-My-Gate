@@ -48,6 +48,7 @@ export const AdminVillaFilterSheet: React.FC<AdminVillaFilterSheetProps> = ({
     <BottomSheet
       visible={visible}
       onClose={onClose}
+      scrollable={false}
       title="Select Villa & Resident Host"
     >
       <View className="gap-3 pb-4">

@@ -103,7 +103,7 @@ export const FinanceRunwaySheet: React.FC<FinanceRunwaySheetProps> = ({
           </Button>
         </View>
       }>
-      <ScrollView showsVerticalScrollIndicator={false} className="py-1">
+      <View className="py-1">
         <View className="gap-3 pb-2">
           {/* ── 1. Hero 3D Financial Health Status Card ── */}
           <View className="p-3.5 rounded-2xl border-t-2 border-t-emerald-400 border border-emerald-500/25 bg-emerald-500/5 shadow-xs">
@@ -250,7 +250,7 @@ export const FinanceRunwaySheet: React.FC<FinanceRunwaySheetProps> = ({
             </Text>
           </View>
         </View>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 };

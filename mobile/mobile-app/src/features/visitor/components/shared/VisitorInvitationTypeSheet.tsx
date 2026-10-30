@@ -64,7 +64,7 @@ export const VisitorInvitationTypeSheet: React.FC<VisitorInvitationTypeSheetProp
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={t('select_invitation_type', 'Select Invitation Type')}>
-      <ScrollView className="max-h-[520px] px-1 py-2">
+
         <View className="gap-3 pb-6">
           <Text variant="muted" className="text-xs px-1">
             {t('select_visitor_pass_type_desc', 'Choose the type of visitor pass to generate the appropriate multi-step entry approval.')}
@@ -109,7 +109,7 @@ export const VisitorInvitationTypeSheet: React.FC<VisitorInvitationTypeSheetProp
             );
           })}
         </View>
-      </ScrollView>
+
     </BottomSheet>
   );
 };

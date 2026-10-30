@@ -1,9 +1,10 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { AppState, InteractionManager } from 'react-native';
+import { AppState } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import { fetchDashboardStatsThunk } from '../store/amenityBookingSlice';
 import { useAppSocket } from '../../../hooks/useAppSocket';
+import { runSoon } from '../../../utils/runSoon';
 
 /**
  * Owner for Amenity executive dashboard metrics. Keep this hook on the dashboard
@@ -31,7 +32,7 @@ export function useAmenityDashboard() {
   }, [loadData]);
 
   useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => loadData());
+    const task = runSoon(() => loadData());
     return () => task.cancel();
   }, [loadData]);
 

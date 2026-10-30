@@ -16,6 +16,12 @@ export default function PendingInvitationsScreen() {
   const invitations = invitationSelection?.pendingInvitations || [];
   const ticket = invitationSelection?.ticket || undefined;
 
+  React.useEffect(() => {
+    if (invitations.length === 0) {
+      router.replace('/');
+    }
+  }, [invitations.length]);
+
   const accept = async (invitation: any) => {
     const result: any = await dispatch(respondToInvitationThunk({
       invitationId: invitation?.id || invitation?._id,

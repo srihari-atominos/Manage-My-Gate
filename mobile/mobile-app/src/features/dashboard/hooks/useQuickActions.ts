@@ -1,4 +1,4 @@
-import { InteractionManager } from 'react-native';
+import { runSoon } from '../../../utils/runSoon';
 import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
@@ -74,7 +74,7 @@ export const useQuickActions = () => {
 
       if (!needsCatalog && !needsModules) return;
 
-      const task = InteractionManager.runAfterInteractions(() => {
+      const task = runSoon(() => {
         if (needsCatalog && !isFetchingCatalogRef.current) {
           lastFetchedCatalogOrgRef.current = orgKey;
           isFetchingCatalogRef.current = true;

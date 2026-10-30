@@ -1,3 +1,5 @@
+require('react-native-gesture-handler/jestSetup');
+
 jest.mock('expo-modules-core', () => {
   const actual = jest.requireActual('expo-modules-core');
   return {
@@ -26,17 +28,30 @@ jest.mock('expo-crypto', () => ({
 
 // Global Mocks for Jest environment
 jest.mock('react-native-worklets', () => ({
+  __esModule: true,
+  toggleSlowAnimationsOnUIRuntime: jest.fn(),
   isWorkletFunction: jest.fn(() => false),
   createWorkletRuntime: jest.fn(),
   runOnJS: jest.fn((fn) => fn),
   runOnUI: jest.fn((fn) => fn),
+  runOnUISync: jest.fn((fn) => fn),
   scheduleOnUI: jest.fn((fn) => fn),
   createSerializable: jest.fn((val) => val),
+  createSynchronizable: jest.fn((val) => val),
+  createShareable: jest.fn((val) => val),
+  isSynchronizable: jest.fn(() => false),
+  isShareable: jest.fn(() => false),
   makeShareable: jest.fn((val) => val),
   makeShareableCloneRecursive: jest.fn((val) => val),
   serializableMappingCache: new Map(),
 }));
 jest.mock('react-native-reanimated', () => {
+  try {
+    const { JSReanimated } = require('react-native-reanimated/src/ReanimatedModule/js-reanimated/JSReanimated');
+    if (JSReanimated && JSReanimated.prototype) {
+      JSReanimated.prototype.setCSSEventHandler = () => {};
+    }
+  } catch (e) {}
   const Reanimated = require('react-native-reanimated/mock');
   return {
     ...Reanimated,

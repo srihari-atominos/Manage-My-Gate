@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import config from '../../../config/config.js'
 import { getAmenities, fetchAllAmenitySlots } from '../store/amenitySlice.js'
 import { createBooking } from '../services/amenityBookingApi.js'
+import { fetchMyWallet } from '../services/walletApi.js'
+import useAmenityPayment from './useAmenityPayment.js'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import io from 'socket.io-client'
@@ -10,11 +12,14 @@ import io from 'socket.io-client'
 export const useResidentBooking = (initialAmenityId) => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const { processPayment, loading: paymentGatewayLoading } = useAmenityPayment()
 
   // State Machine
-  const [step, setStep] = useState('date') // 'date' | 'time' | 'review' | 'payment' | 'submitting' | 'success' | 'failed'
+  const [step, setStep] = useState('date') // 'date' | 'time' | 'submitting' | 'success' | 'failed'
   const [errorMsg, setErrorMsg] = useState('')
   const [paymentIntent, setPaymentIntent] = useState(null)
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [walletLoading, setWalletLoading] = useState(false)
 
   const token = useSelector((state) => state.auth?.token)
   const user = useSelector((state) => state.auth?.user || {})
@@ -36,6 +41,22 @@ export const useResidentBooking = (initialAmenityId) => {
     () => items.find((i) => i._id === initialAmenityId),
     [items, initialAmenityId],
   )
+
+  const loadWallet = useCallback(async () => {
+    try {
+      setWalletLoading(true)
+      const res = await fetchMyWallet()
+      setWalletBalance(Number(res?.balance || 0))
+    } catch (err) {
+      console.warn('Failed to fetch wallet balance in useResidentBooking:', err)
+    } finally {
+      setWalletLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadWallet()
+  }, [loadWallet])
 
   useEffect(() => {
     if (!amenity && !loading) {
@@ -78,7 +99,6 @@ export const useResidentBooking = (initialAmenityId) => {
 
   const goBack = () => {
     if (step === 'time') setStep('date')
-    if (step === 'payment') setStep('time')
     setErrorMsg('')
   }
 
@@ -95,19 +115,22 @@ export const useResidentBooking = (initialAmenityId) => {
       if (step === 'time' && draft.bookingDate) {
         dispatch(fetchAllAmenitySlots({ id: draft.amenityId, date: draft.bookingDate }))
       }
+      loadWallet()
     }
 
     socket.on('bookingUpdated', handleUpdate)
     socket.on('paymentSuccess', handleUpdate)
+    socket.on('walletUpdated', handleUpdate)
 
     return () => {
       socket.off('bookingUpdated', handleUpdate)
       socket.off('paymentSuccess', handleUpdate)
+      socket.off('walletUpdated', handleUpdate)
       socket.disconnect()
     }
-  }, [step, draft.bookingDate, draft.amenityId, dispatch, token, user])
+  }, [step, draft.bookingDate, draft.amenityId, dispatch, token, user, loadWallet])
 
-  const confirmBooking = async (numberOfPersons = 1) => {
+  const confirmBooking = async (numberOfPersons = 1, paymentMethod = 'WALLET') => {
     setStep('submitting')
     setErrorMsg('')
     try {
@@ -117,54 +140,48 @@ export const useResidentBooking = (initialAmenityId) => {
         startTime: draft.startTime,
         endTime: draft.endTime,
         numberOfPersons,
+        paymentMethod: paymentMethod.toUpperCase(),
       }
 
       const response = await createBooking(payload)
+      const intent = response?.data?.paymentIntent || response?.paymentIntent
 
-      if (response.paymentIntent) {
-        setPaymentIntent(response.paymentIntent)
-        setStep('payment')
+      if (paymentMethod.toUpperCase() === 'ONLINE' && intent) {
+        setPaymentIntent(intent)
+        // Execute real Razorpay checkout
+        await processPayment({
+          paymentIntent: intent,
+          onSuccess: () => {
+            toast.success('Payment completed successfully.')
+            toast.success('Booking confirmed!')
+            loadWallet()
+            setStep('success')
+          },
+          onFailure: (err) => {
+            const failureMsg = err?.message || 'Payment cancelled or failed.'
+            setErrorMsg(failureMsg)
+            toast.error(failureMsg)
+            setStep('time')
+          },
+        })
       } else {
+        // Digital wallet debit or complimentary booking
         toast.success('Booking confirmed successfully.')
-        toast.success('Wallet updated successfully.')
+        if (paymentMethod.toUpperCase() === 'WALLET' && (draft.totalPrice || 0) > 0) {
+          toast.success('Wallet debited successfully.')
+        }
+        loadWallet()
         setStep('success')
       }
     } catch (err) {
-      const errMsg = err.message || 'Failed to submit booking'
+      const errMsg = err?.response?.data?.message || err.message || 'Failed to submit booking'
       setErrorMsg(errMsg)
       if (errMsg.includes('capacity') || errMsg.includes('already have a booking')) {
-        toast.error('Slot already booked.')
+        toast.error('Slot already booked or unavailable.')
       } else {
-        toast.error('Booking failed.')
+        toast.error(errMsg)
       }
-      setStep('failed')
-    }
-  }
-
-  const processMockPayment = async (isSuccess) => {
-    if (!paymentIntent) return
-    setStep('submitting')
-    try {
-      const { simulatePayment } = await import('../services/paymentApi.js')
-      await simulatePayment(
-        paymentIntent.paymentId,
-        isSuccess,
-        isSuccess ? null : 'Insufficient funds in mock bank',
-      )
-      if (isSuccess) {
-        toast.success('Payment completed successfully.')
-        toast.success('QR Code generated successfully.')
-        toast.success('Wallet updated successfully.')
-        setStep('success')
-      } else {
-        setErrorMsg('Payment Failed. Booking cancelled.')
-        toast.error('Payment failed.')
-        setStep('failed')
-      }
-    } catch (err) {
-      setErrorMsg('Failed to process payment')
-      toast.error('Payment failed.')
-      setStep('failed')
+      setStep('time')
     }
   }
 
@@ -181,11 +198,14 @@ export const useResidentBooking = (initialAmenityId) => {
     draft,
     errorMsg,
     paymentIntent,
+    walletBalance,
+    walletLoading,
+    paymentGatewayLoading,
+    loadWallet,
     updateDraft,
     proceedToTime,
     goBack,
     confirmBooking,
-    processMockPayment,
     complete,
   }
 }

@@ -102,7 +102,7 @@ export const GlobalFilterPanel: React.FC<GlobalFilterPanelProps> = ({
     <Modal
       visible={visible}
       transparent
-      statusBarTranslucent={true}
+      statusBarTranslucent={Platform.OS === 'android' ? false : true}
       animationType="slide"
       onRequestClose={onClose}
     >
@@ -456,13 +456,13 @@ export const GlobalFilterPanel: React.FC<GlobalFilterPanelProps> = ({
             <TouchableOpacity
               onPress={onClearAll}
               activeOpacity={0.7}
-              className="flex-1 min-w-0 py-2 px-1 flex-row items-center gap-1.5"
+              className="py-2 px-1 flex-row items-center gap-1.5 shrink-0"
               accessibilityRole="button"
               accessibilityLabel="Clear all filters"
             >
               <RotateCcw size={14} className="text-muted-foreground" />
               <Text
-                className="shrink font-semibold text-foreground/80 text-sm font-sans hover:text-primary"
+                className="font-semibold text-foreground/80 text-sm font-sans hover:text-primary"
                 numberOfLines={1}
                 minimumFontScale={0.75}
               >
@@ -473,7 +473,7 @@ export const GlobalFilterPanel: React.FC<GlobalFilterPanelProps> = ({
             {/* Apply Action Button */}
             <Button
               variant="default"
-              className="h-11 min-w-[108px] max-w-[152px] shrink px-4 rounded-xl shadow-xs flex-row items-center justify-center gap-2"
+              className="h-11 min-w-[104px] px-3.5 rounded-xl shadow-xs flex-row items-center justify-center gap-1.5"
               onPress={onApply}
               accessibilityRole="button"
               accessibilityLabel="Apply filters"

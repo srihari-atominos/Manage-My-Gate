@@ -6,6 +6,7 @@ export * from './hooks/useCommunityFinance';
 export * from './hooks/useCommunityFinanceTransactions';
 export * from './components/CommunityFinanceHeader';
 export * from './components/PeriodFilterChips';
+export * from './components/FinancePeriodFilterSheet';
 export * from './components/FinancialSummaryCards';
 export * from './components/FinancialRunwayCard';
 export * from './components/IncomeExpenseChart';

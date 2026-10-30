@@ -96,7 +96,7 @@ export default function AmenityExecutiveDashboardScreen() {
       subtitle: t('amenity_admin_kpi_approvals_sub', 'Approve or reject'),
       iconName: 'Hourglass',
       variant: 'warning',
-      onPress: () => router.navigate('/(resident)/amenities/admin-bookings' as any),
+      onPress: () => router.push('/(resident)/amenities/admin-bookings' as any),
     },
     {
       title: t('amenity_admin_kpi_review', 'Needs decision'),
@@ -104,7 +104,7 @@ export default function AmenityExecutiveDashboardScreen() {
       subtitle: t('amenity_admin_kpi_review_sub', 'No-shows, unpaid, returns'),
       iconName: 'ShieldAlert',
       variant: 'destructive',
-      onPress: () => router.navigate('/(resident)/amenities/admin-bookings' as any),
+      onPress: () => router.push('/(resident)/amenities/admin-bookings' as any),
     },
     {
       title: t('under_maintenance', 'Maintenance'),

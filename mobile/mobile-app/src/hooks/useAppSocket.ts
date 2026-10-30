@@ -101,9 +101,9 @@ export const useAppSocket = () => {
       sharedSocket = io(socketUrl, {
         // Browsers can emit noisy WebSocket errors while restoring a page from BFCache.
         // Socket.IO polling remains live and avoids the failed web upgrade attempt.
-        ...(Platform.OS === 'web'
+        ...(Platform.OS === 'web' && socketUrl.includes(':8081')
           ? { transports: ['polling'], upgrade: false }
-          : { transports: ['polling', 'websocket'] }),
+          : { transports: ['websocket', 'polling'] }),
         timeout: 10000,
         // Keep trying for as long as the user is signed in; a phone that loses signal for a minute
         // must still get live updates again afterwards instead of giving up after a few attempts.
@@ -127,6 +127,10 @@ export const useAppSocket = () => {
       });
 
       sharedSocket.on('connect_error', (error) => {
+        const errMsg = String(error?.message || error || '');
+        if (errMsg.includes('Unauthorized') || errMsg.includes('Authentication required')) {
+          sharedSocket?.disconnect();
+        }
         const now = Date.now();
         // Throttle connection error warnings to avoid spamming terminal (log once every 30s)
         if (now - lastLoggedErrorTime > 30000) {

@@ -50,6 +50,27 @@ export interface AssistantAction {
   referenceId?: string;
 }
 
+export interface InteractiveOptionItem {
+  id: string;
+  label: string;
+  value: string;
+  type?: string;
+  badge?: string | null;
+  description?: string | null;
+  selected?: boolean;
+  icon?: string | null;
+}
+
+export interface InteractiveOptionGroup {
+  mode: 'single' | 'multiple';
+  targetField: string;
+  allowDeselect: boolean;
+  allowCustomText: boolean;
+  customPlaceholder?: string;
+  title?: string;
+  selectedValues?: string[];
+}
+
 export interface ConversationState {
   activeIntent?: string | null;
   workflow?: string | null;
@@ -58,6 +79,9 @@ export interface ConversationState {
   nextQuestion?: string | null;
   interactionType?: 'answering' | 'clarification' | 'confirmation' | 'navigating' | 'executing';
   awaitingConfirmation?: boolean;
+  options?: InteractiveOptionItem[];
+  interactiveConfig?: InteractiveOptionGroup;
+  selectedOptions?: Record<string, any>;
   pendingAction?: {
     id: string;
     actionType: string;
@@ -82,6 +106,8 @@ export interface ChatResponsePayload {
   reply?: string; // backward compatibility
   actions?: AssistantAction[];
   data?: any;
+  options?: InteractiveOptionItem[];
+  interactiveConfig?: InteractiveOptionGroup;
   toolCall?: {
     name: string;
     args: Record<string, any>;

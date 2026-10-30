@@ -24,7 +24,7 @@ export const ResidentFeedbackSheet: React.FC<ResidentFeedbackSheetProps> = ({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Resident Service Feedback">
-      <ScrollView className="px-4 py-2" contentContainerStyle={{ paddingBottom: 50 }}>
+      <View className="px-1 py-1">
         {ratedComplaints.length === 0 ? (
           <View className="py-6">
             <EmptyState
@@ -64,7 +64,7 @@ export const ResidentFeedbackSheet: React.FC<ResidentFeedbackSheetProps> = ({
             </View>
           ))
         )}
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 };

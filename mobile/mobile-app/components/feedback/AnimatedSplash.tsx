@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Dimensions, Image, Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   runOnJS,
@@ -15,7 +15,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const MIN_VISIBLE_MS = 1100; // Let the entrance & District text display gracefully
 const MAX_VISIBLE_MS = 3200; // Safety fallback timeout so the user is never stuck
-const ZOOM_DURATION = 480;   // Logo 'H' zooms into the camera first
+const ZOOM_DURATION = 480;   // Wordmark zooms into the camera first
 const FLASH_IN_DELAY = 220;  // Flash strikes 220ms into the zoom at peak momentum
 const FLASH_IN_MS = 220;
 const REVEAL_MS = 400;       // Flash & splash overlay dissolve away into dashboard
@@ -25,16 +25,15 @@ const REVEAL_MS = 400;       // Flash & splash overlay dissolve away into dashbo
  * 
  * Flow:
  * 1. Dark canvas (#0D1015) with soft ambient orange glow.
- * 2. App icon springs in (0.3x -> 1.0x) with overshoot bounce.
- * 3. Authentic brand wordmark slides in:
+ * 2. Authentic brand wordmark springs in (0.6x -> 1.0x) with overshoot bounce:
  *    - Modern 'N' & chevron 'A'
  *    - Signature orange House 'H' symbol with 4 glowing amber window panes
  *    - Glowing orange ring 'O'
  *    - Modern 'M'
  *    - Hairline District architectural CAD/drafting lines cutting through.
- * 4. "CONNECTED COMMUNITY" subtitle unfurls below in wide tracking.
- * 5. On auth readiness:
- *    - 'H' / App icon surges forward into the camera (1.0x -> 5.5x).
+ * 3. "CONNECTED COMMUNITY" subtitle unfurls below in wide tracking.
+ * 4. On auth readiness:
+ *    - Brand Wordmark surges forward into the camera (1.0x -> 4.5x).
  *    - Bright white flash ignites at peak scale.
  *    - Flash dissolves cleanly to unveil the live resident dashboard.
  */
@@ -46,13 +45,12 @@ export function AnimatedSplash() {
   const exiting = React.useRef(false);
 
   // Reanimated shared values
-  const logoScale = useSharedValue(0.3);
-  const logoOpacity = useSharedValue(0);
+  const brandScale = useSharedValue(0.6);
+  const brandOpacity = useSharedValue(0);
+  const brandTranslateY = useSharedValue(12);
+
   const ambientScale = useSharedValue(0.5);
   const ambientOpacity = useSharedValue(0);
-
-  const brandTranslateY = useSharedValue(18);
-  const brandOpacity = useSharedValue(0);
 
   const subTranslateY = useSharedValue(10);
   const subOpacity = useSharedValue(0);
@@ -62,30 +60,27 @@ export function AnimatedSplash() {
 
   // Entrance Sequence
   React.useEffect(() => {
-    // 1. Logo Springs in with bounce
-    logoScale.value = withTiming(1, {
+    // 1. Brand Wordmark Springs in with bounce
+    brandScale.value = withTiming(1, {
       duration: 650,
-      easing: Easing.out(Easing.back(1.4)),
+      easing: Easing.out(Easing.back(1.3)),
     });
-    logoOpacity.value = withTiming(1, { duration: 500 });
+    brandOpacity.value = withTiming(1, { duration: 500 });
+    brandTranslateY.value = withTiming(0, {
+      duration: 550,
+      easing: Easing.out(Easing.quad),
+    });
 
     // 2. Ambient glow blooms
     ambientScale.value = withTiming(1, { duration: 650 });
-    ambientOpacity.value = withTiming(0.7, { duration: 600 });
+    ambientOpacity.value = withTiming(0.85, { duration: 600 });
 
-    // 3. District-style Brand Wordmark slides in
-    brandTranslateY.value = withDelay(
-      400,
-      withTiming(0, { duration: 500, easing: Easing.out(Easing.quad) })
-    );
-    brandOpacity.value = withDelay(400, withTiming(1, { duration: 450 }));
-
-    // 4. "CONNECTED COMMUNITY" subtitle follows
+    // 3. "CONNECTED COMMUNITY" subtitle follows
     subTranslateY.value = withDelay(
-      650,
+      350,
       withTiming(0, { duration: 450, easing: Easing.out(Easing.quad) })
     );
-    subOpacity.value = withDelay(650, withTiming(1, { duration: 450 }));
+    subOpacity.value = withDelay(350, withTiming(1, { duration: 450 }));
 
     const t1 = setTimeout(() => setMinElapsed(true), MIN_VISIBLE_MS);
     const t2 = setTimeout(() => setMaxElapsed(true), MAX_VISIBLE_MS);
@@ -95,12 +90,11 @@ export function AnimatedSplash() {
       clearTimeout(t2);
     };
   }, [
-    logoScale,
-    logoOpacity,
+    brandScale,
+    brandOpacity,
+    brandTranslateY,
     ambientScale,
     ambientOpacity,
-    brandTranslateY,
-    brandOpacity,
     subTranslateY,
     subOpacity,
   ]);
@@ -115,27 +109,21 @@ export function AnimatedSplash() {
     });
   }, [flashOpacity, overlayOpacity, unmount]);
 
-  // Stage 3: H Zooms first -> Flash strikes after -> Unveil dashboard
+  // Stage 3: Wordmark Zooms -> Flash strikes -> Unveil dashboard
   React.useEffect(() => {
     if (exiting.current || !((isInitialized && minElapsed) || maxElapsed)) return;
     exiting.current = true;
 
-    // 1. Logo surges forward into camera (1.0x -> 5.5x)
-    logoScale.value = withTiming(5.5, {
+    // 1. Brand Wordmark surges forward into camera (1.0x -> 4.5x)
+    brandScale.value = withTiming(4.5, {
       duration: ZOOM_DURATION,
       easing: Easing.bezier(0.3, 0, 0.8, 1),
     });
-    ambientScale.value = withTiming(5.5, { duration: ZOOM_DURATION });
+    ambientScale.value = withTiming(4.5, { duration: ZOOM_DURATION });
 
-    // 2. Wordmark & Subtitle sink down & fade
-    brandTranslateY.value = withTiming(25, {
-      duration: 250,
-      easing: Easing.in(Easing.quad),
-    });
-    brandOpacity.value = withTiming(0, { duration: 250 });
-
-    subTranslateY.value = withTiming(15, { duration: 220 });
-    subOpacity.value = withTiming(0, { duration: 220 });
+    // 2. Subtitle fades out cleanly
+    subTranslateY.value = withTiming(15, { duration: 200 });
+    subOpacity.value = withTiming(0, { duration: 200 });
 
     // 3. Flash strikes 220ms into the zoom at peak momentum
     flashOpacity.value = withDelay(
@@ -157,10 +145,8 @@ export function AnimatedSplash() {
     isInitialized,
     minElapsed,
     maxElapsed,
-    logoScale,
+    brandScale,
     ambientScale,
-    brandTranslateY,
-    brandOpacity,
     subTranslateY,
     subOpacity,
     flashOpacity,
@@ -173,19 +159,17 @@ export function AnimatedSplash() {
     opacity: overlayOpacity.value,
   }));
 
-  const logoStyle = useAnimatedStyle(() => ({
-    opacity: logoOpacity.value,
-    transform: [{ scale: logoScale.value }],
+  const brandStyle = useAnimatedStyle(() => ({
+    opacity: brandOpacity.value,
+    transform: [
+      { translateY: brandTranslateY.value },
+      { scale: brandScale.value },
+    ],
   }));
 
   const ambientStyle = useAnimatedStyle(() => ({
     opacity: ambientOpacity.value,
     transform: [{ scale: ambientScale.value }],
-  }));
-
-  const brandStyle = useAnimatedStyle(() => ({
-    opacity: brandOpacity.value,
-    transform: [{ translateY: brandTranslateY.value }],
   }));
 
   const subStyle = useAnimatedStyle(() => ({
@@ -209,17 +193,8 @@ export function AnimatedSplash() {
       {/* Ambient Radial Orange Glow */}
       <Animated.View style={[ambientStyle, styles.ambientGlow]} />
 
-      {/* Center Stack: App Icon Logo + Wordmark */}
+      {/* Center Stack: Animated Brand Wordmark + Subtitle */}
       <View style={styles.centerContent}>
-        {/* App Icon Logo */}
-        <Animated.View style={[logoStyle, styles.logoWrapper]}>
-          <Image
-            source={require('../../assets/images/nahom_app_icon.jpeg')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        </Animated.View>
-
         {/* District-Style Brand Wordmark with Signature House 'H' */}
         <Animated.View style={[brandStyle, styles.wordmarkRow]}>
           {/* Architectural CAD / Sketch Lines (District Style) */}
@@ -321,30 +296,17 @@ const styles = StyleSheet.create({
   },
   ambientGlow: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(255, 94, 0, 0.18)',
-  },
-  logoWrapper: {
-    zIndex: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  logoImage: {
-    width: 115,
-    height: 115,
-    borderRadius: 24,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: 'rgba(255, 94, 0, 0.2)',
   },
   wordmarkRow: {
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 22,
+    marginTop: 0,
     gap: 7,
     zIndex: 5,
   },
@@ -426,7 +388,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   subRow: {
-    marginTop: 14,
+    marginTop: 18,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 5,

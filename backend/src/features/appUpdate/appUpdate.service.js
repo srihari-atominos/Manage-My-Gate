@@ -313,10 +313,12 @@ export class AppUpdateService {
 
     const now = new Date();
     const updateData = {
-      announcementStatus: ANNOUNCEMENT_STATUSES.ANNOUNCED,
-      announcedAt: now,
+      $set: {
+        announcementStatus: ANNOUNCEMENT_STATUSES.ANNOUNCED,
+        announcedAt: now,
+        updatedBy: adminUserId,
+      },
       $inc: { announcementCount: 1 },
-      updatedBy: adminUserId,
     };
 
     const updated = await appUpdateRepository.updateById(id, updateData);

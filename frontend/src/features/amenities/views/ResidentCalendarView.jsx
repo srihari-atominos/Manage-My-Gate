@@ -16,7 +16,9 @@ import { createBooking, cancelBooking } from '../services/amenityBookingApi.js'
 import toast from 'react-hot-toast'
 import DateDetailsPanel from '../components/residentCalendar/DateDetailsPanel.jsx'
 import BookingConfirmationModal from '../components/booking/BookingConfirmationModal.jsx'
-import MockPaymentModal from '../components/booking/MockPaymentModal.jsx'
+import useAmenityPayment from '../hooks/useAmenityPayment.js'
+import { fetchMyWallet } from '../services/walletApi.js'
+import WalletRechargeModal from '../components/wallet/WalletRechargeModal.jsx'
 import ResidentBookingModal from '../components/residentCalendar/ResidentBookingModal.jsx'
 import '../styles/_amenities.scss'
 
@@ -57,18 +59,32 @@ const ResidentCalendarView = () => {
   const [autoOpenQRBookingId, setAutoOpenQRBookingId] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [selectedPersons, setSelectedPersons] = useState(1)
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [showTopUpModal, setShowTopUpModal] = useState(false)
 
+  const { processPayment } = useAmenityPayment()
+  const user = useSelector((state) => state.auth?.user)
   const dispatch = useDispatch()
   const { items: amenities, allSlots, slotsLoading } = useSelector((state) => state.amenities)
   const location = useLocation()
 
+  const loadWallet = useCallback(async () => {
+    try {
+      const res = await fetchMyWallet()
+      setWalletBalance(Number(res?.balance || 0))
+    } catch (err) {
+      console.warn('Failed to fetch wallet in ResidentCalendarView', err)
+    }
+  }, [])
+
   // Load bookings and amenities on mount
   useEffect(() => {
     loadEvents()
+    loadWallet()
     if (amenities.length === 0) {
       dispatch(getAmenities())
     }
-  }, [loadEvents, dispatch, amenities.length])
+  }, [loadEvents, loadWallet, dispatch, amenities.length])
 
   // Handle auto-scroll to history
   useEffect(() => {
@@ -99,10 +115,11 @@ const ResidentCalendarView = () => {
   // Auto-refresh via socket events (booking created/updated/cancelled/payment)
   const refreshAll = useCallback(() => {
     loadEvents()
+    loadWallet()
     if (selectedCalendarDate && selectedAmenityId) {
       dispatch(fetchAllAmenitySlots({ id: selectedAmenityId, date: selectedCalendarDate }))
     }
-  }, [loadEvents, selectedCalendarDate, selectedAmenityId, dispatch])
+  }, [loadEvents, loadWallet, selectedCalendarDate, selectedAmenityId, dispatch])
 
   useEffect(() => {
     if (autoOpenQRBookingId && rawEvents.length > 0) {
@@ -153,7 +170,7 @@ const ResidentCalendarView = () => {
     setBookingModalVisible(true)
   }
 
-  const handleConfirmBooking = async (numberOfPersons = 1) => {
+  const handleConfirmBooking = async (numberOfPersons = 1, paymentMethod = 'WALLET') => {
     if (!selectedSlot || !selectedAmenityId || !selectedCalendarDate) return
 
     setSelectedPersons(numberOfPersons)
@@ -165,21 +182,28 @@ const ResidentCalendarView = () => {
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
         numberOfPersons,
+        paymentMethod: paymentMethod.toUpperCase(),
       }
 
       const response = await createBooking(payload)
+      const intent = response?.data?.paymentIntent || response?.paymentIntent
 
       setBookingModalVisible(false)
 
-      if (response.paymentIntent) {
-        setPaymentIntent(response.paymentIntent)
-        setPendingBookingId(response.booking?._id)
+      if (paymentMethod.toUpperCase() === 'ONLINE' && intent) {
+        setPaymentIntent(intent)
+        setPendingBookingId(response?.data?.booking?._id || response?.booking?._id)
+        await processPayment({
+          paymentIntent: intent,
+          onSuccess: handlePaymentSuccess,
+          onFailure: handlePaymentClose,
+        })
       } else {
         toast.success('Booking confirmed successfully!')
         refreshAll()
       }
     } catch (err) {
-      toast.error(err.message || 'Failed to submit booking')
+      toast.error(err?.response?.data?.message || err.message || 'Failed to submit booking')
     } finally {
       setIsSubmittingBooking(false)
     }
@@ -392,17 +416,21 @@ const ResidentCalendarView = () => {
           isSubmitting={isSubmittingBooking}
           draft={draftForModal}
           amenity={selectedAmenity}
+          walletBalance={walletBalance}
+          onTopUpClick={() => setShowTopUpModal(true)}
         />
 
-        {/* Mock Payment Modal */}
-        <MockPaymentModal
-          visible={!!paymentIntent}
-          paymentIntent={paymentIntent}
-          onSuccess={handlePaymentSuccess}
-          onFailure={handlePaymentClose}
-          onClose={handlePaymentClose}
-          draft={draftForModal}
-          amenity={selectedAmenity}
+        {/* In-Flow Wallet Recharge Modal */}
+        <WalletRechargeModal
+          isOpen={showTopUpModal}
+          onClose={() => setShowTopUpModal(false)}
+          walletBalance={walletBalance}
+          isPaymentGatewayConfigured={true}
+          onSuccess={() => {
+            setShowTopUpModal(false)
+            loadWallet()
+          }}
+          user={user}
         />
       </div>
     </div>

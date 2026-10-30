@@ -21,6 +21,13 @@ const formatPermissionLabel = (permissionString) => {
     'visitor:resident': 'Resident Guest Invites',
     'visitor:guard': 'Security Guard Scanning',
     'visitor:admin': 'Visitor Administration',
+    'billing:my_invoices': 'My Invoice',
+    'billing:assessments': 'Assessments',
+    'billing:ledger': 'Billing Ledger',
+    'billing:billing_hub': 'Billing Hub',
+    'billing:expenses': 'Community Expenses',
+    'billing:dashboard': 'Community Finance',
+    'billing:action_center': 'Digital Wallet & Resident Ledger',
   }
 
   if (customLabels[normalized]) {
@@ -39,6 +46,12 @@ const formatPermissionLabel = (permissionString) => {
 export const isPermissionSelected = (perm, selectedIds = []) => {
   if (!perm || !selectedIds || selectedIds.length === 0) return false
   const permValue = String(perm?.name || perm?.code || perm?._id || perm)
+
+  if (Array.isArray(perm?.permissionAliases) && perm.permissionAliases.length > 0) {
+    return perm.permissionAliases.some(
+      (alias) => selectedIds.includes(alias) || selectedIds.includes(alias.replace(/:/g, '.'))
+    )
+  }
 
   if (permValue.endsWith(':full_access')) {
     const category = permValue.split(':')[0]
@@ -103,6 +116,78 @@ const PermissionMatrix = ({
     Object.entries(groupedPermissions).forEach(([categoryKey, perms]) => {
       const lowerKey = categoryKey.toLowerCase()
       if (lowerKey === 'polls') return // Merged into notices
+      if (lowerKey === 'billing') {
+        const canonical6BillingItems = [
+          {
+            _id: 'billing:my_invoices',
+            name: 'billing:my_invoices',
+            code: 'billing:my_invoices',
+            permissionAliases: ['billing:my_invoices', 'billing:my_dues'],
+            description: 'Resident personal invoices, statements, dues, and payment checkout',
+          },
+          {
+            _id: 'billing:assessments',
+            name: 'billing:assessments',
+            code: 'billing:assessments',
+            permissionAliases: ['billing:assessments', 'billing:assessment_manager'],
+            description: 'Recurring maintenance generation, penalty rules, and batch invoice distribution',
+          },
+          {
+            _id: 'billing:ledger',
+            name: 'billing:ledger',
+            code: 'billing:ledger',
+            permissionAliases: ['billing:ledger', 'billing:financial_ledger', 'billing:reconciliation_manage'],
+            description: 'Double-entry accounting, settlement records, audit logs, and account reconciliations',
+          },
+          {
+            _id: 'billing:billing_hub',
+            name: 'billing:billing_hub',
+            code: 'billing:billing_hub',
+            permissionAliases: ['billing:billing_hub'],
+            description: 'Administrative central desk for invoices, dues tracking, and payment reconciliations',
+          },
+          {
+            _id: 'billing:expenses',
+            name: 'billing:expenses',
+            code: 'billing:expenses',
+            permissionAliases: [
+              'billing:expenses',
+              'billing:view_expense',
+              'billing:create_expense',
+              'billing:record_expense_payment',
+              'billing:reconcile_expense_payment',
+              'billing:pay_online_expense',
+            ],
+            description: 'Track community vendor bills, operational expenses, receipt scanning, and payouts',
+          },
+          {
+            _id: 'billing:dashboard',
+            name: 'billing:dashboard',
+            code: 'billing:dashboard',
+            permissionAliases: ['billing:dashboard', 'billing:community_finance'],
+            description: 'Real-time financial analytics, revenue vs expense curves, and treasury health',
+          },
+        ]
+
+        result.billing = canonical6BillingItems
+
+        const actionCenterPerm = (perms || []).find((p) => {
+          const val = String(p?.name || p?.code || p?._id || '').toLowerCase()
+          return val === 'billing:action_center' || val.endsWith(':action_center')
+        })
+        if (actionCenterPerm || !result.digital_wallet || result.digital_wallet.length === 0) {
+          result.digital_wallet = [
+            {
+              _id: 'billing:action_center',
+              name: 'billing:action_center',
+              code: 'billing:action_center',
+              permissionAliases: ['billing:action_center'],
+              description: 'Resident wallet top-ups, pre-paid passes, transfer balance, and personal ledger',
+            },
+          ]
+        }
+        return
+      }
       result[lowerKey] = perms || []
     })
 
@@ -220,6 +305,11 @@ const PermissionMatrix = ({
                       checked={isChecked}
                       onChange={(e) => onTogglePermission(permValue, e.target.checked)}
                     />
+                    {perm.description && (
+                      <div className="text-body-secondary small ms-4 ps-1">
+                        {perm.description}
+                      </div>
+                    )}
                   </CCol>
                 )
               })}

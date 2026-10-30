@@ -21,6 +21,7 @@ import {
   setConversationState,
   resetVoiceSession,
   addMessage,
+  editAndTruncateMessages,
   updateLastAssistantMessage,
   clearMessages,
   VoiceAssistantStatus,
@@ -77,6 +78,7 @@ export const useVoiceAssistant = () => {
   );
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resumeListeningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const currentSessionIdRef = useRef<string | null>(null);
   const isMutedRef = useRef(isMuted);
@@ -86,7 +88,10 @@ export const useVoiceAssistant = () => {
   const isModalOpenRef = useRef(isModalOpen);
   const modeRef = useRef(mode);
   const messagesRef = useRef(messages);
+  const conversationStateRef = useRef(conversationState);
   const isSubmittingVoiceRef = useRef(false);
+  const transcriptSnippetRef = useRef('');
+  const startListeningRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -114,12 +119,21 @@ export const useVoiceAssistant = () => {
 
   useEffect(() => {
     messagesRef.current = messages;
+    transcriptSnippetRef.current = transcriptSnippet;
   }, [messages]);
+
+  useEffect(() => {
+    conversationStateRef.current = conversationState;
+  }, [conversationState]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+    if (resumeListeningTimerRef.current) {
+      clearTimeout(resumeListeningTimerRef.current);
+      resumeListeningTimerRef.current = null;
     }
   }, []);
 
@@ -185,6 +199,7 @@ export const useVoiceAssistant = () => {
    * Stops ongoing generation or speech synthesis (barge-in / interruption).
    */
   const interruptAssistant = useCallback(() => {
+    clearTimer();
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -194,7 +209,7 @@ export const useVoiceAssistant = () => {
     textToSpeechService.stop();
     isSubmittingVoiceRef.current = false;
     dispatch(setStatus('idle'));
-  }, [dispatch]);
+  }, [clearTimer, dispatch]);
 
   /**
    * Internal submission pipeline for both transcribed voice and typed text.
@@ -255,9 +270,10 @@ export const useVoiceAssistant = () => {
             text: m.text.trim(),
           }));
 
+        const currentConvState = conversationStateRef.current || conversationState;
         const cleanConversationState =
-          conversationState && typeof conversationState === 'object'
-            ? conversationState
+          currentConvState && typeof currentConvState === 'object'
+            ? currentConvState
             : undefined;
 
         const result = await sendChatMessage(
@@ -323,26 +339,56 @@ export const useVoiceAssistant = () => {
           // Text-to-Speech Playback (spoken when enabled or in voice mode)
           const shouldSpeak = isTtsEnabledRef.current && (isFromVoice || modeRef.current === 'voice');
 
+          const resumeListeningIfInVoiceMode = () => {
+            if (
+              modeRef.current === 'voice' &&
+              isModalOpenRef.current &&
+              !isMutedRef.current
+            ) {
+              if (resumeListeningTimerRef.current) {
+                clearTimeout(resumeListeningTimerRef.current);
+              }
+              resumeListeningTimerRef.current = setTimeout(() => {
+                resumeListeningTimerRef.current = null;
+                if (
+                  modeRef.current === 'voice' &&
+                  isModalOpenRef.current &&
+                  !isMutedRef.current &&
+                  statusRef.current !== 'listening' &&
+                  statusRef.current !== 'transcribing' &&
+                  statusRef.current !== 'processing' &&
+                  statusRef.current !== 'speaking'
+                ) {
+                  startListeningRef.current?.();
+                }
+              }, 400);
+            }
+          };
+
           if (shouldSpeak && primaryText) {
             dispatch(setStatus('speaking'));
             await textToSpeechService.speak(primaryText, {
               onDone: () => {
                 if (statusRef.current === 'speaking') {
                   dispatch(setStatus(isAwaitingConfirmation ? 'awaiting_confirmation' : 'idle'));
+                  resumeListeningIfInVoiceMode();
                 }
               },
               onError: () => {
                 if (statusRef.current === 'speaking') {
                   dispatch(setStatus(isAwaitingConfirmation ? 'awaiting_confirmation' : 'idle'));
+                  resumeListeningIfInVoiceMode();
                 }
               },
               onStopped: () => {
                 if (statusRef.current === 'speaking') {
                   dispatch(setStatus(isAwaitingConfirmation ? 'awaiting_confirmation' : 'idle'));
+                  resumeListeningIfInVoiceMode();
                 }
               },
             });
           } else if (!isAwaitingConfirmation) {
+            resumeListeningIfInVoiceMode();
             dispatch(setStatus('idle'));
           }
         }
@@ -354,9 +400,9 @@ export const useVoiceAssistant = () => {
 
         const serverError = err?.response?.data?.message;
         const details = err?.response?.data?.details;
-        let fallbackText = serverError
-          ? `${serverError}`
-          : 'I encountered an issue connecting to the AI assistant. Please check your network and tap Retry.';
+        let fallbackText = (err?.response?.status === 404 || (typeof serverError === 'string' && serverError.includes('Not Found')))
+          ? 'I couldn\'t connect to the assistant just now. Try again in a moment.'
+          : (serverError ? `${serverError}` : 'I encountered an issue connecting to the AI assistant. Please check your network and tap Retry.');
 
         if (details && Array.isArray(details) && details.length > 0) {
           const detailMsg = details
@@ -441,6 +487,7 @@ export const useVoiceAssistant = () => {
           dispatch(setStatus('listening'));
         },
         onResult: ({ transcript, isFinal }) => {
+          transcriptSnippetRef.current = transcript;
           dispatch(setTranscriptSnippet(transcript));
 
           if (!isFinal) {
@@ -475,6 +522,12 @@ export const useVoiceAssistant = () => {
         onEnd: () => {
           if (statusRef.current === 'listening' || statusRef.current === 'transcribing') {
             if (!isSubmittingVoiceRef.current) {
+              const pendingSnippet = (transcriptSnippetRef.current || '').trim();
+              if (pendingSnippet && statusRef.current === 'transcribing') {
+                isSubmittingVoiceRef.current = true;
+                executeChatRequest(pendingSnippet, true);
+                return;
+              }
               dispatch(setStatus('idle'));
             }
           }
@@ -485,6 +538,10 @@ export const useVoiceAssistant = () => {
       dispatch(setStatus('error'));
     }
   }, [dispatch, executeChatRequest]);
+
+  useEffect(() => {
+    startListeningRef.current = startListening;
+  }, [startListening]);
 
   /**
    * Starts a voice session: initializes config and starts listening immediately.
@@ -569,19 +626,171 @@ export const useVoiceAssistant = () => {
     [executeChatRequest]
   );
 
+  const editUserPrompt = useCallback(
+    async (messageId: string, newText: string): Promise<boolean> => {
+      const trimmed = (newText || '').trim();
+      if (!trimmed || isGeneratingText) return false;
+
+      // 1. Interrupt any active speech or in-flight generation
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      await textToSpeechService.stop();
+
+      // 2. Find target message index and capture history strictly prior to this turn
+      const allMsgs = messagesRef.current || [];
+      const targetIdx = allMsgs.findIndex((m) => m.id === messageId);
+      if (targetIdx === -1) return false;
+
+      const priorHistory = allMsgs
+        .slice(0, targetIdx)
+        .filter((m) => m && m.text && m.text.trim().length > 0 && !m.isError)
+        .slice(-15)
+        .map((m) => ({
+          role: (m.sender === 'user' ? 'user' : 'model') as 'user' | 'model',
+          text: m.text.trim(),
+        }));
+
+      // 3. Dispatch Redux action to update user message text and truncate messages after it
+      dispatch(editAndTruncateMessages({ messageId, newText: trimmed }));
+
+      // 4. Set processing state and create new assistant response placeholder
+      dispatch(setStatus('processing'));
+      dispatch(setIsGeneratingText(true));
+
+      const assistantMsgId = `assistant_${Date.now() + 1}`;
+      dispatch(
+        addMessage({
+          id: assistantMsgId,
+          sender: 'assistant',
+          text: '',
+          timestamp: Date.now(),
+        })
+      );
+
+      try {
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
+        const result = await sendChatMessage(
+          {
+            message: trimmed,
+            history: priorHistory,
+            context: {
+              currentRoute: (router as any)?.pathname || '',
+            },
+          },
+          abortController.signal
+        );
+
+        if (result) {
+          if (result.conversationState) {
+            dispatch(setConversationState(result.conversationState));
+          }
+
+          const primaryText = result.message || result.reply || 'Here is what I found for you.';
+          const primaryAction =
+            (result.actions && result.actions[0]) ||
+            (result.toolCall
+              ? {
+                  route: result.toolCall.targetRoute || '',
+                  targetName: result.toolCall.targetName || '',
+                  category: result.toolCall.category,
+                  screenId: result.toolCall.args?.screenId,
+                }
+              : null);
+
+          dispatch(
+            updateLastAssistantMessage({
+              text: primaryText,
+              isError: false,
+              metadata: primaryAction
+                ? {
+                    targetRoute: primaryAction.route,
+                    targetName: primaryAction.targetName,
+                    category: primaryAction.category,
+                    screenId: primaryAction.screenId,
+                    data: result.data,
+                    actionCard: primaryAction,
+                  }
+                : (result.data ? { data: result.data } : undefined),
+            })
+          );
+
+          if (primaryAction?.targetName) {
+            dispatch(setLastNavigatedScreen(primaryAction.targetName));
+          }
+
+          const isAwaitingConfirmation =
+            result.conversationState?.awaitingConfirmation ||
+            result.actions?.some((a) => a.type === 'confirmation') ||
+            result.status === 'clarification';
+
+          if (isAwaitingConfirmation) {
+            dispatch(setStatus('awaiting_confirmation'));
+          } else {
+            dispatch(setStatus('idle'));
+          }
+
+          if (isTtsEnabledRef.current && primaryText && !isAwaitingConfirmation) {
+            await textToSpeechService.speak(primaryText, {
+              onStart: () => dispatch(setStatus('speaking')),
+              onDone: () => dispatch(setStatus('idle')),
+              onError: () => dispatch(setStatus('idle')),
+            });
+          }
+        }
+        return true;
+      } catch (err: any) {
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError') {
+          return false;
+        }
+
+        const serverError = err?.response?.data?.message;
+        const details = err?.response?.data?.details;
+        let fallbackText = (err?.response?.status === 404 || (typeof serverError === 'string' && serverError.includes('Not Found')))
+          ? 'I couldn\'t connect to the assistant just now. Try again in a moment.'
+          : (serverError ? `${serverError}` : 'I encountered an issue connecting to the AI assistant. Please check your network and tap Retry.');
+
+        if (details && Array.isArray(details) && details.length > 0) {
+          const detailMsg = details
+            .map((d: any) => `${d.field ? `${d.field}: ` : ''}${d.message}`)
+            .join(', ');
+          fallbackText = `${serverError} (${detailMsg})`;
+        }
+
+        dispatch(
+          updateLastAssistantMessage({
+            text: fallbackText,
+            isError: true,
+            failedPrompt: trimmed,
+          })
+        );
+        dispatch(setError(fallbackText));
+        dispatch(setStatus('error'));
+        return false;
+      } finally {
+        dispatch(setIsGeneratingText(false));
+        abortControllerRef.current = null;
+      }
+    },
+    [dispatch, isGeneratingText, router]
+  );
+
   const confirmAction = useCallback(
     async (actionId: string, confirmationToken: string) => {
       if (actionId && confirmationToken) {
-        dispatch(
-          setConversationState({
-            ...(conversationState || {}),
-            awaitingConfirmation: true,
-            pendingAction: {
-              id: actionId,
-              confirmationToken,
-            },
-          })
-        );
+        const nextState = {
+          ...(conversationStateRef.current || conversationState || {}),
+          awaitingConfirmation: true,
+          pendingAction: {
+            id: actionId,
+            confirmationToken,
+          },
+        };
+        conversationStateRef.current = nextState;
+        dispatch(setConversationState(nextState));
       }
       await executeChatRequest('Confirm', false);
     },
@@ -591,15 +800,15 @@ export const useVoiceAssistant = () => {
   const cancelAction = useCallback(
     async (actionId: string) => {
       if (actionId) {
-        dispatch(
-          setConversationState({
-            ...(conversationState || {}),
-            awaitingConfirmation: true,
-            pendingAction: {
-              id: actionId,
-            },
-          })
-        );
+        const nextState = {
+          ...(conversationStateRef.current || conversationState || {}),
+          awaitingConfirmation: true,
+          pendingAction: {
+            id: actionId,
+          },
+        };
+        conversationStateRef.current = nextState;
+        dispatch(setConversationState(nextState));
       }
       await executeChatRequest('Cancel', false);
     },
@@ -616,7 +825,7 @@ export const useVoiceAssistant = () => {
     dispatch(setIsGeneratingText(false));
     dispatch(clearMessages());
     dispatch(setStatus('idle'));
-  }, [dispatch]);
+  }, [clearTimer, dispatch]);
 
   const navigateToFeature = useCallback(
     (route: string) => {
@@ -689,6 +898,7 @@ export const useVoiceAssistant = () => {
     toggleMute,
     toggleTts,
     sendTextMessage,
+    editUserPrompt,
     confirmAction,
     cancelAction,
     clearChat,

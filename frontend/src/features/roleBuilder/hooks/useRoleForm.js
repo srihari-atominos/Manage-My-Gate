@@ -5,6 +5,15 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { ROLE_SCOPE_VALUES, isTenantScope } from '../roleScopes'
 
+export const BILLING_EXPENSE_PERMISSIONS = [
+  'billing:expenses',
+  'billing:view_expense',
+  'billing:create_expense',
+  'billing:record_expense_payment',
+  'billing:reconcile_expense_payment',
+  'billing:pay_online_expense',
+]
+
 const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required'),
   description: yup.string().trim().optional(),
@@ -74,8 +83,24 @@ export const useRoleForm = ({ role, visible, onSave, allowedPermissions = [] }) 
   const handleSelectAllGroup = (groupCodes, checked) => {
     const currentPermissions = getValues('permissions') || []
 
-    // Expand any virtual full_access codes into their real backend permissions
+    // Expand any virtual full_access or canonical billing codes into their real backend permissions
     const expandedGroupCodes = groupCodes.flatMap((code) => {
+      if (code === 'billing:expenses') return BILLING_EXPENSE_PERMISSIONS
+      if (code === 'billing:assessments' || code === 'billing:assessment_manager') {
+        return ['billing:assessments', 'billing:assessment_manager']
+      }
+      if (code === 'billing:ledger') {
+        return ['billing:ledger', 'billing:financial_ledger', 'billing:reconciliation_manage']
+      }
+      if (code === 'billing:my_invoices') {
+        return ['billing:my_invoices', 'billing:my_dues']
+      }
+      if (code === 'billing:dashboard') {
+        return ['billing:dashboard', 'billing:community_finance']
+      }
+      if (code === 'billing:billing_hub') {
+        return ['billing:billing_hub']
+      }
       if (String(code).endsWith(':full_access')) {
         const category = code.split(':')[0]
         return [
@@ -116,6 +141,46 @@ export const useRoleForm = ({ role, visible, onSave, allowedPermissions = [] }) 
         newValue = currentPermissions.filter(
           (p) => !toRemove.has(p) && !String(p).startsWith(`${category}:`),
         )
+      }
+    } else if (permValue === 'billing:expenses') {
+      const targetCodes = BILLING_EXPENSE_PERMISSIONS
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]))
+      } else {
+        const toRemove = new Set(targetCodes)
+        newValue = currentPermissions.filter((p) => !toRemove.has(p))
+      }
+    } else if (permValue === 'billing:assessments' || permValue === 'billing:assessment_manager') {
+      const targetCodes = ['billing:assessments', 'billing:assessment_manager']
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]))
+      } else {
+        const toRemove = new Set(targetCodes)
+        newValue = currentPermissions.filter((p) => !toRemove.has(p))
+      }
+    } else if (permValue === 'billing:ledger') {
+      const targetCodes = ['billing:ledger', 'billing:financial_ledger', 'billing:reconciliation_manage']
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]))
+      } else {
+        const toRemove = new Set(targetCodes)
+        newValue = currentPermissions.filter((p) => !toRemove.has(p))
+      }
+    } else if (permValue === 'billing:my_invoices') {
+      const targetCodes = ['billing:my_invoices', 'billing:my_dues']
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]))
+      } else {
+        const toRemove = new Set(targetCodes)
+        newValue = currentPermissions.filter((p) => !toRemove.has(p))
+      }
+    } else if (permValue === 'billing:dashboard') {
+      const targetCodes = ['billing:dashboard', 'billing:community_finance']
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]))
+      } else {
+        const toRemove = new Set(targetCodes)
+        newValue = currentPermissions.filter((p) => !toRemove.has(p))
       }
     } else if (checked) {
       newValue = Array.from(new Set([...currentPermissions, permValue]))

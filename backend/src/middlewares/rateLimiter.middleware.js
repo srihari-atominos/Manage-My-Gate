@@ -11,7 +11,7 @@ export function createRateLimitStore(prefix) {
     return new RedisStore({
       prefix: `rl:${prefix}:`,
       sendCommand: async (command, ...args) => {
-        if (messageBroker.publisher.status === 'ready') {
+        if (['ready', 'connecting', 'connect'].includes(messageBroker.publisher.status)) {
           try {
             return await messageBroker.publisher.call(command, ...args);
           } catch (err) {

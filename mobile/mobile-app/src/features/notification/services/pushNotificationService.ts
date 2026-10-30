@@ -4,8 +4,10 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import storage from '../../../utils/storage';
 
 export const isExpoGo =
-  Boolean(Constants?.executionEnvironment && ExecutionEnvironment && Constants.executionEnvironment === ExecutionEnvironment.StoreClient) ||
-  Constants?.appOwnership === 'expo';
+  (Constants as any)?.executionEnvironment === 'storeClient' ||
+  (Constants as any)?.appOwnership === 'expo' ||
+  Boolean((Constants as any)?.expoGoConfig);
+
 
 // Importing expo-notifications throws in Expo Go on Android as of SDK 53.
 const Notifications: any = isExpoGo ? null : require('expo-notifications');
@@ -66,7 +68,7 @@ let channelsInitialized = false;
  * Uses stable channel IDs matching backend dispatch rules.
  */
 export async function setupAndroidNotificationChannels() {
-  if (Platform.OS !== 'android' || channelsInitialized) {
+  if (Platform.OS !== 'android' || isExpoGo || channelsInitialized || typeof Notifications?.setNotificationChannelAsync !== 'function') {
     return;
   }
 

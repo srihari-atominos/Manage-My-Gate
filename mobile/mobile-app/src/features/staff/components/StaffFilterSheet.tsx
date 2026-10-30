@@ -31,7 +31,7 @@ export const StaffFilterSheet: React.FC<StaffFilterSheetProps> = ({
 }) => {
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Filter Staff Registry">
-      <ScrollView className="px-4 py-2" contentContainerStyle={{ paddingBottom: 40 }}>
+      <View className="px-1 py-1">
         {/* Department Section */}
         <View className="mb-5">
           <Text className="text-sm font-semibold text-foreground mb-2.5">Department</Text>
@@ -101,7 +101,7 @@ export const StaffFilterSheet: React.FC<StaffFilterSheetProps> = ({
             Apply Filters
           </Button>
         </View>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 };

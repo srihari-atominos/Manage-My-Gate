@@ -172,7 +172,8 @@ export default function ExpensesScreen() {
       expenseType: expenseType || undefined,
       settlementStatus: status || undefined,
       category: category.trim() || undefined,
-      period: period === 'ALL_TIME' ? undefined : period,
+      // The expense list shows all community records by latest date; date filtering applies when custom dates are chosen
+      period: (startDate || endDate) ? undefined : undefined,
       startDate: startDate ? new Date(`${startDate}T00:00:00`).toISOString() : undefined,
       endDate: endDate ? new Date(`${endDate}T23:59:59.999`).toISOString() : undefined,
     }),
@@ -344,7 +345,8 @@ export default function ExpensesScreen() {
               onPress={() =>
                 router.push('/(resident)/admin/billing/expenses/record' as any)
               }
-              className="w-full shadow-xs"
+              className="w-full shadow-xs px-2.5"
+              textClassName="text-xs font-bold leading-tight"
             >
               Record Expense
             </Button>
@@ -357,7 +359,8 @@ export default function ExpensesScreen() {
                 onPress={() =>
                   router.push('/(resident)/admin/billing/expenses/pay-online' as any)
                 }
-                className="w-full shadow-xs"
+                className="w-full shadow-xs px-2.5"
+                textClassName="text-xs font-bold leading-tight"
               >
                 Pay Online
               </Button>
@@ -387,8 +390,8 @@ export default function ExpensesScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            className="flex-row -mx-4 px-4 py-0.5"
-            contentContainerClassName="gap-1.5 items-center pe-6"
+            className="flex-row py-0.5"
+            contentContainerClassName="gap-1.5 items-center pe-4"
           >
             {search ? (
               <Pressable
@@ -562,10 +565,10 @@ export default function ExpensesScreen() {
               >
                 {/* Top Row: Status Badge, Category Tag & Date */}
                 <View className="flex-row items-center justify-between gap-2 mb-2">
-                  <View className="flex-row items-center gap-1.5 flex-1 min-w-0">
+                  <View className="flex-row items-center gap-1.5 flex-1 min-w-0 me-1">
                     <StatusBadge label={badgeLabel} variant={badgeVariant} size="sm" dot />
                     {item.category ? (
-                      <View className="rounded-md bg-muted px-2 py-0.5 shrink min-w-0">
+                      <View className="rounded-md bg-muted px-2 py-0.5 shrink min-w-0 max-w-[60%]">
                         <Text className="text-[11px] font-medium text-muted-foreground" numberOfLines={1}>
                           {item.category}
                         </Text>
@@ -590,8 +593,13 @@ export default function ExpensesScreen() {
                       {item.vendor?.name ? ` · Vendor: ${item.vendor.name}` : ''}
                     </Text>
                   </View>
-                  <View className="items-end shrink-0">
-                    <Text className="font-extrabold text-foreground text-base tracking-tight">
+                  <View className="items-end shrink-0 ps-1">
+                    <Text
+                      className="font-extrabold text-foreground text-base tracking-tight"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                    >
                       {formatCurrency(item.totalAmount)}
                     </Text>
                     <Text className="text-[10px] text-muted-foreground font-mono">
@@ -602,13 +610,13 @@ export default function ExpensesScreen() {
               </Pressable>
 
               {/* Bottom Row: Settlement Breakdown & Details Affordance (Sibling View, NOT nested in button) */}
-              <View className="mt-2.5 flex-row items-center justify-between border-t border-border/60 pt-2.5">
-                <View className="flex-row items-center gap-3 flex-wrap flex-1 min-w-0 pe-2">
-                  <Text className="text-xs text-muted-foreground">
+              <View className="mt-2.5 flex-row items-center justify-between border-t border-border/60 pt-2.5 gap-2">
+                <View className="flex-row items-center gap-2.5 flex-wrap flex-1 min-w-0">
+                  <Text className="text-xs text-muted-foreground" numberOfLines={1}>
                     Paid: <Text className="font-semibold text-foreground">{formatCurrency(item.recordedPaidAmount)}</Text>
                   </Text>
                   {Number(item.outstandingAmount || 0) > 0 && (
-                    <Text className="text-xs text-muted-foreground">
+                    <Text className="text-xs text-muted-foreground" numberOfLines={1}>
                       Due: <Text className="font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(item.outstandingAmount)}</Text>
                     </Text>
                   )}
@@ -631,7 +639,7 @@ export default function ExpensesScreen() {
                     onPress={goToDetails}
                     accessibilityRole="button"
                     accessibilityLabel="View Details"
-                    className="flex-row items-center gap-1 active:opacity-70"
+                    className="flex-row items-center gap-1 active:opacity-70 py-0.5"
                   >
                     <Text className="text-xs font-semibold text-primary">Details</Text>
                     <ChevronRight size={14} className="text-primary" />
@@ -689,6 +697,9 @@ export default function ExpensesScreen() {
               }`}
             >
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
                 className={`text-xs font-semibold ${
                   exportScope === 'ALL_TIME' ? 'text-primary' : 'text-muted-foreground'
                 }`}
@@ -703,6 +714,9 @@ export default function ExpensesScreen() {
               }`}
             >
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
                 className={`text-xs font-semibold ${
                   exportScope === 'CURRENT_FILTER' ? 'text-primary' : 'text-muted-foreground'
                 }`}

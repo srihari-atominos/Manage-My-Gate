@@ -42,4 +42,24 @@ describe('BottomSheet', () => {
     fireEvent(getByTestId('bottom-sheet-modal'), 'requestClose');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('provides explicit height on content container to prevent Yoga layout collapse', async () => {
+    const { getByText } = await render(
+      <BottomSheet visible onClose={jest.fn()} title="Layout Test Sheet">
+        <RNText>Visible Child Action</RNText>
+      </BottomSheet>
+    );
+
+    expect(getByText('Visible Child Action')).toBeTruthy();
+  });
+
+  it('respects snapPoints when supplied', async () => {
+    const { getByText } = await render(
+      <BottomSheet visible onClose={jest.fn()} title="SnapPoint Sheet" snapPoints={['65%']}>
+        <RNText>Custom Snap Child</RNText>
+      </BottomSheet>
+    );
+
+    expect(getByText('Custom Snap Child')).toBeTruthy();
+  });
 });

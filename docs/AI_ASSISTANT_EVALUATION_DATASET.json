@@ -1,0 +1,23 @@
+{
+  "version": "nahom-ai-v1",
+  "purpose": "Curated deterministic evaluation metadata. No production conversations or feedback are stored here.",
+  "categories": [
+    {"id":"A","name":"natural_conversation"}, {"id":"B","name":"direct_commands"}, {"id":"C","name":"incomplete_requests"}, {"id":"D","name":"spelling_and_grammar"},
+    {"id":"E","name":"multiple_operations"}, {"id":"F","name":"multiple_people_resources"}, {"id":"G","name":"date_time_expressions"}, {"id":"H","name":"follow_up_conversations"},
+    {"id":"I","name":"corrections"}, {"id":"J","name":"voice_transcription_variations"}, {"id":"K","name":"ambiguous_requests"}, {"id":"L","name":"unauthorized_requests"}
+  ],
+  "examples": [
+    {"id":"A-01","category":"A","userInput":"What do I owe this month?","intent":"resident_dues","feature":"billing"},
+    {"id":"B-01","category":"B","userInput":"Book badminton tomorrow at 6 pm","intent":"amenity_booking","feature":"amenities"},
+    {"id":"C-01","category":"C","userInput":"Create a visitor pass","intent":"visitor_management","feature":"visitor_management"},
+    {"id":"D-01","category":"D","userInput":"maintanance bill pendng?","intent":"resident_dues","feature":"billing"},
+    {"id":"E-01","category":"E","userInput":"Show dues and pool availability","intent":"multi_intent","feature":"assistant"},
+    {"id":"F-01","category":"F","userInput":"Invite Rahul and Priya tomorrow","intent":"visitor_management","feature":"visitor_management"},
+    {"id":"G-01","category":"G","userInput":"Pool availability next Sunday evening","intent":"amenity_availability","feature":"amenities"},
+    {"id":"H-01","category":"H","userInput":"Which one is overdue?","intent":"resident_dues","feature":"billing"},
+    {"id":"I-01","category":"I","userInput":"Actually make it Sunday at 7 pm","intent":"amenity_booking","feature":"amenities"},
+    {"id":"J-01","category":"J","userInput":"book bad mitten tomoro six pm","intent":"amenity_booking","feature":"amenities"},
+    {"id":"K-01","category":"K","userInput":"Book it tomorrow","intent":"amenity_booking","feature":"amenities"},
+    {"id":"L-01","category":"L","userInput":"Create a new amenity","intent":"amenity_create","feature":"amenities"}
+  ]
+}

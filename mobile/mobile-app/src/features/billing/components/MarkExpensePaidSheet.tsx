@@ -179,11 +179,7 @@ export const MarkExpensePaidSheet: React.FC<MarkExpensePaidSheetProps> = ({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Mark Expense as Paid">
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        className="pt-2 pb-8"
-        contentContainerClassName="gap-5 pb-10"
-      >
+      <View className="gap-5 pt-2 pb-8">
         {/* Expense Overview Card */}
         <View className="rounded-2xl border border-border/80 bg-card p-4 shadow-2xs">
           <View className="flex-row items-center justify-between gap-2 mb-2">
@@ -329,7 +325,9 @@ export const MarkExpensePaidSheet: React.FC<MarkExpensePaidSheetProps> = ({
                     className={`text-[11px] text-center ${
                       isSelected ? 'font-bold text-primary' : 'font-semibold text-foreground'
                     }`}
-                    numberOfLines={1}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
                   >
                     {f.label}
                   </Text>
@@ -424,7 +422,7 @@ export const MarkExpensePaidSheet: React.FC<MarkExpensePaidSheetProps> = ({
             <Text className="font-semibold text-foreground text-sm">Cancel</Text>
           </Button>
         </View>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 };

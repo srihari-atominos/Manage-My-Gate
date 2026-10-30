@@ -33,7 +33,7 @@ router.post(
 // POST /:reservationId/cancel - Cancel reservation
 router.post(
   '/:reservationId/cancel',
-  authorizePermission('amenities', ['amenities', 'my_booking', 'admin_calander']),
+  authorizePermission('amenities', ['amenities', 'my_booking', 'admin_calander', 'admin_calendar', 'booking_queue']),
   validate(cancelReservationRules),
   amenityReservationController.cancel
 );
@@ -49,7 +49,7 @@ router.post(
 // GET /:reservationId/cancellation-preview - What cancelling now would refund
 router.get(
   '/:reservationId/cancellation-preview',
-  authorizePermission('amenities', ['amenities', 'my_booking', 'admin_calander']),
+  authorizePermission('amenities', ['amenities', 'my_booking', 'admin_calander', 'admin_calendar', 'booking_queue']),
   validate(reservationIdParamRules),
   amenityReservationController.cancellationPreview
 );
@@ -65,7 +65,7 @@ router.post(
 // POST /:reservationId/collect-payment - Gate staff collect the balance in cash
 router.post(
   '/:reservationId/collect-payment',
-  authorizePermission('amenities', ['scanner', 'admin_calander', 'amenities']),
+  authorizePermission('amenities', ['scanner', 'admin_calander', 'admin_calendar', 'booking_queue', 'amenities']),
   validate(collectPaymentRules),
   amenityReservationController.collectPayment
 );
@@ -73,7 +73,7 @@ router.post(
 // POST /:reservationId/resolve-review - Staff decision on a flagged booking
 router.post(
   '/:reservationId/resolve-review',
-  authorizePermission('amenities', ['amenities', 'admin_calander']),
+  authorizePermission('amenities', ['amenities', 'admin_calander', 'admin_calendar', 'booking_queue']),
   validate(resolveReviewRules),
   amenityReservationController.resolveReview
 );
@@ -81,7 +81,7 @@ router.post(
 // POST /:reservationId/review - Maker-checker review (Approve/Reject)
 router.post(
   '/:reservationId/review',
-  authorizePermission('amenities', ['amenities', 'admin_calander', 'settings']),
+  authorizePermission('amenities', ['amenities', 'admin_calander', 'admin_calendar', 'booking_queue', 'settings']),
   validate(reviewReservationRules),
   amenityReservationController.review
 );
@@ -89,7 +89,7 @@ router.post(
 // GET / - List reservations
 router.get(
   '/',
-  authorizePermission('amenities', ['amenities', 'admin_calander', 'my_booking']),
+  authorizePermission('amenities', ['amenities', 'admin_calander', 'admin_calendar', 'booking_queue', 'my_booking']),
   validate(listReservationsRules),
   amenityReservationController.getAll
 );
@@ -97,7 +97,7 @@ router.get(
 // GET /number/:reservationNumber - Get reservation by human reservation number
 router.get(
   '/number/:reservationNumber',
-  authorizePermission('amenities', ['amenities', 'admin_calander', 'my_booking']),
+  authorizePermission('amenities', ['amenities', 'admin_calander', 'admin_calendar', 'booking_queue', 'my_booking']),
   validate(reservationNumberParamRules),
   amenityReservationController.getByNumber
 );
@@ -105,7 +105,7 @@ router.get(
 // GET /:reservationId - Get reservation by ID
 router.get(
   '/:reservationId',
-  authorizePermission('amenities', ['amenities', 'admin_calander', 'my_booking']),
+  authorizePermission('amenities', ['amenities', 'admin_calander', 'admin_calendar', 'booking_queue', 'my_booking']),
   validate(reservationIdParamRules),
   amenityReservationController.getById
 );

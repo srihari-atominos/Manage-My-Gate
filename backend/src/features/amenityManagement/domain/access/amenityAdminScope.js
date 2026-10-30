@@ -3,7 +3,13 @@ import { mapPermission } from '../../../../utils/permissionMapper.js';
 
 const ADMIN_ROLE_NAMES = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'];
 
-export const BOOKING_ADMIN_PERMISSIONS = Object.freeze(['amenities:admin_calander', 'amenities:manage_bookings']);
+export const BOOKING_ADMIN_PERMISSIONS = Object.freeze([
+  'amenities:admin_calander',
+  'amenities:admin_calendar',
+  'amenities:booking_queue',
+  'amenities:manage_bookings',
+  'amenities:amenities',
+]);
 export const GATE_STAFF_PERMISSIONS = Object.freeze([...BOOKING_ADMIN_PERMISSIONS, 'amenities:scanner']);
 
 /**

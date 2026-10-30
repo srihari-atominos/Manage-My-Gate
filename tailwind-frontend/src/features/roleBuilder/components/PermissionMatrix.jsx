@@ -39,6 +39,20 @@ const formatPermissionLabel = (permissionString) => {
     return 'Staff Portal & Pass';
   }
 
+  // Billing & Invoices (Canonical 6 Items & Wallet)
+  const billingLabels = {
+    'billing:my_invoices': 'My Invoice',
+    'billing:assessments': 'Assessments',
+    'billing:ledger': 'Billing Ledger',
+    'billing:billing_hub': 'Billing Hub',
+    'billing:expenses': 'Community Expenses',
+    'billing:dashboard': 'Community Finance',
+    'billing:action_center': 'Digital Wallet & Resident Ledger',
+  };
+  if (billingLabels[str]) {
+    return billingLabels[str];
+  }
+
   let label = permissionString;
   if (label.includes(':')) {
     const parts = label.split(':');
@@ -81,7 +95,134 @@ export const isPermissionSelected = (perm, selectedIds = []) => {
   return false;
 };
 
+const getCategoryDisplayName = (category) => {
+  const map = {
+    visitor: 'Visitor Management',
+    staff: 'Staff Management',
+    amenities: 'Amenities & Bookings',
+    digital_wallet: 'Digital Wallet & Ledger',
+    billing: 'Billing & Invoices',
+    villas: 'Unit Management',
+    users: 'User Management',
+    notices: 'Notice Board & Polls',
+    integrations: 'Integrations Hub',
+    complaints: 'Complaints & Maintenance',
+    roles: 'Role Builder',
+    workspaces: 'Workspaces',
+  };
+  const key = category.toLowerCase();
+  return map[key] || category.charAt(0).toUpperCase() + category.slice(1);
+};
+
+const CATEGORY_ORDER = {
+  visitor: 1,
+  staff: 2,
+  amenities: 3,
+  complaints: 4,
+  notices: 5,
+  digital_wallet: 6,
+  billing: 7,
+  villas: 8,
+  users: 9,
+  roles: 10,
+  workspaces: 11,
+  integrations: 12,
+};
+
 const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, onTogglePermission }) => {
+  const normalizedGroupedPermissions = React.useMemo(() => {
+    if (!groupedPermissions) return {};
+    const result = {};
+
+    Object.entries(groupedPermissions).forEach(([categoryKey, perms]) => {
+      const lowerKey = categoryKey.toLowerCase();
+      if (lowerKey === 'polls') return;
+      if (lowerKey === 'billing') {
+        const canonical6BillingItems = [
+          {
+            _id: 'billing:my_invoices',
+            name: 'billing:my_invoices',
+            code: 'billing:my_invoices',
+            permissionAliases: ['billing:my_invoices', 'billing:my_dues'],
+            description: 'Resident personal invoices, statements, dues, and payment checkout',
+          },
+          {
+            _id: 'billing:assessments',
+            name: 'billing:assessments',
+            code: 'billing:assessments',
+            permissionAliases: ['billing:assessments', 'billing:assessment_manager'],
+            description: 'Recurring maintenance generation, penalty rules, and batch invoice distribution',
+          },
+          {
+            _id: 'billing:ledger',
+            name: 'billing:ledger',
+            code: 'billing:ledger',
+            permissionAliases: ['billing:ledger', 'billing:financial_ledger', 'billing:reconciliation_manage'],
+            description: 'Double-entry accounting, settlement records, audit logs, and account reconciliations',
+          },
+          {
+            _id: 'billing:billing_hub',
+            name: 'billing:billing_hub',
+            code: 'billing:billing_hub',
+            permissionAliases: ['billing:billing_hub'],
+            description: 'Administrative central desk for invoices, dues tracking, and payment reconciliations',
+          },
+          {
+            _id: 'billing:expenses',
+            name: 'billing:expenses',
+            code: 'billing:expenses',
+            permissionAliases: [
+              'billing:expenses',
+              'billing:view_expense',
+              'billing:create_expense',
+              'billing:record_expense_payment',
+              'billing:reconcile_expense_payment',
+              'billing:pay_online_expense',
+            ],
+            description: 'Track community vendor bills, operational expenses, receipt scanning, and payouts',
+          },
+          {
+            _id: 'billing:dashboard',
+            name: 'billing:dashboard',
+            code: 'billing:dashboard',
+            permissionAliases: ['billing:dashboard', 'billing:community_finance'],
+            description: 'Real-time financial analytics, revenue vs expense curves, and treasury health',
+          },
+        ];
+
+        result.billing = canonical6BillingItems;
+
+        const actionCenterPerm = (perms || []).find((p) => {
+          const val = String(p?.name || p?.code || p?._id || '').toLowerCase();
+          return val === 'billing:action_center' || val.endsWith(':action_center');
+        });
+        if (actionCenterPerm || !result.digital_wallet || result.digital_wallet.length === 0) {
+          result.digital_wallet = [
+            {
+              _id: 'billing:action_center',
+              name: 'billing:action_center',
+              code: 'billing:action_center',
+              permissionAliases: ['billing:action_center'],
+              description: 'Resident wallet top-ups, pre-paid passes, transfer balance, and personal ledger',
+            },
+          ];
+        }
+        return;
+      }
+      result[lowerKey] = perms || [];
+    });
+
+    return result;
+  }, [groupedPermissions]);
+
+  const categories = React.useMemo(() => {
+    return Object.keys(normalizedGroupedPermissions).sort((a, b) => {
+      const orderA = CATEGORY_ORDER[a.toLowerCase()] ?? 99;
+      const orderB = CATEGORY_ORDER[b.toLowerCase()] ?? 99;
+      return orderA - orderB;
+    });
+  }, [normalizedGroupedPermissions]);
+
   if (!groupedPermissions || Object.keys(groupedPermissions).length === 0) {
     return (
       <div className="text-center text-gray-500 py-6 text-sm">
@@ -92,8 +233,8 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
 
   return (
     <div className="flex flex-col gap-4">
-      {Object.keys(groupedPermissions).map((category) => {
-        let perms = groupedPermissions[category] || [];
+      {categories.map((category) => {
+        let perms = normalizedGroupedPermissions[category] || [];
         
         // Filter complaints permissions as requested
         if (category.toLowerCase() === 'complaints') {
@@ -169,7 +310,7 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
           <div key={category} className="border border-stroke dark:border-strokedark rounded-md bg-white dark:bg-boxdark p-4 shadow-sm mb-2">
             <div className="flex justify-between items-center border-b border-stroke dark:border-strokedark pb-3 mb-4">
               <h6 className="font-bold text-sm text-black dark:text-white">
-                {category.toLowerCase() === 'visitor' ? 'Visitor Management' : (category.toLowerCase() === 'amenities' ? 'Amenities & Bookings' : category.charAt(0).toUpperCase() + category.slice(1))} Permissions
+                {getCategoryDisplayName(category)}
               </h6>
               {category.toLowerCase() !== 'visitor' && (
                 <div className="flex items-center gap-2">

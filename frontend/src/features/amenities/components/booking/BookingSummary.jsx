@@ -28,20 +28,20 @@ const BookingSummary = memo(({ amenity, draft, onConfirm, onBack }) => {
               </p>
             </div>
 
-            <div className="d-flex mb-4">
-              <div className="me-5">
+            <div className="d-flex flex-wrap gap-4 mb-4">
+              <div className="me-sm-4">
                 <p className="text-uppercase text-muted small fw-bold mb-1">Date</p>
-                <p className="fs-5">{draft.bookingDate}</p>
+                <p className="fs-5 fw-semibold mb-0">{draft.bookingDate}</p>
               </div>
               <div>
                 <p className="text-uppercase text-muted small fw-bold mb-1">Time</p>
-                <p className="fs-5">
+                <p className="fs-5 fw-semibold mb-0">
                   {draft.startTime} - {draft.endTime}
                 </p>
                 {amenity?.pricing?.pricingType === 'daily' ? (
-                  <p className="text-muted small mt-1">Duration: Full Day</p>
+                  <p className="text-muted small mt-1 mb-0">Duration: Full Day</p>
                 ) : (
-                  <p className="text-muted small mt-1">
+                  <p className="text-muted small mt-1 mb-0">
                     Duration:{' '}
                     {(() => {
                       if (!draft.startTime || !draft.endTime) return ''
@@ -85,7 +85,7 @@ const BookingSummary = memo(({ amenity, draft, onConfirm, onBack }) => {
         </CRow>
 
         <div className="d-flex justify-content-end pt-4 mt-2 border-top">
-          <CButton color="primary" onClick={onConfirm} className="px-5 rounded-pill shadow-sm">
+          <CButton color="primary" onClick={onConfirm} className="w-100 w-sm-auto px-5 rounded-pill shadow-sm py-2 fw-semibold">
             Book Now <i className="fa-solid fa-check ms-2"></i>
           </CButton>
         </div>

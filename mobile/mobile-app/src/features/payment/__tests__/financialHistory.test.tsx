@@ -577,6 +577,7 @@ describe('Mobile Phase 3 — Unified Resident Financial History', () => {
       expect(screen.getByText('₹3,000')).toBeTruthy();
       expect(screen.getByText(/Villa\s*202/)).toBeTruthy();
       expect(screen.getByText('Digital Wallet')).toBeTruthy();
+      expect(screen.queryByText('Open Invoice Details')).toBeNull();
     });
   });
 });

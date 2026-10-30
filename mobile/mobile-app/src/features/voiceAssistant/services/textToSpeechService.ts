@@ -5,6 +5,7 @@ export interface TextToSpeechOptions {
   rate?: number;
   pitch?: number;
   language?: string;
+  onStart?: () => void;
   onDone?: () => void;
   onError?: (error: Error) => void;
   onStopped?: () => void;
@@ -46,6 +47,11 @@ class TextToSpeechService {
         .replace(/\[[^\[\]]*\]/g, '')
         // Convert Rupee symbol to readable words for voice synthesis engines
         .replace(/₹\s*([0-9,]+(\.[0-9]+)?)/g, '$1 rupees')
+        // Remove emoji characters that sound awkward when synthesized
+        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+        // Clean multiple question marks or punctuation
+        .replace(/\?{2,}/g, '?')
+        .replace(/!{2,}/g, '!')
         // Normalize multiple spaces/newlines
         .replace(/\s+/g, ' ')
         .trim()

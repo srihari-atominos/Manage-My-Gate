@@ -83,6 +83,7 @@ export function AdminBookingQueueScreen() {
       iconName="ClipboardCheck"
       loading={queue.loading && queue.items.length === 0 && !queue.error}
       scrollable={false}
+      showBackButton
       headerRight={
         <Button
           size="sm"

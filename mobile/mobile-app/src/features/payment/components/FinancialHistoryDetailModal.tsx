@@ -49,9 +49,7 @@ export function FinancialHistoryDetailModal({
 
   const handleNavigateToDomain = () => {
     onClose();
-    if (item.type === 'INVOICE') {
-      router.navigate(`/(resident)/billing/invoice/${item.invoiceId}` as any);
-    } else if (item.type === 'AMENITY') {
+    if (item.type === 'AMENITY') {
       router.navigate('/(resident)/amenities/my-bookings' as any);
     } else if (item.type === 'WALLET_TRANSACTION' || item.type === 'REFUND') {
       router.navigate('/(resident)/billing/wallet' as any);
@@ -269,22 +267,22 @@ export function FinancialHistoryDetailModal({
             </Button>
           )}
 
-          <Button
-            variant="outline"
-            onPress={handleNavigateToDomain}
-            className="flex-row items-center justify-center gap-2"
-            accessibilityRole="button"
-            accessibilityLabel={t('open_details_screen', 'Open Details Screen')}
-          >
-            <ExternalLink size={16} className="text-foreground" />
-            <Text className="font-bold text-foreground">
-              {item.type === 'INVOICE'
-                ? t('open_invoice_details', 'Open Invoice Details')
-                : item.type === 'AMENITY'
-                ? t('open_amenity_bookings', 'Open Amenity Bookings')
-                : t('open_wallet_statement', 'Open Wallet Statement')}
-            </Text>
-          </Button>
+          {item.type !== 'INVOICE' && (
+            <Button
+              variant="outline"
+              onPress={handleNavigateToDomain}
+              className="flex-row items-center justify-center gap-2"
+              accessibilityRole="button"
+              accessibilityLabel={t('open_details_screen', 'Open Details Screen')}
+            >
+              <ExternalLink size={16} className="text-foreground" />
+              <Text className="font-bold text-foreground">
+                {item.type === 'AMENITY'
+                  ? t('open_amenity_bookings', 'Open Amenity Bookings')
+                  : t('open_wallet_statement', 'Open Wallet Statement')}
+              </Text>
+            </Button>
+          )}
         </View>
       </ScrollView>
     </BottomSheet>

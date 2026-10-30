@@ -13,6 +13,21 @@ import {
   getPendingActionById,
 } from './aiAssistant.actions.js';
 import { canCreateResidentPass, assertPassAccess } from '../visitorPass/visitorPass.policy.js';
+import {
+  canUserCreateAmenity,
+  canUserBookAmenity,
+  canUserDiscoverAmenities,
+  canUserCreateVisitorPass,
+  canUserRaiseComplaint,
+  canUserCreatePoll,
+  canUserCreateNotice,
+  canUserCreateAssessment,
+  canUserViewCommunityFinance,
+  formatAmenityCreationSummary,
+  formatAmenityBookingSummary,
+  formatAmenityCancellationSummary,
+} from './aiAssistant.conversation.js';
+import { canAttemptOperation, getOperation } from './aiAssistant.registry.js';
 
 // Dynamically or statically imported feature services for clean decoupling
 let communityFinanceService = null;
@@ -36,6 +51,8 @@ let walletService = null;
 let userPreferenceService = null;
 let notificationService = null;
 let adminAnalyticsService = null;
+let issueReportService = null;
+let directoryService = null;
 
 let injectedServices = {};
 
@@ -66,6 +83,8 @@ export function resetTestServices() {
   userPreferenceService = null;
   notificationService = null;
   adminAnalyticsService = null;
+  issueReportService = null;
+  directoryService = null;
 }
 
 async function loadServices() {
@@ -131,6 +150,12 @@ async function loadServices() {
   }
   if (injectedServices.adminAnalyticsService !== undefined) {
     adminAnalyticsService = injectedServices.adminAnalyticsService;
+  }
+  if (injectedServices.issueReportService !== undefined) {
+    issueReportService = injectedServices.issueReportService;
+  }
+  if (injectedServices.directoryService !== undefined) {
+    directoryService = injectedServices.directoryService;
   }
 
   if (!communityFinanceService && mongoose.connection?.readyState === 1) {
@@ -291,6 +316,22 @@ async function loadServices() {
       adminAnalyticsService = mod.default || mod;
     } catch (e) {
       logger.warn(`Failed to import adminAnalyticsService: ${e.message}`);
+    }
+  }
+  if (!issueReportService && mongoose.connection?.readyState === 1) {
+    try {
+      const mod = await import('../issueReport/issueReport.service.js');
+      issueReportService = mod.default || mod;
+    } catch (e) {
+      logger.warn(`Failed to import issueReportService: ${e.message}`);
+    }
+  }
+  if (!directoryService && mongoose.connection?.readyState === 1) {
+    try {
+      const mod = await import('../directory/directory.services.js');
+      directoryService = mod.default || mod;
+    } catch (e) {
+      logger.warn(`Failed to import directoryService: ${e.message}`);
     }
   }
   if (!parseReceiptTextFn) {
@@ -459,13 +500,13 @@ export const ASSISTANT_TOOL_DECLARATIONS = [
   },
   {
     name: 'prepare_complaint',
-    description: 'Prepare a proposal to raise a maintenance complaint or helpdesk ticket. Validates issue title, category, priority, and location, then creates an action proposal requiring confirmation. The ticket is NOT lodged until confirmed.',
+    description: 'Prepare a proposal to raise a complaint or helpdesk grievance (e.g. Housekeeping, Security, Noise, Waste). Validates issue title, category, priority, and location, then creates an action proposal requiring confirmation. The ticket is NOT lodged until confirmed.',
     parameters: {
       type: 'OBJECT',
       properties: {
         title: {
           type: 'STRING',
-          description: 'Short title or summary of the issue (e.g. "Water leakage under kitchen sink", "Corridor light flickering").',
+          description: 'Short title or summary of the issue (e.g. "Housekeeping Not Cleaning Properly", "Excessive Noise Disturbance").',
         },
         description: {
           type: 'STRING',
@@ -473,7 +514,7 @@ export const ASSISTANT_TOOL_DECLARATIONS = [
         },
         category: {
           type: 'STRING',
-          description: 'Category: "Plumbing", "Electrical", "Carpentry", "Cleaning", "Security", "Lift", or "General Maintenance".',
+          description: 'Category: "Housekeeping", "Security", "Noise", "Plumbing", "Electrical", "Carpentry", "Elevators", or "General".',
         },
         priority: {
           type: 'STRING',
@@ -481,10 +522,124 @@ export const ASSISTANT_TOOL_DECLARATIONS = [
         },
         location: {
           type: 'STRING',
-          description: 'Location or unit number (e.g. "Flat 402" or "Block B 3rd Floor").',
+          description: 'Location or unit number (e.g. "Block B 3rd Floor", "Common Area", "Flat 402").',
+        },
+        preferredVisitDate: {
+          type: 'STRING',
+          description: 'Optional preferred date in YYYY-MM-DD format.',
+        },
+        preferredVisitTime: {
+          type: 'STRING',
+          description: 'Optional preferred visit time (e.g. "Morning", "Afternoon").',
+        },
+        attachments: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: 'Optional array of photo/image attachment URLs.',
         },
       },
       required: ['title'],
+    },
+  },
+  {
+    name: 'prepare_maintenance_request',
+    description: 'Prepare a proposal to book a maintenance service visit (e.g. Plumber, Electrician, AC Repair, Carpenter, Elevator technician). Validates issue title, category, priority, location, and preferred visit schedule, then returns an HMAC confirmation card. The work order is NOT lodged until confirmed.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        title: {
+          type: 'STRING',
+          description: 'Title of the maintenance job (e.g. "Bathroom Tap Leaking", "AC Repair & Servicing", "Door Lock Repair").',
+        },
+        category: {
+          type: 'STRING',
+          description: 'Maintenance category: "Plumbing", "Electrical", "Carpentry", "AC & HVAC", "Elevators", "Civil", or "General Maintenance".',
+        },
+        serviceType: {
+          type: 'STRING',
+          description: 'Type of professional requested: "Plumber", "Electrician", "AC Technician", "Carpenter", "Lift Technician", or "Technician".',
+        },
+        description: {
+          type: 'STRING',
+          description: 'Detailed description of the breakdown or repair needed.',
+        },
+        priority: {
+          type: 'STRING',
+          description: 'Priority level: "Low", "Medium", "High", or "Critical". Defaults to "Medium".',
+        },
+        location: {
+          type: 'STRING',
+          description: 'Affected area or flat (e.g. "Master Bathroom", "Kitchen", "Flat 402").',
+        },
+        preferredVisitDate: {
+          type: 'STRING',
+          description: 'Preferred appointment date in YYYY-MM-DD format (e.g. "2026-10-31").',
+        },
+        preferredVisitTime: {
+          type: 'STRING',
+          description: 'Preferred visit time or window (e.g. "Morning", "Afternoon", "10:00 AM - 12:00 PM").',
+        },
+        attachments: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: 'Optional array of photo/image attachment URLs.',
+        },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'escalate_complaint',
+    description: 'Escalate an unresolved or delayed complaint/maintenance ticket to community management for expedited action.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        complaintId: {
+          type: 'STRING',
+          description: 'The complaint ticket number (e.g. "CMP-2026-000001") or internal complaint ID.',
+        },
+        reason: {
+          type: 'STRING',
+          description: 'Optional reason for escalation.',
+        },
+      },
+      required: ['complaintId'],
+    },
+  },
+  {
+    name: 'reopen_complaint',
+    description: 'Reopen a previously closed or completed ticket because the issue was not properly fixed.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        complaintId: {
+          type: 'STRING',
+          description: 'The complaint ticket number (e.g. "CMP-2026-000001") or internal ID.',
+        },
+        reason: {
+          type: 'STRING',
+          description: 'Explanation of what is still broken or unresolved.',
+        },
+      },
+      required: ['complaintId', 'reason'],
+    },
+  },
+  {
+    name: 'add_complaint_comment',
+    description: 'Add a remark, update, or note to an existing complaint or maintenance ticket.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        complaintId: {
+          type: 'STRING',
+          description: 'The complaint ticket number or ID.',
+        },
+        comment: {
+          type: 'STRING',
+          description: 'The note or remark to add to the ticket timeline.',
+        },
+      },
+      required: ['complaintId', 'comment'],
     },
   },
   {
@@ -1023,6 +1178,147 @@ export const ASSISTANT_TOOL_DECLARATIONS = [
     },
   },
   {
+    name: 'get_wallet_balance',
+    description: 'Retrieve the resident digital wallet balance, active passes count, and transaction ledger count.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {},
+    },
+  },
+  {
+    name: 'get_wallet_transactions',
+    description: 'Retrieve recent ledger transaction history for the user digital wallet.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        limit: {
+          type: 'INTEGER',
+          description: 'Number of recent transactions to return (default 5).',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_my_notifications',
+    description: 'Retrieve in-app notifications and alerts for the user, with unread badge count.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        page: {
+          type: 'INTEGER',
+          description: 'Page number (default 1).',
+        },
+        limit: {
+          type: 'INTEGER',
+          description: 'Number of notifications to return (default 5).',
+        },
+        unreadOnly: {
+          type: 'BOOLEAN',
+          description: 'Filter only unread notifications.',
+        },
+      },
+    },
+  },
+  {
+    name: 'prepare_notifications_mark_read',
+    description: 'Mark user notifications as read.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        markAll: {
+          type: 'BOOLEAN',
+          description: 'Whether to mark all notifications as read.',
+        },
+        notificationId: {
+          type: 'STRING',
+          description: 'Specific notification ID to mark as read.',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_issue_reports',
+    description: 'Retrieve community and platform issue reports submitted by users.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        limit: {
+          type: 'INTEGER',
+          description: 'Number of reports to retrieve.',
+        },
+        status: {
+          type: 'STRING',
+          description: 'Filter by issue status (e.g. SUBMITTED, IN_REVIEW, RESOLVED).',
+        },
+      },
+    },
+  },
+  {
+    name: 'prepare_issue_report',
+    description: 'Prepare an issue report proposal to submit a bug or feature request to engineering support.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        title: {
+          type: 'STRING',
+          description: 'Short summary or title of the issue.',
+        },
+        description: {
+          type: 'STRING',
+          description: 'Detailed description of the issue or feature request.',
+        },
+        feature: {
+          type: 'STRING',
+          description: 'Associated application module or feature (e.g. VISITOR, AMENITY, BILLING, WALLET, GENERAL).',
+        },
+        reportType: {
+          type: 'STRING',
+          description: 'Type of report: BUG or FEATURE_REQUEST.',
+        },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'get_emergency_contacts',
+    description: 'Retrieve community security, gate intercoms, management office, and emergency contact numbers.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        category: {
+          type: 'STRING',
+          description: 'Optional filter: security, gate, management, maintenance, medical, fire.',
+        },
+      },
+    },
+  },
+  {
+    name: 'submit_ai_feedback',
+    description: 'Record user satisfaction rating and feedback about the AI Assistant response.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        rating: {
+          type: 'INTEGER',
+          description: 'Star rating from 1 to 5.',
+        },
+        feedback: {
+          type: 'STRING',
+          description: 'User commentary, critique, or compliment.',
+        },
+        helpful: {
+          type: 'BOOLEAN',
+          description: 'Whether the response was helpful.',
+        },
+        conversationId: {
+          type: 'STRING',
+          description: 'Conversation or request tracking ID.',
+        },
+      },
+      required: ['rating'],
+    },
+  },
+  {
     name: 'navigate_to_screen',
     description: 'Navigate the resident to an authorized screen in the NAHOM application.',
     parameters: {
@@ -1230,6 +1526,13 @@ function resolvePeriodBounds(period) {
  * @returns {Promise<{ success: boolean, data?: any, action?: object, error?: string }>}
  */
 export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}, authorizedFeatures = []) {
+  const operation = getOperation(toolName);
+  if (!operation) {
+    return { success: false, error: `Unknown tool: ${toolName}` };
+  }
+  if (!canAttemptOperation(toolName, user, tenant)) {
+    return { success: false, error: 'Permission denied: this action is not available for your current role or community.' };
+  }
   await loadServices();
 
   const orgId = tenant?.orgId || user?.orgId;
@@ -1344,6 +1647,7 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             period: readablePeriod,
             periodKey,
             currency: '₹ (INR)',
+            totalExpenses,
             totalCommunityExpenses: totalExpenses,
             allTimeTotalCommunityExpenses: allTimeExpenses,
             totalCollections,
@@ -1590,19 +1894,21 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
 
       // 3. Resident Dues & Invoices
       case 'get_resident_dues_and_invoices': {
-        if (!invoiceServices || typeof invoiceServices.getUserDuesOverview !== 'function') {
+        const getDuesOverview = invoiceServices?.getUserDuesOverview || invoiceServices?.getResidentBillingOverview;
+        if (typeof getDuesOverview !== 'function') {
           return { success: false, error: 'Invoice service is currently unavailable.' };
         }
 
-        const duesOverview = await invoiceServices.getUserDuesOverview(user, orgId);
+        const duesOverview = await getDuesOverview(user, orgId);
 
         const totalOutstanding = Number(
           duesOverview?.personalDues?.totalPortfolioDue ??
           duesOverview?.personalDues?.totalOutstanding ??
+          duesOverview?.totalOutstandingDues ??
           0
         );
 
-        const unitBreakdown = duesOverview?.personalDues?.unitBreakdown || [];
+        const unitBreakdown = duesOverview?.personalDues?.unitBreakdown || duesOverview?.unpaidInvoices || [];
         const rawRecent = duesOverview?.recentInvoices || [];
 
         // Sum invoice demand across active invoices
@@ -1650,6 +1956,28 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             status: inv.status,
           }));
 
+        let displayedUnpaid = unpaidInvoices;
+        let displayedPaid = verifiedRecentPayments;
+
+        if (toolArgs?.status === 'PAID') {
+          displayedUnpaid = [];
+        } else if (toolArgs?.status === 'UNPAID') {
+          displayedPaid = [];
+        }
+
+        if (toolArgs?.invoiceNumber) {
+          const needle = String(toolArgs.invoiceNumber).toLowerCase();
+          displayedUnpaid = unpaidInvoices.filter(i => i.invoiceNumber.toLowerCase().includes(needle));
+          displayedPaid = verifiedRecentPayments.filter(i => i.invoiceNumber.toLowerCase().includes(needle));
+        }
+
+        if (toolArgs?.limit && typeof toolArgs.limit === 'number') {
+          displayedUnpaid = displayedUnpaid.slice(0, toolArgs.limit);
+          displayedPaid = displayedPaid.slice(0, toolArgs.limit);
+        }
+
+        const isPaidQuery = toolArgs?.status === 'PAID';
+
         return {
           success: true,
           data: {
@@ -1657,16 +1985,18 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             totalOutstandingDues: totalOutstanding,
             totalDemand,
             totalPaid,
-            overdueAmount,
             hasOutstandingDues: totalOutstanding > 0,
             isFullyPaid: totalOutstanding === 0,
+            overdueAmount,
+            unitCount: unitBreakdown.length,
             billingPeriods,
-            unpaidInvoices,
-            verifiedRecentPayments,
+            unpaidInvoices: displayedUnpaid,
+            verifiedRecentPayments: displayedPaid,
+            targetInvoice: (toolArgs?.invoiceNumber ? (displayedUnpaid[0] || displayedPaid[0]) : null),
           },
           action: {
             type: 'navigation',
-            label: 'View My Invoices',
+            label: isPaidQuery ? 'View Payment Receipts' : 'View Invoices & Pay',
             route: '/(resident)/billing/my-dues',
             targetName: 'My Invoices & Dues',
             category: 'financial_billing',
@@ -1948,6 +2278,9 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
 
       // 4d. Prepare Amenity Booking Proposal
       case 'prepare_amenity_booking': {
+        if (!canUserBookAmenity(user)) {
+          return { success: false, error: 'Permission denied: user does not have permission to book amenities.' };
+        }
         if (!amenityService || typeof amenityService.getAllAmenities !== 'function') {
           return { success: false, error: 'Amenity service is currently unavailable.' };
         }
@@ -1979,10 +2312,64 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           };
         }
 
-        // Calculate slot end time (default to 1 hour slot)
-        const [h, m] = slotTime.split(':').map(Number);
-        const endH = (h + 1) % 24;
-        const endTime = `${String(endH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+        // Calculate slot end time (from toolArgs.endTime or default to 1 hour slot)
+        let endTime = toolArgs?.endTime;
+        if (!endTime) {
+          const [h, m] = slotTime.split(':').map(Number);
+          const endH = (h + 1) % 24;
+          endTime = `${String(endH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+        }
+
+        // Calculate duration and slot count
+        const [sH, sM] = slotTime.split(':').map(Number);
+        const [eH, eM] = endTime.split(':').map(Number);
+        let sMinutes = (sH || 0) * 60 + (sM || 0);
+        let eMinutes = (eH || 0) * 60 + (eM || 0);
+        if (eMinutes < sMinutes) {
+          eMinutes += 24 * 60; // handles spans past midnight
+        }
+        const durationHours = Math.max(1 / 60, (eMinutes - sMinutes) / 60);
+        const slotDurationMinutes = targetAmenity.bookingRules?.slotDurationMinutes || targetAmenity.slotDurationMinutes || 60;
+        const slotCount = Math.max(1, Math.round((durationHours * 60) / slotDurationMinutes));
+
+        // Validate amenity capacity if headcount is specified
+        const parsedHeadcount = Number(toolArgs?.headcount || toolArgs?.numberOfPersons || 1);
+        if (targetAmenity.capacity && targetAmenity.capacity > 0 && parsedHeadcount > targetAmenity.capacity) {
+          return {
+            success: false,
+            error: `Requested headcount of ${parsedHeadcount} exceeds the maximum capacity of ${targetAmenity.capacity} for ${targetAmenity.name}.`,
+          };
+        }
+
+        // Validate max participants per booking limit
+        const maxParticipants = targetAmenity.bookingRules?.maxParticipantsPerBooking || targetAmenity.maxParticipantsPerBooking || targetAmenity.maxHeadcountPerReservation;
+        if (maxParticipants && parsedHeadcount > maxParticipants) {
+          return {
+            success: false,
+            error: `Requested headcount of ${parsedHeadcount} exceeds the maximum allowed participants per booking (${maxParticipants}) for ${targetAmenity.name}. Please select ${maxParticipants} or fewer participants.`,
+          };
+        }
+
+        // Validate max bookings per user limit
+        const maxUserBookings = targetAmenity.bookingRules?.maxBookingsPerUser || targetAmenity.maxBookingsPerUser;
+        if (maxUserBookings && amenityBookingService && typeof amenityBookingService.getMyBookings === 'function') {
+          try {
+            const userBookings = await amenityBookingService.getMyBookings(userId, orgId, { date: dateStr }).catch(() => []);
+            const userBookingsList = Array.isArray(userBookings) ? userBookings : (userBookings?.items || []);
+            const countForAmenity = userBookingsList.filter((b) =>
+              String(b.amenityId?._id || b.amenityId || '') === String(targetAmenity._id) &&
+              ['confirmed', 'pending', 'approved'].includes(String(b.status).toLowerCase())
+            ).length;
+            if (countForAmenity >= maxUserBookings) {
+              return {
+                success: false,
+                error: `You have reached the maximum booking limit of ${maxUserBookings} booking(s) per day for ${targetAmenity.name}.`,
+              };
+            }
+          } catch (ubErr) {
+            logger.warn(`[AIAssistantTools] User booking count check warning: ${ubErr.message}`);
+          }
+        }
 
         // Verify slot availability
         if (typeof amenityService.getAvailableSlots === 'function') {
@@ -1993,6 +2380,11 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
               const openList = slots.slice(0, 4).map((s) => `${s.startTime} - ${s.endTime}`).join(', ');
               return {
                 success: false,
+                slotUnavailable: true,
+                amenityName: targetAmenity.name,
+                requestedSlot: slotTime,
+                date: dateStr,
+                availableSlots: slots.slice(0, 8),
                 error: `Slot ${slotTime} is not available for ${targetAmenity.name} on ${dateStr}. Available slots: ${openList}`,
               };
             }
@@ -2001,20 +2393,83 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           }
         }
 
-        const rate = targetAmenity.pricing?.baseRate || 0;
-        const priceDisplay = rate === 0 ? 'Free' : `₹${rate}`;
+        // Calculate authoritative pricing with duration scaling and headcount rules
+        const pConfig = targetAmenity.pricingConfig || targetAmenity.pricing || {};
+        const pricingType = (pConfig.pricingType || (targetAmenity.pricing?.pricingType === 'daily' ? 'DAILY' : 'HOURLY')).toUpperCase();
+        const isDaily = pricingType === 'DAILY' || pricingType === 'DAILY_PRICING';
+        const baseRate = Number(pConfig.baseRate !== undefined ? pConfig.baseRate : (targetAmenity.ratePerHour || targetAmenity.pricing?.baseRate)) || 0;
+
+        let multiplier = 1.0;
+        try {
+          const bookingD = new Date(dateStr);
+          const dayOfWeek = bookingD.getDay();
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            multiplier = Number(pConfig.weekendRateMultiplier) || 1.0;
+          }
+        } catch (_) {}
+
+        const isPerPerson = pricingType === 'PER_PERSON' || targetAmenity.pricing?.pricingModel === 'per_person';
+        const personMultiplier = isPerPerson ? parsedHeadcount : 1;
+
+        let baseAmount = 0;
+        if (pricingType === 'FREE' || baseRate === 0) {
+          baseAmount = 0;
+        } else if (isDaily) {
+          const durationDays = Math.max(1, Math.ceil(durationHours / 24));
+          baseAmount = Math.round(durationDays * baseRate * multiplier * 100) / 100;
+        } else if (pricingType === 'FIXED_EVENT') {
+          baseAmount = Math.round(baseRate * multiplier * 100) / 100;
+        } else {
+          // HOURLY / default per slot/hour
+          baseAmount = Math.round(durationHours * baseRate * multiplier * personMultiplier * 100) / 100;
+        }
+
+        const taxPercentage = Number(pConfig.taxPercentage || targetAmenity.pricing?.taxPercentage) || 0;
+        const taxAmount = taxPercentage > 0 ? Math.round(((baseAmount * taxPercentage) / 100) * 100) / 100 : 0;
+        const securityDeposit = pricingType === 'FREE' ? 0 : (Number(pConfig.securityDeposit || targetAmenity.pricing?.securityDeposit) || 0);
+        const totalAmount = pricingType === 'FREE' ? 0 : Math.round((baseAmount + taxAmount + securityDeposit) * 100) / 100;
+        const priceDisplay = totalAmount === 0 ? 'Free' : `₹${totalAmount}`;
 
         let residentWalletBalance = 0;
         let isWalletShort = false;
-        if (rate > 0 && walletService && typeof walletService.getWallet === 'function') {
+        if (totalAmount > 0 && walletService && typeof walletService.getWallet === 'function') {
           try {
             const w = await walletService.getWallet(userId, orgId);
             residentWalletBalance = w ? (Number(w.balance) || 0) : 0;
-            isWalletShort = residentWalletBalance < rate;
+            isWalletShort = residentWalletBalance < totalAmount;
           } catch (wErr) {
             logger.warn(`[AIAssistantTools] Wallet check warning: ${wErr.message}`);
           }
         }
+
+        const shortageAmount = Math.max(0, totalAmount - residentWalletBalance);
+        const headcount = parsedHeadcount;
+        const participantNames = toolArgs?.participantNames || null;
+        const preferredPayment = toolArgs?.preferredPaymentMethod === 'ONLINE' || isWalletShort
+          ? 'ONLINE'
+          : (totalAmount === 0 ? 'FREE' : 'WALLET');
+
+        const paymentOptions = totalAmount > 0 ? [
+          {
+            id: 'WALLET',
+            label: 'NAHOM Wallet',
+            balance: residentWalletBalance,
+            isSufficient: !isWalletShort,
+            shortageAmount,
+            route: `/(resident)/billing/wallet?amount=${shortageAmount}`,
+            actionLabel: isWalletShort
+              ? `Top Up Wallet (₹${shortageAmount} short)`
+              : `Pay ₹${totalAmount} via Wallet`,
+          },
+          {
+            id: 'ONLINE',
+            label: 'Online Payment (UPI, Cards, Net Banking)',
+            isSufficient: true,
+            shortageAmount: 0,
+            route: `/(resident)/amenities/booking/${targetAmenity._id}?date=${dateStr}&startTime=${slotTime}&endTime=${endTime}&persons=${parsedHeadcount}&payOnline=1`,
+            actionLabel: 'Pay Online (UPI / Card)',
+          },
+        ] : [];
 
         const actionParams = {
           amenityId: String(targetAmenity._id),
@@ -2022,15 +2477,51 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           dateStr,
           startTime: slotTime,
           endTime,
-          numberOfPersons: 1,
+          durationHours,
+          slotCount,
+          numberOfPersons: headcount,
+          headcount,
+          participantNames,
           estimatedCost: priceDisplay,
-          rateAmount: rate,
+          rateAmount: baseAmount,
+          baseRate,
+          taxAmount,
+          securityDeposit,
+          totalAmount,
           walletBalance: residentWalletBalance,
           isWalletShort,
-          preferredPaymentMethod: isWalletShort ? 'ONLINE' : 'WALLET',
+          shortageAmount,
+          preferredPaymentMethod: preferredPayment,
+          paymentOptions,
         };
 
-        const summary = `Booking for ${targetAmenity.name} on ${dateStr} from ${slotTime} to ${endTime} (${priceDisplay})${isWalletShort ? ' [Insufficient wallet - Online payment required]' : ''}`;
+        const formattedSummary = formatAmenityBookingSummary(
+          {
+            amenityName: targetAmenity.name,
+            date: dateStr,
+            dateLabel: toolArgs?.dateLabel || dateStr,
+            slotTime,
+            endTime,
+            durationHours,
+            slotCount,
+            participantNames,
+            headcount,
+            rateAmount: baseAmount,
+            walletBalance: residentWalletBalance,
+            preferredPaymentMethod: preferredPayment,
+          },
+          {
+            baseRate,
+            baseAmount,
+            taxPercentage,
+            taxAmount,
+            totalAmount,
+            walletBalance: residentWalletBalance,
+            cancellationPolicy: `Free cancellation up to ${targetAmenity.bookingRules?.minAdvanceBookingHours || 2} hours before slot start time.`,
+          }
+        );
+
+        const summary = `Booking for ${targetAmenity.name} on ${dateStr} from ${slotTime} to ${endTime} (${durationHours >= 1 ? `${durationHours}h` : `${durationHours * 60}m`}, ${priceDisplay})${isWalletShort ? ' [Insufficient wallet - Online payment available]' : ''}`;
 
         const proposal = createPendingActionProposal({
           actionType: 'CREATE_AMENITY_BOOKING',
@@ -2041,24 +2532,42 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
         });
 
         const proposalMessage = isWalletShort
-          ? `I have prepared your reservation for ${targetAmenity.name} on ${dateStr} from ${slotTime} to ${endTime} (${priceDisplay}). Note: Your wallet balance is ₹${residentWalletBalance}, which is insufficient for this booking. Please click below to proceed with Online Payment (Google Pay, PhonePe, UPI, Card).`
-          : `I have prepared your booking for ${targetAmenity.name} on ${dateStr} from ${slotTime} to ${endTime} (${priceDisplay}). Please confirm your reservation to complete it.`;
+          ? `${formattedSummary}\n\nNote: Your wallet balance is ₹${residentWalletBalance}, which is insufficient for this booking (Total: ₹${totalAmount}). Please choose your payment method:\n• 💳 Online Payment (Google Pay, PhonePe, UPI, Card)\n• 🪙 Top Up Wallet (₹${shortageAmount} short) to pay via NAHOM Wallet`
+          : `${formattedSummary}\n\nDo you want me to proceed with this booking? Please confirm your reservation!`;
+
+        const durationLabel = durationHours >= 1
+          ? `${durationHours} hr${durationHours > 1 ? 's' : ''} (${slotCount} slot${slotCount > 1 ? 's' : ''})`
+          : `${Math.round(durationHours * 60)} mins`;
 
         const details = {
           'Amenity': targetAmenity.name,
           'Date': dateStr,
-          'Time': `${slotTime} - ${endTime}`,
+          'Time': `${slotTime} - ${endTime} (${durationLabel})`,
+          'Participants': participantNames ? `${participantNames} (${headcount} persons)` : `${headcount} person(s)`,
           'Cost': priceDisplay,
+          'Booking Fee': baseAmount > 0 ? `₹${baseAmount}` : 'Free',
+          'Total Amount': priceDisplay,
         };
-        if (rate > 0) {
-          details['Payment Method'] = isWalletShort ? 'Online Payment (GPay, PhonePe, UPI, Cards)' : `Digital Wallet (₹${residentWalletBalance} available)`;
+        if (taxPercentage > 0) {
+          details[`Tax (${taxPercentage}%)`] = `₹${taxAmount}`;
+        }
+        if (securityDeposit > 0) {
+          details['Security Deposit'] = `₹${securityDeposit}`;
+        }
+        if (baseAmount > 0) {
+          details['Payment Method'] = isWalletShort
+            ? 'Online Payment (GPay, PhonePe, UPI, Cards)'
+            : `Digital Wallet (₹${residentWalletBalance} available)`;
+          details['Payment Options'] = isWalletShort
+            ? `Online Payment or Top up Wallet (₹${residentWalletBalance} available)`
+            : `Digital Wallet (₹${residentWalletBalance} available) or Online Payment`;
           if (isWalletShort) {
-            details['Wallet Status'] = `₹${residentWalletBalance} (Insufficient - ₹${rate - residentWalletBalance} short)`;
+            details['Wallet Status'] = `₹${residentWalletBalance} (Insufficient - ₹${shortageAmount} short)`;
           }
         }
 
         const confirmLabel = isWalletShort ? 'Click to Pay Online (GPay / PhonePe / UPI)' : 'Confirm Booking';
-        const actionRoute = `/(resident)/amenities/${targetAmenity._id}?date=${dateStr}&slot=${slotTime}${isWalletShort ? '&payOnline=1' : ''}`;
+        const actionRoute = `/(resident)/amenities/booking/${targetAmenity._id}?date=${dateStr}&slot=${slotTime}&startTime=${slotTime}&endTime=${endTime}&persons=${headcount}${isWalletShort ? '&payOnline=1' : ''}`;
 
         return {
           success: true,
@@ -2074,10 +2583,20 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             amenityName: targetAmenity.name,
             date: dateStr,
             slotTime: `${slotTime} - ${endTime}`,
+            durationHours,
+            slotCount,
             estimatedCost: priceDisplay,
+            rateAmount: baseAmount,
+            baseRate,
+            taxAmount,
+            securityDeposit,
+            totalAmount,
             walletBalance: residentWalletBalance,
             isWalletShort,
-            preferredPaymentMethod: isWalletShort ? 'ONLINE' : 'WALLET',
+            shortageAmount,
+            preferredPaymentMethod: preferredPayment,
+            paymentOptions,
+            participantNames,
             message: proposalMessage,
           },
           action: {
@@ -2092,6 +2611,7 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             cancelLabel: 'Cancel',
             summary,
             details,
+            paymentOptions,
           },
         };
       }
@@ -2118,8 +2638,24 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           if (toolArgs?.amenityName) {
             const kw = String(toolArgs.amenityName).toLowerCase().trim();
             targetBooking = list.find((b) => (b.amenity?.name || b.amenityName || '').toLowerCase().includes(kw));
+          } else if (toolArgs?.date) {
+            const dKw = String(toolArgs.date).toLowerCase().trim();
+            targetBooking = list.find((b) => {
+              const bDateStr = b.bookingDate ? new Date(b.bookingDate).toISOString().slice(0, 10) : '';
+              return bDateStr.includes(dKw) || (b.bookingDate && String(b.bookingDate).toLowerCase().includes(dKw));
+            });
           } else if (list.length === 1) {
             targetBooking = list[0];
+          }
+
+          if (!targetBooking && list.length > 1) {
+            const bookingOptions = list
+              .map((b) => `• ${b.amenity?.name || b.amenityName || 'Amenity'} on ${new Date(b.bookingDate).toLocaleDateString()} (${b.startTime}-${b.endTime}) [ID: ${b._id}]`)
+              .join('\n');
+            return {
+              success: false,
+              error: `You have multiple active bookings. Please specify which one you would like to cancel:\n${bookingOptions}`,
+            };
           }
         }
 
@@ -2149,14 +2685,95 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
         const bDate = targetBooking.bookingDate ? new Date(targetBooking.bookingDate).toLocaleDateString() : 'Upcoming';
         const timeSlot = `${targetBooking.startTime || ''} - ${targetBooking.endTime || ''}`;
         const bookingId = String(targetBooking._id);
-        const summary = `Cancel booking for ${aName} on ${bDate} (${timeSlot})`;
+
+        // Fetch amenity to inspect pricing and cancellation refund rules
+        let targetAmenity = targetBooking.amenity;
+        if (!targetAmenity && targetBooking.amenityId && amenityService) {
+          try {
+            targetAmenity = await amenityService.getAmenityById(targetBooking.amenityId, orgId);
+          } catch (err) {}
+        }
+
+        const rawBookingAmount = Number(
+          targetBooking.pricingDetails?.totalAmount ??
+          targetBooking.pricingDetails?.baseAmount ??
+          targetBooking.totalPrice ??
+          targetBooking.amount ?? 0
+        );
+        const securityDeposit = Number(targetBooking.pricingDetails?.securityDeposit ?? targetAmenity?.pricing?.securityDeposit ?? 0);
+        const bookingFee = Math.max(0, rawBookingAmount - securityDeposit);
+
+        // Calculate remaining hours
+        let remainingHours = 24;
+        let timingNote = '';
+        try {
+          const moment = (await import('moment-timezone')).default;
+          const TIMEZONE = 'Asia/Kolkata';
+          const startDateTime = moment.tz(`${targetBooking.bookingDate}T${targetBooking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+          const now = moment().tz(TIMEZONE);
+          remainingHours = moment.duration(startDateTime.diff(now)).asHours();
+          if (remainingHours <= 0 && !hasFinancePermission(user)) {
+            return {
+              success: false,
+              error: 'This booking has already started and can no longer be cancelled.',
+            };
+          }
+          timingNote = remainingHours > 0 ? `${Math.round(remainingHours)}h before slot` : 'past slot';
+        } catch (mErr) {}
+
+        let refundPercentage = 100;
+        const cancellationRules = targetAmenity?.bookingRules?.cancellationRefundRules || [
+          { cancelBeforeHours: 12, refundPercentage: 100 },
+          { cancelBeforeHours: 2, refundPercentage: 50 },
+        ];
+        if (targetAmenity?.bookingRules?.isCancellationEnabled !== false) {
+          const sortedRules = [...cancellationRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
+          const matchedRule = sortedRules.find((r) => remainingHours >= r.cancelBeforeHours);
+          if (matchedRule) {
+            refundPercentage = matchedRule.refundPercentage;
+          } else {
+            refundPercentage = 0;
+          }
+        } else {
+          refundPercentage = 0;
+        }
+
+        const feeRefund = Math.round((bookingFee * refundPercentage) / 100);
+        const cancellationFee = bookingFee - feeRefund;
+        const eligibleRefund = securityDeposit + feeRefund;
+
+        const cancellationSummary = formatAmenityCancellationSummary({
+          amenityName: aName,
+          bookingId,
+          date: bDate,
+          timeSlot,
+          bookingFee,
+          securityDeposit,
+          totalPaid: rawBookingAmount,
+          cancellationFee,
+          eligibleRefund,
+          refundPercentage,
+          timingNote,
+          refundDestination: 'Digital Wallet',
+        });
 
         const proposal = createPendingActionProposal({
           actionType: 'CANCEL_AMENITY_BOOKING',
           userId,
           orgId,
-          params: { bookingId, amenityName: aName, date: bDate, timeSlot },
-          summary,
+          params: {
+            bookingId,
+            amenityName: aName,
+            date: bDate,
+            timeSlot,
+            rawBookingAmount,
+            bookingFee,
+            securityDeposit,
+            cancellationFee,
+            refundAmount: eligibleRefund,
+            refundPercentage,
+          },
+          summary: cancellationSummary,
         });
 
         return {
@@ -2167,12 +2784,18 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             confirmationToken: proposal.confirmationToken,
             expiresAt: proposal.expiresAt,
             actionType: 'CANCEL_AMENITY_BOOKING',
-            summary,
+            summary: cancellationSummary,
             bookingId,
             amenityName: aName,
             date: bDate,
             timeSlot,
-            message: `Are you sure you want to cancel your booking for ${aName} on ${bDate} (${timeSlot})? Please confirm to cancel.`,
+            bookingFee,
+            securityDeposit,
+            totalPaid: rawBookingAmount,
+            cancellationFee,
+            refundAmount: eligibleRefund,
+            refundPercentage,
+            message: `${cancellationSummary}\n\nDo you want me to proceed with cancelling this booking? Please confirm!`,
           },
           action: {
             type: 'confirmation',
@@ -2180,13 +2803,18 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             actionId: proposal.actionId,
             confirmationToken: proposal.confirmationToken,
             title: `Cancel ${aName} Booking`,
-            confirmLabel: 'Cancel Booking',
+            confirmLabel: 'Confirm & Cancel Booking',
             cancelLabel: 'Keep Booking',
-            summary,
+            summary: cancellationSummary,
             details: {
               'Amenity': aName,
+              'Booking ID': bookingId,
               'Date': bDate,
               'Slot': timeSlot,
+              'Total Paid': `₹${rawBookingAmount}`,
+              'Cancellation Fee': `₹${cancellationFee}`,
+              'Eligible Refund': `₹${eligibleRefund} (${refundPercentage}%)`,
+              'Refund Destination': 'Digital Wallet',
             },
           },
         };
@@ -2226,31 +2854,54 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
 
         const rawType = (toolArgs?.type || '').toLowerCase();
         let normalizedType = 'court';
+        let archetype = 'EXCLUSIVE_HOURLY';
         if (rawType.includes('gym') || rawType.includes('fitness') || rawType.includes('workout')) {
           normalizedType = 'gym';
+          archetype = 'SHARED_CAPACITY';
         } else if (rawType.includes('pool') || rawType.includes('swim')) {
           normalizedType = 'pool';
+          archetype = 'SHARED_CAPACITY';
         } else if (rawType.includes('club') || rawType.includes('lounge')) {
           normalizedType = 'clubhouse';
+          archetype = 'SHARED_CAPACITY';
         } else if (rawType.includes('hall') || rawType.includes('party') || rawType.includes('event')) {
           normalizedType = 'hall';
+          archetype = 'EVENT_SPACE';
         } else if (rawType.includes('sport')) {
           normalizedType = 'Sports';
+          archetype = 'EXCLUSIVE_HOURLY';
         } else if (rawType.includes('court') || rawType.includes('basket') || rawType.includes('tennis') || rawType.includes('badminton') || rawType.includes('squash')) {
           normalizedType = 'court';
+          archetype = 'EXCLUSIVE_HOURLY';
         } else {
           normalizedType = 'court';
+          archetype = 'EXCLUSIVE_HOURLY';
         }
 
         const pricingType = (toolArgs?.pricingType || 'hourly').toLowerCase();
-        const ratePerHour = Math.max(0, Number(toolArgs?.ratePerHour ?? 0));
-        const capacity = Math.max(1, Number(toolArgs?.capacity || 10));
+        const isPaid = toolArgs?.isPaid !== false && (Number(toolArgs?.ratePerHour ?? toolArgs?.baseRate ?? 0) > 0 || String(toolArgs?.pricing?.type).toLowerCase() === 'paid');
+        const ratePerHour = isPaid ? Math.max(0, Number(toolArgs?.ratePerHour ?? toolArgs?.baseRate ?? 100)) : 0;
+        const securityDeposit = Number(toolArgs?.securityDeposit || 0);
+        const taxPercentage = Number(toolArgs?.taxPercentage || 0);
+        const capacity = Math.max(1, Number(toolArgs?.capacity || 30));
         const slotDurationMinutes = Math.max(15, Number(toolArgs?.slotDurationMinutes || 60));
-        const openTime = toolArgs?.openTime || '06:00';
-        const closeTime = toolArgs?.closeTime || '22:00';
+        const bufferTimeMinutes = Number(toolArgs?.bufferTimeMinutes ?? (toolArgs?.bufferTimeMinutes === 0 ? 0 : 15));
+        const advanceBookingDays = Math.max(1, Number(toolArgs?.advanceBookingDays || 7));
+        const minAdvanceBookingHours = Math.max(0, Number(toolArgs?.minAdvanceBookingHours ?? 2));
+        const maxParticipantsPerBooking = Math.max(1, Number(toolArgs?.maxParticipantsPerBooking || 4));
+        const maxBookingsPerUser = Math.max(1, Number(toolArgs?.maxBookingsPerUser || 1));
+        const maxConcurrentBookings = Math.max(1, Number(toolArgs?.maxConcurrentBookings || 5));
+        const openTime = toolArgs?.operatingHours?.open || toolArgs?.openTime || '06:00';
+        const closeTime = toolArgs?.operatingHours?.close || toolArgs?.closeTime || '21:00';
         const location = toolArgs?.location || 'Community Campus';
+        const rules = toolArgs?.rules || toolArgs?.description || '';
         const description = toolArgs?.description || `${name} facility.`;
         const priceDisplay = ratePerHour > 0 ? `₹${ratePerHour} per slot` : 'Free';
+
+        const cancellationRefundRules = toolArgs?.cancellationRefundRules || [
+          { cancelBeforeHours: 12, refundPercentage: 100 },
+          { cancelBeforeHours: 2, refundPercentage: 50 },
+        ];
 
         const actionParams = {
           name,
@@ -2264,40 +2915,66 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             peakRateMultiplier: 1.0,
             weekendRateMultiplier: 1.0,
             holidayRateMultiplier: 1.0,
-            securityDeposit: 0,
-            taxPercentage: 0,
+            securityDeposit,
+            taxPercentage,
             cancellationChargePercentage: 0,
             dynamicPricingEnabled: false,
           },
           ratePerHour,
+          securityDeposit,
+          taxPercentage,
           openDays: [0, 1, 2, 3, 4, 5, 6],
           bookingRules: {
             slotDurationMinutes,
-            bufferTimeMinutes: 0,
+            bufferTimeMinutes,
             openTime,
             closeTime,
-            maxBookingsPerUserPerSlot: 1,
-            advanceBookingDays: 7,
-            minAdvanceBookingHours: 0,
+            maxBookingsPerUserPerSlot: maxParticipantsPerBooking,
+            advanceBookingDays,
+            minAdvanceBookingHours,
             isCancellationEnabled: true,
-            cancellationRefundRules: [
-              { cancelBeforeHours: 2, refundPercentage: 100 },
-            ],
+            cancellationRefundRules,
             weeklyOffDays: [],
           },
-          maxBookingsPerUserPerSlot: 1,
+          maxBookingsPerUserPerSlot: maxBookingsPerUser,
+          maxConcurrentBookings,
+          archetype,
+          rules,
           status: 'active',
         };
 
-        const summary = `Create new facility "${name}" (${normalizedType}) in Amenity Master with capacity of ${capacity} members, priced at ${priceDisplay} (${openTime} - ${closeTime}).`;
+        const creationSummary = formatAmenityCreationSummary({
+          name,
+          type: toolArgs?.type || normalizedType,
+          location,
+          capacity,
+          operatingHours: { open: openTime, close: closeTime },
+          slotDurationMinutes,
+          bufferTimeMinutes,
+          advanceBookingDays,
+          maxParticipantsPerBooking,
+          maxBookingsPerUser,
+          maxConcurrentBookings,
+          isPaid,
+          ratePerHour,
+          securityDeposit,
+          taxPercentage,
+          minAdvanceBookingHours,
+          isCancellationEnabled: true,
+          cancellationRefundRules,
+          refundSummary: toolArgs?.refundSummary,
+          rules,
+        });
 
         const proposal = createPendingActionProposal({
           actionType: 'CREATE_AMENITY',
           userId,
           orgId,
           params: actionParams,
-          summary,
+          summary: creationSummary,
         });
+
+        const proposalMessage = `${creationSummary}\n\nDo you want me to proceed with creating this amenity? Please confirm!`;
 
         return {
           success: true,
@@ -2308,13 +2985,13 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             confirmationToken: proposal.confirmationToken,
             expiresAt: proposal.expiresAt,
             actionType: 'CREATE_AMENITY',
-            summary,
+            summary: creationSummary,
             amenityName: name,
             type: normalizedType,
             capacity,
             rate: priceDisplay,
             timings: `${openTime} - ${closeTime}`,
-            message: `I have prepared the configuration to add "${name}" to the Amenity Master catalog. Please review the details below and confirm to create it.`,
+            message: proposalMessage,
           },
           action: {
             type: 'confirmation',
@@ -2326,13 +3003,17 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             route: '/(resident)/amenities/admin-master',
             confirmLabel: 'Confirm & Create',
             cancelLabel: 'Cancel',
-            summary,
+            summary: creationSummary,
             details: {
               'Amenity': name,
               'Type': normalizedType,
-              'Capacity': `${capacity} members`,
+              'Location': location,
+              'Physical Capacity': `${capacity} members`,
               'Price': priceDisplay,
               'Hours': `${openTime} - ${closeTime}`,
+              'Slot Duration': `${slotDurationMinutes} mins`,
+              'Buffer Time': `${bufferTimeMinutes} mins`,
+              'Advance Days': `Up to ${advanceBookingDays} days`,
             },
           },
         };
@@ -2537,39 +3218,56 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           }
         }
 
+        if (toolArgs?.category) {
+          filter.category = toolArgs.category;
+        }
+
         if (toolArgs?.complaintNumber) {
           filter.complaintNumber = toolArgs.complaintNumber;
         }
 
-        const result = await complaintService.getComplaints(orgId, filter, { page: 1, limit: 5 }, { createdAt: -1 });
+        const result = await complaintService.getComplaints(orgId, filter, { page: 1, limit: 10 }, { createdAt: -1 });
         const rawItems = result?.data || result?.items || result?.complaints || (Array.isArray(result) ? result : []);
-        const complaints = rawItems.map((c) => ({
-          complaintNumber: c.complaintNumber || c._id,
-          id: c._id,
-          title: c.title || c.subject,
-          category: c.category,
-          status: c.status,
-          priority: c.priority,
-          department: c.department || 'General Maintenance',
-          slaDueDate: c.slaDueDate ? new Date(c.slaDueDate).toLocaleDateString() : null,
-          slaStatus: c.slaStatus || 'Within SLA',
-          createdAt: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : null,
-        }));
+        const complaints = rawItems.map((c) => {
+          const rawDate = c.preferredVisitDate;
+          const formattedDate = rawDate ? (typeof rawDate === 'string' && rawDate.includes('-') ? rawDate : new Date(rawDate).toISOString().split('T')[0]) : null;
+          const scheduleStr = formattedDate && c.preferredVisitTime ? `${formattedDate} ${c.preferredVisitTime}` : formattedDate;
+          const effectiveSla = c.slaStatus || (typeof complaintService.calculateSLAStatus === 'function' ? complaintService.calculateSLAStatus(c) : 'Within SLA');
+          return {
+            complaintNumber: c.complaintNumber || c._id,
+            id: c._id,
+            title: c.title || c.subject,
+            category: c.category,
+            status: c.status,
+            priority: c.priority,
+            department: c.department || 'General Maintenance',
+            assignedTechnician: c.assignedTechnicianName || c.assignedTechnician || null,
+            assignedTechnicianName: c.assignedTechnicianName || null,
+            assignedTechnicianPhone: c.assignedTechnicianPhone || null,
+            preferredVisitDate: formattedDate,
+            preferredVisitTime: c.preferredVisitTime || null,
+            preferredVisitSchedule: scheduleStr,
+            slaDueDate: c.slaDueDate ? new Date(c.slaDueDate).toLocaleDateString() : null,
+            slaStatus: effectiveSla,
+            createdAt: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : null,
+          };
+        });
 
         return {
           success: true,
           data: {
             count: complaints.length,
+            totalComplaintsCount: complaints.length,
             complaints,
             emptyMessage: complaints.length === 0
-              ? 'You do not have any complaints matching your request at this time.'
+              ? 'You do not have any complaints or maintenance requests matching your request at this time.'
               : undefined,
           },
           action: {
             type: 'navigation',
             label: 'Open Complaint Board',
             route: '/(resident)/complaints/manage',
-            targetName: 'Complaint Board',
+            targetName: 'Complaints',
             category: 'complaints_helpdesk',
           },
         };
@@ -2577,6 +3275,9 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
 
       // 5b. Prepare Complaint Submission Proposal
       case 'prepare_complaint': {
+        if (!canUserRaiseComplaint(user)) {
+          return { success: false, error: 'Permission denied: user does not have permission to file complaints.' };
+        }
         const title = String(toolArgs?.title || '').trim();
         if (!title || title.length < 3) {
           return { success: false, error: 'Please provide a clear title or description for the complaint.' };
@@ -2586,7 +3287,7 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
         const rawPriority = String(toolArgs?.priority || 'Medium').trim();
         const priority = validPriorities.find(p => p.toLowerCase() === rawPriority.toLowerCase()) || 'Medium';
 
-        const category = toolArgs?.category || 'General Maintenance';
+        const category = toolArgs?.category || 'General';
         const description = toolArgs?.description || title;
         const locationFlat = toolArgs?.location || user?.flat || user?.unit || 'Resident Unit';
 
@@ -2595,12 +3296,50 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           description,
           category,
           priority,
-          location: { flat: locationFlat },
+          location: { flat: locationFlat, exactLocation: toolArgs?.location || '' },
           residentEmail: user?.email,
           residentMobile: user?.phone || user?.mobile,
+          preferredVisitDate: toolArgs?.preferredVisitDate || null,
+          preferredVisitTime: toolArgs?.preferredVisitTime || null,
+          attachments: toolArgs?.attachments || [],
+          isEmergency: priority === 'Critical',
         };
 
-        const summary = `Lodge complaint: ${title} (${category}, ${priority} priority, Unit: ${locationFlat})`;
+        let isDuplicate = false;
+        let duplicateTicketNumber = null;
+        if (complaintService && typeof complaintService.getComplaints === 'function') {
+          try {
+            const openRes = await complaintService.getComplaints(orgId, { residentId: userId }, { page: 1, limit: 10 }, {});
+            const openTickets = openRes?.data || openRes?.items || (Array.isArray(openRes) ? openRes : []);
+            const foundDup = openTickets.find(t => {
+              const activeStatuses = ['Open', 'Submitted', 'In Progress', 'Assigned', 'Waiting For Assignment', 'Accepted'];
+              if (t.status && !activeStatuses.includes(t.status)) return false;
+              const tTitle = (t.title || '').toLowerCase();
+              const reqTitle = title.toLowerCase();
+              return tTitle === reqTitle ||
+                     (t.category === category && (tTitle.includes(reqTitle) || reqTitle.includes(tTitle)));
+            });
+            if (foundDup) {
+              isDuplicate = true;
+              duplicateTicketNumber = foundDup.complaintNumber || String(foundDup._id);
+            }
+          } catch (e) {
+            // Non-blocking duplicate check
+          }
+        }
+
+        const summaryLines = [
+          '### Complaint Registration Summary:',
+          `* Title: ${title}`,
+          `* Category: ${category}`,
+          `* Priority: ${priority}`,
+          `* Location: ${locationFlat}`,
+          `* Description: ${description}`,
+        ];
+        if (isDuplicate) {
+          summaryLines.push(`* ⚠️ Note: Existing Open Ticket Detected (#${duplicateTicketNumber}). If this is a follow-up, you can add a remark or track the existing ticket.`);
+        }
+        const summary = summaryLines.join('\n');
 
         const proposal = createPendingActionProposal({
           actionType: 'CREATE_COMPLAINT',
@@ -2614,6 +3353,8 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           success: true,
           data: {
             proposalReady: true,
+            isDuplicateWarning: isDuplicate,
+            existingTicketNumber: duplicateTicketNumber,
             actionId: proposal.actionId,
             confirmationToken: proposal.confirmationToken,
             expiresAt: proposal.expiresAt,
@@ -2623,23 +3364,340 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             category,
             priority,
             location: locationFlat,
-            message: `I have prepared your complaint request: "${title}" under ${category} with ${priority} priority for ${locationFlat}. Please confirm to submit this ticket.`,
+            message: `${summary}\n\nDo you want me to proceed with submitting this complaint? Please confirm!`,
           },
           action: {
             type: 'confirmation',
             actionType: 'CREATE_COMPLAINT',
             actionId: proposal.actionId,
             confirmationToken: proposal.confirmationToken,
-            title: 'Confirm Complaint Submission',
+            title: isDuplicate ? 'Confirm Ticket (Potential Duplicate)' : 'Confirm Complaint Submission',
             confirmLabel: 'Submit Complaint',
             cancelLabel: 'Cancel',
             summary,
             details: {
-              'Issue': title,
+              'Title': title,
               'Category': category,
               'Priority': priority,
-              'Unit': locationFlat,
+              'Location': locationFlat,
             },
+          },
+        };
+      }
+
+      // 5b2. Prepare Maintenance Request Proposal
+      case 'prepare_maintenance_request': {
+        if (!canUserRaiseComplaint(user)) {
+          return { success: false, error: 'Permission denied: user does not have permission to book maintenance requests.' };
+        }
+        const title = String(toolArgs?.title || '').trim();
+        if (!title || title.length < 3) {
+          return { success: false, error: 'Please provide a clear title or problem description for the maintenance request.' };
+        }
+
+        const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
+        const rawPriority = String(toolArgs?.priority || 'Medium').trim();
+        const priority = validPriorities.find(p => p.toLowerCase() === rawPriority.toLowerCase()) || 'Medium';
+
+        const category = toolArgs?.category || 'General Maintenance';
+        const serviceType = toolArgs?.serviceType || 'Technician';
+        const description = toolArgs?.description || title;
+        const locationFlat = toolArgs?.location || user?.flat || user?.unit || 'Resident Unit';
+        const preferredVisitDate = toolArgs?.preferredVisitDate || null;
+        const preferredVisitTime = toolArgs?.preferredVisitTime || 'General Hours (09:00 AM - 06:00 PM)';
+
+        const actionParams = {
+          title,
+          category,
+          serviceType,
+          description,
+          priority,
+          location: { flat: locationFlat, exactLocation: toolArgs?.location || '' },
+          department: 'Maintenance',
+          preferredVisitDate,
+          preferredVisitTime,
+          attachments: toolArgs?.attachments || [],
+          isEmergency: priority === 'Critical',
+          residentEmail: user?.email,
+          residentMobile: user?.phone || user?.mobile,
+        };
+
+        let isDuplicate = false;
+        let duplicateTicketNumber = null;
+        if (complaintService && typeof complaintService.getComplaints === 'function') {
+          try {
+            const openRes = await complaintService.getComplaints(orgId, { residentId: userId }, { page: 1, limit: 10 }, {});
+            const openTickets = openRes?.data || openRes?.items || (Array.isArray(openRes) ? openRes : []);
+            const foundDup = openTickets.find(t => {
+              const activeStatuses = ['Open', 'Submitted', 'In Progress', 'Assigned', 'Waiting For Assignment', 'Accepted'];
+              if (t.status && !activeStatuses.includes(t.status)) return false;
+              const tTitle = (t.title || '').toLowerCase();
+              const reqTitle = title.toLowerCase();
+              return tTitle === reqTitle ||
+                     (t.category === category && (tTitle.includes(reqTitle) || reqTitle.includes(tTitle)));
+            });
+            if (foundDup) {
+              isDuplicate = true;
+              duplicateTicketNumber = foundDup.complaintNumber || String(foundDup._id);
+            }
+          } catch (e) {
+            // Non-blocking duplicate check
+          }
+        }
+
+        const summaryLines = [
+          '### Maintenance Request Summary:',
+          `* Service: ${title}`,
+          `* Category: ${category}`,
+          `* Problem: ${description}`,
+          `* Priority: ${priority}`,
+          `* Preferred Visit Date: ${preferredVisitDate || 'As soon as possible'}`,
+          `* Preferred Time: ${preferredVisitTime}`,
+          `* Location: ${locationFlat}`,
+        ];
+        if (isDuplicate) {
+          summaryLines.push(`* ⚠️ Note: Existing Open Ticket Detected (#${duplicateTicketNumber}). If this is a follow-up, you can add a remark or track the existing ticket.`);
+        }
+        const summary = summaryLines.join('\n');
+
+        const proposal = createPendingActionProposal({
+          actionType: 'CREATE_MAINTENANCE_REQUEST',
+          userId,
+          orgId,
+          params: actionParams,
+          summary,
+        });
+
+        return {
+          success: true,
+          data: {
+            proposalReady: true,
+            isDuplicateWarning: isDuplicate,
+            existingTicketNumber: duplicateTicketNumber,
+            actionId: proposal.actionId,
+            confirmationToken: proposal.confirmationToken,
+            expiresAt: proposal.expiresAt,
+            actionType: 'CREATE_MAINTENANCE_REQUEST',
+            summary,
+            title,
+            category,
+            serviceType,
+            priority,
+            location: locationFlat,
+            preferredVisitDate,
+            preferredVisitTime,
+            message: `${summary}\n\nDo you want me to proceed with booking this maintenance request? Please confirm!`,
+          },
+          action: {
+            type: 'confirmation',
+            actionType: 'CREATE_MAINTENANCE_REQUEST',
+            actionId: proposal.actionId,
+            confirmationToken: proposal.confirmationToken,
+            title: isDuplicate ? 'Confirm Maintenance Request (Potential Duplicate)' : 'Confirm Maintenance Request',
+            confirmLabel: 'Confirm & Book Maintenance',
+            cancelLabel: 'Cancel',
+            route: '/(resident)/complaints/my-tickets',
+            summary,
+            details: {
+              'Service': title,
+              'Category': category,
+              'Priority': priority,
+              'Location': locationFlat,
+              'Visit Schedule': preferredVisitDate ? `${preferredVisitDate} (${preferredVisitTime})` : preferredVisitTime,
+            },
+          },
+        };
+      }
+
+      // 5b3. Escalate Ticket
+      case 'escalate_complaint': {
+        if (!canUserRaiseComplaint(user)) {
+          return { success: false, error: 'Permission denied: user does not have permission to escalate tickets.' };
+        }
+        if (!complaintService) {
+          return { success: false, error: 'Complaint service is currently unavailable.' };
+        }
+
+        const targetRef = String(toolArgs?.complaintId || '').trim();
+        if (!targetRef) {
+          return { success: false, error: 'Please provide the ticket number to escalate.' };
+        }
+
+        let targetTicket = null;
+        if (typeof complaintService.getComplaintById === 'function') {
+          targetTicket = await complaintService.getComplaintById(targetRef, orgId).catch(() => null);
+        }
+        if (!targetTicket && typeof complaintService.getComplaints === 'function') {
+          const listRes = await complaintService.getComplaints(orgId, {
+            residentId: userId,
+            complaintNumber: targetRef,
+          }, { page: 1, limit: 10 }, {});
+          const list = listRes?.data || listRes?.items || (Array.isArray(listRes) ? listRes : []);
+          targetTicket = list.find(c =>
+            String(c._id) === targetRef ||
+            c.complaintNumber?.toLowerCase() === targetRef.toLowerCase()
+          );
+        }
+
+        if (!targetTicket) {
+          return {
+            success: false,
+            error: `Could not find an active ticket matching "${targetRef}" under your account.`,
+          };
+        }
+
+        const targetId = targetTicket._id || targetRef;
+        const cNum = targetTicket.complaintNumber || targetRef;
+        const title = targetTicket.title || 'Complaint Ticket';
+        const currentLvl = targetTicket.escalationLevel || 0;
+        const reason = toolArgs?.reason || 'Escalated by resident via AI Assistant';
+        const summary = `Escalate Ticket #${cNum} (${title}) to Level ${currentLvl + 1} for immediate supervisor review.\nReason: ${reason}`;
+
+        const proposal = createPendingActionProposal({
+          actionType: 'ESCALATE_COMPLAINT',
+          userId,
+          orgId,
+          params: {
+            complaintId: String(targetId),
+            complaintNumber: cNum,
+            title,
+            currentLevel: currentLvl,
+            reason,
+          },
+          summary,
+        });
+
+        return {
+          success: true,
+          data: {
+            proposalReady: true,
+            actionId: proposal.actionId,
+            confirmationToken: proposal.confirmationToken,
+            expiresAt: proposal.expiresAt,
+            actionType: 'ESCALATE_COMPLAINT',
+            complaintId: String(targetId),
+            complaintNumber: cNum,
+            summary,
+            message: `${summary}\n\nPlease confirm to submit this escalation.`,
+          },
+          action: {
+            type: 'confirmation',
+            actionType: 'ESCALATE_COMPLAINT',
+            actionId: proposal.actionId,
+            confirmationToken: proposal.confirmationToken,
+            title: 'Confirm Ticket Escalation',
+            confirmLabel: 'Escalate Ticket',
+            cancelLabel: 'Cancel',
+            route: '/(resident)/complaints/my-tickets',
+            targetName: 'My Tickets',
+          },
+        };
+      }
+
+      // 5b4. Reopen Ticket
+      case 'reopen_complaint': {
+        if (!canUserRaiseComplaint(user)) {
+          return { success: false, error: 'Permission denied: user does not have permission to reopen tickets.' };
+        }
+        if (!complaintService) {
+          return { success: false, error: 'Complaint service is currently unavailable.' };
+        }
+
+        const targetRef = String(toolArgs?.complaintId || '').trim();
+        const reason = String(toolArgs?.reason || 'Issue still persists').trim();
+        if (!targetRef) {
+          return { success: false, error: 'Please provide the ticket number to reopen.' };
+        }
+
+        let targetTicket = null;
+        if (typeof complaintService.getComplaintById === 'function') {
+          targetTicket = await complaintService.getComplaintById(targetRef, orgId).catch(() => null);
+        }
+        if (!targetTicket && typeof complaintService.getComplaints === 'function') {
+          const listRes = await complaintService.getComplaints(orgId, {
+            residentId: userId,
+            complaintNumber: targetRef,
+          }, { page: 1, limit: 10 }, {});
+          const list = listRes?.data || listRes?.items || (Array.isArray(listRes) ? listRes : []);
+          targetTicket = list.find(c =>
+            String(c._id) === targetRef ||
+            c.complaintNumber?.toLowerCase() === targetRef.toLowerCase()
+          );
+        }
+
+        if (!targetTicket) {
+          return {
+            success: false,
+            error: `Could not find a ticket matching "${targetRef}" to reopen.`,
+          };
+        }
+
+        const targetId = targetTicket._id || targetRef;
+        const cNum = targetTicket.complaintNumber || targetRef;
+        const title = targetTicket.title || 'Complaint Ticket';
+        const summary = `Reopen Ticket #${cNum} (${title}).\nReason: ${reason}`;
+
+        const proposal = createPendingActionProposal({
+          actionType: 'REOPEN_COMPLAINT',
+          userId,
+          orgId,
+          params: {
+            complaintId: String(targetId),
+            complaintNumber: cNum,
+            title,
+            reason,
+          },
+          summary,
+        });
+
+        return {
+          success: true,
+          data: {
+            proposalReady: true,
+            actionId: proposal.actionId,
+            confirmationToken: proposal.confirmationToken,
+            expiresAt: proposal.expiresAt,
+            actionType: 'REOPEN_COMPLAINT',
+            complaintId: String(targetId),
+            complaintNumber: cNum,
+            summary,
+            message: `${summary}\n\nPlease confirm to reopen this ticket.`,
+          },
+          action: {
+            type: 'confirmation',
+            actionType: 'REOPEN_COMPLAINT',
+            actionId: proposal.actionId,
+            confirmationToken: proposal.confirmationToken,
+            title: 'Confirm Ticket Reopening',
+            confirmLabel: 'Reopen Ticket',
+            cancelLabel: 'Cancel',
+            route: '/(resident)/complaints/my-tickets',
+            targetName: 'My Tickets',
+          },
+        };
+      }
+
+      // 5b5. Add Comment to Ticket
+      case 'add_complaint_comment': {
+        if (!complaintService || typeof complaintService.addComment !== 'function') {
+          return { success: false, error: 'Complaint service is currently unavailable.' };
+        }
+
+        const targetRef = String(toolArgs?.complaintId || '').trim();
+        const comment = String(toolArgs?.comment || '').trim();
+        if (!targetRef || !comment) {
+          return { success: false, error: 'Ticket number and comment text are required.' };
+        }
+
+        const userName = user?.name || user?.fullName || 'Resident';
+        const userRole = user?.role || 'Resident';
+        await complaintService.addComment(targetRef, orgId, userId, userRole, userName, comment, [], false);
+
+        return {
+          success: true,
+          data: {
+            complaintId: targetRef,
+            message: `Your note has been added to ticket #${targetRef}.`,
           },
         };
       }
@@ -2926,9 +3984,20 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           };
         }
 
-        const visitorName = String(toolArgs?.visitorName || '').trim();
+        const passType = ['GUEST', 'DELIVERY', 'CAB', 'SERVICE', 'GROUP'].includes(String(toolArgs?.passType || '').toUpperCase())
+          ? toolArgs.passType.toUpperCase()
+          : 'GUEST';
+
+        const visitorCount = Number(toolArgs?.visitorCount || toolArgs?.count || 1);
+        const isGroupPass = Boolean(toolArgs?.isGroupPass || passType === 'GROUP' || visitorCount > 1);
+
+        let visitorName = String(toolArgs?.visitorName || '').trim();
         if (!visitorName) {
-          return { success: false, error: 'Visitor name is required to prepare a pass.' };
+          if (passType === 'CAB') visitorName = toolArgs?.vendor ? `${toolArgs.vendor} Driver` : 'Cab Driver';
+          else if (passType === 'DELIVERY') visitorName = toolArgs?.deliveryPartner ? `${toolArgs.deliveryPartner} Delivery` : 'Delivery Partner';
+          else if (passType === 'SERVICE') visitorName = toolArgs?.serviceCategory || 'Service Staff';
+          else if (passType === 'GROUP' || isGroupPass) visitorName = `${visitorCount > 1 ? visitorCount : 2} Guests`;
+          else return { success: false, error: 'Visitor name is required to prepare a pass.' };
         }
 
         const dateStr = toolArgs?.date || new Date().toISOString().split('T')[0];
@@ -2938,10 +4007,13 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           return { success: false, error: 'Please provide a valid 10-digit phone number for the visitor.' };
         }
         const vehicleNumber = toolArgs?.vehicleNumber ? String(toolArgs.vehicleNumber).trim().toUpperCase() : undefined;
-        const passType = ['GUEST', 'DELIVERY', 'CAB', 'SERVICE'].includes(String(toolArgs?.passType || '').toUpperCase())
-          ? toolArgs.passType.toUpperCase()
-          : 'GUEST';
-        const purpose = toolArgs?.purpose || 'Personal Visit';
+
+        let defaultPurpose = 'Personal Visit';
+        if (passType === 'CAB') defaultPurpose = 'Cab / Auto Entry';
+        else if (passType === 'DELIVERY') defaultPurpose = 'Package Delivery';
+        else if (passType === 'SERVICE') defaultPurpose = 'Service / Maintenance';
+        else if (passType === 'GROUP' || isGroupPass) defaultPurpose = 'Group Visit';
+        const purpose = toolArgs?.purpose || defaultPurpose;
 
         // Check blacklist
         if (blacklistService && typeof blacklistService.checkMatch === 'function') {
@@ -2963,10 +4035,15 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
 
         const actionParams = {
           visitorName,
+          visitorCount,
+          isGroupPass,
           phone,
           vehicleNumber,
           passType,
           purpose,
+          vendor: toolArgs?.vendor,
+          deliveryPartner: toolArgs?.deliveryPartner,
+          serviceCategory: toolArgs?.serviceCategory,
           dateStr,
           timeStr,
           startDate,
@@ -2975,7 +4052,48 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           timeWindowEnd: '23:59',
         };
 
-        const summary = `Visitor Pass for ${visitorName} on ${dateStr} at ${timeStr} (${passType})`;
+        let summary = `Visitor Pass for ${visitorName} on ${dateStr} at ${timeStr} (${passType})`;
+        let cardTitle = 'Confirm Visitor Pass';
+        const cardDetails = {};
+
+        if (passType === 'CAB') {
+          cardTitle = 'Confirm Cab / Auto Pass';
+          summary = `Cab Pass (${toolArgs?.vendor || 'Cab'}${vehicleNumber ? ` - ${vehicleNumber}` : ''}) on ${dateStr} at ${timeStr}`;
+          cardDetails['Type'] = 'Cab / Auto';
+          cardDetails['Provider'] = toolArgs?.vendor || 'Cab';
+          if (vehicleNumber) cardDetails['Vehicle'] = vehicleNumber;
+          cardDetails['Date'] = dateStr;
+          cardDetails['Arrival'] = timeStr;
+        } else if (passType === 'DELIVERY') {
+          cardTitle = 'Confirm Delivery Pass';
+          summary = `Delivery Pass for ${toolArgs?.deliveryPartner || visitorName} on ${dateStr} at ${timeStr}`;
+          cardDetails['Type'] = 'Delivery';
+          cardDetails['Partner'] = toolArgs?.deliveryPartner || visitorName;
+          cardDetails['Date'] = dateStr;
+          cardDetails['Arrival'] = timeStr;
+        } else if (passType === 'SERVICE') {
+          cardTitle = 'Confirm Service / Staff Pass';
+          summary = `Service Pass for ${visitorName} on ${dateStr} at ${timeStr}`;
+          cardDetails['Type'] = 'Service / Staff';
+          cardDetails['Staff / Service'] = visitorName;
+          cardDetails['Date'] = dateStr;
+          cardDetails['Time'] = timeStr;
+        } else if (passType === 'GROUP' || isGroupPass) {
+          cardTitle = 'Confirm Group Visit Pass';
+          summary = `Group Pass for ${visitorName} (${visitorCount} guests) on ${dateStr} at ${timeStr}`;
+          cardDetails['Type'] = 'Group Visit';
+          cardDetails['Guests'] = visitorName;
+          cardDetails['Headcount'] = String(visitorCount);
+          cardDetails['Date'] = dateStr;
+          cardDetails['Time'] = timeStr;
+        } else {
+          cardDetails['Visitor'] = visitorName;
+          cardDetails['Date'] = dateStr;
+          cardDetails['Time'] = timeStr;
+          cardDetails['Type'] = passType;
+          if (phone) cardDetails['Phone'] = phone;
+          if (vehicleNumber) cardDetails['Vehicle'] = vehicleNumber;
+        }
 
         const proposal = createPendingActionProposal({
           actionType: 'CREATE_VISITOR_PASS',
@@ -3007,18 +4125,11 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             actionType: 'CREATE_VISITOR_PASS',
             actionId: proposal.actionId,
             confirmationToken: proposal.confirmationToken,
-            title: `Confirm Visitor Pass`,
+            title: cardTitle,
             confirmLabel: 'Confirm Pass',
             cancelLabel: 'Cancel',
             summary,
-            details: {
-              'Visitor': visitorName,
-              'Date': dateStr,
-              'Time': timeStr,
-              'Type': passType,
-              ...(phone ? { 'Phone': phone } : {}),
-              ...(vehicleNumber ? { 'Vehicle': vehicleNumber } : {}),
-            },
+            details: cardDetails,
           },
         };
       }
@@ -3891,7 +5002,9 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           logger.info(`[AIAssistantTools] Idempotent replay for action [${actionId}]`);
           let replayTitle = 'Action Confirmed';
           let replayRoute = '/(resident)/dashboard';
-          const ref = verification.executionResult?.shortKey ||
+          const ref = verification.executionResult?.amenityId ||
+                      verification.executionResult?.amenityCode ||
+                      verification.executionResult?.shortKey ||
                       verification.executionResult?.bookingId ||
                       verification.executionResult?.passId ||
                       verification.executionResult?.transactionId ||
@@ -3903,6 +5016,9 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           if (verification.action.actionType.includes('VISITOR')) {
             replayTitle = verification.action.actionType.includes('REVOKE') ? 'Visitor Pass Revoked' : 'Visitor Pass Issued';
             replayRoute = '/(resident)/visitor';
+          } else if (verification.action.actionType === 'CREATE_AMENITY') {
+            replayTitle = 'Amenity Facility Created';
+            replayRoute = '/(resident)/amenities/admin-master';
           } else if (verification.action.actionType.includes('AMENITY')) {
             replayTitle = verification.action.actionType.includes('CANCEL') ? 'Amenity Booking Cancelled' : 'Amenity Booking Confirmed';
             replayRoute = '/(resident)/amenities/my-bookings';
@@ -3971,6 +5087,9 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           let executionResult = null;
 
           if (actionRecord.actionType === 'CREATE_VISITOR_PASS') {
+            if (!canUserCreateVisitorPass(user)) {
+              throw new Error('Permission denied: user does not have permission to create visitor passes.');
+            }
             if (!visitorPassService || typeof visitorPassService.createPass !== 'function') {
               throw new Error('Visitor pass service is currently unavailable.');
             }
@@ -4002,9 +5121,11 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
                 createdPass = await visitorPassService.createPass({
                   orgId,
                   createdById: userId,
-                  passType: p.passType || 'GUEST',
+                  passType: ['DELIVERY', 'CAB', 'SERVICE'].includes(p.passType) ? p.passType : 'GUEST',
                   status: 'PENDING',
                   clientReference: actionRecord.actionId,
+                  isGroupPass: Boolean(p.isGroupPass || p.passType === 'GROUP' || (p.visitorCount && p.visitorCount > 1)),
+                  visitorCount: p.visitorCount || 1,
                   visitorDetails: {
                     name: p.visitorName,
                     ...(p.phone ? { phone: p.phone } : {}),
@@ -4015,7 +5136,12 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
                     timeWindowStart: p.timeWindowStart || '10:00',
                     timeWindowEnd: p.timeWindowEnd || '23:59',
                   },
-                  ...(p.vehicleNumber ? { vehicleDetails: { number: p.vehicleNumber } } : {}),
+                  vehicleDetails: {
+                    ...(p.vehicleNumber ? { number: p.vehicleNumber } : {}),
+                    ...(p.vendor || p.provider ? { vendor: p.vendor || p.provider } : {}),
+                  },
+                  ...(p.deliveryPartner ? { deliveryDetails: { partner: p.deliveryPartner } } : {}),
+                  ...(p.serviceCategory ? { serviceDetails: { category: p.serviceCategory } } : {}),
                   ...(p.purpose ? { purpose: p.purpose } : {}),
                   ...(villaId ? { villaId } : {}),
                 });
@@ -4063,6 +5189,9 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
               message: `Visitor pass for ${p.visitorName} has been revoked successfully.`,
             };
           } else if (actionRecord.actionType === 'CREATE_AMENITY_BOOKING') {
+            if (!canUserBookAmenity(user)) {
+              throw new Error('Permission denied: user does not have permission to book amenities.');
+            }
             if (!amenityBookingService || typeof amenityBookingService.createBooking !== 'function') {
               throw new Error('Amenity booking service is currently unavailable.');
             }
@@ -4163,12 +5292,33 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
               }
             }
 
+            const actualPaymentStatus = String(cancelResult?.paymentStatus || '').toLowerCase();
+            const actualRefundAmount = cancelResult?.refundAmount ?? p.refundAmount ?? 0;
+            const actualRefundPct = cancelResult?.refundPercentage ?? p.refundPercentage ?? 100;
+
+            let cancelMessage = '';
+            if (actualPaymentStatus === 'refunded' || (actualRefundAmount > 0 && !['failed', 'refund_pending'].includes(actualPaymentStatus))) {
+              cancelMessage = `Booking for ${p.amenityName} (ID: ${p.bookingId}) has been cancelled. A refund of ₹${actualRefundAmount} (${actualRefundPct}%) has been credited to your digital wallet.`;
+            } else if (actualPaymentStatus === 'partial_refund') {
+              cancelMessage = `Booking for ${p.amenityName} (ID: ${p.bookingId}) has been cancelled. A partial refund of ₹${actualRefundAmount} (${actualRefundPct}%) has been credited to your digital wallet (Cancellation fee: ₹${p.cancellationFee || 0}).`;
+            } else if (actualPaymentStatus === 'refund_pending') {
+              cancelMessage = `Booking for ${p.amenityName} (ID: ${p.bookingId}) has been cancelled. A refund of ₹${actualRefundAmount} has been initiated and is currently processing.`;
+            } else if (actualRefundPct === 0 || actualRefundAmount === 0) {
+              cancelMessage = `Booking for ${p.amenityName} (ID: ${p.bookingId}) has been cancelled. As per the cancellation policy, this cancellation is non-refundable (0% refund).`;
+            } else if (actualPaymentStatus === 'failed') {
+              cancelMessage = `Booking for ${p.amenityName} (ID: ${p.bookingId}) has been cancelled, but wallet refund processing failed. Please contact community administration.`;
+            } else {
+              cancelMessage = `Booking for ${p.amenityName} (ID: ${p.bookingId}) has been cancelled successfully.`;
+            }
+
             executionResult = {
               bookingId: p.bookingId,
               amenityName: p.amenityName,
               status: 'cancelled',
-              refundAmount: cancelResult?.refundAmount ?? null,
-              message: `Booking for ${p.amenityName} (ID: ${p.bookingId}) has been cancelled successfully.`,
+              paymentStatus: actualPaymentStatus || 'cancelled',
+              refundAmount: actualRefundAmount,
+              refundPercentage: actualRefundPct,
+              message: cancelMessage,
             };
           } else if (actionRecord.actionType === 'CREATE_PERSONAL_EXPENSE') {
             if (!personalExpenseService || typeof personalExpenseService.createTransaction !== 'function') {
@@ -4232,6 +5382,9 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
               message: `Personal expense of ₹${p.amount} for "${p.merchantOrSource}" has been recorded successfully!${txResult?.duplicateWarning ? ' (Note: Possible duplicate transaction detected)' : ''}`,
             };
           } else if (actionRecord.actionType === 'CREATE_COMPLAINT') {
+            if (!canUserRaiseComplaint(user)) {
+              throw new Error('Permission denied: user does not have permission to file complaints.');
+            }
             if (!complaintService || typeof complaintService.createComplaint !== 'function') {
               throw new Error('Complaint service is currently unavailable.');
             }
@@ -4322,6 +5475,145 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
               complaintNumber: p.complaintNumber,
               status: 'Cancelled',
               message: `Complaint ticket #${p.complaintNumber || p.complaintId} has been cancelled successfully.`,
+            };
+          } else if (actionRecord.actionType === 'CREATE_MAINTENANCE_REQUEST') {
+            if (!complaintService || typeof complaintService.createComplaint !== 'function') {
+              throw new Error('Complaint service is currently unavailable.');
+            }
+
+            const p = actionRecord.params;
+            const unitId = p.unitId || user?.villaId || user?.tenantMembership?.villaId || null;
+            const residentName = user?.name || user?.fullName || 'Resident';
+
+            let createdMaintenance = null;
+            try {
+              createdMaintenance = await complaintService.createComplaint(
+                orgId,
+                userId,
+                residentName,
+                {
+                  title: p.title,
+                  description: p.description,
+                  category: p.category || 'General Maintenance',
+                  subCategory: p.subCategory || p.serviceType || '',
+                  priority: p.priority || 'Medium',
+                  department: 'Maintenance',
+                  preferredVisitDate: p.preferredVisitDate,
+                  preferredVisitTime: p.preferredVisitTime,
+                  isEmergency: Boolean(p.isEmergency),
+                  location: p.location || '',
+                  attachments: p.attachments || [],
+                  unitId,
+                  ignoreDuplicateWarning: true,
+                },
+                {
+                  ipAddress: '127.0.0.1',
+                  browser: 'AI-Assistant',
+                  device: 'Mobile-App',
+                },
+                `ai_maint_${actionRecord.actionId}`
+              );
+            } catch (cErr) {
+              if (cErr.message && cErr.message.includes('idempotent')) {
+                if (typeof complaintService.getComplaintByAiStatus === 'function') {
+                  createdMaintenance = await complaintService.getComplaintByAiStatus(orgId, userId, actionRecord.actionId).catch(() => null);
+                }
+              }
+              if (!createdMaintenance) throw cErr;
+            }
+
+            const mNumber = createdMaintenance.complaintNumber || String(createdMaintenance._id);
+            executionResult = {
+              complaintId: String(createdMaintenance._id),
+              complaintNumber: mNumber,
+              title: p.title,
+              category: p.category || 'General Maintenance',
+              department: 'Maintenance',
+              status: createdMaintenance.status || 'Open',
+              priority: createdMaintenance.priority || p.priority || 'Medium',
+              preferredVisitDate: p.preferredVisitDate,
+              preferredVisitTime: p.preferredVisitTime,
+              slaDueDate: createdMaintenance.slaDueDate,
+              message: `Maintenance request registered successfully! Ticket #${mNumber}. Category: ${p.category || 'General Maintenance'}. Priority: ${createdMaintenance.priority || p.priority}. Status: ${createdMaintenance.status || 'Open'}.`,
+            };
+          } else if (actionRecord.actionType === 'ESCALATE_COMPLAINT') {
+            if (!complaintService || typeof complaintService.escalateComplaint !== 'function') {
+              throw new Error('Complaint service is currently unavailable.');
+            }
+
+            const p = actionRecord.params;
+            const userName = user?.name || user?.fullName || 'Resident';
+            const userRole = user?.role || 'Resident';
+
+            const updated = await complaintService.escalateComplaint(
+              p.complaintId,
+              orgId,
+              {
+                source: 'ai_assistant',
+                reason: p.reason || 'Escalated by resident via AI Assistant',
+                userName,
+                userId,
+                userRole,
+              }
+            );
+
+            executionResult = {
+              complaintId: p.complaintId,
+              complaintNumber: p.complaintNumber || updated?.complaintNumber,
+              status: updated?.status || 'Escalated',
+              escalationLevel: updated?.escalationLevel || 1,
+              message: `Ticket #${p.complaintNumber || p.complaintId} has been escalated to Level ${updated?.escalationLevel || 1} for immediate supervisor review.`,
+            };
+          } else if (actionRecord.actionType === 'REOPEN_COMPLAINT') {
+            if (!complaintService || typeof complaintService.reopenComplaint !== 'function') {
+              throw new Error('Complaint service is currently unavailable.');
+            }
+
+            const p = actionRecord.params;
+            const userName = user?.name || user?.fullName || 'Resident';
+            const userRole = user?.role || 'Resident';
+
+            const updated = await complaintService.reopenComplaint(
+              p.complaintId,
+              orgId,
+              userId,
+              userName,
+              userRole,
+              p.reason || 'Issue persists, reopening ticket.',
+              { source: 'ai_assistant' }
+            );
+
+            executionResult = {
+              complaintId: p.complaintId,
+              complaintNumber: p.complaintNumber || updated?.complaintNumber,
+              status: 'Reopened',
+              reopenCount: updated?.reopenCount || 1,
+              message: `Ticket #${p.complaintNumber || p.complaintId} has been reopened successfully. Our maintenance team has been notified.`,
+            };
+          } else if (actionRecord.actionType === 'ADD_COMPLAINT_COMMENT') {
+            if (!complaintService || typeof complaintService.addComment !== 'function') {
+              throw new Error('Complaint service is currently unavailable.');
+            }
+
+            const p = actionRecord.params;
+            const userName = user?.name || user?.fullName || 'Resident';
+            const userRole = user?.role || 'Resident';
+
+            await complaintService.addComment(
+              p.complaintId,
+              orgId,
+              userId,
+              userRole,
+              userName,
+              p.comment,
+              p.attachments || [],
+              Boolean(p.isInternal)
+            );
+
+            executionResult = {
+              complaintId: p.complaintId,
+              complaintNumber: p.complaintNumber,
+              message: `Your note has been added to ticket #${p.complaintNumber || p.complaintId}.`,
             };
           } else if (actionRecord.actionType === 'ACKNOWLEDGE_NOTICE') {
             if (!noticeAcknowledgementService || typeof noticeAcknowledgementService.acknowledgeNotice !== 'function') {
@@ -4515,6 +5807,37 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
               route: '/(resident)/notices',
               message: `Community notice "${p.title}" [${p.priority} Priority] has been published successfully to the Notice Board! Notice ID: ${noticeId}.`,
             };
+          } else if (actionRecord.actionType === 'SUBMIT_ISSUE_REPORT') {
+            const submitFn = issueReportService?.submitReport || issueReportService?.default?.submitReport;
+            if (typeof submitFn !== 'function') {
+              throw new Error('Issue report service is currently unavailable.');
+            }
+
+            const p = actionRecord.params;
+            const submitted = await submitFn(
+              user,
+              tenant,
+              {
+                title: p.title,
+                description: p.description || p.title,
+                feature: p.feature || 'GENERAL',
+                reportType: p.reportType || 'BUG',
+                source: 'AI_ASSISTANT',
+              },
+              null,
+              `air_${actionRecord.actionId}`
+            );
+
+            const reportNumber = submitted?.reportNumber || `IR-${Date.now().toString().slice(-6)}`;
+            executionResult = {
+              reportNumber,
+              title: p.title,
+              feature: p.feature,
+              reportType: p.reportType,
+              status: 'SUBMITTED',
+              route: '/(resident)/issue-reports',
+              message: `Issue report submitted successfully! Ticket #${reportNumber}. Our engineering team has been notified.`,
+            };
           } else {
             throw new Error(`Unsupported action type: ${actionRecord.actionType}`);
           }
@@ -4533,6 +5856,7 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
                          executionResult.complaintNumber ||
                          executionResult.complaintId ||
                          executionResult.noticeId ||
+                         executionResult.reportNumber ||
                          executionResult.pollId;
 
           if (actionRecord.actionType.includes('VISITOR')) {
@@ -4552,10 +5876,22 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             resRoute = '/(resident)/expense-manager';
           } else if (actionRecord.actionType === 'CREATE_COMPLAINT') {
             resTitle = 'Complaint Submitted';
-            resRoute = '/(resident)/complaints/manage';
+            resRoute = '/(resident)/complaints/my-tickets';
+          } else if (actionRecord.actionType === 'CREATE_MAINTENANCE_REQUEST') {
+            resTitle = 'Maintenance Request Submitted';
+            resRoute = '/(resident)/complaints/my-tickets';
+          } else if (actionRecord.actionType === 'ESCALATE_COMPLAINT') {
+            resTitle = 'Ticket Escalated';
+            resRoute = '/(resident)/complaints/my-tickets';
+          } else if (actionRecord.actionType === 'REOPEN_COMPLAINT') {
+            resTitle = 'Ticket Reopened';
+            resRoute = '/(resident)/complaints/my-tickets';
+          } else if (actionRecord.actionType === 'ADD_COMPLAINT_COMMENT') {
+            resTitle = 'Note Added to Ticket';
+            resRoute = '/(resident)/complaints/my-tickets';
           } else if (actionRecord.actionType === 'CANCEL_COMPLAINT') {
             resTitle = 'Ticket Cancelled';
-            resRoute = '/(resident)/complaints/manage';
+            resRoute = '/(resident)/complaints/my-tickets';
           } else if (actionRecord.actionType === 'ACKNOWLEDGE_NOTICE') {
             resTitle = 'Notice Acknowledged';
             resRoute = '/(resident)/notices';
@@ -4568,6 +5904,9 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
           } else if (actionRecord.actionType === 'CREATE_NOTICE') {
             resTitle = 'Notice Published';
             resRoute = '/(resident)/notices';
+          } else if (actionRecord.actionType === 'SUBMIT_ISSUE_REPORT') {
+            resTitle = 'Issue Report Submitted';
+            resRoute = '/(resident)/issue-reports';
           }
 
           if (executionResult?.status === 'pending_payment') {
@@ -4622,6 +5961,281 @@ export async function executeAssistantTool(user, tenant, toolName, toolArgs = {}
             message: 'The pending request was cancelled. No changes were made.',
           },
           message: 'The pending request was cancelled. No changes were made.',
+        };
+      }
+
+      // 10. Digital Wallet Balance
+      case 'get_wallet_balance': {
+        if (!walletService) {
+          return { success: false, error: 'Wallet service is currently unavailable.' };
+        }
+        const walletData = await walletService.getWalletData(userId, orgId);
+        const displayBalance = Number(walletData?.balance ?? walletData?.wallet?.balance ?? 0);
+        const activePassesCount = (walletData?.activePasses || []).length;
+        const txCount = (walletData?.transactions || []).length;
+        return {
+          success: true,
+          data: {
+            balance: displayBalance,
+            currency: 'INR',
+            activePassesCount,
+            recentTransactionsCount: txCount,
+            message: `Your current wallet balance is ₹${displayBalance.toFixed(2)}.`,
+          },
+          action: {
+            type: 'navigation',
+            label: 'View Digital Wallet',
+            route: '/(resident)/wallet',
+            screenId: 'wallet',
+            targetName: 'Digital Wallet',
+            category: 'Finance',
+          },
+        };
+      }
+
+      // 11. Digital Wallet Transactions
+      case 'get_wallet_transactions': {
+        if (!walletService) {
+          return { success: false, error: 'Wallet service is currently unavailable.' };
+        }
+        const limit = Math.max(1, Math.min(20, parseInt(toolArgs?.limit, 10) || 5));
+        const transactions = await walletService.getWalletTransactions(userId, orgId);
+        const list = Array.isArray(transactions) ? transactions : [];
+        const sliced = list.slice(0, limit);
+        return {
+          success: true,
+          data: {
+            transactions: sliced.map((t) => ({
+              id: t._id || t.id,
+              type: t.type,
+              amount: t.amount,
+              description: t.description || 'Transaction',
+              status: t.status,
+              createdAt: t.createdAt,
+            })),
+            count: sliced.length,
+            totalAvailable: list.length,
+          },
+          action: {
+            type: 'navigation',
+            label: 'Open Wallet Ledger',
+            route: '/(resident)/wallet',
+            screenId: 'wallet',
+            targetName: 'Digital Wallet',
+            category: 'Finance',
+          },
+        };
+      }
+
+      // 12. In-App Notifications
+      case 'get_my_notifications': {
+        if (!notificationService) {
+          return { success: false, error: 'Notification service is currently unavailable.' };
+        }
+        const page = Math.max(1, parseInt(toolArgs?.page, 10) || 1);
+        const limit = Math.max(1, Math.min(20, parseInt(toolArgs?.limit, 10) || 5));
+        const unreadOnly = Boolean(toolArgs?.unreadOnly);
+        const res = await notificationService.getUserNotifications(userId, page, limit, orgId);
+        let items = res?.notifications || [];
+        if (unreadOnly) {
+          items = items.filter((n) => !n.isRead && !n.read);
+        }
+        return {
+          success: true,
+          data: {
+            notifications: items.map((n) => ({
+              id: n._id || n.id,
+              title: n.title,
+              message: n.message || n.body,
+              type: n.type,
+              isRead: Boolean(n.isRead || n.read),
+              createdAt: n.createdAt,
+            })),
+            unreadCount: res?.pagination?.unreadRecords ?? items.filter((n) => !n.isRead && !n.read).length,
+            totalRecords: res?.pagination?.totalRecords ?? items.length,
+          },
+          action: {
+            type: 'navigation',
+            label: 'View All Notifications',
+            route: '/(resident)/notifications',
+            screenId: 'notifications',
+            targetName: 'Notifications',
+            category: 'Communication',
+          },
+        };
+      }
+
+      // 13. Mark Notifications Read
+      case 'prepare_notifications_mark_read': {
+        if (!notificationService) {
+          return { success: false, error: 'Notification service is currently unavailable.' };
+        }
+        if (toolArgs?.markAll) {
+          await notificationService.markAllAsRead(userId, orgId);
+          return {
+            success: true,
+            data: {
+              markedAll: true,
+              message: 'All notifications have been marked as read.',
+            },
+          };
+        } else if (toolArgs?.notificationId) {
+          await notificationService.markAsRead(toolArgs.notificationId, userId);
+          return {
+            success: true,
+            data: {
+              notificationId: toolArgs.notificationId,
+              message: 'Notification marked as read.',
+            },
+          };
+        }
+        return { success: false, error: 'Either notificationId or markAll is required.' };
+      }
+
+      // 14. Issue Reports List
+      case 'get_issue_reports': {
+        if (!issueReportService) {
+          return { success: false, error: 'Issue report service is currently unavailable.' };
+        }
+        const limit = Math.max(1, Math.min(20, parseInt(toolArgs?.limit, 10) || 5));
+        const getFn = issueReportService?.getCommunityReports || issueReportService?.default?.getCommunityReports;
+        let reports = [];
+        if (typeof getFn === 'function') {
+          const res = await getFn(orgId, { limit, status: toolArgs?.status });
+          reports = Array.isArray(res?.reports || res?.data || res) ? (res?.reports || res?.data || res) : [];
+        }
+        return {
+          success: true,
+          data: {
+            reports: reports.slice(0, limit).map((r) => ({
+              reportNumber: r.reportNumber,
+              title: r.title,
+              feature: r.feature,
+              reportType: r.reportType,
+              status: r.status,
+              createdAt: r.createdAt,
+            })),
+            count: reports.length,
+          },
+          action: {
+            type: 'navigation',
+            label: 'View Issue Reports',
+            route: '/(resident)/issue-reports',
+            screenId: 'issue-reports',
+            targetName: 'Issue Reports',
+            category: 'Support',
+          },
+        };
+      }
+
+      // 15. Prepare Issue Report Proposal
+      case 'prepare_issue_report': {
+        const title = toolArgs?.title?.trim();
+        const description = toolArgs?.description?.trim() || title;
+        if (!title) {
+          return { success: false, error: 'Issue title is required.' };
+        }
+        const actionPayload = {
+          title,
+          description,
+          feature: toolArgs?.feature || 'GENERAL',
+          reportType: toolArgs?.reportType || 'BUG',
+        };
+        const proposal = await createPendingActionProposal({
+          actionType: 'SUBMIT_ISSUE_REPORT',
+          userId,
+          orgId,
+          params: actionPayload,
+          summary: `Submit issue report: "${title}"`,
+        });
+        return {
+          success: true,
+          data: {
+            proposalReady: true,
+            actionId: proposal.actionId,
+            actionType: 'SUBMIT_ISSUE_REPORT',
+            confirmationToken: proposal.confirmationToken,
+            summary: `Submit issue report: "${title}"`,
+            message: `I have prepared the issue report for "${title}". Please confirm to submit it to the support desk.`,
+            details: actionPayload,
+          },
+          action: {
+            type: 'confirmation',
+            label: 'Confirm Issue Submission',
+            actionId: proposal.actionId,
+            actionType: 'SUBMIT_ISSUE_REPORT',
+            confirmationToken: proposal.confirmationToken,
+            title: `Submit issue report: "${title}"`,
+            route: '/(resident)/issue-reports',
+          },
+        };
+      }
+
+      // 16. Emergency & Directory Contacts
+      case 'get_emergency_contacts': {
+        const category = (toolArgs?.category || '').toLowerCase().trim();
+        let directoryMembers = [];
+        const dirFn = directoryService?.getDirectory || directoryService?.default?.getDirectory;
+        if (typeof dirFn === 'function') {
+          try {
+            const dirResult = await dirFn({
+              orgId,
+              role: category ? (category.includes('guard') || category.includes('sec') ? 'guard' : category) : undefined,
+              limit: 20,
+            });
+            directoryMembers = dirResult?.data || dirResult?.members || [];
+          } catch (e) {
+            logger.warn(`[AIAssistantTools] get_emergency_contacts directory fetch failed: ${e.message}`);
+          }
+        }
+        const emergencyContacts = [
+          { role: 'Security Main Gate', name: 'Main Gate Intercom', phone: '080-4567-0001', intercom: '100', category: 'security' },
+          { role: 'Security Clubhouse', name: 'Clubhouse Security', phone: '080-4567-0002', intercom: '101', category: 'security' },
+          { role: 'Facility Management', name: 'Estate Office', phone: '080-4567-0010', intercom: '110', category: 'management' },
+          { role: 'Maintenance Helpdesk', name: 'Quick Repair Team', phone: '080-4567-0020', intercom: '120', category: 'maintenance' },
+          { role: 'Emergency Medical', name: 'Ambulance Response', phone: '108 / 112', intercom: '911', category: 'medical' },
+          { role: 'Fire Emergency', name: 'Fire Control', phone: '101', intercom: '912', category: 'fire' },
+        ];
+        const filtered = category
+          ? emergencyContacts.filter((c) => c.category === category || c.role.toLowerCase().includes(category))
+          : emergencyContacts;
+        return {
+          success: true,
+          data: {
+            emergencyContacts: filtered,
+            directoryStaff: directoryMembers.slice(0, 5).map((m) => ({
+              name: m.name,
+              role: m.role,
+              designation: m.designation,
+              phone: m.phone,
+              intercomNumber: m.intercomNumber,
+            })),
+            totalContacts: filtered.length,
+          },
+          action: {
+            type: 'navigation',
+            label: 'Open Community Directory',
+            route: '/(resident)/directory',
+            screenId: 'directory',
+            targetName: 'Directory',
+            category: 'Communication',
+          },
+        };
+      }
+
+      // 17. Assistant Feedback
+      case 'submit_ai_feedback': {
+        const rating = Number(toolArgs?.rating) || 5;
+        const feedback = toolArgs?.feedback?.trim() || '';
+        const helpful = toolArgs?.helpful !== undefined ? Boolean(toolArgs.helpful) : rating >= 4;
+        logger.info(`[AIAssistantFeedback] Feedback received from user ${userId}: rating=${rating}, helpful=${helpful}, text="${feedback}"`);
+        return {
+          success: true,
+          data: {
+            rating,
+            helpful,
+            message: 'Thank you for your feedback! It helps improve NAHOM AI Assistant.',
+          },
         };
       }
 

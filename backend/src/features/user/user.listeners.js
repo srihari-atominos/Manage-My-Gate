@@ -15,12 +15,12 @@ const INVITATION_VALID_DAYS = 7;
 
 const DEFAULT_INVITE_BODY = `
 <div style="font-family: 'Hanken Grotesk', sans-serif; padding: 30px; color: #171717; background-color: #FFF8EF; max-width: 600px; margin: 0 auto; border-radius: 18px;">
-  <h2 style="color: #F45A0A;">Workspace Invitation</h2>
-  <p>You have been invited to join our secure workspace.</p>
-  <p>Please click the button below to complete your profile registration and activate your account:</p>
+  <h2 style="color: #F45A0A;">Welcome to {{community_name}}!</h2>
+  <p>You have been added to our community on Nahom.</p>
+  <p>Please click the button below to sign in directly to your community:</p>
   <p style="margin: 30px 0;">
     <a href="{{invite_link}}" style="background-color: #F45A0A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 18px; font-weight: bold; display: inline-block;">
-      Accept Invitation
+      Step into your Community
     </a>
   </p>
   <p style="color: #6F6A64; font-size: 0.85rem; margin-top: 40px;">
@@ -124,7 +124,7 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
       logger.error(`In-app invitation notification dispatch error: ${notifErr.message}`);
     }
 
-    let subject = `Invitation to join ${communityName}`;
+    let subject = `Welcome to ${communityName}!`;
     let rawTemplateBody = null;
     try {
       const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'invitation');
@@ -147,7 +147,7 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
       ? `<div style="font-size: 15px; line-height: 1.65; color: #334155; margin: 0 0 16px 0;">${rawTemplateBody.replace(/{{invite_link}}/g, inviteLink).replace(/{{community_name}}/g, communityName).replace(/\r?\n/g, '<br/>')}</div>`
       : `<p style="font-size: 15px; line-height: 1.65; color: #334155; margin: 0 0 16px 0;">
           Hello,<br/><br/>
-          You have been officially invited to join <strong>${communityName}</strong> on the Nahom platform. Please review your details below and accept your invitation to get started.
+          You have been officially added to <strong>${communityName}</strong> on the Nahom platform. Your account and membership details are ready below. You can sign in right away via our web portal or mobile app.
         </p>`;
 
     const customInviteBody = `
@@ -281,7 +281,7 @@ userEvents.on('USER_INVITED', async ({ email, phone, orgId, invitationToken, inv
           <tr>
             <td style="background-color: #f1f5f9; padding: 24px 32px; text-align: center;">
               <div style="font-size: 12px; color: #64748b; line-height: 1.6; margin-bottom: 16px;">
-                <strong>Security Notice:</strong> This invitation is single-use, secure, and valid for 24 hours. If you did not request this email, you may decline or ignore it.
+                <strong>Welcome:</strong> You can sign in anytime using the web portal or by downloading the Nahom mobile app using your registered email or phone number.
               </div>
               ${!isBulk ? `
               <div style="font-size: 12px; color: #64748b; margin-bottom: 24px;">

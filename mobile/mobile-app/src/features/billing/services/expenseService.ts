@@ -86,26 +86,36 @@ export const expenseService = {
     try {
       const res: any = unwrap(await apiClient.post('/expenses/receipt-ocr/preview', formData));
       if (res?.status === 'NOT_CONFIGURED' && Platform.OS === 'web' && typeof window !== 'undefined') {
-        try {
-          const localFormData = await receiptFormData('receipt', file);
-          const localOrigin = `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
-          const localRes: any = unwrap(await apiClient.post(`${localOrigin}/expenses/receipt-ocr/preview`, localFormData));
-          if (localRes?.status === 'COMPLETED' || localRes?.result) {
-            return localRes;
-          }
-        } catch {}
+        const candidateHosts = [window.location.hostname || 'localhost', '127.0.0.1', 'localhost'].filter(
+          (h, i, arr) => arr.indexOf(h) === i
+        );
+        for (const host of candidateHosts) {
+          try {
+            const localFormData = await receiptFormData('receipt', file);
+            const localUrl = `http://${host}:5006/api/v1/expenses/receipt-ocr/preview`;
+            const localRes: any = unwrap(await apiClient.post(localUrl, localFormData));
+            if (localRes?.status === 'COMPLETED' || localRes?.result) {
+              return localRes;
+            }
+          } catch {}
+        }
       }
       return res;
     } catch (err: any) {
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        try {
-          const localFormData = await receiptFormData('receipt', file);
-          const localOrigin = `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
-          const localRes: any = unwrap(await apiClient.post(`${localOrigin}/expenses/receipt-ocr/preview`, localFormData));
-          if (localRes?.status === 'COMPLETED' || localRes?.result) {
-            return localRes;
-          }
-        } catch {}
+        const candidateHosts = [window.location.hostname || 'localhost', '127.0.0.1', 'localhost'].filter(
+          (h, i, arr) => arr.indexOf(h) === i
+        );
+        for (const host of candidateHosts) {
+          try {
+            const localFormData = await receiptFormData('receipt', file);
+            const localUrl = `http://${host}:5006/api/v1/expenses/receipt-ocr/preview`;
+            const localRes: any = unwrap(await apiClient.post(localUrl, localFormData));
+            if (localRes?.status === 'COMPLETED' || localRes?.result) {
+              return localRes;
+            }
+          } catch {}
+        }
       }
       throw err;
     }

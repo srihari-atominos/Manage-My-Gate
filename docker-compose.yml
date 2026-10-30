@@ -106,6 +106,9 @@ services:
       - TZ=${TZ:-Asia/Kolkata}
       - REVIEW_STATIC_OTP=${REVIEW_STATIC_OTP:-123456}
       - REVIEW_IDENTIFIERS=${REVIEW_IDENTIFIERS:-naveen@atominosconsulting.com,naveenpv5886@gmail.com,+919847561230,+919786608686}
+      - EXPENSE_OCR_PROVIDER=${EXPENSE_OCR_PROVIDER:-tesseract-local}
+      - PERSONAL_EXPENSE_OCR_PROVIDER=${PERSONAL_EXPENSE_OCR_PROVIDER:-tesseract-local}
+      - TESSDATA_PREFIX=${TESSDATA_PREFIX:-/usr/share/tessdata}
     depends_on:
       mongodb:
         condition: service_healthy

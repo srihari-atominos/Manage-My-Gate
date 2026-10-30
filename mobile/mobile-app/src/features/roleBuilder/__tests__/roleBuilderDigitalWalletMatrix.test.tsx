@@ -40,9 +40,13 @@ describe('Role Builder — Digital Wallet & Ledger Dedicated Group Matrix', () =
       getByText('Prepaid wallet top-up, dues payments, and personal transaction receipts')
     ).toBeTruthy();
 
-    // Billing items must have their clear labels
-    expect(getByText('Billing Hub & Community Ledger')).toBeTruthy();
-    expect(getByText('Assessment Manager')).toBeTruthy();
+    // Exactly the 6 canonical Billing & Finance features must be present
+    expect(getByText('My Invoice')).toBeTruthy();
+    expect(getByText('Assessments')).toBeTruthy();
+    expect(getByText('Billing Ledger')).toBeTruthy();
+    expect(getByText('Billing Hub')).toBeTruthy();
+    expect(getByText('Community Expenses')).toBeTruthy();
+    expect(getByText('Community Finance')).toBeTruthy();
   });
 
   it('2. Clicking permission in Digital Wallet & Ledger group toggles billing:action_center', async () => {

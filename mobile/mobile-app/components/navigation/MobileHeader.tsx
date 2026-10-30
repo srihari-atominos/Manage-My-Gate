@@ -216,7 +216,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     const defaultComm = t('green_meadows', 'Green Meadows');
     const comm = activeCommunity ? translateText(activeCommunity) : defaultComm;
     if (isResidentRole && hasUnit && activeVilla) {
-      return `${activeVilla} â€¢ ${comm}`;
+      return `${activeVilla} • ${comm}`;
     }
     return comm;
   }, [isResidentRole, hasUnit, activeVilla, activeCommunity, language, t, translateText]);
@@ -302,7 +302,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={toggleTheme}
             activeOpacity={0.7}
-            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center active:bg-neutral-100 dark:active:bg-muted shadow-xs"
+            className="size-11 rounded-full bg-card border border-border items-center justify-center active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Toggle Light and Dark Theme"
           >
@@ -317,7 +317,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={startSession}
             activeOpacity={0.7}
-            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center active:bg-neutral-100 dark:active:bg-muted shadow-xs"
+            className="size-11 rounded-full bg-card border border-border items-center justify-center active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Open AI Assistant"
           >
@@ -328,7 +328,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center relative active:bg-neutral-100 dark:active:bg-muted shadow-xs"
+            className="size-11 rounded-full bg-card border border-border items-center justify-center relative active:bg-secondary shadow-2xs"
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
@@ -349,7 +349,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               router.navigate('/(resident)/profile' as any);
             }}
             activeOpacity={0.7}
-            className="size-11 rounded-full bg-white dark:bg-card border border-neutral-300 dark:border-border items-center justify-center active:bg-neutral-100 dark:active:bg-muted shadow-xs overflow-hidden"
+            className="size-11 rounded-full bg-card border border-border items-center justify-center active:bg-secondary shadow-2xs overflow-hidden"
             accessibilityRole="button"
             accessibilityLabel={t('profile', 'Profile')}
           >

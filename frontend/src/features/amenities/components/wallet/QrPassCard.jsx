@@ -55,12 +55,16 @@ const QrPassCard = memo(({ booking, onCancel }) => {
         </div>
 
         <div
-          className="bg-body p-3 mx-4 rounded shadow-sm text-center"
-          style={{ marginTop: '-15px' }}
+          className="bg-body p-3 mx-3 mx-sm-4 rounded shadow-sm text-center position-relative"
+          style={{ marginTop: '-15px', zIndex: 2 }}
         >
-          <div className="d-inline-block p-2 border rounded bg-body">
+          <div className="d-inline-block p-2 border rounded bg-white">
             {booking.qrPayload?.startsWith('data:image') ? (
-              <img src={booking.qrPayload} alt="QR Code" width={120} height={120} />
+              <img
+                src={booking.qrPayload}
+                alt="QR Code"
+                style={{ width: '120px', height: '120px', maxWidth: '100%' }}
+              />
             ) : (
               <QRCode
                 value={booking.qrPayload || 'invalid'}
@@ -68,6 +72,7 @@ const QrPassCard = memo(({ booking, onCancel }) => {
                 bgColor="#ffffff"
                 fgColor="#000000"
                 level="Q"
+                style={{ height: 'auto', maxWidth: '100%', width: '120px' }}
               />
             )}
           </div>

@@ -27,7 +27,9 @@ class AppUpdateRepository {
    * Update an existing release by ID
    */
   async updateById(id, updateData, session = null) {
-    return AppUpdate.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true, session });
+    const hasOperators = Object.keys(updateData).some((k) => k.startsWith('$'));
+    const atomicUpdate = hasOperators ? updateData : { $set: updateData };
+    return AppUpdate.findByIdAndUpdate(id, atomicUpdate, { new: true, runValidators: true, session });
   }
 
   /**

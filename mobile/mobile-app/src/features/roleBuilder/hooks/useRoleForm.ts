@@ -16,10 +16,12 @@ export const AMENITY_V2_TIER_PERMISSIONS: Record<AmenityTier, string[]> = {
 const allAmenityTierPermissions = new Set(Object.values(AMENITY_V2_TIER_PERMISSIONS).flat());
 
 const BILLING_EXPENSE_PERMISSIONS = [
+  'billing:expenses',
   'billing:view_expense',
   'billing:create_expense',
   'billing:record_expense_payment',
   'billing:reconcile_expense_payment',
+  'billing:pay_online_expense',
 ];
 
 export const detectInitialAmenityTier = (permissions: string[] = []): AmenityTier => {
@@ -168,6 +170,21 @@ export const useRoleForm = ({ role, visible, onSave, allowedPermissions = [] }: 
     // Expand any virtual full_access or staff codes into their real backend permissions
     const expandedGroupCodes = groupCodes.flatMap(code => {
       if (code === 'billing:expenses') return BILLING_EXPENSE_PERMISSIONS;
+      if (code === 'billing:assessments' || code === 'billing:assessment_manager') {
+        return ['billing:assessments', 'billing:assessment_manager'];
+      }
+      if (code === 'billing:ledger') {
+        return ['billing:ledger', 'billing:financial_ledger', 'billing:reconciliation_manage'];
+      }
+      if (code === 'billing:my_invoices') {
+        return ['billing:my_invoices', 'billing:my_dues'];
+      }
+      if (code === 'billing:dashboard') {
+        return ['billing:dashboard', 'billing:community_finance'];
+      }
+      if (code === 'billing:billing_hub') {
+        return ['billing:billing_hub'];
+      }
       if (String(code).endsWith(':full_access')) {
         const category = code.split(':')[0];
         return [`${category}:create`, `${category}:read`, `${category}:update`, `${category}:delete`, `${category}:manage`, `${category}:super_admin`];
@@ -225,6 +242,46 @@ export const useRoleForm = ({ role, visible, onSave, allowedPermissions = [] }: 
       }
     } else if (permValue === 'billing:expenses') {
       const targetCodes = BILLING_EXPENSE_PERMISSIONS;
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]));
+      } else {
+        const toRemove = new Set(targetCodes);
+        newValue = currentPermissions.filter((p) => !toRemove.has(p));
+      }
+    } else if (permValue === 'billing:assessments' || permValue === 'billing:assessment_manager') {
+      const targetCodes = ['billing:assessments', 'billing:assessment_manager'];
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]));
+      } else {
+        const toRemove = new Set(targetCodes);
+        newValue = currentPermissions.filter((p) => !toRemove.has(p));
+      }
+    } else if (permValue === 'billing:ledger') {
+      const targetCodes = ['billing:ledger', 'billing:financial_ledger', 'billing:reconciliation_manage'];
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]));
+      } else {
+        const toRemove = new Set(targetCodes);
+        newValue = currentPermissions.filter((p) => !toRemove.has(p));
+      }
+    } else if (permValue === 'billing:my_invoices') {
+      const targetCodes = ['billing:my_invoices', 'billing:my_dues'];
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]));
+      } else {
+        const toRemove = new Set(targetCodes);
+        newValue = currentPermissions.filter((p) => !toRemove.has(p));
+      }
+    } else if (permValue === 'billing:dashboard') {
+      const targetCodes = ['billing:dashboard', 'billing:community_finance'];
+      if (checked) {
+        newValue = Array.from(new Set([...currentPermissions, ...targetCodes]));
+      } else {
+        const toRemove = new Set(targetCodes);
+        newValue = currentPermissions.filter((p) => !toRemove.has(p));
+      }
+    } else if (permValue === 'billing:billing_hub') {
+      const targetCodes = ['billing:billing_hub'];
       if (checked) {
         newValue = Array.from(new Set([...currentPermissions, ...targetCodes]));
       } else {

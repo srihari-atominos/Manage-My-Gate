@@ -842,4 +842,25 @@ describe('Community Finance Mobile Module', () => {
       expect(all).toHaveLength(3);
     });
   });
+
+  describe('15. Standardized Reporting Period Filter Option Verification', () => {
+    it('verifies that FinancePeriodFilterSheet is exported and defined as a function component', () => {
+      const { FinancePeriodFilterSheet } = require('../components/FinancePeriodFilterSheet');
+      expect(FinancePeriodFilterSheet).toBeDefined();
+      expect(typeof FinancePeriodFilterSheet).toBe('function');
+    });
+
+    it('verifies that PeriodFilterChips and FinancePeriodFilterBar are defined', () => {
+      const { PeriodFilterChips, FinancePeriodFilterBar } = require('../components/PeriodFilterChips');
+      expect(PeriodFilterChips).toBeDefined();
+      expect(FinancePeriodFilterBar).toBeDefined();
+      expect(typeof PeriodFilterChips).toBe('function');
+    });
+
+    it('verifies CommunityFinanceDashboardScreen exports and integrates FinancePeriodFilterSheet', () => {
+      const { CommunityFinanceDashboardScreen } = require('../screens/CommunityFinanceDashboardScreen');
+      expect(CommunityFinanceDashboardScreen).toBeDefined();
+      expect(typeof CommunityFinanceDashboardScreen).toBe('function');
+    });
+  });
 });

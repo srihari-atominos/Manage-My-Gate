@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ScrollView } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/button';
@@ -94,7 +94,7 @@ export const StaffAttendanceFilterSheet: React.FC<StaffAttendanceFilterSheetProp
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Attendance Filters">
-      <ScrollView className="px-4 py-2" contentContainerStyle={{ paddingBottom: 40 }}>
+      <View className="px-1 py-1">
         <View className="mb-5">
           <Text className="text-sm font-semibold text-foreground mb-2.5">Attendance Status</Text>
           <View className="flex-row flex-wrap gap-2">
@@ -145,7 +145,7 @@ export const StaffAttendanceFilterSheet: React.FC<StaffAttendanceFilterSheetProp
           <Button variant="outline" className="flex-1" onPress={() => { setLocalStartDate(''); setLocalEndDate(''); setDateError(null); onReset(); }}>Reset Filters</Button>
           <Button variant="default" className="flex-1" onPress={apply}>Apply Filters</Button>
         </View>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 };

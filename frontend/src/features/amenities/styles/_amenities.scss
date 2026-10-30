@@ -1079,3 +1079,112 @@
     padding: 8px 4px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   WALLET & TOP-UP RESPONSIVE STYLING
+═══════════════════════════════════════════════════════════ */
+.wallet-hero-card {
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: var(--radius-lg, 16px);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.wallet-balance-amount {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.wallet-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.wallet-preset-chip {
+  padding: 10px 14px;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 10px;
+  background: var(--surface-bg, #f8fafc);
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    border-color: var(--primary, #0084ff);
+    background: var(--primary-light, rgba(0, 132, 255, 0.08));
+    color: var(--primary, #0084ff);
+  }
+
+  &.active {
+    border-color: var(--primary, #0084ff);
+    background: var(--primary-light, rgba(0, 132, 255, 0.15));
+    color: var(--primary, #0084ff);
+    font-weight: 700;
+  }
+}
+
+.transaction-card-mobile {
+  border-radius: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:active {
+    transform: scale(0.99);
+  }
+}
+
+@media (max-width: 768px) {
+  .amenity-os-theme {
+    .view-container {
+      padding: 16px 12px;
+      max-width: 100% !important;
+    }
+    .card {
+      padding: 16px;
+      border-radius: 14px;
+    }
+    .wallet-hero-card {
+      padding: 16px;
+    }
+    .wallet-balance-amount {
+      font-size: 1.85rem;
+    }
+  }
+
+  .wallet-recharge-modal {
+    .modal-dialog {
+      margin: 8px;
+      max-width: calc(100% - 16px);
+    }
+  }
+
+  .booking-confirmation-modal {
+    .modal-dialog {
+      margin: 8px;
+      max-width: calc(100% - 16px);
+    }
+  }
+}
+
+@media (max-width: 576px) {
+  .wallet-preset-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .wallet-topup-btn {
+    min-height: 44px;
+    font-size: 15px;
+  }
+}
+

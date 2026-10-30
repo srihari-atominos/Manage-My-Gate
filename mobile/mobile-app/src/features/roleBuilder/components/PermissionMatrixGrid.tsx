@@ -19,16 +19,19 @@ import { Checkbox } from '@/components/forms/Checkbox';
 const formatPermissionLabel = (permissionString: string) => {
   const exactLabels: Record<string, string> = {
     'billing:action_center': 'Digital Wallet & Resident Ledger',
-    'billing:dashboard': 'Billing Hub & Community Ledger',
-    'billing:billing_hub': 'Billing & Invoice Dashboard',
-    'billing:my_dues': 'Resident Invoices & Dues',
     'billing:my_invoices': 'My Invoice',
+    'billing:my_dues': 'Resident Invoices & Dues',
+    'billing:assessments': 'Assessments',
+    'billing:assessment_manager': 'Assessments',
     'billing:ledger': 'Billing Ledger',
     'billing:financial_ledger': 'Financial Ledger',
     'billing:reconciliation_manage': 'Payment Reconciliation',
-    'billing:expenses': 'Expenses',
-    'billing:pay_online_expense': 'Pay Online Expense',
-    'billing:assessment_manager': 'Assessment Manager',
+    'billing:billing_hub': 'Billing Hub',
+    'billing:expenses': 'Community Expenses',
+    'billing:view_expense': 'Community Expenses',
+    'billing:pay_online_expense': 'Community Expenses',
+    'billing:dashboard': 'Community Finance',
+    'billing:community_finance': 'Community Finance',
     'notices:active_board': 'Resident Feed',
     'notices:polls': 'Community Engagement',
   };
@@ -49,10 +52,28 @@ const formatPermissionLabel = (permissionString: string) => {
   return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
-const getPermissionDescription = (permissionString: string) =>
-  String(permissionString).toLowerCase().replace(/\./g, ':') === 'billing:action_center'
-    ? 'Prepaid wallet top-up, dues payments, and personal transaction receipts'
-    : '';
+const getPermissionDescription = (permissionString: string) => {
+  const normalized = String(permissionString).toLowerCase().replace(/\./g, ':');
+  switch (normalized) {
+    case 'billing:my_invoices':
+      return 'Resident invoices, billing dues, and payment history';
+    case 'billing:assessments':
+    case 'billing:assessment_manager':
+      return 'Assessment cycles, rule formulas, and recurring charges';
+    case 'billing:ledger':
+      return 'Complete invoice ledger, collections status, and settlement records';
+    case 'billing:billing_hub':
+      return 'Billing management console, demands, and invoicing overview';
+    case 'billing:expenses':
+      return 'Record community bills, track receipts, and approve disbursements';
+    case 'billing:dashboard':
+      return 'Executive financial health, net cash flow, reserve runway, and reports';
+    case 'billing:action_center':
+      return 'Prepaid wallet top-up, dues payments, and personal transaction receipts';
+    default:
+      return '';
+  }
+};
 export const isPermissionSelected = (perm: any, selectedIds: string[] = []) => {
   if (!perm || !selectedIds || selectedIds.length === 0) return false;
   const permValue = String(perm?.name || perm?.code || perm?._id || perm);
@@ -63,7 +84,12 @@ export const isPermissionSelected = (perm: any, selectedIds: string[] = []) => {
   }
 
   if (Array.isArray(perm?.permissionAliases)) {
-    return perm.permissionAliases.every((alias: string) => selectedIds.some((id) => String(id).toLowerCase().replace(/\./g, ':') === alias));
+    const normalizedSelected = new Set(
+      selectedIds.map((id) => String(id).toLowerCase().replace(/\./g, ':'))
+    );
+    if (perm.permissionAliases.some((alias: string) => normalizedSelected.has(alias.toLowerCase()))) {
+      return true;
+    }
   }
 
   if (selectedIds.includes(permValue)) return true;
@@ -240,32 +266,52 @@ const PermissionMatrixGrid = ({
       }
 
       if (lowerKey === 'billing') {
-        const expensePermissionNames = [
-          'billing:view_expense',
-          'billing:create_expense',
-          'billing:record_expense_payment',
-          'billing:reconcile_expense_payment',
+        const canonical6BillingItems = [
+          {
+            name: 'billing:my_invoices',
+            label: 'My Invoice',
+            permissionAliases: ['billing:my_invoices', 'billing:my_dues'],
+            description: 'Resident invoices, billing dues, and payment history',
+          },
+          {
+            name: 'billing:assessments',
+            label: 'Assessments',
+            permissionAliases: ['billing:assessments', 'billing:assessment_manager'],
+            description: 'Assessment cycles, rule formulas, and recurring charges',
+          },
+          {
+            name: 'billing:ledger',
+            label: 'Billing Ledger',
+            permissionAliases: ['billing:ledger', 'billing:financial_ledger', 'billing:reconciliation_manage'],
+            description: 'Complete invoice ledger, collections status, and settlement records',
+          },
+          {
+            name: 'billing:billing_hub',
+            label: 'Billing Hub',
+            permissionAliases: ['billing:billing_hub'],
+            description: 'Billing management console, demands, and invoicing overview',
+          },
+          {
+            name: 'billing:expenses',
+            label: 'Community Expenses',
+            permissionAliases: [
+              'billing:expenses',
+              'billing:view_expense',
+              'billing:create_expense',
+              'billing:record_expense_payment',
+              'billing:reconcile_expense_payment',
+              'billing:pay_online_expense',
+            ],
+            description: 'Record community bills, track receipts, and approve disbursements',
+          },
+          {
+            name: 'billing:dashboard',
+            label: 'Community Finance',
+            permissionAliases: ['billing:dashboard', 'billing:community_finance'],
+            description: 'Executive financial health, net cash flow, reserve runway, and reports',
+          },
         ];
-        const canonicalGroups = [
-          ['billing:billing_hub', 'billing:dashboard'],
-          ['billing:my_invoices'],
-          ['billing:assessments', 'billing:assessment_manager'],
-          ['billing:ledger'],
-        ];
-        const byName = new Map(categoryPermissions.map((permission) => [
-          String(permission.name || permission.code || permission._id || '').toLowerCase().replace(/\./g, ':'),
-          permission,
-        ]));
-        const userFacingPermissions = canonicalGroups
-          .map((names) => names.map((name) => byName.get(name)).find(Boolean))
-          .filter(Boolean);
-        userFacingPermissions.push({
-          name: 'billing:expenses',
-          permissionAliases: expensePermissionNames,
-          description: 'View, create, pay, and reconcile community expenses',
-        });
-        const payOnlinePermission = byName.get('billing:pay_online_expense');
-        if (payOnlinePermission) userFacingPermissions.push(payOnlinePermission);
+
         const walletPermissions = categoryPermissions.filter(
           (permission) =>
             String(permission.name || permission.code || permission._id || '')
@@ -273,7 +319,7 @@ const PermissionMatrixGrid = ({
               .replace(/\./g, ':') === 'billing:action_center'
         );
         result.digital_wallet = [...(result.digital_wallet || []), ...walletPermissions];
-        result.billing = userFacingPermissions;
+        result.billing = canonical6BillingItems;
         return;
       }
       result[lowerKey] = categoryPermissions;

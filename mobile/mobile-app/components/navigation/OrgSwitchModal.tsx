@@ -292,6 +292,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                 activeOpacity={0.8}
                 className="flex-row min-h-11 items-center justify-center p-3 rounded-2xl border border-dashed border-primary/50 bg-primary/5 active:bg-primary/10 mt-1 gap-2"
                 accessibilityRole="button"
+                style={{ display: 'none' }}
                 accessibilityLabel={t('pending_invitations', 'Pending invitations')}
               >
                 <Plus size={16} color="#03A9F4" />

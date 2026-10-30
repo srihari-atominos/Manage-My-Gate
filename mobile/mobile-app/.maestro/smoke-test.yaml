@@ -1,0 +1,30 @@
+appId: host.exp.exponent
+---
+# 1. Verify Login Header & Branding
+- assertVisible: "Welcome Back"
+- assertVisible: "Sign in to continue to NAHOM"
+
+# 2. Test Phone OTP Tab & Validation
+- tapOn: "Phone No"
+- extendedWaitUntil:
+    visible: "Phone Number \\*"
+    timeout: 10000
+- tapOn: "Send OTP"
+- extendedWaitUntil:
+    visible: "Phone number is required."
+    timeout: 10000
+
+# 3. Test Email Tab & Validation
+- tapOn: "Email ID"
+- extendedWaitUntil:
+    visible: "Email ID \\*"
+    timeout: 10000
+- tapOn: "Send OTP"
+- extendedWaitUntil:
+    visible: "Must be a valid email"
+    timeout: 10000
+
+# 4. Verify Third-Party Sign-In & Persistence Options
+- assertVisible: "Stay signed in"
+- assertVisible: "Google"
+- assertVisible: "Apple"

@@ -14,6 +14,15 @@ import {
   sanitizeConversationState,
   buildPromptContextInstruction,
   formatDate,
+  handleMultiTurnConversationalActivity,
+  extractHeadcount,
+  extractVisitorPassIntentAndCount,
+  extractRecordLimit,
+  extractInvoiceNumber,
+  extractTargetBlock,
+  extractStaffDepartment,
+  extractMultipleVisitors,
+  extractInvoiceQueryDetails,
 } from '../src/features/aiAssistant/aiAssistant.conversation.js';
 
 import aiAssistantService, {
@@ -35,6 +44,11 @@ test.beforeEach(() => {
   config.aiAssistant.enabled = true;
   config.aiAssistant.geminiApiKey = 'test-secret-server-key-xyz123';
   config.aiAssistant.geminiModel = 'gemini-2.0-flash';
+});
+
+test.afterEach(() => {
+  resetTestServices();
+  setFetchImplementation(null);
 });
 
 // -------------------------------------------------------------
@@ -622,4 +636,383 @@ test('24. Phase 3 NL Requests: All 12 primary voice requests resolve to intended
       `Failed to match intent for "${item.query}". Expected ${item.expected}, got ${detected}`
     );
   }
+});
+
+test('25. One-Message Checklist: Bare "Create a new amenity" triggers AMENITY_CREATE_INTAKE with all-in-one checklist prompt', () => {
+  const result = analyzeConversationTurn('Create a new amenity.', null, [], FIXED_REF_DATE);
+
+  assert.equal(result.workflow, WORKFLOWS.AMENITY_CREATE_INTAKE);
+  assert.equal(result.awaitingConfirmation, false);
+  assert.ok(result.nextQuestion.includes('Amenity name:'));
+  assert.ok(result.nextQuestion.includes('Amenity type:'));
+  assert.ok(result.nextQuestion.includes('Maximum capacity:'));
+  assert.ok(result.nextQuestion.includes('Booking rate:'));
+});
+
+test('26. One-Message Multi-Field Parse: Complete one-line answer satisfies all fields and transitions to AMENITY_CREATE_READY', () => {
+  const activeState = {
+    workflow: WORKFLOWS.AMENITY_CREATE_INTAKE,
+    activeIntent: INTENTS.AMENITY_CREATE,
+    missingFields: ['name', 'type', 'capacity', 'pricing', 'operatingHours'],
+    collectedDetails: {},
+    awaitingConfirmation: false,
+  };
+
+  const result = analyzeConversationTurn(
+    'Create Sky Lounge, a clubhouse for 50 people, ₹2,000 per slot, open from 6 AM to 10 PM every day.',
+    activeState,
+    [],
+    FIXED_REF_DATE
+  );
+
+  assert.equal(result.workflow, WORKFLOWS.AMENITY_CREATE_READY);
+  assert.equal(result.awaitingConfirmation, true);
+  assert.equal(result.collectedDetails.name, 'Sky Lounge');
+  assert.equal(result.collectedDetails.type, 'clubhouse');
+  assert.equal(result.collectedDetails.capacity, 50);
+  assert.equal(result.collectedDetails.pricing?.rate, 2000);
+  assert.equal(result.collectedDetails.operatingHours?.open, '06:00');
+  assert.equal(result.collectedDetails.operatingHours?.close, '22:00');
+  assert.ok(result.nextQuestion.includes('Sky Lounge'));
+  assert.ok(result.nextQuestion.includes('confirm'));
+});
+
+test('27. One-Message Checklist: Bare "Create a notice" triggers NOTICE_CREATE_INTAKE with all-in-one prompt', () => {
+  const result = analyzeConversationTurn('Create a notice.', null, [], FIXED_REF_DATE);
+
+  assert.equal(result.workflow, WORKFLOWS.NOTICE_CREATE_INTAKE);
+  assert.equal(result.awaitingConfirmation, false);
+  assert.ok(/Notice title:/i.test(result.nextQuestion));
+  assert.ok(/Announcement Message:/i.test(result.nextQuestion));
+  assert.ok(/Priority:/i.test(result.nextQuestion));
+  assert.ok(/Category:/i.test(result.nextQuestion));
+});
+
+test('28. Corrections Handling: User can update details without resetting or starting over', () => {
+  const readyState = {
+    workflow: WORKFLOWS.AMENITY_CREATE_READY,
+    activeIntent: INTENTS.AMENITY_CREATE,
+    missingFields: [],
+    collectedDetails: {
+      name: 'Sky Lounge',
+      type: 'clubhouse',
+      capacity: 50,
+      pricing: { rate: 2000, type: 'hourly' },
+      ratePerHour: 2000,
+      operatingHours: { open: '06:00', close: '22:00' },
+    },
+    awaitingConfirmation: true,
+  };
+
+  // User corrects capacity to 75 people and rate to ₹1500
+  const result = analyzeConversationTurn(
+    'Actually make it 75 people and rate ₹1,500.',
+    readyState,
+    [],
+    FIXED_REF_DATE
+  );
+
+  assert.equal(result.workflow, WORKFLOWS.AMENITY_CREATE_READY);
+  assert.equal(result.awaitingConfirmation, true);
+  assert.equal(result.collectedDetails.name, 'Sky Lounge');
+  assert.equal(result.collectedDetails.capacity, 75);
+  assert.equal(result.collectedDetails.pricing?.rate, 1500);
+});
+
+test('29. Visitor Pass Intake: Bare query asks friendly and natural conversational question', () => {
+  const result = analyzeConversationTurn('Invite a guest.', null, [], FIXED_REF_DATE);
+
+  assert.equal(result.workflow, WORKFLOWS.VISITOR_PASS_INTAKE);
+  assert.equal(result.awaitingConfirmation, false);
+  assert.ok(/who is visiting/i.test(result.nextQuestion));
+});
+
+test('30. Multi-Attribute Natural Visitor Pass: "Rahul tomorrow at 5 PM" resolves directly to READY with confirmation', () => {
+  const result = analyzeConversationTurn('Invite Rahul tomorrow at 5 PM.', null, [], FIXED_REF_DATE);
+
+  assert.equal(result.workflow, WORKFLOWS.VISITOR_PASS_READY);
+  assert.equal(result.awaitingConfirmation, true);
+  assert.equal(result.collectedDetails.visitorName, 'Rahul');
+  assert.equal(result.collectedDetails.date, '2026-10-29');
+  assert.equal(result.collectedDetails.slotTime, '17:00');
+});
+
+test('31. NLU Expansion: Diverse conversational phrasings map accurately', () => {
+  assert.equal(detectDirectIntent("What's available in our community?"), INTENTS.AMENITY_INQUIRY);
+  assert.equal(detectDirectIntent('What is available in our community?'), INTENTS.AMENITY_INQUIRY);
+  assert.equal(detectDirectIntent('Where is most of our maintenance money going?'), INTENTS.COMMUNITY_FINANCE);
+  assert.equal(detectDirectIntent('What are our biggest expenses?'), INTENTS.COMMUNITY_FINANCE);
+  assert.equal(detectDirectIntent('I need the clubhouse on Sunday'), INTENTS.AMENITY_BOOKING);
+});
+
+test('32. Multi-Turn Context: Ordinal resolution ("the second one") from recent assistant history', () => {
+  const history = [
+    { role: 'user', content: 'What amenities do we have?' },
+    { role: 'assistant', content: 'We have: 1. Tennis Court, 2. Swimming Pool, 3. Clubhouse.' },
+  ];
+
+  const result = analyzeConversationTurn(
+    'Is the second one available tomorrow?',
+    null,
+    history,
+    FIXED_REF_DATE
+  );
+
+  assert.equal(result.activeIntent, INTENTS.AMENITY_AVAILABILITY);
+  assert.equal(result.collectedDetails.amenityName?.toLowerCase(), 'swimming pool');
+  assert.equal(result.collectedDetails.date, '2026-10-29');
+});
+
+test('33. Multi-Turn Context: Time span ("from 6 to 7") and cancellation ("cancel that") resolution', () => {
+  const bookingState = {
+    workflow: WORKFLOWS.AMENITY_BOOKING_READY,
+    activeIntent: INTENTS.AMENITY_BOOKING,
+    collectedDetails: {
+      amenityName: 'Badminton Court',
+      date: '2026-10-29',
+      slotTime: '18:00',
+    },
+    awaitingConfirmation: true,
+  };
+
+  // User says cancel that
+  const cancelResult = analyzeConversationTurn('Cancel that please', bookingState, [], FIXED_REF_DATE);
+  assert.equal(cancelResult.actionCancelled, true);
+  assert.equal(cancelResult.workflow, null);
+
+  // Time span resolution
+  const timeRes = resolveTimeExpression('from 6 to 7 pm');
+  assert.equal(timeRes, '18:00');
+});
+
+test('34. Amenity Booking: Natural language attendee counts & multiple people correctly parsed', () => {
+  const t1 = analyzeConversationTurn('Book the clubhouse for 2 members.', null, [], FIXED_REF_DATE);
+  assert.equal(t1.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(t1.collectedDetails.amenityName, 'Clubhouse');
+  assert.equal(t1.collectedDetails.headcount, 2);
+
+  const t2 = analyzeConversationTurn('Book the gym for me and my friend.', null, [], FIXED_REF_DATE);
+  assert.equal(t2.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(t2.collectedDetails.amenityName, 'Gym');
+  assert.equal(t2.collectedDetails.headcount, 2);
+
+  const t3 = analyzeConversationTurn('We are four people. Can we book the party hall?', null, [], FIXED_REF_DATE);
+  assert.equal(t3.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(t3.collectedDetails.amenityName, 'Clubhouse');
+  assert.equal(t3.collectedDetails.headcount, 4);
+
+  const t4 = analyzeConversationTurn('I need a badminton court for two players tomorrow evening.', null, [], FIXED_REF_DATE);
+  assert.equal(t4.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(t4.collectedDetails.amenityName, 'Badminton');
+  assert.equal(t4.collectedDetails.headcount, 2);
+  assert.equal(t4.collectedDetails.date, '2026-10-29');
+
+  const t5 = analyzeConversationTurn('Reserve the clubhouse for 5 people on Sunday at 6 PM.', null, [], FIXED_REF_DATE);
+  assert.equal(t5.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(t5.collectedDetails.amenityName, 'Clubhouse');
+  assert.equal(t5.collectedDetails.headcount, 5);
+  assert.equal(t5.collectedDetails.date, '2026-11-01');
+  assert.equal(t5.collectedDetails.slotTime, '18:00');
+  assert.equal(t5.awaitingConfirmation, true);
+});
+
+test('35. Amenity Booking: Attendee count correction in-flight without restarting workflow', () => {
+  const readyState = {
+    workflow: WORKFLOWS.AMENITY_BOOKING_READY,
+    activeIntent: INTENTS.AMENITY_BOOKING,
+    collectedDetails: {
+      amenityName: 'Clubhouse',
+      headcount: 2,
+      date: '2026-10-29',
+      slotTime: '18:00',
+    },
+    missingFields: [],
+    awaitingConfirmation: true,
+  };
+
+  const updated = analyzeConversationTurn('Change the booking to 4 members.', readyState, [], FIXED_REF_DATE);
+  assert.equal(updated.workflow, WORKFLOWS.AMENITY_BOOKING_READY);
+  assert.equal(updated.collectedDetails.amenityName, 'Clubhouse');
+  assert.equal(updated.collectedDetails.headcount, 4);
+  assert.equal(updated.awaitingConfirmation, true);
+});
+
+test('36. Visitor Pass: Group vs separate pass extraction & process inquiry understanding', () => {
+  const v1 = extractVisitorPassIntentAndCount('Create a visitor pass for 2 people.');
+  assert.equal(v1.count, 2);
+  assert.equal(v1.isGroup, true);
+  assert.equal(v1.isSeparate, false);
+
+  const v2 = extractVisitorPassIntentAndCount('Create separate passes for three visitors.');
+  assert.equal(v2.count, 3);
+  assert.equal(v2.isSeparate, true);
+
+  const v3 = extractVisitorPassIntentAndCount('Create one pass for me and two guests.');
+  assert.equal(v3.count, 2);
+  assert.equal(v3.isGroup, true);
+
+  const v4 = extractVisitorPassIntentAndCount('My family of four is coming. How do I register them?');
+  assert.equal(v4.count, 4);
+  assert.equal(v4.isInfo, true);
+
+  const v5 = extractVisitorPassIntentAndCount('Add another visitor to the pass.');
+  assert.equal(v5.isAddAnother, true);
+
+  const v6 = extractVisitorPassIntentAndCount('Change the visitor count from 2 to 3.');
+  assert.equal(v6.count, 3);
+});
+
+test('37. Reusable Entity Extraction: Record limits across Billing, Notices, and Complaints', () => {
+  const limitPayments = extractRecordLimit('Show my last three payments.');
+  assert.equal(limitPayments, 3);
+
+  const limitNotices = extractRecordLimit('Show the latest three notices.');
+  assert.equal(limitNotices, 3);
+
+  const limitComplaints = extractRecordLimit('Check my last three complaints.');
+  assert.equal(limitComplaints, 3);
+
+  const limitDefault = extractRecordLimit('Show notices.');
+  assert.equal(limitDefault, 5);
+});
+
+test('38. Reusable Entity Extraction: Invoices, Staff Dept, and Target Block scoping', () => {
+  const inv = extractInvoiceNumber('Find invoice number 102.');
+  assert.equal(inv, '102');
+
+  const dept = extractStaffDepartment('Show me the security staff.');
+  assert.equal(dept, 'Security');
+
+  const block = extractTargetBlock('Show notices for Block B.');
+  assert.equal(block, 'B');
+
+  const staffBlock = extractTargetBlock('How many staff members are assigned to Block B?');
+  assert.equal(staffBlock, 'B');
+});
+
+test('39. Scenario A & D: Booking without amenity + Ordinal resolution preserves all details', () => {
+  // Scenario A: User specifies details without amenity name
+  const turn1 = analyzeConversationTurn('Book an amenity for four members tomorrow evening.', null, [], FIXED_REF_DATE);
+  assert.equal(turn1.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(turn1.workflow, WORKFLOWS.AMENITY_BOOKING_INTAKE);
+  assert.equal(turn1.collectedDetails.headcount, 4);
+  assert.equal(turn1.collectedDetails.date, '2026-10-29');
+  assert.equal(turn1.collectedDetails.timePreference, 'evening');
+  assert.equal(turn1.missingFields.includes('amenityName'), true);
+
+  // Scenario D: Assistant presented options: 1. Swimming Pool, 2. Badminton Court
+  const history = [
+    { role: 'user', text: 'Book an amenity for four members tomorrow evening.' },
+    { role: 'model', text: 'Here are the available community amenities you can book:\n1. Swimming Pool\n2. Badminton Court\n3. Clubhouse' }
+  ];
+  turn1.presentedAmenities = ['Swimming Pool', 'Badminton Court', 'Clubhouse'];
+
+  const turn2 = analyzeConversationTurn('The second one.', turn1, history, FIXED_REF_DATE);
+  assert.equal(turn2.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(turn2.workflow, WORKFLOWS.AMENITY_BOOKING_INTAKE);
+  assert.equal(turn2.collectedDetails.amenityName, 'Badminton Court');
+  assert.equal(turn2.collectedDetails.headcount, 4);
+  assert.equal(turn2.collectedDetails.date, '2026-10-29');
+  assert.equal(turn2.collectedDetails.timePreference, 'evening');
+});
+
+test('40. Scenario B: Amenity specified with time range resolves to READY', () => {
+  const t = analyzeConversationTurn('Book the badminton court tomorrow from 6 PM to 7 PM for four members.', null, [], FIXED_REF_DATE);
+  assert.equal(t.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(t.workflow, WORKFLOWS.AMENITY_BOOKING_READY);
+  assert.equal(t.collectedDetails.amenityName, 'Badminton');
+  assert.equal(t.collectedDetails.date, '2026-10-29');
+  assert.equal(t.collectedDetails.slotTime, '18:00');
+  assert.equal(t.collectedDetails.endTime, '19:00');
+  assert.equal(t.collectedDetails.headcount, 4);
+  assert.equal(t.awaitingConfirmation, true);
+});
+
+test('41. Scenario C: Several details in one message including time range and family notes', () => {
+  const t = analyzeConversationTurn('Reserve the swimming pool this Sunday from 7 to 8 AM for six people, and include my family members.', null, [], FIXED_REF_DATE);
+  assert.equal(t.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(t.workflow, WORKFLOWS.AMENITY_BOOKING_READY);
+  assert.equal(t.collectedDetails.amenityName, 'Swimming Pool');
+  assert.equal(t.collectedDetails.slotTime, '07:00');
+  assert.equal(t.collectedDetails.endTime, '08:00');
+  assert.equal(t.collectedDetails.headcount, 6);
+  assert.equal(t.collectedDetails.includeFamily, true);
+  assert.equal(t.awaitingConfirmation, true);
+});
+
+test('42. Scenario E: User changes time and participant count in-flight without restarting', () => {
+  const readyState = {
+    activeIntent: INTENTS.AMENITY_BOOKING,
+    workflow: WORKFLOWS.AMENITY_BOOKING_READY,
+    collectedDetails: {
+      amenityName: 'Badminton',
+      headcount: 4,
+      date: '2026-10-29',
+      dateLabel: 'Tomorrow',
+      slotTime: '18:00',
+    },
+    missingFields: [],
+    nextQuestion: null,
+    interactionType: 'confirmation',
+    awaitingConfirmation: true,
+  };
+
+  const updated = analyzeConversationTurn('Change it to 7:30 PM and make it five people.', readyState, [], FIXED_REF_DATE);
+  assert.equal(updated.workflow, WORKFLOWS.AMENITY_BOOKING_READY);
+  assert.equal(updated.collectedDetails.amenityName, 'Badminton');
+  assert.equal(updated.collectedDetails.date, '2026-10-29');
+  assert.equal(updated.collectedDetails.slotTime, '19:30');
+  assert.equal(updated.collectedDetails.headcount, 5);
+  assert.equal(updated.awaitingConfirmation, true);
+});
+
+test('43. Scenario G: Incomplete hall booking asks for missing date and time together', () => {
+  const t = analyzeConversationTurn('Book the hall for my family.', null, [], FIXED_REF_DATE);
+  assert.equal(t.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(t.workflow, WORKFLOWS.AMENITY_BOOKING_INTAKE);
+  assert.equal(t.collectedDetails.amenityName, 'Clubhouse');
+  assert.equal(t.collectedDetails.headcount, 4);
+  assert.equal(t.missingFields.includes('date'), true);
+  assert.equal(t.missingFields.includes('slotTime'), true);
+  assert.equal(t.nextQuestion.includes('Clubhouse'), true);
+});
+
+test('44. Scenario H: Multiple amenities requested in one message are guided sequentially', () => {
+  const t = analyzeConversationTurn('Book the badminton court on Saturday and the party hall on Sunday for eight people.', null, [], FIXED_REF_DATE);
+  assert.equal(t.activeIntent, INTENTS.AMENITY_BOOKING);
+  assert.equal(t.workflow, WORKFLOWS.AMENITY_BOOKING_INTAKE);
+  assert.equal(t.collectedDetails.multipleAmenities.length, 2);
+  assert.equal(t.collectedDetails.multipleAmenities.includes('Badminton'), true);
+  assert.equal(t.collectedDetails.multipleAmenities.includes('Clubhouse'), true);
+  assert.equal(t.nextQuestion.includes('individually'), true);
+});
+
+test('45. Multi-Participant natural language variations', () => {
+  const h1 = extractHeadcount('Book for four adults and two children.');
+  assert.equal(h1, 6);
+
+  const h2 = extractHeadcount('Book for six people, including me.');
+  assert.equal(h2, 6);
+
+  const h3 = extractHeadcount('Book for six guests besides me.');
+  assert.equal(h3, 7);
+
+  const h4 = extractHeadcount('Add my wife and two children.');
+  assert.equal(h4, 3);
+});
+
+test('46. Multi-Visitor extraction and Invoice query filtering', () => {
+  const visitors = extractMultipleVisitors('Rahul (9876543210), Amit (9876543211), and Priya (9876543212)');
+  assert.equal(visitors.length, 3);
+  assert.equal(visitors[0].name, 'Rahul');
+  assert.equal(visitors[0].phone, '9876543210');
+  assert.equal(visitors[2].name, 'Priya');
+
+  const invQuery = extractInvoiceQueryDetails('Show me all unpaid maintenance invoices for my flat this month.');
+  assert.equal(invQuery.status, 'UNPAID');
+  assert.equal(invQuery.period, 'current_month');
+
+  const invExplain = extractInvoiceQueryDetails('Explain invoice INV-123.');
+  assert.equal(invExplain.invoiceNumber, 'INV-123');
+  assert.equal(invExplain.action, 'explain');
 });

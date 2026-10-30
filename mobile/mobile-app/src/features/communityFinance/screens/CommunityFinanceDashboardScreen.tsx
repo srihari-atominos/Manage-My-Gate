@@ -18,6 +18,7 @@ import { CategoryBreakdownCard } from '../components/CategoryBreakdownCard';
 import { RecentTransactionsCard } from '../components/RecentTransactionsCard';
 import { FinanceRunwaySheet } from '../components/FinanceRunwaySheet';
 import { FinanceExportSheet } from '../components/FinanceExportSheet';
+import { FinancePeriodFilterSheet } from '../components/FinancePeriodFilterSheet';
 import { type ExportFormat } from '../types';
 import { getPeriodDateRange } from '../utils/financeFormatters';
 import { communityFinanceService } from '../services/communityFinanceService';
@@ -28,6 +29,7 @@ export const CommunityFinanceDashboardScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const [isRunwaySheetOpen, setIsRunwaySheetOpen] = useState(false);
   const [isExportSheetOpen, setIsExportSheetOpen] = useState(false);
+  const [isPeriodFilterOpen, setIsPeriodFilterOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const {
     dashboard,
@@ -110,18 +112,16 @@ export const CommunityFinanceDashboardScreen: React.FC = () => {
       loading={hasPermission && loading && !dashboard}
       headerRight={
         hasPermission ? (
-          <View className="flex-row items-center gap-1">
+          <View className="flex-row items-center gap-1.5">
             <HeaderActionButton
               onPress={handleViewAllTransactions}
               icon={Receipt}
-              label="Ledger"
               accessibilityRole="button"
               accessibilityLabel="View All Transactions"
             />
             <HeaderActionButton
               onPress={() => setIsExportSheetOpen(true)}
               icon={FileDown}
-              label="Export"
               accessibilityRole="button"
               accessibilityLabel="Export Financial Report"
             />
@@ -178,6 +178,7 @@ export const CommunityFinanceDashboardScreen: React.FC = () => {
               selectedPeriod={selectedPeriod}
               onSelectPeriod={changePeriod}
               disabled={loading || refreshing}
+              onOpenFilter={() => setIsPeriodFilterOpen(true)}
             />
 
             {/* 2. Primary Financial Overview (Net Balance, Collections, Expenses, Dues) */}
@@ -232,6 +233,14 @@ export const CommunityFinanceDashboardScreen: React.FC = () => {
         onClose={() => setIsRunwaySheetOpen(false)}
         overview={dashboard?.overview}
         initialRunway={dashboard?.runway || dashboard?.overview?.runway}
+      />
+
+      {/* ── Reporting Period Filter Sheet ── */}
+      <FinancePeriodFilterSheet
+        visible={isPeriodFilterOpen}
+        onClose={() => setIsPeriodFilterOpen(false)}
+        selectedPeriod={selectedPeriod}
+        onSelectPeriod={changePeriod}
       />
 
       {/* ── Financial Export Sheet (CSV, Excel, PDF) ── */}

@@ -78,7 +78,7 @@ export function ResidentAmenityDetailSheet({
       };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={t('amenity_details_reservation', 'Amenity Details & Reservation')}>
+    <BottomSheet visible={visible} onClose={onClose} scrollable={false} title={t('amenity_details_reservation', 'Amenity Details & Reservation')}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         className="max-h-[75vh]"

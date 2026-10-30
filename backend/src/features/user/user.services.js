@@ -420,7 +420,7 @@ export class UserService {
           email: emailToUse,
           username: username,
           name: cleanedName || name || username,
-          status: (rawPassword || mode === 'ADMIN_ANNOUNCEMENT') ? 'Active' : 'Pending Verification',
+          status: 'Active',
           credentialStatus: 'NOT_INITIALIZED',
           appAccessStatus: 'NOT_YET_ACCESSED',
           ...(phoneToAssign ? { phone: phoneToAssign } : {}),
@@ -437,6 +437,9 @@ export class UserService {
         const updates = {};
         if (phoneToAssign && !user.phone) updates.phone = phoneToAssign;
         if (name && (!user.name || user.name === user.username)) updates.name = name.trim();
+        if (user.status === 'Pending Verification' || user.status === 'Pending') {
+          updates.status = 'Active';
+        }
         if (rawPassword) {
           const { hashPassword } = await import('../../utils/crypto.utils.js');
           updates.password = await hashPassword(rawPassword);
@@ -509,7 +512,8 @@ export class UserService {
       }
 
       // Step 4: Membership status based on onboardingMode
-      const targetMembershipStatus = (rawPassword || mode === 'ADMIN_ANNOUNCEMENT' || isAlreadyActiveMemberAssigningUnit) ? 'Active' : 'Pending';
+      // Step 4: Membership status is immediately Active upon invitation
+      const targetMembershipStatus = 'Active';
 
       let membership = null;
       if (existingMembership) {
@@ -570,7 +574,7 @@ export class UserService {
           name: user.name || name,
           email: user.email,
           phone: user.phone,
-          status: user.status === 'Active' ? 'Active' : 'Pending',
+          status: 'Active',
           villaId: rootVillaId || villaId || null,
           inviterId,
           allowReactivateDeleted: true,

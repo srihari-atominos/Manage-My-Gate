@@ -361,7 +361,7 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
     <>
       <View className="flex-row items-center justify-between pt-1 pb-2.5 px-1">
         {/* Left: Salutation & Subtitle */}
-        <View className="flex-1 pr-2">
+        <View className="flex-1 pe-2">
           <View className="flex-row items-center flex-wrap gap-1.5">
             <Text
               className="text-[22px] sm:text-[23px] font-black font-sans text-foreground tracking-tight leading-snug"
@@ -382,30 +382,22 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
             <TouchableOpacity
               onPress={handlePillPress}
               activeOpacity={0.75}
-              style={{
-                backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
-                borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
-              }}
-              className="flex-row min-h-11 items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
+              className="flex-row min-h-11 items-center gap-1.5 border border-primary/30 bg-primary/10 px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
               accessibilityRole="button"
               accessibilityLabel={`Current location: ${localizedLocation}. Tap to switch.`}
             >
-              <MapPin size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
-              <Text className="text-[12px] font-bold font-sans text-[#172B70] dark:text-[#93C5FD]">
+              <MapPin size={13} color={isDark ? '#FF8A3D' : '#C2410C'} strokeWidth={2.4} />
+              <Text className="text-[12px] font-bold font-sans text-primary">
                 {localizedLocation}
               </Text>
             </TouchableOpacity>
           ) : (
             <View
-              style={{
-                backgroundColor: isDark ? 'rgba(30, 58, 138, 0.25)' : 'rgba(23, 43, 112, 0.08)',
-                borderColor: isDark ? 'rgba(56, 189, 248, 0.3)' : 'rgba(23, 43, 112, 0.25)',
-              }}
-              className="flex-row items-center gap-1.5 border px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
+              className="flex-row items-center gap-1.5 border border-primary/30 bg-primary/10 px-3.5 py-1.5 rounded-full shadow-2xs shrink-0"
               accessibilityLabel={`Current location: ${localizedLocation}`}
             >
-              <MapPin size={13} color={isDark ? '#93C5FD' : '#172B70'} strokeWidth={2.4} />
-              <Text className="text-[12px] font-bold font-sans text-[#172B70] dark:text-[#93C5FD]">
+              <MapPin size={13} color={isDark ? '#FF8A3D' : '#C2410C'} strokeWidth={2.4} />
+              <Text className="text-[12px] font-bold font-sans text-primary">
                 {localizedLocation}
               </Text>
             </View>

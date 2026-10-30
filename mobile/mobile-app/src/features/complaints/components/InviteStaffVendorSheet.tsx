@@ -107,7 +107,7 @@ export const InviteStaffVendorSheet: React.FC<InviteStaffVendorSheetProps> = ({
       onClose={onClose}
       title={technician ? `Edit ${technician.name}` : 'Invite New Staff or Vendor'}
     >
-      <ScrollView className="px-4 py-2" contentContainerStyle={{ paddingBottom: 60 }}>
+      <View className="px-1 py-1">
         <Text className="text-xs text-muted-foreground mb-3">
           {technician
             ? 'Update technician contact info, trade specialization, or active status.'
@@ -222,7 +222,7 @@ export const InviteStaffVendorSheet: React.FC<InviteStaffVendorSheetProps> = ({
             {isSubmitting ? 'Saving...' : technician ? 'Save Changes' : 'Send Invitation & Save'}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 };

@@ -4,20 +4,55 @@ const { withNativeWind } = require('nativewind/metro');
 const os = require('os');
 const https = require('https');
 const http = require('http');
+const fs = require('fs');
+
+// Patch fs and fs.promises against EMFILE on Windows during parallel metro-cache reading bursts
+try {
+  const gracefulFs = require('graceful-fs');
+  gracefulFs.gracefulify(fs);
+} catch {}
+
+const patchPromiseWithRetry = (fn) => {
+  if (typeof fn !== 'function') return fn;
+  return async function (...args) {
+    let delay = 15;
+    for (let i = 0; i < 10; i++) {
+      try {
+        return await fn.apply(this, args);
+      } catch (err) {
+        if (err && (err.code === 'EMFILE' || err.code === 'ENFILE') && i < 9) {
+          await new Promise((r) => setTimeout(r, delay));
+          delay = Math.min(delay * 2, 500);
+          continue;
+        }
+        throw err;
+      }
+    }
+  };
+};
+
+if (fs.promises) {
+  fs.promises.readFile = patchPromiseWithRetry(fs.promises.readFile);
+  fs.promises.writeFile = patchPromiseWithRetry(fs.promises.writeFile);
+  if (fs.promises.open) fs.promises.open = patchPromiseWithRetry(fs.promises.open);
+  if (fs.promises.stat) fs.promises.stat = patchPromiseWithRetry(fs.promises.stat);
+  if (fs.promises.readdir) fs.promises.readdir = patchPromiseWithRetry(fs.promises.readdir);
+}
 
 const config = getDefaultConfig(__dirname);
 
 // Limit parallel workers on Windows to prevent EMFILE (too many open files) handle exhaustion
-config.maxWorkers = Math.min(4, Math.max(2, Math.floor(os.cpus().length / 2)));
+config.maxWorkers = process.platform === 'win32' ? 2 : Math.min(4, Math.max(2, Math.floor(os.cpus().length / 2)));
 
 // Local development proxy to forward /api and /socket.io to backend, eliminating browser CORS blocks
 const LOCAL_BACKEND_URL = process.env.EXPO_PUBLIC_LOCAL_BACKEND_URL || 'http://127.0.0.1:5006';
+const USE_LOCAL_BACKEND = process.env.EXPO_PUBLIC_USE_LOCAL_BACKEND === 'true';
 const TARGET_BACKEND_URL =
   process.env.EXPO_PUBLIC_BACKEND_PROXY_URL ||
-  (process.env.EXPO_PUBLIC_API_URL &&
+  (USE_LOCAL_BACKEND || (process.env.EXPO_PUBLIC_API_URL &&
   (process.env.EXPO_PUBLIC_API_URL.includes('localhost') ||
     process.env.EXPO_PUBLIC_API_URL.includes('127.0.0.1') ||
-    process.env.EXPO_PUBLIC_API_URL.includes(':5006'))
+    process.env.EXPO_PUBLIC_API_URL.includes(':5006')))
     ? LOCAL_BACKEND_URL
     : (process.env.EXPO_PUBLIC_SOCKET_URL || 'https://managemygate.e3esg.com'));
 
@@ -97,10 +132,12 @@ function handleProxy(req, res) {
     return true;
   }
 
+  const isSocketRequest = req.url && req.url.startsWith('/socket.io/');
   const dispatch = (bodyBuffer) => {
-    // Prioritize local backend (port 5006) for development so local database, roles, and routes
-    // are always served, with automatic fallback to remote target on 404, 502, or connection drops.
-    forwardRequest(LOCAL_BACKEND_URL, req, res, bodyBuffer, () => {
+    // For Socket.io polling sessions, never fall back across servers if a session ID (sid) is present,
+    // as session IDs are in-memory to a single server instance.
+    const hasSid = isSocketRequest && req.url.includes('sid=');
+    forwardRequest(LOCAL_BACKEND_URL, req, res, bodyBuffer, hasSid ? null : () => {
       forwardRequest(TARGET_BACKEND_URL, req, res, bodyBuffer);
     });
   };

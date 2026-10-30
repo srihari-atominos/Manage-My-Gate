@@ -88,7 +88,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       iconName: 'ClipboardCheck',
       colorBg: 'bg-amber-500/10 dark:bg-amber-500/20',
       colorIcon: '#D97706',
-      permission: 'amenities:admin_calander',
+      permission: 'amenities:booking_queue',
     },
     {
       id: 'amenities_admin_calendar',

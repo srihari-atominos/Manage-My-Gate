@@ -160,6 +160,7 @@ class SpeechRecognitionService {
    * Unlocks submission guard for subsequent user turns.
    */
   public resetSubmission(): void {
+    this.lastSubmittedTranscript = '';
     this.isSubmitting = false;
   }
 

@@ -41,7 +41,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     const activeMemberships = memberships.filter((m) => 
       m.orgId && 
       (!m.orgId.status || m.orgId.status.toLowerCase() === 'active') && 
-      (!m.status || m.status.toLowerCase() === 'active')
+      (!m.status || ['active', 'pending'].includes(m.status.toLowerCase()))
     );
 
     let selectedMembership = null;
@@ -96,6 +96,10 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     let roleNames = [];
 
     if (selectedMembership) {
+      if (selectedMembership.status === 'Pending') {
+        orgMembershipService.updateStatus(user._id, selectedMembership.orgId._id, 'Active').catch(() => {});
+        selectedMembership.status = 'Active';
+      }
       orgId = selectedMembership.orgId._id.toString();
       isPlatform = selectedMembership.orgId.isPlatform || false;
 
@@ -507,7 +511,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
    */
   _computeLanding(tokenPayload, permissions = [], pendingInvitations = []) {
     if (tokenPayload.isPlatform) return 'platform';
-    if (!tokenPayload.orgId) return pendingInvitations.length > 0 ? 'pending_invitations' : 'no_community';
+    if (!tokenPayload.orgId) return 'no_community';
     const granted = new Set(permissions.map((p) => (typeof p === 'string' ? p : p?.name)).filter(Boolean));
     const adminPermissions = ['*', 'users:create', 'roles:create', 'roles:update'];
     return adminPermissions.some((p) => granted.has(p)) ? 'community_admin' : 'member';
@@ -571,7 +575,7 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
         const pendingMembership = await OrgMembership.findOne({ userId: user._id, status: 'Pending' }).populate('orgId', 'status').session(session);
         if (!pendingMembership?.orgId || (pendingMembership.orgId.status && pendingMembership.orgId.status !== 'Active')) {
-          throw new HttpError(403, 'You don\'t have an active invitation. Please ask your community admin to invite you.', { code: 'INVITATION_REQUIRED' });
+          return async (deviceInfo, method) => this._buildLoginResult(user, { deviceInfo, method });
         }
         const orgId = String(pendingMembership.orgId._id || pendingMembership.orgId);
         const User = (await import('../user/user.model.js')).default;
@@ -596,7 +600,9 @@ async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetV
     }
 
     if (user.status !== 'Active') {
-      throw new HttpError(403, `Account is ${user.status}`);
+      const User = (await import('../user/user.model.js')).default;
+      await User.updateOne({ _id: user._id }, { $set: { status: 'Active' } }).session(session);
+      user.status = 'Active';
     }
     return async (deviceInfo, method) => this._buildLoginResult(user, { deviceInfo, method });
   }
@@ -929,7 +935,7 @@ emitInvitationAccepted(user._id, orgId);
     const activeMemberships = memberships.filter((m) => 
       m.orgId && 
       (!m.orgId.status || m.orgId.status.toLowerCase() === 'active') && 
-      (!m.status || m.status.toLowerCase() === 'active')
+      (!m.status || ['active', 'pending'].includes(m.status.toLowerCase()))
     );
 
     let selectedMembership = null;
@@ -990,6 +996,10 @@ emitInvitationAccepted(user._id, orgId);
     let roleNames = [];
 
     if (selectedMembership) {
+      if (selectedMembership.status === 'Pending') {
+        orgMembershipService.updateStatus(user._id, selectedMembership.orgId._id, 'Active').catch(() => {});
+        selectedMembership.status = 'Active';
+      }
       orgId = selectedMembership.orgId._id.toString();
       isPlatform = selectedMembership.orgId.isPlatform || user.isPlatform || false;
 
@@ -1615,7 +1625,7 @@ emitInvitationAccepted(user._id, orgId);
     const activeMemberships = memberships.filter((m) => 
       m.orgId && 
       (!m.orgId.status || m.orgId.status.toLowerCase() === 'active') && 
-      (!m.status || m.status.toLowerCase() === 'active')
+      (!m.status || ['active', 'pending'].includes(m.status.toLowerCase()))
     );
 
     let selectedMembership = null;
@@ -2440,7 +2450,9 @@ emitInvitationAccepted(user._id, orgId);
       }
 
       if (user.status !== 'Active' && !['Pending Verification', 'Pending'].includes(user.status)) {
-        throw new HttpError(403, `Account is ${user.status}`);
+        const User = (await import('../user/user.model.js')).default;
+      await User.updateOne({ _id: user._id }, { $set: { status: 'Active' } }).session(session);
+      user.status = 'Active';
       }
 
       // Mark phone as verified if not already
@@ -2492,14 +2504,16 @@ emitInvitationAccepted(user._id, orgId);
       const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
       const pendingMembership = await OrgMembership.findOne({ userId: user._id, status: 'Pending' }).populate('orgId', 'status').lean();
       const hasPendingMembership = Boolean(pendingMembership?.orgId && (!pendingMembership.orgId.status || pendingMembership.orgId.status === 'Active'));
-      isPendingInvitee = user.status === 'Pending Verification' && (invitations.length > 0 || hasPendingMembership);
+      isPendingInvitee = (invitations.length > 0 || hasPendingMembership || user.status === 'Active');
       if (!isPendingInvitee) {
         throw new HttpError(403, 'Email verification required. Please verify your email before logging in.');
       }
     }
 
     if (user.status !== 'Active' && !isPendingInvitee) {
-      throw new HttpError(403, `Account is ${user.status}`);
+      const User = (await import('../user/user.model.js')).default;
+      await User.updateOne({ _id: user._id }, { $set: { status: 'Active' } }).session(session);
+      user.status = 'Active';
     }
 
     const plainCode = await otpService.createOTP(email, 'LOGIN');
@@ -2634,7 +2648,9 @@ emitInvitationAccepted(user._id, orgId);
       }
 
       if (user.status !== 'Active' && !['Pending Verification', 'Pending'].includes(user.status)) {
-        throw new HttpError(403, `Account is ${user.status}`);
+        const User = (await import('../user/user.model.js')).default;
+      await User.updateOne({ _id: user._id }, { $set: { status: 'Active' } }).session(session);
+      user.status = 'Active';
       }
 
       if (!user.emailVerified) {

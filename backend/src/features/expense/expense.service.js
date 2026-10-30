@@ -132,7 +132,7 @@ class ExpenseService {
       if (existing) { await session.abortTransaction(); return this.getById(existing._id, actor.orgId); }
       const expense = await expenseRepository.create({ orgId: actor.orgId, expenseNumber: numberFor(), name: payload.name, description: payload.description || '', expenseType: payload.expenseType, category: payload.category, vendor: payload.vendor || {}, expenseDate: payload.expenseDate, invoiceNumber: payload.invoiceNumber, invoiceDate: payload.invoiceDate, dueDate: payload.dueDate, items, subtotal, cgst, sgst, taxAmount, additionalCharges, totalAmount, outstandingAmount: totalAmount, attachments: payload.attachments || [], recordedBy: actor.userId, idempotencyKey: payload.idempotencyKey }, session);
       await financialLedgerService.recordExpenseIncurredEntry({ ...expense.toObject(), fundingSource: payload.initialPayment?.fundingSource }, session);
-      if (payload.initialPayment) await this._recordPayment(expense, payload.initialPayment, actor, session);
+      if (payload.initialPayment) await this._recordPayment(expense, { autoReconcile: true, ...payload.initialPayment }, actor, session);
       await session.commitTransaction();
       const saved = await this.getById(expense._id, actor.orgId);
       try { expenseEventEmitter.emit(EXPENSE_CREATED, saved); } catch {}

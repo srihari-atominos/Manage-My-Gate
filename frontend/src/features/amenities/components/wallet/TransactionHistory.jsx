@@ -17,9 +17,10 @@ const TransactionHistory = memo(({ transactions = [], loading }) => {
 
   if (!loading && transactions.length === 0) {
     return (
-      <CCard className="border-0 shadow-sm">
+      <CCard className="border-0 shadow-sm mb-4">
         <CCardBody className="text-center p-5 text-muted">
-          No transaction history available.
+          <i className="fa-solid fa-receipt fs-2 mb-3 opacity-50"></i>
+          <p className="mb-0">No transaction history available.</p>
         </CCardBody>
       </CCard>
     )
@@ -56,8 +57,9 @@ const TransactionHistory = memo(({ transactions = [], loading }) => {
 
   return (
     <CCard className="border-0 shadow-sm mb-4">
-      <CCardBody className="p-0" style={{ overflowX: 'auto' }}>
-        <CTable hover align="middle" className="mb-0 border">
+      {/* Desktop Table View */}
+      <CCardBody className="p-0 d-none d-md-block" style={{ overflowX: 'auto' }}>
+        <CTable hover align="middle" className="mb-0 border-0">
           <CTableHead color="light">
             <CTableRow>
               <CTableHeaderCell>Date</CTableHeaderCell>
@@ -74,7 +76,12 @@ const TransactionHistory = memo(({ transactions = [], loading }) => {
             {currentTransactions.map((txn) => (
               <CTableRow key={txn._id}>
                 <CTableDataCell className="small">
-                  {new Date(txn.createdAt).toLocaleDateString('en-GB')} <br />
+                  {new Date(txn.createdAt).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}{' '}
+                  <br />
                   <span className="text-muted">
                     {new Date(txn.createdAt).toLocaleTimeString([], {
                       hour: '2-digit',
@@ -95,7 +102,7 @@ const TransactionHistory = memo(({ transactions = [], loading }) => {
                 </CTableDataCell>
                 <CTableDataCell className="small text-muted">{txn.bookingId || '-'}</CTableDataCell>
                 <CTableDataCell className="fw-semibold">
-                  {txn.amenityName || 'Wallet'}
+                  {txn.amenityName || 'Wallet Top-Up'}
                 </CTableDataCell>
                 <CTableDataCell>{getTypeBadge(txn.type)}</CTableDataCell>
                 <CTableDataCell className="text-capitalize small">
@@ -113,8 +120,65 @@ const TransactionHistory = memo(({ transactions = [], loading }) => {
         </CTable>
       </CCardBody>
 
+      {/* Mobile Phone Card Stream View */}
+      <div className="d-md-none p-3">
+        <div className="d-flex flex-column gap-3">
+          {currentTransactions.map((txn) => (
+            <div
+              key={txn._id}
+              className="transaction-card-mobile p-3 rounded-3 border bg-body shadow-sm"
+            >
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <span className="small text-muted">
+                  <i className="fa-regular fa-calendar me-1"></i>
+                  {new Date(txn.createdAt).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}{' '}
+                  •{' '}
+                  {new Date(txn.createdAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+                {getStatusBadge(txn.paymentStatus)}
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <div className="fw-bold">{txn.amenityName || 'Wallet Top-Up'}</div>
+                  <div className="d-flex align-items-center gap-2 mt-1">
+                    {getTypeBadge(txn.type)}
+                    <span className="badge bg-body-secondary text-dark text-capitalize">
+                      {txn.paymentMethod || 'Online'}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={`fs-5 fw-bold ${txn.type === 'Credit' ? 'text-success' : 'text-danger'}`}
+                >
+                  {txn.type === 'Credit' ? '+' : '-'}₹{txn.amount.toFixed(2)}
+                </div>
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center pt-2 border-top text-muted small">
+                <span className="font-monospace user-select-all" style={{ fontSize: '11px' }}>
+                  ID: {txn.transactionId ? `${txn.transactionId.substring(0, 14)}...` : '-'}
+                </span>
+                {txn.bookingId && (
+                  <span className="badge bg-light text-dark border">
+                    BKG: {txn.bookingId}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {totalItems > 0 && (
-        <div className="card-footer bg-body border-top d-flex justify-content-between align-items-center p-3">
+        <div className="card-footer bg-body border-top d-flex justify-content-between align-items-center p-3 flex-wrap gap-2">
           <div className="text-muted small">
             {startIndex + 1}-{actualEndIndex} of {totalItems}
           </div>

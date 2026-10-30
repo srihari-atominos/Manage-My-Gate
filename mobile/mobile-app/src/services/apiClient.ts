@@ -27,6 +27,24 @@ export const getApiBaseUrl = () => {
     return url;
   }
 
+  // 0. Explicit local backend override during development (e.g. testing local AI assistant or new routes)
+  if (process.env.EXPO_PUBLIC_USE_LOCAL_BACKEND === 'true') {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+      return `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
+    }
+    const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        return `http://${ip}:5006/api/v1`;
+      }
+    }
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:5006/api/v1';
+    }
+    return 'http://localhost:5006/api/v1';
+  }
+
   // 1. Web browser development: route through Metro proxy when running locally to eliminate browser CORS blocks
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
     const isLocalBrowser = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
@@ -98,6 +116,24 @@ export const isAuthenticationRequest = (url?: string): boolean => {
 
 export const getSocketBaseUrl = () => {
   let socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL;
+
+  // 0. Explicit local backend override during development (matches getApiBaseUrl)
+  if (process.env.EXPO_PUBLIC_USE_LOCAL_BACKEND === 'true') {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+      return `${window.location.protocol}//${window.location.hostname}:5006`;
+    }
+    const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        return `http://${ip}:5006`;
+      }
+    }
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:5006';
+    }
+    return 'http://localhost:5006';
+  }
 
   // In production builds, never allow local/LAN or emulator fallback socket URLs
   if (!__DEV__) {
@@ -457,7 +493,7 @@ apiClient.interceptors.response.use(
     // Web development fallback: If Metro proxy or remote backend returns 404 for newly developed features
     // (such as /ai-assistant), retry directly against the active local backend port (5006).
     if (
-      Platform.OS === 'web' &&
+      __DEV__ &&
       error.response?.status === 404 &&
       originalRequest &&
       !(originalRequest as any)._fallbackTried &&
@@ -474,7 +510,14 @@ apiClient.interceptors.response.use(
 
       if (isFeatureRoute) {
         (originalRequest as any)._fallbackTried = true;
-        const localOrigin = `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
+        let localOrigin = '';
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+          localOrigin = `${window.location.protocol}//${window.location.hostname}:5006/api/v1`;
+        } else {
+          const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
+          const devIp = hostUri ? hostUri.split(':')[0] : (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
+          localOrigin = `http://${devIp}:5006/api/v1`;
+        }
         if (originalRequest.baseURL !== localOrigin) {
           originalRequest.baseURL = localOrigin;
           return apiClient(originalRequest);

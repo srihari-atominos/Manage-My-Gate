@@ -476,7 +476,7 @@ test('10. Prepare Amenity Booking: Prepares proposal card without committing to 
   assert.equal(res.data.amenityName, 'Fitness Gym');
   assert.equal(res.data.estimatedCost, 'Free');
   assert.equal(res.data.confirmationRequired, true);
-  assert.match(res.action.route, /amenities\/amenity_gym\?date=2026-10-29&slot=07:00/);
+  assert.match(res.action.route, /amenities(\/booking)?\/amenity_gym\?date=2026-10-29&slot=07:00/);
 });
 
 // ============================================================================

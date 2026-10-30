@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, ScrollView, TextInput, Platform, Pressable } from 'react-native';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/src/store/store';
+import { checkIsAdmin } from '@/src/utils/rbac';
 import { Text } from '@/components/ui/text';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/button';
@@ -26,6 +29,8 @@ import { VoiceWaveform } from './VoiceWaveform';
 import { VoiceAssistantChatBubble } from './VoiceAssistantChatBubble';
 
 export const VoiceAssistantModal: React.FC = () => {
+  const user = useSelector((state: RootState) => state.auth?.user);
+  const isAdmin = checkIsAdmin(user);
   const {
     status,
     mode,
@@ -45,6 +50,7 @@ export const VoiceAssistantModal: React.FC = () => {
     retryPermission,
     startSession,
     sendTextMessage,
+    editUserPrompt,
     confirmAction,
     cancelAction,
     clearChat,
@@ -58,7 +64,7 @@ export const VoiceAssistantModal: React.FC = () => {
 
   const { keyboardShown } = useKeyboard();
   const [inputText, setInputText] = useState('');
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<any>(null);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -77,14 +83,15 @@ export const VoiceAssistantModal: React.FC = () => {
     sendTextMessage(prompt);
   };
 
-  // Automatically scroll down when new messages are added, status changes, or keyboard pops up
+  // Automatically scroll down when new messages are added, generating state updates, or keyboard opens
   useEffect(() => {
     if (scrollViewRef.current) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 80);
+      }, 120);
+      return () => clearTimeout(timer);
     }
-  }, [messages.length, status, isGeneratingText, keyboardShown]);
+  }, [messages.length, isGeneratingText, keyboardShown]);
 
   const renderStatusHelperText = () => {
     switch (status) {
@@ -137,10 +144,12 @@ export const VoiceAssistantModal: React.FC = () => {
       onClose={handleClose}
       title="NAHOM AI Assistant"
       testID="voice-assistant-modal"
+      scrollable={false}
     >
-      <View className="w-full flex-col">
+      <View className="flex-1 flex-col w-full justify-between overflow-hidden">
         {/* Top Header Row: Mode Switcher & Status Badge */}
-        <View className="flex-row items-center justify-between w-full mb-2 px-3">
+        <View className="flex-shrink-0 w-full">
+        <View className="flex-row items-center justify-between w-full mb-2.5 px-2">
           {/* Segmented Mode Selector: Chat vs Live Voice */}
           <View className="flex-row items-center bg-secondary/80 p-0.5 rounded-full border border-border/60">
             <Pressable
@@ -161,18 +170,18 @@ export const VoiceAssistantModal: React.FC = () => {
                 isVoiceMode ? 'bg-primary shadow-2xs' : ''
               }`}
               accessibilityRole="button"
-              accessibilityLabel="Switch to live voice mode"
+              accessibilityLabel="Activate live voice mode"
             >
               <Mic size={12} className={isVoiceMode ? 'text-primary-foreground' : 'text-muted-foreground'} />
               <Text className={`text-xs font-semibold ${isVoiceMode ? 'text-primary-foreground' : 'text-muted-foreground'}`}>Live Voice</Text>
             </Pressable>
           </View>
 
-          {/* Right Header Area: Clear Chat, Voice Speaker Toggle & Status Indicator */}
-          <View className="flex-row items-center gap-2">
+          {/* Right Header Area: Voice Speaker Toggle, Clear Chat & Status Indicator */}
+          <View className="flex-row items-center gap-1.5 shrink-0">
             <Pressable
               onPress={toggleTts}
-              className={`p-1.5 rounded-full border ${
+              className={`size-7 items-center justify-center rounded-full border ${
                 isTtsEnabled
                   ? 'bg-primary/10 border-primary/30'
                   : 'bg-secondary/80 border-border/60'
@@ -182,31 +191,30 @@ export const VoiceAssistantModal: React.FC = () => {
               testID="toggle-tts-button"
             >
               {isTtsEnabled ? (
-                <Volume2 size={12} className="text-primary" />
+                <Volume2 size={13} className="text-primary" />
               ) : (
-                <VolumeX size={12} className="text-muted-foreground" />
+                <VolumeX size={13} className="text-muted-foreground" />
               )}
             </Pressable>
 
             {messages.length > 0 && (
               <Pressable
                 onPress={clearChat}
-                className="flex-row items-center gap-1 bg-secondary/80 px-2.5 py-1 rounded-full border border-border/60 active:bg-secondary"
+                className="size-7 items-center justify-center rounded-full border bg-secondary/80 border-border/60 active:bg-secondary"
                 accessibilityRole="button"
                 accessibilityLabel="Clear chat conversation"
                 testID="clear-chat-button"
               >
-                <Trash2 size={11} className="text-muted-foreground" />
-                <Text className="text-xs font-medium text-muted-foreground">Clear Chat</Text>
+                <Trash2 size={12} className="text-muted-foreground" />
               </Pressable>
             )}
 
             {isVoiceMode ? (
               <VoiceStateBadge status={status} testID="voice-status-badge" />
             ) : (
-              <View className="flex-row items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+              <View className="flex-row items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
                 <View className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <Text className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <Text className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                   {isGeneratingText ? 'Thinking...' : 'Ready'}
                 </Text>
               </View>
@@ -251,14 +259,15 @@ export const VoiceAssistantModal: React.FC = () => {
             </Text>
           </View>
         )}
+        </View>
 
         {/* Conversational Stream: User & Assistant Chat Bubbles */}
         <ScrollView
           ref={scrollViewRef}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
           keyboardShouldPersistTaps="handled"
-          className={`w-full my-1 ${keyboardShown ? 'max-h-52 min-h-32' : 'max-h-72 min-h-40'}`}
-          contentContainerClassName="pt-1 pb-3 px-1"
+          className="flex-1 w-full my-1"
+          contentContainerClassName="pt-1 pb-2 px-1 flex-grow justify-start"
         >
           {messages.map((msg) => (
             <VoiceAssistantChatBubble
@@ -268,6 +277,10 @@ export const VoiceAssistantModal: React.FC = () => {
               onRetry={(prompt) => sendTextMessage(prompt)}
               onConfirmAction={confirmAction}
               onCancelAction={cancelAction}
+              onSelectOption={(option) => sendTextMessage(option)}
+              onDeselectOption={(deselectText) => sendTextMessage(deselectText)}
+              onMultiSelectSubmit={(selectedList) => sendTextMessage(selectedList.join(', '))}
+              onEditPrompt={editUserPrompt}
               isActionExecuting={isGeneratingText}
             />
           ))}
@@ -289,7 +302,9 @@ export const VoiceAssistantModal: React.FC = () => {
           )}
         </ScrollView>
 
-        {/* Error / Permission Denied Recovery Actions */}
+        {/* Bottom Section: Permissions/Error CTAs + Quick Chips + Pinned Input Dock */}
+        <View className="flex-shrink-0 w-full">
+          {/* Error / Permission Denied Recovery Actions */}
         {isVoiceMode && status === 'permission_denied' && (
           <View className="w-full mt-2 gap-2 px-2">
             <Button
@@ -334,8 +349,8 @@ export const VoiceAssistantModal: React.FC = () => {
           </View>
         )}
 
-        {/* Quick Suggestion Chips (only shown on pristine chat start before any conversation) */}
-        {messages.length === 0 && !keyboardShown && (
+        {/* Quick Suggestion Chips (shown before custom interaction or after welcome message) */}
+        {messages.length <= 1 && !keyboardShown && (
         <View className="w-full mt-1 mb-2">
           <ScrollView
             horizontal
@@ -343,10 +358,17 @@ export const VoiceAssistantModal: React.FC = () => {
             keyboardShouldPersistTaps="handled"
             contentContainerClassName="gap-1.5 px-2 flex-row items-center"
           >
-            <Chip
-              label="Community Expenses"
-              onPress={() => handleQuickPrompt("What is my current month's community expense?")}
-            />
+            {isAdmin ? (
+              <Chip
+                label="Community Expenses"
+                onPress={() => handleQuickPrompt("What is my current month's community expense?")}
+              />
+            ) : (
+              <Chip
+                label="My Dues"
+                onPress={() => handleQuickPrompt("How much maintenance is outstanding for my apartment?")}
+              />
+            )}
             <Chip
               label="Check Amenities"
               onPress={() => handleQuickPrompt('Check Amenities')}
@@ -371,43 +393,70 @@ export const VoiceAssistantModal: React.FC = () => {
         </View>
         )}
 
-        {/* Unified Input Dock: Mode-Aware Mic Button + Text Input + Send / Stop CTA */}
-        <View className="w-full px-2 pt-1 pb-3">
+        {/* Unified Input Dock: Stable layout with permanent Mic button, Text input, and Action button */}
+        <View className={`w-full px-2 pt-1 ${keyboardShown ? 'pb-1.5' : 'pb-3'}`}>
           <View className="flex-row items-center gap-2 bg-secondary/50 p-1.5 rounded-2xl border border-border/80 shadow-2xs">
-            {/* Mode-Aware Mic Button */}
-            {isVoiceMode ? (
-              <Pressable
-                onPress={toggleMute}
-                className={`w-10 h-10 rounded-xl items-center justify-center border shadow-2xs ${
-                  isMuted
+            {/* Mic / Mode Button — ALWAYS rendered at fixed size so the input bar layout never jumps */}
+            <Pressable
+              onPress={() => {
+                if (isVoiceMode) {
+                  if (status === 'listening' || status === 'transcribing') {
+                    toggleMute();
+                  } else if (status === 'speaking') {
+                    interruptAssistant();
+                  } else {
+                    startListening();
+                  }
+                } else {
+                  switchToVoiceMode();
+                }
+              }}
+              className={`w-10 h-10 rounded-xl items-center justify-center border shadow-2xs ${
+                isVoiceMode
+                  ? isMuted
                     ? 'bg-rose-500/10 border-rose-500/30'
-                    : 'bg-emerald-500/10 border-emerald-500/30'
-                }`}
-                accessibilityRole="button"
-                accessibilityLabel={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-              >
-                {isMuted ? (
+                    : status === 'listening' || status === 'transcribing'
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : 'bg-primary/10 border-primary/30'
+                  : 'bg-secondary/80 border-border/60 active:bg-secondary'
+              }`}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isVoiceMode
+                  ? isMuted
+                    ? 'Unmute microphone'
+                    : 'Mute microphone'
+                  : 'Start voice input'
+              }
+            >
+              {isVoiceMode ? (
+                isMuted ? (
                   <MicOff size={18} className="text-rose-500" />
                 ) : (
-                  <Mic size={18} className="text-emerald-600 dark:text-emerald-400" />
-                )}
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={switchToVoiceMode}
-                className="w-10 h-10 rounded-xl items-center justify-center border border-primary/20 bg-primary/10 shadow-2xs active:bg-primary/20"
-                accessibilityRole="button"
-                accessibilityLabel="Activate live voice mode"
-              >
-                <Mic size={18} className="text-primary" />
-              </Pressable>
-            )}
+                  <Mic
+                    size={18}
+                    className={
+                      status === 'listening' || status === 'transcribing'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-primary'
+                    }
+                  />
+                )
+              ) : (
+                <Mic size={18} className="text-muted-foreground" />
+              )}
+            </Pressable>
 
             {/* Text Input for Typing to AI */}
             <TextInput
               value={inputText}
               onChangeText={setInputText}
               onSubmitEditing={handleSendText}
+              onFocus={() => {
+                if (status === 'listening' || status === 'transcribing') {
+                  cancelListening();
+                }
+              }}
               placeholder="Type a message or command..."
               placeholderTextColor="#94a3b8"
               className="flex-1 px-3 py-2 text-sm text-foreground"
@@ -425,7 +474,7 @@ export const VoiceAssistantModal: React.FC = () => {
                 variant="destructive"
                 size="icon"
                 onPress={interruptAssistant}
-                className="rounded-xl h-10 w-10 items-center justify-center shadow-2xs"
+                className="rounded-xl h-11 w-11 items-center justify-center shadow-2xs"
                 accessibilityLabel="Stop response"
               >
                 <Square size={14} color="white" />
@@ -436,7 +485,7 @@ export const VoiceAssistantModal: React.FC = () => {
                 size="icon"
                 onPress={handleSendText}
                 disabled={!inputText.trim() || isGeneratingText}
-                className="rounded-xl h-10 w-10 items-center justify-center shadow-2xs"
+                className="rounded-xl h-11 w-11 items-center justify-center shadow-2xs"
                 accessibilityLabel="Send message"
               >
                 <Send size={16} color="white" />
@@ -445,7 +494,7 @@ export const VoiceAssistantModal: React.FC = () => {
           </View>
 
           {/* Voice Mode Active Controls Row: End Voice Session / Switch to Text */}
-          {isVoiceMode && (
+          {isVoiceMode && !keyboardShown && (
             <View className="w-full mt-2.5 flex-row items-center justify-between px-1">
               <Pressable
                 onPress={switchToChatMode}
@@ -469,6 +518,7 @@ export const VoiceAssistantModal: React.FC = () => {
               </Button>
             </View>
           )}
+        </View>
         </View>
       </View>
     </BottomSheet>

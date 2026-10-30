@@ -39,7 +39,8 @@ export function expenseOcrConfiguration(env = process.env) {
     explicitProvider === 'tesseract-local' ||
     explicitProvider === 'tesseract' ||
     explicitProvider === 'dual' ||
-    explicitProvider === 'fallback';
+    explicitProvider === 'fallback' ||
+    (explicitProvider === '' && Boolean(env.TESSERACT_COMMAND));
   return {
     configured,
     command,

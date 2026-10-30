@@ -278,6 +278,7 @@ export const EngagementActionsBottomSheet: React.FC<EngagementActionsBottomSheet
         onClose={onClose}
         title={isNotice ? t('notice_actions_title') : t('poll_actions_title')}
         snapPoints={['88%']}
+        scrollable={false}
       >
         <ScrollView className="flex-1 px-4 py-2" showsVerticalScrollIndicator={false}>
           <View className="gap-4 pb-14">

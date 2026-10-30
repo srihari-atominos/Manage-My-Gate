@@ -20,7 +20,6 @@ import {
   Calendar,
   Layers,
   Tag,
-  ShieldCheck,
   ChevronRight,
   Plus,
   X,
@@ -28,7 +27,6 @@ import {
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { Button } from '@/components/common/Button';
 import { TextInput } from '@/components/forms/TextInput';
@@ -87,10 +85,6 @@ export default function ExpenseDetailsScreen() {
   const [showMarkPaidSheet, setShowMarkPaidSheet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [attachmentLoading, setAttachmentLoading] = useState<string | null>(null);
-
-  // Reconciliation state for ConfirmationModal
-  const [reconcileTargetId, setReconcileTargetId] = useState<string | null>(null);
-  const [reconciling, setReconciling] = useState(false);
 
   // Online UPI attempt states
   const [onlineApp, setOnlineApp] = useState<any>(UPI_APPS[0]);
@@ -186,6 +180,7 @@ export default function ExpenseDetailsScreen() {
         fundingSource: payment.fundingSource,
         paymentDate: payment.paymentDate.toISOString(),
         transactionReference: payment.transactionReference || undefined,
+        autoReconcile: true,
       });
       setShowPayment(false);
       set('amount', '');
@@ -364,26 +359,6 @@ export default function ExpenseDetailsScreen() {
     }
   };
 
-  const executeReconcile = async () => {
-    if (!reconcileTargetId) return;
-    try {
-      setReconciling(true);
-      await expenseService.reconcilePayment(String(id), reconcileTargetId, {
-        reconciliationResult: 'CONFIRMED',
-        note: 'Confirmed by authorized financial reviewer.',
-      });
-      setReconcileTargetId(null);
-      load();
-    } catch (e: any) {
-      Alert.alert(
-        'Cannot reconcile payment',
-        e?.message || 'The payment could not be reconciled.'
-      );
-    } finally {
-      setReconciling(false);
-    }
-  };
-
   const downloadAttachment = async (attachment: any) => {
     try {
       setAttachmentLoading(attachment._id);
@@ -408,7 +383,7 @@ export default function ExpenseDetailsScreen() {
   return (
     <ScreenShell
       title="Expense Details"
-      subtitle="Community expense breakdown, attachments, and reconciliation."
+      subtitle="Community expense breakdown, attachments, and payment history."
       iconName="Receipt"
       loading={!expense && !error}
       showBackButton
@@ -495,11 +470,16 @@ export default function ExpenseDetailsScreen() {
               Financial Overview
             </Text>
 
-            <View className="flex-row items-baseline justify-between">
-              <Text className="text-sm font-medium text-muted-foreground">
+            <View className="flex-row items-baseline justify-between gap-2">
+              <Text className="text-sm font-medium text-muted-foreground shrink-0">
                 Total Amount:
               </Text>
-              <Text className="text-2xl font-black text-foreground">
+              <Text
+                className="text-2xl font-black text-foreground shrink"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
                 {formatCurrency(expense.totalAmount)}
               </Text>
             </View>
@@ -536,22 +516,37 @@ export default function ExpenseDetailsScreen() {
               </View>
             )}
 
-            <View className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
-              <View className="rounded-xl bg-muted/30 p-2.5">
+            <View className="flex-row gap-2 border-t border-border/60 pt-3">
+              <View className="flex-1 rounded-xl bg-muted/30 p-2.5">
                 <Text className="text-[11px] text-muted-foreground font-medium">
-                  Recorded Paid
+                  Total Paid
                 </Text>
-                <Text className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                  {formatCurrency(expense.recordedPaidAmount)}
+                <Text className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-0.5" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                  {formatCurrency(expense.recordedPaidAmount ?? expense.confirmedPaidAmount ?? 0)}
                 </Text>
               </View>
 
-              <View className="rounded-xl bg-muted/30 p-2.5">
+              <View className="flex-1 rounded-xl bg-muted/30 p-2.5">
                 <Text className="text-[11px] text-muted-foreground font-medium">
-                  Confirmed Verified
+                  Payment Status
                 </Text>
-                <Text className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-0.5">
-                  {formatCurrency(expense.confirmedPaidAmount)}
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  className={`text-sm font-bold mt-0.5 ${
+                    expense.settlementStatus === 'PAID'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : expense.settlementStatus === 'PARTIALLY_PAID'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-rose-600 dark:text-rose-400'
+                  }`}
+                >
+                  {expense.settlementStatus === 'PAID'
+                    ? 'Fully Paid'
+                    : expense.settlementStatus === 'PARTIALLY_PAID'
+                    ? 'Partially Paid'
+                    : 'Unpaid'}
                 </Text>
               </View>
             </View>
@@ -682,8 +677,8 @@ export default function ExpenseDetailsScreen() {
                         </View>
 
                         <StatusBadge
-                          label={isReconciled ? 'Verified' : 'Verification Pending'}
-                          variant={isReconciled ? 'success' : 'warning'}
+                          label="Paid"
+                          variant="success"
                           size="sm"
                         />
                       </View>
@@ -699,26 +694,12 @@ export default function ExpenseDetailsScreen() {
                           {new Date(p.paymentDate).toLocaleDateString()}
                         </Text>
 
-                        {!isReconciled ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onPress={() => setReconcileTargetId(p._id)}
-                            leftIcon={CheckCircle2}
-                            className="bg-primary/5 border-primary/30"
-                          >
-                            <Text className="text-xs font-bold text-primary">
-                              Reconcile Payment
-                            </Text>
-                          </Button>
-                        ) : (
-                          <View className="flex-row items-center gap-1">
-                            <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400" />
-                            <Text className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                              Verified {p.reconciledAt ? new Date(p.reconciledAt).toLocaleDateString() : ''}
-                            </Text>
-                          </View>
-                        )}
+                        <View className="flex-row items-center gap-1">
+                          <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
+                          <Text className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            Completed
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   );
@@ -734,19 +715,6 @@ export default function ExpenseDetailsScreen() {
           </View>
         </ScrollView>
       ) : null}
-
-      {/* Confirmation Modal for Reconciliation */}
-      <ConfirmationModal
-        visible={Boolean(reconcileTargetId)}
-        title="Reconcile Payment"
-        message="Confirm that this payment has been verified against an authoritative bank statement, cash ledger, or UPI transaction record."
-        confirmLabel="Confirm & Reconcile"
-        cancelLabel="Cancel"
-        variant="info"
-        loading={reconciling}
-        onConfirm={executeReconcile}
-        onCancel={() => setReconcileTargetId(null)}
-      />
 
       {/* Modal: Record Manual Payment */}
       <Modal

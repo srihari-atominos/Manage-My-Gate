@@ -96,7 +96,7 @@ class AudioStreamService {
     if (NahomAudioStream) {
       try {
         if (this.eventEmitter) {
-          this.chunkSubscription = this.eventEmitter.addListener('onAudioChunk', (event: { data: string }) => {
+          this.chunkSubscription = this.eventEmitter.addListener('onAudioChunk', (event: any) => {
             if (event?.data && this.isCapturing) {
               onChunk(event.data);
             }

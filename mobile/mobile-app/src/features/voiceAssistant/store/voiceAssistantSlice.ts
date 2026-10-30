@@ -1,5 +1,10 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { AssistantFeature, ConversationState } from '../services/aiAssistantApi';
+import type {
+  AssistantFeature,
+  ConversationState,
+  InteractiveOptionItem,
+  InteractiveOptionGroup,
+} from '../services/aiAssistantApi';
 
 export type VoiceAssistantStatus =
   | 'idle'
@@ -30,6 +35,9 @@ export interface AssistantMessage {
     category?: string;
     data?: any;
     actionCard?: any;
+    options?: InteractiveOptionItem[];
+    interactiveConfig?: InteractiveOptionGroup;
+    selectedOptions?: Record<string, any>;
   };
 }
 
@@ -151,6 +159,20 @@ export const voiceAssistantSlice = createSlice({
     addMessage: (state, action: PayloadAction<AssistantMessage>) => {
       state.messages.push(action.payload);
     },
+    editAndTruncateMessages: (
+      state,
+      action: PayloadAction<{ messageId: string; newText: string }>
+    ) => {
+      const { messageId, newText } = action.payload;
+      const msgIndex = state.messages.findIndex((m) => m.id === messageId);
+      if (msgIndex !== -1) {
+        state.messages[msgIndex].text = newText;
+        state.messages[msgIndex].timestamp = Date.now();
+        state.messages = state.messages.slice(0, msgIndex + 1);
+        state.errorMessage = null;
+        state.transcriptSnippet = '';
+      }
+    },
     updateLastAssistantMessage: (
       state,
       action: PayloadAction<string | { text?: string; metadata?: any; isError?: boolean; failedPrompt?: string }>
@@ -176,6 +198,29 @@ export const voiceAssistantSlice = createSlice({
           break;
         }
       }
+    },
+    toggleMessageOptionSelection: (
+      state,
+      action: PayloadAction<{ messageId: string; optionValue: string; mode?: 'single' | 'multiple' }>
+    ) => {
+      const msg = state.messages.find((m) => m.id === action.payload.messageId);
+      if (!msg || !msg.metadata?.options) return;
+      const { optionValue, mode = 'single' } = action.payload;
+      if (mode === 'single') {
+        msg.metadata.options = msg.metadata.options.map((opt) => ({
+          ...opt,
+          selected: opt.value === optionValue ? !opt.selected : false,
+        }));
+      } else {
+        msg.metadata.options = msg.metadata.options.map((opt) =>
+          opt.value === optionValue ? { ...opt, selected: !opt.selected } : opt
+        );
+      }
+    },
+    clearMessageOptionSelections: (state, action: PayloadAction<{ messageId: string }>) => {
+      const msg = state.messages.find((m) => m.id === action.payload.messageId);
+      if (!msg || !msg.metadata?.options) return;
+      msg.metadata.options = msg.metadata.options.map((opt) => ({ ...opt, selected: false }));
     },
     clearMessages: (state) => {
       state.messages = [];
@@ -206,7 +251,10 @@ export const {
   setConversationState,
   resetVoiceSession,
   addMessage,
+  editAndTruncateMessages,
   updateLastAssistantMessage,
+  toggleMessageOptionSelection,
+  clearMessageOptionSelections,
   clearMessages,
 } = voiceAssistantSlice.actions;
 

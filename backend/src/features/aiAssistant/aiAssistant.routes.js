@@ -10,6 +10,7 @@ import {
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
 import { aiAssistantLimiter } from './aiAssistant.limiter.js';
+import authorizePermission from '../../middlewares/rbac.middleware.js';
 
 const router = Router();
 
@@ -22,6 +23,13 @@ router.use(tenantContext());
  * Retrieves safe assistant configuration and user's authorized navigation features
  */
 router.get('/config', aiAssistantController.getConfig);
+
+/** Aggregate-only dataset health; no prompts or conversation data are exposed. */
+router.get(
+  '/evaluation/summary',
+  authorizePermission('billing', ['dashboard']),
+  aiAssistantController.getEvaluationSummary
+);
 
 /**
  * POST /api/v1/ai-assistant/session/token

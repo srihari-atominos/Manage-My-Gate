@@ -131,7 +131,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
                     : 'text-muted-foreground'
                 }`}
               >
-                {Math.abs(comparison.percentageChange || 0)}
+                {Math.abs(comparison.percentageChange || 0)}%
               </Text>
             </View>
           )}
@@ -160,7 +160,7 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
                   {topCategory.category}
                 </Text>
               </View>
-              </View>
+            </View>
           )}
 
           {/* Category Progress Bars */}
@@ -169,24 +169,29 @@ export const ExpensePeriodAnalysisCard: React.FC<ExpensePeriodAnalysisCardProps>
               const colorClass = categoryColors[index % categoryColors.length];
               return (
                 <View key={item.category} className="gap-1.5">
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-2 flex-1">
-                      <View className={`size-2.5 rounded-full ${colorClass}`} />
+                  <View className="flex-row items-center justify-between gap-2">
+                    <View className="flex-row items-center gap-1.5 flex-1 min-w-0">
+                      <View className={`size-2.5 rounded-full ${colorClass} shrink-0`} />
                       <Text
                         numberOfLines={1}
-                        className="text-xs font-semibold text-foreground flex-1"
+                        className="text-xs font-semibold text-foreground flex-1 min-w-0"
                       >
                         {item.category}
                       </Text>
-                      <Text className="text-[11px] text-muted-foreground">
+                      <Text className="text-[10px] text-muted-foreground shrink-0">
                         ({item.count} {item.count === 1 ? 'bill' : 'bills'})
                       </Text>
                     </View>
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-xs font-bold text-foreground">
+                    <View className="flex-row items-center gap-1 shrink-0 ps-1">
+                      <Text
+                        className="text-xs font-bold text-foreground"
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.8}
+                      >
                         {formatCurrency(item.amount)}
                       </Text>
-                      </View>
+                    </View>
                   </View>
 
                   <ProgressBar

@@ -174,7 +174,7 @@ const KPICard = React.forwardRef<View, KPICardProps>(
             className="text-base phone-md:text-lg font-bold text-foreground tracking-tight"
             numberOfLines={1}
             adjustsFontSizeToFit
-            minimumFontScale={0.7}
+            minimumFontScale={0.65}
           >
             {value}
           </Text>
@@ -184,7 +184,7 @@ const KPICard = React.forwardRef<View, KPICardProps>(
             className="text-2xs phone-md:text-xs text-muted-foreground mt-0.5 font-medium leading-[14px]"
             numberOfLines={1}
             adjustsFontSizeToFit
-            minimumFontScale={0.75}
+            minimumFontScale={0.7}
             style={Platform.OS === 'web' ? ({ wordBreak: 'keep-all' } as any) : undefined}
           >
             {translateText(title)}

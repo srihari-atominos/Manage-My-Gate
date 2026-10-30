@@ -201,4 +201,20 @@ describe('Amenity Management — 3-Role Feature Access (Visitor Pattern Parity)'
       expect(allowedAmenityActions).toHaveLength(0);
     });
   });
+  describe('6. Booking Queue Permission Equivalency', () => {
+    it('allows access via amenities:booking_queue', () => {
+      const user = { role: 'Staff', permissions: ['amenities:booking_queue'] };
+      expect(isFeatureAllowedForUser(feat('amenities_admin_bookings'), user)).toBe(true);
+    });
+
+    it('allows access via amenities:admin_calander alias', () => {
+      const user = { role: 'Staff', permissions: ['amenities:admin_calander'] };
+      expect(isFeatureAllowedForUser(feat('amenities_admin_bookings'), user)).toBe(true);
+    });
+
+    it('allows access via amenities:admin_calendar alias', () => {
+      const user = { role: 'Staff', permissions: ['amenities:admin_calendar'] };
+      expect(isFeatureAllowedForUser(feat('amenities_admin_bookings'), user)).toBe(true);
+    });
+  });
 });

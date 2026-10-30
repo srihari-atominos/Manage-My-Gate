@@ -15,6 +15,7 @@ import {
   DollarSign,
   ArrowRight,
   ArrowLeft,
+  RefreshCw,
 } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
@@ -161,10 +162,10 @@ export default function RecordExpenseScreen() {
         }
 
         setOcrFeedback({
-          tone: isNotConfigured ? 'warning' : 'error',
+          tone: 'warning',
           message: isNotConfigured
             ? 'Local receipt OCR is not configured on this server. Receipt is attached — please enter or review the bill details on the next step.'
-            : (result.error || 'Receipt data could not be extracted. Enter details manually.'),
+            : (result.error || 'Receipt data could not be extracted. Enter details manually on the next step.'),
         });
         return;
       }
@@ -228,7 +229,12 @@ export default function RecordExpenseScreen() {
       // 4. Receipt / Expense Date
       if ((data?.expenseDate || data?.receiptDate) && /^\d{4}-\d{2}-\d{2}$/.test(data.expenseDate || data.receiptDate || '')) {
         const dStr = data.expenseDate || data.receiptDate;
-        updates.date = new Date(`${dStr}T00:00:00`);
+                const parsedD = new Date(`${dStr}T00:00:00`);
+        const now = new Date();
+        const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        if (!isNaN(parsedD.getTime()) && parsedD <= now && parsedD >= oneYearAgo) {
+          updates.date = parsedD;
+        }
       }
 
       // 5. Total Amount
@@ -276,25 +282,28 @@ export default function RecordExpenseScreen() {
       if (updates.date) entered.push('Date');
       if (updates.name) entered.push(`Name (${updates.name})`);
 
-      // Successful scans advance directly to the review step. OCR warnings remain attached to the
-      // extraction for audit purposes, but must not interrupt users with an upload-time banner.
-      setOcrFeedback(null);
+      setOcrFeedback({
+        tone: 'success',
+        message:
+          entered.length > 0
+            ? `Extracted ${entered.join(', ')} from receipt.`
+            : 'Receipt processed successfully. Proceeding to review details…',
+      });
 
-      if (entered.length > 0) {
-        if (data.merchant) {
-          setF((prev) => ({ ...prev, name: prev.name || data.merchant }));
-        }
-        setTimeout(() => {
-          setCurrentSlide(1);
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        }, 500);
+      if (data.merchant) {
+        setF((prev) => ({ ...prev, name: prev.name || data.merchant }));
       }
+      setTimeout(() => {
+        setCurrentSlide(1);
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }, 700);
     } catch (error: any) {
-      setOcrFeedback({ tone: 'error', message: error?.message || 'Unable to scan this receipt. Enter details manually.' });
+      setOcrFeedback({ tone: 'warning', message: error?.message || 'Unable to scan this receipt. Enter details manually on the next step.' });
     } finally {
       setScanning(false);
     }
   };
+
 
   const handleNextSlide = () => {
     setCurrentSlide(1);
@@ -302,6 +311,7 @@ export default function RecordExpenseScreen() {
   };
 
   const save = async () => {
+    if (saving) return;
     const errors: { name?: string; amount?: string; category?: string } = {};
 
     const resolvedName = f.name.trim() || f.vendor.trim() || categoryMap[f.type] || 'Expense';
@@ -357,6 +367,7 @@ export default function RecordExpenseScreen() {
                 fundingSource: funding(f.method),
                 paymentDate: f.date.toISOString(),
                 transactionReference: f.transactionReference.trim() || undefined,
+                autoReconcile: true,
               }
             : undefined,
       });
@@ -399,14 +410,22 @@ export default function RecordExpenseScreen() {
         }
       }
 
+      const handleReturnToExpenses = () => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(resident)/admin/billing/expenses' as any);
+        }
+      };
+
       if (uploadFailed) {
         Alert.alert(
           'Expense Saved',
           'Expense was recorded successfully, but the receipt attachment could not be uploaded. You can re-upload it later from expense details.',
-          [{ text: 'OK', onPress: () => router.replace({ pathname: '/(resident)/admin/billing/expenses', params: { refresh: String(Date.now()), period: targetPeriod } } as any) }]
+          [{ text: 'OK', onPress: handleReturnToExpenses }]
         );
       } else {
-        router.replace({ pathname: '/(resident)/admin/billing/expenses', params: { refresh: String(Date.now()), period: targetPeriod } } as any);
+        handleReturnToExpenses();
       }
     } catch (e: any) {
       Alert.alert('Cannot save expense', e.message || 'Please try again.');
@@ -525,26 +544,85 @@ export default function RecordExpenseScreen() {
                     </View>
                   ) : null}
 
-                  <Button
-                    loading={scanning}
-                    disabled={scanning}
-                    onPress={() => {
-                      if (ocrFeedback?.tone === 'warning' && ocrFeedback?.message?.includes('not configured')) {
-                        handleNextSlide();
-                        return;
-                      }
-                      scan();
-                    }}
-                    className="mt-1 bg-primary"
-                  >
-                    <Text className="text-xs font-bold text-primary-foreground">
-                      {scanning
-                        ? 'Scanning & Extracting Data…'
-                        : ocrFeedback?.tone === 'warning' && ocrFeedback?.message?.includes('not configured')
-                        ? 'Proceed to Enter Details'
-                        : 'Scan & Auto-Extract Details'}
-                    </Text>
-                  </Button>
+                  {scanning ? (
+                    <Button loading disabled className="mt-1 bg-primary">
+                      <Text className="text-xs font-bold text-primary-foreground">
+                        Scanning & Extracting Data…
+                      </Text>
+                    </Button>
+                  ) : ocr ? (
+                    <View className="flex-row gap-2 mt-1">
+                      <Button
+                        variant="default"
+                        onPress={handleNextSlide}
+                        className="flex-1 bg-primary py-2.5"
+                      >
+                        <View className="flex-row items-center justify-center gap-1.5">
+                          <Text className="text-xs font-bold text-primary-foreground">
+                            Review Extracted Details
+                          </Text>
+                          <ArrowRight size={14} className="text-primary-foreground" />
+                        </View>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onPress={() => scan()}
+                        className="border-primary/30 py-2.5 px-3"
+                      >
+                        <View className="flex-row items-center justify-center gap-1">
+                          <RefreshCw size={13} className="text-primary" />
+                          <Text className="text-xs font-bold text-primary">Re-scan</Text>
+                        </View>
+                      </Button>
+                    </View>
+                  ) : ocrFeedback && ocrFeedback.tone !== 'info' ? (
+                    <View className="flex-row gap-2 mt-1">
+                      <Button
+                        variant="default"
+                        onPress={handleNextSlide}
+                        className="flex-1 bg-primary py-2.5"
+                      >
+                        <View className="flex-row items-center justify-center gap-1.5">
+                          <Text className="text-xs font-bold text-primary-foreground">
+                            Proceed to Enter Details
+                          </Text>
+                          <ArrowRight size={14} className="text-primary-foreground" />
+                        </View>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onPress={() => scan()}
+                        className="border-primary/30 py-2.5 px-3"
+                      >
+                        <View className="flex-row items-center justify-center gap-1">
+                          <RefreshCw size={13} className="text-primary" />
+                          <Text className="text-xs font-bold text-primary">Retry Scan</Text>
+                        </View>
+                      </Button>
+                    </View>
+                  ) : (
+                    <View className="flex-row gap-2 mt-1">
+                      <Button
+                        variant="default"
+                        onPress={() => scan()}
+                        className="flex-1 bg-primary py-2.5"
+                      >
+                        <View className="flex-row items-center justify-center gap-1.5">
+                          <FileText size={14} className="text-primary-foreground" />
+                          <Text className="text-xs font-bold text-primary-foreground">
+                            Scan & Auto-Extract Details
+                          </Text>
+                        </View>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onPress={handleNextSlide}
+                        className="border-border py-2.5 px-3"
+                      >
+                        <Text className="text-xs font-bold text-foreground">Skip</Text>
+                      </Button>
+                    </View>
+                  )}
                 </View>
               ) : (
                 <View className="flex-row gap-2.5">
@@ -601,17 +679,25 @@ export default function RecordExpenseScreen() {
                       >
                         {ocrFeedback.message}
                       </Text>
-                      {ocrFeedback.tone === 'warning' && (
-                        <Pressable
-                          onPress={handleNextSlide}
-                          className="flex-row items-center gap-1.5 pt-0.5"
-                          hitSlop={8}
+                      <Pressable
+                        onPress={handleNextSlide}
+                        className="flex-row items-center gap-1.5 pt-0.5"
+                        hitSlop={8}
+                      >
+                        <Text
+                          className={`text-xs font-bold underline ${
+                            ocrFeedback.tone === 'success'
+                              ? 'text-emerald-900 dark:text-emerald-200'
+                              : ocrFeedback.tone === 'error'
+                              ? 'text-destructive'
+                              : 'text-amber-900 dark:text-amber-200'
+                          }`}
                         >
-                          <Text className="text-xs font-bold text-amber-900 dark:text-amber-200 underline">
-                            Enter details on Next Step →
-                          </Text>
-                        </Pressable>
-                      )}
+                          {ocrFeedback.tone === 'success'
+                            ? 'Review details on Next Step →'
+                            : 'Enter details on Next Step →'}
+                        </Text>
+                      </Pressable>
                     </View>
                   </View>
                 </View>

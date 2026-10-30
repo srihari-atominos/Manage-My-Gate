@@ -226,7 +226,7 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
                           <Text className="text-[11px] font-semibold text-foreground">
                             {alloc.accessSchedule.timeWindow.start} - {alloc.accessSchedule.timeWindow.end}
                             {alloc.accessSchedule.days && alloc.accessSchedule.days.length > 0
-                              ? ` â€¢ ${alloc.accessSchedule.days.join(', ')}`
+                              ? ` • ${alloc.accessSchedule.days.join(', ')}`
                               : ''}
                           </Text>
                         </View>
@@ -307,7 +307,7 @@ export const StaffDashboardScreen: React.FC<StaffDashboardScreenProps> = ({
                               {unitLabel}
                             </Text>
                             <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                              {alloc.roleOrTrade || 'Household Staff'} â€¢ {alloc.associatedBy?.name || 'Resident'}
+                              {alloc.roleOrTrade || 'Household Staff'} • {alloc.associatedBy?.name || 'Resident'}
                             </Text>
                             {alloc.accessSchedule?.timeWindow?.start && alloc.accessSchedule?.timeWindow?.end ? (
                               <Text className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 mt-0.5">

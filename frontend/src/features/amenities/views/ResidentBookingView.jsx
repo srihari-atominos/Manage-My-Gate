@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { CSpinner } from '@coreui/react'
+import { useSelector } from 'react-redux'
 import useResidentBooking from '../hooks/useResidentBooking.js'
 import BookingStepper from '../components/booking/BookingStepper.jsx'
 import DateSelector from '../components/booking/DateSelector.jsx'
@@ -8,6 +8,7 @@ import TimeSlotSelector from '../components/booking/TimeSlotSelector.jsx'
 import BookingSummary from '../components/booking/BookingSummary.jsx'
 import BookingConfirmationModal from '../components/booking/BookingConfirmationModal.jsx'
 import BookingSuccess from '../components/booking/BookingSuccess.jsx'
+import WalletRechargeModal from '../components/wallet/WalletRechargeModal.jsx'
 import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx'
 import '../styles/_amenities.scss'
 import AppLoader from '../../../components/common/AppLoader'
@@ -16,6 +17,9 @@ const ResidentBookingView = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const [confirmationVisible, setConfirmationVisible] = useState(false)
+  const [showTopUpModal, setShowTopUpModal] = useState(false)
+
+  const user = useSelector((state) => state.auth?.user)
 
   const {
     amenity,
@@ -25,13 +29,13 @@ const ResidentBookingView = () => {
     step,
     draft,
     errorMsg,
-    paymentIntent,
+    walletBalance,
+    paymentGatewayLoading,
+    loadWallet,
     updateDraft,
     proceedToTime,
-    proceedToReview,
     goBack,
     confirmBooking,
-    processMockPayment,
     complete,
   } = useResidentBooking(id)
 
@@ -61,16 +65,21 @@ const ResidentBookingView = () => {
     )
   }
 
-  const handleFinalConfirm = async (numberOfPersons = 1) => {
-    await confirmBooking(numberOfPersons)
+  const handleFinalConfirm = async (numberOfPersons = 1, paymentMethod = 'WALLET') => {
+    await confirmBooking(numberOfPersons, paymentMethod)
     setConfirmationVisible(false)
+  }
+
+  const handleTopUpSuccess = () => {
+    setShowTopUpModal(false)
+    loadWallet()
   }
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
       <AmenitiesTopNav />
-      <div className="view-container" style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '24px' }}>
+      <div className="view-container" style={{ maxWidth: '850px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '20px' }}>
           <button
             className="btn btn-outline"
             style={{
@@ -86,15 +95,17 @@ const ResidentBookingView = () => {
           </button>
         </div>
 
-        <div className="card" style={{ marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        {/* Amenity Hero Header Card - Mobile Responsive */}
+        <div className="card mb-4">
+          <div className="d-flex flex-column flex-sm-row align-items-center align-items-sm-start gap-3 gap-sm-4 text-center text-sm-start">
             <img
               src={amenity.images?.[0] || 'https://via.placeholder.com/150'}
               alt={amenity.name}
-              style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '12px' }}
+              style={{ width: '84px', height: '84px', objectFit: 'cover', borderRadius: '14px' }}
+              className="shadow-sm border"
             />
-            <div>
-              <h4 style={{ marginBottom: '4px' }} className="fs-3">
+            <div className="flex-grow-1">
+              <h4 style={{ marginBottom: '4px' }} className="fs-3 fw-bold">
                 {amenity.name}
               </h4>
               <div
@@ -105,7 +116,7 @@ const ResidentBookingView = () => {
                   flexWrap: 'wrap',
                   marginTop: '8px',
                 }}
-                className="small"
+                className="small justify-content-center justify-content-sm-start"
               >
                 <span>
                   <i className="fa-solid fa-location-dot" style={{ marginRight: '6px' }}></i>{' '}
@@ -119,7 +130,7 @@ const ResidentBookingView = () => {
                 )}
                 {amenity.pricing && amenity.pricing.baseRate !== undefined && (
                   <span>
-                    <i className="fa-solid fa-tag" style={{ marginRight: '6px' }}></i> $
+                    <i className="fa-solid fa-tag" style={{ marginRight: '6px' }}></i> ₹
                     {amenity.pricing.baseRate} / {amenity.pricing.pricingType || 'hour'}
                   </span>
                 )}
@@ -129,6 +140,13 @@ const ResidentBookingView = () => {
         </div>
 
         {step !== 'success' && <BookingStepper currentStep={step} />}
+
+        {errorMsg && (
+          <div className="alert alert-danger d-flex align-items-center gap-2 mb-4 rounded-3 shadow-sm">
+            <i className="fa-solid fa-triangle-exclamation"></i>
+            <div>{errorMsg}</div>
+          </div>
+        )}
 
         {step === 'date' && (
           <DateSelector
@@ -163,7 +181,7 @@ const ResidentBookingView = () => {
               </div>
               <div className="d-flex align-items-center">
                 <i className="fa-solid fa-money-bill me-2"></i>
-                <strong>Daily Price: {amenity.pricing?.baseRate || 0}</strong>
+                <strong>Daily Price: ₹{amenity.pricing?.baseRate || 0}</strong>
               </div>
             </div>
             <div className="d-flex justify-content-start pt-3 border-top mt-4">
@@ -174,51 +192,38 @@ const ResidentBookingView = () => {
           </div>
         )}
 
-        {step === 'time' && draft.startTime && draft.endTime && (
+        {(step === 'time' || step === 'submitting') && draft.startTime && draft.endTime && (
           <BookingSummary
             amenity={amenity}
             draft={draft}
             onConfirm={() => setConfirmationVisible(true)}
           />
-        )}
-
-        {step === 'submitting' && (
-          <BookingSummary
-            amenity={amenity}
-            draft={draft}
-            onConfirm={() => setConfirmationVisible(true)}
-          />
-        )}
-
-        {step === 'payment' && (
-          <div className="card p-5 text-center">
-            <h4>Mock Payment Gateway</h4>
-            <p className="text-muted">
-              Simulate a payment for your booking of{' '}
-              <strong>${paymentIntent?.amount || draft.totalPrice}</strong>
-            </p>
-            <div className="d-flex justify-content-center gap-3 mt-4">
-              <button className="btn btn-outline-danger" onClick={() => processMockPayment(false)}>
-                Simulate Failure
-              </button>
-              <button className="btn btn-primary" onClick={() => processMockPayment(true)}>
-                Simulate Success
-              </button>
-            </div>
-          </div>
         )}
 
         {step === 'success' && (
           <BookingSuccess amenity={amenity} draft={draft} onComplete={complete} />
         )}
 
+        {/* Confirmation Modal with Payment Method Selector */}
         <BookingConfirmationModal
           visible={confirmationVisible}
           onClose={() => setConfirmationVisible(false)}
           onConfirm={handleFinalConfirm}
-          isSubmitting={step === 'submitting'}
+          isSubmitting={step === 'submitting' || paymentGatewayLoading}
           draft={draft}
           amenity={amenity}
+          walletBalance={walletBalance}
+          onTopUpClick={() => setShowTopUpModal(true)}
+        />
+
+        {/* In-Flow Wallet Recharge Modal */}
+        <WalletRechargeModal
+          isOpen={showTopUpModal}
+          onClose={() => setShowTopUpModal(false)}
+          walletBalance={walletBalance}
+          isPaymentGatewayConfigured={true}
+          onSuccess={handleTopUpSuccess}
+          user={user}
         />
       </div>
     </div>

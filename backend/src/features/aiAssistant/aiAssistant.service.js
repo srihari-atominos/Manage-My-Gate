@@ -5,11 +5,27 @@ import logger from '../../utils/logger.utils.js';
 import { expandUserPermissions } from '../../utils/permissionMapper.js';
 import { releaseActiveSession, generateSessionId } from './aiAssistant.limiter.js';
 import { ASSISTANT_TOOL_DECLARATIONS, executeAssistantTool } from './aiAssistant.tools.js';
+import { getAuthorizedOperations, isOperationAuthorized } from './aiAssistant.registry.js';
+import { runAssistantEvaluation } from './evaluation/aiAssistant.evaluator.js';
 import {
   analyzeConversationTurn,
+  splitCompoundQuery,
   buildPromptContextInstruction,
   sanitizeConversationState,
+  canUserCreateAmenity,
+  canUserBookAmenity,
+  canUserDiscoverAmenities,
+  canUserCreateVisitorPass,
+  canUserRaiseComplaint,
+  canUserCreatePoll,
+  canUserCreateNotice,
+  canUserCreateAssessment,
+  canUserViewCommunityFinance,
 } from './aiAssistant.conversation.js';
+
+export function filterAuthorizedToolDeclarations(user, tenant) {
+  return ASSISTANT_TOOL_DECLARATIONS.filter((tool) => isOperationAuthorized(tool.name, user, tenant));
+}
 
 /**
  * Curated list of safe voice navigation targets mapped to NAHOM's canonical permissions.
@@ -292,8 +308,8 @@ class AIAssistantService {
    * @returns {Promise<object>} Resolved runtime configuration
    */
   async resolveRuntimeConfig() {
-    const defaultModel = config.aiAssistant?.geminiModel || 'gemini-3.8-flash';
-    const defaultChatModel = config.aiAssistant?.geminiChatModel || 'gemini-3.8-flash';
+    const defaultModel = config.aiAssistant?.geminiModel || 'gemini-2.0-flash';
+    const defaultChatModel = config.aiAssistant?.geminiChatModel || 'gemini-2.0-flash';
     const defaultDuration = config.aiAssistant?.sessionDurationSec || 600;
     const defaultMaxSessions = config.aiAssistant?.maxDailySessions || 5;
 
@@ -429,6 +445,27 @@ class AIAssistantService {
       sessionDurationSeconds: runtime.sessionDurationSec,
       maxDailySessions: runtime.maxDailySessions,
       authorizedFeatures: this.filterAuthorizedFeatures(user, tenant),
+      authorizedOperations: getAuthorizedOperations(user, tenant).map(({ toolName, feature, intent, mutation, confirmationRequired }) => ({
+        toolName, feature, intent, mutation, confirmationRequired,
+      })),
+    };
+  }
+
+  /**
+   * Aggregate-only admin evaluation status. This intentionally returns neither
+   * prompts, user identifiers, financial values, nor stored conversations.
+   */
+  getEvaluationSummary() {
+    const result = runAssistantEvaluation();
+    return {
+      version: result.version,
+      evaluatedAt: result.evaluatedAt,
+      totalCases: result.totalCases,
+      enabledOperations: result.enabledOperations,
+      coveredOperations: result.coveredOperations,
+      passed: result.passed,
+      failureCount: result.failureCount,
+      failureCategories: [...new Set(result.failures.map((failure) => failure.category))],
     };
   }
 
@@ -589,9 +626,69 @@ class AIAssistantService {
    * @param {object} params - { message, history, context }
    * @returns {Promise<object>}
    */
-  async generateChatResponse(user, tenant, { message, history = [], context = {} }) {
+  async generateChatResponse(userOrOptions, tenantParam, paramsParam) {
+    let user, tenant, params;
+    if (userOrOptions && typeof userOrOptions === 'object' && ('message' in userOrOptions || 'user' in userOrOptions) && !tenantParam) {
+      user = userOrOptions.user;
+      tenant = userOrOptions.tenant;
+      params = {
+        message: userOrOptions.message,
+        history: userOrOptions.history || [],
+        context: userOrOptions.context || {},
+      };
+    } else {
+      user = userOrOptions;
+      tenant = tenantParam;
+      params = paramsParam || {};
+    }
+    const { message, history = [], context = {} } = params;
+
     const correlationId = context?.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const runtime = await this.resolveRuntimeConfig();
+
+    const authorizedFeatures = this.filterAuthorizedFeatures(user, tenant);
+    const featureDescriptions = authorizedFeatures
+      .map((f) => `- ${f.name} (ID: "${f.id}"): ${f.description || f.name}`)
+      .join('\n');
+
+    const referenceDate = context?.referenceDate ? new Date(context.referenceDate) : new Date();
+
+    const compoundParts = splitCompoundQuery(message);
+    if (compoundParts && compoundParts.length >= 2) {
+      logger.info(`[AIAssistant] Compound multi-intent detected (${compoundParts.length} sub-intents): ${compoundParts.map((p) => p.intent).join(', ')}`);
+      return await this.processMultiIntentCompoundRequest(
+        user,
+        tenant,
+        compoundParts,
+        authorizedFeatures,
+        correlationId
+      );
+    }
+
+    const conversationState = analyzeConversationTurn(
+      message,
+      context?.conversationState,
+      history,
+      referenceDate,
+      { user, tenant, authorizedFeatures }
+    );
+
+    // If permission was denied by conversation analysis, return clear rejection immediately
+    if (conversationState.interactionType === 'permission_denied') {
+      const denialMessage = conversationState.denialReason || "You don't have permission to perform this action.";
+      return {
+        message: denialMessage,
+        reply: denialMessage,
+        actions: [],
+        data: {
+          permissionDenied: true,
+          authorized: false,
+          permittedAlternatives: conversationState.permittedAlternatives || [],
+        },
+        actionProposal: null,
+        conversationState: sanitizeConversationState(conversationState),
+      };
+    }
 
     if (runtime.killSwitched || config.aiAssistant?.enabled === false) {
       throw new HttpError(503, 'AI Assistant is currently disabled.');
@@ -600,21 +697,17 @@ class AIAssistantService {
       if (runtime.disabledByDb) {
         throw new HttpError(503, 'AI Assistant integration is currently disabled in system settings.');
       }
-      throw new HttpError(503, 'AI Assistant service is not configured on this server.');
+      logger.info('[AIAssistant] Upstream cloud API key not configured; invoking deterministic domain fallback engine.');
+      return await this.generateDeterministicFallbackResponse(
+        user,
+        tenant,
+        message,
+        conversationState,
+        authorizedFeatures,
+        correlationId
+      );
     }
 
-    const authorizedFeatures = this.filterAuthorizedFeatures(user, tenant);
-    const featureDescriptions = authorizedFeatures
-      .map((f) => `- ${f.name} (ID: "${f.id}"): ${f.description || f.name}`)
-      .join('\n');
-
-    const referenceDate = context?.referenceDate ? new Date(context.referenceDate) : new Date();
-    const conversationState = analyzeConversationTurn(
-      message,
-      context?.conversationState,
-      history,
-      referenceDate
-    );
     const contextGuidance = buildPromptContextInstruction(conversationState, referenceDate);
 
     const systemInstruction = {
@@ -629,20 +722,24 @@ Behavior Guidelines:
 3. Tool Output Synthesis: When a tool returns data, synthesize the results into a helpful conversational response explaining specific details (e.g. amounts, invoice numbers, statuses, available slot times, visitor names, entry times, pass short keys, booking IDs). Do NOT leave the answer blank or tell the user to only click a button.
 4. Navigation & Actions: When a user asks to view or open a feature, invoke 'navigate_to_screen'. Explain what will be opened alongside the action card.
 5. Action Workflows (Two-Phase Execution):
-   - You can prepare and execute 11 verified application actions:
+   - You can prepare and execute verified application actions:
      a) Visitor Pass Creation: invoke 'prepare_visitor_pass'.
      b) Visitor Pass Revocation: invoke 'prepare_visitor_pass_revocation'.
      c) Amenity Booking Creation: invoke 'prepare_amenity_booking'.
      d) Amenity Booking Cancellation: invoke 'prepare_amenity_booking_cancellation'.
      e) Personal Expense Creation: invoke 'prepare_personal_expense'.
-     f) Complaint / Maintenance Ticket Creation: invoke 'prepare_complaint'.
-     g) Complaint / Maintenance Ticket Cancellation: invoke 'prepare_complaint_cancellation'.
-     h) Critical Notice Acknowledgement: invoke 'prepare_notice_acknowledgement'.
-     i) Community Poll Voting: invoke 'prepare_poll_vote'.
-     j) Amenity Facility Creation (Admin / Facility Manager): invoke 'prepare_amenity_creation'.
-     k) Maintenance Assessment Creation (Admin / Billing Manager): invoke 'prepare_assessment_creation'.
-     l) Community Poll Creation (Admin): invoke 'prepare_poll_creation'.
-     m) Notice Board Publication (Admin): invoke 'prepare_notice_creation'.
+     f) Complaint Ticket Creation: invoke 'prepare_complaint'.
+     g) Maintenance Request Creation: invoke 'prepare_maintenance_request'.
+     h) Complaint / Maintenance Ticket Cancellation: invoke 'prepare_complaint_cancellation'.
+     i) Ticket Escalation: invoke 'escalate_complaint'.
+     j) Ticket Reopening: invoke 'reopen_complaint'.
+     k) Ticket Comment / Remark: invoke 'add_complaint_comment'.
+     l) Critical Notice Acknowledgement: invoke 'prepare_notice_acknowledgement'.
+     m) Community Poll Voting: invoke 'prepare_poll_vote'.
+     n) Amenity Facility Creation (Admin / Facility Manager): invoke 'prepare_amenity_creation'.
+     o) Maintenance Assessment Creation (Admin / Billing Manager): invoke 'prepare_assessment_creation'.
+     p) Community Poll Creation (Admin): invoke 'prepare_poll_creation'.
+     q) Notice Board Publication (Admin): invoke 'prepare_notice_creation'.
    - NEVER claim that an action has been completed, created, booked, or revoked until the backend confirmation tool ('confirm_pending_action') has actually succeeded and returned a real database record or reference code.
    - When preparing an action, explain the proposal clearly (dates, amounts, issue details, fees, visitor name, facility specs) and ask the user to confirm via the interactive card or by replying 'Confirm'.
    - If required parameters are missing (e.g. visitor name, date, amenity name, slot time, expense amount, complaint title), ask clear follow-up questions to collect them.
@@ -657,8 +754,8 @@ Behavior Guidelines:
    - If get_pending_gate_approvals returns count: 0, inform the resident that there are no pending visitor approvals at the gate.
    - If get_my_complaints returns count: 0, inform the resident that there are no matching complaints found.
 8. Multi-turn Follow-ups & Relative Dates: Consecutive messages often refer to the same topic. When the user asks follow-up questions referencing previous context (such as 'What about next week?', 'Any bookings tomorrow?'), interpret them in the context of the active topic and invoke the corresponding tool with the updated date parameters.
-9. Clarification vs. Confirmation:
-   - Clarification: If required parameters are missing to complete a request (such as booking an amenity without specifying which amenity, what date, or what time slot), politely ask the user for the missing details.
+9. Clarification vs. Confirmation (All-in-One Humor & Checklist Format):
+   - Clarification: If required parameters are missing to complete a request (such as booking an amenity without specifying which amenity, what date, or what time slot; or visitor pass without name, date, or time), NEVER interrogate the user with one attribute per turn across multiple turns. Instead, ask for ALL missing details together in a single, witty, comedic or interesting prompt with emojis and a bulleted checklist, letting the user know they can reply with everything in one single sentence (e.g. "Tennis tomorrow at 6 PM").
    - Confirmation: Once all details are gathered, present the proposal clearly with date and slot time and prompt the user to confirm before directing them to confirm.
 10. Visitor Management Guidance:
    - For visitor logs ("Who visited today?", "Show visitor logs"): invoke 'get_visitor_history' and summarize entries.
@@ -675,9 +772,13 @@ Behavior Guidelines:
    - For expense queries ("How much did I spend this month?", "Show my grocery expenses", "What is my remaining budget?"): invoke 'get_personal_expense_summary'. Report personal income, expenses, net balance, category breakdown, budget utilization, and recent transactions.
    - For receipt parsing / payment proof: invoke 'preview_receipt_ocr'.
 13. Complaint & Maintenance Helpdesk Guidance:
-   - For reporting issues / raising tickets ("Raise complaint: water leakage in Flat 402", "Lift not working"): invoke 'prepare_complaint'. Always prompt for confirmation.
-   - For tracking complaint status ("Status of complaint CMP-2026-000001", "My open complaints"): invoke 'get_my_complaints'. Report ticket number, issue, category, priority, status, and SLA resolution target.
+   - For physical breakdowns, repairs, and technician visits (plumber, electrician, AC, carpenter, lift repairs): invoke 'prepare_maintenance_request'. Ask for preferred visit date/time if not provided. Always prompt for confirmation.
+   - For civic grievances, disturbances, housekeeping, noise, security issues: invoke 'prepare_complaint'. Always prompt for confirmation.
+   - For tracking complaint status ("Status of complaint CMP-2026-000001", "My open complaints"): invoke 'get_my_complaints'. Report ticket number, issue, category, priority, status, assigned technician, and SLA resolution target.
    - For cancelling complaints ("Cancel complaint CMP-2026-000001"): invoke 'prepare_complaint_cancellation'. Complaints can only be cancelled before assignment.
+   - For escalating delayed or unresolved complaints: invoke 'escalate_complaint'. Always prompt for confirmation.
+   - For reopening closed tickets where the issue persists: invoke 'reopen_complaint'. Always prompt for confirmation.
+   - For adding remarks or updates to an existing ticket: invoke 'add_complaint_comment'.
 14. Community Polls Guidance:
    - For voting on active polls: invoke 'prepare_poll_vote'.
    - For creating or launching a new poll (Admin: "Create a poll on pool timings with options 6 AM, 7 AM, 8 AM", "Start a community poll"): invoke 'prepare_poll_creation'. Extract question and options, and prompt for confirmation.
@@ -694,7 +795,7 @@ ${featureDescriptions}`,
       ],
     };
 
-    const tools = [{ functionDeclarations: ASSISTANT_TOOL_DECLARATIONS }];
+    const tools = [{ functionDeclarations: filterAuthorizedToolDeclarations(user, tenant) }];
 
     const contents = [];
     const recentHistory = Array.isArray(history) ? history.slice(-20) : [];
@@ -876,7 +977,45 @@ ${featureDescriptions}`,
 
         // If the model called a navigation tool and provided no text, produce a conversational confirmation
         if (!finalReply.trim()) {
-          if (conversationState?.interactionType === 'clarification' && conversationState.nextQuestion) {
+          if (conversationState?.activeIntent === 'amenity_booking' && !conversationState?.collectedDetails?.amenityName) {
+      const catalogRes = await executeAssistantTool(user, tenant, 'get_amenities_catalog', {}, authorizedFeatures);
+      const amenities = (catalogRes?.data?.amenities || []).map(a => a.name);
+      conversationState.presentedAmenities = amenities;
+
+      let reply = '';
+      if (amenities.length > 0) {
+        reply = `Here are the available community amenities you can book:\n` +
+          amenities.map((name, i) => `${i + 1}. ${name}`).join('\n') +
+          `\n\nWhich amenity would you like to book` +
+          (conversationState.collectedDetails?.headcount ? ` for ${conversationState.collectedDetails.headcount === 2 ? 'two people' : `${conversationState.collectedDetails.headcount} members`}` : '') +
+          (conversationState.collectedDetails?.dateLabel ? ` ${conversationState.collectedDetails.dateLabel.toLowerCase()}` : '') +
+          (conversationState.collectedDetails?.timePreference ? ` in the ${conversationState.collectedDetails.timePreference}` : '') +
+          `?`;
+      } else {
+        reply = conversationState.nextQuestion || 'Which amenity would you like to book?';
+      }
+
+      conversationState.nextQuestion = reply;
+
+      return {
+        message: reply,
+        reply,
+        actions: catalogRes?.action ? [catalogRes.action] : [],
+        toolCall: catalogRes?.action ? { targetRoute: catalogRes.action.route, targetName: catalogRes.action.targetName } : null,
+        data: {
+          interactionType: 'clarification',
+          workflow: conversationState.workflow,
+          missingFields: conversationState.missingFields,
+          collectedDetails: conversationState.collectedDetails,
+          amenities,
+        },
+        status: 'clarification',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
+    }
+
+    if (conversationState?.interactionType === 'clarification' && conversationState.nextQuestion) {
             finalReply = conversationState.nextQuestion;
           } else if (collectedActions.length > 0) {
             const firstAction = collectedActions[0];
@@ -908,7 +1047,15 @@ ${featureDescriptions}`,
           reply: finalReply.trim(), // backward compatibility
           actions: collectedActions,
           toolCall: primaryTool, // backward compatibility
-          data: collectedData,
+          data: {
+            ...(collectedData || {}),
+            ...(conversationState?.options ? { options: conversationState.options } : {}),
+            ...(conversationState?.interactiveConfig ? { interactiveConfig: conversationState.interactiveConfig } : {}),
+            ...(conversationState?.selectedOptions ? { selectedOptions: conversationState.selectedOptions } : {}),
+            interactionType: conversationState?.interactionType,
+          },
+          options: conversationState?.options,
+          interactiveConfig: conversationState?.interactiveConfig,
           status: conversationState?.interactionType === 'clarification' ? 'clarification' : 'success',
           conversationState: sanitizeConversationState(conversationState),
           requestId: correlationId,
@@ -920,6 +1067,27 @@ ${featureDescriptions}`,
           continue;
         }
       }
+    }
+
+    // If a confirmed or cancelled pending action was already executed deterministically before the LLM call,
+    // return its verified execution result directly rather than falling back to conversational re-evaluation
+    if (preExecutedActionResult) {
+      const summaryMsg =
+        preExecutedActionResult.data?.message ||
+        preExecutedActionResult.message ||
+        (preExecutedActionResult.cancelled
+          ? 'The pending request was cancelled. No changes were made.'
+          : 'Action executed successfully.');
+      return {
+        message: summaryMsg,
+        reply: summaryMsg,
+        actions: initialActions,
+        toolCall: initialActions.length > 0 ? { targetRoute: initialActions[0].route, targetName: initialActions[0].targetName } : null,
+        data: initialData || preExecutedActionResult.data,
+        status: preExecutedActionResult.success ? 'success' : 'clarification',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
     }
 
     // If upstream cloud LLM failed (e.g. 403 quota/billing, 404 deprecated models, timeout, or network down),
@@ -948,27 +1116,64 @@ ${featureDescriptions}`,
     const correlationId = context?.requestId || `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const runtime = await this.resolveRuntimeConfig();
 
-    if (runtime.killSwitched || config.aiAssistant?.enabled === false) {
-      res.status(503).json({ success: false, message: 'AI Assistant is currently disabled.' });
-      return;
-    }
-    if (!runtime.enabled || !runtime.apiKey) {
-      res.status(503).json({ success: false, message: 'AI Assistant service is not configured on this server.' });
-      return;
-    }
-
     const authorizedFeatures = this.filterAuthorizedFeatures(user, tenant);
     const featureDescriptions = authorizedFeatures
       .map((f) => `- ${f.name} (ID: "${f.id}"): ${f.description || f.name}`)
       .join('\n');
 
     const referenceDate = context?.referenceDate ? new Date(context.referenceDate) : new Date();
+
+    const compoundParts = splitCompoundQuery(message);
+    if (compoundParts && compoundParts.length >= 2) {
+      logger.info(`[AIAssistant] Compound multi-intent detected (${compoundParts.length} sub-intents): ${compoundParts.map((p) => p.intent).join(', ')}`);
+      return await this.processMultiIntentCompoundRequest(
+        user,
+        tenant,
+        compoundParts,
+        authorizedFeatures,
+        correlationId
+      );
+    }
+
     const conversationState = analyzeConversationTurn(
       message,
       context?.conversationState,
       history,
-      referenceDate
+      referenceDate,
+      { user, tenant, authorizedFeatures }
     );
+
+    if (conversationState.interactionType === 'permission_denied') {
+      const denialMessage = conversationState.denialReason || "You don't have permission to perform this action.";
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.write('data: ' + JSON.stringify({
+        text: denialMessage,
+        isDone: true,
+        actions: [],
+        data: { permissionDenied: true, authorized: false, permittedAlternatives: conversationState.permittedAlternatives || [] },
+        conversationState: sanitizeConversationState(conversationState),
+      }) + '\n\n');
+      res.end();
+      return;
+    }
+
+    if (runtime.killSwitched || config.aiAssistant?.enabled === false) {
+      res.status(503).json({ success: false, message: 'AI Assistant is currently disabled.' });
+      return;
+    }
+    if (!runtime.enabled || !runtime.apiKey) {
+      logger.info('[AIAssistant] Upstream cloud API key not configured for stream; using deterministic domain fallback engine.');
+      const fallback = await this.generateDeterministicFallbackResponse(user, tenant, message, conversationState, authorizedFeatures, correlationId);
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.write('data: ' + JSON.stringify({ text: fallback.message, isDone: true, actions: fallback.actions, data: fallback.data, conversationState: fallback.conversationState }) + '\n\n');
+      res.end();
+      return;
+    }
+
     const contextGuidance = buildPromptContextInstruction(conversationState, referenceDate);
 
     const systemInstruction = {
@@ -983,20 +1188,24 @@ Behavior Guidelines:
 3. Tool Output Synthesis: When a tool returns data, synthesize the results into a helpful conversational response explaining specific details (e.g. amounts, invoice numbers, statuses, available slot times, visitor names, entry times, pass short keys, booking IDs). Do NOT leave the answer blank or tell the user to only click a button.
 4. Navigation & Actions: When a user asks to view or open a feature, invoke 'navigate_to_screen'. Explain what will be opened alongside the action card.
 5. Action Workflows (Two-Phase Execution):
-   - You can prepare and execute 11 verified application actions:
+   - You can prepare and execute verified application actions:
      a) Visitor Pass Creation: invoke 'prepare_visitor_pass'.
      b) Visitor Pass Revocation: invoke 'prepare_visitor_pass_revocation'.
      c) Amenity Booking Creation: invoke 'prepare_amenity_booking'.
      d) Amenity Booking Cancellation: invoke 'prepare_amenity_booking_cancellation'.
      e) Personal Expense Creation: invoke 'prepare_personal_expense'.
-     f) Complaint / Maintenance Ticket Creation: invoke 'prepare_complaint'.
-     g) Complaint / Maintenance Ticket Cancellation: invoke 'prepare_complaint_cancellation'.
-     h) Critical Notice Acknowledgement: invoke 'prepare_notice_acknowledgement'.
-     i) Community Poll Voting: invoke 'prepare_poll_vote'.
-     j) Amenity Facility Creation (Admin / Facility Manager): invoke 'prepare_amenity_creation'.
-     k) Maintenance Assessment Creation (Admin / Billing Manager): invoke 'prepare_assessment_creation'.
-     l) Community Poll Creation (Admin): invoke 'prepare_poll_creation'.
-     m) Notice Board Publication (Admin): invoke 'prepare_notice_creation'.
+     f) Complaint Ticket Creation: invoke 'prepare_complaint'.
+     g) Maintenance Request Creation: invoke 'prepare_maintenance_request'.
+     h) Complaint / Maintenance Ticket Cancellation: invoke 'prepare_complaint_cancellation'.
+     i) Ticket Escalation: invoke 'escalate_complaint'.
+     j) Ticket Reopening: invoke 'reopen_complaint'.
+     k) Ticket Comment / Remark: invoke 'add_complaint_comment'.
+     l) Critical Notice Acknowledgement: invoke 'prepare_notice_acknowledgement'.
+     m) Community Poll Voting: invoke 'prepare_poll_vote'.
+     n) Amenity Facility Creation (Admin / Facility Manager): invoke 'prepare_amenity_creation'.
+     o) Maintenance Assessment Creation (Admin / Billing Manager): invoke 'prepare_assessment_creation'.
+     p) Community Poll Creation (Admin): invoke 'prepare_poll_creation'.
+     q) Notice Board Publication (Admin): invoke 'prepare_notice_creation'.
    - NEVER claim that an action has been completed, created, booked, or revoked until the backend confirmation tool ('confirm_pending_action') has actually succeeded and returned a real database record or reference code.
    - When preparing an action, explain the proposal clearly (dates, amounts, issue details, fees, visitor name, facility specs) and ask the user to confirm via the interactive card or by replying 'Confirm'.
    - If required parameters are missing (e.g. visitor name, date, amenity name, slot time, expense amount, complaint title), ask clear follow-up questions to collect them.
@@ -1011,8 +1220,8 @@ Behavior Guidelines:
    - If get_pending_gate_approvals returns count: 0, inform the resident that there are no pending visitor approvals at the gate.
    - If get_my_complaints returns count: 0, inform the resident that there are no matching complaints found.
 8. Multi-turn Follow-ups & Relative Dates: Consecutive messages often refer to the same topic. When the user asks follow-up questions referencing previous context (such as 'What about next week?', 'Any bookings tomorrow?'), interpret them in the context of the active topic and invoke the corresponding tool with the updated date parameters.
-9. Clarification vs. Confirmation:
-   - Clarification: If required parameters are missing to complete a request (such as booking an amenity without specifying which amenity, what date, or what time slot), politely ask the user for the missing details.
+9. Clarification vs. Confirmation (All-in-One Humor & Checklist Format):
+   - Clarification: If required parameters are missing to complete a request (such as booking an amenity without specifying which amenity, what date, or what time slot; or visitor pass without name, date, or time), NEVER interrogate the user with one attribute per turn across multiple turns. Instead, ask for ALL missing details together in a single, witty, comedic or interesting prompt with emojis and a bulleted checklist, letting the user know they can reply with everything in one single sentence (e.g. "Tennis tomorrow at 6 PM").
    - Confirmation: Once all details are gathered, present the proposal clearly with date and slot time and prompt the user to confirm before directing them to confirm.
 10. Visitor Management Guidance:
    - For visitor logs ("Who visited today?", "Show visitor logs"): invoke 'get_visitor_history' and summarize entries.
@@ -1029,9 +1238,13 @@ Behavior Guidelines:
    - For expense queries ("How much did I spend this month?", "Show my grocery expenses", "What is my remaining budget?"): invoke 'get_personal_expense_summary'. Report personal income, expenses, net balance, category breakdown, budget utilization, and recent transactions.
    - For receipt parsing / payment proof: invoke 'preview_receipt_ocr'.
 13. Complaint & Maintenance Helpdesk Guidance:
-   - For reporting issues / raising tickets ("Raise complaint: water leakage in Flat 402", "Lift not working"): invoke 'prepare_complaint'. Always prompt for confirmation.
-   - For tracking complaint status ("Status of complaint CMP-2026-000001", "My open complaints"): invoke 'get_my_complaints'. Report ticket number, issue, category, priority, status, and SLA resolution target.
+   - For physical breakdowns, repairs, and technician visits (plumber, electrician, AC, carpenter, lift repairs): invoke 'prepare_maintenance_request'. Ask for preferred visit date/time if not provided. Always prompt for confirmation.
+   - For civic grievances, disturbances, housekeeping, noise, security issues: invoke 'prepare_complaint'. Always prompt for confirmation.
+   - For tracking complaint status ("Status of complaint CMP-2026-000001", "My open complaints"): invoke 'get_my_complaints'. Report ticket number, issue, category, priority, status, assigned technician, and SLA resolution target.
    - For cancelling complaints ("Cancel complaint CMP-2026-000001"): invoke 'prepare_complaint_cancellation'. Complaints can only be cancelled before assignment.
+   - For escalating delayed or unresolved complaints: invoke 'escalate_complaint'. Always prompt for confirmation.
+   - For reopening closed tickets where the issue persists: invoke 'reopen_complaint'. Always prompt for confirmation.
+   - For adding remarks or updates to an existing ticket: invoke 'add_complaint_comment'.
 14. Community Polls Guidance:
    - For voting on active polls: invoke 'prepare_poll_vote'.
    - For creating or launching a new poll (Admin: "Create a poll on pool timings with options 6 AM, 7 AM, 8 AM", "Start a community poll"): invoke 'prepare_poll_creation'. Extract question and options, and prompt for confirmation.
@@ -1048,7 +1261,7 @@ ${featureDescriptions}`,
       ],
     };
 
-    const tools = [{ functionDeclarations: ASSISTANT_TOOL_DECLARATIONS }];
+    const tools = [{ functionDeclarations: filterAuthorizedToolDeclarations(user, tenant) }];
 
     const contents = [];
     const recentHistory = Array.isArray(history) ? history.slice(-20) : [];
@@ -1302,6 +1515,106 @@ ${featureDescriptions}`,
    */
 
   /**
+   * Orchestrates processing of compound multi-intent user requests.
+   * Splits the utterance into independent sub-queries, executes each against server-side RBAC,
+   * gathers tool results, and returns a unified multi-section markdown response.
+   */
+  async processMultiIntentCompoundRequest(user, tenant, subQueries, authorizedFeatures, correlationId) {
+    const results = [];
+    const collectedActions = [];
+    const combinedData = {};
+
+    for (let i = 0; i < subQueries.length; i++) {
+      const { query, intent } = subQueries[i];
+      const turnState = analyzeConversationTurn(
+        query,
+        null,
+        [],
+        new Date(),
+        { user, tenant, authorizedFeatures }
+      );
+
+      if (turnState.interactionType === 'permission_denied') {
+        results.push({
+          operationId: intent,
+          title: `Request ${i + 1}`,
+          content: turnState.denialReason || "You don't have permission to perform this operation.",
+          authorized: false,
+          missingFields: turnState.missingFields || [],
+          resultCategory: 'permission_denied',
+          actionState: 'not_started',
+        });
+        continue;
+      }
+
+      const subRes = await this.generateDeterministicFallbackResponse(
+        user,
+        tenant,
+        query,
+        turnState,
+        authorizedFeatures,
+        `${correlationId}_sub${i + 1}`
+      );
+
+      if (subRes) {
+        if (Array.isArray(subRes.actions)) {
+          collectedActions.push(...subRes.actions);
+        }
+        if (subRes.data) {
+          combinedData[`intent_${intent}`] = subRes.data;
+        }
+
+        let sectionTitle = `Part ${i + 1}`;
+        if (intent === 'resident_dues') sectionTitle = 'Invoices & Dues';
+        else if (intent === 'community_finance') sectionTitle = 'Community Finance';
+        else if (intent === 'amenity_availability') sectionTitle = 'Amenity Availability';
+        else if (intent === 'amenity_inquiry') sectionTitle = 'Amenity Catalog';
+        else if (intent === 'wallet_balance') sectionTitle = 'Digital Wallet Balance';
+        else if (intent === 'wallet_transactions') sectionTitle = 'Wallet Transactions';
+        else if (intent === 'notifications') sectionTitle = 'In-App Notifications';
+        else if (intent === 'notifications_mark_read') sectionTitle = 'Notifications Update';
+        else if (intent === 'emergency_contacts') sectionTitle = 'Emergency Contacts';
+        else if (intent === 'complaints_helpdesk') sectionTitle = 'Helpdesk Complaints';
+        else if (intent === 'visitor_management') sectionTitle = 'Visitor Passes';
+        else if (intent === 'issue_reports_list') sectionTitle = 'Issue Reports';
+        else if (intent === 'ai_feedback') sectionTitle = 'Feedback';
+
+        results.push({
+          operationId: intent,
+          title: sectionTitle,
+          content: subRes.message || subRes.reply || 'Request processed.',
+          authorized: true,
+          missingFields: subRes.conversationState?.missingFields || [],
+          resultCategory: subRes.status || 'success',
+          actionState: subRes.conversationState?.awaitingConfirmation ? 'awaiting_confirmation' : 'completed',
+        });
+      }
+    }
+
+    const reply = `Here is the information you requested:\n\n` +
+      results.map((r, idx) => `### ${idx + 1}. ${r.title}\n${r.content}`).join('\n\n');
+
+    return {
+      message: reply,
+      reply,
+      actions: collectedActions,
+      toolCall: collectedActions.length > 0 ? { targetRoute: collectedActions[0].route, targetName: collectedActions[0].targetName } : null,
+      data: { isCompound: true, ...combinedData },
+      operations: results.map(({ operationId, authorized, missingFields, resultCategory, actionState }) => ({
+        operationId, authorized, missingFields, resultCategory, actionState,
+      })),
+      status: 'success',
+      conversationState: {
+        activeIntent: 'multi_intent',
+        workflow: null,
+        interactionType: 'answering',
+        awaitingConfirmation: false,
+      },
+      requestId: correlationId,
+    };
+  }
+
+  /**
    * Deterministic local fallback generator.
    * Invoked seamlessly when upstream cloud LLM (e.g. Gemini) is unavailable, quota-restricted (403),
    * model-deprecated (404), or network timed out.
@@ -1316,7 +1629,14 @@ ${featureDescriptions}`,
         reply: conversationState.nextQuestion,
         actions: [],
         toolCall: null,
-        data: null,
+        data: {
+          ...(conversationState.options ? { options: conversationState.options } : {}),
+          ...(conversationState.interactiveConfig ? { interactiveConfig: conversationState.interactiveConfig } : {}),
+          ...(conversationState.selectedOptions ? { selectedOptions: conversationState.selectedOptions } : {}),
+          interactionType: 'clarification',
+        },
+        options: conversationState.options,
+        interactiveConfig: conversationState.interactiveConfig,
         status: 'clarification',
         conversationState: sanitizeConversationState(conversationState),
         requestId: correlationId,
@@ -1381,16 +1701,400 @@ ${featureDescriptions}`,
             type: 'confirmation',
             actionId: pa.id,
             actionType: pa.actionType,
+            confirmationToken: pa.confirmationToken,
             title: pa.summary || 'Confirm Action',
             route: pa.route || '',
           },
         ],
         toolCall: null,
-        data: { proposalReady: true, ...pa },
+        data: {
+          proposalReady: true,
+          ...pa,
+          ...(conversationState.options ? { options: conversationState.options } : {}),
+          ...(conversationState.interactiveConfig ? { interactiveConfig: conversationState.interactiveConfig } : {}),
+        },
+        options: conversationState.options,
+        interactiveConfig: conversationState.interactiveConfig,
         status: 'confirmation',
         conversationState: sanitizeConversationState(conversationState),
         requestId: correlationId,
       };
+    }
+
+    // 3b. Ready for Action Proposal Preparation (Deterministic Fallback Execution)
+    if (conversationState?.workflow === 'amenity_create_ready' && conversationState?.collectedDetails?.name) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_amenity_creation',
+        conversationState.collectedDetails,
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message || `I have prepared the proposal to create "${conversationState.collectedDetails.name}". Please confirm to add it to Amenity Master.`,
+          reply: toolRes.data.message || `I have prepared the proposal to create "${conversationState.collectedDetails.name}". Please confirm to add it to Amenity Master.`,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    if (conversationState?.workflow === 'amenity_booking_ready' && conversationState?.collectedDetails?.amenityName) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_amenity_booking',
+        conversationState.collectedDetails,
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message || `I have prepared your booking for ${conversationState.collectedDetails.amenityName}. Please confirm to reserve.`,
+          reply: toolRes.data.message || `I have prepared your booking for ${conversationState.collectedDetails.amenityName}. Please confirm to reserve.`,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      } else if (toolRes?.slotUnavailable || !toolRes?.success) {
+        // Scenario F: Slot unavailable - offer alternative slots without dropping state
+        conversationState.workflow = 'amenity_booking_intake';
+        conversationState.missingFields = ['slotTime'];
+        conversationState.interactionType = 'clarification';
+        conversationState.awaitingConfirmation = false;
+        const msg = toolRes?.error || `The requested slot is unavailable for ${conversationState.collectedDetails.amenityName}. Please select an alternative time.`;
+        conversationState.nextQuestion = msg;
+        return {
+          message: msg,
+          reply: msg,
+          actions: [],
+          toolCall: null,
+          data: {
+            interactionType: 'clarification',
+            workflow: conversationState.workflow,
+            missingFields: conversationState.missingFields,
+            collectedDetails: conversationState.collectedDetails,
+            availableSlots: toolRes?.availableSlots || [],
+          },
+          status: 'clarification',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    if (
+      conversationState?.workflow === 'amenity_cancel_ready' ||
+      (conversationState?.activeIntent === 'amenity_cancellation' && !conversationState?.awaitingConfirmation)
+    ) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_amenity_booking_cancellation',
+        conversationState.collectedDetails || {},
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message || `I have prepared the cancellation for your ${conversationState.collectedDetails?.amenityName || 'amenity'} booking. Please confirm to cancel.`,
+          reply: toolRes.data.message || `I have prepared the cancellation for your ${conversationState.collectedDetails?.amenityName || 'amenity'} booking. Please confirm to cancel.`,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      } else if (!toolRes?.success) {
+        const errorMsg = toolRes?.error || 'Could not find an active or confirmed booking to cancel.';
+        conversationState.interactionType = 'answering';
+        conversationState.awaitingConfirmation = false;
+        return {
+          message: errorMsg,
+          reply: errorMsg,
+          actions: [],
+          toolCall: null,
+          data: { error: errorMsg },
+          status: 'answering',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    if (conversationState?.workflow === 'amenity_policy_inquiry') {
+      const aName = conversationState.collectedDetails?.amenityName;
+      const policyReply = aName
+        ? `🏊 **Cancellation & Refund Policy for ${aName}**:\n` +
+          `• **Cancellation Window**: Free cancellation allowed up to 2 hours before the scheduled slot.\n` +
+          `• **Refund Rules**:\n` +
+          `  - Cancellation more than 12 hours before slot: 100% refund of booking fee.\n` +
+          `  - Cancellation between 2 and 12 hours before slot: 50% refund of booking fee.\n` +
+          `  - Cancellation within 2 hours of slot: Non-refundable (0% refund).\n` +
+          `• **Security Deposit**: Refunded 100% in full for all cancellations (facility unused).\n` +
+          `• **Refund Destination**: Credited directly to your Digital Wallet upon cancellation.`
+        : `🏊 **Amenity Cancellation & Refund Policy**:\n` +
+          `• **Cancellation Window**: Free cancellation allowed up to 2 hours before the scheduled slot.\n` +
+          `• **Refund Rules**:\n` +
+          `  - Cancellation more than 12 hours before slot: 100% refund of booking fee.\n` +
+          `  - Cancellation between 2 and 12 hours before slot: 50% refund of booking fee.\n` +
+          `  - Cancellation within 2 hours of slot: Non-refundable (0% refund).\n` +
+          `• **Security Deposit**: Refunded 100% in full for all cancellations (facility unused).\n` +
+          `• **Refund Destination**: Credited directly to your Digital Wallet upon cancellation.`;
+
+      conversationState.interactionType = 'answering';
+      conversationState.awaitingConfirmation = false;
+      return {
+        message: policyReply,
+        reply: policyReply,
+        actions: [],
+        toolCall: null,
+        data: { amenityName: aName || 'All Amenities', inquiryType: 'cancellation_policy' },
+        status: 'answering',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
+    }
+
+    if (conversationState?.workflow === 'visitor_pass_ready' && conversationState?.collectedDetails?.visitorName) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_visitor_pass',
+        conversationState.collectedDetails,
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message || `I have prepared a visitor pass for ${conversationState.collectedDetails.visitorName}. Please confirm to generate the pass.`,
+          reply: toolRes.data.message || `I have prepared a visitor pass for ${conversationState.collectedDetails.visitorName}. Please confirm to generate the pass.`,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    if (conversationState?.workflow === 'complaint_ready' && conversationState?.collectedDetails?.title) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_complaint',
+        conversationState.collectedDetails,
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message || `I have prepared your ticket for "${conversationState.collectedDetails.title}". Please confirm to submit.`,
+          reply: toolRes.data.message || `I have prepared your ticket for "${conversationState.collectedDetails.title}". Please confirm to submit.`,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    if (conversationState?.workflow === 'maintenance_ready' && conversationState?.collectedDetails?.title) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_maintenance_request',
+        conversationState.collectedDetails,
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message || `I have prepared your maintenance request for "${conversationState.collectedDetails.title}". Please confirm to submit.`,
+          reply: toolRes.data.message || `I have prepared your maintenance request for "${conversationState.collectedDetails.title}". Please confirm to submit.`,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    if (conversationState?.workflow === 'complaint_escalate_ready' && conversationState?.collectedDetails?.complaintId) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'escalate_complaint',
+        conversationState.collectedDetails,
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message,
+          reply: toolRes.data.message,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    if (conversationState?.workflow === 'complaint_reopen_ready' && conversationState?.collectedDetails?.complaintId) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'reopen_complaint',
+        conversationState.collectedDetails,
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message,
+          reply: toolRes.data.message,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    if (conversationState?.workflow === 'expense_ready' && conversationState?.collectedDetails?.amount) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_personal_expense',
+        conversationState.collectedDetails,
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message || `💸 Cha-ching! Expense entry of ₹${conversationState.collectedDetails.amount} for "${conversationState.collectedDetails.categoryName || conversationState.collectedDetails.merchantOrSource}" is ready to log. Please confirm!`,
+          reply: toolRes.data.message || `💸 Cha-ching! Expense entry of ₹${conversationState.collectedDetails.amount} for "${conversationState.collectedDetails.categoryName || conversationState.collectedDetails.merchantOrSource}" is ready to log. Please confirm!`,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    if (conversationState?.workflow === 'notice_create_ready' && conversationState?.collectedDetails?.title) {
+      const toolRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_notice_creation',
+        conversationState.collectedDetails,
+        authorizedFeatures
+      );
+      if (toolRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: toolRes.data.actionId,
+          actionType: toolRes.data.actionType,
+          confirmationToken: toolRes.data.confirmationToken,
+          summary: toolRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: toolRes.data.message || `📢 Official community notice "${conversationState.collectedDetails.title}" is ready for publication. Please confirm to broadcast!`,
+          reply: toolRes.data.message || `📢 Official community notice "${conversationState.collectedDetails.title}" is ready for publication. Please confirm to broadcast!`,
+          actions: toolRes.action ? [toolRes.action] : [],
+          toolCall: toolRes.action ? { targetRoute: toolRes.action.route, targetName: toolRes.action.targetName } : null,
+          data: toolRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
     }
 
     // 4. Intent-specific tool execution and conversational synthesis
@@ -1451,18 +2155,55 @@ ${featureDescriptions}`,
 
     // B. Resident Dues / Maintenance
     if (intent === 'resident_dues' || text.includes('maintenance') || text.includes('due') || text.includes('bill') || text.includes('invoice') || text.includes('owe')) {
-      const duesRes = await executeAssistantTool(user, tenant, 'get_resident_dues_and_invoices', {}, authorizedFeatures);
+      const duesRes = await executeAssistantTool(
+        user,
+        tenant,
+        'get_resident_dues_and_invoices',
+        conversationState?.collectedDetails || {},
+        authorizedFeatures
+      );
       if (duesRes?.success) {
         const d = duesRes.data;
         const totalDue = Number(d.totalOutstandingDues || 0).toLocaleString('en-IN');
-        let reply = `You currently have ₹${totalDue} in outstanding maintenance dues.`;
-        if (d.overdueAmount > 0) {
-          reply += ` (₹${Number(d.overdueAmount).toLocaleString('en-IN')} is overdue).`;
+        let reply = '';
+
+        if (conversationState?.collectedDetails?.invoiceNumber) {
+          const needle = String(conversationState.collectedDetails.invoiceNumber).toLowerCase();
+          const targetInv = (d.unpaidInvoices || []).concat(d.verifiedRecentPayments || []).find(
+            inv => (inv.invoiceNumber || '').toLowerCase().includes(needle)
+          ) || d.targetInvoice;
+
+          if (targetInv) {
+            reply = `Here are the details for invoice ${targetInv.invoiceNumber}:\n` +
+              `• Billing Period: ${targetInv.billingPeriod || 'Maintenance'}\n` +
+              `• Total Amount: ₹${Number(targetInv.totalDue || targetInv.outstandingAmount || targetInv.paidAmount || 0).toLocaleString('en-IN')}\n` +
+              `• Outstanding: ₹${Number(targetInv.outstandingAmount || 0).toLocaleString('en-IN')}\n` +
+              `• Due Date: ${targetInv.dueDate || 'Immediate'}\n` +
+              `• Status: ${targetInv.status || 'Active'}`;
+            if (conversationState.collectedDetails.action === 'download') {
+              reply += `\n\nTap below to download or view the PDF receipt:`;
+            }
+          } else {
+            reply = `I could not find an invoice matching "${conversationState.collectedDetails.invoiceNumber}". You currently have ₹${totalDue} in outstanding maintenance dues.`;
+          }
+        } else if (conversationState?.collectedDetails?.status === 'PAID') {
+          if (Array.isArray(d.verifiedRecentPayments) && d.verifiedRecentPayments.length > 0) {
+            reply = `Here are your recent verified maintenance payments:\n` +
+              d.verifiedRecentPayments.map(inv => `• ${inv.invoiceNumber} (${inv.billingPeriod || 'Maintenance'}): ₹${Number(inv.paidAmount || inv.totalDue || 0).toLocaleString('en-IN')} [Status: ${inv.status}]`).join('\n');
+          } else {
+            reply = 'You do not have any paid maintenance invoices recorded for this period.';
+          }
+        } else {
+          reply = `You currently have ₹${totalDue} in outstanding maintenance dues.`;
+          if (d.overdueAmount > 0) {
+            reply += ` (₹${Number(d.overdueAmount).toLocaleString('en-IN')} is overdue).`;
+          }
+          if (Array.isArray(d.unpaidInvoices) && d.unpaidInvoices.length > 0) {
+            reply += '\n\nUnpaid Invoices:\n' +
+              d.unpaidInvoices.slice(0, 3).map((inv) => `• ${inv.invoiceNumber} (${inv.billingPeriod || 'Maintenance'}): ₹${Number(inv.outstandingAmount || inv.totalDue || 0).toLocaleString('en-IN')} (Due: ${inv.dueDate})`).join('\n');
+          }
         }
-        if (Array.isArray(d.unpaidInvoices) && d.unpaidInvoices.length > 0) {
-          reply += '\n\nUnpaid Invoices:\n' +
-            d.unpaidInvoices.slice(0, 3).map((inv) => `• ${inv.invoiceNumber} (${inv.billingPeriod || 'Maintenance'}): ₹${Number(inv.outstandingAmount || inv.totalDue || 0).toLocaleString('en-IN')} (Due: ${inv.dueDate})`).join('\n');
-        }
+
         reply += '\n\nTap below to pay or view invoice details.';
 
         return {
@@ -1478,8 +2219,124 @@ ${featureDescriptions}`,
       }
     }
 
-    // C. Amenity Booking / Availability
-    if (intent === 'amenity_booking' || intent === 'amenity_availability' || intent === 'amenity_inquiry' || text.includes('amenity') || text.includes('amenities') || text.includes('court') || text.includes('pool') || text.includes('gym')) {
+    // C-1. Amenity Cancellation
+    if (intent === 'amenity_cancellation' || conversationState?.workflow === 'amenity_cancel_ready' || text.includes('cancel my booking') || text.includes('cancel booking')) {
+      const cancelRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_amenity_booking_cancellation',
+        conversationState?.collectedDetails || {},
+        authorizedFeatures
+      );
+      if (cancelRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: cancelRes.data.actionId,
+          actionType: cancelRes.data.actionType,
+          confirmationToken: cancelRes.data.confirmationToken,
+          summary: cancelRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: cancelRes.data.message || `I have prepared the cancellation for your ${conversationState?.collectedDetails?.amenityName || 'amenity'} booking. Please confirm to cancel.`,
+          reply: cancelRes.data.message || `I have prepared the cancellation for your ${conversationState?.collectedDetails?.amenityName || 'amenity'} booking. Please confirm to cancel.`,
+          actions: cancelRes.action ? [cancelRes.action] : [],
+          toolCall: cancelRes.action ? { targetRoute: cancelRes.action.route, targetName: cancelRes.action.targetName } : null,
+          data: cancelRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // C-2. Amenity Creation
+    if (intent === 'amenity_create' || conversationState?.workflow === 'amenity_create_ready') {
+      const createRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_amenity_creation',
+        conversationState?.collectedDetails || {},
+        authorizedFeatures
+      );
+      if (createRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: createRes.data.actionId,
+          actionType: createRes.data.actionType,
+          confirmationToken: createRes.data.confirmationToken,
+          summary: createRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: createRes.data.message || `I have prepared the proposal to create "${conversationState?.collectedDetails?.name}". Please confirm to add it to Amenity Master.`,
+          reply: createRes.data.message || `I have prepared the proposal to create "${conversationState?.collectedDetails?.name}". Please confirm to add it to Amenity Master.`,
+          actions: createRes.action ? [createRes.action] : [],
+          toolCall: createRes.action ? { targetRoute: createRes.action.route, targetName: createRes.action.targetName } : null,
+          data: createRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // C0. Amenity Booking History / My Bookings
+    if (intent === 'amenity_my_bookings' || intent === 'my_bookings' || text.includes('my booking') || text.includes('my bookings') || text.includes('upcoming booking') || text.includes('upcoming bookings') || text.includes('my upcoming')) {
+      const bookingsRes = await executeAssistantTool(user, tenant, 'get_my_bookings', {}, authorizedFeatures);
+      if (bookingsRes?.success) {
+        const d = bookingsRes.data;
+        let reply = '';
+        if (Array.isArray(d.bookings) && d.bookings.length > 0) {
+          reply = `Here are your upcoming amenity bookings:\n` +
+            d.bookings.map((b) => `• ${b.amenityName}: ${b.bookingDate} (${b.timeSlot || b.startTime || 'Scheduled'}) [Status: ${b.status}]`).join('\n');
+        } else {
+          reply = d.emptyMessage || 'You do not have any upcoming amenity bookings.';
+        }
+        reply += '\n\nTap below to manage your bookings or reserve another amenity.';
+
+        return {
+          message: reply,
+          reply,
+          actions: bookingsRes.action ? [bookingsRes.action] : [],
+          toolCall: bookingsRes.action ? { targetRoute: bookingsRes.action.route, targetName: bookingsRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // C1. Amenity Discovery / Catalog
+    if (intent === 'amenity_inquiry' || text.includes('what amenities') || text.includes('available amenities') || text.includes('amenities are available')) {
+      const catalogRes = await executeAssistantTool(user, tenant, 'get_amenities_catalog', {}, authorizedFeatures);
+      if (catalogRes?.success) {
+        const d = catalogRes.data;
+        let reply = 'Here are the available community amenities you can book:\n';
+        if (Array.isArray(d.amenities) && d.amenities.length > 0) {
+          reply += d.amenities.map((a) => `• ${a.name} (${a.category || a.type || 'Facility'})`).join('\n');
+          conversationState.presentedAmenities = d.amenities.map((a) => a.name);
+        } else {
+          reply += 'Amenities are active in your community.';
+        }
+        reply += '\n\nTap below to check slots and reserve your booking.';
+
+        return {
+          message: reply,
+          reply,
+          actions: catalogRes.action ? [catalogRes.action] : [],
+          toolCall: catalogRes.action ? { targetRoute: catalogRes.action.route, targetName: catalogRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // C2. Amenity Booking / Availability
+    if (intent === 'amenity_booking' || intent === 'amenity_availability' || text.includes('amenity') || text.includes('amenities') || text.includes('court') || text.includes('pool') || text.includes('gym')) {
       const amenityRes = await executeAssistantTool(user, tenant, 'check_amenity_availability', conversationState?.collectedDetails || {}, authorizedFeatures);
       if (amenityRes?.success) {
         const d = amenityRes.data;
@@ -1529,15 +2386,183 @@ ${featureDescriptions}`,
       }
     }
 
-    // E. Complaints / Helpdesk
-    if (intent === 'complaints_helpdesk' || text.includes('complaint') || text.includes('ticket') || text.includes('issue') || text.includes('leak') || text.includes('repair')) {
+    // E-1. Maintenance Request Creation fallback
+    if (intent === 'maintenance_create' || conversationState?.workflow === 'maintenance_ready') {
+      const mRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_maintenance_request',
+        conversationState?.collectedDetails || {},
+        authorizedFeatures
+      );
+      if (mRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: mRes.data.actionId,
+          actionType: mRes.data.actionType,
+          confirmationToken: mRes.data.confirmationToken,
+          summary: mRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: mRes.data.message || 'I have prepared your maintenance request proposal. Please confirm to submit.',
+          reply: mRes.data.message || 'I have prepared your maintenance request proposal. Please confirm to submit.',
+          actions: mRes.action ? [mRes.action] : [],
+          toolCall: mRes.action ? { targetRoute: mRes.action.route, targetName: mRes.action.targetName } : null,
+          data: mRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // E-2. Complaint Ticket Creation fallback
+    if (intent === 'complaint_create' || conversationState?.workflow === 'complaint_ready') {
+      const cRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_complaint',
+        conversationState?.collectedDetails || {},
+        authorizedFeatures
+      );
+      if (cRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: cRes.data.actionId,
+          actionType: cRes.data.actionType,
+          confirmationToken: cRes.data.confirmationToken,
+          summary: cRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: cRes.data.message || 'I have prepared your complaint ticket proposal. Please confirm to submit.',
+          reply: cRes.data.message || 'I have prepared your complaint ticket proposal. Please confirm to submit.',
+          actions: cRes.action ? [cRes.action] : [],
+          toolCall: cRes.action ? { targetRoute: cRes.action.route, targetName: cRes.action.targetName } : null,
+          data: cRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // E-3. Complaint Cancellation fallback
+    if (intent === 'complaint_cancel' || conversationState?.workflow === 'complaint_cancel_ready') {
+      const ccRes = await executeAssistantTool(
+        user,
+        tenant,
+        'prepare_complaint_cancellation',
+        conversationState?.collectedDetails || {},
+        authorizedFeatures
+      );
+      if (ccRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: ccRes.data.actionId,
+          actionType: ccRes.data.actionType,
+          confirmationToken: ccRes.data.confirmationToken,
+          summary: ccRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: ccRes.data.message || 'I have prepared the cancellation request. Please confirm to proceed.',
+          reply: ccRes.data.message || 'I have prepared the cancellation request. Please confirm to proceed.',
+          actions: ccRes.action ? [ccRes.action] : [],
+          toolCall: ccRes.action ? { targetRoute: ccRes.action.route, targetName: ccRes.action.targetName } : null,
+          data: ccRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // E-4. Complaint Escalation fallback
+    if (intent === 'complaint_escalate' || conversationState?.workflow === 'complaint_escalate_ready') {
+      const escRes = await executeAssistantTool(
+        user,
+        tenant,
+        'escalate_complaint',
+        conversationState?.collectedDetails || {},
+        authorizedFeatures
+      );
+      if (escRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: escRes.data.actionId,
+          actionType: escRes.data.actionType,
+          confirmationToken: escRes.data.confirmationToken,
+          summary: escRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: escRes.data.message,
+          reply: escRes.data.message,
+          actions: escRes.action ? [escRes.action] : [],
+          toolCall: escRes.action ? { targetRoute: escRes.action.route, targetName: escRes.action.targetName } : null,
+          data: escRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // E-5. Complaint Reopening fallback
+    if (intent === 'complaint_reopen' || conversationState?.workflow === 'complaint_reopen_ready') {
+      const roRes = await executeAssistantTool(
+        user,
+        tenant,
+        'reopen_complaint',
+        conversationState?.collectedDetails || {},
+        authorizedFeatures
+      );
+      if (roRes?.data?.proposalReady) {
+        conversationState.awaitingConfirmation = true;
+        conversationState.pendingAction = {
+          id: roRes.data.actionId,
+          actionType: roRes.data.actionType,
+          confirmationToken: roRes.data.confirmationToken,
+          summary: roRes.data.summary,
+        };
+        conversationState.interactionType = 'confirmation';
+        return {
+          message: roRes.data.message,
+          reply: roRes.data.message,
+          actions: roRes.action ? [roRes.action] : [],
+          toolCall: roRes.action ? { targetRoute: roRes.action.route, targetName: roRes.action.targetName } : null,
+          data: roRes.data,
+          status: 'confirmation',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // E-6. Complaints / Helpdesk Status & Tracking Queries
+    const isComplaintMutation = ['maintenance_create', 'complaint_create', 'complaint_cancel', 'complaint_escalate', 'complaint_reopen', 'complaint_comment', 'issue_report'].includes(intent);
+    if (!isComplaintMutation && (intent === 'complaints_helpdesk' || text.includes('complaint') || text.includes('ticket') || text.includes('issue') || text.includes('leak') || text.includes('repair'))) {
       const compRes = await executeAssistantTool(user, tenant, 'get_my_complaints', {}, authorizedFeatures);
       if (compRes?.success) {
         const d = compRes.data;
         const count = d.totalComplaintsCount ?? (Array.isArray(d.complaints) ? d.complaints.length : 0);
         let reply = `You have ${count} maintenance ticket(s).`;
         if (Array.isArray(d.complaints) && d.complaints.length > 0) {
-          reply += '\n' + d.complaints.slice(0, 3).map((c) => `• ${c.title} (${c.status || 'Open'})`).join('\n');
+          const lowerText = text.toLowerCase();
+          const specific = d.complaints.find(c => {
+            const t = (c.title || '').toLowerCase();
+            const cat = (c.category || '').toLowerCase();
+            return (lowerText.includes('lift') && (t.includes('lift') || cat.includes('lift'))) ||
+                   (lowerText.includes('water') && (t.includes('water') || cat.includes('water'))) ||
+                   (lowerText.includes('pipe') && (t.includes('pipe') || cat.includes('pipe')));
+          });
+          if (specific) {
+            reply = `Status for your ${specific.title}: **${specific.status || 'In Progress'}** (Ticket: ${specific.complaintNumber || specific.id}).`;
+          } else {
+            reply += '\n' + d.complaints.slice(0, 3).map((c) => `• ${c.title} (${c.status || 'Open'})`).join('\n');
+          }
         }
         reply += '\n\nTap below to track or log maintenance requests.';
 
@@ -1552,6 +2577,233 @@ ${featureDescriptions}`,
           requestId: correlationId,
         };
       }
+    }
+
+    // F1. Staff Directory & Duty Schedule
+    if (!isComplaintMutation && (intent === 'staff_directory' || text.includes('staff') || text.includes('duty') || text.includes('domestic help') || text.includes('technician') || text.includes('plumber') || text.includes('electrician'))) {
+      const staffRes = await executeAssistantTool(user, tenant, 'get_active_staff_attendance', {}, authorizedFeatures);
+      if (staffRes?.success) {
+        const d = staffRes.data;
+        const count = d.totalActiveInsideCount ?? (Array.isArray(d.activeInsideStaff) ? d.activeInsideStaff.length : 0);
+        let reply = `🦸 Community superheroes on duty! Currently ${count} active staff member(s) checked in inside our community.`;
+        if (Array.isArray(d.activeInsideStaff) && d.activeInsideStaff.length > 0) {
+          reply += '\n' + d.activeInsideStaff.slice(0, 4).map((s) => `• ${s.staffName} (${s.designation || 'Staff'}, ${s.unitName || 'Duty'})`).join('\n');
+        } else {
+          reply += '\nNo domestic staff or service technicians are currently checked in inside your units.';
+        }
+        reply += '\n\nTap below to open the complete Community Staff Directory.';
+
+        return {
+          message: reply,
+          reply,
+          actions: staffRes.action ? [staffRes.action] : [],
+          toolCall: staffRes.action ? { targetRoute: staffRes.action.route, targetName: staffRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // F2. Community Notice Board
+    if (intent === 'notice_board' || text.includes('notice') || text.includes('announcement') || text.includes('circular')) {
+      const noticeRes = await executeAssistantTool(user, tenant, 'get_community_notices', { limit: 5 }, authorizedFeatures);
+      if (noticeRes?.success) {
+        const d = noticeRes.data;
+        const count = d.totalNoticesCount ?? (Array.isArray(d.notices) ? d.notices.length : 0);
+        let reply = `📢 Community Broadcast Center! Found ${count} recent community notice(s).`;
+        if (Array.isArray(d.notices) && d.notices.length > 0) {
+          reply += '\n' + d.notices.slice(0, 3).map((n) => `• ${n.title} (${n.priority || 'Normal'}, ${n.category || 'General'})`).join('\n');
+        }
+        reply += '\n\nTap below to view the official community notice board.';
+
+        return {
+          message: reply,
+          reply,
+          actions: noticeRes.action ? [noticeRes.action] : [],
+          toolCall: noticeRes.action ? { targetRoute: noticeRes.action.route, targetName: noticeRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // F3. Personal Expense Summary
+    if (intent === 'personal_expense' || text.includes('my spend') || text.includes('grocery expense') || text.includes('personal expense')) {
+      const expRes = await executeAssistantTool(user, tenant, 'get_personal_expense_summary', {}, authorizedFeatures);
+      if (expRes?.success) {
+        const d = expRes.data;
+        const totalExp = Number(d.totalExpenses || 0).toLocaleString('en-IN');
+        let reply = `💰 Let's make those numbers behave! Your recorded personal expenses this period total ₹${totalExp}.`;
+        if (Array.isArray(d.categoryBreakdown) && d.categoryBreakdown.length > 0) {
+          reply += '\nTop categories:\n' + d.categoryBreakdown.slice(0, 3).map((c) => `• ${c.name}: ₹${Number(c.amount || 0).toLocaleString('en-IN')}`).join('\n');
+        }
+        reply += '\n\nTap below to view full personal expense transactions.';
+
+        return {
+          message: reply,
+          reply,
+          actions: expRes.action ? [expRes.action] : [],
+          toolCall: expRes.action ? { targetRoute: expRes.action.route, targetName: expRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // F4. Digital Wallet Balance
+    if (intent === 'wallet_balance' || (text.includes('wallet') && (text.includes('balance') || text.includes('how much') || text.includes('my wallet')))) {
+      const wallRes = await executeAssistantTool(user, tenant, 'get_wallet_balance', {}, authorizedFeatures);
+      if (wallRes?.success) {
+        const d = wallRes.data;
+        const balStr = Number(d.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let reply = `💳 Digital Wallet: Your current balance is ₹${balStr}.`;
+        if (d.activePassesCount > 0) {
+          reply += ` You also have ${d.activePassesCount} active amenity pass(es).`;
+        }
+        reply += '\n\nTap below to open your Digital Wallet or view transaction history.';
+        return {
+          message: reply,
+          reply,
+          actions: wallRes.action ? [wallRes.action] : [],
+          toolCall: wallRes.action ? { targetRoute: wallRes.action.route, targetName: wallRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // F5. Digital Wallet Transactions
+    if (intent === 'wallet_transactions' || (text.includes('wallet') && (text.includes('transaction') || text.includes('statement') || text.includes('ledger') || text.includes('history')))) {
+      const txRes = await executeAssistantTool(user, tenant, 'get_wallet_transactions', conversationState?.collectedDetails || {}, authorizedFeatures);
+      if (txRes?.success) {
+        const d = txRes.data;
+        let reply = `📜 Wallet Transaction Ledger: Found ${d.count || 0} recent transaction(s).`;
+        if (Array.isArray(d.transactions) && d.transactions.length > 0) {
+          reply += '\n' + d.transactions.map((t) => `• ${t.type === 'CREDIT' ? '🟢 Credit' : '🔴 Debit'}: ₹${Number(t.amount || 0).toLocaleString('en-IN')} - ${t.description}`).join('\n');
+        }
+        reply += '\n\nTap below to view complete wallet statements.';
+        return {
+          message: reply,
+          reply,
+          actions: txRes.action ? [txRes.action] : [],
+          toolCall: txRes.action ? { targetRoute: txRes.action.route, targetName: txRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // F6. In-App Notifications
+    if (intent === 'notifications' || text.includes('notification') || text.includes('alerts')) {
+      const notifRes = await executeAssistantTool(user, tenant, 'get_my_notifications', conversationState?.collectedDetails || {}, authorizedFeatures);
+      if (notifRes?.success) {
+        const d = notifRes.data;
+        const unreadStr = d.unreadCount > 0 ? ` (${d.unreadCount} unread)` : '';
+        let reply = `🔔 Notifications Center: You have ${d.totalRecords || (d.notifications || []).length} notification(s)${unreadStr}.`;
+        if (Array.isArray(d.notifications) && d.notifications.length > 0) {
+          reply += '\n' + d.notifications.slice(0, 3).map((n) => `• ${n.isRead ? '⚪' : '🔵'} ${n.title}: ${n.message}`).join('\n');
+        }
+        reply += '\n\nTap below to view all community notifications.';
+        return {
+          message: reply,
+          reply,
+          actions: notifRes.action ? [notifRes.action] : [],
+          toolCall: notifRes.action ? { targetRoute: notifRes.action.route, targetName: notifRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // F7. Notifications Mark Read
+    if (intent === 'notifications_mark_read') {
+      const readRes = await executeAssistantTool(user, tenant, 'prepare_notifications_mark_read', { markAll: true }, authorizedFeatures);
+      return {
+        message: 'All your notifications have been marked as read.',
+        reply: 'All your notifications have been marked as read.',
+        actions: [],
+        toolCall: null,
+        data: readRes?.data || null,
+        status: 'success',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
+    }
+
+    // F8. Emergency & Security Contacts
+    if (intent === 'emergency_contacts' || text.includes('emergency') || text.includes('security guard') || text.includes('gate number') || text.includes('gate intercom')) {
+      const emRes = await executeAssistantTool(user, tenant, 'get_emergency_contacts', conversationState?.collectedDetails || {}, authorizedFeatures);
+      if (emRes?.success) {
+        const d = emRes.data;
+        let reply = `🚨 Community Emergency & Security Contacts:`;
+        if (Array.isArray(d.emergencyContacts) && d.emergencyContacts.length > 0) {
+          reply += '\n' + d.emergencyContacts.map((c) => `• ${c.role}: 📞 ${c.phone} (Intercom: ${c.intercom})`).join('\n');
+        }
+        if (Array.isArray(d.directoryStaff) && d.directoryStaff.length > 0) {
+          reply += '\n\nSecurity Staff on Duty:\n' + d.directoryStaff.map((s) => `• ${s.name} (${s.designation || s.role}): 📞 ${s.phone || 'Intercom ' + s.intercomNumber}`).join('\n');
+        }
+        reply += '\n\nTap below to open the complete Community Directory.';
+        return {
+          message: reply,
+          reply,
+          actions: emRes.action ? [emRes.action] : [],
+          toolCall: emRes.action ? { targetRoute: emRes.action.route, targetName: emRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // F9. Issue Reports List
+    if (intent === 'issue_reports_list' || (text.includes('issue report') && (text.includes('show') || text.includes('list') || text.includes('my')))) {
+      const repRes = await executeAssistantTool(user, tenant, 'get_issue_reports', conversationState?.collectedDetails || {}, authorizedFeatures);
+      if (repRes?.success) {
+        const d = repRes.data;
+        let reply = `🛠️ Technical Issue Reports: Found ${d.count || 0} issue report(s).`;
+        if (Array.isArray(d.reports) && d.reports.length > 0) {
+          reply += '\n' + d.reports.map((r) => `• #${r.reportNumber} [${r.status}]: ${r.title} (${r.reportType})`).join('\n');
+        }
+        reply += '\n\nTap below to view full issue reports.';
+        return {
+          message: reply,
+          reply,
+          actions: repRes.action ? [repRes.action] : [],
+          toolCall: repRes.action ? { targetRoute: repRes.action.route, targetName: repRes.action.targetName } : null,
+          data: d,
+          status: 'success',
+          conversationState: sanitizeConversationState(conversationState),
+          requestId: correlationId,
+        };
+      }
+    }
+
+    // F10. AI Assistant Feedback
+    if (intent === 'ai_feedback') {
+      const fbRes = await executeAssistantTool(user, tenant, 'submit_ai_feedback', conversationState?.collectedDetails || {}, authorizedFeatures);
+      return {
+        message: 'Thank you for your feedback! It helps improve NAHOM AI Assistant.',
+        reply: 'Thank you for your feedback! It helps improve NAHOM AI Assistant.',
+        actions: [],
+        toolCall: null,
+        data: fbRes?.data || null,
+        status: 'success',
+        conversationState: sanitizeConversationState(conversationState),
+        requestId: correlationId,
+      };
     }
 
     // F. Direct navigation matching

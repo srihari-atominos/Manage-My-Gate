@@ -12,12 +12,21 @@
 const legacyMap = {
   // Dot-format → colon-format (canonical internal format)
   'amenities.read': 'amenities:read',
+  // Older role documents used "view" for the resident booking screen.  It is
+  // normalized to the narrowly scoped self-service booking permission, never
+  // to an administrative amenity permission.
+  'amenities:view': 'amenities:my_booking',
+  'amenities.view': 'amenities:my_booking',
   'amenities.book': 'amenities:book',
   'amenities.cancel_booking': 'amenities:cancel_booking',
   'amenities.create': 'amenities:create',
   'amenities.update': 'amenities:update',
   'amenities.delete': 'amenities:delete',
   'amenities.manage_bookings': 'amenities:manage_bookings',
+  'amenities:admin_calendar': 'amenities:admin_calander',
+  'amenities.admin_calendar': 'amenities:admin_calander',
+  'amenities.admin_calander': 'amenities:admin_calander',
+  'amenities.booking_queue': 'amenities:booking_queue',
   // Notices Backward Compatibility (Legacy to New RBAC)
   'notices.read': 'notices:active_board',
   'notices:read': 'notices:active_board',
@@ -99,6 +108,12 @@ export const expandUserPermissions = (permissions) => {
     permSet.add('staff:view');
     permSet.add('staff:attendance');
     permSet.add('staff:assign_unit');
+  }
+
+  if (permSet.has('amenities:admin_calander') || permSet.has('amenities:admin_calendar') || permSet.has('amenities:booking_queue')) {
+    permSet.add('amenities:admin_calander');
+    permSet.add('amenities:admin_calendar');
+    permSet.add('amenities:booking_queue');
   }
 
   return Array.from(permSet);

@@ -14,6 +14,14 @@ class AIAssistantController {
     }
   }
 
+  async getEvaluationSummary(req, res, next) {
+    try {
+      res.success(aiAssistantService.getEvaluationSummary(), 'AI evaluation summary retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * POST /api/v1/ai-assistant/session/token
    * Provisions a short-lived ephemeral token for real-time Gemini Live WebSocket connection.

@@ -9,7 +9,10 @@ import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
 export default function AdminBookingQueueRoute() {
   const { user } = useAuth();
-  const allowed = isFeatureAllowedForUser({ id: 'amenities_admin_bookings', permission: 'amenities:admin_calander' }, user);
+  const allowed =
+    isFeatureAllowedForUser({ id: 'amenities_admin_bookings', permission: 'amenities:booking_queue' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_admin_bookings', permission: 'amenities:admin_calander' }, user) ||
+    isFeatureAllowedForUser({ id: 'amenities_admin_bookings', permission: 'amenities:admin_calendar' }, user);
   if (user && !allowed) return <Redirect href="/(resident)/dashboard" />;
   return <AdminBookingQueueScreen />;
 }

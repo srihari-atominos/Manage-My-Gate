@@ -18,6 +18,14 @@ RUN npm ci --only=production
 # Stage 2: Final runtime container
 FROM node:20-alpine
 
+# Install Tesseract OCR and trained language models for receipt/expense processing
+RUN apk add --no-cache \
+    tesseract-ocr \
+    tesseract-ocr-data-eng \
+    tesseract-ocr-data-tam \
+    tesseract-ocr-data-ara \
+    tesseract-ocr-data-hin
+
 WORKDIR /app
 
 # Copy production node_modules from builder stage
@@ -41,5 +49,8 @@ ENV PORT=5000
 ENV REQUIRE_REDIS_LOCK=true
 ENV REQUIRE_REDIS_RATE_LIMIT=true
 ENV REQUIRE_REDIS_ADAPTER=true
+ENV TESSDATA_PREFIX=/usr/share/tessdata
+ENV EXPENSE_OCR_PROVIDER=tesseract-local
+ENV PERSONAL_EXPENSE_OCR_PROVIDER=tesseract-local
 
 CMD ["node", "server.js"]

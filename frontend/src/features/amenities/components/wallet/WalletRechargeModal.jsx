@@ -8,9 +8,12 @@ import {
   CButton,
   CFormCheck,
   CAlert,
+  CInputGroup,
+  CInputGroupText,
+  CFormInput,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilCreditCard } from '@coreui/icons'
+import { cilCreditCard, cilWallet } from '@coreui/icons'
 import useWalletPayment from '../../hooks/useWalletPayment.js'
 import AppLoader from '../../../../components/common/AppLoader'
 
@@ -51,19 +54,20 @@ export const WalletRechargeModal = memo(
         backdrop="static"
         alignment="center"
         size="md"
-        className="payment-checkout-modal"
+        className="wallet-recharge-modal"
       >
         <CModalHeader closeButton={!loading}>
-          <CModalTitle className="fw-bold">
-            {t('wallet.recharge.modalTitle', 'Wallet Recharge')}
+          <CModalTitle className="fw-bold fs-5">
+            <CIcon icon={cilWallet} className="me-2 text-primary" />
+            {t('wallet.recharge.modalTitle', 'Top-Up Digital Wallet')}
           </CModalTitle>
         </CModalHeader>
 
-        <CModalBody className="p-4">
+        <CModalBody className="p-3 p-sm-4">
           {loading ? (
             <div className="text-center py-5">
               <AppLoader variant="block" />
-              <p className="mb-0 text-muted">
+              <p className="mb-0 text-muted mt-3">
                 {t('wallet.recharge.processing', 'Connecting to payment gateway...')}
               </p>
             </div>
@@ -82,82 +86,90 @@ export const WalletRechargeModal = memo(
               )}
 
               {/* Recharge Summary Card */}
-              <div className="p-3 mb-4 rounded border bg-light text-start">
+              <div className="p-3 mb-3 rounded border bg-body-secondary text-start">
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <span className="text-muted small">
-                    {t('wallet.recharge.targetLabel', 'Recharge Target')}
+                    {t('wallet.recharge.targetLabel', 'Target Wallet')}
                   </span>
                   <span className="fw-bold text-primary">
-                    {t('wallet.recharge.targetWallet', 'Digital Wallet')}
+                    {t('wallet.recharge.targetWallet', 'Personal Wallet')}
                   </span>
                 </div>
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="text-muted small">
-                    {t('wallet.recharge.unitLabel', 'Unit / Flat')}
-                  </span>
-                  <span className="fw-medium">{user?.unitNumber || user?.flatNumber || '—'}</span>
-                </div>
-                <div className="d-flex justify-content-between align-items-center mb-2">
+                {(user?.unitNumber || user?.flatNumber) && (
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="text-muted small">
+                      {t('wallet.recharge.unitLabel', 'Unit / Flat')}
+                    </span>
+                    <span className="fw-medium">{user.unitNumber || user.flatNumber}</span>
+                  </div>
+                )}
+                <div className="d-flex justify-content-between align-items-center">
                   <span className="text-muted small">
                     {t('wallet.recharge.balanceLabel', 'Current Balance')}
                   </span>
-                  <span className="fw-medium text-success">
-                    ₹{(walletBalance || 0).toLocaleString('en-IN')}
+                  <span className="fw-bold text-success">
+                    ₹{Number(walletBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </span>
-                </div>
-
-                <hr className="my-2" />
-
-                {/* Preset Buttons */}
-                <div className="mb-3 d-flex gap-2 flex-wrap">
-                  {presetAmounts.map((preset) => (
-                    <CButton
-                      key={preset}
-                      color="secondary"
-                      size="sm"
-                      variant={Number(amount) === preset ? '' : 'outline'}
-                      onClick={() => setAmount(preset.toString())}
-                    >
-                      + ₹{preset}
-                    </CButton>
-                  ))}
-                </div>
-
-                {/* Custom Input */}
-                <div className="mb-2">
-                  <label className="form-label text-muted small mb-1">
-                    {t('wallet.recharge.amountLabel', 'Custom Amount (₹)')}
-                  </label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
-                </div>
-
-                <hr className="my-2" />
-
-                <div className="d-flex justify-content-between align-items-center">
-                  <span className="fw-bold">
-                    {t('wallet.recharge.totalAmount', 'Total Recharge Amount')}
-                  </span>
-                  <h4 className="fw-bold text-success mb-0">
-                    ₹{displayAmount.toLocaleString('en-IN')}
-                  </h4>
                 </div>
               </div>
 
+              {/* Preset Chips (Responsive 2x2 on Mobile) */}
+              <div className="mb-3">
+                <label className="form-label text-muted small mb-2 fw-semibold">
+                  {t('wallet.recharge.quick_presets', 'Quick Select Amount')}
+                </label>
+                <div className="wallet-preset-grid">
+                  {presetAmounts.map((preset) => (
+                    <button
+                      type="button"
+                      key={preset}
+                      className={`wallet-preset-chip ${Number(amount) === preset ? 'active' : ''}`}
+                      onClick={() => setAmount(preset.toString())}
+                    >
+                      + ₹{preset.toLocaleString('en-IN')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Input */}
+              <div className="mb-3">
+                <label className="form-label text-muted small mb-1 fw-semibold">
+                  {t('wallet.recharge.amountLabel', 'Enter Amount (₹)')}
+                </label>
+                <CInputGroup>
+                  <CInputGroupText className="bg-body border-end-0 fw-bold">₹</CInputGroupText>
+                  <CFormInput
+                    type="number"
+                    min="10"
+                    max="100000"
+                    className="border-start-0 fs-5 fw-semibold"
+                    placeholder="Enter amount"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </CInputGroup>
+              </div>
+
+              {/* Total Recharge Summary Line */}
+              <div className="p-3 mb-3 border rounded bg-body d-flex justify-content-between align-items-center">
+                <span className="fw-semibold">
+                  {t('wallet.recharge.totalAmount', 'Total Top-Up')}
+                </span>
+                <h4 className="fw-bold text-success mb-0">
+                  ₹{displayAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </h4>
+              </div>
+
               {/* Payment Method Selector */}
-              <h6 className="fw-bold mb-3 text-start">
-                {t('wallet.recharge.selectMethodTitle', 'Select Payment Method')}
+              <h6 className="fw-bold mb-2 small text-uppercase text-muted text-start">
+                {t('wallet.recharge.selectMethodTitle', 'Payment Method')}
               </h6>
 
               {/* Razorpay Option */}
               <div
                 className={`p-3 border rounded mb-4 cursor-pointer text-start transition-all ${
-                  paymentMethod === 'RAZORPAY' ? 'border-primary bg-primary bg-opacity-10' : ''
+                  paymentMethod === 'RAZORPAY' ? 'border-primary bg-primary bg-opacity-10' : 'bg-body'
                 }`}
                 onClick={() => setPaymentMethod('RAZORPAY')}
               >
@@ -173,13 +185,13 @@ export const WalletRechargeModal = memo(
                     <div className="d-flex align-items-center gap-2">
                       <CIcon icon={cilCreditCard} size="lg" className="text-primary" />
                       <div>
-                        <div className="fw-semibold">
-                          {t('wallet.recharge.razorpayTitle', 'Razorpay (Cards, UPI, Net Banking)')}
+                        <div className="fw-bold">
+                          {t('wallet.recharge.razorpayTitle', 'Razorpay Online Gateway')}
                         </div>
                         <div className="text-muted small">
                           {t(
                             'wallet.recharge.razorpaySub',
-                            'Instant online payment via official Razorpay SDK',
+                            'Instant top-up via UPI (GPay/PhonePe), Credit & Debit Cards, Net Banking',
                           )}
                         </div>
                       </div>
@@ -188,19 +200,25 @@ export const WalletRechargeModal = memo(
                 </div>
               </div>
 
-              {/* Footer Actions */}
-              <div className="d-flex justify-content-end gap-3">
-                <CButton color="secondary" variant="outline" onClick={onClose} disabled={loading}>
+              {/* Mobile-Responsive Stacked Footer Actions */}
+              <div className="d-flex flex-column-reverse flex-sm-row justify-content-sm-end gap-2 gap-sm-3 pt-2">
+                <CButton
+                  color="secondary"
+                  variant="outline"
+                  onClick={onClose}
+                  disabled={loading}
+                  className="w-100 w-sm-auto px-4"
+                >
                   {t('wallet.recharge.cancelBtn', 'Cancel')}
                 </CButton>
                 <CButton
                   color="primary"
                   onClick={handleCheckoutSubmit}
                   disabled={loading || !isGatewayReady || !amount || Number(amount) <= 0}
-                  className="px-4"
+                  className="w-100 w-sm-auto px-4 fw-semibold shadow-sm"
                 >
                   {isGatewayReady
-                    ? `${t('wallet.recharge.payBtn', 'Confirm & Pay ₹')}${displayAmount.toLocaleString('en-IN')}`
+                    ? `${t('wallet.recharge.payBtn', 'Confirm & Pay')} ₹${displayAmount.toLocaleString('en-IN')}`
                     : t('wallet.recharge.gatewayNotConfigured', 'Gateway Not Configured')}
                 </CButton>
               </div>

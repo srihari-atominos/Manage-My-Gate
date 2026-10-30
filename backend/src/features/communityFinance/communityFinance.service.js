@@ -795,12 +795,7 @@ class CommunityFinanceService {
     const recordedExpensePayments = round(expAgg.recordedExpensePayments || 0);
     // Use actual reconciled disbursements for cash basis, fallback to confirmedPaidAmount
     const reconciledExpensePayments = round(aggReconciledDisbursements || expAgg.confirmedPaidAmount || 0);
-    const effectiveExpenseDisbursements =
-      reconciledExpensePayments > 0
-        ? reconciledExpensePayments
-        : totalExpensesIncurred > 0
-        ? totalExpensesIncurred
-        : recordedExpensePayments;
+    const effectiveExpenseDisbursements = round(Math.max(reconciledExpensePayments, recordedExpensePayments, totalExpensesIncurred));
 
     // Cash-basis Net Surplus/Deficit = Eligible Confirmed Receipts - Effective Disbursements/Liabilities
     const netSurplusOrDeficit = round(netCollectionsAfterRefunds - effectiveExpenseDisbursements);

@@ -50,21 +50,20 @@ describe('UpdatePromptModal — Component Behavior', () => {
       />
     );
 
-    expect(await view.findByText('A New Version of NAHOM Is Available!')).toBeTruthy();
-    expect(await view.findByText('v1.0.8')).toBeTruthy();
-    expect(await view.findByText('v1.2.0')).toBeTruthy();
-    expect(await view.findByText('Feature improvements and bug fixes')).toBeTruthy();
+    expect(await view.findByText('New update available')).toBeTruthy();
+    expect(await view.findByText('To enjoy our newest features tap the button below')).toBeTruthy();
 
-    const updateNowBtn = await view.findByText('Update Now');
+    const updateNowBtn = await view.findByText('Update the app');
     fireEvent.press(updateNowBtn);
     expect(onUpdateNow).toHaveBeenCalled();
 
-    const laterBtn = await view.findByText('Later');
+    const laterBtn = await view.findByText('Not now');
     fireEvent.press(laterBtn);
     expect(onLater).toHaveBeenCalled();
   });
 
-  it('renders grace period remaining banner for IMPORTANT release', async () => {
+  it('renders clean prompt for IMPORTANT release and can be dismissed via close icon', async () => {
+    const onLater = jest.fn();
     const mockImportantPolicy: AppReleasePolicy = {
       ...mockNormalPolicy,
       releaseType: 'IMPORTANT',
@@ -81,11 +80,16 @@ describe('UpdatePromptModal — Component Behavior', () => {
         isDownloaded={false}
         onUpdateNow={jest.fn()}
         onCompleteUpdate={jest.fn()}
-        onLater={jest.fn()}
+        onLater={onLater}
       />
     );
 
-    expect(await view.findByText('Grace period active: 4 days remaining to update.')).toBeTruthy();
+    expect(await view.findByText('New update available')).toBeTruthy();
+    expect(view.queryByText('4 days remaining to update')).toBeNull();
+
+    const closeBtn = await view.findByLabelText('Close update dialog');
+    fireEvent.press(closeBtn);
+    expect(onLater).toHaveBeenCalled();
   });
 
   it('renders restart button when download completes', async () => {

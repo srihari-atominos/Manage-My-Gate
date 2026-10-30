@@ -6,6 +6,15 @@ import * as yup from 'yup'
 import { ROLE_SCOPE_VALUES, getRoleScopeOption, isTenantScope } from '../roleScopes'
 import { syncRolePermissionsAsync } from '../store/roleSlice'
 
+export const BILLING_EXPENSE_PERMISSIONS = [
+  'billing:expenses',
+  'billing:view_expense',
+  'billing:create_expense',
+  'billing:record_expense_payment',
+  'billing:reconcile_expense_payment',
+  'billing:pay_online_expense',
+];
+
 const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required'),
   description: yup.string().trim().optional(),
@@ -124,7 +133,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
       }
       newValue = Array.from(new Set([...selectedPermissions, ...filteredGroupCodes]))
     } else {
-      let toRemove = new Set(groupCodes)
+      let toRemove = new Set(expandedGroupCodes)
       const hasNoticeCodes = groupCodes.some((c) => String(c).toLowerCase().startsWith('notices'))
       if (hasNoticeCodes) {
         ALL_NOTICE_ACTIONS.forEach((a) => toRemove.add(a))

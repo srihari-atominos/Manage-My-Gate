@@ -30,6 +30,7 @@ const aiAssistantActionSchema = new mongoose.Schema(
         'CREATE_ASSESSMENT',
         'CREATE_POLL',
         'CREATE_NOTICE',
+        'SUBMIT_ISSUE_REPORT',
       ],
       required: true,
       index: true,

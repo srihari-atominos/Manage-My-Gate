@@ -58,34 +58,54 @@ const ResidentWalletView = () => {
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
       <AmenitiesTopNav />
-      <div className="view-container" style={{ maxWidth: '95%', margin: '0 auto' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '24px',
-          }}
-        >
-          <div>
-            <h1 style={{ margin: 0 }} className="fs-2">
-              {t('wallet.title', 'My Wallet')}
-            </h1>
-            <p className="text-muted mt-1 mb-0">
-              {t('wallet.balance', 'Balance')}:{' '}
-              <span className="fw-bold">₹{balance?.toFixed(2) || '0.00'}</span>
-            </p>
-          </div>
-          <div>
-            <button className="btn btn-primary" onClick={() => setShowAddMoney(true)}>
-              {t('wallet.addMoney', 'Add Money')}
-            </button>
+      <div className="view-container">
+        {/* Wallet Hero Banner Card - Mobile Responsive */}
+        <div className="wallet-hero-card mb-4 shadow-sm border">
+          <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
+            <div>
+              <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                <span className="badge bg-primary text-white px-2 py-1">
+                  <i className="fa-solid fa-wallet me-1"></i>
+                  {t('wallet.title', 'Digital Wallet')}
+                </span>
+                {(user?.unitNumber || user?.flatNumber) && (
+                  <span className="badge bg-secondary text-white px-2 py-1">
+                    <i className="fa-solid fa-door-open me-1"></i>
+                    Unit {user?.unitNumber || user?.flatNumber}
+                  </span>
+                )}
+              </div>
+              <div className="text-muted small">
+                {t('wallet.available_balance', 'Available Balance')}
+              </div>
+              <div className="wallet-balance-amount fw-bold text-success mt-1">
+                ₹{Number(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+
+            <div className="w-100 w-sm-auto mt-2 mt-sm-0">
+              <button
+                className="btn btn-primary wallet-topup-btn w-100 w-sm-auto px-4 py-2 shadow-sm fw-semibold"
+                onClick={() => setShowAddMoney(true)}
+              >
+                <i className="fa-solid fa-plus me-2"></i>
+                {t('wallet.addMoney', 'Top Up Wallet')}
+              </button>
+            </div>
           </div>
         </div>
 
-        <h4 style={{ marginBottom: '16px' }} className="fs-5">
-          {t('wallet.activePasses', 'Active Access Passes')}
-        </h4>
+        {/* Active Passes Section */}
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h4 className="fs-5 fw-bold mb-0">
+            {t('wallet.activePasses', 'Active Access Passes')}
+          </h4>
+          {activePasses.length > 0 && (
+            <span className="badge bg-body-secondary text-dark border">
+              {activePasses.length} {t('wallet.passes_count', 'active')}
+            </span>
+          )}
+        </div>
 
         {loading && activePasses.length === 0 ? (
           <CCard className="mb-4 border-0 shadow-sm">
@@ -106,9 +126,9 @@ const ResidentWalletView = () => {
             </CCardBody>
           </CCard>
         ) : (
-          <CRow className="g-4 mb-4">
+          <CRow className="g-3 g-sm-4 mb-4">
             {activePasses.map((pass) => (
-              <CCol xs={12} md={6} lg={4} key={pass._id}>
+              <CCol xs={12} sm={6} lg={4} key={pass._id}>
                 <div className="wallet-pass-container h-100">
                   <QrPassCard booking={pass} onCancel={handleCancelClick} />
                 </div>
@@ -117,9 +137,12 @@ const ResidentWalletView = () => {
           </CRow>
         )}
 
-        <h4 style={{ marginBottom: '16px', marginTop: '24px' }} className="fs-5">
-          {t('wallet.transactionHistory', 'Transaction History')}
-        </h4>
+        {/* Transaction History Section */}
+        <div className="mt-4 mb-3">
+          <h4 className="fs-5 fw-bold mb-0">
+            {t('wallet.transactionHistory', 'Transaction History')}
+          </h4>
+        </div>
         <TransactionHistory transactions={transactionHistory} loading={loading} />
       </div>
 

@@ -85,7 +85,7 @@ export function CommunityIssueReportDetailSheet({
               </Text>
             </View>
           ) : report ? (
-            <ScrollView className="flex-1 px-4 pt-2">
+            <View className="flex-1 px-4 pt-2">
               {/* HEADER BADGES */}
               <View className="flex-row items-center justify-between mb-3 gap-2 flex-wrap">
                 <StatusBadge variant={typeConfig.color} label={typeConfig.label} size="md" />
@@ -162,7 +162,7 @@ export function CommunityIssueReportDetailSheet({
                   Read-Only Inspection Mode. Issue reports cannot be altered.
                 </Text>
               </View>
-            </ScrollView>
+            </View>
           ) : null}
         </View>
       </BottomSheet>
