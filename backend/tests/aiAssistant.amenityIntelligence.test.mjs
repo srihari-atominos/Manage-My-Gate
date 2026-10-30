@@ -8,6 +8,7 @@ import {
   extractBookingParticipants,
   formatAmenityBookingSummary,
   formatAmenityCancellationSummary,
+  attachUniversalInteractiveOptions,
   INTENTS,
   WORKFLOWS,
 } from '../src/features/aiAssistant/aiAssistant.conversation.js';
@@ -1133,4 +1134,70 @@ test('E3. Headcount Rules: Rejects booking when headcount exceeds physical facil
 
   assert.equal(res.success, false);
   assert.ok(res.error.includes('exceeds the maximum capacity of 15'));
+});
+
+test('E4. Zero Fake Amenities: When community has zero amenities created, catalog returns empty array and availability check does not show fake amenities', async () => {
+  setTestServices({
+    amenityService: {
+      getAllAmenities: async () => [],
+    },
+  });
+
+  const catalogRes = await executeAssistantTool(
+    RESIDENT_USER,
+    { _id: TEST_ORG_ID },
+    'get_amenities_catalog',
+    {}
+  );
+
+  assert.equal(catalogRes.success, true);
+  assert.equal(catalogRes.data.count, 0);
+  assert.deepEqual(catalogRes.data.amenities, []);
+  assert.equal(catalogRes.data.emptyMessage, 'No active amenities are currently listed in the community catalog.');
+
+  const availRes = await executeAssistantTool(
+    RESIDENT_USER,
+    { _id: TEST_ORG_ID },
+    'check_amenity_availability',
+    { amenityName: 'Swimming Pool' }
+  );
+
+  assert.equal(availRes.success, true);
+  assert.equal(availRes.data.found, false);
+  assert.equal(availRes.data.message, 'There are currently no active amenities created in your community.');
+});
+
+test('E5. Zero Fake Amenities: Interactive options for amenity booking does not fall back to fake default amenities when presentedAmenities is empty', () => {
+  const state = {
+    activeIntent: INTENTS.AMENITY_BOOKING,
+    workflow: WORKFLOWS.AMENITY_BOOKING_INTAKE,
+    collectedDetails: {},
+    missingFields: ['amenityName', 'date', 'slotTime'],
+    presentedAmenities: [],
+  };
+
+  const augmented = attachUniversalInteractiveOptions(state);
+  assert.ok(!augmented.options || augmented.options.length === 0);
+});
+
+test('E6. Strict Created Amenities Only: When community has only 1 created facility, interactive options only contains that single facility', () => {
+  const state = {
+    activeIntent: INTENTS.AMENITY_BOOKING,
+    workflow: WORKFLOWS.AMENITY_BOOKING_INTAKE,
+    collectedDetails: {},
+    missingFields: ['amenityName', 'date', 'slotTime'],
+    presentedAmenities: ['Basket Ball Court'],
+  };
+
+  const augmented = attachUniversalInteractiveOptions(state);
+  assert.equal(augmented.options.length, 1);
+  assert.equal(augmented.options[0].value, 'Basket Ball Court');
+  assert.equal(augmented.options[0].label, 'Basket Ball Court');
+  // Verify none of the old fake default amenities are present
+  const values = augmented.options.map((o) => o.value);
+  assert.ok(!values.includes('Badminton Court'));
+  assert.ok(!values.includes('Swimming Pool'));
+  assert.ok(!values.includes('Clubhouse'));
+  assert.ok(!values.includes('Tennis Court'));
+  assert.ok(!values.includes('Gym'));
 });
