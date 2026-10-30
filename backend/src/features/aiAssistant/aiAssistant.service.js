@@ -992,7 +992,8 @@ ${featureDescriptions}`,
           (conversationState.collectedDetails?.timePreference ? ` in the ${conversationState.collectedDetails.timePreference}` : '') +
           `?`;
       } else {
-        reply = conversationState.nextQuestion || 'Which amenity would you like to book?';
+        reply = 'There are currently no active amenities created in your community. Please contact your community administrator to set up amenities.';
+        conversationState.presentedAmenities = [];
       }
 
       conversationState.nextQuestion = reply;
@@ -2313,14 +2314,16 @@ ${featureDescriptions}`,
       const catalogRes = await executeAssistantTool(user, tenant, 'get_amenities_catalog', {}, authorizedFeatures);
       if (catalogRes?.success) {
         const d = catalogRes.data;
-        let reply = 'Here are the available community amenities you can book:\n';
+        let reply = '';
         if (Array.isArray(d.amenities) && d.amenities.length > 0) {
-          reply += d.amenities.map((a) => `• ${a.name} (${a.category || a.type || 'Facility'})`).join('\n');
+          reply = 'Here are the available community amenities you can book:\n' +
+            d.amenities.map((a) => `• ${a.name} (${a.category || a.type || 'Facility'})`).join('\n') +
+            '\n\nTap below to check slots and reserve your booking.';
           conversationState.presentedAmenities = d.amenities.map((a) => a.name);
         } else {
-          reply += 'Amenities are active in your community.';
+          reply = 'There are currently no active amenities created in your community. Please contact your community administrator to set up amenities.';
+          conversationState.presentedAmenities = [];
         }
-        reply += '\n\nTap below to check slots and reserve your booking.';
 
         return {
           message: reply,
@@ -2337,24 +2340,68 @@ ${featureDescriptions}`,
 
     // C2. Amenity Booking / Availability
     if (intent === 'amenity_booking' || intent === 'amenity_availability' || text.includes('amenity') || text.includes('amenities') || text.includes('court') || text.includes('pool') || text.includes('gym')) {
-      const amenityRes = await executeAssistantTool(user, tenant, 'check_amenity_availability', conversationState?.collectedDetails || {}, authorizedFeatures);
-      if (amenityRes?.success) {
-        const d = amenityRes.data;
-        let reply = 'Here are the available community amenities you can book:\n';
-        if (Array.isArray(d.amenities) && d.amenities.length > 0) {
-          reply += d.amenities.slice(0, 4).map((a) => `• ${a.name} (${a.type || 'Facility'})`).join('\n');
-        } else {
-          reply += 'Amenities are active in your community.';
-        }
-        reply += '\n\nTap below to check slots and reserve your booking.';
+      const amenityName = conversationState?.collectedDetails?.amenityName;
+      if (amenityName) {
+        const amenityRes = await executeAssistantTool(user, tenant, 'check_amenity_availability', conversationState?.collectedDetails || {}, authorizedFeatures);
+        if (amenityRes?.success) {
+          const d = amenityRes.data;
+          let reply = '';
+          if (d.found) {
+            reply = `Here is the availability for ${d.name} (${d.category || 'Facility'}) on ${d.date}:\n` +
+              `• Operating Hours: ${d.operatingHours}\n` +
+              `• Pricing: ${d.pricing}\n` +
+              `• Available Slots: ${d.availableSlotsCount} slot(s) open\n` +
+              (Array.isArray(d.availableSlots) && d.availableSlots.length > 0 ? `• Openings: ${d.availableSlots.slice(0, 4).join(', ')}\n` : '') +
+              '\nTap below to reserve your slot.';
+          } else {
+            reply = d.message || `Could not find an active amenity matching "${amenityName}".`;
+          }
 
+          return {
+            message: reply,
+            reply,
+            actions: amenityRes.action ? [amenityRes.action] : [],
+            toolCall: amenityRes.action ? { targetRoute: amenityRes.action.route, targetName: amenityRes.action.targetName } : null,
+            data: d,
+            status: 'success',
+            conversationState: sanitizeConversationState(conversationState),
+            requestId: correlationId,
+          };
+        }
+      } else {
+        // No specific amenity requested yet - retrieve real active created facilities for this community
+        const catalogRes = await executeAssistantTool(user, tenant, 'get_amenities_catalog', {}, authorizedFeatures);
+        const amenities = (catalogRes?.data?.amenities || []);
+        conversationState.presentedAmenities = amenities.map(a => a.name);
+
+        let reply = '';
+        if (amenities.length > 0) {
+          reply = `Here are the available community amenities you can book:\n` +
+            amenities.map((a, i) => `${i + 1}. ${a.name} (${a.category || a.type || 'Facility'})`).join('\n') +
+            `\n\nWhich amenity would you like to book` +
+            (conversationState?.collectedDetails?.headcount ? ` for ${conversationState.collectedDetails.headcount === 2 ? 'two people' : `${conversationState.collectedDetails.headcount} members`}` : '') +
+            (conversationState?.collectedDetails?.dateLabel ? ` ${conversationState.collectedDetails.dateLabel.toLowerCase()}` : '') +
+            (conversationState?.collectedDetails?.timePreference ? ` in the ${conversationState.collectedDetails.timePreference}` : '') +
+            `?`;
+        } else {
+          reply = 'There are currently no active amenities created in your community. Please contact your community administrator to set up amenities.';
+          conversationState.presentedAmenities = [];
+        }
+
+        conversationState.nextQuestion = reply;
         return {
           message: reply,
           reply,
-          actions: amenityRes.action ? [amenityRes.action] : [],
-          toolCall: amenityRes.action ? { targetRoute: amenityRes.action.route, targetName: amenityRes.action.targetName } : null,
-          data: d,
-          status: 'success',
+          actions: catalogRes?.action ? [catalogRes.action] : [],
+          toolCall: catalogRes?.action ? { targetRoute: catalogRes.action.route, targetName: catalogRes.action.targetName } : null,
+          data: {
+            interactionType: 'clarification',
+            workflow: conversationState?.workflow,
+            missingFields: conversationState?.missingFields,
+            collectedDetails: conversationState?.collectedDetails,
+            amenities: conversationState.presentedAmenities,
+          },
+          status: amenities.length > 0 ? 'clarification' : 'answering',
           conversationState: sanitizeConversationState(conversationState),
           requestId: correlationId,
         };
